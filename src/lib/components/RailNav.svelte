@@ -46,6 +46,7 @@
     help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/>',
     greenscreen: '<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
     catalogue: '<rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="10" r="3"/><line x1="10.5" y1="18" x2="13.5" y2="18"/>',
+    playerviews: '<rect x="2" y="4" width="13" height="10" rx="1.5"/><rect x="9" y="10" width="13" height="10" rx="1.5"/><line x1="5" y1="7.5" x2="12" y2="7.5"/><circle cx="15.5" cy="15" r="2"/>',
     ruler: '<rect x="2.5" y="7" width="19" height="10" rx="1" transform="rotate(0 12 12)"/><line x1="6.5" y1="7" x2="6.5" y2="10.5"/><line x1="10.5" y1="7" x2="10.5" y2="11.5"/><line x1="14.5" y1="7" x2="14.5" y2="10.5"/><line x1="18.5" y1="7" x2="18.5" y2="11.5"/>',
     interstellar: '<circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M6.6 16.4 17.4 7.6" stroke-dasharray="3 2.5"/>'
   };
@@ -87,25 +88,30 @@
   <button class="rail-btn" title={routesAttention ? `Routes & journeys — a ship needs attention (${routesAttention})` : 'Routes & journeys'} on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}{#if routesAttention}<span class="rail-dot {routesAttention}"></span>{/if}</span><span class="rail-label">Routes…{#if routesAttention}<span class="rail-dot inline {routesAttention}"></span>{/if}</span>
   </button>
-  <!-- Field Guide is campaign-wide (whole starmap), so it's available from BOTH the starmap and a system. -->
-  <button class="rail-btn" title="Open the players' live field guide (Companion App)" on:click={() => go('catalogue')}>
+  <!-- Field Guide: the players' companion launcher. -->
+  <button class="rail-btn" title="Field Guide — open and share the players' companion views" on:click={() => go('catalogue')}>
     <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
   </button>
+  <!-- HIDDEN for the production cut: Player Views, the unified players' presentation system
+       (the eventual Field Guide replacement — V2.2 line, still in beta testing). -->
+  <!-- <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
+    <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
+  </button> -->
 
-  {#if activeView === 'system'}
-    {#if projectorOpen}
-      <button class="rail-btn" class:gs-on={crtOn} title="Toggle the projector's green-CRT look" on:click={() => dispatch('projectorcrt')}>
-        <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen CRT</span>
-      </button>
-    {:else}
-      <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
-        <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
-      </button>
-    {/if}
-    <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
-      <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
+  <!-- Projector + Report act on the loaded system. Shown in BOTH views for beta (they target the
+       last-loaded system when invoked from the starmap). Greenscreen toggle only when a projector is live. -->
+  {#if projectorOpen}
+    <button class="rail-btn" class:gs-on={crtOn} title="Toggle the projector's green-CRT look" on:click={() => dispatch('projectorcrt')}>
+      <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen CRT</span>
+    </button>
+  {:else}
+    <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
+      <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
     </button>
   {/if}
+  <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
+    <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
+  </button>
 
   <slot />
 

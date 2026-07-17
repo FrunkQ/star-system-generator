@@ -42,20 +42,31 @@
     dispatch('update', construct);
   }
 
+  // Fields describing the construct's situation in THIS system (identity, orbit,
+  // flight dynamics) rather than its spec. These must survive spec replacement
+  // (template load / file import) and never travel in an exported file: imported
+  // journeys/vectors reference the source system and outrank orbit.elements at
+  // render time (worldPositions.ts), leaving the ship mispositioned and orbit
+  // edits ignored.
+  const SITUATION_FIELDS = [
+    'id', 'parentId', 'ui_parentId', 'orbit', 'placement',
+    'scheduled_journeys', 'flight_state', 'vector_position_au',
+    'vector_velocity_ms', 'vector_epoch_ms', 'autopilot', 'flight_log'
+  ];
+
+  function preserveSituation(target: any) {
+    const preserved: any = {};
+    for (const f of SITUATION_FIELDS) preserved[f] = target[f];
+    return preserved;
+  }
+
   function handleLoadTemplate(event: CustomEvent<CelestialBody>) {
     const template = event.detail;
-    
-    const preservedData = {
-      id: construct.id,
-      parentId: construct.parentId,
-      ui_parentId: construct.ui_parentId,
-      orbit: construct.orbit,
-      placement: construct.placement,
-      IsTemplate: false 
-    };
+
+    const preservedData = { ...preserveSituation(construct), IsTemplate: false };
 
     const newConstructData = JSON.parse(JSON.stringify(template));
-    delete newConstructData.orbit; 
+    delete newConstructData.orbit;
 
     construct = { ...newConstructData, ...preservedData };
     handleUpdate();
@@ -73,11 +84,7 @@
 
   function handleExport() {
     const exportConstruct = JSON.parse(JSON.stringify(construct));
-    delete exportConstruct.id;
-    delete exportConstruct.parentId;
-    delete exportConstruct.ui_parentId;
-    delete exportConstruct.orbit;
-    delete exportConstruct.placement;
+    for (const f of SITUATION_FIELDS) delete exportConstruct[f];
 
     const json = JSON.stringify(exportConstruct, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -106,13 +113,9 @@
           return;
         }
 
-        const preservedData = {
-          id: construct.id,
-          parentId: construct.parentId,
-          ui_parentId: construct.ui_parentId,
-          orbit: construct.orbit,
-          placement: construct.placement,
-        };
+        // Preserve the target's situation (covers old exported files that still
+        // carry the source ship's journeys/vectors).
+        const preservedData = preserveSituation(construct);
 
         construct = { ...importedConstruct, ...preservedData };
         handleUpdate();

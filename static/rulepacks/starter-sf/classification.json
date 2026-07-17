@@ -12,6 +12,20 @@
     "star/NS",
     "star/BH",
     "star/magnetar",
+    "planet/unknown",
+    "asteroid/c-type",
+    "asteroid/s-type",
+    "asteroid/m-type",
+    "asteroid/comet",
+    "asteroid/rubble-pile",
+    "hydrosphere/ocean",
+    "hydrosphere/frozen",
+    "hydrosphere/boiled-off",
+    "hydrosphere/brine",
+    "climate/steam-world",
+    "structure/supercritical-envelope",
+    "activity/sublimating",
+    "activity/cryovolcanism",
     "planet/alkali-metal-clouds-gas-giant",
     "planet/ammonia-clouds-gas-giant",
     "planet/ammonia-planet",
@@ -187,6 +201,20 @@
             0.001,
             50
           ]
+        },
+        "range": {
+          "mass_Me": [
+            0.001,
+            50
+          ],
+          "radius_Re": [
+            0.05,
+            3
+          ],
+          "density": [
+            1,
+            6
+          ]
         }
       },
       {
@@ -201,6 +229,175 @@
           "radius_Re": [
             0,
             0.1
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            0.000001,
+            0.003
+          ],
+          "radius_Re": [
+            0.01,
+            0.1
+          ],
+          "density": [
+            1,
+            4
+          ]
+        }
+      },
+      {
+        "class": "asteroid/c-type",
+        "kind": "base",
+        "note": "Carbonaceous asteroid — dark, primitive.",
+        "weight": 1.1,
+        "match": {
+          "mass_Me": [
+            0,
+            0.0001
+          ],
+          "makeup.carbon": [
+            0.2,
+            1
+          ],
+          "density": [
+            0.8,
+            3
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            1e-12,
+            0.0001
+          ],
+          "radius_Re": [
+            0.00005,
+            0.05
+          ],
+          "density": [
+            0.8,
+            3
+          ]
+        }
+      },
+      {
+        "class": "asteroid/s-type",
+        "kind": "base",
+        "note": "Silicaceous (stony) asteroid.",
+        "weight": 1.1,
+        "match": {
+          "mass_Me": [
+            0,
+            0.0001
+          ],
+          "makeup.rock": [
+            0.5,
+            1
+          ],
+          "makeup.ice": [
+            0,
+            0.15
+          ],
+          "density": [
+            1.8,
+            4
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            1e-12,
+            0.0001
+          ],
+          "radius_Re": [
+            0.00005,
+            0.05
+          ],
+          "density": [
+            1.8,
+            4
+          ]
+        }
+      },
+      {
+        "class": "asteroid/m-type",
+        "kind": "base",
+        "note": "Metallic asteroid — exposed core material.",
+        "weight": 1.1,
+        "match": {
+          "mass_Me": [
+            0,
+            0.0001
+          ],
+          "makeup.metal": [
+            0.4,
+            1
+          ],
+          "density": [
+            3.5,
+            8
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            1e-12,
+            0.0001
+          ],
+          "radius_Re": [
+            0.00005,
+            0.05
+          ],
+          "density": [
+            3.5,
+            8
+          ]
+        }
+      },
+      {
+        "class": "asteroid/comet",
+        "kind": "base",
+        "note": "Icy body — dirty snowball.",
+        "weight": 1.1,
+        "match": {
+          "mass_Me": [
+            0,
+            0.0001
+          ],
+          "makeup.ice": [
+            0.35,
+            1
+          ],
+          "density": [
+            0.2,
+            1.5
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            1e-12,
+            0.0001
+          ],
+          "radius_Re": [
+            0.00005,
+            0.02
+          ],
+          "density": [
+            0.2,
+            1.5
+          ]
+        }
+      },
+      {
+        "class": "asteroid/rubble-pile",
+        "kind": "modifier",
+        "note": "Loose gravitational aggregate — high macroporosity.",
+        "match": {
+          "mass_Me": [
+            0,
+            0.0001
+          ],
+          "porosity": [
+            0.2,
+            1
           ]
         }
       },
@@ -217,6 +414,20 @@
             0.05,
             0.25
           ]
+        },
+        "range": {
+          "mass_Me": [
+            0.0005,
+            0.05
+          ],
+          "radius_Re": [
+            0.05,
+            0.25
+          ],
+          "density": [
+            1,
+            4
+          ]
         }
       },
       {
@@ -224,6 +435,20 @@
         "kind": "base",
         "note": "Small rocky world (Mercury/Mars-class).",
         "match": {
+          "mass_Me": [
+            0.05,
+            0.5
+          ],
+          "radius_Re": [
+            0.4,
+            0.8
+          ],
+          "density": [
+            3,
+            8
+          ]
+        },
+        "range": {
           "mass_Me": [
             0.05,
             0.5
@@ -251,6 +476,20 @@
             3,
             8.5
           ]
+        },
+        "range": {
+          "mass_Me": [
+            0.1,
+            2
+          ],
+          "radius_Re": [
+            0.35,
+            1.8
+          ],
+          "density": [
+            3,
+            8.5
+          ]
         }
       },
       {
@@ -258,6 +497,20 @@
         "kind": "base",
         "note": "Massive rocky world, thin/modest atmosphere.",
         "match": {
+          "mass_Me": [
+            2,
+            10
+          ],
+          "radius_Re": [
+            1.25,
+            1.9
+          ],
+          "density": [
+            3.5,
+            9
+          ]
+        },
+        "range": {
           "mass_Me": [
             2,
             10
@@ -289,6 +542,20 @@
             5,
             12
           ]
+        },
+        "range": {
+          "mass_Me": [
+            10,
+            30
+          ],
+          "radius_Re": [
+            1.6,
+            2.6
+          ],
+          "density": [
+            5,
+            12
+          ]
         }
       },
       {
@@ -308,6 +575,20 @@
             6,
             15
           ]
+        },
+        "range": {
+          "mass_Me": [
+            30,
+            100
+          ],
+          "radius_Re": [
+            2,
+            3.5
+          ],
+          "density": [
+            6,
+            14
+          ]
         }
       },
       {
@@ -324,7 +605,21 @@
             10
           ]
         },
-        "weight": 1.1
+        "weight": 1.1,
+        "range": {
+          "mass_Me": [
+            0.02,
+            10
+          ],
+          "radius_Re": [
+            0.3,
+            1.5
+          ],
+          "density": [
+            6,
+            13
+          ]
+        }
       },
       {
         "class": "planet/silicate",
@@ -344,7 +639,21 @@
             8
           ]
         },
-        "weight": 0.95
+        "weight": 0.95,
+        "range": {
+          "mass_Me": [
+            0.02,
+            10
+          ],
+          "radius_Re": [
+            0.3,
+            1.8
+          ],
+          "density": [
+            3,
+            6
+          ]
+        }
       },
       {
         "class": "planet/coreless",
@@ -364,7 +673,21 @@
             8
           ]
         },
-        "weight": 0.85
+        "weight": 0.85,
+        "range": {
+          "mass_Me": [
+            0.02,
+            10
+          ],
+          "radius_Re": [
+            0.3,
+            1.8
+          ],
+          "density": [
+            2,
+            4
+          ]
+        }
       },
       {
         "class": "planet/carbon",
@@ -380,7 +703,21 @@
             10
           ]
         },
-        "weight": 1.4
+        "weight": 1.4,
+        "range": {
+          "mass_Me": [
+            0.02,
+            10
+          ],
+          "radius_Re": [
+            0.3,
+            1.8
+          ],
+          "density": [
+            2.3,
+            5
+          ]
+        }
       },
       {
         "class": "planet/lava",
@@ -398,6 +735,24 @@
           "density": [
             3,
             9
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            0.1,
+            5
+          ],
+          "radius_Re": [
+            0.4,
+            1.6
+          ],
+          "density": [
+            3,
+            7
+          ],
+          "Teq_K": [
+            700,
+            3000
           ]
         }
       },
@@ -478,6 +833,24 @@
             0.3,
             2.2
           ]
+        },
+        "range": {
+          "mass_Me": [
+            0.01,
+            2
+          ],
+          "radius_Re": [
+            0.2,
+            1.5
+          ],
+          "density": [
+            1,
+            3
+          ],
+          "Teq_K": [
+            0,
+            250
+          ]
         }
       },
       {
@@ -485,15 +858,33 @@
         "kind": "base",
         "note": "Global liquid-water ocean.",
         "match": {
-          "hydrosphere.coverage": [
-            0.85,
-            1
-          ],
           "Teq_K": [
             255,
             370
           ],
-          "hydrosphere.composition": "water"
+          "hydrosphere.composition": "water",
+          "hydrosphere.liquidCoverage": [
+            0.85,
+            1
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            0.2,
+            10
+          ],
+          "radius_Re": [
+            0.5,
+            2.5
+          ],
+          "density": [
+            1.5,
+            4
+          ],
+          "Teq_K": [
+            240,
+            380
+          ]
         }
       },
       {
@@ -517,17 +908,35 @@
         "kind": "base",
         "note": "Ocean under a thick H2 atmosphere.",
         "match": {
-          "hydrosphere.coverage": [
-            0.7,
-            1
-          ],
           "atm.main": "H2",
           "Teq_K": [
             250,
             500
+          ],
+          "hydrosphere.liquidCoverage": [
+            0.7,
+            1
           ]
         },
-        "weight": 1.3
+        "weight": 1.3,
+        "range": {
+          "mass_Me": [
+            1,
+            10
+          ],
+          "radius_Re": [
+            1.5,
+            3
+          ],
+          "density": [
+            1,
+            3
+          ],
+          "Teq_K": [
+            250,
+            500
+          ]
+        }
       },
       {
         "class": "planet/methane",
@@ -544,7 +953,25 @@
             200
           ]
         },
-        "weight": 1.3
+        "weight": 1.3,
+        "range": {
+          "mass_Me": [
+            0.1,
+            5
+          ],
+          "radius_Re": [
+            0.3,
+            1.8
+          ],
+          "density": [
+            1.5,
+            4
+          ],
+          "Teq_K": [
+            40,
+            110
+          ]
+        }
       },
       {
         "class": "planet/ammonia-planet",
@@ -557,7 +984,25 @@
             280
           ]
         },
-        "weight": 1.3
+        "weight": 1.3,
+        "range": {
+          "mass_Me": [
+            0.1,
+            5
+          ],
+          "radius_Re": [
+            0.3,
+            1.8
+          ],
+          "density": [
+            1.5,
+            4
+          ],
+          "Teq_K": [
+            120,
+            220
+          ]
+        }
       },
       {
         "class": "planet/chlorine",
@@ -629,10 +1074,6 @@
             0.9,
             1.15
           ],
-          "hydrosphere.coverage": [
-            0.5,
-            0.85
-          ],
           "atm.composition.O2": [
             0.1,
             0.35
@@ -640,6 +1081,10 @@
           "Teq_K": [
             255,
             300
+          ],
+          "hydrosphere.liquidCoverage": [
+            0.5,
+            0.85
           ]
         }
       },
@@ -652,10 +1097,6 @@
             0.5,
             2.5
           ],
-          "hydrosphere.coverage": [
-            0.3,
-            0.9
-          ],
           "atm.composition.O2": [
             0.05,
             0.4
@@ -663,6 +1104,10 @@
           "Teq_K": [
             250,
             315
+          ],
+          "hydrosphere.liquidCoverage": [
+            0.3,
+            0.9
           ]
         }
       },
@@ -675,10 +1120,6 @@
             1.5,
             4
           ],
-          "hydrosphere.coverage": [
-            0.5,
-            0.95
-          ],
           "atm.composition.O2": [
             0.1,
             0.4
@@ -686,6 +1127,10 @@
           "Teq_K": [
             275,
             320
+          ],
+          "hydrosphere.liquidCoverage": [
+            0.5,
+            0.95
           ]
         }
       },
@@ -706,6 +1151,20 @@
             "H2",
             "He"
           ]
+        },
+        "range": {
+          "mass_Me": [
+            2,
+            10
+          ],
+          "radius_Re": [
+            1.7,
+            3.5
+          ],
+          "density": [
+            1,
+            3
+          ]
         }
       },
       {
@@ -724,6 +1183,20 @@
           "density": [
             1.5,
             4
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            2,
+            20
+          ],
+          "radius_Re": [
+            2,
+            4
+          ],
+          "density": [
+            0.8,
+            3
           ]
         }
       },
@@ -748,6 +1221,24 @@
             1,
             3.5
           ]
+        },
+        "range": {
+          "mass_Me": [
+            8,
+            50
+          ],
+          "radius_Re": [
+            2.5,
+            6
+          ],
+          "density": [
+            1,
+            2.5
+          ],
+          "Teq_K": [
+            0,
+            200
+          ]
         }
       },
       {
@@ -762,6 +1253,20 @@
           "radius_Re": [
             4,
             8
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            20,
+            80
+          ],
+          "radius_Re": [
+            4,
+            7
+          ],
+          "density": [
+            0.8,
+            2.5
           ]
         }
       },
@@ -782,6 +1287,24 @@
             700,
             1500
           ]
+        },
+        "range": {
+          "mass_Me": [
+            8,
+            50
+          ],
+          "radius_Re": [
+            2.5,
+            6
+          ],
+          "density": [
+            0.8,
+            2.5
+          ],
+          "Teq_K": [
+            700,
+            1500
+          ]
         }
       },
       {
@@ -796,6 +1319,24 @@
           "Teq_K": [
             1500,
             5000
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            8,
+            50
+          ],
+          "radius_Re": [
+            2.5,
+            6
+          ],
+          "density": [
+            0.8,
+            2.5
+          ],
+          "Teq_K": [
+            1500,
+            3000
           ]
         }
       },
@@ -813,6 +1354,20 @@
             3.5,
             25
           ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            4000
+          ],
+          "radius_Re": [
+            6,
+            16
+          ],
+          "density": [
+            0.3,
+            3
+          ]
         }
       },
       {
@@ -828,6 +1383,20 @@
             3.5,
             9
           ]
+        },
+        "range": {
+          "mass_Me": [
+            30,
+            120
+          ],
+          "radius_Re": [
+            6,
+            11
+          ],
+          "density": [
+            0.3,
+            2
+          ]
         }
       },
       {
@@ -842,6 +1411,20 @@
           "radius_Re": [
             9,
             20
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            600,
+            4000
+          ],
+          "radius_Re": [
+            9,
+            13
+          ],
+          "density": [
+            1,
+            8
           ]
         }
       },
@@ -862,6 +1445,24 @@
             0,
             0.12
           ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            4000
+          ],
+          "radius_Re": [
+            9,
+            20
+          ],
+          "density": [
+            0.1,
+            2
+          ],
+          "Teq_K": [
+            900,
+            2200
+          ]
         }
       },
       {
@@ -876,6 +1477,24 @@
           "Teq_K": [
             2000,
             6000
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            4000
+          ],
+          "radius_Re": [
+            10,
+            22
+          ],
+          "density": [
+            0.08,
+            1.5
+          ],
+          "Teq_K": [
+            2200,
+            4500
           ]
         }
       },
@@ -896,6 +1515,24 @@
             0.1,
             0.5
           ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            600
+          ],
+          "radius_Re": [
+            12,
+            22
+          ],
+          "density": [
+            0.05,
+            0.4
+          ],
+          "Teq_K": [
+            900,
+            2500
+          ]
         }
       },
       {
@@ -915,6 +1552,20 @@
             0.01,
             0.2
           ]
+        },
+        "range": {
+          "mass_Me": [
+            2,
+            15
+          ],
+          "radius_Re": [
+            4,
+            10
+          ],
+          "density": [
+            0.02,
+            0.3
+          ]
         }
       },
       {
@@ -925,6 +1576,24 @@
           "mass_Me": [
             95,
             4000
+          ],
+          "Teq_K": [
+            350,
+            900
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            4000
+          ],
+          "radius_Re": [
+            7,
+            15
+          ],
+          "density": [
+            0.3,
+            3
           ],
           "Teq_K": [
             350,
@@ -945,6 +1614,24 @@
             150,
             280
           ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            4000
+          ],
+          "radius_Re": [
+            7,
+            15
+          ],
+          "density": [
+            0.3,
+            3
+          ],
+          "Teq_K": [
+            150,
+            350
+          ]
         }
       },
       {
@@ -960,6 +1647,24 @@
             80,
             160
           ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            4000
+          ],
+          "radius_Re": [
+            7,
+            15
+          ],
+          "density": [
+            0.3,
+            3
+          ],
+          "Teq_K": [
+            0,
+            150
+          ]
         }
       },
       {
@@ -970,6 +1675,24 @@
           "mass_Me": [
             95,
             4000
+          ],
+          "Teq_K": [
+            900,
+            1400
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            4000
+          ],
+          "radius_Re": [
+            8,
+            18
+          ],
+          "density": [
+            0.2,
+            2
           ],
           "Teq_K": [
             900,
@@ -990,6 +1713,24 @@
             1400,
             2500
           ]
+        },
+        "range": {
+          "mass_Me": [
+            50,
+            4000
+          ],
+          "radius_Re": [
+            8,
+            18
+          ],
+          "density": [
+            0.2,
+            2
+          ],
+          "Teq_K": [
+            1400,
+            2400
+          ]
         }
       },
       {
@@ -1003,7 +1744,21 @@
           ],
           "atm.main": "He"
         },
-        "weight": 1.3
+        "weight": 1.3,
+        "range": {
+          "mass_Me": [
+            8,
+            4000
+          ],
+          "radius_Re": [
+            2.5,
+            14
+          ],
+          "density": [
+            0.3,
+            4
+          ]
+        }
       },
       {
         "class": "planet/chthonian",
@@ -1022,6 +1777,24 @@
             4,
             12
           ]
+        },
+        "range": {
+          "mass_Me": [
+            5,
+            100
+          ],
+          "radius_Re": [
+            1.5,
+            4
+          ],
+          "density": [
+            4,
+            12
+          ],
+          "Teq_K": [
+            1200,
+            3500
+          ]
         }
       },
       {
@@ -1038,7 +1811,21 @@
             14
           ]
         },
-        "weight": 1.2
+        "weight": 1.2,
+        "range": {
+          "mass_Me": [
+            1000,
+            4000
+          ],
+          "radius_Re": [
+            9,
+            13
+          ],
+          "density": [
+            3,
+            15
+          ]
+        }
       },
       {
         "class": "planet/brown-dwarf",
@@ -1054,7 +1841,21 @@
             14
           ]
         },
-        "weight": 1.2
+        "weight": 1.2,
+        "range": {
+          "mass_Me": [
+            4000,
+            26000
+          ],
+          "radius_Re": [
+            9,
+            13
+          ],
+          "density": [
+            10,
+            30
+          ]
+        }
       },
       {
         "class": "planet/ultra-cool-dwarf",
@@ -1085,7 +1886,7 @@
             255,
             320
           ],
-          "hydrosphere.coverage": [
+          "hydrosphere.liquidCoverage": [
             0.1,
             1
           ]
@@ -1136,6 +1937,20 @@
           "mass_Me": [
             0.002,
             0.1
+          ]
+        },
+        "range": {
+          "mass_Me": [
+            0.005,
+            0.1
+          ],
+          "radius_Re": [
+            0.15,
+            0.5
+          ],
+          "density": [
+            1.5,
+            4
           ]
         }
       },
@@ -1220,11 +2035,11 @@
             262,
             292
           ],
-          "hydrosphere.coverage": [
+          "hydrosphere.composition": "water",
+          "hydrosphere.liquidCoverage": [
             0.2,
             0.6
-          ],
-          "hydrosphere.composition": "water"
+          ]
         }
       },
       {
@@ -1241,11 +2056,11 @@
             290,
             318
           ],
-          "hydrosphere.coverage": [
+          "hydrosphere.composition": "water",
+          "hydrosphere.liquidCoverage": [
             0.35,
             0.85
-          ],
-          "hydrosphere.composition": "water"
+          ]
         }
       },
       {
@@ -1262,11 +2077,11 @@
             278,
             300
           ],
-          "hydrosphere.coverage": [
+          "hydrosphere.composition": "water",
+          "hydrosphere.liquidCoverage": [
             0.6,
             0.95
-          ],
-          "hydrosphere.composition": "water"
+          ]
         }
       }
     ],
@@ -2299,6 +3114,10 @@
       }
     ],
     "planetImages": {
+      "asteroid/c-type": "/images/planet_types/C-type_asteroid.jpg",
+      "asteroid/s-type": "/images/planet_types/S-type_asteroid.jpg",
+      "asteroid/m-type": "/images/planet_types/M-type_asteroid.png",
+      "asteroid/comet": "/images/planet_types/Comet.png",
       "planet/alkali-metal-clouds-gas-giant": "/images/planet_types/web20alkali20metal20clouds20gas20giant.jpg",
       "planet/ammonia-clouds-gas-giant": "/images/planet_types/web20ammonia20clouds20gas20giant.jpg",
       "planet/ammonia-planet": "/images/planet_types/web20ammonia20planet.jpg",

@@ -57,11 +57,48 @@
     return { ...JSON.parse(JSON.stringify(earthLike)), name: `Earth · ${s.name}`, apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
   });
 
+  // Oceans of DIFFERENT liquids — the same 71%-covered world for each solvent, its sea coloured by
+  // the liquid's own absorption tint under a sun-like star (liquidApparentColor). Titan methane is
+  // blue-grey, Io sulfur amber-gold, Venus sulfuric acid pale yellow, Europa brine steel-blue.
+  const oceanLiquids = [
+    { liquid: 'water', name: 'Water', teq: 288, rock: 0.68, metal: 0.32 },
+    { liquid: 'salty-water', name: 'Brine', teq: 270, rock: 0.6, ice: 0.4 },
+    { liquid: 'methane', name: 'Methane (Titan)', teq: 94, rock: 0.5, ice: 0.5 },
+    { liquid: 'ethane', name: 'Ethane', teq: 100, rock: 0.5, ice: 0.5 },
+    { liquid: 'ammonia', name: 'Ammonia', teq: 220, rock: 0.6, ice: 0.4 },
+    { liquid: 'nitrogen', name: 'Nitrogen (Triton)', teq: 70, ice: 0.7, rock: 0.3 },
+    { liquid: 'sulfuric-acid', name: 'Sulfuric acid (Venus)', teq: 330, rock: 0.7, metal: 0.3 },
+    { liquid: 'sulfur', name: 'Sulfur (Io)', teq: 450, rock: 0.6, metal: 0.4 },
+  ];
+  const oceanWorlds = oceanLiquids.map((o) => {
+    const base = {
+      id: `ocean-${o.liquid}`, roleHint: 'planet',
+      makeup: { rock: o.rock ?? 0, metal: o.metal ?? 0, ice: o.ice ?? 0 },
+      hydrosphere: { coverage: 0.71, composition: o.liquid, layers: [{ location: 'surface', liquid: o.liquid }] },
+      atmosphere: { pressure_bar: 2, composition: {} },
+      equilibriumTempK: o.teq, temperatureK: o.teq, tags: [],
+    };
+    const ap = deriveApparentColorParts(base as any, undefined, { starTempK: 5800 });
+    return { ...JSON.parse(JSON.stringify(base)), name: o.name, apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
+  });
+
   const shapes = [
     mk({ name: 'Oblate (fast spin)', apparentColorHex: '#c89868', oblateness: 0.4 }),
     mk({ name: 'Ellipsoid', apparentColorHex: '#b8916f', oblateness: 0.62 }),
     mk({ name: 'Near break-up', apparentColorHex: '#a89060', oblateness: 0.78 }),
     mk({ name: 'Toroid (flew apart)', apparentColorHex: '#c2a888', oblateness: 0.92 }),
+  ];
+
+  // Small bodies (composition redesign): sub-300km solids render as seeded irregular outlines —
+  // lumpier when smaller/more porous — coloured by composition (C-type dark, S stony, M metallic,
+  // comet icy). Same body id → same shape, every time.
+  const smallBodies = [
+    mk({ name: 'S-type asteroid · 8 km', apparentColorHex: '#a09078', radiusKm: 8, massKg: 5e14, makeup: { rock: 0.85, metal: 0.15 } as any, classes: ['asteroid/s-type'], atmosphere: { pressure_bar: 0 } as any }),
+    mk({ name: 'C-type · 30 km', apparentColorHex: '#4a4640', radiusKm: 30, massKg: 3e16, makeup: { carbon: 0.5, rock: 0.5 } as any, classes: ['asteroid/c-type'], atmosphere: { pressure_bar: 0 } as any }),
+    mk({ name: 'M-type · 100 km', apparentColorHex: '#8d8d96', radiusKm: 100, massKg: 2e19, makeup: { metal: 0.7, rock: 0.3 } as any, classes: ['asteroid/m-type'], atmosphere: { pressure_bar: 0 } as any }),
+    mk({ name: 'Comet nucleus · 3 km (porous)', apparentColorHex: '#cfe0ea', radiusKm: 3, massKg: 1e13, makeup: { ice: 0.55, carbon: 0.25, rock: 0.2 } as any, classes: ['asteroid/comet'], atmosphere: { pressure_bar: 0 } as any }),
+    mk({ name: 'Rubble pile · 0.5 km', apparentColorHex: '#93867a', radiusKm: 0.5, massKg: 7e10, makeup: { rock: 0.75, carbon: 0.15, metal: 0.1 } as any, classes: ['asteroid/s-type', 'asteroid/rubble-pile'], atmosphere: { pressure_bar: 0 } as any }),
+    mk({ name: 'Round dwarf · 500 km (for contrast)', apparentColorHex: '#9a9088', radiusKm: 500, massKg: 5e20, atmosphere: { pressure_bar: 0 } as any, tags: [{ key: 'geology/inactive' }] }),
   ];
 
   const auroras = [
@@ -120,6 +157,13 @@
     {/each}
   </div>
 
+  <h2>Oceans of different liquids — each sea coloured by its solvent (sun-like star)</h2>
+  <div class="gallery">
+    {#each oceanWorlds as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
   <h2>Light direction (terminator) — for orrery reuse</h2>
   <div class="gallery">
     <figure><PlanetDisc body={litBody} size={168} /><figcaption>default (upper-left)</figcaption></figure>
@@ -131,6 +175,13 @@
   <h2>Rotational shape — flattening to break-up</h2>
   <div class="gallery">
     {#each shapes as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Small bodies — irregular below ~300 km, repeatable per body, coloured by composition</h2>
+  <div class="gallery">
+    {#each smallBodies as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>

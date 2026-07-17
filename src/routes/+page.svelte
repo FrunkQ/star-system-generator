@@ -8,11 +8,15 @@
   import { get } from 'svelte/store';
   import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import { generateSystem, renameNode } from '$lib/api';
+  import { generateSystem, renameNode, computePlayerSnapshot } from '$lib/api';
+  import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
+  import { starmapUiStore } from '$lib/starmapUiStore';
+  import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
   import CompanionModal from '$lib/components/CompanionModal.svelte';
+  import PlayerViewModal from '$lib/components/PlayerViewModal.svelte';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
   import { brandingStore } from '$lib/catalogue/branding';
   import { guideConfigStore } from '$lib/catalogue/guideConfig';
@@ -59,6 +63,28 @@
   // whether the GM is on the starmap or inside a system. We own the session id; SystemView reuses it.
   let broadcastSessionId = generateId();
   let showCompanionModal = false;
+  let showPlayerPresets = false;
+  // BETA: Projector + Report on the STARMAP rail act on the last-loaded system ($systemStore). The
+  // system view has its own copies inside SystemView; these mirror them so the rail entries work from
+  // the starmap too. Delete alongside the Field Guide beta-scaffolding before the production cut.
+  let showReportConfigModal = false;
+  let starmapProjectorWindow: Window | null = null;
+  function openProjectorFromStarmap() {
+    starmapProjectorWindow = window.open(`/projector?sid=${broadcastSessionId}`, 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
+    const sys = get(systemStore);
+    if (sys) broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot(sys) });
+  }
+  function handleStarmapReport(event: CustomEvent<{ mode: 'GM' | 'Player'; theme: string; includeConstructs: boolean }>) {
+    const sys = get(systemStore);
+    showReportConfigModal = false;
+    if (!sys) return;
+    sessionStorage.setItem('reportData', JSON.stringify({
+      system: sys, mode: event.detail.mode, theme: event.detail.theme,
+      includeConstructs: event.detail.includeConstructs,
+      units: get(measurementUnit), tempUnit: get(temperatureUnit)
+    }));
+    window.open('/report', '_blank');
+  }
   let showInterstellarModal = false;
   let interstellarShipId = '';
 
@@ -159,7 +185,7 @@
     if (!map) return { interstellar: [] as any[], journeys: [] as any[], interstellarJourneys: [] as any[], stranded: [] as any[], autopilotShips: [] as any[] };
     const sysName = (id: string) => map.systems.find((s) => s.id === id)?.name ?? id;
     const interstellar = (map.routes ?? []).map((r) => ({
-      id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit
+      id: r.id, source: sysName(r.sourceSystemId), target: sysName(r.targetSystemId), distance: r.distance, unit: r.unit, name: r.name
     }));
     // Live interstellar flights (ships in transit between systems) — stored on the starmap, not on a
     // construct, so they're gathered separately. Status/progress + timing come from the game clock.
@@ -591,28 +617,43 @@
   });
 
   // --- Companion App broadcast (whole redacted starmap) ---
+  // The player snapshot carries the GM's LIVE snap-grid (type + cell size) so the player-view starmap
+  // draws the identical grid — the grid shape is UI state, not saved on the map, so it's injected here.
+  function starmapSnapshotForPlayers(map: import('$lib/types').Starmap) {
+    const ui = get(starmapUiStore);
+    const type = (ui.travellerMode ? 'traveller-hex' : ui.gridType) as 'grid' | 'hex' | 'traveller-hex' | 'none';
+    return { ...computePlayerStarmapSnapshot(map), mapGrid: { type, size: 50 } };
+  }
   onMount(() => {
     if (!browser) return;
     broadcastService.initSender(broadcastSessionId);
     broadcastService.onRequestStarmap = (requestingId) => {
       if (requestingId && requestingId !== broadcastSessionId) return;
       const map = get(starmapStore);
-      if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot(map) });
+      if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers(map) });
       broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
       broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...get(guideConfigStore), crt: get(crtControls) } });
+      // A player joining (or reloading) AFTER the GM set the live overrides never used to hear about
+      // them — Follow GM et al. only rode the modal's own broadcasts, so late windows silently ignored
+      // the GM. Re-state the running view + overrides on every join. (Never send null here: a player
+      // opened directly by URL is valid without the GM "running" a view — null means hold screen.)
+      const pid = get(runningPresetId);
+      if (pid) broadcastService.sendMessage({ type: 'SYNC_PRESET', payload: { presetId: pid, overrides: get(liveOverrides) } });
     };
   });
-  // Re-broadcast the redacted starmap whenever it changes, so connected guides stay live.
-  $: if (browser && $starmapStore) {
-    broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: computePlayerStarmapSnapshot($starmapStore) });
+  // Re-broadcast the redacted starmap whenever it (or the GM's grid choice) changes, so guides stay
+  // live. starmapStore ticks with every systemStore emission (several per second while idle) and the
+  // snapshot runs to hundreds of KB, so this goes through the fingerprint gate — only real changes leave.
+  $: if (browser && $starmapStore && $starmapUiStore) {
+    broadcastService.sendIfChanged({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers($starmapStore) });
   }
   // Push branding (company name + logo) to guides whenever the GM edits it.
   $: if (browser && $brandingStore) {
-    broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: $brandingStore });
+    broadcastService.sendIfChanged({ type: 'SYNC_BRANDING', payload: $brandingStore });
   }
   // Push the GM-enforced guide view (skin/colour/constructs + CRT effect) whenever the GM changes it.
   $: if (browser && ($guideConfigStore || $crtControls)) {
-    broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...$guideConfigStore, crt: $crtControls } });
+    broadcastService.sendIfChanged({ type: 'SYNC_GUIDECONFIG', payload: { ...$guideConfigStore, crt: $crtControls } });
   }
 
   // Keep the runtime display units in sync with the loaded starmap (source of truth).
@@ -1059,6 +1100,18 @@
     showRouteEditorModal = false;
   }
 
+  // Rename a system's MAP NODE (its display name on the starmap), independent of the central star.
+  function handleRenameSystem(event: CustomEvent<{ systemId: string; name: string }>) {
+    const { systemId, name } = event.detail;
+    starmapStore.update(starmap => {
+      if (starmap) {
+        const node = starmap.systems.find(s => s.id === systemId || s.system?.id === systemId);
+        if (node) node.name = name;
+      }
+      return starmap;
+    });
+  }
+
   function handleDeleteSystem(event: CustomEvent<string>) {
     const target = event.detail;
     starmapStore.update(starmap => {
@@ -1267,6 +1320,7 @@
         on:about={() => showAbout = true}
         on:help={() => showHelpMenu = true}
         on:catalogue={() => showCompanionModal = true}
+        on:playerviews={() => showPlayerPresets = true}
         on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
         on:back={handleBackToStarmap}
         on:deletesystem={handleDeleteSystem}
@@ -1282,6 +1336,9 @@
       routesAttention={routesData.worstAttention}
       on:new={handleRequestNewStarmap}
       on:catalogue={() => showCompanionModal = true}
+      on:playerviews={() => showPlayerPresets = true}
+      on:projector={openProjectorFromStarmap}
+      on:report={() => showReportConfigModal = true}
       on:systemclick={handleSystemClick}
       on:focusconstruct={(e) => enterSystemAndFocus(e.detail.systemId, e.detail.id)}
       on:openship={(e) => shipPanelJourneyId = e.detail.journeyId}
@@ -1290,6 +1347,7 @@
       on:selectsystemforlink={handleSelectSystemForLink}
       on:editroute={handleEditRoute}
       on:deletesystem={handleDeleteSystem}
+      on:renamesystem={handleRenameSystem}
       on:download={handleDownloadStarmap}
       on:upload={handleUploadStarmap}
       on:clear={handleClearStarmap}
@@ -1367,7 +1425,17 @@
   {/if}
 
   {#if showCompanionModal}
-    <CompanionModal sessionId={broadcastSessionId} on:close={() => showCompanionModal = false} />
+    <CompanionModal sessionId={broadcastSessionId}
+      on:close={() => showCompanionModal = false}
+      on:presets={() => { showCompanionModal = false; showPlayerPresets = true; }} />
+  {/if}
+
+  {#if showReportConfigModal}
+    <ReportConfigModal on:generate={handleStarmapReport} on:close={() => showReportConfigModal = false} />
+  {/if}
+
+  {#if showPlayerPresets}
+    <PlayerViewModal sessionId={broadcastSessionId} on:close={() => showPlayerPresets = false} />
   {/if}
 
   {#if showInterstellarModal && $starmapStore}
@@ -1479,7 +1547,7 @@
           {:else}
             {#each routesData.interstellar as r (r.id)}
               <div class="route-row static">
-                <span class="route-main"><strong>{r.source}</strong> → <strong>{r.target}</strong></span>
+                <span class="route-main"><strong>{r.source}</strong> → <strong>{r.target}</strong>{#if r.name}<span class="route-name-tag">{r.name}</span>{/if}</span>
                 <span class="route-sys">{r.distance} {r.unit}</span>
               </div>
             {/each}
@@ -1688,6 +1756,7 @@
   .route-status.scheduled { background: var(--bg-panel, #14161c); color: var(--text-muted, #cfcfcf); }
   .route-status.completed { background: color-mix(in srgb, #4fa86a 26%, transparent); color: #6fcf8f; }
   .route-main { flex: 1 1 auto; min-width: 0; font-size: 0.9rem; }
+  .route-name-tag { margin-left: 8px; color: #8fd6ff; font-size: 0.78rem; font-style: italic; }
   .route-sys { flex: 0 0 auto; color: var(--text-faint, #8a8f9a); font-size: 0.8rem; }
   .route-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
   .route-when { font-size: 0.74rem; color: var(--text-faint, #8a8f9a); flex-basis: 100%; }

@@ -4,7 +4,7 @@
 import type { CelestialBody, RulePack, FluidLayer } from '$lib/types';
 import { EARTH_MASS_KG } from '$lib/constants';
 import { makeupFractions } from './makeup';
-import { isLiquidAt, liquidDef } from './liquids';
+import { isLiquidAtP, liquidDef } from './liquids';
 
 // Which liquid a condensable gas forms as a cloud, and its representative colour.
 const GAS_CLOUD: Record<string, { liquid: string; colorHex: string }> = {
@@ -43,7 +43,12 @@ export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLa
   //     is no surface liquid. The liquid carries its own colour for the apparent-colour model. ---
   const hydroComp = body.hydrosphere?.composition;
   const coverage = body.hydrosphere?.coverage ?? 0;
-  if (coverage > 0.01 && hydroComp && hydroComp !== 'none' && isLiquidAt(hydroComp, surfT, pack)) {
+  // Pressure-aware: a standing surface liquid needs the solvent to be LIQUID at the surface
+  // temperature AND pressure — below its triple pressure it sublimates (no sea on an airless
+  // warm world), and a thick atmosphere raises its boiling point (a deep-pressure ocean stays
+  // liquid far past its 1-atm boil). Falls back to 1-atm when no pressure is recorded.
+  const surfPbar = body.atmosphere?.pressure_bar;
+  if (coverage > 0.01 && hydroComp && hydroComp !== 'none' && isLiquidAtP(hydroComp, surfT, surfPbar, pack)) {
     const def = liquidDef(hydroComp, pack);
     layers.push({ liquid: hydroComp, location: 'surface', coverage, colorHex: def?.colorHex });
   }

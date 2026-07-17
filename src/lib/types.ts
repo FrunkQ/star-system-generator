@@ -397,18 +397,23 @@ export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: b
 export interface TableSpec { name: string; entries: Array<{ weight: number; value: unknown }>; }
 export interface MetricDef { key: string; label: string; min: number; max: number; default?: number; }
 
-export type LiquidFamily = 'water' | 'hydrocarbon' | 'cryo' | 'acid' | 'molten' | 'exotic';
+export type LiquidFamily = 'water' | 'hydrocarbon' | 'cryo' | 'acid' | 'molten' | 'exotic' | 'internal';
 export interface LiquidDef {
     name: string;
     label: string;
     meltK: number;            // melting point (K) — below this it is solid (ice)
-    boilK: number;            // boiling point (K) — above this it is vapour
+    boilK: number;            // boiling point (K) at 1 bar — above this it is vapour
     colorHex?: string;        // representative surface/ocean colour (intrinsic absorption tint)
     refractiveIndex?: number; // n at visible wavelengths — sets the specular starlight share of the apparent colour
     density_gcc?: number;     // liquid density, for layering
     conductive?: boolean;     // electrically conductive (acids, molten metal) → can drive a dynamo
     biosolvent?: 'ideal' | 'alternative' | 'none';  // suitability as a solvent for life
     family?: LiquidFamily;
+    // Pressure-phase data (docs/dev/liquids-phase-tags.md §3). All optional — absent means the
+    // legacy 1-atm behaviour with no sublimation floor and no supercritical ceiling.
+    tripleBar?: number;       // below this pressure there is NO liquid phase (sublimation regime)
+    criticalK?: number;       // above this temperature the substance is supercritical at any pressure
+    criticalBar?: number;     // pressure at the critical point (upper anchor of the boil curve)
 }
 
 export interface FuelDefinition {
@@ -537,6 +542,7 @@ export interface Route {
   distance: number;
   unit: string;
   lineStyle: 'solid' | 'dashed';
+  name?: string; // optional label, drawn in small text along the route line
 }
 
 // A ship in flight between two systems, started from the transit planner. Progress is read off the
@@ -674,11 +680,19 @@ export interface Starmap {
   generationEngine?: 'standard' | 'evolutionary';
   invertDisplay?: boolean;
   scale?: StarmapScaleConfig;
+  // The GM's live snap-grid, injected into the player broadcast (not persisted) so the player-view
+  // starmap can draw the IDENTICAL grid at the same cell size. `size` is the cell size in map units.
+  mapGrid?: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number };
   distanceUnit: string;                        // INTERSTELLAR map unit (ly / pc / diagrammatic) — see mapMode
   unitIsPrefix: boolean;
   measurementUnits?: 'metric' | 'imperial';    // IN-SYSTEM distance/speed display: km/km·s (default) vs miles/mph
   temperatureUnit?: 'C' | 'F' | 'K';            // temperature display: °C (default) / °F / Kelvin — its own switch
   systemEdgeAu?: number;                        // "leaves the system" boundary in AU; unset = the star's Hill limit
+
+  // Unified player-view presets + their uploaded graphics are campaign data — saved with the map.
+  // See $lib/player and docs/dev/unified-player-view-design.md. Optional: absent on old maps.
+  playerPresets?: import('./player/presetTypes').PlayerPreset[];
+  playerAssets?: import('./player/presetTypes').PlayerAsset[];
 
   temporal?: TemporalState;
   rulePackOverrides?: RulePackOverrides;

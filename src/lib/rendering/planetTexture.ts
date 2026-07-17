@@ -175,6 +175,147 @@ function render(body: CelestialBody): HTMLCanvasElement {
   return c;
 }
 
+// ─── Equirectangular sibling for the 3D holo view ──────────────────────────────────────────────
+// Same inputs as the disc (palette roles, banding, coverage, seeded PRNG) but laid out as a 2:1
+// equirect sheet that wraps onto a sphere. No baked terminator/limb here — the 3D scene lights the
+// sphere and draws the atmosphere, so this is pure day-side albedo. Blobs are drawn three times
+// (x, x±W) so nothing seams at the ±180° meridian. Poles pinch is acceptable for stylised worlds.
+const EQ_W = 512;
+const EQ_H = 256;
+const eqCache = new Map<string, HTMLCanvasElement>();
+
+function drawPatchesEquirect(ctx: CanvasRenderingContext2D, rnd: () => number, color: string, fraction: number, alpha = 1) {
+  const br = EQ_W * 0.075; // blob radius in px
+  const a = (Math.PI * br * br) / (EQ_W * EQ_H); // single-blob share of the sheet
+  const n = blobCountFor(fraction, a);
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    const x = rnd() * EQ_W;
+    const y = rnd() * EQ_H;
+    const rx = br * (0.6 + rnd() * 0.8);
+    const ry = br * (0.5 + rnd() * 0.7);
+    const rot = rnd() * Math.PI;
+    for (const dx of [-EQ_W, 0, EQ_W]) {
+      ctx.beginPath();
+      ctx.ellipse(x + dx, y, rx, ry, rot, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function renderEquirect(body: CelestialBody): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = EQ_W;
+  c.height = EQ_H;
+  const ctx = c.getContext('2d')!;
+  const rnd = mulberry32(hashStr((body.id || 'x') + '|eq'));
+  const ap = body.apparentColor!;
+  const palette = ap.palette || [];
+
+  const surface = stop(palette, 'surface');
+  const ocean = stop(palette, 'ocean');
+  const clouds = palette.filter((p) => p.role === 'cloud');
+  const haze = stop(palette, 'atmosphere');
+  const inc = stop(palette, 'incandescent');
+  const banding = ap.banding || 0;
+
+  if (banding > 0) {
+    // Gas/ice giant: latitudinal bands are simply horizontal stripes across the whole sheet.
+    const chromo = clouds.slice(1);
+    const smooth = chromo.length === 0;
+    const base = clouds[0]?.hex ?? surface?.hex ?? '#c9b89a';
+    const n = Math.max(2, banding);
+    const bandH = EQ_H / n;
+    const lo = smooth ? 0.985 : 0.86;
+    const hi = smooth ? 1.015 : 1.06;
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = shade(base, i % 2 === 0 ? hi : lo);
+      ctx.fillRect(0, i * bandH, EQ_W, bandH + 1);
+    }
+    for (const ch of chromo) {
+      const row = Math.floor(rnd() * n);
+      ctx.globalAlpha = Math.min(0.7, ch.weight + 0.2);
+      ctx.fillStyle = ch.hex;
+      ctx.fillRect(0, row * bandH, EQ_W, bandH * (0.6 + rnd() * 0.8));
+      ctx.globalAlpha = 1;
+    }
+    if (!smooth && n >= 4 && rnd() > 0.35) {
+      const row = 1 + Math.floor(rnd() * (n - 2));
+      const cx = EQ_W * rnd();
+      ctx.fillStyle = shade(chromo[0]?.hex ?? base, 0.78);
+      for (const dx of [-EQ_W, 0, EQ_W]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + dx, (row + 0.5) * bandH, bandH * 1.4, bandH * 0.5, 0, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+  } else {
+    // Rocky world: land vs liquid at the true coverage fraction, wrapped.
+    const land = surface?.hex ?? '#9c7a5a';
+    const cover = ocean ? Math.min(0.98, ocean.weight) : 0;
+    if (ocean && cover >= 0.5) {
+      ctx.fillStyle = ocean.hex;
+      ctx.fillRect(0, 0, EQ_W, EQ_H);
+      drawPatchesEquirect(ctx, rnd, land, 1 - cover);
+    } else {
+      ctx.fillStyle = land;
+      ctx.fillRect(0, 0, EQ_W, EQ_H);
+      if (ocean && cover > 0.02) drawPatchesEquirect(ctx, rnd, ocean.hex, cover);
+    }
+    const deck = clouds[0];
+    if (deck) {
+      ctx.globalAlpha = Math.min(0.85, 0.35 + deck.weight * 0.5);
+      ctx.fillStyle = deck.hex;
+      const streaks = 6 + Math.floor(rnd() * 5);
+      for (let i = 0; i < streaks; i++) {
+        const y = EQ_H * rnd();
+        const cx = EQ_W * rnd();
+        const rx = EQ_W * (0.1 + rnd() * 0.12);
+        const ry = EQ_H * 0.04;
+        for (const dx of [-EQ_W, 0, EQ_W]) {
+          ctx.beginPath();
+          ctx.ellipse(cx + dx, y, rx, ry, 0, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Haze: a uniform wash (the limb glow is drawn in 3D, not baked here).
+  if (haze) {
+    ctx.globalAlpha = Math.min(0.8, haze.weight) * 0.18;
+    ctx.fillStyle = haze.hex;
+    ctx.fillRect(0, 0, EQ_W, EQ_H);
+    ctx.globalAlpha = 1;
+  }
+  // Incandescence: a uniform hot tint (radial glow is a 3D effect).
+  if (inc) {
+    ctx.globalAlpha = Math.min(0.9, inc.weight);
+    ctx.fillStyle = inc.hex;
+    ctx.fillRect(0, 0, EQ_W, EQ_H);
+    ctx.globalAlpha = 1;
+  }
+  return c;
+}
+
+// Equirect texture for a body, cached on the same look-defining key as the disc.
+export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement | null {
+  if (typeof document === 'undefined' || !body.apparentColor) return null;
+  const ap = body.apparentColor;
+  const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|` +
+    ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
+  let tex = eqCache.get(key);
+  if (!tex) {
+    if (eqCache.size > 200) eqCache.clear();
+    tex = renderEquirect(body);
+    eqCache.set(key, tex);
+  }
+  return tex;
+}
+
 // Cached fetch: key on everything that changes the look, so editor tweaks re-render immediately.
 export function getPlanetTexture(body: CelestialBody): HTMLCanvasElement | null {
   if (typeof document === 'undefined' || !body.apparentColor) return null;

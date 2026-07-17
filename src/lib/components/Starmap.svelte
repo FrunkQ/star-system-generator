@@ -52,6 +52,7 @@
   let contextMenuX = 0;
   let contextMenuY = 0;
   let contextMenuSystemId: string | null = null;
+  let contextMenuRoute: Starmap['routes'][number] | null = null;
   let detectedSubsector: any = null;
   let isStarContextMenu = false;
 
@@ -200,6 +201,15 @@
   function handleInvertDisplayToggle(event: Event) {
     const checked = (event.target as HTMLInputElement).checked;
     dispatch('updatestarmap', { ...starmap, invertDisplay: checked });
+  }
+
+  // Routes: stopPropagation keeps the root gesture layer from capturing the pointer,
+  // so the route's own on:click (open editor) still fires for a tap — same treatment
+  // as nodes below. Without it the SVG root's pointer capture retargets the click and
+  // the route editor can never open.
+  function handleRoutePointerDown(event: PointerEvent) {
+    if (event.button !== 0) return;
+    event.stopPropagation();
   }
 
   // Node drag (Phase 02): pointer-based. stopPropagation keeps the root gesture layer
@@ -692,6 +702,7 @@
     contextMenuX = event.clientX - rect.left;
     contextMenuY = event.clientY - rect.top;
     contextMenuSystemId = systemId;
+    contextMenuRoute = null;
   }
 
   let contextMenuClickCoords = { x: 0, y: 0 };
@@ -705,6 +716,7 @@
     contextMenuX = event.clientX - rect.left;
     contextMenuY = event.clientY - rect.top;
     contextMenuSystemId = null;
+    contextMenuRoute = null;
 
     const svgRect = svgElement.getBoundingClientRect();
     const viewBox = svgElement.viewBox.baseVal;
@@ -744,6 +756,26 @@
   function closeContextMenu() {
     showContextMenu = false;
     contextMenuSystemId = null;
+    contextMenuRoute = null;
+  }
+
+  // Links: LEFT-click is inert (no accidental edit modals mid-pan); right-click / long-press opens
+  // this menu with Edit Link as its only option.
+  function handleRouteContextMenu(event: MouseEvent, route: Starmap['routes'][number]) {
+    event.preventDefault();
+    event.stopPropagation();
+    showContextMenu = true;
+    isStarContextMenu = false;
+    const rect = starmapContainer.getBoundingClientRect();
+    contextMenuX = event.clientX - rect.left;
+    contextMenuY = event.clientY - rect.top;
+    contextMenuSystemId = null;
+    contextMenuRoute = route;
+  }
+
+  function handleContextMenuEditRoute() {
+    if (contextMenuRoute) dispatch('editroute', contextMenuRoute);
+    closeContextMenu();
   }
 
   function handleContextMenuAddSystem() {
@@ -751,9 +783,15 @@
     closeContextMenu();
   }
 
-  function handleContextMenuZoom() {
+  // Rename the SYSTEM (the map node) independently of its central star — the star name is only the
+  // default, so a system can carry its own name (e.g. "Hyperspace bypass hub" vs the star "Sol").
+  function handleContextMenuRename() {
     if (contextMenuSystemId) {
-      dispatch('systemzoom', contextMenuSystemId);
+      const sys = starmap.systems.find((s) => s.id === contextMenuSystemId);
+      const next = prompt('Rename system', sys?.name ?? '');
+      if (next !== null && next.trim() && next.trim() !== sys?.name) {
+        dispatch('renamesystem', { systemId: contextMenuSystemId, name: next.trim() });
+      }
     }
     closeContextMenu();
   }
@@ -917,6 +955,9 @@
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
+        on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
+        on:projector={() => { railOpen = false; dispatch('projector'); }}
+        on:report={() => { railOpen = false; dispatch('report'); }}
         on:clear={() => { railOpen = false; dispatch('clear'); }}
       />
     </svelte:fragment>
@@ -977,12 +1018,16 @@
         {@const targetSystem = starmap.systems.find(s => s.id === route.targetSystemId)}
         {#if sourceSystem && targetSystem}
           {@const strokeWidth = 2}
+          {@const midX = (sourceSystem.position.x + targetSystem.position.x) / 2}
+          {@const midY = (sourceSystem.position.y + targetSystem.position.y) / 2}
           <line
             x1={sourceSystem.position.x}
             y1={sourceSystem.position.y}
             x2={targetSystem.position.x}
             y2={targetSystem.position.y}
             class="route-clickable-area"
+            on:pointerdown={handleRoutePointerDown}
+            on:contextmenu={(e) => handleRouteContextMenu(e, route)}
           />
           <line
             x1={sourceSystem.position.x}
@@ -994,13 +1039,29 @@
             style="stroke-width: {strokeWidth}px;"
           />
           <text
-            x={(sourceSystem.position.x + targetSystem.position.x) / 2}
-            y={(sourceSystem.position.y + targetSystem.position.y) / 2 - 5}
+            x={midX}
+            y={midY - 5}
             class="route-label"
-            on:click={() => dispatch('editroute', route)}
+            on:pointerdown={handleRoutePointerDown}
+            on:contextmenu={(e) => handleRouteContextMenu(e, route)}
           >
             {starmap.unitIsPrefix ? starmap.distanceUnit : ''}{formatRouteDistance(route.distance)}{!starmap.unitIsPrefix ? ` ${starmap.distanceUnit}` : ''}
           </text>
+          {#if route.name}
+            <!-- Name runs along the line: rotated about the midpoint, flipped to stay readable. -->
+            {@const rawAngle = Math.atan2(targetSystem.position.y - sourceSystem.position.y, targetSystem.position.x - sourceSystem.position.x) * 180 / Math.PI}
+            {@const nameAngle = rawAngle > 90 ? rawAngle - 180 : rawAngle < -90 ? rawAngle + 180 : rawAngle}
+            <text
+              x={midX}
+              y={midY + 10}
+              class="route-name"
+              transform={`rotate(${nameAngle}, ${midX}, ${midY})`}
+              on:pointerdown={handleRoutePointerDown}
+              on:contextmenu={(e) => handleRouteContextMenu(e, route)}
+            >
+              {route.name}
+            </text>
+          {/if}
         {/if}
       {/each}
 
@@ -1281,8 +1342,10 @@
   {#if showContextMenu}
     <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;">
       <ul>
-        {#if contextMenuSystemId}
-            <li on:click={handleContextMenuZoom}>Zoom to System</li>
+        {#if contextMenuRoute}
+            <li on:click={handleContextMenuEditRoute}>Edit Link…</li>
+        {:else if contextMenuSystemId}
+            <li on:click={handleContextMenuRename}>Rename System…</li>
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
                 Start Link
@@ -1677,6 +1740,11 @@
     stroke: #fff;
   }
 
+  .starmap-container.invert-display .route-name {
+    fill: #004a66;
+    stroke: #fff;
+  }
+
   .starmap-container.invert-display .route {
     stroke: #004a66;
   }
@@ -1740,6 +1808,18 @@
     paint-order: stroke;
     stroke: #000;
     stroke-width: 2px;
+    cursor: pointer;
+  }
+
+  .route-name {
+    fill: #8fd6ff;
+    font-size: 7px;
+    letter-spacing: 0.05em;
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: #000;
+    stroke-width: 1.5px;
+    cursor: pointer;
   }
 
   /* Active journeys: the travelled trail is a faint solid line; the path still to go is dashed. */

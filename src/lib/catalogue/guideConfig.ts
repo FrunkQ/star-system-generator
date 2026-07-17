@@ -3,7 +3,7 @@ import { writable } from 'svelte/store';
 // GM-enforced Field Guide view: the GM picks the skin (and terminal colour) in the Companion
 // launcher and it is broadcast to every connected guide — players cannot change it locally.
 // Persisted on the GM machine alongside branding so it survives reloads.
-export type GuideTheme = 'mono' | 'guide' | 'clean' | 'console';
+export type GuideTheme = 'mono' | 'guide' | 'clean' | 'console' | 'holo';
 export type MonoColor = 'green' | 'amber' | 'white' | 'blue' | 'red';
 
 export interface GuideConfig {
@@ -23,7 +23,7 @@ export const MONO_COLORS: Record<MonoColor, { label: string; hex: string }> = {
 const KEY = 'catalogue-guideconfig';
 const DEFAULT: GuideConfig = { theme: 'guide', monoColor: 'green', includeConstructs: true };
 
-const THEMES: GuideTheme[] = ['mono', 'guide', 'clean', 'console'];
+const THEMES: GuideTheme[] = ['mono', 'guide', 'clean', 'console', 'holo'];
 
 export function normalizeGuideConfig(v: any): GuideConfig {
   // Old links/configs used 'green'/'amber' as theme keys — fold them into mono + colour.

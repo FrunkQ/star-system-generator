@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bulkDensityFromMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, compressionFactor, inferMakeupFromDensity, makeupFractions, gasThermalInflationFactor, isFluidGiant, rendersAsGiant } from './makeup';
+import { bulkDensityFromMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, compressionFactor, inferMakeupFromDensity, makeupFractions, gasThermalInflationFactor, isFluidGiant, rendersAsGiant, reconcileGiantMakeup } from './makeup';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 import type { CelestialBody } from '$lib/types';
 
@@ -85,5 +85,23 @@ describe('fluid-giant detection (drives the giant render look)', () => {
     expect(isFluidGiant(b({ makeup: { ice: 0.6, rock: 0.4 }, massKg: 4.8e22, radiusKm: 1560 }))).toBe(false); // Europa-ish
     expect(rendersAsGiant(b({ makeup: { ice: 0.6, rock: 0.4 }, massKg: 4.8e22, radiusKm: 1560 }))).toBe(false);
     expect(isFluidGiant(b({ makeup: { rock: 0.7, metal: 0.3 }, massKg: 6e25, radiusKm: 12000 }))).toBe(false); // ~10 M⊕, dense
+  });
+
+  // Round 2 seam fix: a body at giant mass + low density can't be gas-free, so physics corrects it.
+  it('reconcileGiantMakeup gives a gas-free "giant" a volatile envelope (Alex\'s 536 M⊕ / ρ 2.47 case)', () => {
+    // 536 M⊕ at ρ 2.47: R = cbrt(3M/4πρ). M=3.2e27 kg, ρ 2470 kg/m³ → R ≈ 6.76e7 m = 67,600 km.
+    const contradiction = b({ makeup: { rock: 0.5, ice: 0.5 }, massKg: 3.2e27, radiusKm: 67600 });
+    expect(isFluidGiant(contradiction)).toBe(true);           // giant by mass+density
+    const fixed = reconcileGiantMakeup(contradiction);
+    expect(fixed).not.toBeNull();
+    expect(fixed!.gas).toBeGreaterThan(0.5);                   // now has a real gas envelope
+    // and it therefore renders/classifies as a giant consistently
+    expect(rendersAsGiant({ ...contradiction, makeup: fixed! } as any)).toBe(true);
+  });
+
+  it('reconcileGiantMakeup leaves consistent bodies alone', () => {
+    expect(reconcileGiantMakeup(b({ makeup: { gas: 0.8, ice: 0.2 }, massKg: 3e27, radiusKm: 60000 }))).toBeNull(); // already gassy
+    expect(reconcileGiantMakeup(b({ makeup: { rock: 0.7, metal: 0.3 }, massKg: 6e24, radiusKm: 6371 }))).toBeNull(); // Earth — not a giant
+    expect(reconcileGiantMakeup(b({ massKg: 3.2e27, radiusKm: 46600 }))).toBeNull(); // no explicit makeup → inference handles it
   });
 });

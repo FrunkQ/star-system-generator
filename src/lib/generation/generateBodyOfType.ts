@@ -187,7 +187,9 @@ export function generateBodyOfType(
   }
 
   // --- Hydrosphere ---
-  const covBand = m['hydrosphere.coverage'];
+  // Ocean-family types band on `hydrosphere.liquidCoverage` (phase-gated, liquids L2); dryness/ice
+  // types still band on raw `hydrosphere.coverage`. Either drives the generated coverage.
+  const covBand = m['hydrosphere.liquidCoverage'] ?? m['hydrosphere.coverage'];
   const hydroComp = pickStr(m['hydrosphere.composition']);
   if (covBand || hydroComp) {
     out.hydrosphere = { composition: hydroComp || 'water', coverage: covBand ? pick(covBand, rng, 0.5) : 0.5 };

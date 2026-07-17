@@ -113,10 +113,93 @@ function promoteMassiveCompanion(system: System): boolean {
       }
     };
 
+    // Re-home the members' OTHER children by orbit size. A child whose orbit is LARGER than the pair
+    // separation encloses both members, so it must orbit the BARYCENTRE (circumbinary / P-type) — its
+    // a/e/angles are kept, only the host changes (the combined mass then sets the correct period on the
+    // next process pass). A child inside the separation stays with its own member (circumstellar /
+    // S-type: orbits around the star remain physically correct). Without this, a star promoted into a
+    // binary left every planet, belt and nested pair "orbiting" a displaced star. Reversal is free:
+    // deleting the companion runs dissolveStaleBinary, which re-homes barycentre children onto the
+    // survivor; a mass reduction runs demoteWeakBinary, which does the same explicitly.
+    for (const n of system.nodes) {
+      if (n.parentId !== heavy.id && n.parentId !== light.id) continue;
+      if (n.id === heavy.id || n.id === light.id || n.id === baryId) continue;
+      const a = n.orbit?.elements?.a_AU ?? 0;
+      if (!(a > separationAU)) continue; // inside the pair: stays circumstellar (no orbit → stays put)
+      n.parentId = baryId;
+      n.orbit = { ...n.orbit!, hostId: baryId, hostMu: pairMu };
+    }
+
     system.nodes.push(barycenter);
     return true;
   }
 
+  return false;
+}
+
+// A child body that has become MUCH heavier than its parent body (mass ratio below the barycentre
+// threshold, so they're not a co-orbiting pair) is really the primary — the "parent" is now its
+// satellite. Swap the hierarchy directly: the heavy child takes the parent's host-track orbit, the
+// old parent (and any of its other children) orbit the new primary. This is the case
+// promoteMassiveCompanion/demoteWeakBinary miss — those only act through the comparable-mass
+// barycentre band, so a mass edit that jumps a child from far-lighter to far-heavier (or back)
+// never triggers a swap. Fully symmetric: shrink the new primary again and this fires in reverse.
+function swapDominantChild(system: System): boolean {
+  const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
+
+  for (const node of system.nodes) {
+    if (node.kind !== 'body') continue;
+    const child = node as CelestialBody;
+    if (!child.orbit || child.parentId == null) continue;
+    if (child.roleHint === 'belt' || child.roleHint === 'ring') continue;
+
+    const parent = nodesById.get(child.parentId as string);
+    if (!parent || parent.kind !== 'body') continue;
+    const parentBody = parent as CelestialBody;
+    if (parentBody.roleHint === 'belt' || parentBody.roleHint === 'ring') continue;
+
+    const mChild = getMass(child);
+    const mParent = getMass(parentBody);
+    if (mChild <= 0 || mParent <= 0) continue;
+    if (mChild <= mParent) continue;                         // parent still dominant — correct as-is
+    if (mParent / mChild >= PROMOTE_RATIO) continue;         // comparable → promoteMassiveCompanion owns it
+
+    const separationAU = Math.max(child.orbit.elements.a_AU || 0, 1e-9);
+    const parentHostTrack = parentBody.orbit ? cloneOrbit(parentBody.orbit) : undefined;
+    const childT0 = child.orbit.t0 ?? parentBody.orbit?.t0 ?? 0;
+
+    // The child takes the parent's place (same host + orbit around the grandparent). If the parent
+    // was the system root (no orbit), the child becomes the root.
+    if (parentHostTrack) {
+      child.parentId = parentBody.parentId ?? null;
+      child.orbit = parentHostTrack;
+    } else {
+      child.parentId = null;
+      delete (child as CelestialBody).orbit;
+    }
+
+    // The old parent now orbits the new primary at the former separation.
+    parentBody.parentId = child.id;
+    parentBody.orbit = {
+      hostId: child.id,
+      hostMu: G * mChild,
+      t0: childT0,
+      n_rad_per_s: parentBody.orbit?.n_rad_per_s,
+      elements: {
+        ...(parentBody.orbit?.elements || { e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }),
+        a_AU: separationAU
+      }
+    };
+
+    // The parent's OTHER children (sibling moons) now orbit the new, dominant primary too.
+    for (const n of system.nodes) {
+      if (n.parentId !== parentBody.id || n.id === child.id) continue;
+      n.parentId = child.id;
+      if (n.orbit) { n.orbit.hostId = child.id; n.orbit.hostMu = G * mChild; }
+    }
+
+    return true;
+  }
   return false;
 }
 
@@ -166,6 +249,15 @@ function demoteWeakBinary(system: System): boolean {
         a_AU: fallbackSeparation
       }
     };
+
+    // Circumbinary children (planets/belts promoteMassiveCompanion re-homed onto the pair) return to
+    // the primary — the inverse of the promotion re-home, keeping a/e/angles; the primary's mass sets
+    // their periods on the next process pass. Without this they'd dangle and fall to the system root.
+    for (const n of system.nodes) {
+      if (n.parentId !== bary.id || n.id === primary.id || n.id === secondary.id) continue;
+      n.parentId = primary.id;
+      if (n.orbit) n.orbit = { ...n.orbit, hostId: primary.id, hostMu: G * primaryMass };
+    }
 
     system.nodes = system.nodes.filter((n) => n.id !== bary.id);
     return true;
@@ -322,11 +414,12 @@ export function reconcileBarycenters(system: System): System {
   for (let i = 0; i < 8; i++) {
     const reparented = reparentDanglingNodes(system);
     const dissolved = dissolveStaleBinary(system);
+    const swapped = swapDominantChild(system);
     const promoted = promoteMassiveCompanion(system);
     const demoted = demoteWeakBinary(system);
     const healed = removeGhostBarycenters(system);
     const repaired = repairDegenerateAutoBary(system);
-    if (!reparented && !dissolved && !promoted && !demoted && !healed && !repaired) break;
+    if (!reparented && !dissolved && !swapped && !promoted && !demoted && !healed && !repaired) break;
   }
   return system;
 }

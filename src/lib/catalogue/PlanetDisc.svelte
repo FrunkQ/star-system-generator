@@ -10,6 +10,8 @@
   import { auroraEmitter } from '$lib/physics/aurora';
   import { rendersAsGiant } from '$lib/physics/makeup';
   import { EARTH_MASS_KG } from '$lib/constants';
+  import { debrisDensityFrac } from '$lib/rendering/debris';
+  import { isSmallBodyShape, smallBodyOutline } from './smallBodyShape';
 
   export let body: CelestialBody;
   export let ringed = false;
@@ -25,6 +27,14 @@
   // ring — draw a true torus (a tilted annulus with a hole) instead of an ever-thinner lens. Oblateness
   // 0.8 corresponds to spin fraction ~0.8 (the near-breakup / toroidal regime).
   $: isToroid = !isStar(body) && !isBelt(body) && (body.oblateness ?? 0) >= 0.8;
+
+  // SMALL BODY (composition redesign stage 4): below ~300 km (or any asteroid/* class) a solid body
+  // lacks the self-gravity to pull round, so the sphere becomes a seeded IRREGULAR outline — same
+  // deterministic LCG-from-id idiom as the belt rocks and craters, so each body keeps its own
+  // repeatable shape. Lumpier when smaller and when porous (rubble piles are ragged); colour still
+  // comes from the composition-derived apparent colour like every other body.
+  $: isSmallBody = !isStar(body) && !isBelt(body) && !isToroid && isSmallBodyShape(body);
+  $: smallBodyPath = isSmallBody ? smallBodyOutline(body) : '';
 
   // Light direction for the day/night terminator + specular highlight. Default (null) is the stylised
   // upper-left look the stand-alone Guide uses; the orrery passes the true angle (radians) toward the
@@ -108,12 +118,8 @@
     return Array.from({ length: n }, (_, i) => ({ y: (i / n) * 100, h: 100 / n + 0.5, fill: cols[i % cols.length] }));
   })();
 
-  // Belt: a grey field of rocks, sparse → dense by debris density (massKg proxy, log 1e-5..1 Me).
-  function densityFrac(massKg: number | undefined): number {
-    if (!massKg || massKg <= 0) return 0.35;
-    const me = massKg / EARTH_MASS_KG;
-    return Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (Math.log(1) - Math.log(1e-5))));
-  }
+  // Belt: a grey field of rocks, sparse → dense by debris density. Shared rule (rendering/debris).
+  const densityFrac = debrisDensityFrac;
   $: rocks = (() => {
     if (!isBelt(body)) return [] as { x: number; y: number; r: number }[];
     const d = densityFrac(body.massKg);
@@ -160,7 +166,7 @@
   // A fluid giant (gas OR ice giant) has no solid surface to crater — an ice giant reads as airless +
   // "inactive" but must never be pockmarked, so exclude giants explicitly.
   $: hasCraters = !isStar(body) && !isBelt(body) && !rendersAsGiant(body) && atmPressure < 0.02
-    && (tagKeys.includes('geology/inactive') || tagKeys.includes('science/impact-record'));
+    && (tagKeys.includes('geology/inactive') || tagKeys.includes('science/impact-record') || isSmallBody);
   $: craters = (() => {
     if (!hasCraters) return [] as { cx: number; cy: number; r: number }[];
     let s = 41; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
@@ -242,7 +248,7 @@
           <stop offset="100%" stop-color={base} stop-opacity="0" />
         </radialGradient>
       {/if}
-      <clipPath id="clip-{uid}"><circle cx="50" cy="50" r="30" /></clipPath>
+      <clipPath id="clip-{uid}">{#if isSmallBody}<path d={smallBodyPath} />{:else}<circle cx="50" cy="50" r="30" />{/if}</clipPath>
       <clipPath id="front-{uid}"><rect x="0" y="50" width="100" height="50" /></clipPath>
       <clipPath id="belt-{uid}"><ellipse cx="50" cy="50" rx="46" ry="15" /></clipPath>
       <!-- Day/night terminator, lit from the upper-left → dark lower-right. Locked = sharp. -->
@@ -363,7 +369,13 @@
       <!-- Disc: the real orrery texture if we have it, else a flat shaded sphere. -->
       {#if textureUrl}
         <image href={textureUrl} x="20" y="20" width="60" height="60" clip-path="url(#clip-{uid})" preserveAspectRatio="xMidYMid slice" />
-        <circle cx="50" cy="50" r="30" fill="url(#vig-{uid})" />
+        {#if isSmallBody}
+          <path d={smallBodyPath} fill="url(#vig-{uid})" />
+        {:else}
+          <circle cx="50" cy="50" r="30" fill="url(#vig-{uid})" />
+        {/if}
+      {:else if isSmallBody}
+        <path d={smallBodyPath} fill="url(#sph-{uid})" />
       {:else}
         <circle cx="50" cy="50" r="30" fill="url(#sph-{uid})" />
         {#if bands.length}
@@ -393,7 +405,11 @@
 
       <!-- Terminator first, then self-luminous magma on top so vents glow on the night side. -->
       {#if showShade}
-        <circle cx="50" cy="50" r="30" fill="url(#term-{uid})" />
+        {#if isSmallBody}
+          <path d={smallBodyPath} fill="url(#term-{uid})" />
+        {:else}
+          <circle cx="50" cy="50" r="30" fill="url(#term-{uid})" />
+        {/if}
       {/if}
       {#if magma.length}
         <g clip-path="url(#clip-{uid})">

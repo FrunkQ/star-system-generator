@@ -260,6 +260,18 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'climate/runaway-greenhouse': { label: 'Runaway greenhouse', description: 'A runaway greenhouse has taken hold — trapped heat has driven surface volatiles into a thick, self-reinforcing hothouse atmosphere (Venus).' },
   'structure/subsurface-ocean': { label: 'Subsurface ocean', description: 'A liquid ocean beneath an ice crust, kept liquid by tidal and/or radiogenic interior heat.' },
   'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere — affects albedo, apparent colour and greenhouse warming.' },
+  'structure/supercritical-envelope': { label: 'Supercritical envelope', description: 'The dominant volatile is past its critical point (for water, 647 K / 218 bar) — a dense supercritical fluid that is neither a true sea nor a true sky.' },
+
+  // --- Hydrosphere phase (the recorded surface volatile, read at the current temperature & pressure) ---
+  'hydrosphere/ocean':      { label: 'Standing liquid',   description: 'A standing surface liquid — the recorded solvent is liquid at the surface temperature and pressure. Extractable, life-relevant, a place for chemistry to run.' },
+  'hydrosphere/frozen':     { label: 'Frozen surface',    description: 'The recorded surface volatile is below its melting point — the "coverage" is an ice sheet, not a sea.' },
+  'hydrosphere/boiled-off':  { label: 'Boiled off',        description: 'The recorded solvent is above its boiling point at this pressure — the surface is desiccated; the inventory has gone to vapour.' },
+  'hydrosphere/brine':      { label: 'Briny sea',         description: 'A salty, electrically conductive ocean — freezing-point-depressed (liquid below 0 °C) and able to induce a magnetic field in a host\'s field.' },
+  'climate/steam-world':    { label: 'Steam world',       description: 'A boiled-off ocean still held as a thick water-vapour atmosphere — a white, high-albedo, greenhouse-dominated sky.' },
+
+  // --- Activity (volatile-driven surface processes) ---
+  'activity/sublimating':   { label: 'Sublimating',       description: 'Surface ices are below their triple-point pressure and warming toward their melt point, passing straight from solid to gas — the outgassing that raises a comet\'s coma and tail.' },
+  'activity/cryovolcanism': { label: 'Cryovolcanism',     description: 'Interior heat drives icy-melt (water/ammonia) eruptions through a frozen crust — plumes and resurfacing, as on Enceladus and Triton.' },
 
   // --- Atmosphere gas roles (flat keys, from the atmosphere composition). RPG-relevant only:
   //     survival, breathability, equipment hazards, world-building signals. ---

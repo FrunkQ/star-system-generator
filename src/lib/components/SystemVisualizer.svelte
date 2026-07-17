@@ -3,15 +3,17 @@
   import type { TransitPlan } from '$lib/transit/types';
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
-  import { propagate } from "$lib/api";
+  import { computeWorldPositions } from "$lib/physics/worldPositions";
+  import { getVisibleNodeIds } from "$lib/system/visibleNodes";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
+  import { debrisDensityFrac } from '$lib/rendering/debris';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
   import { fmt } from '$lib/stores';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
-  import { clampZoom, dampedZoomStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
+  import { clampZoom, dampedZoomStep, autoFrameStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, firstFrameLevel, nextFrameLevel, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
@@ -64,6 +66,7 @@
 
   const dispatch = createEventDispatcher<{
     focus: string | null,
+    levelchange: { id: string; level: number },
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
     backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }
   }>();
@@ -115,7 +118,7 @@
   // frame" (which otherwise fights the wheel during playback). Pan-follow continues, so the object stays
   // centred at the user's chosen zoom. Cleared by any deliberate re-frame (new selection, re-click-to-step,
   // Reset view).
-  let userZoomOverride = false;
+  export let userZoomOverride = false; // bindable: SystemView treats a zoom-driving user as MANUAL for camera broadcast
   let beltLabelClickAreas = new Map<string, { x1: number, y1: number, x2: number, y2: number }>();
   let x0_distance = 0.01; // Default pivot for distance scaling
   // Cache of coasting ships' forecast polylines, keyed by ship+clock so the conic isn't re-sampled per frame.
@@ -301,14 +304,12 @@
   function levelsFor(nodeId: string): number[] {
       return availableFrameLevels({ nodeId, system, toytownFactor, scaledWorldPositions, worldPositions });
   }
+  // Ladder stepping comes from the shared ruleset (viewport/camera) — the holo uses the very same rules.
   function firstLevelFor(nodeId: string): number {
-      return levelsFor(nodeId)[0] ?? 3;
+      return firstFrameLevel(levelsFor(nodeId));
   }
   function nextLevelFor(nodeId: string, current: number): number {
-      const levels = levelsFor(nodeId);
-      const idx = levels.indexOf(current);
-      // Advance to the next existing level; clamp at the deepest (no wrap).
-      return idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : levels[levels.length - 1] ?? current;
+      return nextFrameLevel(levelsFor(nodeId), current);
   }
 
   function calculateFrameForNode(nodeId: string): { pan: PanState, zoom: number } {
@@ -328,6 +329,7 @@
       const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
       if (targetId) {
           focusLevel = firstLevelFor(targetId);
+          dispatch('levelchange', { id: targetId, level: focusLevel }); // Reset View rides to followers too
           const frame = calculateFrameForNode(targetId);
           panStore.set(frame.pan, { duration: 0 });
           zoomStore.set(clampZoom(frame.zoom), { duration: 0 });
@@ -347,6 +349,7 @@
       if (targetNode && targetNode.kind === 'body' && targetNode.roleHint === 'belt') return;
       // A NEW selection starts at the object's first existing framing level.
       focusLevel = firstLevelFor(targetId);
+      dispatch('levelchange', { id: targetId, level: focusLevel });
       startFocusAnimation(targetId);
   }
 
@@ -442,18 +445,20 @@
       if (focusedBodyId && cameraMode === 'FOLLOW' && !isPanning && !isAnimatingFocus) {
           const targetPosition = toytownFactor > 0 ? scaledWorldPositions.get(focusedBodyId) : worldPositions.get(focusedBodyId);
           if (targetPosition) {
+              // Hold the focus dead-centre, then ease the framing via the SHARED auto-frame policy
+              // (viewport/camera) — the same one the player views' 2D map runs.
               renderPan = targetPosition;
-              const idealFrame = calculateFrameForNode(focusedBodyId);
-              const idealZoom = clampZoom(idealFrame.zoom);
               const now = performance.now();
-              const tooSoon = now - lastAutoZoomUpdateMs < AUTO_ZOOM_MIN_UPDATE_MS;
-              const suppressNearPeriapsis = shouldSuppressAutoZoomNearPeriapsis(focusedBodyId);
-              const currentZoom = get(zoomStore);
-              const baseZoom = lastAutoZoomTarget > 0 ? lastAutoZoomTarget : currentZoom;
-              const nextZoom = dampedZoomStep(baseZoom, idealZoom);
-              const deltaRatio = Math.abs(nextZoom - baseZoom) / Math.max(baseZoom, MIN_CAMERA_ZOOM);
-
-              if (!userZoomOverride && !suppressNearPeriapsis && !tooSoon && deltaRatio > 0.02) {
+              const baseZoom = lastAutoZoomTarget > 0 ? lastAutoZoomTarget : get(zoomStore);
+              const nextZoom = autoFrameStep({
+                  current: baseZoom,
+                  ideal: clampZoom(calculateFrameForNode(focusedBodyId).zoom),
+                  userOverride: userZoomOverride,
+                  suppress: shouldSuppressAutoZoomNearPeriapsis(focusedBodyId),
+                  sinceLastMs: now - lastAutoZoomUpdateMs,
+                  minUpdateMs: AUTO_ZOOM_MIN_UPDATE_MS
+              });
+              if (nextZoom !== null) {
                   zoomStore.set(nextZoom, { duration: 200 });
                   lastAutoZoomTarget = nextZoom;
                   lastAutoZoomUpdateMs = now;
@@ -537,90 +542,17 @@
       lagrangePoints = allPoints.size > 0 ? allPoints : null;
   }
 
+  // Per-frame world positions now live in the shared physics/worldPositions module so the 2D orrery
+  // and the 3D holo view place bodies identically (they differ only in the propagator). The construct
+  // kinematics sampler is injected — it resolves a ship's position per-frame at the render clock
+  // (transit path, coast conic, or post-arrival parking orbit) in the same frame as its host, which
+  // stops the deep-zoom jitter a stored vector_position_au would cause between reconcile ticks.
   function calculateWorldPositions(system: System | null, currentTime: number): Map<string, { x: number, y: number }> {
-      if (!system) return new Map();
-      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-      const positions = new Map<string, { x: number, y: number }>();
-      function getPosition(nodeId: string): { x: number, y: number } {
-          if (positions.has(nodeId)) return positions.get(nodeId)!;
-          const node = nodesById.get(nodeId);
-          if (!node) return { x: 0, y: 0 };
-          if (node.kind === 'construct' && (node.scheduled_journeys || []).length) {
-              // Resolve a construct's position PER-FRAME at the render clock — transit path, coast conic, OR the
-              // post-arrival parking orbit (sampleJourneyKinematicsAtTime computes all of these relative to the
-              // HOST BODY at THIS time). Reading the stored vector_position_au instead pins the ship to the
-              // host's position at the last ~150ms reconcile tick; since the host itself is drawn per-frame, at
-              // a deep zoom the ship jitters against it by the host's orbital motion over that 150ms. Sampling
-              // here keeps both in the same coordinate frame at the same instant.
-              const s = sampleJourneyKinematicsAtTime(system, node as any, currentTime);
-              if (s) { const abs = { x: s.position_au.x, y: s.position_au.y }; positions.set(nodeId, abs); return abs; }
-              if (node.vector_position_au) {
-                  const absolute = { x: node.vector_position_au.x, y: node.vector_position_au.y };
-                  positions.set(nodeId, absolute);
-                  return absolute;
-              }
-          }
-          if (node.parentId === null) { positions.set(nodeId, { x: 0, y: 0 }); return { x: 0, y: 0 }; }
-          const parentPos = getPosition(node.parentId);
-          let relativePos = { x: 0, y: 0 };
-          if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
-              const isStationary = node.kind === 'construct' && (node.physical_parameters?.massKg || 0) === 0;
-              const timeToPropagate = isStationary ? node.orbit.t0 : currentTime;
-              const propagated = propagate(node, timeToPropagate);
-              if (propagated) relativePos = propagated;
-          }
-          const absolutePos = { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
-          positions.set(nodeId, absolutePos);
-          return absolutePos;
-      }
-      for (const node of system.nodes) getPosition(node.id);
-      return positions;
+      return computeWorldPositions(system, currentTime, sampleJourneyKinematicsAtTime);
   }
 
-  function getVisibleNodeIds(system: System, focusedBodyId: string | null): Set<string> {
-      const visibleIds = new Set<string>();
-      if (!system) return visibleIds;
-      const nodesById = new Map(system.nodes.map(n => [n.id, n]));
-      const primaryStar = system.nodes.find(n => n.parentId === null);
-      let focusNode = nodesById.get(focusedBodyId || '');
-      if (!focusNode) focusNode = primaryStar;
-      if (!focusNode) return visibleIds;
-      let current: SystemNode | undefined = focusNode;
-      while (current) {
-          visibleIds.add(current.id);
-          current = current.parentId ? nodesById.get(current.parentId) : undefined;
-      }
-      const focusNodeHasChildren = system.nodes.some(n => n.parentId === focusNode.id);
-      let contextBody = focusNode;
-      if (!focusNodeHasChildren) contextBody = focusNode.parentId ? nodesById.get(focusNode.parentId) ?? focusNode : focusNode;
-      visibleIds.add(contextBody.id);
-      system.nodes.forEach(n => { if (n.parentId === contextBody.id) visibleIds.add(n.id); });
-      if (contextBody.parentId) {
-        const grandparentId = contextBody.parentId;
-        system.nodes.forEach(n => { if (n.parentId === grandparentId) visibleIds.add(n.id); });
-      }
-      // Barycentres are TRANSPARENT containers: whenever a barycentre is visible (e.g. a binary-planet
-      // pair shown as a child of the focused star), its member bodies are too — otherwise the binary
-      // planets (grandchildren of the star) would be invisible/unclickable. Iterate to handle nesting.
-      let expanded = true;
-      while (expanded) {
-        expanded = false;
-        for (const n of system.nodes) {
-          if (n.kind === 'barycenter' && visibleIds.has(n.id) && Array.isArray((n as any).memberIds)) {
-            for (const m of (n as any).memberIds) if (!visibleIds.has(m)) { visibleIds.add(m); expanded = true; }
-          }
-        }
-      }
-      // Free-floating constructs (in transit, deep space, or drifting/adrift) are positioned by an absolute
-      // vector_position_au, not by the orbital hierarchy — calculateWorldPositions draws their glyph
-      // regardless. They have no parent in the focus chain, so the hierarchy walk above misses them, which
-      // is why a drifting ship lost both its label and its clickability. Whatever is drawn free should also
-      // be nameable and selectable: add every absolutely-positioned construct here.
-      for (const n of system.nodes) {
-          if (n.kind === 'construct' && (n as any).vector_position_au) visibleIds.add(n.id);
-      }
-      return visibleIds;
-  }
+  // getVisibleNodeIds now lives in $lib/system/visibleNodes (imported above) so the 2D orrery and
+  // the 3D holo view apply the same focus-based naming/visibility rule.
 
   // Draw a construct's icon glyph (triangle/circle/diamond/cross/square) centred
   // at (x, y) with the given pixel size. Single source of truth for both the
@@ -715,6 +647,7 @@
         if (picked.node.id === focusedBodyId) {
           // Re-click the focused object → step DOWN to the next existing framing level.
           focusLevel = nextLevelFor(picked.node.id, focusLevel);
+          dispatch('levelchange', { id: picked.node.id, level: focusLevel }); // ladder steps ride to followers
           startFocusAnimation(picked.node.id);
         } else {
           dispatch("focus", picked.node.id);
@@ -788,15 +721,6 @@
   };
 
   // "#rrggbb" / "#rgb" / "rgb(...)" → "r,g,b" for building rgba() gradients.
-  // Belt/ring DENSITY as a 0..1 fraction from its massKg debris-density proxy (log scale,
-  // 1e-5..1.0 Earth masses — mirrors getBeltDensityDescription). Drives how solid we draw it.
-  // Undefined density (legacy data) → a moderate default so it stays visible.
-  function debrisDensityFrac(massKg: number | undefined): number {
-      if (massKg === undefined || massKg <= 0) return 0.3;
-      const me = massKg / EARTH_MASS_KG;
-      const lo = Math.log(1e-5), hi = Math.log(1.0);
-      return Math.max(0, Math.min(1, (Math.log(me) - lo) / (hi - lo)));
-  }
 
   function hexToRgbTriplet(c: string): string {
       if (!c) return '255,255,255';

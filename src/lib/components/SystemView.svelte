@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { pushState, replaceState, beforeNavigate } from '$app/navigation';
@@ -60,7 +60,7 @@
   export let system: System;
   export let rulePack: RulePack;
   export let exampleSystems: string[];
-  export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
+  export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention â†’ rail Routes dot
 
   // Phase 03: SystemView owns its own AppShell. `mode` is driven by the shell (bound), and
   // the detail panes live in the shell's detail slot (right panel on desktop, BottomSheet on
@@ -70,7 +70,7 @@
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
-  // External-format import (.ubox / .sc / .pak) — the rail upload routes these to the converter modal.
+  // External-format import (.ubox / .sc / .pak) â€” the rail upload routes these to the converter modal.
   let importBytes: Uint8Array | null = null;
   let importFileName = '';
   let importSource: ImportAdapter | null = null;
@@ -89,12 +89,12 @@
     else window.removeEventListener('pointerdown', closeViewOnOutside, true);
   }
   $: toytownOn = ($systemStore?.toytownFactor ?? 0) > 0;
-  // A construct that's currently interstellar (in transit OR stranded) belongs to NO system map — its node
+  // A construct that's currently interstellar (in transit OR stranded) belongs to NO system map â€” its node
   // still physically lives in its origin system, but it must not be drawn there; it only shows at starmap
   // level. Hide such constructs from the orrery (reactive to the clock, so it appears/disappears as you
   // scrub through its journey window).
   // NB: journey times are stored in MASTER/universe seconds (since the Big Bang), but the orrery's
-  // currentTime is a unix-epoch clock — convert before asking who's interstellar, or the placement is
+  // currentTime is a unix-epoch clock â€” convert before asking who's interstellar, or the placement is
   // evaluated in the wrong epoch (always reads "not departed") and nothing ever hides.
   $: interstellarIds = ($starmapStore && $systemStore)
       ? interstellarConstructIds($starmapStore, Number(unixMsToMasterSeconds(currentTime)))
@@ -115,8 +115,8 @@
     setTimeout(() => visualizer?.resetView(), 80);
   }
   // Phone has no right-click background menu, so the FAB is the "add body" entry point.
-  // We synthesize the same inputs the background-context-menu path produces — a host and a
-  // world-space (AU) click position — then reuse the existing creation handlers verbatim.
+  // We synthesize the same inputs the background-context-menu path produces â€” a host and a
+  // world-space (AU) click position â€” then reuse the existing creation handlers verbatim.
   // Host = the focused star/planet/moon if it can host, else the primary (root) star;
   // a star host -> a planet, a planet/moon host -> a moon (handler auto-types by host).
   // Position = just beyond the outermost existing child orbit (or a sensible default).
@@ -231,6 +231,9 @@
   let lastToytownFactor: number | undefined = undefined;
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
   let cameraMode: 'FOLLOW' | 'MANUAL' = 'FOLLOW';
+  // The visualizer's wheel-zoom flag: FOLLOW keeps panning with the body but the ZOOM is the user's —
+  // followers must treat that viewport as manual too (zoom-out over a focused body was never mirrored).
+  let userZoomOverride = false;
   let isCrtMode = false;
   // Projector window tracking: when it's open the rail's Projector entry becomes a
   // greenscreen (chroma-key) toggle; we poll for the window closing to revert.
@@ -325,7 +328,7 @@
   // Physics "working" (Newton/Apple) panel
   let showPhysicsModal = false;
 
-  // §4c add-by-viable-type picker
+  // Â§4c add-by-viable-type picker
   let showAddTypeModal = false;
   let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number } | null = null;
 
@@ -410,7 +413,7 @@
       distAU = Math.sqrt(dx*dx + dy*dy);
       startAngle = Math.atan2(dy, dx);
 
-      // §4c: for a planet/moon (not a belt/ring), offer the TYPES viable at this orbit instead of
+      // Â§4c: for a planet/moon (not a belt/ring), offer the TYPES viable at this orbit instead of
       // auto-assigning one. Compute the equilibrium temperature here, then open the picker.
       if (forceRole !== 'belt' && forceRole !== 'ring') {
           const role: 'planet' | 'moon' = host.roleHint === 'star' ? 'planet' : 'moon';
@@ -557,7 +560,7 @@
       isEditing = true;
   }
 
-  // §4c: the GM picked a type from the location-aware picker — generate a matching body, drop it at
+  // Â§4c: the GM picked a type from the location-aware picker â€” generate a matching body, drop it at
   // the clicked orbit, and let the full processor derive the rest.
   function placeBodyOfType(event: CustomEvent<{ fp: any }>) {
       showAddTypeModal = false;
@@ -567,7 +570,7 @@
       if (!host) return;
       const siblings = $systemStore.nodes.filter(n => n.parentId === ctx.hostId);
       const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
-      // Some moons are CAPTURED rogues (irregular satellites): eccentric, inclined, often retrograde —
+      // Some moons are CAPTURED rogues (irregular satellites): eccentric, inclined, often retrograde â€”
       // a Triton/irregular-moon flavour, distinct from the flat regular satellites that formed in place.
       const captured = ctx.role === 'moon' && Math.random() < 0.18;
       const newBody: CelestialBody = {
@@ -791,7 +794,7 @@
     systemStore.update(system => {
       if (!system) return null;
 
-      // Autopilot: an engaged ship with no pending journeys gets its plan flown — generate the chain
+      // Autopilot: an engaged ship with no pending journeys gets its plan flown â€” generate the chain
       // from its current position + the clock and attach it. (Regenerates once it runs dry; clock-advance
       // top-up + status/disengage come next.)
       if ((updatedConstruct as any).autopilot?.enabled
@@ -805,10 +808,10 @@
               flight_log: [ ...(updatedConstruct.flight_log || []), ...gen.flightLog ],
               autopilotStuckReason: undefined };
           } else {
-            // No journeys — engaged but going nowhere. ALWAYS surface why (null = couldn't even start, e.g.
+            // No journeys â€” engaged but going nowhere. ALWAYS surface why (null = couldn't even start, e.g.
             // missing engine/fuel data or no ship specs) so the ship never silently sits there "flying".
             console.warn('[autopilot] no journeys generated:', gen?.attention, gen?.stuckReason);
-            updatedConstruct = { ...updatedConstruct, autopilotStuckReason: gen ? apReasonText(gen) : 'could not start — no engine/fuel data or ship specs' };
+            updatedConstruct = { ...updatedConstruct, autopilotStuckReason: gen ? apReasonText(gen) : 'could not start â€” no engine/fuel data or ship specs' };
           }
         } catch (e) {
           console.warn('[autopilot] chain generation failed:', e);
@@ -826,11 +829,11 @@
 
   // --- Autopilot clock top-up + run-once disengage. Keyed on the DISPLAY clock (the GM's working view),
   //     so a ship visibly keeps flying as they scrub/play. Top-up keeps exactly Planning legs committed AHEAD
-  //     of the display clock (what the slider promises), appending as the clock advances — never destructive on
+  //     of the display clock (what the slider promises), appending as the clock advances â€” never destructive on
   //     scrub-back. The hard disengage commits at ACTUAL time (the backstop). ---
   // How many FLOWN autopilot legs to keep in the heavy journey/path data (the orrery draws these). A repeat
   // ship tops up forever, so otherwise the committed past grows without bound (a spider-web of stale paths).
-  // The lightweight flight-log history is kept FOREVER — only this regenerable journey data is bounded.
+  // The lightweight flight-log history is kept FOREVER â€” only this regenerable journey data is bounded.
   const AP_KEEP_FLOWN = 2;
   function endOfLogs(logs: any[]): number {
     let end = -Infinity;
@@ -840,12 +843,12 @@
   // Human reason a course couldn't be plotted, for the Autopilot tab (so the GM doesn't need the console).
   function apReasonText(gen: { attention: string | null; stuckReason?: string }): string {
     if (gen.stuckReason) return gen.stuckReason;
-    if (gen.attention === 'intervention') return 'no resolvable stops — check the resource or place exists and is reachable';
+    if (gen.attention === 'intervention') return 'no resolvable stops â€” check the resource or place exists and is reachable';
     return 'could not plot a course';
   }
   const planningOf = (n: any) => Math.max(1, Math.floor(n.autopilot?.planning ?? 2));
-  // Per-ship "last future-leg count we already handled". The replan must fire ONCE per leg-completion — i.e.
-  // only when the future count has freshly DROPPED below Planning — never re-attempt at a level we've already
+  // Per-ship "last future-leg count we already handled". The replan must fire ONCE per leg-completion â€” i.e.
+  // only when the future count has freshly DROPPED below Planning â€” never re-attempt at a level we've already
   // tried (so a ship that can't be topped up, e.g. stuck on fuel, doesn't re-solve its route every frame).
   // Cleared on a manual edit (refuel / route change) so the ship gets a fresh attempt. Nothing changes between
   // leg-completions, so between them there is zero solving.
@@ -881,10 +884,10 @@
             flog = [...flog, ...gen.flightLog];
           } catch (e) { console.warn('[autopilot] top-up failed:', e); break; }
           const nf = countFutureJourneys({ ...n, scheduled_journeys: logs }, displayMs);
-          if (nf <= future) break; // no forward progress → stop (avoid a spin)
+          if (nf <= future) break; // no forward progress â†’ stop (avoid a spin)
           future = nf; added = true;
         }
-        apTopUpMark[n.id] = future; // Planning if topped up, else the stuck level — don't re-solve it next frame.
+        apTopUpMark[n.id] = future; // Planning if topped up, else the stuck level â€” don't re-solve it next frame.
         if (added) { changed = true; return { ...n, scheduled_journeys: logs, flight_log: flog }; }
         return n;
       });
@@ -897,7 +900,7 @@
     systemStore.update(system => {
       if (!system) return null;
 
-      // Autopilot: an engaged ship with no pending journeys gets its plan flown — generate the journey
+      // Autopilot: an engaged ship with no pending journeys gets its plan flown â€” generate the journey
       // chain from its current position + the clock and attach it. (Regenerates after it runs dry; the
       // clock-advance top-up + status/disengage wiring come next.)
       if (updatedBody.kind === 'construct' && (updatedBody as any).autopilot?.enabled
@@ -911,7 +914,7 @@
               flight_log: [ ...(updatedBody.flight_log || []), ...gen.flightLog ],
               autopilotStuckReason: undefined };
           } else {
-            updatedBody = { ...updatedBody, autopilotStuckReason: gen ? apReasonText(gen) : 'could not start — no engine/fuel data or ship specs' };
+            updatedBody = { ...updatedBody, autopilotStuckReason: gen ? apReasonText(gen) : 'could not start â€” no engine/fuel data or ship specs' };
           }
         } catch (e) {
           console.warn('[autopilot] chain generation failed:', e);
@@ -940,7 +943,7 @@
           theme: event.detail.theme,
           includeConstructs: event.detail.includeConstructs,
           units: get(measurementUnit),  // carry the GM's km/miles choice into the (separate-route) report
-          tempUnit: get(temperatureUnit) // and the °C/°F/K choice
+          tempUnit: get(temperatureUnit) // and the Â°C/Â°F/K choice
       };
       sessionStorage.setItem('reportData', JSON.stringify(reportData));
       window.open('/report', '_blank');
@@ -1037,7 +1040,7 @@
 
   // Actual/master clock on the SAME unix-ms scale as currentTime + journey times (mirrors the currentTime
   // derivation in the reactive below, but from masterTimeSec). NB getActualTimeMs() returns masterSec*1000
-  // WITHOUT the Big-Bang offset — that's a different (universe-ms) scale and must NOT be compared with
+  // WITHOUT the Big-Bang offset â€” that's a different (universe-ms) scale and must NOT be compared with
   // journey times; this is the correct one for the ship-log seek cutoff.
   $: actualTimeMs = ensuredTemporal
     ? Number(parseClockSeconds(ensuredTemporal.masterTimeSec, 0n) - BIG_BANG_TO_UNIX_EPOCH_T) * 1000
@@ -1190,7 +1193,7 @@
       isEditing = false;
       showZoneKeyPanel = false; // Close Zone Key on navigation
 
-      // Targeting the system root (a lone star OR the root barycentre) is the System View default —
+      // Targeting the system root (a lone star OR the root barycentre) is the System View default â€”
       // no body selected. Otherwise a barycentre target resolves to its primary member.
       if (rootStar && id === rootStar.id) {
           id = null;
@@ -1217,7 +1220,7 @@
   function zoomOut() {
     if (focusedBody && focusedBody.parentId) {
       // If the parent is the root barycentre, there's nothing higher in-system (the barycentre isn't
-      // selectable) — a top-level binary member zooms straight out to the starmap, like a lone root star.
+      // selectable) â€” a top-level binary member zooms straight out to the starmap, like a lone root star.
       const parent = $systemStore?.nodes.find(n => n.id === focusedBody!.parentId);
       if (parent && !parent.parentId && parent.kind === 'barycenter') {
         dispatch('back', { force: true });
@@ -1248,7 +1251,7 @@
       ? countFutureJourneys(focusedBody, currentTime)
       : 0;
   // The focused ship's live kinematic state (Transit / Deep Space / Orbiting / Docked / Landed) at the
-  // display clock — drives the location heading in its stat block.
+  // display clock â€” drives the location heading in its stat block.
   $: focusedKinematicState = (focusedBody && focusedBody.kind === 'construct' && $systemStore)
       ? (sampleJourneyKinematicsAtTime($systemStore, focusedBody, currentTime)?.state ?? null)
       : null;
@@ -1274,7 +1277,7 @@
     if (isSystemRoot) {
       const ok = confirm(
         `Delete the entire "${$systemStore.name || 'system'}" system?\n\n` +
-        `${nodeToDelete.name} is its primary star — deleting it removes the whole system and ` +
+        `${nodeToDelete.name} is its primary star â€” deleting it removes the whole system and ` +
         `everything orbiting it. This can't be undone.`);
       if (!ok) return;
       dispatch('deletesystem', $systemStore.id);
@@ -1346,7 +1349,7 @@
         systemToSave = computePlayerSnapshot($systemStore);
     } else {
         // GM save: strip derived physics from a clone (the load path re-derives it), so the file is small
-        // and carries only authored inputs — never stale baked-in data.
+        // and carries only authored inputs â€” never stale baked-in data.
         systemToSave = stripSystemForExport($systemStore, rulePack);
     }
 
@@ -1416,7 +1419,7 @@
       if ($systemStore) {
           broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot($systemStore) });
       }
-      // Watch for the user closing the projector window → revert the rail entry.
+      // Watch for the user closing the projector window â†’ revert the rail entry.
       if (projectorPoll) clearInterval(projectorPoll);
       projectorPoll = setInterval(() => {
           if (!projectorWindow || projectorWindow.closed) {
@@ -1474,7 +1477,7 @@
                 broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
                 broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
-                broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
+                broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
                 broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
                 broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
@@ -1492,11 +1495,11 @@
 
     unsubscribePanStore = panStore.subscribe(panState => {
         viewportStore.update(v => ({ ...v, pan: panState }));
-        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: panState, zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' } });
+        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: panState, zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
     });
     unsubscribeZoomStore = zoomStore.subscribe(zoomState => {
         viewportStore.update(v => ({ ...v, zoom: zoomState }));
-        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: zoomState, isManual: cameraMode === 'MANUAL' } });
+        broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: zoomState, isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
     });
 
     document.addEventListener('click', handleClickOutside);
@@ -1504,7 +1507,7 @@
 
   // Reactive Broadcasts for View Settings
   $: if (browser && $systemStore) {
-      broadcastService.sendMessage({
+      broadcastService.sendIfChanged({
           type: 'SYNC_VIEW_SETTINGS',
           payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones }
       });
@@ -1515,11 +1518,13 @@
       broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
   }
 
-  // Reactive Broadcast for System State (e.g. edits, generation)
+  // Reactive Broadcast for System State (e.g. edits, generation). systemStore ticks several times a
+  // second while idle, so this MUST go through the fingerprint gate â€” the ~200KB snapshot only leaves
+  // when it actually changed (32 of every 33 sends used to be byte-identical).
   $: if (browser && $systemStore) {
       // We compute the snapshot to avoid sending GM secrets
       const snapshot = computePlayerSnapshot($systemStore);
-      broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
+      broadcastService.sendIfChanged({ type: 'SYNC_SYSTEM', payload: snapshot });
   }
 
   onDestroy(() => {
@@ -1567,8 +1572,8 @@
       // time being previewed - so scrubbing the display never rewrites saved placement.
       const actualMs = getActualTimeMs();
 
-      // C1 — a construct that has coasted BEYOND the system edge has left the local system. The edge is a
-      // configurable AU distance (Settings → Starmap → System edge), or the root star's Hill limit by default.
+      // C1 â€” a construct that has coasted BEYOND the system edge has left the local system. The edge is a
+      // configurable AU distance (Settings â†’ Starmap â†’ System edge), or the root star's Hill limit by default.
       const rootNode: any = sys.nodes.find((n) => (n as any).parentId == null);
       const rootMass = (rootNode?.massKg ?? rootNode?.effectiveMassKg ?? 0) as number;
       const edgeAu = get(starmapStore)?.systemEdgeAu;
@@ -1685,7 +1690,7 @@
         }
 
         // Run-once autopilot: once ACTUAL time has flown the whole route (every journey completed),
-        // disengage for real — the persistent backstop. (The display-time "done · green" is derived.)
+        // disengage for real â€” the persistent backstop. (The display-time "done Â· green" is derived.)
         const ap: any = (nextNode as any).autopilot;
         if (ap?.enabled && ap.repeat === false && (nextNode.scheduled_journeys || []).length) {
           const live = (nextNode.scheduled_journeys || []).filter((l: any) => l.status !== 'cancelled');
@@ -1696,7 +1701,7 @@
         }
 
         // Trim the heavy flown-past JOURNEY data of a REPEAT autopilot route so the orrery + journey list stay
-        // bounded over a long run (the flight-log history is kept forever — only this regenerable data is cut).
+        // bounded over a long run (the flight-log history is kept forever â€” only this regenerable data is cut).
         if (ap?.enabled && ap.repeat !== false) {
           const trimmed = trimFlownAutopilotPast(nextNode, actualMs, AP_KEEP_FLOWN);
           if (trimmed !== nextNode) { nextNode = trimmed; nodeChanged = true; }
@@ -1722,7 +1727,7 @@
     });
 
     // Hand the stranded ships to the starmap as interstellar adrift constructs (park + slow drift, keeping
-    // their in-system heading angle). Only touches adriftConstructs — the node removal above syncs to the
+    // their in-system heading angle). Only touches adriftConstructs â€” the node removal above syncs to the
     // starmap via +page. One-shot: once gone from the system they can't re-trigger.
     if (strands.length) {
       const map = get(starmapStore);
@@ -1793,7 +1798,7 @@
 
       // Timeline chaining: the next hop starts where the ship's LATEST scheduled journey ends, picking up
       // its exit state (position + velocity vector) as the entry. So multi-stop is built one hop at a time,
-      // each appended to the timeline — no in-journey legs. Else start fresh from the ship now.
+      // each appended to the timeline â€” no in-journey legs. Else start fresh from the ship now.
       const logs = (focusedBody.scheduled_journeys || []).filter((l) => l.status !== 'cancelled');
       let latest: { endMs: number; plan: TransitPlan } | null = null;
       for (const log of logs) {
@@ -1810,8 +1815,8 @@
           return;
       }
 
-      // Adrift / coasting (an aborted journey) — replot from where the ship ACTUALLY is now, carrying its
-      // current position + velocity so the redirect-Δv physics applies (matches interstellar "Chart a new
+      // Adrift / coasting (an aborted journey) â€” replot from where the ship ACTUALLY is now, carrying its
+      // current position + velocity so the redirect-Î”v physics applies (matches interstellar "Chart a new
       // course"). Frame it on the system root so the heliocentric state passes through unchanged.
       const kin = $systemStore ? sampleJourneyKinematicsAtTime($systemStore, focusedBody as CelestialBody, currentTime) : null;
       if (kin && (kin.state === 'Deep Space' || kin.state === 'Transit')) {
@@ -1865,7 +1870,7 @@
       const forceExecute = !!(payload && typeof payload === 'object' && 'force' in payload && payload.force);
 
       // Single-hop: one plan -> one journey on the timeline. Multi-stop is built by planning the next hop
-      // (which starts from this one's end-state) — chained on the timeline, not as legs in one journey.
+      // (which starts from this one's end-state) â€” chained on the timeline, not as legs in one journey.
       const plansToSchedule = finalPlan ? [finalPlan] : [];
       if (plansToSchedule.length === 0 || !focusedBodyId) return;
       const startScheduledTimeMs = plansToSchedule[0].startTime;
@@ -1877,7 +1882,7 @@
               const existing = Array.isArray(node.scheduled_journeys) ? node.scheduled_journeys : [];
               // Each hop is now its OWN single-plan journey on the timeline (no more multi-leg journey
               // object). The scheduler already chains multiple logs in time and reconciles to the latest
-              // arrival, so the trajectory is identical — but every leg is independently log-able / autopilot-
+              // arrival, so the trajectory is identical â€” but every leg is independently log-able / autopilot-
               // sequenceable, and carries its own entry/exit state.
               const createdAtSec = BigInt(Math.floor(currentTime / 1000)).toString();
               return {
@@ -1899,7 +1904,7 @@
       });
 
       // The execute animation simulated the trip; now REWIND Display Time to the journey's start so no
-      // apparent time has passed — the ship sits at departure with its faint transit line ahead. Actual/
+      // apparent time has passed â€” the ship sits at departure with its faint transit line ahead. Actual/
       // master time was never touched.
       currentTime = startScheduledTimeMs;
       const bigBangSec = unixMsToMasterSeconds(startScheduledTimeMs);
@@ -1932,9 +1937,9 @@
       const temporal = get(starmapStore)?.temporal;
       if (!temporal) return currentTime;
       // ACTUAL time in UNIX-ms (to compare with journey startMs/endMs, which are unix-ms). masterTimeSec is
-      // MASTER seconds (since the Big Bang) — must subtract the Big-Bang→unix offset, exactly like the
+      // MASTER seconds (since the Big Bang) â€” must subtract the Big-Bangâ†’unix offset, exactly like the
       // actualTimeMs reactive. Without it this returned master-ms (~4.35e20), so countFutureJourneys saw every
-      // journey as long past → Clear/Cancel always 0, and the autopilot trim/arrival reconcile were skewed.
+      // journey as long past â†’ Clear/Cancel always 0, and the autopilot trim/arrival reconcile were skewed.
       return Number(parseClockSeconds(temporal.masterTimeSec, 0n) - BIG_BANG_TO_UNIX_EPOCH_T) * 1000;
   }
 
@@ -1960,7 +1965,7 @@
       isShipLogOpen = false;
   }
 
-  // Drop flight-log events at/after a cutoff — keeps the deterministic ledger in step when future journeys
+  // Drop flight-log events at/after a cutoff â€” keeps the deterministic ledger in step when future journeys
   // are cleared/cancelled, so cargo (derived from the log) doesn't show deliveries that never happen now.
   function pruneFlightLog(node: any, cutoffMs: number) {
       const log = node.flight_log;
@@ -1984,7 +1989,7 @@
   }
 
   // Resume the most-recently-aborted in-system journey: un-cancel it so it re-flies its original plan
-  // (orange / unphysical — it ignores that the ship stopped). Pairs with Cancel · drift/stop.
+  // (orange / unphysical â€” it ignores that the ship stopped). Pairs with Cancel Â· drift/stop.
   function handleResumeJourney() {
       if (!focusedBody || focusedBody.kind !== 'construct') return;
       systemStore.update((sys) => {
@@ -1992,7 +1997,7 @@
           const nodes = sys.nodes.map((n) => {
               if (n.id !== focusedBody.id || n.kind !== 'construct') return n;
               const logs = [...((n as CelestialBody).scheduled_journeys || [])];
-              // newest cancelled journey (by cancel time) → un-cancel.
+              // newest cancelled journey (by cancel time) â†’ un-cancel.
               let bestIdx = -1, bestT = -Infinity;
               logs.forEach((l, i) => { if (l.status === 'cancelled') { const t = Number(l.cancelledAtSec ?? 0); if (t >= bestT) { bestT = t; bestIdx = i; } } });
               if (bestIdx < 0) return n;
@@ -2027,7 +2032,7 @@
   function handleCancelActivePlan(e?: CustomEvent) {
       if (!focusedBody || focusedBody.kind !== 'construct') return;
       const coast = e?.detail?.coast ?? true;   // default drift; false = stop dead
-      // Abort at the DISPLAY time — strand the ship where the GM currently sees it (the abort buttons are
+      // Abort at the DISPLAY time â€” strand the ship where the GM currently sees it (the abort buttons are
       // shown based on the live display state), not at actual/master time where it may not have launched yet.
       const nowMs = currentTime;
       systemStore.update((sys) => {
@@ -2046,7 +2051,7 @@
       if (!$systemStore || !focusedBody || !parentBody) return;
       
       // Easter Egg: Go Go Artemis II!
-      if (focusedBody.name.includes('Artemis II')) alert("Go Go Artemis II! 🚀");
+      if (focusedBody.name.includes('Artemis II')) alert("Go Go Artemis II! ðŸš€");
 
       const fuelCostKg = event.detail.fuel * 1000;
       
@@ -2141,6 +2146,7 @@
         on:projectorcrt={handleToggleCrt}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
+        on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
         on:ruler={() => { railOpen = false; rulerActive = !rulerActive; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
         on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}
@@ -2157,7 +2163,7 @@
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
       >
-      <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
+      <!-- System actions (formerly the SystemSummary hamburger) â€” shown on desktop AND
            phone now that the summary strip is retired in favour of the BodyPicker. The
            Starmap nav, Projector and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
@@ -2166,7 +2172,7 @@
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">
-    <!-- Legacy in-canvas "Regenerate Solar System: Select Star Type" controls removed — the
+    <!-- Legacy in-canvas "Regenerate Solar System: Select Star Type" controls removed â€” the
          generation wizard (Add System) now owns all star/system creation. -->
 
     <!-- The canvas toggle toolbar moved to the rail's View section (clean orrery). -->
@@ -2192,7 +2198,7 @@
                  frequently-used display toggles (per the wireframe). -->
             <div class="orrery-controls" class:phone={mode === 'phone'}>
               {#if mode === 'phone'}<FullscreenButton />{/if}
-              <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲{#if !$railCollapsed} Reset View{/if}</button>
+              <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>âŸ²{#if !$railCollapsed} Reset View{/if}</button>
               <div class="ov-view">
                 <button class="ov-btn ov-eye" class:active={viewOpen} on:click={toggleViewPopover} title="View options" aria-label="View options">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
@@ -2201,7 +2207,7 @@
                   <div class="ov-popover">
                     <label><input type="checkbox" bind:checked={showNames} /> Names</label>
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
-                    <label title="Each planet-mass body's gravitational bubble — where an adrift ship gets grabbed"><input type="checkbox" bind:checked={showHillSpheres} /> Hill spheres</label>
+                    <label title="Each planet-mass body's gravitational bubble â€” where an adrift ship gets grabbed"><input type="checkbox" bind:checked={showHillSpheres} /> Hill spheres</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
                     {#if $starmapUiStore.travellerMode}
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
@@ -2230,6 +2236,7 @@
             <SystemVisualizer
                 bind:this={visualizer}
                 bind:cameraMode
+                bind:userZoomOverride
                 fullScreen={true}
                 system={displaySystem}
                 {rulePack} 
@@ -2251,6 +2258,7 @@
                 transitPreviewPos={transitPreviewPos}
                 isExecuting={isTransitExecuting}
                 on:focus={handleFocus}
+                on:levelchange={(e) => broadcastService.sendMessage({ type: 'SYNC_FOCUS_LEVEL', payload: e.detail })}
                 on:showBodyContextMenu={handleShowBodyContextMenu}
                 on:backgroundContextMenu={handleBackgroundContextMenu}
             />
@@ -2372,11 +2380,11 @@
             {#if focusedBody?.roleHint === 'star' && $systemStore?.credits?.author}
                 {@const c = $systemStore.credits}
                 <div class="system-credit">
-                    <span class="cred-line">This system was created by <strong>{c.author}</strong>{#if c.version} <span class="cred-ver">v{c.version}</span>{/if}{#if c.created} <span class="cred-date">· {c.created}</span>{/if}</span>
+                    <span class="cred-line">This system was created by <strong>{c.author}</strong>{#if c.version} <span class="cred-ver">v{c.version}</span>{/if}{#if c.created} <span class="cred-date">Â· {c.created}</span>{/if}</span>
                     {#if c.contact}<div class="cred-contact">{c.contact}</div>{/if}
                 </div>
             {/if}
-            <!-- GM notes are ALWAYS editable (not gated on Edit) — Edit is only for body
+            <!-- GM notes are ALWAYS editable (not gated on Edit) â€” Edit is only for body
                  properties + the flavour description. -->
             <GmNotesEditor body={focusedBody} on:update={handleBodyUpdate} />
             {/if}
@@ -2697,7 +2705,7 @@
     color: var(--text-faint) !important;
   }
 
-  /* SystemView no longer owns the layout grid — AppShell places canvas/detail into its
+  /* SystemView no longer owns the layout grid â€” AppShell places canvas/detail into its
      slots. main-view (orrery wrapper) + details-view (panes) just flow inside their slots. */
   .main-view {
     width: 100%;
@@ -2796,7 +2804,7 @@
     cursor: pointer;
   }
   .ov-seg button.active { background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); }
-  /* Time transport floats over the bottom-LEFT of the orrery — under the top-left time
+  /* Time transport floats over the bottom-LEFT of the orrery â€” under the top-left time
      read-out, so all the time controls live on the left. */
   .time-overlay {
     position: absolute;

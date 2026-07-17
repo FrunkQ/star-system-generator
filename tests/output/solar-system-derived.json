@@ -835,6 +835,10 @@
           "key": "breathable-human"
         },
         {
+          "key": "hydrosphere/ocean",
+          "value": "water"
+        },
+        {
           "key": "climate/polar-ice",
           "value": "water"
         },
@@ -1067,15 +1071,15 @@
             "fit": 0.46
           },
           {
-            "feature": "hydrosphere.coverage",
-            "value": 0.71,
-            "band": "0.6 – 0.95",
-            "fit": 1
-          },
-          {
             "feature": "hydrosphere.composition",
             "value": "water",
             "band": "water",
+            "fit": 1
+          },
+          {
+            "feature": "hydrosphere.liquidCoverage",
+            "value": 0.71,
+            "band": "0.6 – 0.95",
             "fit": 1
           }
         ],
@@ -1101,15 +1105,15 @@
                 "fit": 0.46
               },
               {
-                "feature": "hydrosphere.coverage",
-                "value": 0.71,
-                "band": "0.6 – 0.95",
-                "fit": 1
-              },
-              {
                 "feature": "hydrosphere.composition",
                 "value": "water",
                 "band": "water",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.6 – 0.95",
                 "fit": 1
               }
             ]
@@ -1131,15 +1135,15 @@
                 "fit": 0.21
               },
               {
-                "feature": "hydrosphere.coverage",
-                "value": 0.71,
-                "band": "0.35 – 0.85",
-                "fit": 1
-              },
-              {
                 "feature": "hydrosphere.composition",
                 "value": "water",
                 "band": "water",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.35 – 0.85",
                 "fit": 1
               }
             ]
@@ -1161,12 +1165,6 @@
                 "fit": 1
               },
               {
-                "feature": "hydrosphere.coverage",
-                "value": 0.71,
-                "band": "0.5 – 0.85",
-                "fit": 1
-              },
-              {
                 "feature": "atm.composition.O2",
                 "value": 0.20917376363364712,
                 "band": "0.1 – 0.35",
@@ -1176,6 +1174,12 @@
                 "feature": "Teq_K",
                 "value": 255.49408288423908,
                 "band": "255 – 300",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.5 – 0.85",
                 "fit": 1
               }
             ]
@@ -1191,12 +1195,6 @@
                 "fit": 1
               },
               {
-                "feature": "hydrosphere.coverage",
-                "value": 0.71,
-                "band": "0.3 – 0.9",
-                "fit": 1
-              },
-              {
                 "feature": "atm.composition.O2",
                 "value": 0.20917376363364712,
                 "band": "0.05 – 0.4",
@@ -1206,6 +1204,12 @@
                 "feature": "Teq_K",
                 "value": 255.49408288423908,
                 "band": "250 – 315",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.3 – 0.9",
                 "fit": 1
               }
             ]
@@ -2084,6 +2088,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -2217,18 +2224,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#b0a092",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#b0a092",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#b0a092",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,
@@ -2459,6 +2466,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -2586,10 +2596,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#bab3ad",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#bab3ad",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -2597,29 +2607,59 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#bab3ad",
+      "apparentColorHex": "#d8ecff",
       "classification": {
-        "base": "planet/planetesimal",
-        "baseScore": 1.2,
+        "base": "asteroid/comet",
+        "baseScore": 1.43,
         "bands": [
           {
             "feature": "mass_Me",
             "value": 2.461486939048895e-10,
-            "band": "0 – 0.003",
+            "band": "0 – 0.0001",
             "fit": 1
           },
           {
-            "feature": "radius_Re",
-            "value": 0.0009731596295714959,
-            "band": "0 – 0.1",
+            "feature": "makeup.ice",
+            "value": 0.5017192894295068,
+            "band": "0.35 – 1",
+            "fit": 1
+          },
+          {
+            "feature": "density",
+            "value": 1.4724944174315617,
+            "band": "0.2 – 1.5",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/barren",
-          "score": 1.19
+          "class": "planet/planetesimal",
+          "score": 1.2
         },
         "candidates": [
+          {
+            "class": "asteroid/comet",
+            "score": 1.43,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 2.461486939048895e-10,
+                "band": "0 – 0.0001",
+                "fit": 1
+              },
+              {
+                "feature": "makeup.ice",
+                "value": 0.5017192894295068,
+                "band": "0.35 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 1.4724944174315617,
+                "band": "0.2 – 1.5",
+                "fit": 1
+              }
+            ]
+          },
           {
             "class": "planet/planetesimal",
             "score": 1.2,
@@ -2693,7 +2733,7 @@
             ]
           }
         ],
-        "borderline": true,
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -3804,6 +3844,10 @@
           "key": "structure/subsurface-ocean"
         },
         {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
           "key": "magnetic/induced"
         },
         {
@@ -3979,7 +4023,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#52799f",
+        "hex": "#becddc",
         "palette": [
           {
             "hex": "#9e7f61",
@@ -3988,15 +4032,15 @@
             "label": "rock surface"
           },
           {
-            "hex": "#4579aa",
-            "role": "ocean",
+            "hex": "#c2d5ea",
+            "role": "surface",
             "weight": 1,
-            "label": "water ocean"
+            "label": "water ice sheet"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#52799f",
+      "apparentColorHex": "#becddc",
       "classification": {
         "base": "planet/subsurface-ocean",
         "baseScore": 2.16,
@@ -4239,6 +4283,13 @@
           "value": "water"
         },
         {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -4384,24 +4435,24 @@
         ]
       },
       "apparentColor": {
-        "hex": "#557ea6",
+        "hex": "#c4d8ec",
         "palette": [
           {
-            "hex": "#ae9c8b",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           },
           {
-            "hex": "#4579aa",
-            "role": "ocean",
+            "hex": "#c2d5ea",
+            "role": "surface",
             "weight": 1,
-            "label": "water ocean"
+            "label": "water ice sheet"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#557ea6",
+      "apparentColorHex": "#c4d8ec",
       "classification": {
         "base": "planet/ice",
         "baseScore": 1.3,
@@ -4633,6 +4684,13 @@
           "value": "water"
         },
         {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -4760,24 +4818,24 @@
         ]
       },
       "apparentColor": {
-        "hex": "#557fa7",
+        "hex": "#c4d8ec",
         "palette": [
           {
-            "hex": "#b0a192",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           },
           {
-            "hex": "#4579aa",
-            "role": "ocean",
+            "hex": "#c2d5ea",
+            "role": "surface",
             "weight": 1,
-            "label": "water ocean"
+            "label": "water ice sheet"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#557fa7",
+      "apparentColorHex": "#c4d8ec",
       "classification": {
         "base": "planet/ice",
         "baseScore": 1.3,
@@ -5502,6 +5560,10 @@
           "value": "water"
         },
         {
+          "key": "hydrosphere/ocean",
+          "value": "methane"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "blue"
         },
@@ -5670,13 +5732,13 @@
         ]
       },
       "apparentColor": {
-        "hex": "#aba49d",
+        "hex": "#cadff1",
         "palette": [
           {
-            "hex": "#af9f8f",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           },
           {
             "hex": "#9fb6c8",
@@ -5687,7 +5749,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#aba49d",
+      "apparentColorHex": "#cadff1",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.16,
@@ -5875,6 +5937,16 @@
           "key": "structure/subsurface-ocean"
         },
         {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
+          "key": "activity/sublimating"
+        },
+        {
+          "key": "activity/cryovolcanism"
+        },
+        {
           "key": "magnetic/induced"
         },
         {
@@ -6046,24 +6118,24 @@
         ]
       },
       "apparentColor": {
-        "hex": "#5680a9",
+        "hex": "#c4d8ec",
         "palette": [
           {
-            "hex": "#b5aaa0",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           },
           {
-            "hex": "#4579aa",
-            "role": "ocean",
+            "hex": "#c2d5ea",
+            "role": "surface",
             "weight": 1,
-            "label": "water ocean"
+            "label": "water ice sheet"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#5680a9",
+      "apparentColorHex": "#c4d8ec",
       "classification": {
         "base": "planet/subsurface-ocean",
         "baseScore": 2.16,
@@ -6119,6 +6191,30 @@
                 "value": 0.03956992622822163,
                 "band": "0 – 0.1",
                 "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "asteroid/comet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.000018084393837910247,
+                "band": "0 – 0.0001",
+                "fit": 1
+              },
+              {
+                "feature": "makeup.ice",
+                "value": 0.4247544556177876,
+                "band": "0.35 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 1.6092244006651377,
+                "band": "0.2 – 1.5",
+                "fit": 0.51
               }
             ]
           },
@@ -6284,6 +6380,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -6408,10 +6507,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#d5e6f7",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#d5e6f7",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -6419,29 +6518,59 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d5e6f7",
+      "apparentColorHex": "#d8ecff",
       "classification": {
-        "base": "planet/planetesimal",
-        "baseScore": 1.2,
+        "base": "asteroid/comet",
+        "baseScore": 1.32,
         "bands": [
           {
             "feature": "mass_Me",
             "value": 0.00010338245144005357,
-            "band": "0 – 0.003",
+            "band": "0 – 0.0001",
+            "fit": 0.77
+          },
+          {
+            "feature": "makeup.ice",
+            "value": 0.951739935436737,
+            "band": "0.35 – 1",
             "fit": 1
           },
           {
-            "feature": "radius_Re",
-            "value": 0.08336210955893894,
-            "band": "0 – 0.1",
+            "feature": "density",
+            "value": 0.9838958111102662,
+            "band": "0.2 – 1.5",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/barren",
-          "score": 1.19
+          "class": "planet/planetesimal",
+          "score": 1.2
         },
         "candidates": [
+          {
+            "class": "asteroid/comet",
+            "score": 1.32,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.00010338245144005357,
+                "band": "0 – 0.0001",
+                "fit": 0.77
+              },
+              {
+                "feature": "makeup.ice",
+                "value": 0.951739935436737,
+                "band": "0.35 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 0.9838958111102662,
+                "band": "0.2 – 1.5",
+                "fit": 1
+              }
+            ]
+          },
           {
             "class": "planet/planetesimal",
             "score": 1.2,
@@ -6656,6 +6785,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -6784,18 +6916,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#bab3ac",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#bab3ac",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#bab3ac",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,
@@ -7036,6 +7168,12 @@
           "key": "structure/subsurface-ocean"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
+          "key": "activity/cryovolcanism"
+        },
+        {
           "key": "magnetic/induced"
         },
         {
@@ -7198,10 +7336,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#c9d0d7",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#c9d0d7",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -7209,7 +7347,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#c9d0d7",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/subsurface-ocean",
         "baseScore": 2.16,
@@ -7228,8 +7366,8 @@
           }
         ],
         "runnerUp": {
-          "class": "planet/planetesimal",
-          "score": 1.2
+          "class": "asteroid/comet",
+          "score": 1.43
         },
         "candidates": [
           {
@@ -7246,6 +7384,30 @@
                 "feature": "Teq_K",
                 "value": 75.52068188790528,
                 "band": "0 – 273",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "asteroid/comet",
+            "score": 1.43,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.000006279303415941058,
+                "band": "0 – 0.0001",
+                "fit": 1
+              },
+              {
+                "feature": "makeup.ice",
+                "value": 0.7559644436449754,
+                "band": "0.35 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 1.1498248965954432,
+                "band": "0.2 – 1.5",
                 "fit": 1
               }
             ]
@@ -7454,6 +7616,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -7577,10 +7742,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#c5c7ca",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#c5c7ca",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -7588,7 +7753,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#c5c7ca",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/barren",
         "baseScore": 1.19,
@@ -7813,6 +7978,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -7936,10 +8104,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#ced8e2",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#ced8e2",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -7947,7 +8115,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#ced8e2",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/barren",
         "baseScore": 1.19,
@@ -8731,18 +8899,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#b4a89c",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#b4a89c",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#b4a89c",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -9096,18 +9264,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#b5aa9f",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#b5aa9f",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#b5aa9f",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -9465,18 +9633,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#b6aca2",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#b6aca2",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#b6aca2",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,
@@ -10180,6 +10348,10 @@
           "value": "water"
         },
         {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "blue"
         },
@@ -10345,19 +10517,19 @@
         ]
       },
       "apparentColor": {
-        "hex": "#678bad",
+        "hex": "#bacee2",
         "palette": [
           {
-            "hex": "#ab9682",
+            "hex": "#d2e0ed",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           },
           {
-            "hex": "#4579aa",
-            "role": "ocean",
+            "hex": "#c2d5ea",
+            "role": "surface",
             "weight": 1,
-            "label": "water ocean"
+            "label": "water ice sheet"
           },
           {
             "hex": "#9fb6c8",
@@ -10368,7 +10540,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#678bad",
+      "apparentColorHex": "#bacee2",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -10861,13 +11033,13 @@
         ]
       },
       "apparentColor": {
-        "hex": "#aba49d",
+        "hex": "#cadff1",
         "palette": [
           {
-            "hex": "#af9e8e",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           },
           {
             "hex": "#9fb6c8",
@@ -10878,7 +11050,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#aba49d",
+      "apparentColorHex": "#cadff1",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -11243,18 +11415,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#b3a699",
+        "hex": "#d8ecff",
         "palette": [
           {
-            "hex": "#b3a699",
+            "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "ice surface"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#b3a699",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,

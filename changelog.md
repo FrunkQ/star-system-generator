@@ -2,6 +2,36 @@
 
 All notable changes are listed here:
 
+## v2.1.2 - 18th Jul 2026
+
+**A physics, composition and rendering update.** Since v2.1.1 the body editor, the liquid model and the orrery have all had substantial work. (The unified player-facing companion views are still in testing and are not part of this release.)
+
+Composition and interiors:
+
+* **The Composition tab is rebuilt around interior makeup.** Composition is now the anchor — set what a world is made of (metal / rock / carbon / ice / gas, with porosity) and mass, radius and density derive from it under gravitational compression, rather than three sliders fighting each other. A classification picker filters to the types viable at the body's mass and orbit and re-ranges the sliders to that type's bands; "Reset to type" regenerates a plausible example of any class, keeping the body's name and orbit; and a composition breakdown bar sits under the density slider.
+* **A live interior cutaway** sits in the editor: the world's rendered surface on one side and a cross-section on the other — composition layers from the metal core out to a gas envelope (with subsurface-ocean and surface-liquid bands, and void speckles for porous bodies) over an estimated internal-heat gradient, with a molten-core glow on worlds still hot enough given their age, size and composition, and a temperature key.
+* **Asteroids and comets are first-class bodies.** Small bodies get a C / S / M-type and comet taxonomy (plus a rubble-pile modifier from derived porosity), draw as seeded irregular shapes — lumpier when smaller or more porous, cratered, coloured by composition — and carry real NASA reference imagery. The orrery zooms far deeper so a sub-kilometre body can be brought up full-screen, and a /discgallery reference page shows the range.
+
+Liquids and oceans:
+
+* **Liquids are now pressure-aware.** Every solvent carries triple-point and critical-point data: ices below their triple pressure sublimate (no ocean on an airless warm world), boiling rises with pressure (a high-pressure world stays liquid far past 100 C), and past the critical point a substance is supercritical — neither sea nor sky. Classification and tags follow the real phase (ocean, frozen, boiled-off, brine, steam world, supercritical, sublimating, cryovolcanism), and a stale hydrosphere no longer paints a false ocean.
+* **Oceans of any liquid render in their own colour** — Titan's methane sea blue-grey, Io's sulfur amber-gold, Venus's sulfuric acid pale yellow, Triton's nitrogen near-white, Europa's brine steel-blue — each tinted by the host star's light. **Icy worlds now look icy:** a real ice fraction shows as a bright crust and a frozen sea paints an ice sheet, so Enceladus and Europa read near-white instead of muddy brown.
+
+Orrery and rendering:
+
+* **Stars are real suns** — a textured, rotating photosphere with granulation and sunspots (more on active stars) wrapped in a corona that pulses when the star flares; in a binary each sun lights the system.
+* **Black holes render as black holes** — a pure-black event horizon with only a faint photon ring when quiescent, and a hot, flickering blue-white accretion glow that lights the whole system when feeding.
+* **Belts and rings read their density from the data** — particle count follows mass and brightness follows surface density (Saturn's rings dense and bright, a gossamer ring sparse and faint), the debris tumbles as irregular rubble and slowly orbits, and faint belts are visible again.
+* **Sharper eclipse shadows** (a hard umbra unless the shadowing body has a real atmosphere), and moons and orbiting or surface-mounted constructs now sit correctly against their planet at every zoom, including true scale.
+
+Editor, starmap and interface:
+
+* **Forming a stellar binary re-homes the system.** When a companion grows massive enough to promote its host into a pair, outer orbits become circumbinary about the barycentre while orbits inside the pair stay on their own star — fully reversible if the companion is shrunk below the threshold or removed.
+* **Growing a planet back above its moon's mass flips it back to the primary** — the planet/moon hierarchy swap now works in both directions, not only through the narrow comparable-mass band.
+* **Importing a construct over an existing one** replaces only the ship's spec; the target keeps its orbit, journeys and flight log (previously the file's flight data hijacked the orbit and later edits appeared to do nothing).
+* **Starmap links** open an Edit Link menu on right-click or long-press instead of on a stray left-click; **a star can be renamed** to give its system a name independent of the central star; and **Traveller mode** now infers parsec scaling, greying out the distance-unit picker.
+* **The body data panel** is resizable on desktop (its width is remembered) and opens compact on phones — a tap shows just the name and type, tap the title to expand — and its Type line shows the scientific classification. The **time control** is a compact play/pause that expands into a rate slider from one second per second up to ten years per second.
+
 ## v2.1.1 - 9th Jul 2026
 
 * **Fixed: editing a binary pair separation.** Typing a separation for two binary stars (e.g. 23.7 AU) was being transformed on every keystroke - the physics pass re-split the value by mass ratio and overwrote the box while you were still typing, so the number just drifted. The field now genuinely edits the pair separation (both stars are written with the correct mass split), and the editor no longer refreshes the input while it has focus.

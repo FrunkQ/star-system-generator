@@ -12,7 +12,7 @@ import type { CelestialBody, Barycenter, RulePack, Expr, Feature, Fingerprint, F
 // barren/desert steal Venus-class and dwarf-planet-class worlds). The best-scoring BASE
 // archetype is chosen (mutually exclusive); MODIFIERS (ringed, eyeball, …) stack on top.
 
-function bandFit(value: number | string | undefined, band: FingerprintBand): number {
+export function bandFit(value: number | string | undefined, band: FingerprintBand): number {
   // Categorical band: a string or list of accepted strings → exact (hard) match.
   if (typeof band === 'string') return value === band ? 1 : 0;
   if (Array.isArray(band) && (typeof band[0] === 'string' || typeof band[1] === 'string')) {

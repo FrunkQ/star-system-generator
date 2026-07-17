@@ -96,18 +96,39 @@ export interface StateVector {
   v: Vector2; // Velocity in AU/s
 }
 
+export interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface StateVector3 {
+  r: Vector3; // Position in AU (orbital reference plane = z 0)
+  v: Vector3; // Velocity in AU/s
+}
+
 // One warning per session is enough — corrupt elements get hit every frame by the render loop.
 let warnedHyperbolic = false;
 
+interface PerifocalState {
+  x_p_m: number;      // perifocal position (metres)
+  y_p_m: number;
+  vx_p_mps: number;   // perifocal velocity (m/s)
+  vy_p_mps: number;
+  omega_rad: number;  // argument of periapsis
+  i_rad: number;      // inclination
+  Omega_rad: number;  // longitude of ascending node
+}
+
 /**
- * Propagates an orbit to a specific time and returns the full State Vector (Position and Velocity).
- * Position is in AU.
- * Velocity is in AU/s.
+ * Shared elliptical Kepler solve. Returns the perifocal-frame position (m) and velocity (m/s)
+ * plus the three orientation angles (ω, i, Ω). Both propagateState (the flat, ω-only projection
+ * the 2D orrery uses) and propagateState3D (the full Rz(Ω)·Rx(i)·Rz(ω) rotation the holo view
+ * uses) build on this, so the 2D and 3D views can never drift in their orbital maths. Returns
+ * null for the trivial root / no-orbit cases (callers emit a zero vector).
  */
-export function propagateState(node: CelestialBody | Barycenter | { orbit: any }, tMs: number): StateVector {
-  if (!('orbit' in node) || !node.orbit) {
-    return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } };
-  }
+function solvePerifocal(node: CelestialBody | Barycenter | { orbit: any }, tMs: number): PerifocalState | null {
+  if (!('orbit' in node) || !node.orbit) return null;
 
   const { elements, hostMu, t0 } = node.orbit;
   const { M0_rad } = elements;
@@ -129,14 +150,14 @@ export function propagateState(node: CelestialBody | Barycenter | { orbit: any }
   }
 
   // Handle trivial case (Star/Root)
-  if (hostMu === 0 || !a_AU) return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } };
+  if (hostMu === 0 || !a_AU) return null;
 
   const a_m = a_AU * AU_KM * 1000; // semi-major axis in meters
 
   // 1. Mean motion (n)
   let n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
-  
-  // Retrograde handling: 
+
+  // Retrograde handling:
   // If n_rad_per_s is provided, it should ALREADY have the correct sign.
   // Otherwise, we check the flag.
   if (node.orbit.n_rad_per_s === undefined && !!node.orbit.isRetrogradeOrbit) {
@@ -197,27 +218,82 @@ export function propagateState(node: CelestialBody | Barycenter | { orbit: any }
 
   // 6. Velocity in Perifocal Frame
   const term = 1 - e * e;
-  const p = a_m * (term > 1e-9 ? term : 1e-9); 
+  const p = a_m * (term > 1e-9 ? term : 1e-9);
   const h = Math.sqrt(hostMu * p);
   const mu_h = hostMu / h;
 
-  let vx_p_mps = -mu_h * Math.sin(f);
-  let vy_p_mps = mu_h * (e + Math.cos(f));
-  
-  // 7. Rotate to System Frame (Arg of Periapsis)
-  const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
-  const cos_o = Math.cos(omega_rad);
-  const sin_o = Math.sin(omega_rad);
-
-  const x_au = (x_p_m * cos_o - y_p_m * sin_o) / (AU_KM * 1000);
-  const y_au = (x_p_m * sin_o + y_p_m * cos_o) / (AU_KM * 1000);
-
-  const vx_mps = vx_p_mps * cos_o - vy_p_mps * sin_o;
-  const vy_mps = vx_p_mps * sin_o + vy_p_mps * cos_o;
+  const vx_p_mps = -mu_h * Math.sin(f);
+  const vy_p_mps = mu_h * (e + Math.cos(f));
 
   return {
-    r: { x: x_au, y: y_au },
-    v: { x: vx_mps / (AU_KM * 1000), y: vy_mps / (AU_KM * 1000) } // Convert m/s to AU/s
+    x_p_m, y_p_m, vx_p_mps, vy_p_mps,
+    omega_rad: (elements.omega_deg || 0) * (Math.PI / 180),
+    i_rad: (elements.i_deg || 0) * (Math.PI / 180),
+    Omega_rad: (elements.Omega_deg || 0) * (Math.PI / 180)
+  };
+}
+
+/**
+ * Propagates an orbit to a specific time and returns the full State Vector (Position and Velocity).
+ * Position is in AU, velocity in AU/s. This is the FLAT projection: it applies only the argument of
+ * periapsis (ω), which is exactly what the 2D orrery draws. For the inclination-aware 3D vector the
+ * holo view needs, use propagateState3D.
+ */
+export function propagateState(node: CelestialBody | Barycenter | { orbit: any }, tMs: number): StateVector {
+  const pf = solvePerifocal(node, tMs);
+  if (!pf) return { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } };
+
+  const { x_p_m, y_p_m, vx_p_mps, vy_p_mps, omega_rad } = pf;
+
+  // Rotate to System Frame (Arg of Periapsis only — the flat 2D projection).
+  const cos_o = Math.cos(omega_rad);
+  const sin_o = Math.sin(omega_rad);
+  const M = AU_KM * 1000;
+
+  return {
+    r: {
+      x: (x_p_m * cos_o - y_p_m * sin_o) / M,
+      y: (x_p_m * sin_o + y_p_m * cos_o) / M
+    },
+    v: {
+      x: (vx_p_mps * cos_o - vy_p_mps * sin_o) / M,
+      y: (vx_p_mps * sin_o + vy_p_mps * cos_o) / M
+    } // Convert m/s to AU/s
+  };
+}
+
+/**
+ * Inclination-aware sibling of propagateState: applies the full 3-1-3 rotation Rz(Ω)·Rx(i)·Rz(ω)
+ * to the perifocal state, so orbits tilt out of the reference plane (z=0). Used by the holo (3D)
+ * view. For a flat orbit (i=0, Ω=0) the x/y are identical to propagateState and z is 0, so the
+ * holo view lines up with the orrery wherever the data is coplanar.
+ */
+export function propagateState3D(node: CelestialBody | Barycenter | { orbit: any }, tMs: number): StateVector3 {
+  const pf = solvePerifocal(node, tMs);
+  if (!pf) return { r: { x: 0, y: 0, z: 0 }, v: { x: 0, y: 0, z: 0 } };
+
+  const { x_p_m, y_p_m, vx_p_mps, vy_p_mps, omega_rad, i_rad, Omega_rad } = pf;
+  const co = Math.cos(omega_rad), so = Math.sin(omega_rad);
+  const ci = Math.cos(i_rad), si = Math.sin(i_rad);
+  const cO = Math.cos(Omega_rad), sO = Math.sin(Omega_rad);
+
+  // Perifocal (PQW) → inertial rotation matrix rows, applied to the in-plane (x_p, y_p, 0) vector.
+  const r11 = cO * co - sO * so * ci, r12 = -cO * so - sO * co * ci;
+  const r21 = sO * co + cO * so * ci, r22 = -sO * so + cO * co * ci;
+  const r31 = so * si, r32 = co * si;
+  const M = AU_KM * 1000;
+
+  return {
+    r: {
+      x: (r11 * x_p_m + r12 * y_p_m) / M,
+      y: (r21 * x_p_m + r22 * y_p_m) / M,
+      z: (r31 * x_p_m + r32 * y_p_m) / M
+    },
+    v: {
+      x: (r11 * vx_p_mps + r12 * vy_p_mps) / M,
+      y: (r21 * vx_p_mps + r22 * vy_p_mps) / M,
+      z: (r31 * vx_p_mps + r32 * vy_p_mps) / M
+    } // Convert m/s to AU/s
   };
 }
 

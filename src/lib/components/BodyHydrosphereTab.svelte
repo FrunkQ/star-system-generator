@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { LIQUIDS as FALLBACK_LIQUIDS } from '$lib/constants';
-  import { liquidsLiquidInRange } from '$lib/physics/liquids';
+  import { liquidsLiquidInRange, phaseAtP, phaseReason } from '$lib/physics/liquids';
   import { fmt } from '$lib/stores';
 
   export let body: CelestialBody;
@@ -13,6 +13,9 @@
   $: liquids = rulePack?.liquids && rulePack.liquids.length > 0 ? rulePack.liquids : FALLBACK_LIQUIDS;
 
   $: currentTemp = body.temperatureK || 0;
+  // Surface pressure gates the phase: a thick atmosphere raises boiling; a near-vacuum forces
+  // sublimation (no liquid at all). Undefined pressure → the solvent's 1-atm behaviour.
+  $: surfPbar = body.atmosphere?.pressure_bar;
 
   // The surface INSOLATION range (poles↔equator, night↔day, winter↔summer) — excludes localized
   // tidal-volcanic hotspots, which are vents, not where a standing liquid body sits.
@@ -25,17 +28,18 @@
   // Offer every liquid that is LIQUID somewhere across that range (e.g. liquid at the equator even
   // if the mean is below freezing) — the temperature model now informs which solvents are viable.
   $: validLiquids = liquidsLiquidInRange(surfaceMinK, surfaceMaxK, rulePack);
-  
-  // Check if current selection is valid
+  // Live phase of every liquid at THIS temperature & pressure — drives the per-option phase hints.
+  $: phaseOf = (name: string) => phaseAtP(name, currentTemp, surfPbar, rulePack);
+
+  // Check if the current selection is actually liquid here (pressure-aware, not a ±20 K fudge).
   $: currentLiquidDef = body.hydrosphere ? liquids.find(l => l.name === body.hydrosphere!.composition) : null;
-  
-  $: isCurrentValid = !body.hydrosphere || !currentLiquidDef
-      ? true 
-      : (currentTemp >= (currentLiquidDef.meltK - 20) && currentTemp <= (currentLiquidDef.boilK + 20));
-      
-  $: warningMsg = !isCurrentValid && body.hydrosphere 
-      ? `Warning: ${$fmt.tempK(currentTemp)} is outside stability range for ${currentLiquidDef?.label || body.hydrosphere.composition}.`
+  $: currentPhase = body.hydrosphere ? phaseOf(body.hydrosphere.composition) : 'liquid';
+  $: isCurrentValid = !body.hydrosphere || !currentLiquidDef || currentPhase === 'liquid';
+
+  $: warningMsg = !isCurrentValid && body.hydrosphere
+      ? `${currentLiquidDef?.label || body.hydrosphere.composition} is not liquid here: ${phaseReason(body.hydrosphere.composition, currentTemp, surfPbar, rulePack)}. The recorded coverage is displayed by its actual phase.`
       : '';
+  const PHASE_LABEL: Record<string, string> = { solid: 'frozen', gas: 'vapour', supercritical: 'supercritical', liquid: 'liquid' };
 
   // Coverage Slider State
   let svgCoverageSlider: SVGSVGElement;
@@ -91,23 +95,28 @@
 
 <div class="tab-panel">
     <div class="form-group">
-        <label>Primary Liquid Composition</label>
+        <div class="label-row">
+            <label>Primary Liquid Composition</label>
+            {#if body.hydrosphere}
+                <span class="phase-chip {currentPhase}" title="Phase of the recorded solvent at {$fmt.tempK(currentTemp)}{surfPbar !== undefined ? ` / ${surfPbar} bar` : ''}">{PHASE_LABEL[currentPhase] ?? currentPhase}</span>
+            {/if}
+        </div>
         <select value={body.hydrosphere ? body.hydrosphere.composition : 'none'} on:change={handleCompositionChange} class:warning={!isCurrentValid}>
             <option value="none">None</option>
-            
+
             {#if validLiquids.length > 0}
-                <optgroup label="Stable Liquids">
+                <optgroup label="Liquid somewhere on this world">
                     {#each validLiquids as comp}
-                        <option value={comp.name}>{comp.label}</option>
+                        {@const ph = phaseOf(comp.name)}
+                        <option value={comp.name}>{comp.label}{ph === 'liquid' ? '' : ` — ${PHASE_LABEL[ph] ?? ph} at the mean`}</option>
                     {/each}
                 </optgroup>
             {/if}
 
-            {#if body.hydrosphere && !isCurrentValid}
-                <optgroup label="Current (Unstable)">
+            {#if body.hydrosphere && !validLiquids.some(l => l.name === body.hydrosphere.composition)}
+                <optgroup label="Current selection">
                     <option value={body.hydrosphere.composition}>
-                        {currentLiquidDef ? currentLiquidDef.label : body.hydrosphere.composition} 
-                        ({currentTemp < (currentLiquidDef?.meltK || 0) ? 'Frozen' : 'Boiling'})
+                        {currentLiquidDef ? currentLiquidDef.label : body.hydrosphere.composition}{currentPhase === 'liquid' ? '' : ` (${PHASE_LABEL[currentPhase] ?? currentPhase})`}
                     </option>
                 </optgroup>
             {/if}
@@ -176,6 +185,11 @@
   
   select.warning { border-color: #f59e0b; color: #f59e0b; }
   .warning-text { color: #f59e0b; font-size: 0.8em; margin-top: 2px; }
+  .phase-chip { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.04em; border-radius: 3px; padding: 0 6px; border: 1px solid var(--border); }
+  .phase-chip.liquid { color: #3b82f6; border-color: #3b82f6; }
+  .phase-chip.solid { color: #9fd0ff; }
+  .phase-chip.gas { color: #e8a857; border-color: #e8a857; }
+  .phase-chip.supercritical { color: #c98fe0; border-color: #c98fe0; }
   .derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
   .layers { display: flex; flex-direction: column; gap: 4px; }
   .layer { display: flex; align-items: center; gap: 8px; font-size: 0.85em; }

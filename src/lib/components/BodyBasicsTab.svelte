@@ -2,15 +2,20 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
   import { fmt } from '$lib/stores';
-  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
-  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor } from '$lib/physics/makeup';
+  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, G } from '$lib/constants';
+  import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
+  import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
   import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
   import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
-    COMPOSITION_PRESETS, presetValidAt, presetActive,
+    trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored,
     type EditLock, type BodyEditState
   } from '$lib/physics/bodyEdit';
+  import { bandFit } from '$lib/system/classification';
+  import CompositionCrossSection from './CompositionCrossSection.svelte';
+  import { pickableTypes, bestTypeFor, sliderSpan, rangeOf, UNKNOWN_CLASS } from '$lib/system/typeRanges';
+  import type { Fingerprint } from '$lib/types';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -154,14 +159,15 @@
   // ============================================================================
   const MK_KEYS: Array<keyof Makeup> = ['metal', 'rock', 'carbon', 'ice', 'gas'];
   const MK_LABEL: Record<string, string> = { metal: 'Metal', rock: 'Rock', carbon: 'Carbon', ice: 'Ice', gas: 'Gas' };
-  const MK_SWATCH: Record<string, string> = { metal: '#9c8d7a', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
+  const MK_SWATCH: Record<string, string> = { metal: '#8e939e', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
 
   let lock: EditLock = null;
   function toggleLock(which: Exclude<EditLock, null>) { lock = lock === which ? null : which; }
 
-  // Slider ranges (log scale). Bounds mirror bodyEdit.ts clamps.
-  const pMassMin = 1e-4, pMassMax = 1e5;   // Earth masses (moonlet -> past brown dwarf)
-  const pRadMin = 0.02,  pRadMax = 40;      // Earth radii
+  // Slider ranges (log scale). Bounds mirror bodyEdit.ts clamps — the low ends reach
+  // asteroid/comet scale (log mapping keeps the bottom decades finely tunable).
+  const pMassMin = 1e-12, pMassMax = 1e5;  // Earth masses (small comet -> past brown dwarf)
+  const pRadMin = 5e-5,  pRadMax = 40;      // Earth radii (~0.3 km up)
   const pDenMin = 0.1,   pDenMax = 30;      // g/cc
   const logPos = (v: number, lo: number, hi: number) =>
       clamp((Math.log(clamp(v, lo, hi)) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)), 0, 1);
@@ -173,9 +179,9 @@
   $: pRadiusRe = (body.radiusKm ?? 0) / EARTH_RADIUS_KM;
   $: pMakeup = normalizeMakeup(makeupFractions(body));
   $: pDensity = densityGcc(pMassMe, pRadiusRe);
-  $: pMassPos = logPos(pMassMe, pMassMin, pMassMax);
-  $: pRadPos = logPos(pRadiusRe, pRadMin, pRadMax);
-  $: pDenPos = logPos(pDensity, pDenMin, pDenMax);
+  $: pMassPos = logPos(pMassMe, massSpan[0], massSpan[1]);
+  $: pRadPos = logPos(pRadiusRe, radSpan[0], radSpan[1]);
+  $: pDenPos = logPos(pDensity, denSpan[0], denSpan[1]);
 
   // Unit selectors for the Mass & Radius number fields — a 3-way click cycler shown in the label gap, so
   // a tiny moon (awkward as 1e-8 M⊕) can be edited in tonnes or km instead. The SLIDER stays in canonical
@@ -208,15 +214,27 @@
           makeup: normalizeMakeup(makeupFractions(body))
       };
   }
-  // Every edit through this panel commits back to the body and hands the TYPE to the
-  // physics: autoClassify on -> the fingerprint classifier re-derives class + image on
-  // the next process (so terrestrial -> gas giant actually flips as you cross the bands).
+  // Every edit through this panel commits back to the body. The TYPE is no longer handed to
+  // the physics on every touch (that snatched hand-pinned classes + images out from under the
+  // GM): edits inside the composition's trim envelope leave the classify mode alone, and only
+  // a FLOW-THROUGH edit (dragged outside the envelope, composition morphing) re-arms
+  // autoClassify — on slider RELEASE, so the type commits once, not mid-drag.
   function commit(out: BodyEditState) {
       body.massKg = out.massMe * EARTH_MASS_KG;
       body.radiusKm = out.radiusRe * EARTH_RADIUS_KM;
       body.makeup = { ...out.makeup };
-      body.autoClassify = true;
       body = body; // trigger local reactivity now, without waiting on the parent reprocess
+      dispatch('update');
+  }
+
+  // Flow-through tracking: set while a drag has left the envelope (drives the transition chip);
+  // cleared when the edit is finalised. finalizeEdit() runs on slider release / number-input edits.
+  let pendingFlowThrough = false;
+  function finalizeEdit() {
+      if (!pendingFlowThrough) return;
+      pendingFlowThrough = false;
+      body.autoClassify = true; // hand the type to the physics ONCE — the announced morph commits
+      body = body;
       dispatch('update');
   }
 
@@ -231,15 +249,38 @@
 
   const heldDensity = () =>
       (lock === 'density' ? densityGcc((body.massKg ?? 0) / EARTH_MASS_KG, (body.radiusKm ?? 0) / EARTH_RADIUS_KM) : undefined);
-  function applyMass(v: number)   { if (Number.isFinite(v)) commit(editMass(pState(), v, lock, heldDensity(), effInflation())); }
-  function applyRadius(v: number) { if (Number.isFinite(v)) commit(editRadius(pState(), v, lock, heldDensity())); }
-  function applyDensity(v: number){ if (Number.isFinite(v)) commit(editDensity(pState(), v, lock)); }
+  // Unlocked = ANCHORED editing (composition holds inside the trim envelope; outside it the edit
+  // flows through — makeup morphs — flagged for the transition chip + autoClassify-on-release).
+  // A lock keeps the classic per-lock behaviours.
+  function applyMass(v: number) {
+      if (!Number.isFinite(v)) return;
+      if (lock === null) { commit(editMassAnchored(pState(), v)); return; }
+      commit(editMass(pState(), v, lock, heldDensity(), effInflation()));
+  }
+  function applyRadius(v: number) {
+      if (!Number.isFinite(v)) return;
+      if (lock === null) {
+          const out = editRadiusAnchored(pState(), v);
+          if (out.outOfBand) pendingFlowThrough = true;
+          commit(out);
+          return;
+      }
+      commit(editRadius(pState(), v, lock, heldDensity()));
+  }
+  function applyDensity(v: number) {
+      if (!Number.isFinite(v)) return;
+      if (lock === null) {
+          const out = editDensityAnchored(pState(), v);
+          if (out.outOfBand) pendingFlowThrough = true;
+          commit(out);
+          return;
+      }
+      commit(editDensity(pState(), v, lock));
+  }
   function applyMakeupComp(k: keyof Makeup, pctVal: number) {
       const nm = setMakeupComponent(pState().makeup, k, clamp(pctVal, 0, 100) / 100);
       commit(editMakeup(pState(), nm, lock, effInflation()));
-  }
-  function applyPreset(mk: Makeup) {
-      commit(editMakeup(pState(), normalizeMakeup(mk), lock, effInflation()));
+      pendingFlowThrough = true; // a deliberate recompose hands the type to the physics on release
   }
 
   // Thermal-inflation override controls (gas giants). Changing it re-derives the radius from the mass.
@@ -261,33 +302,195 @@
   const onInflSlider = (e: Event) => setInflation(+(e.target as HTMLInputElement).value);
   const onInflNum = (e: Event)    => setInflation(parseFloat((e.target as HTMLInputElement).value));
 
-  const onMassSlider = (e: Event)  => applyMass(logVal(+(e.target as HTMLInputElement).value, pMassMin, pMassMax));
-  const onRadSlider = (e: Event)   => applyRadius(logVal(+(e.target as HTMLInputElement).value, pRadMin, pRadMax));
-  const onDenSlider = (e: Event)   => applyDensity(logVal(+(e.target as HTMLInputElement).value, pDenMin, pDenMax));
-  const onMassNum = (e: Event)     => applyMass(massMeFromDisp(parseFloat((e.target as HTMLInputElement).value)));
-  const onRadNum = (e: Event)      => applyRadius(radReFromDisp(parseFloat((e.target as HTMLInputElement).value)));
-  const onDenNum = (e: Event)      => applyDensity(parseFloat((e.target as HTMLInputElement).value));
+  const onMassSlider = (e: Event)  => { const p = +(e.target as HTMLInputElement).value; applyMass(logVal(p, massSpan[0], massSpan[1])); checkEdge(p, 'mass'); };
+  const onRadSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyRadius(logVal(p, radSpan[0], radSpan[1])); checkEdge(p, 'radius'); };
+  const onDenSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyDensity(logVal(p, denSpan[0], denSpan[1])); checkEdge(p, 'density'); };
+  const onMassNum = (e: Event)     => { applyMass(massMeFromDisp(parseFloat((e.target as HTMLInputElement).value))); reselectAfterTyped('mass_Me'); };
+  const onRadNum = (e: Event)      => { applyRadius(radReFromDisp(parseFloat((e.target as HTMLInputElement).value))); reselectAfterTyped('radius_Re'); };
+  const onDenNum = (e: Event)      => { applyDensity(parseFloat((e.target as HTMLInputElement).value)); reselectAfterTyped('density'); };
   const onMkSlider = (k: keyof Makeup, e: Event) => applyMakeupComp(k, +(e.target as HTMLInputElement).value);
   const onMkNum = (k: keyof Makeup, e: Event)    => applyMakeupComp(k, parseFloat((e.target as HTMLInputElement).value) || 0);
 
   // Live classification the physics has assigned (updated after each commit -> process()).
   function prettyClass(c: string | undefined): string {
       if (!c) return '—';
-      return c.replace(/^(planet|star)\//, '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+      return c.replace(/^(planet|star|asteroid)\//, '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
   }
   $: liveType = prettyClass(body.classes?.[0]);
   $: makeupLocked = lock === 'density'; // density-lock === composition-lock
 
-  function updateVisualType(e: Event) {
-      const val = (e.target as HTMLSelectElement).value;
+  // The composition's trim ENVELOPE — drawn as range bars over the radius & density sliders.
+  // Inside the bars a drag varies only porosity/inflation (type, image and makeup all hold);
+  // past the edge the composition morphs (transition chip) and the type commits on release.
+  $: pEnv = isPlanetMoon ? trimEnvelope(pMassMe, pMakeup) : null;
+  // Live macroporosity readout (solids): derived from mass+radius vs the mix's compacted
+  // density — the void fraction the current size implies. Shown when it's meaningful.
+  $: pPorosity = isPlanetMoon && !pGasDominated ? derivedPorosity(body) : 0;
+  $: pPorosityMax = maxPorosity(pMassMe);
+  // Mapped into the (class-ranged) slider spans; hidden when the envelope falls outside the window.
+  function clipBand(lo: number, hi: number, span: number[]): { left: number; width: number } | null {
+      const l = logPos(Math.max(lo, span[0]), span[0], span[1]);
+      const r = logPos(Math.min(hi, span[1]), span[0], span[1]);
+      if (r <= 0 || l >= 1 || r <= l) return null;
+      return { left: l * 100, width: Math.max(0.8, (r - l) * 100) };
+  }
+  $: radTrimBand = pEnv ? clipBand(pEnv.radLo, pEnv.radHi, radSpan) : null;
+  $: denTrimBand = pEnv ? clipBand(pEnv.denLo, pEnv.denHi, denSpan) : null;
+
+  // The advisory line for a pinned type ("physics reads" only shown when it disagrees).
+  $: physicsReads = prettyClass(body.classification?.base);
+  $: showAdvisory = body.autoClassify === false && body.classification?.base && physicsReads !== liveType;
+
+  // ——— PLANET TYPE list (the classifier, rolled in — design §11) ————————————————————————
+  // Every base fingerprint whose mass band AND orbital-temperature band admit the current
+  // body (mass is editable here; Teq comes from the orbit, so a type demanding a different
+  // climate is genuinely out of reach without moving the body), ranked by the classifier's
+  // own candidate score against the full current state. Bright = fits now; dim = reachable
+  // but needs radius/density moved into its bands. Clicking PINS the type (sliders do not
+  // move) and shows its fingerprint bands on the sliders.
+  $: baseFps = ((rulePack?.classifier?.fingerprints ?? []) as Fingerprint[]).filter((f) => (f.kind ?? 'base') === 'base');
+  $: pTeqK = body.equilibriumTempK ?? 0;
+  $: typeList = pickableTypes(baseFps, { massMe: pMassMe, teqK: pTeqK })
+      .map((f) => {
+          const cand = body.classification?.candidates?.find((c) => c.class === f.class);
+          return { cls: f.class, fp: f, score: cand?.score ?? 0, fits: !!cand };
+      })
+      .sort((a, b) => b.score - a.score || a.cls.localeCompare(b.cls));
+
+  // Pin a type from the list: classes[0] + autoClassify off + the type image. Sliders keep
+  // their VALUES (they re-range to the new class's span, but the body doesn't change).
+  function pinType(val: string) {
       if (!body.classes) body.classes = [];
       body.classes[0] = val;
-      body.autoClassify = false; // an explicit pick is end-state
+      body.autoClassify = false;
       if (rulePack?.classifier?.planetImages && rulePack.classifier.planetImages[val]) {
           if (!body.image) body.image = { url: '' };
           body.image.url = rulePack.classifier.planetImages[val];
       }
+      edgeHint = null;
+      body = body;
       dispatch('update');
+  }
+
+  // ——— RESET-TO-TYPE picker (Alex) ————————————————————————————————————————————————————————
+  // Regenerate the body AS a chosen classification, using the same generateBodyOfType recipe the
+  // add-body flow uses — gated by what's viable in THIS orbit (Teq) and under the host-mass ceiling
+  // (a moon can't outweigh its planet). Unlike pinning (label only), this RESETS the physical +
+  // composition parameters to a plausible example of that type; identity, name, orbit and any custom
+  // image are preserved, and the processor re-derives the rest.
+  $: hostMassKgCtx = body.orbit?.hostMu ? body.orbit.hostMu / G : SOLAR_MASS_KG;
+  $: hostMassMeCtx = hostMassKgCtx / EARTH_MASS_KG;
+  $: resetTypes = pickableTypes(baseFps, { teqK: pTeqK }, ['Teq_K'])
+      .filter((f) => { const r = rangeOf(f, 'mass_Me'); return !r || r[0] < hostMassMeCtx * 0.5; })
+      .sort((a, b) => a.class.localeCompare(b.class));
+  function resetToType(cls: string) {
+      const fp = baseFps.find((f) => f.class === cls);
+      if (!fp) return;
+      const gen = generateBodyOfType(fp, {
+          distAU: body.orbit?.elements?.a_AU ?? 1,
+          hostMassKg: hostMassKgCtx,
+          role: (body.roleHint as any) ?? 'planet',
+          teqK: pTeqK
+      });
+      // MUTATE in place (matches commit()), so the parent's body reference updates. gen carries the
+      // type's mass/radius/makeup/hydrosphere/atmosphere/biosphere/classes/tags; identity, name and
+      // orbit aren't in gen, so they're preserved. autoClassify on: the params land in the type's
+      // bands, so the processor confirms the class (and any temperature-refined subtype) next pass.
+      const keepImage = body.image?.custom ? body.image : undefined;
+      Object.assign(body, gen);
+      body.autoClassify = true;
+      if (keepImage) body.image = keepImage;
+      pendingFlowThrough = false;
+      body = body;
+      dispatch('update');
+  }
+  function onResetSelect(e: Event) {
+      const el = e.target as HTMLSelectElement;
+      const val = el.value;
+      el.value = ''; // snap back to the placeholder — this is an action, not a persistent selection
+      if (val) resetToType(val);
+  }
+
+  // ——— CLASS-RANGED sliders (design §12) ————————————————————————————————————————————————
+  // Each slider spans the pinned/current class's range (log-padded ±15%, min ×2) instead of
+  // the full 17-decade span — high resolution where it matters, and reaching an end nudges
+  // the GM to pick the neighbouring type. Unknown (or a class with no range on that axis)
+  // falls back to the full span — the one place a full-range slider still appears.
+  $: bandFp = baseFps.find((f) => f.class === body.classes?.[0]) ?? null;
+  $: isUnknown = body.classes?.[0] === UNKNOWN_CLASS;
+  // Per-slider full-range toggles (Alex): each of mass/radius can independently expand from the
+  // pinned type's zoomed band to its full span (<-> to open, >-< to collapse). Density is ALWAYS
+  // full range — its span (0.1–30 g/cc) is small enough that zooming buys nothing.
+  let massFull = false;
+  let radFull = false;
+  // Only offer the expand/collapse toggle (and the funnel) when the current type actually has a
+  // range on that axis to zoom to — a specialist class (Swamp, eyeballs…) has none, so its slider
+  // is already full and there is nothing to collapse.
+  $: massHasRange = !isUnknown && !!rangeOf(bandFp, 'mass_Me');
+  $: radHasRange = !isUnknown && !!rangeOf(bandFp, 'radius_Re');
+  $: massZoom = massHasRange && !massFull;
+  $: radZoom = radHasRange && !radFull;
+  $: massSpan = massZoom ? sliderSpan(rangeOf(bandFp, 'mass_Me'), pMassMin, pMassMax) : [pMassMin, pMassMax];
+  $: radSpan = radZoom ? sliderSpan(rangeOf(bandFp, 'radius_Re'), pRadMin, pRadMax) : [pRadMin, pRadMax];
+  $: denSpan = [pDenMin, pDenMax];
+
+  // Overview strip under a zoomed mass/radius slider: the FULL log scale with the current window
+  // shaded, so you always see where the zoomed slider sits in the whole range.
+  const overview = (span: number[], fullLo: number, fullHi: number) => ({
+    left: logPos(span[0], fullLo, fullHi) * 100,
+    width: Math.max(1.5, (logPos(span[1], fullLo, fullHi) - logPos(span[0], fullLo, fullHi)) * 100)
+  });
+  $: massOverview = massZoom ? overview(massSpan, pMassMin, pMassMax) : null;
+  $: radOverview = radZoom ? overview(radSpan, pRadMin, pRadMax) : null;
+  // The pointer's position in the FULL range (the funnel's track is the whole scale), so a tick can
+  // mark exactly where the current value sits within the shown window.
+  $: massPtr = logPos(pMassMe, pMassMin, pMassMax) * 100;
+  $: radPtr = logPos(pRadiusRe, pRadMin, pRadMax) * 100;
+
+  // The class's own band drawn INSIDE the padded span (the padding at each end is the
+  // "leaving the class" zone).
+  function typeBandFor(fp: Fingerprint | null, key: 'mass_Me' | 'radius_Re' | 'density', span: number[]): { left: number; width: number } | null {
+      const b = rangeOf(fp, key);
+      if (!b) return null;
+      const l = logPos(Math.max(b[0], span[0]), span[0], span[1]);
+      const r = logPos(Math.min(b[1], span[1]), span[0], span[1]);
+      if (r <= 0 || l >= 1) return null;
+      return { left: l * 100, width: Math.max(0.8, (r - l) * 100) };
+  }
+  $: massTypeBand = typeBandFor(bandFp, 'mass_Me', massSpan);
+  $: radTypeBand = typeBandFor(bandFp, 'radius_Re', radSpan);
+  $: denTypeBand = typeBandFor(bandFp, 'density', denSpan);
+
+  // Compact end-labels so the GM always knows the current window.
+  function fmtEnd(v: number): string {
+      if (!Number.isFinite(v)) return '';
+      if (v !== 0 && (Math.abs(v) < 1e-3 || Math.abs(v) >= 1e5)) return v.toExponential(0);
+      return Number(v.toPrecision(3)).toString();
+  }
+
+  // Edge hint: released at a span end → nudge toward the type list (never auto-switch).
+  let edgeHint: string | null = null;
+  function checkEdge(pos: number, axis: string) {
+      edgeHint = (!isUnknown && bandFp && (pos >= 0.995 || pos <= 0.005))
+          ? `End of ${liveType}'s ${axis} range — pick another type below, or type a value`
+          : null;
+  }
+
+  // A TYPED value is always accepted (engine floors only). If it leaves the current class's
+  // range, deselect to the best-fitting pickable type at the new state — or Unknown when
+  // nothing sensible fits (the "GM insists" case).
+  function reselectAfterTyped(axis: 'mass_Me' | 'radius_Re' | 'density') {
+      const s = pState();
+      const value = axis === 'mass_Me' ? s.massMe : axis === 'radius_Re' ? s.radiusRe : densityGcc(s.massMe, s.radiusRe);
+      const r = rangeOf(bandFp, axis);
+      if (!r || bandFit(value, r) > 0) return;   // still fits (or class doesn't constrain this axis)
+      const best = bestTypeFor(baseFps, { massMe: s.massMe, radiusRe: s.radiusRe, density: densityGcc(s.massMe, s.radiusRe), teqK: pTeqK });
+      pinType(best ?? UNKNOWN_CLASS);
+      edgeHint = null;
+  }
+
+  function updateVisualType(e: Event) {
+      pinType((e.target as HTMLSelectElement).value); // an explicit pick is end-state
   }
 
   function handleUpdate() { dispatch('update'); }
@@ -395,17 +598,55 @@
         <div class="sc-title">Size &amp; Composition</div>
         <div class="sc-type"><span class="sc-type-label">Type</span> <span class="sc-type-val">{liveType}</span></div>
     </div>
-    <div class="sc-sub"><span class="category-badge">{sizeCategory}</span></div>
+    <div class="sc-sub">
+        <span class="category-badge">{sizeCategory}</span>
+        {#if showAdvisory}<span class="sc-advisory" title="The type is pinned; this is what the classifier would call the current physics.">physics reads: {physicsReads}</span>{/if}
+    </div>
+
+    <!-- Reset the body's parameters to a plausible example of another classification viable in this
+         orbit (Teq) and under the host-mass ceiling. Regenerates size/composition/environment. -->
+    {#if resetTypes.length}
+        <div class="sc-reset">
+            <label for="sc-reset-sel">Reset to type</label>
+            <select id="sc-reset-sel" on:change={onResetSelect} title="Regenerate this body as a plausible example of the chosen type — resets mass, radius, composition and environment. Identity, name and orbit are kept.">
+                <option value="">Choose a classification…</option>
+                {#each resetTypes as t}
+                    <option value={t.class}>{prettyClass(t.class)}</option>
+                {/each}
+            </select>
+        </div>
+    {/if}
 
     <!-- MASS -->
     <div class="sc-field" class:locked={lock === 'mass'}>
         <div class="sc-row">
             <button class="lock" class:on={lock === 'mass'} title={lock === 'mass' ? 'Mass pinned - click to release' : 'Pin the mass'} on:click={() => toggleLock('mass')} aria-label="Lock mass">{lock === 'mass' ? '🔒' : '🔓'}</button>
+            {#if massHasRange}
+                <button class="sc-rangetgl" title={massFull ? 'Collapse to this type’s range' : 'Expand to the full mass range'} aria-label={massFull ? 'Collapse mass range' : 'Expand mass range'} on:click={() => massFull = !massFull}>
+                    {#if massFull}
+                        <svg viewBox="0 0 16 16" width="13" height="13"><path d="M7 4 L4 8 L7 12 M9 4 L12 8 L9 12 M4 8 H12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {:else}
+                        <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 4 L1 8 L4 12 M12 4 L15 8 L12 12 M1 8 H15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {/if}
+                </button>
+            {/if}
             <label>Mass</label>
-            <input class="sc-num" type="number" step="any" value={r4(massDisp)} on:input={onMassNum} disabled={lock === 'mass'} />
+            <input class="sc-num" type="number" step="any" value={r4(massDisp)} on:change={(e) => { onMassNum(e); finalizeEdit(); }} disabled={lock === 'mass'} />
             <button class="sc-unit-cycle" on:click={cycleMassUnit} title={massUnitTitle} aria-label="Change mass units">{massUnitSym}</button>
         </div>
-        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} disabled={lock === 'mass'} />
+        <div class="sc-slider-wrap">
+            {#if massTypeBand}<div class="sc-typeband" style="left: {massTypeBand.left}%; width: {massTypeBand.width}%;" title="{liveType}: mass range for this type"></div>{/if}
+            <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} on:change={finalizeEdit} disabled={lock === 'mass'} />
+            <div class="sc-ends"><span>{fmtEnd(massSpan[0])}</span><span>{fmtEnd(massSpan[1])} M⊕</span></div>
+            {#if massOverview}
+                <svg class="sc-funnel" viewBox="0 0 100 14" preserveAspectRatio="none" role="img" aria-label="This slider covers {fmtEnd(massSpan[0])}–{fmtEnd(massSpan[1])} of the full {fmtEnd(pMassMin)}–{fmtEnd(pMassMax)} M⊕ range">
+                    <polygon class="funnel-tz" points="0,0 100,0 {massOverview.left + massOverview.width},10 {massOverview.left},10" />
+                    <rect class="funnel-track" x="0" y="10.5" width="100" height="2.5" />
+                    <rect class="funnel-win" x={massOverview.left} y="10" width={massOverview.width} height="3.5" />
+                    <rect class="funnel-ptr" x={massPtr - 0.5} y="8.5" width="1" height="5.5" />
+                </svg>
+            {/if}
+        </div>
         <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
     </div>
 
@@ -413,11 +654,33 @@
     <div class="sc-field" class:locked={lock === 'radius'}>
         <div class="sc-row">
             <button class="lock" class:on={lock === 'radius'} title={lock === 'radius' ? 'Radius pinned - click to release' : 'Pin the radius'} on:click={() => toggleLock('radius')} aria-label="Lock radius">{lock === 'radius' ? '🔒' : '🔓'}</button>
+            {#if radHasRange}
+                <button class="sc-rangetgl" title={radFull ? 'Collapse to this type’s range' : 'Expand to the full radius range'} aria-label={radFull ? 'Collapse radius range' : 'Expand radius range'} on:click={() => radFull = !radFull}>
+                    {#if radFull}
+                        <svg viewBox="0 0 16 16" width="13" height="13"><path d="M7 4 L4 8 L7 12 M9 4 L12 8 L9 12 M4 8 H12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {:else}
+                        <svg viewBox="0 0 16 16" width="13" height="13"><path d="M4 4 L1 8 L4 12 M12 4 L15 8 L12 12 M1 8 H15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {/if}
+                </button>
+            {/if}
             <label>Radius</label>
-            <input class="sc-num" type="number" step="any" value={r4(radDisp)} on:input={onRadNum} disabled={lock === 'radius'} />
+            <input class="sc-num" type="number" step="any" value={r4(radDisp)} on:change={(e) => { onRadNum(e); finalizeEdit(); }} disabled={lock === 'radius'} />
             <button class="sc-unit-cycle" on:click={cycleRadUnit} title={radUnitTitle} aria-label="Change radius units">{radUnitSym}</button>
         </div>
-        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} disabled={lock === 'radius'} />
+        <div class="sc-slider-wrap">
+            {#if radTypeBand}<div class="sc-typeband" style="left: {radTypeBand.left}%; width: {radTypeBand.width}%;" title="{liveType}: radius range for this type"></div>{/if}
+            {#if radTrimBand && lock === null}<div class="sc-band" style="left: {radTrimBand.left}%; width: {radTrimBand.width}%;" title="This mix's physical envelope — inside it only the {pEnv?.kind} varies; past the edge the composition morphs."></div>{/if}
+            <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} on:change={finalizeEdit} disabled={lock === 'radius'} />
+            <div class="sc-ends"><span>{fmtEnd(radSpan[0])}</span><span>{fmtEnd(radSpan[1])} R⊕</span></div>
+            {#if radOverview}
+                <svg class="sc-funnel" viewBox="0 0 100 14" preserveAspectRatio="none" role="img" aria-label="This slider covers {fmtEnd(radSpan[0])}–{fmtEnd(radSpan[1])} of the full {fmtEnd(pRadMin)}–{fmtEnd(pRadMax)} R⊕ range">
+                    <polygon class="funnel-tz" points="0,0 100,0 {radOverview.left + radOverview.width},10 {radOverview.left},10" />
+                    <rect class="funnel-track" x="0" y="10.5" width="100" height="2.5" />
+                    <rect class="funnel-win" x={radOverview.left} y="10" width={radOverview.width} height="3.5" />
+                    <rect class="funnel-ptr" x={radPtr - 0.5} y="8.5" width="1" height="5.5" />
+                </svg>
+            {/if}
+        </div>
         <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
     </div>
 
@@ -426,12 +689,35 @@
         <div class="sc-row">
             <button class="lock" class:on={lock === 'density'} title={lock === 'density' ? 'Density & composition pinned - click to release' : 'Pin the density (holds the interior makeup)'} on:click={() => toggleLock('density')} aria-label="Lock density">{lock === 'density' ? '🔒' : '🔓'}</button>
             <label>Density</label>
-            <input class="sc-num" type="number" step="any" value={r4(pDensity)} on:input={onDenNum} disabled={lock === 'density'} />
+            <input class="sc-num" type="number" step="any" value={r4(pDensity)} on:change={(e) => { onDenNum(e); finalizeEdit(); }} disabled={lock === 'density'} />
             <span class="sc-unit">g/cc</span>
         </div>
-        <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pDenPos} on:input={onDenSlider} disabled={lock === 'density'} />
-        <div class="sub-label">{lock === 'density' ? 'composition held' : 'infers the interior makeup below'}</div>
+        <div class="sc-slider-wrap">
+            {#if denTypeBand}<div class="sc-typeband" style="left: {denTypeBand.left}%; width: {denTypeBand.width}%;" title="{liveType}: density range for this type"></div>{/if}
+            {#if denTrimBand && lock === null}<div class="sc-band" style="left: {denTrimBand.left}%; width: {denTrimBand.width}%;" title="This mix's physical envelope — inside it only the {pEnv?.kind} varies; past the edge the composition morphs."></div>{/if}
+            <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pDenPos} on:input={onDenSlider} on:change={finalizeEdit} disabled={lock === 'density'} />
+            <div class="sc-ends"><span>{fmtEnd(denSpan[0])}</span><span>{fmtEnd(denSpan[1])} g/cc</span></div>
+        </div>
+        <div class="sub-label">{lock === 'density' ? 'composition held' : (pEnv && lock === null ? `inside the green tick: varies ${pEnv.kind} only` : 'infers the interior makeup below')}{#if pPorosity > 0.02}<span class="sc-porosity" title="Void fraction this size implies for the mix (ceiling {Math.round(pPorosityMax * 100)}% at this mass — self-gravity crushes the rest). High porosity at low mass reads as a rubble pile."> · porosity ~{Math.round(pPorosity * 100)}%</span>{/if}</div>
     </div>
+
+    <!-- Composition breakdown: the interior mix at a glance, segmented by mass fraction. -->
+    <div class="sc-breakdown" title="Interior makeup by mass fraction">
+        {#each MK_KEYS as k}
+            {#if (pMakeup[k] ?? 0) > 0.005}
+                <div class="sc-seg" style="width: {((pMakeup[k] ?? 0) * 100).toFixed(1)}%; background-color: {MK_SWATCH[k]}; color: {k === 'ice' || k === 'gas' ? '#1a1c22' : '#f0f0f0'};" title="{MK_LABEL[k]} {Math.round((pMakeup[k] ?? 0) * 100)}%">
+                    {#if (pMakeup[k] ?? 0) >= 0.12}<span>{MK_LABEL[k]} {Math.round((pMakeup[k] ?? 0) * 100)}%</span>{/if}
+                </div>
+            {/if}
+        {/each}
+    </div>
+
+    {#if edgeHint}
+        <div class="sc-edge-chip" role="status">{edgeHint}</div>
+    {/if}
+    {#if pendingFlowThrough}
+        <div class="sc-morph-chip" role="status">Outside this mix's envelope — recomposing; the type re-reads on release</div>
+    {/if}
 
     {#if pMassMe >= 25000}
         <button class="action-btn ignite-btn" on:click={igniteStar}>🔥 Ignite into Star</button>
@@ -439,35 +725,55 @@
 
     <hr/>
 
-    <!-- COMPOSITION PRESETS - gated by the current density (bands overlap on purpose) -->
-    <div class="sc-presets-label">Composition preset <span class="sc-presets-sub">- valid at {pDensity.toFixed(1)} g/cc</span></div>
-    <div class="sc-presets">
-        {#each COMPOSITION_PRESETS as p}
-            <button class="preset"
-                    class:active={presetActive(p, pMakeup)}
-                    disabled={makeupLocked || !presetValidAt(p, pDensity)}
-                    title={makeupLocked ? 'Unlock density to recompose' : (presetValidAt(p, pDensity) ? `Set a ${p.name} interior` : `Out of band at ${pDensity.toFixed(1)} g/cc (needs ${p.band[0]}-${p.band[1]})`)}
-                    on:click={() => applyPreset(p.makeup)}>{p.name}</button>
+    <!-- PLANET TYPE — the classifier rolled in: every type reachable at this mass, ranked by
+         how well the current physics matches. Clicking PINS the type (sliders do not move) and
+         shows its fingerprint bands on the sliders so the GM can tune into it. -->
+    <div class="sc-presets-label">Planet type <span class="sc-presets-sub">- reachable at {(body.massKg || 0).toExponential(1)} kg · click to pin, bands show its range</span></div>
+    <div class="sc-presets sc-typelist">
+        {#each typeList as t (t.cls)}
+            <button class="preset type-chip"
+                    class:fits={t.fits}
+                    class:active={body.classes?.[0] === t.cls}
+                    title={t.fits ? `Matches the current physics (score ${t.score.toFixed(2)}) — click to pin` : 'Reachable at this mass — click to pin, then tune radius/density into its bands'}
+                    on:click={() => pinType(t.cls)}>{prettyClass(t.cls)}</button>
         {/each}
+        <button class="preset type-chip unknown"
+                class:active={isUnknown}
+                title="No classification — full-range sliders, no bands. For when the numbers deliberately fit no known type."
+                on:click={() => pinType(UNKNOWN_CLASS)}>Unknown</button>
+        {#if typeList.length === 0}<span class="sc-presets-sub">no classified types at this mass</span>{/if}
     </div>
+    <p class="sc-type-note">Pinning a type sets the label and image — it does not force the physics. Many
+    types also key on atmosphere, temperature, liquid or life (set on the other tabs); the
+    <em>physics reads</em> note above shows what the classifier currently sees.</p>
 
     <!-- INTERIOR MAKEUP - editable when density is unlocked; back-drives density -->
     <div class="sc-makeup" class:frozen={makeupLocked}>
         <div class="sc-makeup-head">
             <span>Interior makeup</span>
-            <span class="hint">{makeupLocked ? 'held by density lock' : 'drives density -> size'}</span>
+            {#if makeupLocked}<span class="hint">held by density lock</span>{/if}
         </div>
+        <div class="sc-makeup-body">
+        <div class="sc-makeup-rows">
         {#each MK_KEYS as k}
             <div class="mk-row">
                 <span class="swatch" style="background-color: {MK_SWATCH[k]}"></span>
                 <label for="mk-{k}">{MK_LABEL[k]}</label>
-                <input id="mk-{k}" type="range" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkSlider(k, e)} disabled={makeupLocked} />
-                <input class="mk-num" type="number" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkNum(k, e)} disabled={makeupLocked} />
+                <input id="mk-{k}" type="range" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:input={(e) => onMkSlider(k, e)} on:change={finalizeEdit} disabled={makeupLocked} />
+                <input class="mk-num" type="number" min="0" max="100" step="1" value={Math.round((pMakeup[k] ?? 0) * 100)} on:change={(e) => { onMkNum(k, e); finalizeEdit(); }} disabled={makeupLocked} />
                 <span class="mk-pct">%</span>
             </div>
         {/each}
+        </div>
+        <!-- Interior quarter-cutaway beside the makeup sliders: heat + composition faces. -->
+        <div class="sc-xsec-inline">
+            <CompositionCrossSection {body} makeup={pMakeup} porosity={pPorosity} seed={body.id} size={128}
+                compNote="Density is gravity-compressed by mass — the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release."
+                subsurfaceOcean={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'subsurface') ?? null}
+                surfaceLiquid={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'surface') ?? null} />
+        </div>
+        </div>
     </div>
-    <p class="compress-note">Density is gravity-compressed by mass - the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.</p>
 
     {#if pGasDominated}
         <hr/>
@@ -730,8 +1036,66 @@
   .lock.on { background: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
 
   /* Larger, more prominent primary sliders */
-  .sc-slider { width: 100%; height: 22px; cursor: pointer; margin: 0; accent-color: var(--accent, #ff5a1f); }
+  /* Calmer than the brand orange: the size/makeup sliders are the biggest colour mass on this tab,
+     so they use a muted slate. Orange is reserved for genuinely SELECTED states (active chip/preset). */
+  .sc-slider { width: 100%; height: 22px; cursor: pointer; margin: 0; accent-color: #6f8bad; }
   .sc-slider:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  /* Slider range bands. Slate = the pinned/current TYPE's fingerprint band (stay inside to remain
+     that type); the thinner green tick = the current MIX's physical envelope (inside it a drag varies
+     porosity/inflation only; past it the composition morphs). */
+  .sc-slider-wrap { position: relative; }
+  .sc-typeband {
+    position: absolute; top: -3px; height: 5px; border-radius: 2px;
+    background: rgba(111, 139, 173, 0.55); pointer-events: auto; z-index: 1;
+  }
+  .sc-band {
+    position: absolute; top: -7px; height: 3px; border-radius: 2px;
+    background: rgba(41, 199, 122, 0.75); pointer-events: auto; z-index: 1;
+  }
+  /* Planet-type list: bright = matches the current physics now; dim = reachable at this mass. */
+  .sc-typelist { max-height: 120px; overflow-y: auto; }
+  .sc-type-note { font-size: 0.74em; color: var(--text-faint, #8a8f9a); margin: 4px 0 0; }
+  .type-chip.unknown { border-style: dashed; opacity: 0.8; }
+
+  /* Class-ranged slider furniture: window end-labels + the end-of-range nudge. */
+  .sc-ends { display: flex; justify-content: space-between; font-size: 0.68em; color: var(--text-faint, #8a8f9a); margin-top: -2px; }
+  /* Per-slider expand/collapse toggle sits next to the lock: <-> opens to the full range, >-< back. */
+  .sc-rangetgl { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 20px; height: 20px; background: transparent; border: 1px solid transparent; border-radius: 4px; color: var(--text-faint, #8a8f9a); cursor: pointer; }
+  .sc-rangetgl:hover { color: #9fb2c8; border-color: var(--border, #2a2d36); }
+  .sc-reset { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .sc-reset label { font-size: 0.82em; color: var(--text-muted, #cfcfcf); flex: 0 0 auto; }
+  .sc-reset select { flex: 1 1 auto; min-width: 0; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font-size: 0.85em; }
+  /* Funnel: the full-width slider above tapers down to the slice of the whole range it actually
+     covers, drawn on a full-scale track below. Slides + reshapes as the window changes with type. */
+  .sc-funnel { display: block; width: 100%; height: 14px; margin-top: 1px; overflow: visible; }
+  .sc-funnel .funnel-tz { fill: #6f8bad; opacity: 0.16; }
+  .sc-funnel .funnel-track { fill: var(--border, #2a2d36); }
+  .sc-funnel .funnel-win { fill: #6f8bad; opacity: 0.7; }
+  .sc-funnel .funnel-ptr { fill: #dfe7f0; }
+  /* Interior cutaway gets breathing room — centred, with its note reading as a caption. */
+  .sc-xsec-inline { flex: 0 0 auto; display: flex; align-items: center; cursor: help; }
+  .sc-edge-chip {
+    align-self: flex-start; font-size: 0.76em; padding: 2px 8px; border-radius: 10px;
+    background: rgba(255, 90, 31, 0.12); border: 1px solid rgba(255, 90, 31, 0.45); color: var(--accent, #ff5a1f);
+  }
+  .type-chip { opacity: 0.55; }
+  .type-chip.fits { opacity: 1; }
+  .type-chip.active { border-color: var(--accent, #ff5a1f); color: var(--accent, #ff5a1f); opacity: 1; }
+
+  /* Composition breakdown bar: the interior mix at a glance, segmented by mass fraction. */
+  .sc-breakdown { display: flex; height: 16px; border-radius: 4px; overflow: hidden; margin-top: 4px; border: 1px solid var(--border, #2a2d36); }
+  .sc-breakdown .sc-seg { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; font-size: 0.62em; letter-spacing: 0.02em; white-space: nowrap; }
+
+  .sc-morph-chip {
+    align-self: flex-start; font-size: 0.76em; padding: 2px 8px; border-radius: 10px;
+    background: rgba(232, 168, 87, 0.15); border: 1px solid rgba(232, 168, 87, 0.5); color: #e8a857;
+  }
+  .sc-advisory { margin-left: 8px; font-size: 0.78em; font-style: italic; color: var(--text-faint, #8a8f9a); }
+
+  /* Makeup rows + the live interior cross-section side by side (stacks on narrow panels). */
+  .sc-makeup-body { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .sc-makeup-rows { flex: 1 1 220px; min-width: 0; }
 
   .sc-presets-label { font-size: 0.8em; color: var(--text-muted); }
   .sc-presets-sub { color: var(--text-faint); }
@@ -748,7 +1112,7 @@
   .mk-row { display: grid; grid-template-columns: 14px 52px 1fr 52px 14px; align-items: center; gap: 8px; }
   .swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.2); }
   .mk-row label { font-size: 0.85em; color: var(--text-muted); }
-  .mk-row input[type="range"] { width: 100%; accent-color: var(--accent, #ff5a1f); }
+  .mk-row input[type="range"] { width: 100%; accent-color: #6f8bad; }
   .mk-num { width: 52px; padding: 2px 4px; font-size: 0.85em; }
   .mk-pct { font-size: 0.8em; color: var(--text-faint); }
   .compress-note { margin: 2px 0 0; font-size: 0.72em; color: var(--text-faint); line-height: 1.4; }

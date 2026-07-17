@@ -12,9 +12,13 @@ type WorldPositions = Map<string, { x: number; y: number }>;
 
 export const MIN_CAMERA_ZOOM = 0.05;
 // In AU render space, very close binaries/constructs (e.g. ~100 km separation)
-// require very high zoom to be visually distinguishable.
-export const MAX_CAMERA_ZOOM = 500000000;
+// require very high zoom to be visually distinguishable — and the smallest editable
+// bodies (~0.3 km asteroids) need ~2e11 to fill the screen. 1e12 gives headroom past
+// that while 1 px still maps to 1e-12 AU, three orders above float64 precision at 10 AU.
+export const MAX_CAMERA_ZOOM = 1e12;
 export const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
+export const AUTO_FRAME_MIN_UPDATE_MS = 180; // rate-limit: don't re-frame every frame
+export const AUTO_FRAME_DEADBAND = 0.02;     // ignore sub-2% corrections (stops hunting)
 
 export function clampZoom(value: number): number {
 	if (!Number.isFinite(value)) return MIN_CAMERA_ZOOM;
@@ -27,6 +31,34 @@ export function dampedZoomStep(current: number, target: number): number {
 	const ratio = safeTarget / safeCurrent;
 	const clampedRatio = Math.max(1 / AUTO_ZOOM_MAX_STEP_RATIO, Math.min(AUTO_ZOOM_MAX_STEP_RATIO, ratio));
 	return clampZoom(safeCurrent * clampedRatio);
+}
+
+/**
+ * THE auto-frame follow policy — the GM orrery's behaviour, encoded once so the player views can BE it
+ * rather than imitate it. While an object is focused, the view holds it dead-centre (the caller snaps its
+ * pan/target straight to the body — no easing, or it drifts) and eases the FRAMING toward the current
+ * ladder level's ideal. This decides that easing.
+ *
+ * The quantity is whatever the renderer frames with — the orrery's zoom scalar, or the holo's camera
+ * distance — since the damping is purely ratio-based. Returns the next value, or null to leave it alone:
+ * don't fight a user who's driving, don't jitter near periapsis, don't re-frame every frame, and ignore
+ * corrections too small to be worth the motion.
+ */
+export function autoFrameStep(args: {
+	current: number;
+	ideal: number;
+	userOverride: boolean;   // the user is driving zoom — back off entirely
+	suppress?: boolean;      // e.g. suppressAutoZoomNearPeriapsis
+	sinceLastMs: number;
+	minUpdateMs?: number;
+	deadband?: number;
+}): number | null {
+	const { current, ideal, userOverride, suppress = false, sinceLastMs } = args;
+	if (userOverride || suppress) return null;
+	if (sinceLastMs < (args.minUpdateMs ?? AUTO_FRAME_MIN_UPDATE_MS)) return null;
+	const next = dampedZoomStep(current, ideal);
+	const delta = Math.abs(next - current) / Math.max(current, MIN_CAMERA_ZOOM);
+	return delta > (args.deadband ?? AUTO_FRAME_DEADBAND) ? next : null;
 }
 
 // --- Multi-level click framing -------------------------------------------------------------
@@ -44,6 +76,69 @@ export const FRAME_LEVELS = {
 	fillFrac: 0.50             // level 3: object diameter ≈ this fraction of min(screen) dimension
 };
 export type FrameLevelConfig = typeof FRAME_LEVELS;
+
+// ── THE click-ladder ruleset (one definition, every renderer) ─────────────────────────────────────
+// Selecting an object frames its first EXISTING level; each re-click steps one level deeper:
+//   1 object + its parent · 2 object + its satellites · 3 object fills the view
+// Levels that don't apply are skipped (no parent → no 1; no satellites → no 2), and the deepest level
+// clamps (no wrap). The maths below is UNIT-AGNOSTIC: a caller measures distances in whatever space it
+// renders — AU for the 2D orrery, scene units for the holo — and gets a half-extent back in that space.
+// Pair it with getVisibleNodeIds (system/visibleNodes), which is the one rule for BOTH what gets a name
+// and what can be clicked.
+
+/** Which levels exist, in zoom-in order, from the two predicates that decide it. */
+export function frameLevelsFrom(has: { hasParent: boolean; hasSatellites: boolean }): number[] {
+	const levels: number[] = [];
+	if (has.hasParent) levels.push(1);
+	if (has.hasSatellites) levels.push(2);
+	levels.push(3);
+	return levels;
+}
+/** A NEW selection starts at the object's first existing level. */
+export function firstFrameLevel(levels: number[]): number {
+	return levels[0] ?? 3;
+}
+/**
+ * A re-click on the focused object steps to the next existing level — and WRAPS: at the deepest level a
+ * further click cycles back out to the object's first (a star's close-up clicks back out to the full
+ * system, like Reset view; a planet's close-up back out to planet + parent).
+ */
+export function nextFrameLevel(levels: number[], current: number): number {
+	const idx = levels.indexOf(current);
+	if (idx < 0) return levels[levels.length - 1] ?? current;
+	return levels[(idx + 1) % levels.length] ?? current;
+}
+/**
+ * The inverse — step back OUT one level (browser Back). Returns the same level when already at the
+ * object's first, so the caller knows to keep going up the view hierarchy (unfocus → starmap) instead.
+ */
+export function prevFrameLevel(levels: number[], current: number): number {
+	const idx = levels.indexOf(current);
+	return idx > 0 ? levels[idx - 1] : levels[0] ?? current;
+}
+/**
+ * Level → the half-extent that should fit in HALF the viewport's min dimension, in the caller's own
+ * units. `radius` is the object's rendered radius; `parentDist` / `maxSatelliteDist` are measured by the
+ * caller in the same space. Returns 0 for a radius-less object at level 3 (constructs) — the caller
+ * substitutes its own small patch, since such glyphs draw at a fixed screen size anyway.
+ */
+export function frameHalfExtent(args: {
+	level: number;
+	radius: number;
+	parentDist?: number;
+	maxSatelliteDist?: number;
+	config?: FrameLevelConfig;
+}): number {
+	const cfg = args.config ?? FRAME_LEVELS;
+	const { level, radius } = args;
+	if (level <= 1 && (args.parentDist ?? 0) > 0) {
+		return Math.max(args.parentDist!, radius * 2, 1e-9) / Math.max(0.05, 1 - cfg.parentBorderFrac);
+	}
+	if (level <= 2 && (args.maxSatelliteDist ?? 0) > 0) {
+		return Math.max(args.maxSatelliteDist!, radius * 2, 1e-9) / Math.max(0.05, 1 - cfg.satelliteBorderFrac);
+	}
+	return radius > 0 ? radius / Math.max(0.05, cfg.fillFrac) : 0;
+}
 
 function bodyRadiusAUof(node: any, toytownFactor: number, x0_distance: number): number {
 	if (!node || node.kind !== 'body' || !node.radiusKm) return 0;
@@ -70,13 +165,11 @@ export function availableFrameLevels(args: {
 	const node = system.nodes.find((n) => n.id === nodeId);
 	if (!node) return [3];
 	const positions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
-	const levels: number[] = [];
 	const parentId = framingParentId(node);
-	if (parentId && positions.get(parentId)) levels.push(1);
-	const hasSatellite = system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id));
-	if (hasSatellite) levels.push(2);
-	levels.push(3);
-	return levels;
+	return frameLevelsFrom({
+		hasParent: !!(parentId && positions.get(parentId)),
+		hasSatellites: system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id))
+	});
 }
 
 // --- State-dependent framing helpers (arg-bag; the consumer supplies its
@@ -252,33 +345,17 @@ export function frameForLevel(args: {
 		return { pan: pos, zoom: clampZoom((minDimension / 2) / Math.max(half, 1e-9)) };
 	}
 
-	// Level 1 — object + parent, parent border-fraction in from the edge.
-	if (level <= 1) {
-		const parentId = framingParentId(node);
-		const ppos = parentId ? positions.get(parentId) : undefined;
-		if (ppos) {
-			const d = Math.hypot(pos.x - ppos.x, pos.y - ppos.y);
-			const half = Math.max(d, radiusAU * 2, 1e-9) / Math.max(0.05, 1 - cfg.parentBorderFrac);
-			return { pan: pos, zoom: clampZoom((minDimension / 2) / half) };
-		}
+	// Measure this renderer's own distances (AU), then let the shared ladder decide the extent.
+	const parentId = framingParentId(node);
+	const ppos = parentId ? positions.get(parentId) : undefined;
+	const parentDist = ppos ? Math.hypot(pos.x - ppos.x, pos.y - ppos.y) : 0;
+	let maxSatelliteDist = 0;
+	for (const c of system.nodes) {
+		if (c.parentId !== nodeId) continue;
+		const cp = positions.get(c.id);
+		if (cp) maxSatelliteDist = Math.max(maxSatelliteDist, Math.hypot(cp.x - pos.x, cp.y - pos.y));
 	}
-
-	// Level 2 — object + all its satellites, furthest one border-fraction from the edge.
-	if (level <= 2) {
-		let maxD = 0;
-		for (const c of system.nodes) {
-			if (c.parentId !== nodeId) continue;
-			const cp = positions.get(c.id);
-			if (cp) maxD = Math.max(maxD, Math.hypot(cp.x - pos.x, cp.y - pos.y));
-		}
-		if (maxD > 0) {
-			const half = Math.max(maxD, radiusAU * 2, 1e-9) / Math.max(0.05, 1 - cfg.satelliteBorderFrac);
-			return { pan: pos, zoom: clampZoom((minDimension / 2) / half) };
-		}
-	}
-
-	// Level 3 — object fills ~fillFrac of the screen. Radius-less nodes (constructs) get a small
-	// fixed patch since their glyph is screen-fixed anyway.
-	const half = radiusAU > 0 ? radiusAU / Math.max(0.05, cfg.fillFrac) : 0.005;
+	// Radius-less nodes (constructs) get a small fixed patch — their glyph is screen-fixed anyway.
+	const half = frameHalfExtent({ level, radius: radiusAU, parentDist, maxSatelliteDist, config: cfg }) || 0.005;
 	return { pan: pos, zoom: clampZoom((minDimension / 2) / Math.max(half, 1e-9)) };
 }

@@ -44,6 +44,19 @@ export interface Fact { label: string; value: string; }
 const EARTH_DENSITY = 5514;
 const titleCase = (s: string) => s.replace(/[-_/]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
 
+// A readable CLASSIFICATION (not the kind). Bodies carry `classes` like ["planet/ringed",
+// "planet/ammonia-clouds-gas-giant"] or ["star/G", "star/G2V"]; drop the category prefix, drop entries
+// that are a prefix of a more specific one (so "G"+"G2V" → "G2V"), and title-case the rest.
+export function classLabel(b: CelestialBody): string {
+  const subs = ((b as any).classes as string[] | undefined ?? [])
+    .map((c) => (c.includes('/') ? c.split('/').slice(1).join('/') : c))
+    .filter(Boolean);
+  const kept = subs.filter((s) => !subs.some((o) => o !== s && o.startsWith(s)));
+  const pretty = Array.from(new Set(kept.map(titleCase)));
+  if (pretty.length) return pretty.join(' · ');
+  return b.class ? titleCase(b.class) : ''; // legacy singular fallback
+}
+
 // Full report-parity facts for a body, enriched with the Phase-04 derived data (temperature range,
 // radiation, geology, magnetism, fluids, ascent Δv). Both guide tiers (diagrammatic browser +
 // hi-tech console inspector) render this, so they match the printed report's depth.
@@ -52,9 +65,9 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   const any = b as any;
   const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
 
-  // Bodies keep their scientific classification (planet/ocean, spectral type); constructs don't carry the
-  // retired free-text hull class — their CoI tags below describe them instead.
-  add('Type', [b.roleHint, b.kind === 'construct' ? '' : b.class].filter(Boolean).join(' · '));
+  // Show the scientific CLASSIFICATION (spectral type / planet class), not the kind. Constructs have no
+  // class — their CoI tags below describe them, so they fall back to the role hint.
+  add('Type', b.kind === 'construct' ? titleCase(b.roleHint || 'construct') : (classLabel(b) || titleCase(b.roleHint || 'body')));
 
   // --- Orbit & rotation ---
   add('Orbit distance', orbitDist(b, units));

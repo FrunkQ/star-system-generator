@@ -8,6 +8,7 @@
   import type { System, CelestialBody } from '$lib/types';
   import { bodyFacts, bodyGlyph } from '$lib/catalogue/bodyFacts';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
+  import { debrisDensityFrac } from '$lib/rendering/debris';
   import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
@@ -29,13 +30,9 @@
     return (system?.nodes ?? []).find((n) => n.parentId === b.id && (n as any).roleHint === 'ring') as CelestialBody ?? null;
   }
   function isRinged(b: CelestialBody | null): boolean { return !!ringChild(b); }
-  // The ring's debris density (massKg proxy, log 1e-5..1 Me) → drives its drawn size in the disc.
+  // The ring's debris density → drives its drawn size in the disc. Shared rule (rendering/debris).
   function ringDensityOf(b: CelestialBody | null): number {
-    const r = ringChild(b);
-    const massKg = r?.massKg;
-    if (!massKg || massKg <= 0) return 0.5;
-    const me = massKg / EARTH_MASS_KG;
-    return Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (Math.log(1) - Math.log(1e-5))));
+    return debrisDensityFrac(ringChild(b)?.massKg);
   }
 
   function isStar(n: any): boolean {
