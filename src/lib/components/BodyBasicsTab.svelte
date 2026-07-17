@@ -742,6 +742,7 @@
             <span>Interior makeup</span>
             <span class="hint">{makeupLocked ? 'held by density lock' : 'drives density -> size'}</span>
         </div>
+        <div class="sc-makeup-body">
         <div class="sc-makeup-rows">
         {#each MK_KEYS as k}
             <div class="mk-row">
@@ -753,15 +754,15 @@
             </div>
         {/each}
         </div>
+        <!-- Interior cutaway sits beside the makeup sliders (wraps below on a narrow panel). The
+             density explainer is a tooltip on it rather than a caption, to keep the panel compact. -->
+        <div class="sc-xsec-inline" title="Density is gravity-compressed by mass — the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.">
+            <CompositionCrossSection {body} makeup={pMakeup} porosity={pPorosity} seed={body.id} size={132}
+                subsurfaceOcean={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'subsurface') ?? null}
+                surfaceLiquid={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'surface') ?? null} />
+        </div>
+        </div>
     </div>
-
-    <!-- Interior cutaway: its own roomy block so the sphere and its note aren't squashed. -->
-    <figure class="sc-xsec-figure">
-        <CompositionCrossSection {body} makeup={pMakeup} porosity={pPorosity} seed={body.id} size={168}
-            subsurfaceOcean={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'subsurface') ?? null}
-            surfaceLiquid={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'surface') ?? null} />
-        <figcaption class="compress-note">Density is gravity-compressed by mass — the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.</figcaption>
-    </figure>
 
     {#if pGasDominated}
         <hr/>
@@ -1062,8 +1063,7 @@
   .sc-funnel .funnel-win { fill: #6f8bad; opacity: 0.7; }
   .sc-funnel .funnel-ptr { fill: #dfe7f0; }
   /* Interior cutaway gets breathing room — centred, with its note reading as a caption. */
-  .sc-xsec-figure { margin: 8px 0 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .sc-xsec-figure .compress-note { text-align: center; max-width: 340px; }
+  .sc-xsec-inline { flex: 0 0 auto; display: flex; align-items: center; cursor: help; }
   .sc-edge-chip {
     align-self: flex-start; font-size: 0.76em; padding: 2px 8px; border-radius: 10px;
     background: rgba(255, 90, 31, 0.12); border: 1px solid rgba(255, 90, 31, 0.45); color: var(--accent, #ff5a1f);

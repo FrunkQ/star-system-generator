@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.130-beta - 17th Jul 2026
+
+* Composition editor: the interior cutaway sits beside the makeup sliders again (wrapping below on a narrow panel), and the "density is gravity-compressed…" explainer is now a hover tooltip on it rather than a caption, keeping the panel compact.
+
 ## v2.1.129-beta - 17th Jul 2026
 
 * Shrinking a planet below its own moon's mass correctly makes it a moon of its moon — and growing it large again now flips it back to the primary, in its original orbit. Previously the swap only worked through the narrow comparable-mass barycentre band, so a mass edit that jumped straight past it (e.g. typing a big value back in) left the planet stuck as a satellite. A body that becomes much heavier than its host now takes over directly, in both directions.
