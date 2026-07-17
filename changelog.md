@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.129-beta - 17th Jul 2026
+
+* Shrinking a planet below its own moon's mass correctly makes it a moon of its moon — and growing it large again now flips it back to the primary, in its original orbit. Previously the swap only worked through the narrow comparable-mass barycentre band, so a mass edit that jumped straight past it (e.g. typing a big value back in) left the planet stuck as a satellite. A body that becomes much heavier than its host now takes over directly, in both directions.
+
 ## v2.1.128-beta - 17th Jul 2026
 
 * Composition editor: new "Reset to type" picker regenerates a body as a plausible example of any classification viable in its orbit and under the host-mass limit (reusing the add-body generator) — pick "Gas Giant" on a rocky world and it becomes a real one, keeping its identity, name and orbit. The mass and radius sliders each get an expand/collapse toggle next to their lock (◄► to open to the full range, ►◄ to snap back to the type's band). The overview under a zoomed slider is now a funnel that tapers from the full-width slider down to the slice of the whole range it covers, with a tick marking the current value; it slides and reshapes as you change type. The tab's palette is calmer — the size and composition sliders use a muted slate instead of brand orange, which is now reserved for the selected type.

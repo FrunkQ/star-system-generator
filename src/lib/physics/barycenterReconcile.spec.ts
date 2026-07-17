@@ -3,6 +3,49 @@ import { reconcileBarycenters } from './barycenterReconcile';
 import { G } from '../constants';
 import type { System } from '../types';
 
+// A planet shrunk far below its own moon's mass should flip hierarchy (the heavy moon becomes the
+// primary, the planet its satellite) — AND flip back when the planet is grown large again, returning
+// to its original orbit around the star. The mass edits jump past the comparable-mass barycentre
+// band, so this exercises swapDominantChild, not the barycentre promote/demote path.
+describe('reconcileBarycenters — dominant child swap is reversible', () => {
+  const moonMass = 7e22; // Luna-like — far below an Earth-mass planet (ratio well under the bary band)
+  const build = (planetMass: number): System => ({
+    seed: 's', nodes: [
+      { id: 'star', kind: 'body', roleHint: 'star', name: 'Sol', parentId: null, massKg: 2e30 },
+      { id: 'planet', kind: 'body', roleHint: 'planet', name: 'P', parentId: 'star', massKg: planetMass,
+        orbit: { hostId: 'star', hostMu: G * 2e30, t0: 0, elements: { a_AU: 3, e: 0.02, i_deg: 1, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } },
+      { id: 'moon', kind: 'body', roleHint: 'moon', name: 'M', parentId: 'planet', massKg: moonMass,
+        orbit: { hostId: 'planet', hostMu: G * planetMass, t0: 0, elements: { a_AU: 0.002, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 1 } } }
+    ]
+  } as unknown as System);
+
+  it('a planet made much lighter than its moon becomes the moon of its moon', () => {
+    const sys = build(1e21); // ~70x lighter than the moon — ratio well below the barycentre band
+    reconcileBarycenters(sys);
+    const planet = sys.nodes.find((n) => n.id === 'planet') as any;
+    const moon = sys.nodes.find((n) => n.id === 'moon') as any;
+    expect(moon.parentId).toBe('star');          // the heavy moon took the planet's place around the star
+    expect(moon.orbit.elements.a_AU).toBeCloseTo(3); // …at the planet's former orbit
+    expect(planet.parentId).toBe('moon');         // the planet now orbits its former moon
+  });
+
+  it('grown large again, the planet reclaims its original orbit and the moon returns to it', () => {
+    // First flip it (planet tiny), then grow the planet back big in one jump (past the bary band).
+    const sys = build(1e21);
+    reconcileBarycenters(sys);
+    (sys.nodes.find((n) => n.id === 'planet') as any).massKg = 6e24; // Earth-mass again, ≫ the moon
+    reconcileBarycenters(sys);
+
+    const planet = sys.nodes.find((n) => n.id === 'planet') as any;
+    const moon = sys.nodes.find((n) => n.id === 'moon') as any;
+    expect(planet.parentId).toBe('star');            // planet is the primary again
+    expect(planet.orbit.elements.a_AU).toBeCloseTo(3); // back in its original orbit
+    expect(planet.orbit.elements.e).toBeCloseTo(0.02); // and original shape (host-track preserved)
+    expect(moon.parentId).toBe('planet');            // the moon orbits the planet once more
+    expect(sys.nodes.some((n) => n.kind === 'barycenter')).toBe(false);
+  });
+});
+
 // A ghost barycentre: nothing actually orbits it (its "members" point elsewhere / it has a dangling
 // parent). It should be removed so it doesn't render at the system centre and drag things in.
 describe('reconcileBarycenters — ghost cleanup', () => {
