@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.121-beta - 17th Jul 2026
+
+* Asteroid class images (NASA: 253 Mathilde, 433 Eros, 16 Psyche, Hartley 2) wired for C/S/M-type and comet, with attributions in About.
+* The interior cross-section now shows derived fluid layers: a subsurface ocean renders as a liquid band under the ice shell (Titan-style), and a surface ocean as a film over the solid layers.
+
 ## v2.1.120-beta - 17th Jul 2026
 
 * Composition redesign stage 4 (renderer): small bodies (under ~300 km, or anything classed asteroid/comet) draw as seeded irregular shapes — repeatable per body, lumpier when smaller or more porous, cratered, coloured by composition. A live interior cross-section (metal core through gas envelope, with void speckles when porous) sits beside the makeup sliders. New "Small bodies" section on /discgallery.
