@@ -8,7 +8,7 @@ import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
-import { phaseAt, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
+import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
 import { deriveAurora } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
@@ -534,6 +534,15 @@ export class SystemProcessor implements ISystemProcessor {
         }
         features['hydrosphere.coverage'] = body.hydrosphere?.coverage ?? 0;
         features['hydrosphere.composition'] = body.hydrosphere?.composition ?? 'none';
+        // Phase-gated coverage (liquids L2): the recorded coverage counts for ocean-family
+        // classification ONLY when the solvent is actually liquid at the surface T & P — a hot or
+        // airless world stops classifying as an ocean world just because it carries stale hydro data.
+        {
+            const hc = body.hydrosphere?.composition;
+            const st = body.temperatureK ?? body.equilibriumTempK ?? 0;
+            const liquid = hc && hc !== 'none' && phaseAtP(hc, st, body.atmosphere?.pressure_bar, pack) === 'liquid';
+            features['hydrosphere.liquidCoverage'] = liquid ? (body.hydrosphere?.coverage ?? 0) : 0;
+        }
 
         // Interior makeup fractions (explicit body.makeup, else inferred from density) — so the
         // composition types (iron/silicate/coreless/carbon) classify on COMPOSITION, not a
@@ -560,16 +569,54 @@ export class SystemProcessor implements ISystemProcessor {
         // discrete cloud deck. The freeze point comes from the SOLVENT, not hard-coded water — so
         // a nitrogen/methane/CO₂ surface freezes by its own melt point.
         const surfTForStruct = body.temperatureK ?? body.equilibriumTempK ?? 0;
+        const surfPbar = body.atmosphere?.pressure_bar;
         const hydroComp = body.hydrosphere?.composition;
         const hydroCov = body.hydrosphere?.coverage ?? 0;
         const surfaceDef = liquidDef(hydroComp, pack);
-        const surfacePhase = hydroComp && hydroComp !== 'none' ? phaseAt(hydroComp, surfTForStruct, pack) : undefined;
+        // Pressure-aware surface phase of the recorded volatile (liquids L2): the tag set below is
+        // driven by the ACTUAL phase at surface T & P, so stale hydrosphere data reads honestly.
+        const surfacePhase = hydroComp && hydroComp !== 'none' ? phaseAtP(hydroComp, surfTForStruct, surfPbar, pack) : undefined;
         // A frozen surface is named for its volatile; an icy shell from makeup-ice is water ice.
         const icyShell = mk.ice > 0.3 || (surfacePhase === 'solid' && hydroCov > 0.05);
         const iceLabel = surfacePhase === 'solid' ? (hydroComp as string) : 'water';
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('structure/') && t.key !== 'climate/polar-ice');
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('structure/') && t.key !== 'climate/polar-ice'
+            && !t.key.startsWith('hydrosphere/') && t.key !== 'climate/steam-world'
+            && t.key !== 'activity/sublimating' && t.key !== 'activity/cryovolcanism');
         if (icyShell) body.tags.push({ key: 'structure/icy-shell', value: iceLabel });
         if (fluidLayers.some((l) => l.location === 'subsurface')) body.tags.push({ key: 'structure/subsurface-ocean' });
+
+        // Hydrosphere PHASE tags: what the recorded surface volatile actually is at this T & P.
+        if (hydroComp && hydroComp !== 'none' && hydroCov > 0.01) {
+            const conductive = fluidLayers.some((l) => l.location === 'surface' && l.liquid === hydroComp) && (surfaceDef?.conductive ?? false);
+            if (surfacePhase === 'liquid') {
+                body.tags.push({ key: conductive ? 'hydrosphere/brine' : 'hydrosphere/ocean', value: hydroComp });
+            } else if (surfacePhase === 'solid') {
+                body.tags.push({ key: 'hydrosphere/frozen', value: hydroComp });
+            } else if (surfacePhase === 'supercritical') {
+                body.tags.push({ key: 'structure/supercritical-envelope', value: hydroComp });
+            } else if (surfacePhase === 'gas') {
+                body.tags.push({ key: 'hydrosphere/boiled-off', value: hydroComp });
+                // A boiled ocean still held aloft by real pressure reads as a steam world.
+                if ((surfPbar ?? 0) >= 0.5 && (hydroComp === 'water' || hydroComp === 'salty-water')) {
+                    body.tags.push({ key: 'climate/steam-world' });
+                }
+            }
+        }
+
+        // Sublimation: surface ices below their triple pressure, warming toward their melt point,
+        // pass straight to vapour — the outgassing that raises a comet's coma. Keyed on an ice-rich
+        // makeup or a frozen volatile in a near-vacuum, warm enough to be active.
+        const subT = body.temperatureRangeK?.max ?? surfTForStruct;
+        const iceSublimes = surfaceDef && (surfPbar ?? 0) < (surfaceDef.tripleBar ?? 0) && subT > surfaceDef.meltK * 0.6;
+        if ((iceSublimes || (mk.ice > 0.3 && (surfPbar ?? 0) < 1e-4 && subT > 120)) && subT < (surfaceDef?.boilK ?? 400) + 200) {
+            body.tags.push({ key: 'activity/sublimating' });
+        }
+        // Cryovolcanism: an icy, frozen-surfaced world with active interior heat driving melt eruptions.
+        const cryoHeat = (body.tidalHeatK ?? 0) > 1 || (body.radiogenicHeatK ?? 0) > 2 || (body.internalHeatK ?? 0) > 4;
+        if (mk.ice > 0.2 && surfacePhase !== 'liquid' && cryoHeat) {
+            body.tags.push({ key: 'activity/cryovolcanism' });
+        }
+
         // Polar ice: liquid at the MEAN, but the cold extreme (poles / night side) dips below the
         // solvent's freezing point → partial frozen caps even on a temperate world (Earth, Mars).
         const meltK = surfaceDef?.meltK ?? 273;

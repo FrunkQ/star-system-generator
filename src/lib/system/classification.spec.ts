@@ -114,6 +114,32 @@ describe('asteroid classes derive from composition at small-body mass', () => {
   });
 });
 
+// Liquids L2: ocean-family classes key on hydrosphere.liquidCoverage (phase-gated), not raw
+// coverage — so a hot world carrying stale water data no longer classifies as an ocean world.
+describe('ocean classification is phase-gated (liquids L2)', () => {
+  const realFps = JSON.parse(
+    fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')
+  ).classifier.fingerprints as Fingerprint[];
+
+  const oceanState = (liquidCov: number, rawCov: number) => ({
+    mass_Me: 1.2, radius_Re: 1.05, density: 3.2, Teq_K: 290, orbitsStar: 1,
+    'hydrosphere.composition': 'water',
+    'hydrosphere.coverage': rawCov, 'hydrosphere.liquidCoverage': liquidCov,
+    'makeup.rock': 0.5, 'makeup.ice': 0.5
+  });
+
+  it('a genuine water world (liquid) can classify ocean', () => {
+    const cls = classifyByFingerprint(oceanState(0.95, 0.95), realFps, 4);
+    expect(cls).toContain('planet/ocean');
+  });
+
+  it('the same coverage but boiled off (liquidCoverage 0) does NOT classify ocean', () => {
+    const cls = classifyByFingerprint(oceanState(0, 0.95), realFps, 4);
+    expect(cls).not.toContain('planet/ocean');
+    expect(cls).not.toContain('planet/hycean');
+  });
+});
+
 describe('eyeball classes require star-lock, not planet-lock (E2)', () => {
   const realFps = JSON.parse(
     fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')

@@ -835,6 +835,10 @@
           "key": "breathable-human"
         },
         {
+          "key": "hydrosphere/ocean",
+          "value": "water"
+        },
+        {
           "key": "climate/polar-ice",
           "value": "water"
         },
@@ -1067,15 +1071,15 @@
             "fit": 0.46
           },
           {
-            "feature": "hydrosphere.coverage",
-            "value": 0.71,
-            "band": "0.6 – 0.95",
-            "fit": 1
-          },
-          {
             "feature": "hydrosphere.composition",
             "value": "water",
             "band": "water",
+            "fit": 1
+          },
+          {
+            "feature": "hydrosphere.liquidCoverage",
+            "value": 0.71,
+            "band": "0.6 – 0.95",
             "fit": 1
           }
         ],
@@ -1101,15 +1105,15 @@
                 "fit": 0.46
               },
               {
-                "feature": "hydrosphere.coverage",
-                "value": 0.71,
-                "band": "0.6 – 0.95",
-                "fit": 1
-              },
-              {
                 "feature": "hydrosphere.composition",
                 "value": "water",
                 "band": "water",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.6 – 0.95",
                 "fit": 1
               }
             ]
@@ -1131,15 +1135,15 @@
                 "fit": 0.21
               },
               {
-                "feature": "hydrosphere.coverage",
-                "value": 0.71,
-                "band": "0.35 – 0.85",
-                "fit": 1
-              },
-              {
                 "feature": "hydrosphere.composition",
                 "value": "water",
                 "band": "water",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.35 – 0.85",
                 "fit": 1
               }
             ]
@@ -1161,12 +1165,6 @@
                 "fit": 1
               },
               {
-                "feature": "hydrosphere.coverage",
-                "value": 0.71,
-                "band": "0.5 – 0.85",
-                "fit": 1
-              },
-              {
                 "feature": "atm.composition.O2",
                 "value": 0.20917376363364712,
                 "band": "0.1 – 0.35",
@@ -1176,6 +1174,12 @@
                 "feature": "Teq_K",
                 "value": 255.49408288423908,
                 "band": "255 – 300",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.5 – 0.85",
                 "fit": 1
               }
             ]
@@ -1191,12 +1195,6 @@
                 "fit": 1
               },
               {
-                "feature": "hydrosphere.coverage",
-                "value": 0.71,
-                "band": "0.3 – 0.9",
-                "fit": 1
-              },
-              {
                 "feature": "atm.composition.O2",
                 "value": 0.20917376363364712,
                 "band": "0.05 – 0.4",
@@ -1206,6 +1204,12 @@
                 "feature": "Teq_K",
                 "value": 255.49408288423908,
                 "band": "250 – 315",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.3 – 0.9",
                 "fit": 1
               }
             ]
@@ -2084,6 +2088,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -2457,6 +2464,9 @@
         {
           "key": "structure/icy-shell",
           "value": "water"
+        },
+        {
+          "key": "activity/sublimating"
         },
         {
           "key": "magnetic/unshielded"
@@ -3834,6 +3844,10 @@
           "key": "structure/subsurface-ocean"
         },
         {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
           "key": "magnetic/induced"
         },
         {
@@ -4269,6 +4283,13 @@
           "value": "water"
         },
         {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -4661,6 +4682,13 @@
         {
           "key": "structure/icy-shell",
           "value": "water"
+        },
+        {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
+          "key": "activity/sublimating"
         },
         {
           "key": "magnetic/unshielded"
@@ -5532,6 +5560,10 @@
           "value": "water"
         },
         {
+          "key": "hydrosphere/ocean",
+          "value": "methane"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "blue"
         },
@@ -5903,6 +5935,16 @@
         },
         {
           "key": "structure/subsurface-ocean"
+        },
+        {
+          "key": "hydrosphere/frozen",
+          "value": "water"
+        },
+        {
+          "key": "activity/sublimating"
+        },
+        {
+          "key": "activity/cryovolcanism"
         },
         {
           "key": "magnetic/induced"
@@ -6338,6 +6380,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -6740,6 +6785,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -7118,6 +7166,12 @@
         },
         {
           "key": "structure/subsurface-ocean"
+        },
+        {
+          "key": "activity/sublimating"
+        },
+        {
+          "key": "activity/cryovolcanism"
         },
         {
           "key": "magnetic/induced"
@@ -7562,6 +7616,9 @@
           "value": "water"
         },
         {
+          "key": "activity/sublimating"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -7919,6 +7976,9 @@
         {
           "key": "structure/icy-shell",
           "value": "water"
+        },
+        {
+          "key": "activity/sublimating"
         },
         {
           "key": "magnetic/unshielded"
@@ -10285,6 +10345,10 @@
         },
         {
           "key": "structure/icy-shell",
+          "value": "water"
+        },
+        {
+          "key": "hydrosphere/frozen",
           "value": "water"
         },
         {
