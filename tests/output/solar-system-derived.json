@@ -4023,24 +4023,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#52799f",
+        "hex": "#9e7f61",
         "palette": [
           {
             "hex": "#9e7f61",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
-          },
-          {
-            "hex": "#4579aa",
-            "role": "ocean",
-            "weight": 1,
-            "label": "water ocean"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#52799f",
+      "apparentColorHex": "#9e7f61",
       "classification": {
         "base": "planet/subsurface-ocean",
         "baseScore": 2.16,
@@ -4435,24 +4429,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#557ea6",
+        "hex": "#ae9c8b",
         "palette": [
           {
             "hex": "#ae9c8b",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
-          },
-          {
-            "hex": "#4579aa",
-            "role": "ocean",
-            "weight": 1,
-            "label": "water ocean"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#557ea6",
+      "apparentColorHex": "#ae9c8b",
       "classification": {
         "base": "planet/ice",
         "baseScore": 1.3,
@@ -4818,24 +4806,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#557fa7",
+        "hex": "#b0a192",
         "palette": [
           {
             "hex": "#b0a192",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
-          },
-          {
-            "hex": "#4579aa",
-            "role": "ocean",
-            "weight": 1,
-            "label": "water ocean"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#557fa7",
+      "apparentColorHex": "#b0a192",
       "classification": {
         "base": "planet/ice",
         "baseScore": 1.3,
@@ -6118,24 +6100,18 @@
         ]
       },
       "apparentColor": {
-        "hex": "#5680a9",
+        "hex": "#b5aaa0",
         "palette": [
           {
             "hex": "#b5aaa0",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
-          },
-          {
-            "hex": "#4579aa",
-            "role": "ocean",
-            "weight": 1,
-            "label": "water ocean"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#5680a9",
+      "apparentColorHex": "#b5aaa0",
       "classification": {
         "base": "planet/subsurface-ocean",
         "baseScore": 2.16,
@@ -10517,19 +10493,13 @@
         ]
       },
       "apparentColor": {
-        "hex": "#678bad",
+        "hex": "#a89e94",
         "palette": [
           {
             "hex": "#ab9682",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
-          },
-          {
-            "hex": "#4579aa",
-            "role": "ocean",
-            "weight": 1,
-            "label": "water ocean"
           },
           {
             "hex": "#9fb6c8",
@@ -10540,7 +10510,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#678bad",
+      "apparentColorHex": "#a89e94",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,

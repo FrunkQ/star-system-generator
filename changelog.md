@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.136-beta - 17th Jul 2026
+
+* Fixed the giant/makeup seam: a body at giant mass and low density can't be gas-free (no rock/ice world that massive would be so light — self-gravity crushes it far denser), so the physics now re-infers a volatile envelope for it. Building a "gas giant" with 0% gas no longer leaves it a rocky-cored impostor — its makeup, render, porosity and classification all agree that it's a giant. Bodies that were already consistent (real gassy giants, ordinary rocky worlds) are untouched.
+
 ## v2.1.135-beta - 17th Jul 2026
 
 * Composition editor: a segmented composition-breakdown bar under the density slider shows the interior mix (metal / rock / carbon / ice / gas) by mass fraction at a glance, each segment coloured and labelled, so you don't have to read the five sliders.

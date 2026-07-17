@@ -5,7 +5,7 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEqui
 import { deriveAlbedo } from '../physics/albedo';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
-import { makeupFractions, derivedPorosity } from '../physics/makeup';
+import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
@@ -543,6 +543,13 @@ export class SystemProcessor implements ISystemProcessor {
             const liquid = hc && hc !== 'none' && phaseAtP(hc, st, body.atmosphere?.pressure_bar, pack) === 'liquid';
             features['hydrosphere.liquidCoverage'] = liquid ? (body.hydrosphere?.coverage ?? 0) : 0;
         }
+
+        // Physics corrects an inconsistent makeup: a body at giant mass + low density cannot be
+        // gas-free (a rock/ice world that massive would be far denser), so re-infer a volatile
+        // envelope. This makes the two "is it a giant?" definitions agree — makeup, rendersAsGiant,
+        // porosity and classification all then see the gas. (Composition round 2, seam fix.)
+        const giantFix = reconcileGiantMakeup(body);
+        if (giantFix) body.makeup = giantFix;
 
         // Interior makeup fractions (explicit body.makeup, else inferred from density) — so the
         // composition types (iron/silicate/coreless/carbon) classify on COMPOSITION, not a

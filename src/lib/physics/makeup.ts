@@ -171,3 +171,21 @@ export function isFluidGiant(body: CelestialBody): boolean {
 export function rendersAsGiant(body: CelestialBody): boolean {
   return makeupFractions(body).gas > 0.5 || isFluidGiant(body);
 }
+
+// PHYSICS CORRECTS THE MAKEUP (composition round 2, seam fix). A body whose mass + density land in the
+// fluid-giant regime CANNOT be gas-free: no rock/ice mix is that low-density at that mass — self-gravity
+// would crush it far denser. So if the stored makeup is gas-poor there, it's an inconsistent state; the
+// physics re-infers a volatile envelope from the density (lower density → more gas, up to a Jupiter-like
+// mix; near the 2.5 g/cc ceiling → an ice-giant-ish mix). Returns the corrected makeup, or null if the
+// makeup is already consistent (gas-dominated, or the body isn't a fluid giant, or has no explicit makeup).
+export function reconcileGiantMakeup(body: CelestialBody): Required<Makeup> | null {
+  if (!body.makeup) return null;                   // no explicit makeup → makeupFractions already infers
+  const m = normalizeMakeup(body.makeup);
+  if (m.gas > 0.5) return null;                    // already gas-dominated → consistent
+  if (!isFluidGiant(body)) return null;            // not in giant territory → the makeup stands
+  const massKg = body.massKg || 0;
+  const radiusM = (body.radiusKm || 0) * 1000;
+  const density = radiusM > 0 ? (massKg / ((4 / 3) * Math.PI * radiusM ** 3)) / 1000 : 1;
+  const gasFrac = Math.max(0.6, Math.min(0.92, 1.05 - density / 3));
+  return normalizeMakeup({ gas: gasFrac, ice: 1 - gasFrac });
+}
