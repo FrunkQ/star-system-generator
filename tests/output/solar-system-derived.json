@@ -2599,27 +2599,57 @@
       },
       "apparentColorHex": "#bab3ad",
       "classification": {
-        "base": "planet/planetesimal",
-        "baseScore": 1.2,
+        "base": "asteroid/comet",
+        "baseScore": 1.43,
         "bands": [
           {
             "feature": "mass_Me",
             "value": 2.461486939048895e-10,
-            "band": "0 – 0.003",
+            "band": "0 – 0.0001",
             "fit": 1
           },
           {
-            "feature": "radius_Re",
-            "value": 0.0009731596295714959,
-            "band": "0 – 0.1",
+            "feature": "makeup.ice",
+            "value": 0.5017192894295068,
+            "band": "0.35 – 1",
+            "fit": 1
+          },
+          {
+            "feature": "density",
+            "value": 1.4724944174315617,
+            "band": "0.2 – 1.5",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/barren",
-          "score": 1.19
+          "class": "planet/planetesimal",
+          "score": 1.2
         },
         "candidates": [
+          {
+            "class": "asteroid/comet",
+            "score": 1.43,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 2.461486939048895e-10,
+                "band": "0 – 0.0001",
+                "fit": 1
+              },
+              {
+                "feature": "makeup.ice",
+                "value": 0.5017192894295068,
+                "band": "0.35 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 1.4724944174315617,
+                "band": "0.2 – 1.5",
+                "fit": 1
+              }
+            ]
+          },
           {
             "class": "planet/planetesimal",
             "score": 1.2,
@@ -2693,7 +2723,7 @@
             ]
           }
         ],
-        "borderline": true,
+        "borderline": false,
         "modifiers": [],
         "fallback": false
       },
@@ -6123,6 +6153,30 @@
             ]
           },
           {
+            "class": "asteroid/comet",
+            "score": 1.2,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.000018084393837910247,
+                "band": "0 – 0.0001",
+                "fit": 1
+              },
+              {
+                "feature": "makeup.ice",
+                "value": 0.4247544556177876,
+                "band": "0.35 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 1.6092244006651377,
+                "band": "0.2 – 1.5",
+                "fit": 0.51
+              }
+            ]
+          },
+          {
             "class": "planet/crater",
             "score": 1.04,
             "bands": [
@@ -6421,27 +6475,57 @@
       },
       "apparentColorHex": "#d5e6f7",
       "classification": {
-        "base": "planet/planetesimal",
-        "baseScore": 1.2,
+        "base": "asteroid/comet",
+        "baseScore": 1.32,
         "bands": [
           {
             "feature": "mass_Me",
             "value": 0.00010338245144005357,
-            "band": "0 – 0.003",
+            "band": "0 – 0.0001",
+            "fit": 0.77
+          },
+          {
+            "feature": "makeup.ice",
+            "value": 0.951739935436737,
+            "band": "0.35 – 1",
             "fit": 1
           },
           {
-            "feature": "radius_Re",
-            "value": 0.08336210955893894,
-            "band": "0 – 0.1",
+            "feature": "density",
+            "value": 0.9838958111102662,
+            "band": "0.2 – 1.5",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/barren",
-          "score": 1.19
+          "class": "planet/planetesimal",
+          "score": 1.2
         },
         "candidates": [
+          {
+            "class": "asteroid/comet",
+            "score": 1.32,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.00010338245144005357,
+                "band": "0 – 0.0001",
+                "fit": 0.77
+              },
+              {
+                "feature": "makeup.ice",
+                "value": 0.951739935436737,
+                "band": "0.35 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 0.9838958111102662,
+                "band": "0.2 – 1.5",
+                "fit": 1
+              }
+            ]
+          },
           {
             "class": "planet/planetesimal",
             "score": 1.2,
@@ -7228,8 +7312,8 @@
           }
         ],
         "runnerUp": {
-          "class": "planet/planetesimal",
-          "score": 1.2
+          "class": "asteroid/comet",
+          "score": 1.43
         },
         "candidates": [
           {
@@ -7246,6 +7330,30 @@
                 "feature": "Teq_K",
                 "value": 75.52068188790528,
                 "band": "0 – 273",
+                "fit": 1
+              }
+            ]
+          },
+          {
+            "class": "asteroid/comet",
+            "score": 1.43,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 0.000006279303415941058,
+                "band": "0 – 0.0001",
+                "fit": 1
+              },
+              {
+                "feature": "makeup.ice",
+                "value": 0.7559644436449754,
+                "band": "0.35 – 1",
+                "fit": 1
+              },
+              {
+                "feature": "density",
+                "value": 1.1498248965954432,
+                "band": "0.2 – 1.5",
                 "fit": 1
               }
             ]
