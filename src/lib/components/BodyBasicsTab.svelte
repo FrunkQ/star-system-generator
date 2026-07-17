@@ -754,10 +754,10 @@
             </div>
         {/each}
         </div>
-        <!-- Interior cutaway sits beside the makeup sliders (wraps below on a narrow panel). The
-             density explainer is a tooltip on it rather than a caption, to keep the panel compact. -->
-        <div class="sc-xsec-inline" title="Density is gravity-compressed by mass — the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.">
-            <CompositionCrossSection {body} makeup={pMakeup} porosity={pPorosity} seed={body.id} size={132}
+        <!-- Interior quarter-cutaway beside the makeup sliders: heat + composition faces. -->
+        <div class="sc-xsec-inline">
+            <CompositionCrossSection {body} makeup={pMakeup} porosity={pPorosity} seed={body.id} size={128}
+                compNote="Density is gravity-compressed by mass — the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release."
                 subsurfaceOcean={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'subsurface') ?? null}
                 surfaceLiquid={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'surface') ?? null} />
         </div>

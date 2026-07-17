@@ -760,9 +760,15 @@
     closeContextMenu();
   }
 
-  function handleContextMenuZoom() {
+  // Rename the SYSTEM (the map node) independently of its central star — the star name is only the
+  // default, so a system can carry its own name (e.g. "Hyperspace bypass hub" vs the star "Sol").
+  function handleContextMenuRename() {
     if (contextMenuSystemId) {
-      dispatch('systemzoom', contextMenuSystemId);
+      const sys = starmap.systems.find((s) => s.id === contextMenuSystemId);
+      const next = prompt('Rename system', sys?.name ?? '');
+      if (next !== null && next.trim() && next.trim() !== sys?.name) {
+        dispatch('renamesystem', { systemId: contextMenuSystemId, name: next.trim() });
+      }
     }
     closeContextMenu();
   }
@@ -1317,7 +1323,7 @@
     <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;">
       <ul>
         {#if contextMenuSystemId}
-            <li on:click={handleContextMenuZoom}>Zoom to System</li>
+            <li on:click={handleContextMenuRename}>Rename System…</li>
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
                 Start Link

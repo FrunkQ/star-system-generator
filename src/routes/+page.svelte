@@ -1100,6 +1100,18 @@
     showRouteEditorModal = false;
   }
 
+  // Rename a system's MAP NODE (its display name on the starmap), independent of the central star.
+  function handleRenameSystem(event: CustomEvent<{ systemId: string; name: string }>) {
+    const { systemId, name } = event.detail;
+    starmapStore.update(starmap => {
+      if (starmap) {
+        const node = starmap.systems.find(s => s.id === systemId || s.system?.id === systemId);
+        if (node) node.name = name;
+      }
+      return starmap;
+    });
+  }
+
   function handleDeleteSystem(event: CustomEvent<string>) {
     const target = event.detail;
     starmapStore.update(starmap => {
@@ -1335,6 +1347,7 @@
       on:selectsystemforlink={handleSelectSystemForLink}
       on:editroute={handleEditRoute}
       on:deletesystem={handleDeleteSystem}
+      on:renamesystem={handleRenameSystem}
       on:download={handleDownloadStarmap}
       on:upload={handleUploadStarmap}
       on:clear={handleClearStarmap}

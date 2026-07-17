@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.133-beta - 17th Jul 2026
+
+* Starmap: right-click (long-press) a star and choose "Rename System…" to name the system independently of its central star — the star name is only the default, so a system can read "Sol Hub Alpha" while its star stays "Sol". The unnecessary "Zoom to System" item is removed from that menu.
+* The interior cutaway is a single quarter-cut again (composition layers on the left face, internal-heat gradient on the right, meeting at a bright core edge) with spherical shading, the molten-core glow and the temperature key — rather than two stacked discs.
+
+## v2.1.132-beta - 17th Jul 2026
+
+* The interior cutaway is now two quarters: composition layers on one side, an internal-heat gradient (hot core → cool surface) on the other, with a key below. Because absolute core temperatures are genuinely uncertain — a gas giant's is model-dependent to a factor of two — the key anchors only the (computed) surface temperature as a number and shows the core as a qualitative band (Cool / Warm / Hot / Molten / Very hot), rather than inventing a precise figure.
+
 ## v2.1.131-beta - 17th Jul 2026
 
 * The interior cutaway now looks 3D (spherical shading over the layers) and glows with a molten core when the world still has one — driven by the geothermal vigor the physics derives from age, size and composition (Earth-warm to young/large super-Earths run hot; small old worlds like the Moon have cooled to a dead solid core). The glow's colour ramps with heat (deep red to yellow-white) and only lights a metal core; icy cryovolcanic worlds keep their blue subsurface ocean instead. Caption notes "molten core".

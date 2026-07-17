@@ -8,6 +8,7 @@
   // surface liquid films the outermost solid layer. Porosity renders as void speckles, seeded from
   // the body id so the picture is repeatable. Purely presentational — nothing here writes back.
   import type { CelestialBody, Makeup } from '$lib/types';
+  import { EARTH_MASS_KG } from '$lib/constants';
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
   export let body: CelestialBody;
@@ -17,6 +18,7 @@
   export let size = 120;
   export let subsurfaceOcean: { colorHex?: string } | null = null;
   export let surfaceLiquid: { colorHex?: string } | null = null;
+  export let compNote = ''; // explainer shown as the composition disc's tooltip
 
   const GRAIN: Required<Makeup> = { metal: 7.9, rock: 3.3, carbon: 2.3, ice: 0.95, gas: 0.12 };
   // Inside → out. Colours match the makeup-slider swatches.
@@ -24,18 +26,25 @@
   const COLOUR: Record<string, string> = { metal: '#9c8d7a', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
   const LABEL: Record<string, string> = { metal: 'Metal core', rock: 'Rock mantle', carbon: 'Carbon layer', ice: 'Ice shell', gas: 'Gas envelope' };
 
-  // Interior radii match the PlanetDisc sphere (r=30 in its 100-box) so the wedge lines up.
+  // Quarter cutaway (Alex's reference). A wedge is cut from the upper front, exposing two internal
+  // cross-section faces that meet at the core along the vertical front edge: the LEFT face shows the
+  // composition layers, the RIGHT face the internal-temperature gradient. Interior radii match the
+  // PlanetDisc sphere (r=30). The faces are pie sectors; a bright front edge + spherical shading do
+  // the 3D work.
   const R_MAX = 30;
-  // The cut: a wedge opening toward the lower-right (SVG angles, y-down).
-  const WEDGE_A0 = (15 * Math.PI) / 180;
-  const WEDGE_A1 = (105 * Math.PI) / 180;
-  const wedgePt = (a: number, r: number) => [50 + r * Math.cos(a), 50 + r * Math.sin(a)];
-  const wedgePath = (() => {
-    const R = R_MAX + 1.5;
-    const [x0, y0] = wedgePt(WEDGE_A0, R);
-    const [x1, y1] = wedgePt(WEDGE_A1, R);
-    return `M 50 50 L ${x0.toFixed(1)} ${y0.toFixed(1)} A ${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z`;
-  })();
+  const CX = 50, CY = 50;
+  const pt = (deg: number, r: number) => [50 + r * Math.cos((deg * Math.PI) / 180), 50 + r * Math.sin((deg * Math.PI) / 180)];
+  const sector = (a0: number, a1: number, r: number): string => {
+    const [x0, y0] = pt(a0, r);
+    const [x1, y1] = pt(a1, r);
+    const large = ((a1 - a0 + 360) % 360) > 180 ? 1 : 0;
+    return `M ${CX} ${CY} L ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z`;
+  };
+  const COMP0 = 200, COMP1 = 270;    // composition face: upper-left sector (up-left → up)
+  const TEMP0 = 270, TEMP1 = 340;    // temperature face: upper-right sector (up → up-right)
+  const compFace = sector(COMP0, COMP1, R_MAX);
+  const tempFace = sector(TEMP0, TEMP1, R_MAX);
+  const frontEdge = pt(270, R_MAX);  // the shared vertical front edge (up), from core to surface
 
   $: layers = (() => {
       const vols = ORDER.map((k) => (makeup[k] ?? 0) / GRAIN[k]);
@@ -103,6 +112,52 @@
       return Math.min(R_MAX, (rock?.r ?? metalL?.r ?? R_MAX * 0.45) * 1.15);
   })();
 
+  // INTERNAL TEMPERATURE gradient (Alex). Absolute core temperatures are genuinely uncertain — a gas
+  // giant's is model-dependent to a factor of two (Jupiter ~20,000–50,000 K) — so we do NOT assert a
+  // core number. What IS robust: the surface temp (we compute it) and that the interior gets hotter
+  // inward (an adiabat for convective bodies, a radiogenic geotherm for rocky ones). So the wedge is
+  // a gradient with the surface anchored (the one hard number in the key) and the core shown as a
+  // qualitative BAND. The internal coreTempK below only selects the hot-end colour + band word.
+  $: surfaceK = body.temperatureK ?? body.equilibriumTempK ?? 0;
+  $: coreTempK = (() => {
+      const massMe = (body.massKg ?? 0) / EARTH_MASS_KG;
+      const rockyFrac = (makeup.metal ?? 0) + (makeup.rock ?? 0) + (makeup.carbon ?? 0);
+      const gasFrac = makeup.gas ?? 0;
+      if (gasFrac > 0.5) return surfaceK + 16000 * Math.min(2, Math.max(0.3, Math.cbrt(Math.max(massMe, 1) / 300)));
+      const geo = (body as any).geoActivity;
+      const vigor = Math.max(0, geo?.vigor ?? 0);
+      const sizeFactor = Math.min(2.5, Math.max(0.1, Math.sqrt(Math.max(massMe, 1e-6))));
+      const heatFactor = Math.min(1.3, 0.3 + 0.55 * Math.min(2, vigor));  // a dead core still holds residual heat
+      const rise = 5400 * sizeFactor * heatFactor * Math.max(0.2, rockyFrac);
+      return surfaceK + rise;
+  })();
+  // Qualitative core-heat band — no fake kelvins. Silicate/metal melt ~1400–1800 K, so "Molten" starts
+  // there; giants and vigorous super-Earths reach "Very hot".
+  $: coreBand = coreTempK >= 5000 ? 'Very hot core'
+      : coreTempK >= 1600 ? 'Molten core'
+      : coreTempK >= 800 ? 'Hot core'
+      : coreTempK >= 400 ? 'Warm core'
+      : 'Cool core';
+  // Cold → hot thermal ramp for the temperature wedge + key.
+  function tempColour(K: number): string {
+      const stops: Array<[number, [number, number, number]]> = [
+          [0, [26, 30, 66]], [90, [34, 68, 128]], [220, [40, 130, 140]], [300, [64, 165, 120]],
+          [650, [150, 120, 45]], [1300, [172, 55, 22]], [2600, [220, 92, 26]], [4800, [240, 155, 55]], [8000, [255, 224, 160]]
+      ];
+      const c = Math.max(0, K);
+      for (let i = 1; i < stops.length; i++) {
+          if (c <= stops[i][0]) {
+              const [t0, a] = stops[i - 1], [t1, b] = stops[i];
+              const f = (c - t0) / (t1 - t0);
+              return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},${Math.round(a[1] + (b[1] - a[1]) * f)},${Math.round(a[2] + (b[2] - a[2]) * f)})`;
+          }
+      }
+      return 'rgb(255,224,160)';
+  }
+  $: tempCoreCol = tempColour(coreTempK);
+  $: tempMidCol = tempColour((coreTempK + surfaceK) / 2);
+  $: tempSurfCol = tempColour(surfaceK);
+
   // Void speckles for porous bodies: scattered in the OUTER solid region (voids survive where
   // pressure is lowest), count and size scaling with the void fraction.
   $: voids = (() => {
@@ -122,47 +177,65 @@
 </script>
 
 <div class="xsec" style="width:{size}px">
-  <div class="stack" style="width:{size}px; height:{size}px">
+  <div class="stack" style="width:{size}px; height:{size}px" title={compNote ? compNote + '\n\nLeft face: internal-heat gradient (core hot → surface cool, estimated). Right face: composition layers.' : ''}>
     <PlanetDisc {body} {size} showStamp={false} />
-    <svg viewBox="0 0 100 100" width={size} height={size} class="cut" role="img" aria-label="Interior cutaway">
+    <svg viewBox="0 0 100 100" width={size} height={size} class="cut" role="img" aria-label="Interior quarter-cutaway: temperature on the left face, composition on the right">
       <defs>
-        <clipPath id="wedge-{seed}"><path d={wedgePath} /></clipPath>
-        <!-- Spherical shading so the flat layers read as a 3D globe: highlight upper-left, shadow lower-right. -->
-        <radialGradient id="xsec-shade-{seed}" cx="38%" cy="33%" r="72%">
-          <stop offset="0%" stop-color="rgba(255,255,255,0.18)" />
-          <stop offset="44%" stop-color="rgba(255,255,255,0)" />
-          <stop offset="100%" stop-color="rgba(0,0,0,0.52)" />
+        <!-- Spherical shading for the 3D look: highlight upper-left, shadow lower-right. -->
+        <radialGradient id="xsec-shade-{seed}" cx="38%" cy="30%" r="75%">
+          <stop offset="0%" stop-color="rgba(255,255,255,0.16)" />
+          <stop offset="46%" stop-color="rgba(255,255,255,0)" />
+          <stop offset="100%" stop-color="rgba(0,0,0,0.5)" />
+        </radialGradient>
+        <!-- Temperature: hot at the core (centre), cool at the surface (rim). -->
+        <radialGradient id="xsec-temp-{seed}" gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={R_MAX}>
+          <stop offset="0%" stop-color={tempCoreCol} />
+          <stop offset="55%" stop-color={tempMidCol} />
+          <stop offset="100%" stop-color={tempSurfCol} />
         </radialGradient>
         {#if coreHeat > 0.02}
-          <radialGradient id="xsec-core-{seed}" gradientUnits="userSpaceOnUse" cx="50" cy="50" r={coreGlowR}>
-            <stop offset="0%" stop-color={coreColour} stop-opacity={(0.7 * coreHeat + 0.25).toFixed(2)} />
-            <stop offset="55%" stop-color={coreColour} stop-opacity={(0.45 * coreHeat).toFixed(2)} />
+          <radialGradient id="xsec-core-{seed}" gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={coreGlowR}>
+            <stop offset="0%" stop-color={coreColour} stop-opacity={(0.7 * coreHeat + 0.3).toFixed(2)} />
+            <stop offset="60%" stop-color={coreColour} stop-opacity={(0.4 * coreHeat).toFixed(2)} />
             <stop offset="100%" stop-color={coreColour} stop-opacity="0" />
           </radialGradient>
         {/if}
       </defs>
-      <g clip-path="url(#wedge-{seed})">
-        <path d={wedgePath} fill="#0c0e14" />
-        {#each [...layers].reverse() as l}
-          <circle cx="50" cy="50" r={l.r} fill={l.fill}><title>{l.label}</title></circle>
-        {/each}
-        {#each voids as v}
-          <circle cx={v.x} cy={v.y} r={v.r} fill="rgba(10,10,14,0.55)" />
-        {/each}
-        <!-- 3D shade over the solid layers, then the emissive molten core on top so it stays hot. -->
-        {#if layers.length}<circle cx="50" cy="50" r={layers[layers.length - 1].r} fill="url(#xsec-shade-{seed})" />{/if}
-        {#if coreHeat > 0.02}<circle cx="50" cy="50" r={coreGlowR} fill="url(#xsec-core-{seed})" />{/if}
-      </g>
-      <path d={wedgePath} fill="none" stroke="rgba(8,8,12,0.7)" stroke-width="0.9" />
+
+      <!-- LEFT face: composition layers as nested sectors (outer → inner). -->
+      <path d={compFace} fill="#0a0c12" />
+      {#each [...layers].reverse() as l}
+        <path d={sector(COMP0, COMP1, l.r)} fill={l.fill}><title>{l.label}</title></path>
+      {/each}
+      {#if coreHeat > 0.02}<path d={sector(COMP0, COMP1, coreGlowR)} fill="url(#xsec-core-{seed})" />{/if}
+
+      <!-- RIGHT face: the internal-heat gradient. -->
+      <path d={tempFace} fill="url(#xsec-temp-{seed})"><title>Internal heat (estimated) — hot core to cool surface</title></path>
+      {#if coreHeat > 0.02}<path d={sector(TEMP0, TEMP1, coreGlowR)} fill="url(#xsec-core-{seed})" />{/if}
+
+      <!-- 3D shade over both faces so they sit inside a sphere. -->
+      <path d={compFace} fill="url(#xsec-shade-{seed})" />
+      <path d={tempFace} fill="url(#xsec-shade-{seed})" />
+      <!-- Cut rims + the bright shared front edge (nearest the viewer). -->
+      <path d={compFace} fill="none" stroke="rgba(8,8,12,0.6)" stroke-width="0.7" />
+      <path d={tempFace} fill="none" stroke="rgba(8,8,12,0.6)" stroke-width="0.7" />
+      <line x1={CX} y1={CY} x2={frontEdge[0].toFixed(1)} y2={frontEdge[1].toFixed(1)} stroke="rgba(255,255,255,0.28)" stroke-width="0.7" />
     </svg>
   </div>
-  <div class="cap">cutaway{coreHeat > 0.25 ? ' · molten core' : ''}{porosity >= 0.03 ? ` · ${Math.round(porosity * 100)}% voids` : ''}</div>
+  <div class="tempkey" style="width:{size}px" title="Estimated internal heat. The surface temperature is computed; the core is hotter (an adiabat / radiogenic geotherm) but its exact value is model-dependent, so it's shown as a band, not a number.">
+    <div class="tempkey-bar" style="background: linear-gradient(to right, {tempSurfCol}, {tempMidCol}, {tempCoreCol});"></div>
+    <div class="tempkey-labels"><span>{Math.round(surfaceK)} K surface</span><span>{coreBand}</span></div>
+  </div>
+  <div class="cap">cutaway · heat | composition{coreHeat > 0.25 ? ' · molten' : ''}{porosity >= 0.03 ? ` · ${Math.round(porosity * 100)}% voids` : ''}</div>
 </div>
 
 <style>
-  .xsec { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .xsec { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .stack { position: relative; }
   .stack :global(.disc-wrap) { position: absolute; inset: 0; }
   .cut { position: absolute; inset: 0; pointer-events: none; }
-  .cap { font-size: 0.68em; color: var(--text-faint, #8a8f9a); }
+  .cap { font-size: 0.66em; color: var(--text-faint, #8a8f9a); }
+  .tempkey { display: flex; flex-direction: column; gap: 1px; }
+  .tempkey-bar { height: 5px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.4); }
+  .tempkey-labels { display: flex; justify-content: space-between; font-size: 0.6em; color: var(--text-faint, #8a8f9a); }
 </style>

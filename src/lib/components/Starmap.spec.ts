@@ -65,12 +65,13 @@ describe('Starmap.svelte', () => {
   it('shows a context menu when a star is right-clicked', async () => {
     const { container, queryByText, getByText } = renderStarmap();
 
-    expect(queryByText('Zoom to System')).not.toBeInTheDocument();
+    expect(queryByText('Rename System…')).not.toBeInTheDocument();
 
     await fireEvent.contextMenu(starGroup(container));
 
-    expect(getByText('Zoom to System')).toBeInTheDocument();
+    expect(getByText('Rename System…')).toBeInTheDocument();
     expect(getByText('Delete System')).toBeInTheDocument();
+    expect(queryByText('Zoom to System')).not.toBeInTheDocument(); // removed — unnecessary
   });
 
   it('dispatches a deletesystem event from the context menu', async () => {
