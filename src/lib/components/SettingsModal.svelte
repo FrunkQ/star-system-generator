@@ -74,6 +74,9 @@
     : ((starmap.distanceUnit || '').toLowerCase() === 'pc' ? 'pc' : 'ly');
   let abstractUnit = initialDiagrammatic ? (starmap.distanceUnit || 'J') : 'J';
   let abstractOrder: 'prefix' | 'suffix' = starmap.unitIsPrefix ? 'prefix' : 'suffix';
+  // Traveller mode INFERS the unit: maps are parsec-scaled (1 hex = 1 pc), so the picker is
+  // disabled and the choice coerced — including when the mode is ticked with the modal open.
+  $: if ($starmapUiStore.travellerMode && unitChoice !== 'pc') unitChoice = 'pc';
   let generationEngine = starmap.generationEngine ?? 'standard';   // preserved on save; no longer surfaced in the UI
   // Enabled-rule count per category across the enabled packs (shown beside each PoI category).
   $: ruleCounts = (() => {
@@ -239,12 +242,15 @@
             <input type="text" id="starmapName" bind:value={starmapName}>
           </div>
           <div class="form-group">
-            <label for="unitChoice">Distance/Scaling units</label>
-            <select id="unitChoice" bind:value={unitChoice}>
+            <label for="unitChoice" title={$starmapUiStore.travellerMode ? 'Traveller mode maps are parsec-scaled (1 hex = 1 pc), so the unit is inferred.' : undefined}>Distance/Scaling units</label>
+            <select id="unitChoice" bind:value={unitChoice} disabled={$starmapUiStore.travellerMode}>
               <option value="ly">Light Years (ly)</option>
               <option value="pc">Parsecs (pc)</option>
               <option value="diagrammatic">Diagrammatic (not scaled)</option>
             </select>
+            {#if $starmapUiStore.travellerMode}
+              <p class="section-hint">Traveller mode: parsecs (1 hex = 1 pc).</p>
+            {/if}
           </div>
           {#if unitChoice === 'diagrammatic'}
             <div class="form-group">

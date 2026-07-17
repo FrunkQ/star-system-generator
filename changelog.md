@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.142-beta - 17th Jul 2026
+
+* Starmap links: left-click no longer opens the edit modal — right-click (or long-press) opens a context menu with Edit Link. Settings: Traveller mode greys out the distance-unit picker and infers parsecs (1 hex = 1 pc).
+
 ## v2.1.141-beta - 17th Jul 2026
 
 * Production masking: Holo Table hidden from the Field Guide skin picker (persisted holo selections fall back to The Guide) and the Player Views rail entry commented out — Field Guide is the production players' launcher again. The V2.2 3D line stays beta-only.

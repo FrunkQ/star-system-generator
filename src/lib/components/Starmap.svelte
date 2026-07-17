@@ -52,6 +52,7 @@
   let contextMenuX = 0;
   let contextMenuY = 0;
   let contextMenuSystemId: string | null = null;
+  let contextMenuRoute: Starmap['routes'][number] | null = null;
   let detectedSubsector: any = null;
   let isStarContextMenu = false;
 
@@ -701,6 +702,7 @@
     contextMenuX = event.clientX - rect.left;
     contextMenuY = event.clientY - rect.top;
     contextMenuSystemId = systemId;
+    contextMenuRoute = null;
   }
 
   let contextMenuClickCoords = { x: 0, y: 0 };
@@ -714,6 +716,7 @@
     contextMenuX = event.clientX - rect.left;
     contextMenuY = event.clientY - rect.top;
     contextMenuSystemId = null;
+    contextMenuRoute = null;
 
     const svgRect = svgElement.getBoundingClientRect();
     const viewBox = svgElement.viewBox.baseVal;
@@ -753,6 +756,26 @@
   function closeContextMenu() {
     showContextMenu = false;
     contextMenuSystemId = null;
+    contextMenuRoute = null;
+  }
+
+  // Links: LEFT-click is inert (no accidental edit modals mid-pan); right-click / long-press opens
+  // this menu with Edit Link as its only option.
+  function handleRouteContextMenu(event: MouseEvent, route: Starmap['routes'][number]) {
+    event.preventDefault();
+    event.stopPropagation();
+    showContextMenu = true;
+    isStarContextMenu = false;
+    const rect = starmapContainer.getBoundingClientRect();
+    contextMenuX = event.clientX - rect.left;
+    contextMenuY = event.clientY - rect.top;
+    contextMenuSystemId = null;
+    contextMenuRoute = route;
+  }
+
+  function handleContextMenuEditRoute() {
+    if (contextMenuRoute) dispatch('editroute', contextMenuRoute);
+    closeContextMenu();
   }
 
   function handleContextMenuAddSystem() {
@@ -1004,8 +1027,7 @@
             y2={targetSystem.position.y}
             class="route-clickable-area"
             on:pointerdown={handleRoutePointerDown}
-            on:click={() => dispatch('editroute', route)}
-            on:contextmenu|preventDefault|stopPropagation={() => dispatch('editroute', route)}
+            on:contextmenu={(e) => handleRouteContextMenu(e, route)}
           />
           <line
             x1={sourceSystem.position.x}
@@ -1021,8 +1043,7 @@
             y={midY - 5}
             class="route-label"
             on:pointerdown={handleRoutePointerDown}
-            on:click={() => dispatch('editroute', route)}
-            on:contextmenu|preventDefault|stopPropagation={() => dispatch('editroute', route)}
+            on:contextmenu={(e) => handleRouteContextMenu(e, route)}
           >
             {starmap.unitIsPrefix ? starmap.distanceUnit : ''}{formatRouteDistance(route.distance)}{!starmap.unitIsPrefix ? ` ${starmap.distanceUnit}` : ''}
           </text>
@@ -1036,8 +1057,7 @@
               class="route-name"
               transform={`rotate(${nameAngle}, ${midX}, ${midY})`}
               on:pointerdown={handleRoutePointerDown}
-              on:click={() => dispatch('editroute', route)}
-              on:contextmenu|preventDefault|stopPropagation={() => dispatch('editroute', route)}
+              on:contextmenu={(e) => handleRouteContextMenu(e, route)}
             >
               {route.name}
             </text>
@@ -1322,7 +1342,9 @@
   {#if showContextMenu}
     <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;">
       <ul>
-        {#if contextMenuSystemId}
+        {#if contextMenuRoute}
+            <li on:click={handleContextMenuEditRoute}>Edit Link…</li>
+        {:else if contextMenuSystemId}
             <li on:click={handleContextMenuRename}>Rename System…</li>
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
