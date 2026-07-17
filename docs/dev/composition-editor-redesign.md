@@ -1,6 +1,7 @@
 # Composition editor redesign — anchored composition, envelope bars, small bodies
 
-Status: AGREED design, pre-implementation (2026-07-16).
+Status: AGREED design (2026-07-16); stages 1-3 implemented, then REVISED after review
+(see section 11) — the hardcoded preset row is replaced by a classifier-driven type list.
 Scope: the body editor's Composition tab (planets/moons path), the makeup physics,
 the classifier's interaction with editing, and small-body (asteroid/comet) support
 down through the renderer.
@@ -169,3 +170,24 @@ Purely presentational; makes the coupling legible while dragging.
 
 Gate per stage: `npx vitest run` + `npm run build` (svelte-check is not a gate —
 pre-existing errors).
+
+## 11. REVISION (agreed 2026-07-16, after stages 1-3): roll the classifier in
+
+Direction from review: the preset row should BE the classifier. The fingerprints already
+carry mass/radius/density bands per type — use them as the band source instead of
+hand-authored preset envelopes, and give the GM direct type selection:
+
+- **The "Composition preset" row becomes a "Planet type" list**: every base fingerprint
+  whose mass band admits the CURRENT mass (the "picker under mass", generalised), ranked
+  by the classifier's own candidate score against the full current state. Types that fit
+  now render bright; types reachable at this mass (but needing radius/density moved)
+  render dim.
+- **Clicking a type pins it** (`classes[0]` + `autoClassify = false` + type image),
+  **sliders do not move**, and that type's fingerprint bands (mass_Me / radius_Re /
+  density) appear as accent-coloured range bands on the three sliders. The GM tunes
+  into the bands to realise the type; the "physics reads:" advisory tracks agreement.
+- The thin green trim tick (this mix's physical envelope) stays as a secondary marker.
+- The hardcoded `COMPOSITION_PRESETS` buttons are removed from the UI (the engine
+  presets remain for tests/generation). Composition is set via the makeup sliders.
+- **Typed values are respected**: number boxes apply on change (Enter/blur), never
+  per keystroke — a typed value must survive exactly, not be fought by re-derivation.

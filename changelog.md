@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.118-beta - 16th Jul 2026
+
+* Composition redesign stage 2b (the classifier, rolled in): the preset row is now a Planet type list — every classifier type reachable at the current mass and orbital temperature, ranked by live match score (bright = fits now, dim = needs tuning). Clicking pins the type without moving any slider and draws that type's fingerprint bands on the mass/radius/density sliders; a note explains that pinning does not force the physics. Number boxes now apply on Enter/blur so typed values are never fought mid-entry.
+
 ## v2.1.117-beta - 16th Jul 2026
 
 * Composition redesign stage 3 (classifier): asteroid taxonomy — C/S/M-type, comet (from composition + small-body mass) and a rubble-pile modifier keyed on derived macroporosity. Tested against Bennu, Eros, 16 Psyche, 67P; Ceres correctly stays planet-class.
