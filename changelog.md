@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.122-beta - 17th Jul 2026
+
+* The composition diagram is now a proper CUTAWAY: the body's rendered surface (oceans, ice caps, craters, irregular asteroids) with a wedge cut out revealing the interior layers — including subsurface oceans. Liquids-overhaul design doc added (docs/dev/liquids-phase-tags.md).
+
 ## v2.1.121-beta - 17th Jul 2026
 
 * Asteroid class images (NASA: 253 Mathilde, 433 Eros, 16 Psyche, Hartley 2) wired for C/S/M-type and comet, with attributions in About.

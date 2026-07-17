@@ -641,7 +641,7 @@
             </div>
         {/each}
         </div>
-        <CompositionCrossSection makeup={pMakeup} porosity={pPorosity} seed={body.id} size={96}
+        <CompositionCrossSection {body} makeup={pMakeup} porosity={pPorosity} seed={body.id} size={116}
             subsurfaceOcean={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'subsurface') ?? null}
             surfaceLiquid={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'surface') ?? null} />
         </div>

@@ -1,18 +1,20 @@
 <script lang="ts">
-  // Interior cross-section (composition redesign stage 4): a layered disc derived live from the
-  // makeup mass fractions — metal core out through rock / carbon / ice to a gas envelope — so the
-  // coupling between the mix and the body's structure is visible while dragging. Layer radii come
-  // from VOLUME fractions (mass fraction / grain density, normalised; r ∝ cbrt of cumulative
-  // volume). Porosity renders as void speckles in the solid layers, seeded from the body id so the
-  // picture is repeatable. Purely presentational — nothing here writes back.
-  import type { Makeup } from '$lib/types';
+  // Interior CUTAWAY (composition redesign stage 4, revised per review): the body's rendered
+  // surface (PlanetDisc — so oceans, ice caps, craters and irregular asteroids all show) with a
+  // wedge cut out revealing the interior layers, planetary-illustration style. Layers derive live
+  // from the makeup mass fractions — metal core out through rock / carbon / ice to a gas envelope —
+  // with radii from VOLUME fractions (mass fraction / grain density, normalised; r ∝ cbrt of
+  // cumulative volume). Derived fluid layers overlay: a subsurface ocean splits the ice band, a
+  // surface liquid films the outermost solid layer. Porosity renders as void speckles, seeded from
+  // the body id so the picture is repeatable. Purely presentational — nothing here writes back.
+  import type { CelestialBody, Makeup } from '$lib/types';
+  import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
+  export let body: CelestialBody;
   export let makeup: Required<Makeup>;
   export let porosity = 0;
   export let seed = 'body';
-  export let size = 104;
-  // Derived fluid layers (from the physics, not the makeup): a subsurface ocean renders as a
-  // liquid annulus UNDER the ice shell; a surface liquid as a thin film over the solid layers.
+  export let size = 120;
   export let subsurfaceOcean: { colorHex?: string } | null = null;
   export let surfaceLiquid: { colorHex?: string } | null = null;
 
@@ -22,7 +24,18 @@
   const COLOUR: Record<string, string> = { metal: '#9c8d7a', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
   const LABEL: Record<string, string> = { metal: 'Metal core', rock: 'Rock mantle', carbon: 'Carbon layer', ice: 'Ice shell', gas: 'Gas envelope' };
 
-  const R_MAX = 46;
+  // Interior radii match the PlanetDisc sphere (r=30 in its 100-box) so the wedge lines up.
+  const R_MAX = 30;
+  // The cut: a wedge opening toward the lower-right (SVG angles, y-down).
+  const WEDGE_A0 = (15 * Math.PI) / 180;
+  const WEDGE_A1 = (105 * Math.PI) / 180;
+  const wedgePt = (a: number, r: number) => [50 + r * Math.cos(a), 50 + r * Math.sin(a)];
+  const wedgePath = (() => {
+    const R = R_MAX + 1.5;
+    const [x0, y0] = wedgePt(WEDGE_A0, R);
+    const [x1, y1] = wedgePt(WEDGE_A1, R);
+    return `M 50 50 L ${x0.toFixed(1)} ${y0.toFixed(1)} A ${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z`;
+  })();
 
   $: layers = (() => {
       const vols = ORDER.map((k) => (makeup[k] ?? 0) / GRAIN[k]);
@@ -49,8 +62,8 @@
           const solidTopIdx = gasIdx === -1 ? out.length - 1 : gasIdx - 1;
           if (solidTopIdx >= 0) {
               const rTop = out[solidTopIdx].r;
-              out.splice(solidTopIdx + 1, 0, { key: 'surface-liquid', r: rTop + 2, fill: surfaceLiquid.colorHex ?? '#2b6cb0', label: 'Surface liquid' });
-              for (let i = solidTopIdx + 2; i < out.length; i++) out[i].r = Math.max(out[i].r, rTop + 2.5);
+              out.splice(solidTopIdx + 1, 0, { key: 'surface-liquid', r: rTop + 1.4, fill: surfaceLiquid.colorHex ?? '#2b6cb0', label: 'Surface liquid' });
+              for (let i = solidTopIdx + 2; i < out.length; i++) out[i].r = Math.max(out[i].r, rTop + 1.8);
           }
       }
       return out;
@@ -69,27 +82,37 @@
       return Array.from({ length: n }, () => {
           const a = rnd() * 2 * Math.PI;
           const rr = rOut * (0.45 + 0.5 * Math.sqrt(rnd()));   // biased outward
-          return { x: 50 + Math.cos(a) * rr * 0.95, y: 50 + Math.sin(a) * rr * 0.95, r: 0.7 + rnd() * (1 + porosity * 2.2) };
+          return { x: 50 + Math.cos(a) * rr * 0.95, y: 50 + Math.sin(a) * rr * 0.95, r: 0.5 + rnd() * (0.7 + porosity * 1.5) };
       });
   })();
 </script>
 
 <div class="xsec" style="width:{size}px">
-  <svg viewBox="0 0 100 100" width={size} height={size} role="img" aria-label="Interior cross-section">
-    {#each [...layers].reverse() as l}
-      <circle cx="50" cy="50" r={l.r} fill={l.fill}><title>{l.label}</title></circle>
-    {/each}
-    {#each voids as v}
-      <circle cx={v.x} cy={v.y} r={v.r} fill="rgba(10,10,14,0.55)" />
-    {/each}
-    {#if layers.length}
-      <circle cx="50" cy="50" r={layers[layers.length - 1].r} fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.8" />
-    {/if}
-  </svg>
-  <div class="cap">cross-section{porosity >= 0.03 ? ` · ${Math.round(porosity * 100)}% voids` : ''}</div>
+  <div class="stack" style="width:{size}px; height:{size}px">
+    <PlanetDisc {body} {size} showStamp={false} />
+    <svg viewBox="0 0 100 100" width={size} height={size} class="cut" role="img" aria-label="Interior cutaway">
+      <defs>
+        <clipPath id="wedge-{seed}"><path d={wedgePath} /></clipPath>
+      </defs>
+      <g clip-path="url(#wedge-{seed})">
+        <path d={wedgePath} fill="#0c0e14" />
+        {#each [...layers].reverse() as l}
+          <circle cx="50" cy="50" r={l.r} fill={l.fill}><title>{l.label}</title></circle>
+        {/each}
+        {#each voids as v}
+          <circle cx={v.x} cy={v.y} r={v.r} fill="rgba(10,10,14,0.55)" />
+        {/each}
+      </g>
+      <path d={wedgePath} fill="none" stroke="rgba(8,8,12,0.7)" stroke-width="0.9" />
+    </svg>
+  </div>
+  <div class="cap">cutaway{porosity >= 0.03 ? ` · ${Math.round(porosity * 100)}% voids` : ''}</div>
 </div>
 
 <style>
   .xsec { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .stack { position: relative; }
+  .stack :global(.disc-wrap) { position: absolute; inset: 0; }
+  .cut { position: absolute; inset: 0; pointer-events: none; }
   .cap { font-size: 0.68em; color: var(--text-faint, #8a8f9a); }
 </style>
