@@ -126,7 +126,16 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     [SURF.metal, mk.metal], [SURF.rock, mk.rock], [SURF.carbon, mk.carbon],
     [SURF.ice, mk.ice], [SURF.gas, mk.gas]
   ]);
-  const surfDom = (['rock', 'metal', 'carbon', 'ice', 'gas'] as const).sort((a, b) => mk[b] - mk[a])[0];
+  let surfDom: string = (['rock', 'metal', 'carbon', 'ice', 'gas'] as const).sort((a, b) => mk[b] - mk[a])[0];
+  // Differentiation: ices are the lightest solid, so they FLOAT — a body with a real ice fraction
+  // wears it as its visible crust (Enceladus/Europa are near-white despite rock-dominated bulk).
+  // The bulk mix above is what the interior looks like, not the surface. Giants excluded (their
+  // look is cloud chemistry, step 3c).
+  if (!rendersAsGiant(body) && mk.ice > 0.08) {
+    const shell = Math.min(1, mk.ice * 3.5);
+    col = mix(col, SURF.ice, shell);
+    if (shell > 0.5) surfDom = 'ice';
+  }
   push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
 
   // 2. Surface liquid — ANY liquid, proportional to coverage (#9): the disc is land×(1−cover) +
@@ -152,6 +161,18 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     const cover = Math.min(0.85, hydro);
     col = mix(col, lc, cover);
     push(rgbToHex(lc), 'ocean', hydro, `${surfaceLiquid} ocean`);
+  } else if (rawComp && rawComp !== 'none' && !rendersAsGiant(body)
+      && phaseAtP(rawComp, surfT, body.atmosphere?.pressure_bar) === 'solid') {
+    // Frozen hydrosphere: the solvent is SOLID at the surface — it's an ice sheet, not an ocean,
+    // and it still covers (and brightens) the ground. Colour = the solvent's tint bleached heavily
+    // toward frost (water → near-white; methane/nitrogen ices keep a faint cast).
+    const cover = body.hydrosphere?.coverage ?? 0;
+    if (cover > 0.05) {
+      const intrinsic = hexToRgb(LIQUIDS.find((l) => l.name === rawComp)?.colorHex ?? '#8aa0b8');
+      const frost = mix(intrinsic, [236, 243, 250], 0.78);
+      col = mix(col, frost, Math.min(0.9, cover));
+      push(rgbToHex(frost), 'surface', cover, `${rawComp} ice sheet`);
+    }
   }
 
   // 3. Atmosphere/cloud tint from the dominant coloured gas (thicker → more dominant). Gas

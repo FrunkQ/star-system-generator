@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.137-beta - 17th Jul 2026
+
+* Icy worlds now LOOK icy: ices float, so a body with a real ice fraction wears it as its visible crust (bulk rock+ice no longer averages to brown), and a frozen hydrosphere paints a bright ice sheet instead of nothing. Enceladus/Europa render near-white.
+
 ## v2.1.136-beta - 17th Jul 2026
 
 * Fixed the giant/makeup seam: a body at giant mass and low density can't be gas-free (no rock/ice world that massive would be so light — self-gravity crushes it far denser), so the physics now re-infers a volatile envelope for it. Building a "gas giant" with 0% gas no longer leaves it a rocky-cored impostor — its makeup, render, porosity and classification all agree that it's a giant. Bodies that were already consistent (real gassy giants, ordinary rocky worlds) are untouched.
