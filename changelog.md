@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.135-beta - 17th Jul 2026
+
+* Composition editor: a segmented composition-breakdown bar under the density slider shows the interior mix (metal / rock / carbon / ice / gas) by mass fraction at a glance, each segment coloured and labelled, so you don't have to read the five sliders.
+
 ## v2.1.134-beta - 17th Jul 2026
 
 * Simpler interior cutaway: the right half shows the planet's rendered surface, the left half is the cross-section — composition layers in the upper quarter, the internal-heat gradient in the lower — split at the cut plane, with the molten-core glow and temperature key.

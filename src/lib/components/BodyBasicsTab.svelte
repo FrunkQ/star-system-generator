@@ -701,6 +701,17 @@
         <div class="sub-label">{lock === 'density' ? 'composition held' : (pEnv && lock === null ? `inside the green tick: varies ${pEnv.kind} only` : 'infers the interior makeup below')}{#if pPorosity > 0.02}<span class="sc-porosity" title="Void fraction this size implies for the mix (ceiling {Math.round(pPorosityMax * 100)}% at this mass — self-gravity crushes the rest). High porosity at low mass reads as a rubble pile."> · porosity ~{Math.round(pPorosity * 100)}%</span>{/if}</div>
     </div>
 
+    <!-- Composition breakdown: the interior mix at a glance, segmented by mass fraction. -->
+    <div class="sc-breakdown" title="Interior makeup by mass fraction">
+        {#each MK_KEYS as k}
+            {#if (pMakeup[k] ?? 0) > 0.005}
+                <div class="sc-seg" style="width: {((pMakeup[k] ?? 0) * 100).toFixed(1)}%; background-color: {MK_SWATCH[k]}; color: {k === 'ice' || k === 'gas' ? '#1a1c22' : '#f0f0f0'};" title="{MK_LABEL[k]} {Math.round((pMakeup[k] ?? 0) * 100)}%">
+                    {#if (pMakeup[k] ?? 0) >= 0.12}<span>{MK_LABEL[k]} {Math.round((pMakeup[k] ?? 0) * 100)}%</span>{/if}
+                </div>
+            {/if}
+        {/each}
+    </div>
+
     {#if edgeHint}
         <div class="sc-edge-chip" role="status">{edgeHint}</div>
     {/if}
@@ -1071,6 +1082,10 @@
   .type-chip { opacity: 0.55; }
   .type-chip.fits { opacity: 1; }
   .type-chip.active { border-color: var(--accent, #ff5a1f); color: var(--accent, #ff5a1f); opacity: 1; }
+
+  /* Composition breakdown bar: the interior mix at a glance, segmented by mass fraction. */
+  .sc-breakdown { display: flex; height: 16px; border-radius: 4px; overflow: hidden; margin-top: 4px; border: 1px solid var(--border, #2a2d36); }
+  .sc-breakdown .sc-seg { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; font-size: 0.62em; letter-spacing: 0.02em; white-space: nowrap; }
 
   .sc-morph-chip {
     align-self: flex-start; font-size: 0.76em; padding: 2px 8px; border-radius: 10px;
