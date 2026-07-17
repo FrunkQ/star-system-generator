@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.131-beta - 17th Jul 2026
+
+* The interior cutaway now looks 3D (spherical shading over the layers) and glows with a molten core when the world still has one — driven by the geothermal vigor the physics derives from age, size and composition (Earth-warm to young/large super-Earths run hot; small old worlds like the Moon have cooled to a dead solid core). The glow's colour ramps with heat (deep red to yellow-white) and only lights a metal core; icy cryovolcanic worlds keep their blue subsurface ocean instead. Caption notes "molten core".
+
 ## v2.1.130-beta - 17th Jul 2026
 
 * Composition editor: the interior cutaway sits beside the makeup sliders again (wrapping below on a narrow panel), and the "density is gravity-compressed…" explainer is now a hover tooltip on it rather than a caption, keeping the panel compact.
