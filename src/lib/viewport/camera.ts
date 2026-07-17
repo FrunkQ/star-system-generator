@@ -12,8 +12,10 @@ type WorldPositions = Map<string, { x: number; y: number }>;
 
 export const MIN_CAMERA_ZOOM = 0.05;
 // In AU render space, very close binaries/constructs (e.g. ~100 km separation)
-// require very high zoom to be visually distinguishable.
-export const MAX_CAMERA_ZOOM = 500000000;
+// require very high zoom to be visually distinguishable — and the smallest editable
+// bodies (~0.3 km asteroids) need ~2e11 to fill the screen. 1e12 gives headroom past
+// that while 1 px still maps to 1e-12 AU, three orders above float64 precision at 10 AU.
+export const MAX_CAMERA_ZOOM = 1e12;
 export const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
 export const AUTO_FRAME_MIN_UPDATE_MS = 180; // rate-limit: don't re-frame every frame
 export const AUTO_FRAME_DEADBAND = 0.02;     // ignore sub-2% corrections (stops hunting)

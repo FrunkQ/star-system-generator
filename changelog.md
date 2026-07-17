@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.140-beta - 17th Jul 2026
+
+* Orrery zoom cap raised 2000x (5e8 -> 1e12) so the new asteroid-scale bodies (~0.3 km up) can be framed full-screen instead of stalling as a few pixels.
+
 ## v2.1.139-beta - 17th Jul 2026
 
 * Metal swatch is now steel-grey so it reads apart from rock's brown; dropped the "drives density -> size" hint; asteroid type thumbnails generated (C/S/M-type + comet images now show in the type picker).
