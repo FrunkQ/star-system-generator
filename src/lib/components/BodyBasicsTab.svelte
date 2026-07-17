@@ -378,9 +378,23 @@
   // falls back to the full span — the one place a full-range slider still appears.
   $: bandFp = baseFps.find((f) => f.class === body.classes?.[0]) ?? null;
   $: isUnknown = body.classes?.[0] === UNKNOWN_CLASS;
-  $: massSpan = isUnknown ? [pMassMin, pMassMax] : sliderSpan(rangeOf(bandFp, 'mass_Me'), pMassMin, pMassMax);
-  $: radSpan = isUnknown ? [pRadMin, pRadMax] : sliderSpan(rangeOf(bandFp, 'radius_Re'), pRadMin, pRadMax);
-  $: denSpan = isUnknown ? [pDenMin, pDenMax] : sliderSpan(rangeOf(bandFp, 'density'), pDenMin, pDenMax);
+  // Full-range toggle (Alex): switch every slider back to its full span instead of zooming to the
+  // pinned type's range. Density is ALWAYS full range — its span (0.1–30 g/cc) is small enough that
+  // zooming buys nothing and the mass/radius trim tricks aren't worth it there.
+  let fullRange = false;
+  $: zoomSliders = !fullRange && !isUnknown;
+  $: massSpan = zoomSliders ? sliderSpan(rangeOf(bandFp, 'mass_Me'), pMassMin, pMassMax) : [pMassMin, pMassMax];
+  $: radSpan = zoomSliders ? sliderSpan(rangeOf(bandFp, 'radius_Re'), pRadMin, pRadMax) : [pRadMin, pRadMax];
+  $: denSpan = [pDenMin, pDenMax];
+
+  // Overview strip under a zoomed mass/radius slider: the FULL log scale with the current window
+  // shaded, so you always see where the zoomed slider sits in the whole range.
+  const overview = (span: number[], fullLo: number, fullHi: number) => ({
+    left: logPos(span[0], fullLo, fullHi) * 100,
+    width: Math.max(1.5, (logPos(span[1], fullLo, fullHi) - logPos(span[0], fullLo, fullHi)) * 100)
+  });
+  $: massOverview = zoomSliders ? overview(massSpan, pMassMin, pMassMax) : null;
+  $: radOverview = zoomSliders ? overview(radSpan, pRadMin, pRadMax) : null;
 
   // The class's own band drawn INSIDE the padded span (the padding at each end is the
   // "leaving the class" zone).
@@ -536,6 +550,9 @@
     <div class="sc-sub">
         <span class="category-badge">{sizeCategory}</span>
         {#if showAdvisory}<span class="sc-advisory" title="The type is pinned; this is what the classifier would call the current physics.">physics reads: {physicsReads}</span>{/if}
+        <label class="sc-fullrange" title="Show every slider at its full range instead of zooming to the current type's band. The full-scale strip under each slider shows where the type's window sits.">
+            <input type="checkbox" bind:checked={fullRange} /> Full range
+        </label>
     </div>
 
     <!-- MASS -->
@@ -550,6 +567,7 @@
             {#if massTypeBand}<div class="sc-typeband" style="left: {massTypeBand.left}%; width: {massTypeBand.width}%;" title="{liveType}: mass range for this type"></div>{/if}
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pMassPos} on:input={onMassSlider} on:change={finalizeEdit} disabled={lock === 'mass'} />
             <div class="sc-ends"><span>{fmtEnd(massSpan[0])}</span><span>{fmtEnd(massSpan[1])} M⊕</span></div>
+            {#if massOverview}<div class="sc-overview" title="Where this zoomed window sits in the full mass range ({fmtEnd(pMassMin)}–{fmtEnd(pMassMax)} M⊕)"><div class="sc-overview-win" style="left: {massOverview.left}%; width: {massOverview.width}%;"></div></div>{/if}
         </div>
         <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
     </div>
@@ -567,6 +585,7 @@
             {#if radTrimBand && lock === null}<div class="sc-band" style="left: {radTrimBand.left}%; width: {radTrimBand.width}%;" title="This mix's physical envelope — inside it only the {pEnv?.kind} varies; past the edge the composition morphs."></div>{/if}
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} on:change={finalizeEdit} disabled={lock === 'radius'} />
             <div class="sc-ends"><span>{fmtEnd(radSpan[0])}</span><span>{fmtEnd(radSpan[1])} R⊕</span></div>
+            {#if radOverview}<div class="sc-overview" title="Where this zoomed window sits in the full radius range ({fmtEnd(pRadMin)}–{fmtEnd(pRadMax)} R⊕)"><div class="sc-overview-win" style="left: {radOverview.left}%; width: {radOverview.width}%;"></div></div>{/if}
         </div>
         <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
     </div>
@@ -629,7 +648,6 @@
             <span>Interior makeup</span>
             <span class="hint">{makeupLocked ? 'held by density lock' : 'drives density -> size'}</span>
         </div>
-        <div class="sc-makeup-body">
         <div class="sc-makeup-rows">
         {#each MK_KEYS as k}
             <div class="mk-row">
@@ -641,12 +659,15 @@
             </div>
         {/each}
         </div>
-        <CompositionCrossSection {body} makeup={pMakeup} porosity={pPorosity} seed={body.id} size={116}
+    </div>
+
+    <!-- Interior cutaway: its own roomy block so the sphere and its note aren't squashed. -->
+    <figure class="sc-xsec-figure">
+        <CompositionCrossSection {body} makeup={pMakeup} porosity={pPorosity} seed={body.id} size={168}
             subsurfaceOcean={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'subsurface') ?? null}
             surfaceLiquid={(body.hydrosphere?.layers ?? []).find((l) => l.location === 'surface') ?? null} />
-        </div>
-    </div>
-    <p class="compress-note">Density is gravity-compressed by mass - the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.</p>
+        <figcaption class="compress-note">Density is gravity-compressed by mass — the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.</figcaption>
+    </figure>
 
     {#if pGasDominated}
         <hr/>
@@ -931,6 +952,14 @@
 
   /* Class-ranged slider furniture: window end-labels + the end-of-range nudge. */
   .sc-ends { display: flex; justify-content: space-between; font-size: 0.68em; color: var(--text-faint, #8a8f9a); margin-top: -2px; }
+  .sc-fullrange { margin-left: auto; font-size: 0.78em; color: var(--text-muted, #cfcfcf); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .sc-fullrange input { width: auto; margin: 0; }
+  /* Full-scale overview strip: the whole range as a faint bar, the zoomed window shaded on it. */
+  .sc-overview { position: relative; height: 3px; margin-top: 3px; border-radius: 2px; background: var(--bg-panel, #1a1c22); border: 1px solid var(--border, #2a2d36); }
+  .sc-overview-win { position: absolute; top: -1px; bottom: -1px; background: var(--accent, #ff5a1f); opacity: 0.55; border-radius: 2px; min-width: 2px; }
+  /* Interior cutaway gets breathing room — centred, with its note reading as a caption. */
+  .sc-xsec-figure { margin: 8px 0 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sc-xsec-figure .compress-note { text-align: center; max-width: 340px; }
   .sc-edge-chip {
     align-self: flex-start; font-size: 0.76em; padding: 2px 8px; border-radius: 10px;
     background: rgba(255, 90, 31, 0.12); border: 1px solid rgba(255, 90, 31, 0.45); color: var(--accent, #ff5a1f);

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.127-beta - 17th Jul 2026
+
+* Composition editor polish: the interior cutaway gets its own roomy centred block (bigger, no longer squashed beside the makeup sliders), the density slider is always full-range (its span is small enough that zooming bought nothing), a "Full range" switch expands every slider to its full span at once, and each zoomed mass/radius slider now shows a full-scale strip beneath it with the current window highlighted — so you always see where the zoom sits in the whole range.
+
 ## v2.1.126-beta - 17th Jul 2026
 
 * Oceans of any liquid now render in their own colour — Titan's methane sea reads blue-grey, Io's sulfur amber-gold, Venus's sulfuric acid pale yellow, Triton's nitrogen near-white, Europa's brine steel-blue — tinted by the star's light, with a new "Oceans of different liquids" row on /discgallery to show them off. Also closes a phase leak: a boiled-off or frozen world is no longer painted with a false blue ocean (the renderer now checks the solvent is actually liquid, matching the classifier).
