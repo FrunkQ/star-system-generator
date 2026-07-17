@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.139-beta - 17th Jul 2026
+
+* Metal swatch is now steel-grey so it reads apart from rock's brown; dropped the "drives density -> size" hint; asteroid type thumbnails generated (C/S/M-type + comet images now show in the type picker).
+
 ## v2.1.138-beta - 17th Jul 2026
 
 * Cutaway rebuilt on concentric circles clipped to quarters (and to the body's own irregular silhouette for small bodies) so every corner and arc aligns with the rendered disc; thermal ramp reworked so blues are always the cold end (no green); caption and scale text removed (tooltips keep the detail).

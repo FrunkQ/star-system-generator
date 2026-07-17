@@ -159,7 +159,7 @@
   // ============================================================================
   const MK_KEYS: Array<keyof Makeup> = ['metal', 'rock', 'carbon', 'ice', 'gas'];
   const MK_LABEL: Record<string, string> = { metal: 'Metal', rock: 'Rock', carbon: 'Carbon', ice: 'Ice', gas: 'Gas' };
-  const MK_SWATCH: Record<string, string> = { metal: '#9c8d7a', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
+  const MK_SWATCH: Record<string, string> = { metal: '#8e939e', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
 
   let lock: EditLock = null;
   function toggleLock(which: Exclude<EditLock, null>) { lock = lock === which ? null : which; }
@@ -751,7 +751,7 @@
     <div class="sc-makeup" class:frozen={makeupLocked}>
         <div class="sc-makeup-head">
             <span>Interior makeup</span>
-            <span class="hint">{makeupLocked ? 'held by density lock' : 'drives density -> size'}</span>
+            {#if makeupLocked}<span class="hint">held by density lock</span>{/if}
         </div>
         <div class="sc-makeup-body">
         <div class="sc-makeup-rows">
