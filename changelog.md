@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.141-beta - 17th Jul 2026
+
+* Production masking: Holo Table hidden from the Field Guide skin picker (persisted holo selections fall back to The Guide) and the Player Views rail entry commented out — Field Guide is the production players' launcher again. The V2.2 3D line stays beta-only.
+
 ## v2.1.140-beta - 17th Jul 2026
 
 * Orrery zoom cap raised 2000x (5e8 -> 1e12) so the new asteroid-scale bodies (~0.3 km up) can be framed full-screen instead of stalling as a few pixels.

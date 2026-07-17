@@ -43,8 +43,9 @@
     { key: 'mono',    label: 'Monochrome Terminal', blurb: 'Salvaged CRT — pick the phosphor colour' },
     { key: 'guide',   label: 'The Guide',           blurb: 'Friendly illustrated travel companion' },
     { key: 'clean',   label: 'Survey Datapad',      blurb: 'Clean instrument feed, no costume' },
-    { key: 'console', label: 'Starship Console',    blurb: 'Live orbital plot, tap a world to inspect' },
-    { key: 'holo',    label: 'Holo Table',          blurb: '3D orbital hologram you can rotate and zoom' }
+    { key: 'console', label: 'Starship Console',    blurb: 'Live orbital plot, tap a world to inspect' }
+    // HIDDEN for the production cut (V2.2 3D line still in beta):
+    // { key: 'holo',    label: 'Holo Table',          blurb: '3D orbital hologram you can rotate and zoom' }
   ] as const;
   const MONO_KEYS = Object.keys(MONO_COLORS) as MonoColor[];
   let copied = false;
@@ -53,6 +54,9 @@
 
   onMount(() => {
     if (browser) origin = window.location.origin;
+    // Holo Table is hidden from the picker (V2.2 line): a persisted holo selection falls back to
+    // The Guide so the launcher never shows an unselectable skin.
+    if ($guideConfigStore.theme === 'holo') guideConfigStore.update((g) => ({ ...g, theme: 'guide' }));
     // Sharing intent: start hosting a cross-device endpoint so players can connect over the network.
     broadcastService.enableRemote();
   });
