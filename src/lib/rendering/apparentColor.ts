@@ -9,6 +9,7 @@
 // ocean/land/cloud mix or Jupiter's bands without re-deriving anything.
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
+import { phaseAtP } from '$lib/physics/liquids';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 
 type RGB = [number, number, number];
@@ -130,13 +131,23 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
 
   // 2. Surface liquid — ANY liquid, proportional to coverage (#9): the disc is land×(1−cover) +
   //    liquid×cover, with the liquid's shade derived from starlight × refractive index (#8).
-  //    Molten surfaces are left to the incandescence step.
+  //    Molten surfaces are left to the incandescence step. Phase-gated: we colour an ocean only
+  //    where the DERIVED surface-liquid layer exists (deriveFluidLayers already checked the solvent
+  //    is liquid at this T & P) — so a boiled-off or frozen world is not painted with a false sea.
   const teq = body.equilibriumTempK ?? 0;
-  const hydro = body.hydrosphere?.coverage ?? 0;
-  const surfaceLiquid = body.hydrosphere?.layers?.find((l) => l.location === 'surface')?.liquid
-    ?? body.hydrosphere?.composition;
+  // Fast path: the derived surface-liquid layer (already phase-checked). Fallback for standalone
+  // callers with no pre-derived layers: check the phase here from the surface temp & pressure, so a
+  // boiled-off/frozen world is never painted with a false ocean either way.
+  const surfaceLayer = body.hydrosphere?.layers?.find((l) => l.location === 'surface');
+  const surfT = body.temperatureK ?? body.equilibriumTempK ?? 0;
+  const rawComp = body.hydrosphere?.composition;
+  const isLiquidSurface = surfaceLayer
+    ? true
+    : (!!rawComp && rawComp !== 'none' && phaseAtP(rawComp, surfT, body.atmosphere?.pressure_bar) === 'liquid');
+  const surfaceLiquid = surfaceLayer?.liquid ?? rawComp;
+  const hydro = surfaceLayer?.coverage ?? body.hydrosphere?.coverage ?? 0;
   const liquidFamily = LIQUIDS.find((l) => l.name === surfaceLiquid)?.family;
-  if (hydro > 0.05 && surfaceLiquid && liquidFamily !== 'molten') {
+  if (isLiquidSurface && surfaceLiquid && hydro > 0.05 && liquidFamily !== 'molten') {
     const lc = liquidApparentColor(surfaceLiquid, star);
     const cover = Math.min(0.85, hydro);
     col = mix(col, lc, cover);

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.126-beta - 17th Jul 2026
+
+* Oceans of any liquid now render in their own colour — Titan's methane sea reads blue-grey, Io's sulfur amber-gold, Venus's sulfuric acid pale yellow, Triton's nitrogen near-white, Europa's brine steel-blue — tinted by the star's light, with a new "Oceans of different liquids" row on /discgallery to show them off. Also closes a phase leak: a boiled-off or frozen world is no longer painted with a false blue ocean (the renderer now checks the solvent is actually liquid, matching the classifier).
+
 ## v2.1.125-beta - 17th Jul 2026
 
 * Liquids overhaul stages 3 & 4 (editor + honest displays): the Liquid tab now shows the recorded solvent's live phase at the current temperature and pressure (a coloured chip), flags each option in the picker that isn't liquid here ("— vapour at the mean"), and when the selection can't be a liquid it explains why ("boils at 271 K here — higher pressure would raise that"). The read-out panel labels stale hydrosphere data by its actual phase — "71% water (frozen / boiled off / supercritical)" — instead of implying a sea that isn't there.
