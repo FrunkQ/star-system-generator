@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.120-beta - 17th Jul 2026
+
+* Composition redesign stage 4 (renderer): small bodies (under ~300 km, or anything classed asteroid/comet) draw as seeded irregular shapes — repeatable per body, lumpier when smaller or more porous, cratered, coloured by composition. A live interior cross-section (metal core through gas envelope, with void speckles when porous) sits beside the makeup sliders. New "Small bodies" section on /discgallery.
+
 ## v2.1.119-beta - 17th Jul 2026
 
 * Composition redesign stage 2c (class-ranged sliders): the mass/radius/density sliders now span the pinned type's range (log-padded, with window end-labels) instead of 17 orders of magnitude — real resolution inside a class, and hitting an end nudges you to pick the neighbouring type (never an automatic flip). Typed values are always accepted verbatim; a value outside the current type deselects to the best-fitting type, or to the new Unknown class (the one remaining full-range case). Ranges are editor-only metadata on ~45 physical classes; specialist derived types (swamp, eyeballs, halogen worlds…) no longer clutter the picker. Porosity now has a live readout on the density row.

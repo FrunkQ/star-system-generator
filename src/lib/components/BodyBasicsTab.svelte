@@ -12,6 +12,7 @@
     type EditLock, type BodyEditState
   } from '$lib/physics/bodyEdit';
   import { bandFit } from '$lib/system/classification';
+  import CompositionCrossSection from './CompositionCrossSection.svelte';
   import { pickableTypes, bestTypeFor, sliderSpan, rangeOf, UNKNOWN_CLASS } from '$lib/system/typeRanges';
   import type { Fingerprint } from '$lib/types';
 
@@ -628,6 +629,8 @@
             <span>Interior makeup</span>
             <span class="hint">{makeupLocked ? 'held by density lock' : 'drives density -> size'}</span>
         </div>
+        <div class="sc-makeup-body">
+        <div class="sc-makeup-rows">
         {#each MK_KEYS as k}
             <div class="mk-row">
                 <span class="swatch" style="background-color: {MK_SWATCH[k]}"></span>
@@ -637,6 +640,9 @@
                 <span class="mk-pct">%</span>
             </div>
         {/each}
+        </div>
+        <CompositionCrossSection makeup={pMakeup} porosity={pPorosity} seed={body.id} size={96} />
+        </div>
     </div>
     <p class="compress-note">Density is gravity-compressed by mass - the same mix packs denser on a super-Earth than on a moon. Adding metal or ice shifts the density (and its magnetic tagging); the physics re-reads the type on release.</p>
 
@@ -936,6 +942,10 @@
     background: rgba(232, 168, 87, 0.15); border: 1px solid rgba(232, 168, 87, 0.5); color: #e8a857;
   }
   .sc-advisory { margin-left: 8px; font-size: 0.78em; font-style: italic; color: var(--text-faint, #8a8f9a); }
+
+  /* Makeup rows + the live interior cross-section side by side (stacks on narrow panels). */
+  .sc-makeup-body { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .sc-makeup-rows { flex: 1 1 220px; min-width: 0; }
 
   .sc-presets-label { font-size: 0.8em; color: var(--text-muted); }
   .sc-presets-sub { color: var(--text-faint); }

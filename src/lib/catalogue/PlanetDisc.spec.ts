@@ -59,4 +59,38 @@ describe('PlanetDisc', () => {
     const other = render(PlanetDisc, { props: { body: planet({ name: 'Arrakis' }) } });
     expect(other.container.querySelector('.harmless-stamp')).toBeFalsy();
   });
+
+  // Composition redesign stage 4: sub-300km solids render as a seeded IRREGULAR outline
+  // (repeatable per body id), cratered, still coloured by composition. Planets stay round.
+  describe('small-body irregular outline', () => {
+    const asteroid = (id: string, extra: Partial<CelestialBody> = {}) => planet({
+      id, name: 'Rock', radiusKm: 5, massKg: 1e13,
+      makeup: { rock: 0.85, metal: 0.15 }, ...extra
+    } as any);
+
+    it('an asteroid renders an irregular path, not a circle sphere', () => {
+      const { container } = render(PlanetDisc, { props: { body: asteroid('a1') } });
+      expect(container.querySelector('path[fill^="url(#sph"]')).toBeTruthy();
+      expect(container.querySelector('circle[r="30"][fill^="url(#sph"]')).toBeFalsy();
+      expect(container.querySelector('clipPath path')).toBeTruthy();     // features clip to the shape
+      expect(container.querySelectorAll('g[clip-path] circle[fill^="rgba(0,0,0"]').length).toBeGreaterThan(0); // cratered
+    });
+
+    it('the outline is repeatable per id and differs between ids', () => {
+      const d = (c: Element) => c.querySelector('path[fill^="url(#sph"]')!.getAttribute('d');
+      const a = render(PlanetDisc, { props: { body: asteroid('same') } });
+      const b = render(PlanetDisc, { props: { body: asteroid('same') } });
+      const c = render(PlanetDisc, { props: { body: asteroid('other') } });
+      expect(d(a.container)).toBe(d(b.container));
+      expect(d(a.container)).not.toBe(d(c.container));
+    });
+
+    it('an asteroid-classed body is irregular regardless of size; a planet stays round', () => {
+      const classed = render(PlanetDisc, { props: { body: planet({ id: 'x', radiusKm: 400, massKg: 1e20, classes: ['asteroid/c-type'], makeup: { carbon: 0.5, rock: 0.5 } } as any) } });
+      expect(classed.container.querySelector('path[fill^="url(#sph"]')).toBeTruthy();
+      const world = render(PlanetDisc, { props: { body: planet({ id: 'y', radiusKm: 6371, massKg: 5.97e24 } as any) } });
+      expect(world.container.querySelector('circle[r="30"]')).toBeTruthy();
+      expect(world.container.querySelector('path[fill^="url(#sph"]')).toBeFalsy();
+    });
+  });
 });
