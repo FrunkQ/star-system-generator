@@ -3106,6 +3106,10 @@
       }
     ],
     "planetImages": {
+      "asteroid/c-type": "/images/planet_types/C-type_asteroid.jpg",
+      "asteroid/s-type": "/images/planet_types/S-type_asteroid.jpg",
+      "asteroid/m-type": "/images/planet_types/M-type_asteroid.png",
+      "asteroid/comet": "/images/planet_types/Comet.png",
       "planet/alkali-metal-clouds-gas-giant": "/images/planet_types/web20alkali20metal20clouds20gas20giant.jpg",
       "planet/ammonia-clouds-gas-giant": "/images/planet_types/web20ammonia20clouds20gas20giant.jpg",
       "planet/ammonia-planet": "/images/planet_types/web20ammonia20planet.jpg",
