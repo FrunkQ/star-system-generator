@@ -26,11 +26,10 @@
   const COLOUR: Record<string, string> = { metal: '#9c8d7a', rock: '#a9805a', carbon: '#3a3a40', ice: '#cfe6ff', gas: '#d8c79a' };
   const LABEL: Record<string, string> = { metal: 'Metal core', rock: 'Rock mantle', carbon: 'Carbon layer', ice: 'Ice shell', gas: 'Gas envelope' };
 
-  // Quarter cutaway (Alex's reference). A wedge is cut from the upper front, exposing two internal
-  // cross-section faces that meet at the core along the vertical front edge: the LEFT face shows the
-  // composition layers, the RIGHT face the internal-temperature gradient. Interior radii match the
-  // PlanetDisc sphere (r=30). The faces are pie sectors; a bright front edge + spherical shading do
-  // the 3D work.
+  // Half cutaway: the RIGHT half of the disc is the rendered planet surface; the LEFT half is the
+  // cross-section, split into an upper quarter (composition layers) and a lower quarter (internal-
+  // heat gradient). Interior radii match the PlanetDisc sphere (r=30). Clean pie sectors + a divider
+  // down the cut plane. (y-down angles: 0=right, 90=down, 180=left, 270=up.)
   const R_MAX = 30;
   const CX = 50, CY = 50;
   const pt = (deg: number, r: number) => [50 + r * Math.cos((deg * Math.PI) / 180), 50 + r * Math.sin((deg * Math.PI) / 180)];
@@ -40,11 +39,10 @@
     const large = ((a1 - a0 + 360) % 360) > 180 ? 1 : 0;
     return `M ${CX} ${CY} L ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)} Z`;
   };
-  const COMP0 = 200, COMP1 = 270;    // composition face: upper-left sector (up-left → up)
-  const TEMP0 = 270, TEMP1 = 340;    // temperature face: upper-right sector (up → up-right)
+  const COMP0 = 180, COMP1 = 270;    // composition: upper-left quarter (left → up)
+  const TEMP0 = 90, TEMP1 = 180;     // temperature: lower-left quarter (down → left)
   const compFace = sector(COMP0, COMP1, R_MAX);
   const tempFace = sector(TEMP0, TEMP1, R_MAX);
-  const frontEdge = pt(270, R_MAX);  // the shared vertical front edge (up), from core to surface
 
   $: layers = (() => {
       const vols = ORDER.map((k) => (makeup[k] ?? 0) / GRAIN[k]);
@@ -179,7 +177,7 @@
 <div class="xsec" style="width:{size}px">
   <div class="stack" style="width:{size}px; height:{size}px" title={compNote ? compNote + '\n\nLeft face: internal-heat gradient (core hot → surface cool, estimated). Right face: composition layers.' : ''}>
     <PlanetDisc {body} {size} showStamp={false} />
-    <svg viewBox="0 0 100 100" width={size} height={size} class="cut" role="img" aria-label="Interior quarter-cutaway: temperature on the left face, composition on the right">
+    <svg viewBox="0 0 100 100" width={size} height={size} class="cut" role="img" aria-label="Half cutaway: surface on the right; composition (upper) and internal heat (lower) on the left">
       <defs>
         <!-- Spherical shading for the 3D look: highlight upper-left, shadow lower-right. -->
         <radialGradient id="xsec-shade-{seed}" cx="38%" cy="30%" r="75%">
@@ -202,31 +200,34 @@
         {/if}
       </defs>
 
-      <!-- LEFT face: composition layers as nested sectors (outer → inner). -->
+      <!-- LEFT-UPPER quarter: composition layers as nested sectors (outer → inner). -->
       <path d={compFace} fill="#0a0c12" />
       {#each [...layers].reverse() as l}
         <path d={sector(COMP0, COMP1, l.r)} fill={l.fill}><title>{l.label}</title></path>
       {/each}
-      {#if coreHeat > 0.02}<path d={sector(COMP0, COMP1, coreGlowR)} fill="url(#xsec-core-{seed})" />{/if}
 
-      <!-- RIGHT face: the internal-heat gradient. -->
+      <!-- LEFT-LOWER quarter: the internal-heat gradient. -->
       <path d={tempFace} fill="url(#xsec-temp-{seed})"><title>Internal heat (estimated) — hot core to cool surface</title></path>
-      {#if coreHeat > 0.02}<path d={sector(TEMP0, TEMP1, coreGlowR)} fill="url(#xsec-core-{seed})" />{/if}
 
-      <!-- 3D shade over both faces so they sit inside a sphere. -->
+      <!-- Molten-core emission across both left quarters. -->
+      {#if coreHeat > 0.02}
+        <path d={sector(COMP0, COMP1, coreGlowR)} fill="url(#xsec-core-{seed})" />
+        <path d={sector(TEMP0, TEMP1, coreGlowR)} fill="url(#xsec-core-{seed})" />
+      {/if}
+
+      <!-- 3D shade over the cut half so it sits inside a sphere. -->
       <path d={compFace} fill="url(#xsec-shade-{seed})" />
       <path d={tempFace} fill="url(#xsec-shade-{seed})" />
-      <!-- Cut rims + the bright shared front edge (nearest the viewer). -->
-      <path d={compFace} fill="none" stroke="rgba(8,8,12,0.6)" stroke-width="0.7" />
-      <path d={tempFace} fill="none" stroke="rgba(8,8,12,0.6)" stroke-width="0.7" />
-      <line x1={CX} y1={CY} x2={frontEdge[0].toFixed(1)} y2={frontEdge[1].toFixed(1)} stroke="rgba(255,255,255,0.28)" stroke-width="0.7" />
+      <!-- Cut plane down the middle (surface | interior) + the divider between the two quarters. -->
+      <line x1={CX} y1={CY - R_MAX} x2={CX} y2={CY + R_MAX} stroke="rgba(255,255,255,0.22)" stroke-width="0.7" />
+      <line x1={CX} y1={CY} x2={CX - R_MAX} y2={CY} stroke="rgba(8,8,12,0.5)" stroke-width="0.6" />
     </svg>
   </div>
   <div class="tempkey" style="width:{size}px" title="Estimated internal heat. The surface temperature is computed; the core is hotter (an adiabat / radiogenic geotherm) but its exact value is model-dependent, so it's shown as a band, not a number.">
     <div class="tempkey-bar" style="background: linear-gradient(to right, {tempSurfCol}, {tempMidCol}, {tempCoreCol});"></div>
     <div class="tempkey-labels"><span>{Math.round(surfaceK)} K surface</span><span>{coreBand}</span></div>
   </div>
-  <div class="cap">cutaway · heat | composition{coreHeat > 0.25 ? ' · molten' : ''}{porosity >= 0.03 ? ` · ${Math.round(porosity * 100)}% voids` : ''}</div>
+  <div class="cap">cutaway{coreHeat > 0.25 ? ' · molten core' : ''}{porosity >= 0.03 ? ` · ${Math.round(porosity * 100)}% voids` : ''}</div>
 </div>
 
 <style>

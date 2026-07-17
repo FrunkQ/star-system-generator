@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.134-beta - 17th Jul 2026
+
+* Simpler interior cutaway: the right half shows the planet's rendered surface, the left half is the cross-section — composition layers in the upper quarter, the internal-heat gradient in the lower — split at the cut plane, with the molten-core glow and temperature key.
+
 ## v2.1.133-beta - 17th Jul 2026
 
 * Starmap: right-click (long-press) a star and choose "Rename System…" to name the system independently of its central star — the star name is only the default, so a system can read "Sol Hub Alpha" while its star stays "Sol". The unnecessary "Zoom to System" item is removed from that menu.
