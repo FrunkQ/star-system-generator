@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.125-beta - 17th Jul 2026
+
+* Liquids overhaul stages 3 & 4 (editor + honest displays): the Liquid tab now shows the recorded solvent's live phase at the current temperature and pressure (a coloured chip), flags each option in the picker that isn't liquid here ("— vapour at the mean"), and when the selection can't be a liquid it explains why ("boils at 271 K here — higher pressure would raise that"). The read-out panel labels stale hydrosphere data by its actual phase — "71% water (frozen / boiled off / supercritical)" — instead of implying a sea that isn't there.
+
 ## v2.1.124-beta - 17th Jul 2026
 
 * Liquids overhaul stage 2 (derivation, tags, classification): surface oceans are now derived pressure-aware (no sea on a too-hot or airless world; a deep-pressure ocean survives past 100°C), and worlds gain honest volatile tags — standing liquid, frozen surface, boiled-off, briny sea, steam world, supercritical envelope, sublimating (the comet-coma driver) and cryovolcanism — each explained in the Newton panel. Ocean-family classification (ocean, hycean, earth-like, swamp, forest…) now keys on *liquid* coverage, so a hot world carrying stale water data no longer classifies as an ocean world; dryness and frozen-ice classes still read raw coverage. Verified across the solar system (Earth ocean, Europa/Enceladus subsurface oceans, Enceladus/Mimas cryovolcanism, outer moons sublimating).

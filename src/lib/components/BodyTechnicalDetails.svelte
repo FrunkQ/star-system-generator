@@ -10,6 +10,7 @@
   import { get } from 'svelte/store';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
+  import { phaseAtP } from '$lib/physics/liquids';
   import { formatGauss } from '$lib/physics/magnetism';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
@@ -711,9 +712,11 @@
       {/if}
 
       {#if body.kind === 'body' && body.hydrosphere && body.hydrosphere.coverage > 0}
+          {@const _hp = phaseAtP(body.hydrosphere.composition, (body.temperatureK ?? body.equilibriumTempK ?? 0), body.atmosphere?.pressure_bar, rulePack)}
+          {@const _hphrase = _hp === 'liquid' ? '' : _hp === 'solid' ? ' (frozen)' : _hp === 'supercritical' ? ' (supercritical)' : ' (boiled off)'}
           <div class="detail-item">
               <span class="label">Hydrosphere</span>
-              <span class="value">{Math.round(body.hydrosphere.coverage * 100)}% {body.hydrosphere.composition}</span>
+              <span class="value">{Math.round(body.hydrosphere.coverage * 100)}% {body.hydrosphere.composition}{_hphrase}</span>
           </div>
       {/if}
 
