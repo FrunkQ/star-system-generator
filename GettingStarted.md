@@ -93,7 +93,7 @@ Give NPC ships standing orders so they run their own lives — **Mine, Transport
 
 * **Visibility**: the eye icon hides a whole object (a hidden base, a rogue planet); a second eye inside the data panel hides *just the description* — so players who scan a world get stats but not lore.
 * **AI descriptions**: add a free [OpenRouter](https://openrouter.ai/) key in Settings, select a body, and **✨ Expand with AI** to generate lore in a chosen style, guided by the body's tags.
-* **GM Quick Notes**: a private note area on every object — never shown in Player Views or player reports.
+* **GM Quick Notes**: a private note area on every object — never shown in player-facing views or player reports.
 
 ![LLM Report Generation](static/screenshots/LLM-Report-Generation.png)
 

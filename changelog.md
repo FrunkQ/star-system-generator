@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.143-beta - 17th Jul 2026
+
+* Docs: reworded a GettingStarted reference to the masked Player Views as "player-facing views".
+
 ## v2.1.142-beta - 17th Jul 2026
 
 * Starmap links: left-click no longer opens the edit modal — right-click (or long-press) opens a context menu with Edit Link. Settings: Traveller mode greys out the distance-unit picker and infers parsecs (1 hex = 1 pc).
