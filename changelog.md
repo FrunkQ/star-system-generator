@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.146-beta - 18th Jul 2026
+
+* Click accuracy under the CRT filter: pointer hit-testing now inverts the ancestor CSS warp (skew / roll / scale) so a click lands on the object you actually see, instead of drifting sideways — the "click on the left, select something on the right" bug. Verified against real browser transforms (was off by up to 300px, now exact). Behind a one-flag swap-back to the old mapping.
+
 ## v2.1.145-beta - 18th Jul 2026
 
 * Root star click: clicking the central star now frames a close-up first (a big, easy target) and steps out to the whole system on the next click, instead of framing the whole system first and leaving the star a hard-to-hit speck. Opening a system and Reset View still show the whole-system overview.
