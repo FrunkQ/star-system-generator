@@ -3,37 +3,37 @@
   // (land/ocean/cloud/banding via getPlanetTexture) clipped to a sphere, with a cartoon vignette,
   // a Saturn-style ring, a distinct belt glyph (grey field of rocks by density), and the obligatory
   // [Mostly Harmless] stamp for any world called Earth.
-  import type { CelestialBody, ApparentColorStop } from '$lib/types';
-  import { starColorFromTempK } from '$lib/rendering/apparentColor';
+  import type { CelestialBody } from '$lib/types';
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
-  import { oblatePolarFactor } from '$lib/rendering/bodyShape';
-  import { auroraEmitter } from '$lib/physics/aurora';
-  import { rendersAsGiant } from '$lib/physics/makeup';
-  import { EARTH_MASS_KG } from '$lib/constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
-  import { isSmallBodyShape, smallBodyOutline } from './smallBodyShape';
+  import { smallBodyOutline } from './smallBodyShape';
+  // THE shared appearance model — resolves every tag/property-driven surface feature (see WS1).
+  // This component just draws what the model decides; the orrery + 3D holo read the same model.
+  import { deriveAppearance, shade } from '$lib/rendering/planetAppearance';
 
   export let body: CelestialBody;
   export let ringed = false;
   export let ringDensity = 0.6;   // 0..1 (debris density of the ring); scales its drawn size/opacity
   export let size = 132;
 
+  // Everything tag/property-driven about this body's look, resolved once (WS1). The SVG below just
+  // draws what the model decides; seeded geometry (crater/magma/rock positions, aurora paths) is still
+  // generated here from the model's flags/counts, so the disc renders identically to before.
+  $: a = deriveAppearance(body);
+
   // Oblate flattening (E4): squash the disc body vertically about the centre (y=50) so a fast rotator
   // reads as flattened. Rings keep their own plane, so only the body group is transformed.
-  $: discPolF = oblatePolarFactor(body.oblateness);
+  $: discPolF = a.oblatePolarFactor;
   $: discSquash = discPolF < 0.999 ? `translate(0 ${(50 * (1 - discPolF)).toFixed(2)}) scale(1 ${discPolF.toFixed(3)})` : '';
 
   // Rotationally unstable (Phase G): a body spun past ~0.8 of its break-up limit has flown apart into a
-  // ring — draw a true torus (a tilted annulus with a hole) instead of an ever-thinner lens. Oblateness
-  // 0.8 corresponds to spin fraction ~0.8 (the near-breakup / toroidal regime).
-  $: isToroid = !isStar(body) && !isBelt(body) && (body.oblateness ?? 0) >= 0.8;
+  // ring — draw a true torus (a tilted annulus with a hole) instead of an ever-thinner lens.
+  $: isToroid = a.isToroid;
 
   // SMALL BODY (composition redesign stage 4): below ~300 km (or any asteroid/* class) a solid body
-  // lacks the self-gravity to pull round, so the sphere becomes a seeded IRREGULAR outline — same
-  // deterministic LCG-from-id idiom as the belt rocks and craters, so each body keeps its own
-  // repeatable shape. Lumpier when smaller and when porous (rubble piles are ragged); colour still
-  // comes from the composition-derived apparent colour like every other body.
-  $: isSmallBody = !isStar(body) && !isBelt(body) && !isToroid && isSmallBodyShape(body);
+  // lacks the self-gravity to pull round, so the sphere becomes a seeded IRREGULAR outline (colour still
+  // comes from the composition-derived apparent colour like every other body).
+  $: isSmallBody = a.isSmallBody;
   $: smallBodyPath = isSmallBody ? smallBodyOutline(body) : '';
 
   // Light direction for the day/night terminator + specular highlight. Default (null) is the stylised
@@ -64,42 +64,7 @@
   const isStar = (b: CelestialBody) => b.roleHint === 'star';
   const isBelt = (b: CelestialBody) => b.roleHint === 'belt' || b.roleHint === 'ring';
 
-  function rgbHex(rgb: [number, number, number]): string {
-    const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
-    return `#${c(rgb[0])}${c(rgb[1])}${c(rgb[2])}`;
-  }
-  function hexToRgb(hex: string): [number, number, number] {
-    const h = hex.replace('#', '');
-    const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-    return [parseInt(n.slice(0, 2), 16), parseInt(n.slice(2, 4), 16), parseInt(n.slice(4, 6), 16)];
-  }
-  function shade(hex: string, f: number): string {
-    const [r, g, b] = hexToRgb(hex);
-    return f >= 0 ? rgbHex([r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f])
-                  : rgbHex([r * (1 + f), g * (1 + f), b * (1 + f)]);
-  }
-  // Emission colour for a self-luminous brown dwarf by effective temperature (K): cool → deep red, hot
-  // young L-dwarf → amber. Interpolates between calibrated blackbody-ish stops (never blue — BDs are cool).
-  function bdGlowColour(teff: number): string {
-    const stops: [number, string][] = [
-      [250, '#3a0f06'], [600, '#6e1808'], [1000, '#a3320c'], [1400, '#c85614'],
-      [1800, '#e07d22'], [2300, '#f2a03e'], [2800, '#ffbf6e']
-    ];
-    if (teff <= stops[0][0]) return stops[0][1];
-    for (let i = 1; i < stops.length; i++) {
-      if (teff <= stops[i][0]) {
-        const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
-        const f = (teff - t0) / (t1 - t0);
-        const a = hexToRgb(c0), b = hexToRgb(c1);
-        return rgbHex([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
-      }
-    }
-    return stops[stops.length - 1][1];
-  }
-
-  $: base = isStar(body)
-    ? (body.apparentColorHex ?? rgbHex(starColorFromTempK(body.temperatureK)))
-    : (body.apparentColorHex ?? body.apparentColor?.hex ?? '#8a8f99');
+  $: base = a.baseColorHex;
 
   // The real orrery texture (data URL), when the body carries the apparent-colour palette it needs.
   // Falls back to a flat shaded sphere if unavailable (e.g. no palette, or no canvas in tests).
@@ -108,9 +73,9 @@
     try { return getPlanetTexture(body)?.toDataURL() ?? null; } catch { return null; }
   })();
 
-  // Bands only as a FALLBACK (the texture already bands giants).
-  $: banding = (textureUrl || isStar(body) || isBelt(body)) ? 0 : (body.apparentColor?.banding ?? 0);
-  $: palette = (body.apparentColor?.palette ?? []) as ApparentColorStop[];
+  // Bands only as a FALLBACK (the texture already bands giants); the model already zeroes stars/belts.
+  $: banding = textureUrl ? 0 : a.bandingRaw;
+  $: palette = a.palette;
   $: bands = (() => {
     if (banding < 2) return [];
     const n = Math.min(banding, 9);
@@ -132,41 +97,26 @@
     });
   })();
 
-  $: isEarth = (body.name || '').trim().toLowerCase() === 'earth' && body.roleHint !== 'star';
+  $: isEarth = a.isEarth;
 
-  // Match the orrery: a day/night terminator (sharper for tidally locked worlds) and equatorial
-  // magma patches on tidally volcanic worlds. Lit from the upper-left (same as the vignette).
-  $: locked = !!(body as any).tidallyLocked;
-  $: tagKeys = (body.tags ?? []).map((t) => t.key);
-  $: isLava = tagKeys.includes('tidal/lava-flows');
-  // Polar ice caps (Phase G): frost at the cold poles / night side of a world liquid at its mean
-  // temperature. Tag-driven (climate/polar-ice), drawn on the surface so the terminator dims them.
-  $: hasPolarIce = !isStar(body) && !isBelt(body) && tagKeys.includes('climate/polar-ice');
+  // Day/night terminator is sharper for tidally locked worlds (drawn from this flag below).
+  $: locked = a.tidallyLocked;
+  // Polar ice caps: frost drawn on the surface (the terminator dims the night side). Model-driven.
+  $: hasPolarIce = a.polarIce;
 
-  // Self-luminous brown dwarf (thermal/self-luminous, value = its effective temperature): it radiates
-  // its OWN heat, so it glows like a dim, cool star — an emission halo coloured by that temperature
-  // (deep red when cold → amber when a hot young L-dwarf). Never blue: brown dwarfs are cool.
-  $: selfLumTag = (body.tags ?? []).find((t) => t.key === 'thermal/self-luminous');
-  $: isSelfLuminous = !!selfLumTag && !isStar(body) && !isBelt(body);
-  $: selfLumTeff = selfLumTag ? (Number(selfLumTag.value) || 0) : 0;
-  $: selfLumColor = bdGlowColour(selfLumTeff);
+  // Self-luminous brown dwarf: an emission halo coloured by its effective temperature (model-derived).
+  $: isSelfLuminous = !!a.selfLumGlow;
+  $: selfLumColor = a.selfLumGlow?.colorHex ?? '#a3320c';
 
-  // Atmosphere limb-glow (Phase G): a soft halo hugging the limb, its strength from the surface
-  // pressure (log-scaled: wispy ~0.02 bar → faint, Earth 1 bar → moderate, thick Venus/giant → full),
-  // coloured by the atmosphere/haze palette stop (else a default sky blue).
-  $: atmPressure = (body.atmosphere?.pressure_bar ?? (body.atmosphere as any)?.pressure_atm ?? 0) as number;
-  $: hasAtmoGlow = !isStar(body) && !isBelt(body) && atmPressure > 0.02;
-  $: atmColor = palette.find((p) => p.role === 'atmosphere')?.hex
-    ?? palette.find((p) => p.role === 'cloud')?.hex ?? '#9fc6e8';
-  $: atmStrength = Math.max(0, Math.min(1, (Math.log10(Math.max(1e-3, atmPressure)) + 2) / 3));
+  // Atmosphere limb-glow: a soft halo hugging the limb, strength log-scaled from pressure, coloured by
+  // the atmosphere/cloud palette stop (model-derived).
+  $: hasAtmoGlow = !!a.atmGlow;
+  $: atmColor = a.atmGlow?.colorHex ?? '#9fc6e8';
+  $: atmStrength = a.atmGlow?.strength ?? 0;
 
-  // Cratered surface (Phase G flourish): an old, airless, geologically DEAD world has no atmosphere to
-  // burn up impactors and no resurfacing to erase the scars, so it accumulates craters (Mercury, the
-  // Moon, Callisto). Driven by that airless + inactive condition, or an explicit impact-record tag.
-  // A fluid giant (gas OR ice giant) has no solid surface to crater — an ice giant reads as airless +
-  // "inactive" but must never be pockmarked, so exclude giants explicitly.
-  $: hasCraters = !isStar(body) && !isBelt(body) && !rendersAsGiant(body) && atmPressure < 0.02
-    && (tagKeys.includes('geology/inactive') || tagKeys.includes('science/impact-record') || isSmallBody);
+  // Cratered surface: an old, airless, geologically dead world (or a small body) accumulates craters;
+  // giants are excluded. The DECISION is the model's; the seeded crater positions are generated here.
+  $: hasCraters = a.craters;
   $: craters = (() => {
     if (!hasCraters) return [] as { cx: number; cy: number; r: number }[];
     let s = 41; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
@@ -178,14 +128,12 @@
     });
   })();
 
-  // Auroras (Phase G): a spiky glowing OVAL ringing each magnetic pole (Hubble-Jupiter style), driven by
-  // the aurora/* tag's strength. Colour comes from the atmosphere's dominant auroral emitter, like real
-  // skies: atomic oxygen → green, nitrogen → blue-violet, hydrogen/helium giants → red-pink, CO₂ → violet.
-  $: auroraTag = (body.tags ?? []).find((t) => t.key.startsWith('aurora/'));
-  $: auroraStr = auroraTag ? Math.max(0, Math.min(1.3, parseFloat(auroraTag.value ?? '0') || 0)) : 0;
-  $: hasAurora = !isStar(body) && !isBelt(body) && auroraStr > 0;
-  $: auroraBrilliant = auroraStr >= 0.55;
-  $: auroraCol = (() => { const e = auroraEmitter(body); return { core: e.hex, tip: e.tip }; })();
+  // Auroras: a spiky glowing OVAL ringing each magnetic pole (Hubble-Jupiter style). Strength + emitter
+  // colour are model-derived; the swirled oval PATHS are generated here (auroraOval).
+  $: auroraStr = a.aurora?.strength ?? 0;
+  $: hasAurora = !!a.aurora;
+  $: auroraBrilliant = a.aurora?.brilliant ?? false;
+  $: auroraCol = { core: a.aurora?.coreHex ?? '#8fe6a0', tip: a.aurora?.tipHex ?? '#dfffe6' };
   // Spiky, swirled oval ringing a pole — a foreshortened ellipse whose points alternate out into spikes
   // (auroral curtains) and drift tangentially (a swirl), so it hugs the pole rather than floating flat.
   function auroraOval(cy: number, off: number): string {
@@ -209,11 +157,10 @@
   $: auroraBotCy = 76 - auroraStr * 3;
   $: auroraTop = hasAurora ? auroraOval(auroraTopCy, 3) : '';
   $: auroraBot = hasAurora ? auroraOval(auroraBotCy, 8) : '';
+  $: isLava = !!a.magma?.lava;
   $: magma = (() => {
-    if (isStar(body) || isBelt(body)) return [] as { cx: number; cy: number; r: number }[];
-    const volc = isLava || tagKeys.includes('tidal/volcanism') || tagKeys.includes('tidal/hotspots');
-    if (!volc) return [];
-    const n = isLava ? 7 : tagKeys.includes('tidal/volcanism') ? 5 : 3;
+    if (!a.magma) return [] as { cx: number; cy: number; r: number }[];
+    const n = a.magma.vents;
     let s = 11; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
     const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
     return Array.from({ length: n }, () => {

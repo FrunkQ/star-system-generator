@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.148-beta - 18th Jul 2026
+
+* Internal: extracted the planet-appearance logic (which surface features a world shows — craters, volcanism, auroras, polar ice, atmosphere glow, self-luminous glow — and how strong) out of the 2D disc into one shared model, so the 2D orrery and 3D holo can drive the same features next. No visual change to the disc gallery.
+
 ## v2.1.147-beta - 18th Jul 2026
 
 * 3D holo planet spin direction: planets now rotate the same way they orbit their star and the same way their moons, rings and belt disc go round — previously the surface spun the opposite way to its own disc. A retrograde rotation period (negative value, e.g. Venus/Uranus) now correctly spins the world backwards instead of being ignored.
