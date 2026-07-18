@@ -31,6 +31,10 @@ export function makeLensingShader() {
 			// Projected accretion-disc ellipse, aspect-corrected: xy = major-axis direction,
 			// z = semi-major extent A, w = semi-minor extent B. A = 0 → no disc on this lens.
 			uDisc: { value: Array.from({ length: MAX_LENSES }, () => new THREE.Vector4()) },
+			// Screen direction (aspect-corrected, unit) of the disc's NEAR half — only that half of the
+			// band passes through un-lensed; the far half's in-place light is what the lens bends into
+			// the arcs. (0,0) → face-on: no meaningful near/far, blend the whole ring.
+			uDiscN: { value: Array.from({ length: MAX_LENSES }, () => new THREE.Vector2()) },
 			uAspect: { value: 1 }
 		},
 		vertexShader: /* glsl */ `
@@ -42,6 +46,7 @@ export function makeLensingShader() {
 			uniform int uCount;
 			uniform vec4 uBH[${MAX_LENSES}];
 			uniform vec4 uDisc[${MAX_LENSES}];
+			uniform vec2 uDiscN[${MAX_LENSES}];
 			uniform float uAspect;
 			varying vec2 vUv;
 			void main() {
@@ -59,8 +64,14 @@ export function makeLensingShader() {
 					float b = length(d);
 					vec2 dir = d / max(b, 1e-4);
 					// Thin-lens deflection ∝ rE²/b. At b = rE the sample reaches straight BEHIND the hole,
-					// so whatever is behind (the disc's far side, or stars) wraps into a full ring.
-					float defl = min(rE * rE / max(b, 1e-4), rE * 2.2);
+					// so whatever is behind (the disc's far side, or stars) wraps into arcs. ASYMMETRIC when
+					// a disc is present: the far side's light lenses mostly OVER the hole (the big dome away
+					// from the viewer's side of the disc plane); on the NEAR side the deflection is damped,
+					// leaving only a thin sliver hugging the shadow — like the reference. Flips top/bottom
+					// with the viewing angle automatically (uDiscN follows the camera).
+					float hasDisc = step(1e-5, uDisc[i].z);
+					float side = smoothstep(-0.25, 0.55, dot(dir, uDiscN[i])) * hasDisc; // 0 far, 1 near
+					float defl = min(rE * rE / max(b, 1e-4), rE * 2.2) * mix(1.0, 0.45, side);
 					sampleUv -= (dir * defl) / asp;
 					// Large shadow: light within the photon sphere is captured (black); everything behind is
 					// thrown OUT to the ring at its edge, not leaking through the centre.
@@ -76,7 +87,12 @@ export function makeLensingShader() {
 						float B = uDisc[i].w;
 						float e = (u * u) / (A * A) + (v * v) / max(B * B, 1e-10);
 						float k2 = uBH[i].w * uBH[i].w;
-						band = max(band, (1.0 - smoothstep(1.0, 1.3, e)) * smoothstep(k2 * 0.75, k2, e));
+						float inBand = (1.0 - smoothstep(1.0, 1.3, e)) * smoothstep(k2 * 0.75, k2, e);
+						// Only the NEAR half shines straight at us; the far half stays lensed (its light IS
+						// the arcs). Soft fade across the major axis so there's no seam.
+						float nd = dot(d, uDiscN[i]);
+						float nearFade = smoothstep(-0.3 * B, 0.15 * B, nd);
+						band = max(band, inBand * nearFade);
 					}
 				}
 				vec4 lensed = texture2D(tDiffuse, sampleUv);
@@ -96,8 +112,11 @@ export function makeLensingShader() {
 const _e1 = new THREE.Vector3();
 const _e2 = new THREE.Vector3();
 const _pt = new THREE.Vector3();
+const _nrm = new THREE.Vector3();
+const _w = new THREE.Vector3();
 export function feedDiscEllipse(
 	out: THREE.Vector4,
+	outNear: THREE.Vector2, // screen direction of the disc's NEAR half ((0,0) when face-on)
 	discObj: THREE.Object3D, // its local XZ plane holds the disc (ring pivot / gallery points)
 	bhWorld: THREE.Vector3,
 	outer: number, // outer disc radius in scene units
@@ -122,4 +141,16 @@ export function feedDiscEllipse(
 	else { dx = m00 >= m11 ? 1 : 0; dy = m00 >= m11 ? 0 : 1; }
 	const len = Math.hypot(dx, dy) || 1;
 	out.set(dx / len, dy / len, Math.sqrt(Math.max(l1, 0)), Math.sqrt(Math.max(l2, 1e-10)));
+	// Near-half direction: the in-plane component of "toward the camera", projected to screen. The half
+	// of the band on that side is in front of the hole; the other half is behind (lensed into the arcs).
+	_nrm.setFromMatrixColumn(discObj.matrixWorld, 1).normalize(); // disc plane normal
+	_w.copy((camera as THREE.PerspectiveCamera).position).sub(bhWorld);
+	_w.addScaledVector(_nrm, -_w.dot(_nrm)); // remove the out-of-plane component
+	if (_w.lengthSq() < 1e-8) { outNear.set(0, 0); return; } // face-on: no near/far distinction
+	_w.normalize();
+	_pt.copy(bhWorld).addScaledVector(_w, outer).project(camera);
+	const nx = (_pt.x - cNdcX) * 0.5 * aspect, ny = (_pt.y - cNdcY) * 0.5;
+	const nlen = Math.hypot(nx, ny);
+	if (nlen < 1e-6) outNear.set(0, 0);
+	else outNear.set(nx / nlen, ny / nlen);
 }

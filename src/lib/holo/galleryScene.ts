@@ -151,18 +151,21 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		const geo = new THREE.BufferGeometry();
 		geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
 		geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-		const mat = new THREE.PointsMaterial({ map: glowTexture, vertexColors: true, size: accretion ? outer * 0.13 : outer * 0.09, sizeAttenuation: true, transparent: true, opacity: accretion ? 1 : 0.7, depthWrite: false,
+		const mat = new THREE.PointsMaterial({ map: glowTexture, vertexColors: true, size: accretion ? outer * 0.1 : outer * 0.09, sizeAttenuation: true, transparent: true, opacity: accretion ? 1 : 0.7, depthWrite: false,
 			depthTest: !accretion, // accretion disc draws OVER the shadow so its far half is in the buffer for the lens to wrap
 			blending: accretion ? THREE.AdditiveBlending : THREE.NormalBlending });
 		const pts = new THREE.Points(geo, mat);
-		pts.rotation.x = accretion ? 0.15 : 1.35; // accretion disc: nearly EDGE-ON so the far side lenses over/under
+		pts.rotation.x = accretion ? 0.09 : 1.35; // accretion disc: nearly EDGE-ON — a slim band, so the lensed dome stays graceful
 		return pts;
 	}
 
 	function buildBlackHole(entry: { node: any; disc: any }, x: number, y: number): void {
 		const g = new THREE.Group(); g.position.set(x, y, 0);
 		const shadowR = R * 0.5;
-		const eh = new THREE.Mesh(new THREE.SphereGeometry(shadowR, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+		// The DRAWN horizon mesh is much smaller than the lens's shadow mask — the lens magnifies
+		// whatever black it finds at the centre, so a full-size sphere would smear black far past the
+		// photon ring and eat the starfield around it. The shader's mask is the real shadow.
+		const eh = new THREE.Mesh(new THREE.SphereGeometry(shadowR * 0.55, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
 		g.add(eh); // a black hole is BLACK — no glow ball; the disc + lensing are the whole look
 		const edd = entry.node.accretionEddington || 0;
 		const lens: (typeof lensBHs)[number] = { pos: new THREE.Vector3(x, y, 0), r: shadowR };
@@ -244,6 +247,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		_cr.setFromMatrixColumn(camera.matrixWorld, 0);
 		const arr = lensingPass.uniforms.uBH.value as THREE.Vector4[];
 		const discArr = lensingPass.uniforms.uDisc.value as THREE.Vector4[];
+		const discNArr = lensingPass.uniforms.uDiscN.value as THREE.Vector2[];
 		const aspect = vpW / Math.max(1, vpH);
 		let n = 0;
 		for (const b of lensBHs) {
@@ -255,8 +259,8 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			if (rC <= 0.0002 || n >= MAX_LENSES) continue;
 			const k = b.disc ? b.disc.inner / b.disc.outer : 0;
 			arr[n].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rC * 0.85), k);
-			if (b.disc) feedDiscEllipse(discArr[n], b.disc.obj, b.pos, b.disc.outer, camera, _lc.x, _lc.y, aspect);
-			else discArr[n].set(0, 0, 0, 0);
+			if (b.disc) feedDiscEllipse(discArr[n], discNArr[n], b.disc.obj, b.pos, b.disc.outer, camera, _lc.x, _lc.y, aspect);
+			else { discArr[n].set(0, 0, 0, 0); discNArr[n].set(0, 0); }
 			n++;
 		}
 		lensingPass.uniforms.uCount.value = n;

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.161-beta - 18th Jul 2026
+
+* Black-hole lensing polish from review: (1) only the disc's NEAR half passes in front of the shadow — the far half's light is bent into the arcs, killing the "hoop floating in front" look; (2) the lensing is now ASYMMETRIC like the reference — the far side's light domes mostly over ONE side of the hole (which side follows the viewing angle), with a thin sliver on the other; (3) fixed the dark "blank square" around a quiescent hole — the drawn horizon mesh was being magnified by the lens, smearing black over the starfield; it is now much smaller than the shader's shadow mask; (4) slimmer, more graceful disc band.
+
 ## v2.1.160-beta - 18th Jul 2026
 
 * Black-hole lensing simplified AND completed: replaced the depth-buffer machinery with an analytic exemption — since the accretion disc is auto-generated, the shader is simply told where its projected band is and passes it through un-lensed. The disc's near side now crosses in front of the shadow in BOTH the gallery and the live player views, with the far side still wrapping over/under. Lighter than before (no offscreen target, no depth texture, no twin geometry — back to a single fullscreen pass) and fully mobile-friendly.

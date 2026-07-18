@@ -1239,7 +1239,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // glow; a FEEDING hole (star/BH_active or accretionEddington>0) gets a bright, hot white-gold
           // inner glow that flickers over time (matching the hot inner edge of its temperature-graded
           // accretion DISC — a separate ring node, coloured white→yellow→red outward).
-          const eh = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+          // Drawn far smaller than the lens's shadow mask — the lens magnifies the black it finds at
+          // the centre, so a full-size sphere would smear black well past the photon ring and eat the
+          // starfield. The shader's horizon mask (sized from radiusScene) is the real shadow.
+          const eh = new THREE.Mesh(new THREE.SphereGeometry(starR * 0.55, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
           mesh = eh;
           const edd = Math.max(0, Math.min(1, (node as any).accretionEddington ?? (feeding ? 0.5 : 0)));
           // A black hole is BLACK — no big glow ball (that read as a "crystal ball"). The look is the
@@ -1768,6 +1771,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     _camRight.setFromMatrixColumn(camera.matrixWorld, 0); // camera's world-space right vector
     const arr = lensingPass.uniforms.uBH.value as THREE.Vector4[];
     const discArr = lensingPass.uniforms.uDisc.value as THREE.Vector4[];
+    const discNArr = lensingPass.uniforms.uDiscN.value as THREE.Vector2[];
     const aspect = viewW / Math.max(1, viewH);
     let n = 0;
     for (const b of bodies) {
@@ -1780,8 +1784,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (rC <= 0.0002) continue; // too small on screen to bother
       const disc = bhDiscInfo.get(b.id);
       arr[n].set(_lensCentre.x * 0.5 + 0.5, _lensCentre.y * 0.5 + 0.5, Math.min(0.5, rC * 0.85), disc ? disc.inner / disc.outer : 0);
-      if (disc) feedDiscEllipse(discArr[n], disc.pivot, b.mesh.position, disc.outer, camera, _lensCentre.x, _lensCentre.y, aspect);
-      else discArr[n].set(0, 0, 0, 0);
+      if (disc) feedDiscEllipse(discArr[n], discNArr[n], disc.pivot, b.mesh.position, disc.outer, camera, _lensCentre.x, _lensCentre.y, aspect);
+      else { discArr[n].set(0, 0, 0, 0); discNArr[n].set(0, 0); }
       if (++n >= MAX_LENSES) break;
     }
     lensingPass.uniforms.uCount.value = n;
