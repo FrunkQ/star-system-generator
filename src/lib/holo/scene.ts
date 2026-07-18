@@ -14,6 +14,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
+import { makeLensingShader, MAX_LENSES } from './lensingShader';
 import type { FilterParamValues } from './filters/schema';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
@@ -88,6 +89,7 @@ export interface HoloController {
   setHud(canvas: HTMLCanvasElement | null): void; // static info-card overlay, composited INTO the filter
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
+  setLensing(on: boolean): void; // stylised black-hole gravitational lensing (§A13)
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -129,6 +131,7 @@ interface BodyVisual {
   surfaceLock?: { dir0: THREE.Vector3 } | null;
   occluderId?: string | null; // body whose shadow can eclipse this one (a moon's parent planet)
   shadow?: { uStarPos: { value: THREE.Vector3 }; uOcc: { value: THREE.Vector4 }; uHasOcc: { value: number } };
+  isBH?: boolean; // a black hole — a lensing centre for the gravitational-lensing pass
 }
 
 // A planetary ring: a particle disc in the planet's tilted equatorial plane, spinning DIFFERENTIALLY
@@ -393,6 +396,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // --- GPU post-processing filter chain (Mappadux filter package, ported) ---
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  // Black-hole gravitational lensing pass (§A13). Sits BEFORE the CRT filter so the scene is lensed and
+  // then the filter treats the lensed image. Disabled unless a preset turns it on AND a hole is on screen.
+  const lensingPass = new ShaderPass(makeLensingShader());
+  lensingPass.enabled = false;
+  composer.addPass(lensingPass);
+  let lensingOn = false;
   const filterResolution = new THREE.Vector2(1, 1);
   const filterClock = new THREE.Clock();
   let filterPass: ShaderPass | null = null;
@@ -1398,7 +1407,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
       const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node) });
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
     // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
@@ -1727,6 +1736,34 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // Feed the lensing pass each black hole's screen position + Einstein radius (in UV). Projects the
+  // hole's scene position and its rendered edge to the screen; the Einstein radius is a multiple of the
+  // event-horizon's screen radius. Disables the pass when lensing is off or no hole is on screen.
+  const _lensCentre = new THREE.Vector3();
+  const _lensEdge = new THREE.Vector3();
+  const _camRight = new THREE.Vector3();
+  function updateLensing() {
+    if (!lensingOn) { lensingPass.enabled = false; return; }
+    _camRight.setFromMatrixColumn(camera.matrixWorld, 0); // camera's world-space right vector
+    const arr = lensingPass.uniforms.uBH.value as THREE.Vector3[];
+    let n = 0;
+    for (const b of bodies) {
+      if (!b.isBH) continue;
+      _lensCentre.copy(b.mesh.position).project(camera);
+      if (_lensCentre.z >= 1) continue; // behind the camera / clipped
+      const cx = _lensCentre.x * 0.5 + 0.5, cy = _lensCentre.y * 0.5 + 0.5;
+      _lensEdge.copy(b.mesh.position).addScaledVector(_camRight, b.radiusScene ?? 0.02).project(camera);
+      const rUV = Math.hypot((_lensEdge.x - _lensCentre.x) * 0.5, (_lensEdge.y - _lensCentre.y) * 0.5);
+      if (rUV <= 0.0002) continue; // too small on screen to bother
+      arr[n].set(cx, cy, Math.min(0.5, rUV * 3.0)); // Einstein radius ≈ 3× the horizon's screen radius
+      if (++n >= MAX_LENSES) break;
+    }
+    lensingPass.uniforms.uCount.value = n;
+    lensingPass.uniforms.uAspect.value = viewW / Math.max(1, viewH);
+    lensingPass.enabled = n > 0;
+  }
+  function setLensing(on: boolean) { lensingOn = on; }
+
   function loop() {
     if (disposed) return;
     perfFrame(performance.now()); // slow-spell tracker (logs only when a 5s window dips below 45fps)
@@ -1758,12 +1795,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateOrbitRings();
     controls.update();
     updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
-    if (filterPass) {
-      filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
-      composer.render();
-    } else {
-      renderer.render(scene, camera);
-    }
+    updateLensing();
+    if (filterPass) filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
+    if (filterPass || lensingPass.enabled) composer.render();
+    else renderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
   }
   raf = requestAnimationFrame(loop);
@@ -1789,6 +1824,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     (starfield.geometry as any)?.dispose?.();
     (starfield.material as any)?.dispose?.();
     if (filterPass) (filterPass.material as THREE.Material).dispose();
+    (lensingPass.material as THREE.Material)?.dispose();
     composer.dispose();
     glowTexture.dispose();
     hotspotTexture.dispose();
@@ -1797,7 +1833,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, resetView, resize, dispose };
 }
 
 // ---- helpers ----

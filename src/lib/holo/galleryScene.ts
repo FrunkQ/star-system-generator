@@ -5,6 +5,10 @@
 // holo (bodyFeatures) so what you see here is what the system view draws.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { makeLensingShader, MAX_LENSES } from './lensingShader';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { buildAuroraShell } from './scene';
@@ -68,6 +72,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	const auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
 	const discs: { points: THREE.Points; rate: number }[] = [];
 	const starVisuals: { corona: THREE.Sprite; baseScale: number; activity: number; seed: number }[] = [];
+	const lensBHs: { pos: THREE.Vector3; r: number }[] = []; // black-hole lensing centres (world pos + horizon radius)
 
 	// Build a single planet/moon/star/brown-dwarf tile at (x,y). Returns the group.
 	function buildBody(node: any, x: number, y: number): void {
@@ -163,6 +168,23 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		}
 		const label = makeLabel(String(entry.node.name), '#ffd8a0'); label.position.set(0, -R - 0.34, 0); g.add(label);
 		scene.add(g);
+		lensBHs.push({ pos: new THREE.Vector3(x, y, 0), r: R * 0.55 }); // lens the backdrop stars around it
+	}
+
+	// A patch of backdrop stars behind a row, so the black holes have something to lens.
+	function addStarBackdrop(y: number, halfW: number, halfH: number): void {
+		const count = 1400;
+		const pos = new Float32Array(count * 3);
+		for (let i = 0; i < count; i++) {
+			pos[3 * i] = (Math.random() * 2 - 1) * halfW;
+			pos[3 * i + 1] = y + (Math.random() * 2 - 1) * halfH;
+			pos[3 * i + 2] = -4 - Math.random() * 2; // behind the tiles (z=0)
+		}
+		const geo = new THREE.BufferGeometry();
+		geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+		const mat = new THREE.PointsMaterial({ color: 0xdfe6f2, size: 0.03, sizeAttenuation: true, transparent: true, opacity: 0.9 });
+		scene.add(new THREE.Points(geo, mat));
+		disposables.push(geo, mat);
 	}
 
 	// --- Layout: rows top→down, centred horizontally. ---
@@ -177,7 +199,16 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	};
 
 	for (const r of GALLERY_ROWS) placeRow(r.title, r.bodies.length, (i, x, y) => buildBody(r.bodies[i], x, y));
+	const bhRowY = -row * ROW_GAP;
 	placeRow('Black holes — by accretion level', GALLERY_BLACK_HOLES.length, (i, x, y) => buildBlackHole(GALLERY_BLACK_HOLES[i], x, y));
+	// Backdrop stars behind the black-hole row so the lensing has something to bend.
+	addStarBackdrop(bhRowY, (GALLERY_BLACK_HOLES.length / 2) * COL_GAP + COL_GAP, ROW_GAP * 0.75);
+
+	// Post-processing: the black-hole gravitational-lensing pass (same shader as the live holo).
+	const composer = new EffectComposer(renderer);
+	composer.addPass(new RenderPass(scene, camera));
+	const lensingPass = new ShaderPass(makeLensingShader());
+	composer.addPass(lensingPass);
 
 	// Frame the whole grid.
 	const totalH = row * ROW_GAP;
@@ -186,15 +217,34 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	camera.position.set(0, midY, Math.max(9, totalH * 0.62));
 
 	let raf = 0; let disposed = false; const clock = { t: 0 };
+	let vpW = 1, vpH = 1;
 	function resize() {
 		const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+		vpW = w; vpH = h;
 		renderer.setSize(w, h, false);
+		composer.setSize(w, h);
 		camera.aspect = w / h; camera.updateProjectionMatrix();
 	}
 	resize();
 	const ro = new ResizeObserver(resize); ro.observe(canvas);
 
 	const _q = new THREE.Quaternion(); const _yAxis = new THREE.Vector3(0, 1, 0);
+	const _lc = new THREE.Vector3(); const _le = new THREE.Vector3(); const _cr = new THREE.Vector3();
+	function updateLensing() {
+		_cr.setFromMatrixColumn(camera.matrixWorld, 0);
+		const arr = lensingPass.uniforms.uBH.value as THREE.Vector3[];
+		let n = 0;
+		for (const b of lensBHs) {
+			_lc.copy(b.pos).project(camera);
+			if (_lc.z >= 1) continue;
+			_le.copy(b.pos).addScaledVector(_cr, b.r).project(camera);
+			const rUV = Math.hypot((_le.x - _lc.x) * 0.5, (_le.y - _lc.y) * 0.5);
+			if (rUV <= 0.0002 || n >= MAX_LENSES) continue;
+			arr[n++].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rUV * 3.0));
+		}
+		lensingPass.uniforms.uCount.value = n;
+		lensingPass.uniforms.uAspect.value = vpW / Math.max(1, vpH);
+	}
 	function frame() {
 		if (disposed) return;
 		clock.t += 0.016;
@@ -216,7 +266,8 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			a.mat.opacity = a.base * (0.5 + 0.5 * s);
 		}
 		controls.update();
-		renderer.render(scene, camera);
+		updateLensing();
+		composer.render();
 		raf = requestAnimationFrame(frame);
 	}
 	frame();
@@ -225,6 +276,8 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		dispose() {
 			disposed = true; cancelAnimationFrame(raf); ro.disconnect(); controls.dispose();
 			for (const d of disposables) d.dispose();
+			(lensingPass.material as THREE.Material)?.dispose();
+			composer.dispose();
 			renderer.dispose();
 			scene.traverse((o) => {
 				const m = (o as any).material; const geo = (o as any).geometry;

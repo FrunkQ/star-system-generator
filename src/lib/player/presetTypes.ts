@@ -91,6 +91,7 @@ export interface PlayerPreset {
   bodyStyle: 'textured' | 'flat' | 'white'; // colour selection: true colour / class swatch / white
   render: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
+  lensing?: boolean; // stylised black-hole gravitational lensing (§A13); default on (no-op without a BH)
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
   bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat'; // 3D sphere vs a flat disc (photo / procedural / flat shape)
   beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band

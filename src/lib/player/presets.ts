@@ -58,6 +58,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   bodyStyle: 'textured',
   render: 'filled',
   unlit: false,
+  lensing: true,
   auroras: true,
   bodyGfx: 'sphere',
   beltStyle: 'rocks',
@@ -201,6 +202,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     bodyStyle: p.bodyStyle,
     render: p.render,
     unlit: p.unlit,
+    lensing: p.lensing !== false, // default on
     auroras: p.auroras,
     bodyGfx: p.bodyGfx,
     beltStyle: p.beltStyle,

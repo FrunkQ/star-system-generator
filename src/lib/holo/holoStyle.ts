@@ -16,6 +16,7 @@ export interface HoloStyle {
   bodyStyle: 'textured' | 'flat' | 'white' | 'tint'; // colour selection ('tint' = legacy alias for white)
   render?: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit?: boolean; // flat lighting (no terminator) — the efficient "2D map" look
+  lensing?: boolean; // stylised gravitational lensing around black holes (§A13); default on (no BH = no-op)
   lockOverhead?: boolean; // pin the camera flat top-down (the "2D map" view) — never becomes a 3D view
   lockRotation?: boolean; // fix the heading: no spin by drag, and follow a focused body by PANNING
   auroras?: boolean; // show the emissive polar aurora shells (default on)
