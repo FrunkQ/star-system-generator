@@ -1,0 +1,187 @@
+// src/lib/holo/bodyFeatures.ts
+// Shared 3D body-surface FEATURE builders (emissive sprites + their textures), used by BOTH the live
+// system holo (holo/scene.ts) and the 3D reference gallery (holo/galleryScene.ts). Each builder is pure
+// THREE construction given a radius + the shared appearance model's params, so the two surfaces render
+// identically. Textures are passed IN (created once by the caller) so a scene shares a single instance.
+import * as THREE from 'three';
+
+// An additive sprite whose opacity is animated (flicker/glisten) each frame from a base + seed.
+export interface EmissiveVisual {
+	mat: THREE.SpriteMaterial;
+	base: number;
+	seed: number;
+}
+
+// --- Textures -------------------------------------------------------------------------------------
+
+// A filled hot spot (bright opaque core → transparent), for glowing volcanic vents.
+export function makeHotspotTexture(): THREE.Texture {
+	const size = 64;
+	const c = document.createElement('canvas');
+	c.width = c.height = size;
+	const ctx = c.getContext('2d')!;
+	const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+	g.addColorStop(0, 'rgba(255,255,255,1)');
+	g.addColorStop(0.3, 'rgba(255,240,210,0.85)');
+	g.addColorStop(0.7, 'rgba(255,170,80,0.25)');
+	g.addColorStop(1, 'rgba(255,140,60,0)');
+	ctx.fillStyle = g;
+	ctx.fillRect(0, 0, size, size);
+	const tex = new THREE.Texture(c);
+	tex.needsUpdate = true;
+	return tex;
+}
+
+// A soft WHITE puff (fully tintable by the sprite colour), for icy cryovolcanic plume spray.
+export function makePlumeTexture(): THREE.Texture {
+	const size = 64;
+	const c = document.createElement('canvas');
+	c.width = c.height = size;
+	const ctx = c.getContext('2d')!;
+	const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+	g.addColorStop(0, 'rgba(255,255,255,0.9)');
+	g.addColorStop(0.5, 'rgba(255,255,255,0.32)');
+	g.addColorStop(1, 'rgba(255,255,255,0)');
+	ctx.fillStyle = g;
+	ctx.fillRect(0, 0, size, size);
+	const tex = new THREE.Texture(c);
+	tex.needsUpdate = true;
+	return tex;
+}
+
+// A corona HALO: transparent through the centre (so the body shows), a bright ring just outside it,
+// fading to nothing — additive-blended around a star / self-luminous body / feeding black hole.
+export function makeGlowTexture(): THREE.Texture {
+	const size = 128;
+	const c = document.createElement('canvas');
+	c.width = c.height = size;
+	const ctx = c.getContext('2d')!;
+	const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+	g.addColorStop(0, 'rgba(255,255,255,0)');
+	g.addColorStop(0.32, 'rgba(255,255,255,0.05)');
+	g.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+	g.addColorStop(0.72, 'rgba(255,255,255,0.18)');
+	g.addColorStop(1, 'rgba(255,255,255,0)');
+	ctx.fillStyle = g;
+	ctx.fillRect(0, 0, size, size);
+	const tex = new THREE.Texture(c);
+	tex.needsUpdate = true;
+	return tex;
+}
+
+// --- Feature builders -----------------------------------------------------------------------------
+
+/** Volcanic vents: additive hot-spot sprites at seeded, equator-biased surface points. Lava world =
+ *  many white-hot vents; discrete volcanism/hotspots = a few orange ones. Parented to the sphere. */
+export function buildMagmaVents(
+	radius: number,
+	spec: { vents: number; lava: boolean },
+	id: string,
+	hotspotTexture: THREE.Texture
+): { group: THREE.Group; visuals: EmissiveVisual[] } {
+	const group = new THREE.Group();
+	const visuals: EmissiveVisual[] = [];
+	let s = 11; for (let k = 0; k < id.length; k++) s = (s * 31 + id.charCodeAt(k)) & 0xffffff;
+	const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+	const core = spec.lava ? 0xfff0c0 : 0xff8a3c; // molten world = white-hot; discrete vents = orange
+	const pos = new THREE.Vector3();
+	for (let i = 0; i < spec.vents; i++) {
+		const lat = rnd() * 2 - 1; const latEq = lat * lat * lat * 0.6; // equator-biased latitude fraction
+		const phi = latEq * Math.PI * 0.5;                              // → latitude angle
+		const lon = rnd() * Math.PI * 2;
+		const cphi = Math.cos(phi);
+		pos.set(Math.cos(lon) * cphi, Math.sin(phi), Math.sin(lon) * cphi).multiplyScalar(radius * 1.02);
+		const base = spec.lava ? 0.95 : 0.8;
+		const mat = new THREE.SpriteMaterial({ map: hotspotTexture, color: core, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: base });
+		const sprite = new THREE.Sprite(mat);
+		sprite.position.copy(pos);
+		const sz = radius * (spec.lava ? 0.6 : 0.42) * (0.7 + rnd() * 0.6);
+		sprite.scale.set(sz, sz, 1);
+		group.add(sprite);
+		visuals.push({ mat, base, seed: rnd() });
+	}
+	return { group, visuals };
+}
+
+/** Cryovolcanic plumes: a few icy jets from the southern polar region, each a chain of additive puffs
+ *  marching OUTWARD (widening + fading) so it reads as spray into space. reachRadii (from the model,
+ *  driven by low gravity) sets throw distance in body radii. Parented to the sphere. */
+export function buildCryoPlumes(
+	radius: number,
+	spec: { jets: number; reachRadii: number },
+	id: string,
+	plumeTexture: THREE.Texture
+): { group: THREE.Group; visuals: EmissiveVisual[] } {
+	const group = new THREE.Group();
+	const visuals: EmissiveVisual[] = [];
+	let s = 61; for (let k = 0; k < id.length; k++) s = (s * 31 + id.charCodeAt(k)) & 0xffffff;
+	const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+	const color = 0xdff2ff; // icy blue-white
+	const reach = radius * spec.reachRadii;
+	const N = 5; // puffs per jet
+	const normal = new THREE.Vector3();
+	for (let j = 0; j < spec.jets; j++) {
+		const lat = -(0.45 + rnd() * 0.5) * Math.PI * 0.5; // south-biased (−40°..−85°), not dead-on the pole
+		const lon = rnd() * Math.PI * 2;
+		const cphi = Math.cos(lat);
+		normal.set(Math.cos(lon) * cphi, Math.sin(lat), Math.sin(lon) * cphi).normalize();
+		for (let i = 0; i < N; i++) {
+			const f = i / (N - 1); // 0 (base) .. 1 (tip)
+			const mat = new THREE.SpriteMaterial({ map: plumeTexture, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.72 * (1 - f * 0.6) });
+			const sprite = new THREE.Sprite(mat);
+			sprite.position.copy(normal).multiplyScalar(radius + f * reach);
+			const sz = radius * (0.18 + f * 0.55); // widens toward the tip (spray)
+			sprite.scale.set(sz, sz, 1);
+			group.add(sprite);
+			visuals.push({ mat, base: mat.opacity, seed: rnd() });
+		}
+	}
+	return { group, visuals };
+}
+
+/** A self-luminous body (brown dwarf / hot young sub-stellar world) glows with a dim, cool corona-like
+ *  halo coloured by its emission temperature — a steady glow, not a blazing stellar corona. */
+export function buildSelfLumGlow(radius: number, colorHex: string, glowTexture: THREE.Texture): THREE.Sprite {
+	const mat = new THREE.SpriteMaterial({ map: glowTexture, color: new THREE.Color(colorHex), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 });
+	const halo = new THREE.Sprite(mat);
+	halo.scale.setScalar(radius * 3.0);
+	return halo;
+}
+
+// --- Animation helpers ----------------------------------------------------------------------------
+
+/** Flicker volcanic vents like heat — faster + hotter than the aurora shimmer. */
+export function updateMagma(visuals: EmissiveVisual[], nowSec: number): void {
+	for (const m of visuals) {
+		const s = 0.5 + 0.5 * Math.sin(nowSec * 6 + m.seed * 6.283);
+		m.mat.opacity = m.base * (0.6 + 0.4 * s);
+	}
+}
+
+/** Glisten cryovolcanic plumes — a gentler, slower shimmer. */
+export function updatePlumes(visuals: EmissiveVisual[], nowSec: number): void {
+	for (const p of visuals) {
+		const g = 0.5 + 0.5 * Math.sin(nowSec * 3.4 + p.seed * 6.283);
+		p.mat.opacity = p.base * (0.55 + 0.45 * g);
+	}
+}
+
+// --- Accretion-disc temperature gradient ----------------------------------------------------------
+
+// Colour by NORMALISED radius (0 = inner edge / hottest, 1 = outer / coolest): white-hot → yellow →
+// orange → deep red, the classic accretion-disc / "Interstellar" gradient. Shared by the live BH ring
+// and the gallery's static disc.
+const ACCRETION_STOPS: [number, THREE.Color][] = [
+	[0.0, new THREE.Color(0xffffff)], [0.18, new THREE.Color(0xfff2d0)], [0.4, new THREE.Color(0xffd060)],
+	[0.65, new THREE.Color(0xff7a1e)], [1.0, new THREE.Color(0x8f2408)]
+];
+export function accretionColor(t: number, out: THREE.Color): THREE.Color {
+	const x = Math.max(0, Math.min(1, t));
+	for (let i = 1; i < ACCRETION_STOPS.length; i++) {
+		if (x <= ACCRETION_STOPS[i][0]) {
+			const [t0, c0] = ACCRETION_STOPS[i - 1], [t1, c1] = ACCRETION_STOPS[i];
+			return out.copy(c0).lerp(c1, (x - t0) / (t1 - t0));
+		}
+	}
+	return out.copy(ACCRETION_STOPS[ACCRETION_STOPS.length - 1][1]);
+}
