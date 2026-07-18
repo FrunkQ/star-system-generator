@@ -35,7 +35,7 @@ const frame = (nodeId: string, level: number) =>
 
 describe('multi-level click framing', () => {
   it('reports the levels that exist per object (missing ones skipped)', () => {
-    expect(lv('star')).toEqual([2, 3]);     // no parent → no level 1; has planets
+    expect(lv('star')).toEqual([3, 2]);     // ROOT body: close-up first, whole system on the next click
     expect(lv('planet')).toEqual([1, 2, 3]); // parent + satellites
     expect(lv('moon')).toEqual([1, 3]);      // parent, no satellites → skip 2
     expect(lv('ship')).toEqual([1, 3]);      // construct: parent, no satellites
@@ -67,11 +67,13 @@ describe('shared click ladder', () => {
     const planet = frameLevelsFrom({ hasParent: true, hasSatellites: true });
     const moon = frameLevelsFrom({ hasParent: true, hasSatellites: false });
     const lone = frameLevelsFrom({ hasParent: false, hasSatellites: false });
-    const star = frameLevelsFrom({ hasParent: false, hasSatellites: true });
+    const star = frameLevelsFrom({ hasParent: false, hasSatellites: true }); // real root body (hasRadius defaults true)
+    const baryRoot = frameLevelsFrom({ hasParent: false, hasSatellites: true, hasRadius: false }); // root barycentre point
     expect(planet).toEqual([1, 2, 3]);
     expect(moon).toEqual([1, 3]);
     expect(lone).toEqual([3]);
-    expect(star).toEqual([2, 3]);
+    expect(star).toEqual([3, 2]);       // ROOT star: close-up FIRST, whole system on the next click
+    expect(baryRoot).toEqual([2, 3]);   // radius-less root: nothing to zoom into → whole-system-first
 
     // A planet: parent → satellites → close, then WRAPS back out to parent context.
     let l = firstFrameLevel(planet);
@@ -83,9 +85,9 @@ describe('shared click ladder', () => {
     let m = firstFrameLevel(moon);
     expect([m, (m = nextFrameLevel(moon, m)), nextFrameLevel(moon, m)]).toEqual([1, 3, 1]);
 
-    // A star's close-up clicks back out to the FULL SYSTEM (its satellites level) — Reset view.
+    // A root star LEADS with its close-up, then the next click opens out to the FULL SYSTEM, then cycles.
     let st = firstFrameLevel(star);
-    expect([st, (st = nextFrameLevel(star, st)), nextFrameLevel(star, st)]).toEqual([2, 3, 2]);
+    expect([st, (st = nextFrameLevel(star, st)), nextFrameLevel(star, st)]).toEqual([3, 2, 3]);
 
     // A lone object only has its close-up; clicking cycles in place.
     expect(nextFrameLevel(lone, 3)).toBe(3);

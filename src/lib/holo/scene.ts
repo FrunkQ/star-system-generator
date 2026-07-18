@@ -826,7 +826,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const pid = b.framingParentId;
     return frameLevelsFrom({
       hasParent: !!(pid && bodyById.has(pid)),
-      hasSatellites: bodies.some((x) => x.framingParentId === id)
+      hasSatellites: bodies.some((x) => x.framingParentId === id),
+      hasRadius: !b.isConstruct && (b.radiusScene ?? 0) > 0 // a radius-less root keeps whole-system-first
     });
   }
 

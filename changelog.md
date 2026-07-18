@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.145-beta - 18th Jul 2026
+
+* Root star click: clicking the central star now frames a close-up first (a big, easy target) and steps out to the whole system on the next click, instead of framing the whole system first and leaving the star a hard-to-hit speck. Opening a system and Reset View still show the whole-system overview.
+
 ## v2.1.144-beta - 18th Jul 2026
 
 * Un-masked the Player Views rail entry for continued V2.2 work (it was hidden only for the v2.1.2 production cut). Field Guide + Player Views sit side by side again on beta. (The Holo Table skin in the Field Guide launcher stays masked for now.)

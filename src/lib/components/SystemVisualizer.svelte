@@ -308,6 +308,15 @@
   function firstLevelFor(nodeId: string): number {
       return firstFrameLevel(levelsFor(nodeId));
   }
+  // The whole-system overview level for a target. A ROOT body with children now leads its ladder with a
+  // close-up (see camera.frameLevelsFrom), but on ENTRY / Reset View we want the whole-system view (level
+  // 2) instead — clicking the star then zooms in, and again returns to the whole system. Non-root or
+  // childless targets just use their first level.
+  function overviewLevelFor(nodeId: string): number {
+      const node = system?.nodes.find(n => n.id === nodeId);
+      const levels = levelsFor(nodeId);
+      return (node && !node.parentId && levels.includes(2)) ? 2 : firstFrameLevel(levels);
+  }
   function nextLevelFor(nodeId: string, current: number): number {
       return nextFrameLevel(levelsFor(nodeId), current);
   }
@@ -328,7 +337,7 @@
       userZoomOverride = false;
       const targetId = focusedBodyId || system.nodes.find(n => n.parentId === null)?.id;
       if (targetId) {
-          focusLevel = firstLevelFor(targetId);
+          focusLevel = overviewLevelFor(targetId); // Reset View on the root shows the whole system, not the star close-up
           dispatch('levelchange', { id: targetId, level: focusLevel }); // Reset View rides to followers too
           const frame = calculateFrameForNode(targetId);
           panStore.set(frame.pan, { duration: 0 });
@@ -341,14 +350,17 @@
   }
 
   function handleFocusChange(newFocusId: string | null) {
+      const isInitialEntry = lastFocusedId === null; // first framing since this system mounted = system entry
       lastFocusedId = newFocusId;
       const targetId = newFocusId || system!.nodes.find(n => n.parentId === null)?.id;
       if (!targetId) return;
       const nodesById = new Map(system!.nodes.map(n => [n.id, n]));
       const targetNode = nodesById.get(targetId);
       if (targetNode && targetNode.kind === 'body' && targetNode.roleHint === 'belt') return;
-      // A NEW selection starts at the object's first existing framing level.
-      focusLevel = firstLevelFor(targetId);
+      // A NEW selection starts at the object's first existing framing level. Exception: on ENTRY to a
+      // system we open on the whole-system overview (level 2) rather than the root star's close-up — a
+      // click on the star then zooms in, and the next click returns to the whole system.
+      focusLevel = isInitialEntry ? overviewLevelFor(targetId) : firstLevelFor(targetId);
       dispatch('levelchange', { id: targetId, level: focusLevel });
       startFocusAnimation(targetId);
   }

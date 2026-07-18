@@ -80,14 +80,25 @@ export type FrameLevelConfig = typeof FRAME_LEVELS;
 // ── THE click-ladder ruleset (one definition, every renderer) ─────────────────────────────────────
 // Selecting an object frames its first EXISTING level; each re-click steps one level deeper:
 //   1 object + its parent · 2 object + its satellites · 3 object fills the view
-// Levels that don't apply are skipped (no parent → no 1; no satellites → no 2), and the deepest level
-// clamps (no wrap). The maths below is UNIT-AGNOSTIC: a caller measures distances in whatever space it
+// Levels that don't apply are skipped (no parent → no 1; no satellites → no 2), and the ladder WRAPS at
+// the deepest level. The ROOT star is the one exception (see frameLevelsFrom): it LEADS with its close-up
+// and steps out to the whole system, so the tiny-target trap of framing everything first never happens. The maths below is UNIT-AGNOSTIC: a caller measures distances in whatever space it
 // renders — AU for the 2D orrery, scene units for the holo — and gets a half-extent back in that space.
 // Pair it with getVisibleNodeIds (system/visibleNodes), which is the one rule for BOTH what gets a name
 // and what can be clicked.
 
-/** Which levels exist, in zoom-in order, from the two predicates that decide it. */
-export function frameLevelsFrom(has: { hasParent: boolean; hasSatellites: boolean }): number[] {
+/**
+ * Which levels exist, in click order, from the predicates that decide it. Normally zoom-IN order
+ * (1 → 2 → 3). Exception: the ROOT of the tree — a real body (has radius) with children but no parent,
+ * i.e. the central star — leads with its CLOSE-UP (3) and steps OUT to the whole system (2) on the next
+ * click. Framing the whole system first shrinks the star to a pinprick that's near-impossible to click a
+ * second time; the close-up gives a big, easy target, and the next click opens out to all its children.
+ * A radius-less root (a barycentre point) has nothing to zoom into, so it keeps whole-system-first.
+ * `hasRadius` defaults true (the common case is a body); only radius-less roots pass false.
+ */
+export function frameLevelsFrom(has: { hasParent: boolean; hasSatellites: boolean; hasRadius?: boolean }): number[] {
+	const isRootBody = !has.hasParent && has.hasSatellites && (has.hasRadius ?? true);
+	if (isRootBody) return [3, 2]; // close-up first, whole system on the next click (then it cycles)
 	const levels: number[] = [];
 	if (has.hasParent) levels.push(1);
 	if (has.hasSatellites) levels.push(2);
@@ -168,7 +179,8 @@ export function availableFrameLevels(args: {
 	const parentId = framingParentId(node);
 	return frameLevelsFrom({
 		hasParent: !!(parentId && positions.get(parentId)),
-		hasSatellites: system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id))
+		hasSatellites: system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id)),
+		hasRadius: node.kind === 'body' && !!node.radiusKm // a radius-less root (barycentre) keeps whole-system-first
 	});
 }
 
