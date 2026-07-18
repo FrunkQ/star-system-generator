@@ -6,8 +6,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { makeLensingShader, MAX_LENSES } from './lensingShader';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
@@ -166,6 +166,12 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		if (edd > 0.01) {
 			const disc = buildStaticRing(shadowR * 1.5, shadowR * (2.6 + edd * 2.6), 0xffd060, true);
 			g.add(disc); discs.push({ points: disc, rate: 0.5 + edd });
+			// Depth twin: writes the disc's DEPTH (colour off, depth-tested against the shadow sphere) so
+			// the lens sees the NEAR side as foreground and shows it un-lensed, crossing in front of the hole.
+			const depthMat = new THREE.PointsMaterial({ size: (disc.material as THREE.PointsMaterial).size * 1.6, sizeAttenuation: true, colorWrite: false, depthWrite: true, depthTest: true });
+			const depthDisc = new THREE.Points(disc.geometry, depthMat);
+			depthDisc.rotation.copy(disc.rotation);
+			g.add(depthDisc); discs.push({ points: depthDisc, rate: 0.5 + edd });
 		}
 		const label = makeLabel(String(entry.node.name), '#ffd8a0'); label.position.set(0, -R - 0.34, 0); g.add(label);
 		scene.add(g);
@@ -205,13 +211,19 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	// Backdrop stars behind the black-hole row so the lensing has something to bend.
 	addStarBackdrop(bhRowY, (GALLERY_BLACK_HOLES.length / 2) * COL_GAP + COL_GAP, ROW_GAP * 0.75);
 
-	// Post-processing: the black-hole gravitational-lensing pass (same shader as the live holo).
+	// Post-processing: the black-hole lensing pass (same shader as the live holo), fed a DEPTH texture so
+	// foreground disc geometry passes through un-lensed. We render the scene ourselves to sceneRT (with a
+	// DepthTexture) and feed it via a TexturePass, so the depth is available to the lens shader.
+	const depthTexture = new THREE.DepthTexture(1, 1);
+	const sceneRT = new THREE.WebGLRenderTarget(1, 1, { depthTexture, depthBuffer: true });
+	disposables.push(sceneRT, depthTexture);
 	const composer = new EffectComposer(renderer);
-	composer.addPass(new RenderPass(scene, camera));
+	composer.addPass(new TexturePass(sceneRT.texture));
 	const lensingPass = new ShaderPass(makeLensingShader());
+	lensingPass.uniforms.tDepth.value = depthTexture;
+	lensingPass.uniforms.uHasDepth.value = 1;
 	composer.addPass(lensingPass);
-	// Final tone-map + sRGB conversion. Without this the composer outputs LINEAR colour (renderer.render
-	// applies sRGB automatically, composer.render does not) — which is what made the gallery look dull.
+	// Final tone-map + sRGB (composer.render outputs LINEAR otherwise — that dulled the whole gallery).
 	composer.addPass(new OutputPass());
 
 	// Frame the whole grid.
@@ -225,8 +237,10 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	function resize() {
 		const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
 		vpW = w; vpH = h;
+		const pr = renderer.getPixelRatio();
 		renderer.setSize(w, h, false);
 		composer.setSize(w, h);
+		sceneRT.setSize(Math.max(1, Math.floor(w * pr)), Math.max(1, Math.floor(h * pr)));
 		camera.aspect = w / h; camera.updateProjectionMatrix();
 	}
 	resize();
@@ -236,7 +250,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	const _lc = new THREE.Vector3(); const _le = new THREE.Vector3(); const _cr = new THREE.Vector3();
 	function updateLensing() {
 		_cr.setFromMatrixColumn(camera.matrixWorld, 0);
-		const arr = lensingPass.uniforms.uBH.value as THREE.Vector3[];
+		const arr = lensingPass.uniforms.uBH.value as THREE.Vector4[];
 		let n = 0;
 		for (const b of lensBHs) {
 			_lc.copy(b.pos).project(camera);
@@ -244,7 +258,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			_le.copy(b.pos).addScaledVector(_cr, b.r).project(camera);
 			const rUV = Math.hypot((_le.x - _lc.x) * 0.5, (_le.y - _lc.y) * 0.5);
 			if (rUV <= 0.0002 || n >= MAX_LENSES) continue;
-			arr[n++].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rUV * 1.7));
+			arr[n++].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rUV * 1.7), _lc.z * 0.5 + 0.5);
 		}
 		lensingPass.uniforms.uCount.value = n;
 		lensingPass.uniforms.uAspect.value = vpW / Math.max(1, vpH);
@@ -271,6 +285,11 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		}
 		controls.update();
 		updateLensing();
+		// Render the scene ourselves to sceneRT so the lens pass gets the DEPTH texture, then post-process.
+		renderer.setRenderTarget(sceneRT);
+		renderer.clear();
+		renderer.render(scene, camera);
+		renderer.setRenderTarget(null);
 		composer.render();
 		raf = requestAnimationFrame(frame);
 	}

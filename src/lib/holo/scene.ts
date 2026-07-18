@@ -1758,7 +1758,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function updateLensing() {
     if (!lensingOn) { lensingPass.enabled = false; return; }
     _camRight.setFromMatrixColumn(camera.matrixWorld, 0); // camera's world-space right vector
-    const arr = lensingPass.uniforms.uBH.value as THREE.Vector3[];
+    const arr = lensingPass.uniforms.uBH.value as THREE.Vector4[];
     let n = 0;
     for (const b of bodies) {
       if (!b.isBH) continue;
@@ -1768,7 +1768,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       _lensEdge.copy(b.mesh.position).addScaledVector(_camRight, b.radiusScene ?? 0.02).project(camera);
       const rUV = Math.hypot((_lensEdge.x - _lensCentre.x) * 0.5, (_lensEdge.y - _lensCentre.y) * 0.5);
       if (rUV <= 0.0002) continue; // too small on screen to bother
-      arr[n].set(cx, cy, Math.min(0.5, rUV * 1.7)); // Einstein/ring radius relative to the horizon's screen radius
+      arr[n].set(cx, cy, Math.min(0.5, rUV * 1.7), _lensCentre.z * 0.5 + 0.5); // xy centre, z ring radius, w depth
       if (++n >= MAX_LENSES) break;
     }
     lensingPass.uniforms.uCount.value = n;

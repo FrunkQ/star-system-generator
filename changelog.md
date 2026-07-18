@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.159-beta - 18th Jul 2026
+
+* Black-hole lensing is now DEPTH-AWARE: the accretion disc's near side (in front of the hole) crosses straight in front of the shadow — its light reaches us unbent — while the far side still wraps over the top, so you get the full disc, not just the arcs. Pure-white refracted-starlight halo. (3D gallery; live-holo depth wiring to follow.)
+
 ## v2.1.158-beta - 18th Jul 2026
 
 * Black holes reworked toward the "Gargantua" look: killed the bright glow ball (it read as a crystal ball), auto-generate a temperature-graded accretion disc for a feeding hole (real BH systems carry no ring node), render the disc edge-on + over the shadow so the lensing wraps its far side OVER and UNDER a genuinely-black shadow, and give a bare hole a slim bright ring of refracted starlight. Live-holo composer gains an OutputPass so a BH scene keeps proper colour.
