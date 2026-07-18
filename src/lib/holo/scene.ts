@@ -140,6 +140,9 @@ interface RingVisual {
   t0Sec: number; // sim time at build (seconds)
   planetR: number; // rendered planet radius (scene units) — the shadow-casting sphere for ring shadow
   baseColor: THREE.Color; // unshadowed particle tint
+  emissiveBase?: Float32Array; // per-particle rgb for a SELF-LUMINOUS disc (a BH accretion disc, temp-
+                               // graded hot-inner→red-outer). When present, updateRings paints it
+                               // directly (no planet-shadow shading — the disc glows).
 }
 
 // A belt orbits the system centre (origin). Each rock advances around the vertical axis at its
@@ -1208,12 +1211,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           mesh = buildWireframeBody(starR, colorHex, glow, occluded);
         } else if (isBH) {
           // Black hole: a pure-black event horizon. A quiescent hole shows only a faint photon-ring
-          // glow; a FEEDING hole (star/BH_active or accretionEddington>0) gets a bright, hot blue-white
-          // accretion glow that flickers over time (the accretion DISC itself is a separate ring node).
+          // glow; a FEEDING hole (star/BH_active or accretionEddington>0) gets a bright, hot white-gold
+          // inner glow that flickers over time (matching the hot inner edge of its temperature-graded
+          // accretion DISC — a separate ring node, coloured white→yellow→red outward).
           const eh = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
           mesh = eh;
           const edd = Math.max(0, Math.min(1, (node as any).accretionEddington ?? (feeding ? 0.5 : 0)));
-          const glowMat = new THREE.SpriteMaterial({ map: glowTexture, color: feeding ? 0xbfe0ff : 0x7f93b5, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: feeding ? 1 : 0.42 });
+          const glowMat = new THREE.SpriteMaterial({ map: glowTexture, color: feeding ? 0xffe8b0 : 0x7f93b5, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: feeding ? 1 : 0.42 });
           const glow = new THREE.Sprite(glowMat);
           const glowScale = starR * (feeding ? 3.5 + edd * 3.5 : 2.3);
           glow.scale.setScalar(glowScale);
@@ -1359,6 +1363,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               const built = buildCryoPlumes(radius, appear.cryoPlumes, String(node.id));
               sphere.add(built.group);
               plumeVisuals.push(...built.visuals);
+            }
+            // Self-luminous glow (a brown dwarf / hot young sub-stellar body radiating its own heat):
+            // a dim, cool corona-like halo coloured by the emission temperature (deep red → amber), like
+            // a failed star. Reuses the corona glow sprite at a modest scale — a steady dim glow (not a
+            // blazing stellar corona).
+            if (appear.selfLumGlow) {
+              const haloMat = new THREE.SpriteMaterial({ map: glowTexture, color: new THREE.Color(appear.selfLumGlow.colorHex), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 });
+              const halo = new THREE.Sprite(haloMat);
+              halo.scale.setScalar(radius * 3.0);
+              sphere.add(halo);
             }
           }
         }
@@ -1735,6 +1749,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const arr = attr.array as Float32Array;
       const cattr = rv.points!.geometry.getAttribute('color') as THREE.BufferAttribute;
       const carr = cattr.array as Float32Array;
+      const eb = rv.emissiveBase; // a glowing accretion disc: paint the temp gradient directly, no shadow
       for (let i = 0; i < rv.radii.length; i++) {
         const ang = rv.baseAng[i] + rv.omega[i] * dt;
         const r = rv.radii[i];
@@ -1742,10 +1757,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const z = r * Math.sin(ang);
         arr[3 * i] = x;
         arr[3 * i + 2] = z;
-        const shade = shadeAt(x, z);
-        carr[3 * i] = cr * shade;
-        carr[3 * i + 1] = cg * shade;
-        carr[3 * i + 2] = cb * shade;
+        if (eb) {
+          carr[3 * i] = eb[3 * i]; carr[3 * i + 1] = eb[3 * i + 1]; carr[3 * i + 2] = eb[3 * i + 2];
+        } else {
+          const shade = shadeAt(x, z);
+          carr[3 * i] = cr * shade;
+          carr[3 * i + 1] = cg * shade;
+          carr[3 * i + 2] = cb * shade;
+        }
       }
       attr.needsUpdate = true;
       cattr.needsUpdate = true;
@@ -2461,6 +2480,23 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
   };
 }
 
+// Accretion-disc temperature colour by NORMALISED radius (0 = inner edge / hottest, 1 = outer / coolest):
+// white-hot → yellow → orange → deep red, the classic accretion-disc / "Interstellar" gradient.
+const ACCRETION_STOPS: [number, THREE.Color][] = [
+  [0.0, new THREE.Color(0xffffff)], [0.18, new THREE.Color(0xfff2d0)], [0.4, new THREE.Color(0xffd060)],
+  [0.65, new THREE.Color(0xff7a1e)], [1.0, new THREE.Color(0x8f2408)]
+];
+function accretionColor(t: number, out: THREE.Color): THREE.Color {
+  const x = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < ACCRETION_STOPS.length; i++) {
+    if (x <= ACCRETION_STOPS[i][0]) {
+      const [t0, c0] = ACCRETION_STOPS[i - 1], [t1, c1] = ACCRETION_STOPS[i];
+      return out.copy(c0).lerp(c1, (x - t0) / (t1 - t0));
+    }
+  }
+  return out.copy(ACCRETION_STOPS[ACCRETION_STOPS.length - 1][1]);
+}
+
 function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number): RingVisual | null {
   const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
   let innerScene: number;
@@ -2497,13 +2533,31 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const baseColor = new THREE.Color(0xcdd6e2);
-  // Per-particle colour so updateRings can darken the arc that falls in the planet's shadow.
+  // A black hole's ring is a glowing ACCRETION DISC: colour each particle by its radius on the hot-inner
+  // → red-outer temperature gradient, self-luminous (additive), rather than a cool icy ring.
+  const isAccretionDisc = isBlackHoleNode(parent);
+  const baseColor = new THREE.Color(isAccretionDisc ? 0xffd060 : 0xcdd6e2);
   const colors = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) { colors[3 * i] = baseColor.r; colors[3 * i + 1] = baseColor.g; colors[3 * i + 2] = baseColor.b; }
+  let emissiveBase: Float32Array | undefined;
+  if (isAccretionDisc) {
+    emissiveBase = new Float32Array(count * 3);
+    const span = Math.max(1e-6, outerScene - innerScene);
+    const tmp = new THREE.Color();
+    for (let i = 0; i < count; i++) {
+      accretionColor((radii[i] - innerScene) / span, tmp);
+      colors[3 * i] = emissiveBase[3 * i] = tmp.r;
+      colors[3 * i + 1] = emissiveBase[3 * i + 1] = tmp.g;
+      colors[3 * i + 2] = emissiveBase[3 * i + 2] = tmp.b;
+    }
+  } else {
+    // Per-particle colour so updateRings can darken the arc that falls in the planet's shadow.
+    for (let i = 0; i < count; i++) { colors[3 * i] = baseColor.r; colors[3 * i + 1] = baseColor.g; colors[3 * i + 2] = baseColor.b; }
+  }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const size = Math.max(0.008, planetRenderedR * 0.06);
-  const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true, opacity: ringOpacity, depthWrite: false });
+  const size = Math.max(0.008, planetRenderedR * (isAccretionDisc ? 0.09 : 0.06));
+  const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true,
+    opacity: isAccretionDisc ? Math.min(1, ringOpacity + 0.35) : ringOpacity, depthWrite: false,
+    blending: isAccretionDisc ? THREE.AdditiveBlending : THREE.NormalBlending });
   const points = new THREE.Points(geo, mat);
 
   const pivot = new THREE.Group();
@@ -2512,7 +2566,7 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   const tiltRad = ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
   pivot.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
   pivot.add(points);
-  return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor };
+  return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor, emissiveBase };
 }
 
 

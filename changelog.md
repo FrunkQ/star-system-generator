@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.152-beta - 18th Jul 2026
+
+* 3D holo emissive polish: self-luminous bodies (brown dwarfs / hot young sub-stellar worlds) now glow with a dim halo coloured by their own heat (deep red -> amber). Black holes with an accretion disc now render it as a glowing, temperature-graded disc -- white-hot at the inner edge through yellow and orange to deep red at the rim (the "Interstellar" look), with a matching hot white-gold inner glow.
+
 ## v2.1.151-beta - 18th Jul 2026
 
 * Physics fix: tiny moons (Phobos, Deimos) and gas giants (Saturn) were wrongly reading as cryovolcanic / subsurface-ocean worlds. A body now needs to be large enough to be round (~200 km, the icy hydrostatic-equilibrium limit — keeps Enceladus) before it can hold a subsurface ocean, a differentiated icy shell, or cryovolcanism. A small tidally-stressed lump is shredded, not warmed to erupt; gas/ice giants have no crust to vent through.
