@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.149-beta - 18th Jul 2026
+
+* 3D holo: volcanic worlds now GLOW. Tidally heated / lava bodies (like Io) get flickering emissive vents that turn with the surface — a full lava world glows white-hot all over, a few hotspots get orange vents — scaled by how volcanic the world is. Driven by the shared appearance model, so it stays consistent with the 2D disc.
+
 ## v2.1.148-beta - 18th Jul 2026
 
 * Internal: extracted the planet-appearance logic (which surface features a world shows — craters, volcanism, auroras, polar ice, atmosphere glow, self-luminous glow — and how strong) out of the 2D disc into one shared model, so the 2D orrery and 3D holo can drive the same features next. No visual change to the disc gallery.

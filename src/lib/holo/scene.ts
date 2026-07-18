@@ -19,6 +19,7 @@ import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect, getPlanetTexture } from '$lib/rendering/planetTexture';
+import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
@@ -530,6 +531,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Aurora emitters (additive), flickering over time; base opacity scales with strength. Filled bodies
   // use a glow shell (MeshBasicMaterial); wireframe bodies use a few emissive polar arcs (LineBasic).
   let auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
+  // Volcanic vent glows (3D-only emissive win): additive sprites at seeded vent points, flickered like heat.
+  let magmaVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
   // Orbit path rings, keyed by node id so they can follow the SAME visibility rule as the names
   // ("if you show a name, show an orbit"). Moon rings carry trackParentId to follow the parent.
   let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string }[] = [];
@@ -552,6 +555,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   scene.add(contentGroup);
 
   const glowTexture = makeGlowTexture();
+  const hotspotTexture = makeHotspotTexture(); // shared filled glow for volcanic vents
   const tmp = new THREE.Vector3();
   const proj = new THREE.Vector3();
 
@@ -1111,6 +1115,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     starLights = [];
     starVisuals = [];
     auroraVisuals = [];
+    magmaVisuals = [];
   }
 
   function setSystem(system: System | null) {
@@ -1336,6 +1341,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
               auroraVisuals.push({ mat: built.mat, base: built.base, seed: seed / 997 });
             }
+            // Volcanic glow (3D-only emissive win): the shared appearance model decides tier/lava; we
+            // scatter additive hot-spot sprites at seeded vent points that flicker like heat. A lava world
+            // glows white-hot all over; discrete volcanism/hotspots get a few orange vents. Parented to
+            // the sphere, so they turn with the surface; night-side vents are occluded by the body.
+            const magma = deriveAppearance(node as any).magma;
+            if (magma) {
+              const built = buildMagmaVents(radius, magma, String(node.id));
+              sphere.add(built.group);
+              magmaVisuals.push(...built.visuals);
+            }
           }
         }
       }
@@ -1556,6 +1571,42 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // Volcanic vents: additive hot-spot sprites at seeded surface points (equator-biased, like the 2D
+  // disc's magma), parented to the sphere so they turn with the surface. A lava world = many white-hot
+  // vents; discrete volcanism/hotspots = a few orange ones. Positions are seeded per body id so a world
+  // keeps its own layout.
+  function buildMagmaVents(radius: number, spec: { vents: number; lava: boolean }, id: string) {
+    const group = new THREE.Group();
+    const visuals: { mat: THREE.SpriteMaterial; base: number; seed: number }[] = [];
+    let s = 11; for (let k = 0; k < id.length; k++) s = (s * 31 + id.charCodeAt(k)) & 0xffffff;
+    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+    const core = spec.lava ? 0xfff0c0 : 0xff8a3c; // molten world = white-hot; discrete vents = orange
+    const pos = new THREE.Vector3();
+    for (let i = 0; i < spec.vents; i++) {
+      const lat = rnd() * 2 - 1; const latEq = lat * lat * lat * 0.6; // equator-biased latitude fraction
+      const phi = latEq * Math.PI * 0.5;                              // → latitude angle
+      const lon = rnd() * Math.PI * 2;
+      const cphi = Math.cos(phi);
+      pos.set(Math.cos(lon) * cphi, Math.sin(phi), Math.sin(lon) * cphi).multiplyScalar(radius * 1.02);
+      const base = spec.lava ? 0.95 : 0.8;
+      const mat = new THREE.SpriteMaterial({ map: hotspotTexture, color: core, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: base });
+      const sprite = new THREE.Sprite(mat);
+      sprite.position.copy(pos);
+      const sz = radius * (spec.lava ? 0.6 : 0.42) * (0.7 + rnd() * 0.6);
+      sprite.scale.set(sz, sz, 1);
+      group.add(sprite);
+      visuals.push({ mat, base, seed: rnd() });
+    }
+    return { group, visuals };
+  }
+  // Flicker the vents like heat — faster + hotter than the aurora shimmer.
+  function updateMagma(nowSec: number) {
+    for (const m of magmaVisuals) {
+      const s = 0.5 + 0.5 * Math.sin(nowSec * 6 + m.seed * 6.283);
+      m.mat.opacity = m.base * (0.6 + 0.4 * s);
+    }
+  }
+
   // Feed each shadow-capable body its occluder (parent planet) sphere + the primary star position,
   // in scene space, so the shader can do its ray–sphere eclipse test.
   const occCenter = new THREE.Vector3();
@@ -1701,6 +1752,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateSurfaceConstructs();
     updateStarFx(nowSec);
     updateAuroras(nowSec);
+    updateMagma(nowSec);
     updateConstructs();
     updateShadows();
     updateRings();
@@ -1741,6 +1793,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (filterPass) (filterPass.material as THREE.Material).dispose();
     composer.dispose();
     glowTexture.dispose();
+    hotspotTexture.dispose();
     renderer.dispose();
     pointer.abort();
   }
@@ -2409,6 +2462,25 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor };
 }
 
+
+// A filled hot spot (bright opaque core → transparent), for glowing volcanic vents. Unlike the corona
+// glowTexture (a hollow ring) this is solid through the centre, so a vent reads as a point of heat.
+function makeHotspotTexture(): THREE.Texture {
+  const size = 64;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.3, 'rgba(255,240,210,0.85)');
+  g.addColorStop(0.7, 'rgba(255,170,80,0.25)');
+  g.addColorStop(1, 'rgba(255,140,60,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.Texture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
 
 function makeGlowTexture(): THREE.Texture {
   const size = 128;
