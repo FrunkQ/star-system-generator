@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.144-beta - 18th Jul 2026
+
+* Un-masked the Player Views rail entry for continued V2.2 work (it was hidden only for the v2.1.2 production cut). Field Guide + Player Views sit side by side again on beta. (The Holo Table skin in the Field Guide launcher stays masked for now.)
+
 ## v2.1.143-beta - 17th Jul 2026
 
 * Docs: reworded a GettingStarted reference to the masked Player Views as "player-facing views".

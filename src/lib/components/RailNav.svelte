@@ -88,15 +88,15 @@
   <button class="rail-btn" title={routesAttention ? `Routes & journeys — a ship needs attention (${routesAttention})` : 'Routes & journeys'} on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}{#if routesAttention}<span class="rail-dot {routesAttention}"></span>{/if}</span><span class="rail-label">Routes…{#if routesAttention}<span class="rail-dot inline {routesAttention}"></span>{/if}</span>
   </button>
-  <!-- Field Guide: the players' companion launcher. -->
-  <button class="rail-btn" title="Field Guide — open and share the players' companion views" on:click={() => go('catalogue')}>
+  <!-- BETA: the OLD Field Guide launcher, kept alongside the new Player Views for side-by-side testing.
+       Hide this (and restore the single Player Views entry) before the production cut. -->
+  <button class="rail-btn" title="Field Guide — the original player-view launcher (legacy, beta only)" on:click={() => go('catalogue')}>
     <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
   </button>
-  <!-- HIDDEN for the production cut: Player Views, the unified players' presentation system
-       (the eventual Field Guide replacement — V2.2 line, still in beta testing). -->
-  <!-- <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
+  <!-- Player Views: the unified players' presentation system (the eventual replacement for Field Guide). -->
+  <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
     <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
-  </button> -->
+  </button>
 
   <!-- Projector + Report act on the loaded system. Shown in BOTH views for beta (they target the
        last-loaded system when invoked from the starmap). Greenscreen toggle only when a projector is live. -->
