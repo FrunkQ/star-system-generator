@@ -251,6 +251,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   const scene = new THREE.Scene();
+  // Background as scene.background (a colour-managed Color), NOT renderer.setClearColor: a bare clear
+  // colour is written to the composer's LINEAR render target without the sRGB->linear decode, so the
+  // OutputPass then sRGB-encodes it and lifts the near-black navy into a visibly brighter blue — but
+  // ONLY on the composer path (i.e. when a black hole's lensing pass is active). scene.background is
+  // decoded consistently whether rendering straight to the canvas or through the composer, so the
+  // background matches on both paths. (Proven: clear-colour 5,7,12 -> 38,46,61 via composer; fixed.)
+  scene.background = new THREE.Color(0x05070c);
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
   const HOME_CAM = new THREE.Vector3(0, GRID_RADIUS * 1.1, GRID_RADIUS * 1.4);
   camera.position.copy(HOME_CAM);
@@ -285,7 +292,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function setSkybox(on: boolean) { skyboxOn = on; applyStarfield(); }
   function setBackground(bg: string) {
     background = bg;
-    renderer.setClearColor(BG_COLORS[bg] ?? BG_COLORS.space, 1);
+    (scene.background as THREE.Color).set(BG_COLORS[bg] ?? BG_COLORS.space); // colour-managed on both paths
     applyStarfield();
   }
 

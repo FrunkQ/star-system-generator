@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.162-beta - 18th Jul 2026
+
+* Fixed the holo background turning a brighter blue whenever a black hole was present. The black hole's lensing routes the frame through the post-processing composer, and the near-black navy clear-colour was being written to the composer's working buffer without its colour conversion, then re-encoded on output — lifting 5,7,12 to 38,46,61. The background is now set as a colour-managed scene background, so it stays identical whether or not a hole (or any post effect) is on screen.
+
 ## v2.1.161-beta - 18th Jul 2026
 
 * Black-hole lensing polish from review: (1) only the disc's NEAR half passes in front of the shadow — the far half's light is bent into the arcs, killing the "hoop floating in front" look; (2) the lensing is now ASYMMETRIC like the reference — the far side's light domes mostly over ONE side of the hole (which side follows the viewing angle), with a thin sliver on the other; (3) fixed the dark "blank square" around a quiescent hole — the drawn horizon mesh was being magnified by the lens, smearing black over the starfield; it is now much smaller than the shader's shadow mask; (4) slimmer, more graceful disc band.
