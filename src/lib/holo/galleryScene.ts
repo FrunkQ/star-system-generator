@@ -8,6 +8,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { makeLensingShader, MAX_LENSES } from './lensingShader';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
@@ -209,6 +210,9 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	composer.addPass(new RenderPass(scene, camera));
 	const lensingPass = new ShaderPass(makeLensingShader());
 	composer.addPass(lensingPass);
+	// Final tone-map + sRGB conversion. Without this the composer outputs LINEAR colour (renderer.render
+	// applies sRGB automatically, composer.render does not) — which is what made the gallery look dull.
+	composer.addPass(new OutputPass());
 
 	// Frame the whole grid.
 	const totalH = row * ROW_GAP;

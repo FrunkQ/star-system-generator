@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.157-beta - 18th Jul 2026
+
+* Fixed the 3D gallery looking dull/flat (a regression from routing it through the lensing composer): added a final OutputPass so the composer applies the sRGB conversion that direct rendering does automatically. Colours are vivid again.
+
 ## v2.1.156-beta - 18th Jul 2026
 
 * Black holes now gravitationally LENS (the "Interstellar" look) — a lightweight screen-space shader bends the background starlight around each hole into an Einstein ring and wraps a feeding hole's accretion disc up and over the top, around a black event-horizon shadow. Toggle it per 3D preset (Black-hole gravitational lensing, on by default; it does nothing without a black hole in view). Showcased in the 3D gallery's black-hole row (with a star backdrop to bend).
