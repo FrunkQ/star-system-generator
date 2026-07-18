@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.147-beta - 18th Jul 2026
+
+* 3D holo planet spin direction: planets now rotate the same way they orbit their star and the same way their moons, rings and belt disc go round — previously the surface spun the opposite way to its own disc. A retrograde rotation period (negative value, e.g. Venus/Uranus) now correctly spins the world backwards instead of being ignored.
+
 ## v2.1.146-beta - 18th Jul 2026
 
 * Click accuracy under the CRT filter: pointer hit-testing now inverts the ancestor CSS warp (skew / roll / scale) so a click lands on the object you actually see, instead of drifting sideways — the "click on the left, select something on the right" bug. Verified against real browser transforms (was off by up to 300px, now exact). Behind a one-flag swap-back to the old mapping.

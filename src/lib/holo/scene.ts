@@ -113,7 +113,7 @@ interface BodyVisual {
   framingParentId?: string | null; // the click-ladder's parent (a construct's UI host, else the real parent)
   satellite: boolean; // a moon: positioned as a magnified offset around its (compressed) parent
   radiusScene?: number; // rendered radius in scene units (so satellites can sit just outside the parent)
-  spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
+  spinPeriodSec?: number; // sidereal rotation period (SIGNED: negative = retrograde); drives the texture turning
   tiltQuat?: THREE.Quaternion; // fixed axial-tilt rotation, composed with the live spin each frame
   isConstruct?: boolean; // icon sprite: fixed screen size, focus-driven size/dim states
   physRadiusAu?: number; // true physical radius in AU (for detecting surface-locked constructs)
@@ -1347,8 +1347,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const label = makeLabelSprite(String(node.name ?? ''));
       // Spin: sidereal rotation from the data, composed onto a fixed axial tilt each frame. Stars
       // spin too (their sunspots turn); the corona is a billboard child, unaffected by the spin.
-      // Constructs are camera-facing sprites — no spin.
-      const spinPeriodSec = !isConstruct ? Math.abs(node.rotation_period_hours || 0) * 3600 || undefined : undefined;
+      // Constructs are camera-facing sprites — no spin. The SIGN of rotation_period_hours encodes
+      // retrograde spin (negative = spins backwards, e.g. Venus/Uranus), so keep it — updateSpin below
+      // reads the sign to turn the right way (prograde matches the orbital/ring/disc sense).
+      const spinPeriodSec = !isConstruct ? (node.rotation_period_hours || 0) * 3600 || undefined : undefined;
       const tiltRad = ((node.axial_tilt_deg || 0) * Math.PI) / 180;
       const tiltQuat = !isConstruct ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad) : undefined;
       // A ship mid-journey is positioned absolutely by the transit sampler — never apply the
@@ -1508,7 +1510,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const tSec = timeMs / 1000;
     for (const b of bodies) {
       if (!b.tiltQuat || !b.spinPeriodSec) continue;
-      const angle = (tSec / b.spinPeriodSec) * Math.PI * 2;
+      // Negated so a prograde body (positive period) turns +X->+Z about +Y — the SAME sense its moons,
+      // rings and belts orbit (all +X->+Z in the ground plane) and the way it orbits its own star. A
+      // plain +angle would spin the surface the opposite way (a THREE +Y rotation sends +X->-Z), which
+      // is what made planets appear to spin backwards against their discs. A negative period (retrograde)
+      // flips the sign back, so Venus/Uranus spin the other way as they should.
+      const angle = -(tSec / b.spinPeriodSec) * Math.PI * 2;
       spinQuat.setFromAxisAngle(spinAxis, angle); // spin about local (pre-tilt) pole
       b.mesh.quaternion.copy(b.tiltQuat).multiply(spinQuat); // tilt the axis, then spin about it
     }
