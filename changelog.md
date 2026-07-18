@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.163-beta - 18th Jul 2026
+
+* Dev doc: geo-foundations design (docs/dev/geo-foundations.md) — activity ladder (plutonic/episodic), per-species volatile-ice retention, surface age, irradiation dose; the physics-first base for the banked appearance backlog.
+
 ## v2.1.162-beta - 18th Jul 2026
 
 * Fixed the holo background turning a brighter blue whenever a black hole was present. The black hole's lensing routes the frame through the post-processing composer, and the near-black navy clear-colour was being written to the composer's working buffer without its colour conversion, then re-encoded on output — lifting 5,7,12 to 38,46,61. The background is now set as a colour-managed scene background, so it stays identical whether or not a hole (or any post effect) is on screen.
