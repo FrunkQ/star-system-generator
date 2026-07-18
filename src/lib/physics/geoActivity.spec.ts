@@ -57,6 +57,16 @@ describe('deriveGeoActivity — reference worlds', () => {
     });
     expect(eu.regime).toBe('cryovolcanic');
   });
+
+  it('a tiny tidally-stressed icy lump (Phobos/Deimos-like) is shredded, not cryovolcanic → inactive', () => {
+    // Below the ~200 km round limit (radiusRe 0.0017 ≈ 11 km) a body can't differentiate or hold a
+    // melt layer — strong tidal forcing shatters it rather than driving cryovolcanism.
+    const phobos = w({
+      massMe: 1.8e-9, radiusRe: 0.0017, makeup: { metal: 0, rock: 0.7, carbon: 0, ice: 0.3, gas: 0 },
+      tidalHotspots: true, hasSubsurfaceOcean: true, icyShell: true
+    });
+    expect(phobos.regime).toBe('inactive');
+  });
 });
 
 describe('deriveGeoActivity — age turns Earth into Mars', () => {

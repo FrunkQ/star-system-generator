@@ -2,7 +2,7 @@
 // atmospheric cloud decks, and deep interior conductive fluids. Layers feed classification
 // (subsurface-ocean), apparent colour (clouds), and the magnetic dynamo (§2d interior layers).
 import type { CelestialBody, RulePack, FluidLayer } from '$lib/types';
-import { EARTH_MASS_KG } from '$lib/constants';
+import { EARTH_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '$lib/constants';
 import { makeupFractions } from './makeup';
 import { isLiquidAtP, liquidDef } from './liquids';
 
@@ -62,7 +62,10 @@ export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLa
   // substantial radiogenic/primordial heat in a larger icy body. A static, cold ice world with
   // none of these stays frozen through — no subsurface ocean.
   const activeHeating = (body.tidalHeatK ?? 0) > 1 || (body.radiogenicHeatK ?? 0) > 2 || (body.internalHeatK ?? 0) > 4;
-  if ((wateryMakeup || wateryHydro) && surfT < 273 && activeHeating && massMe < 8 && !hasSurfaceWater) {
+  // A body must be large enough to differentiate + hold an interior ocean (the ~200 km round limit).
+  // Below it (Phobos/Deimos-scale) tidal stress shreds the body rather than sustaining a melt layer.
+  const bigEnoughForOcean = (body.radiusKm ?? 0) >= HYDROSTATIC_MIN_RADIUS_KM;
+  if ((wateryMakeup || wateryHydro) && surfT < 273 && activeHeating && massMe < 8 && bigEnoughForOcean && !hasSurfaceWater) {
     layers.push({ liquid: 'salty-water', location: 'subsurface', conductive: true, colorHex: '#3a6ea5' });
   }
 

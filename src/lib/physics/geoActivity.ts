@@ -70,8 +70,15 @@ export function deriveGeoActivity(i: GeoInputs): GeoActivity {
   const vigor = geothermalVigor(i) + Math.max(0, i.radiogenicOverrideK ?? 0) / RADIOGENIC_K_PER_VIGOR;
   const notes: string[] = [];
 
+  // A body must be large enough to differentiate (the ~200 km icy "round" limit, ~Mimas) before tidal
+  // or resonance forcing can drive VOLCANISM — melt needs a differentiated, pressure-bearing interior.
+  // Below it, a tidally-stressed lump (Phobos/Deimos) is shredded, not warmed to erupt; it stays on the
+  // radiogenic path below (→ inactive for a small cold body). MIN_ROUND_RE ≈ 200/6371 Earth radii.
+  const MIN_ROUND_RE = 200 / 6371;
+  const differentiated = i.radiusRe >= MIN_ROUND_RE;
+
   // --- Tidal forcing takes precedence (it dwarfs radiogenic heat for the moons that have it). ---
-  if (i.tidalHotspots || i.tidalLavaFlows) {
+  if (differentiated && (i.tidalHotspots || i.tidalLavaFlows)) {
     if (iceFrac > 0.3 || i.hasSubsurfaceOcean || i.icyShell) {
       notes.push('Tidal flexing keeps a subsurface ocean liquid; cryovolcanic plumes vent water/ice (Europa/Enceladus-like).');
       return mk('cryovolcanic', 'cryo', vigor, 'tidal flexing (icy)', ['geology/cryovolcanic'], notes);
@@ -84,7 +91,7 @@ export function deriveGeoActivity(i: GeoInputs): GeoActivity {
   //     eccentricity, so even forcing far below the SILICATE melt threshold (~1000 K) sustains
   //     activity in ICE, which melts at ~273 K. Gated on an explicit water signal (ocean / icy
   //     shell / ice-covered surface) so resonant-but-dry moons (Mimas-like) stay quiet. ---
-  if (i.resonanceTidal && (i.hasSubsurfaceOcean || i.icyShell || (i.surfaceIce && iceFrac > 0.15))) {
+  if (differentiated && i.resonanceTidal && (i.hasSubsurfaceOcean || i.icyShell || (i.surfaceIce && iceFrac > 0.15))) {
     notes.push('A mean-motion resonance continually pumps the orbital eccentricity; the resulting tidal flexing is modest by silicate standards but ample to melt ICE (~273 K vs ~1000 K) — geysers vent a subsurface ocean (Enceladus-like).');
     return mk('cryovolcanic', 'cryo', Math.max(vigor, 0.4), 'resonance-pumped tidal flexing (icy)', ['geology/cryovolcanic'], notes);
   }
@@ -92,7 +99,7 @@ export function deriveGeoActivity(i: GeoInputs): GeoActivity {
   // --- Solar-seasonal geysers (Triton). On a very cold ice-covered world, sunlight penetrating
   //     translucent nitrogen ice builds a solid-state greenhouse a few kelvin warm — enough to
   //     sublimate gas pockets that erupt as geysers. No interior heat or tidal forcing needed. ---
-  if ((i.teqK ?? Infinity) < 60 && i.surfaceIce && iceFrac > 0.2) {
+  if (differentiated && (i.teqK ?? Infinity) < 60 && i.surfaceIce && iceFrac > 0.2) {
     notes.push('Sunlight through translucent nitrogen ice drives a solid-state greenhouse; sub-surface gas pockets erupt as seasonal geysers (Triton-like). Driven by the distant sun, not interior heat.');
     return mk('cryovolcanic', 'cryo', Math.max(vigor, 0.15), 'solar-seasonal sublimation', ['geology/cryovolcanic'], notes);
   }

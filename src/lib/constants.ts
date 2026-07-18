@@ -22,6 +22,10 @@ export const SOLAR_MASS_KG = 1.989e30;
 export const SOLAR_RADIUS_KM = 696340;
 export const EARTH_MASS_KG = 5.972e24;
 export const EARTH_RADIUS_KM = 6371;
+// The icy hydrostatic-equilibrium ("round") limit, ~Mimas-sized. Below this a body lacks the self-
+// gravity to differentiate a shell-over-interior, sustain a subsurface ocean, or cryovolcano — a small
+// tidally-stressed lump (Phobos/Deimos) is shredded, not warmed to melt. Keeps Enceladus (~252 km).
+export const HYDROSTATIC_MIN_RADIUS_KM = 200;
 export const EARTH_GRAVITY = 9.80665; // m/s^2
 export const EARTH_DENSITY = 5514; // kg/m^3
 

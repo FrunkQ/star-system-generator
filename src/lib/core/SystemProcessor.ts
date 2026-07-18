@@ -1,6 +1,6 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
-import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
+import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK } from '../physics/temperature';
 import { deriveAlbedo } from '../physics/albedo';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation } from '../physics/radiation';
@@ -619,8 +619,10 @@ export class SystemProcessor implements ISystemProcessor {
             body.tags.push({ key: 'activity/sublimating' });
         }
         // Cryovolcanism: an icy, frozen-surfaced world with active interior heat driving melt eruptions.
+        // Needs a solid, differentiated body: exclude gas/ice giants (no crust to vent through) and
+        // sub-round lumps below the ~200 km limit (a tidally-shredded moonlet like Phobos can't cryovolcano).
         const cryoHeat = (body.tidalHeatK ?? 0) > 1 || (body.radiogenicHeatK ?? 0) > 2 || (body.internalHeatK ?? 0) > 4;
-        if (mk.ice > 0.2 && surfacePhase !== 'liquid' && cryoHeat) {
+        if (mk.ice > 0.2 && surfacePhase !== 'liquid' && cryoHeat && mk.gas <= 0.5 && (body.radiusKm ?? 0) >= HYDROSTATIC_MIN_RADIUS_KM) {
             body.tags.push({ key: 'activity/cryovolcanism' });
         }
 

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.151-beta - 18th Jul 2026
+
+* Physics fix: tiny moons (Phobos, Deimos) and gas giants (Saturn) were wrongly reading as cryovolcanic / subsurface-ocean worlds. A body now needs to be large enough to be round (~200 km, the icy hydrostatic-equilibrium limit — keeps Enceladus) before it can hold a subsurface ocean, a differentiated icy shell, or cryovolcanism. A small tidally-stressed lump is shredded, not warmed to erupt; gas/ice giants have no crust to vent through.
+
 ## v2.1.150-beta - 18th Jul 2026
 
 * 3D holo: cryovolcanic worlds (Enceladus / Triton type) now vent icy PLUMES — jets of glistening spray from the southern polar region that throw further out on low-gravity moons and shorter on heavier ones. Driven by the shared appearance model (geoActivity cryovolcanic regime).
