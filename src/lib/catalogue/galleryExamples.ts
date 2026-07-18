@@ -138,12 +138,12 @@ function rgbHex(rgb: [number, number, number]): string {
 	return `#${c(rgb[0])}${c(rgb[1])}${c(rgb[2])}`;
 }
 export const GALLERY_STAR_TYPES: CelestialBody[] = [
-	star('M dwarf · 3200 K', 3200, 350000, 0.6),
-	star('K star · 4500 K', 4500, 550000),
-	star('G / Sun · 5800 K', 5800, 696000),
-	star('F star · 6800 K', 6800, 900000),
-	star('A star · 9000 K', 9000, 1200000),
-	star('B star · 18000 K', 18000, 3000000, 0.4),
+	star('M dwarf · 3200 K (flare star)', 3200, 350000, 0.95), // M dwarfs are the great flare stars
+	star('K star · 4500 K', 4500, 550000, 0.4),
+	star('G / Sun · 5800 K', 5800, 696000, 0.2),
+	star('F star · 6800 K', 6800, 900000, 0.12),
+	star('A star · 9000 K', 9000, 1200000, 0.08),
+	star('B star · 18000 K', 18000, 3000000, 0.5),
 ];
 
 // Black holes across accretion (Eddington) levels — quiescent horizon → blazing. Each carries a ring

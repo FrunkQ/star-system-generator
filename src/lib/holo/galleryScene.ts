@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
-import { deriveAurora, auroraEmitter } from '$lib/physics/aurora';
 import { buildAuroraShell } from './scene';
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
@@ -68,6 +67,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	const plumeVisuals: EmissiveVisual[] = [];
 	const auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
 	const discs: { points: THREE.Points; rate: number }[] = [];
+	const starVisuals: { corona: THREE.Sprite; baseScale: number; activity: number; seed: number }[] = [];
 
 	// Build a single planet/moon/star/brown-dwarf tile at (x,y). Returns the group.
 	function buildBody(node: any, x: number, y: number): void {
@@ -81,9 +81,14 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), new THREE.MeshBasicMaterial({ color: col }));
 			g.add(sphere);
 			const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 });
-			const corona = new THREE.Sprite(coronaMat); corona.scale.setScalar(R * (3.5 + (node.flareActivity || 0.2) * 2.5));
+			const corona = new THREE.Sprite(coronaMat);
+			const activity = node.flareActivity ?? 0.2;
+			const baseScale = R * (3.2 + activity * 3);
+			corona.scale.setScalar(baseScale);
 			g.add(corona);
 			spinners.push({ obj: sphere, rate: 0.25 });
+			let ss = 0; for (const ch of String(node.id)) ss = (ss + ch.charCodeAt(0)) % 997;
+			starVisuals.push({ corona, baseScale, activity, seed: ss / 997 });
 		} else {
 			const texCanvas = getPlanetTextureEquirect(node);
 			const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
@@ -105,9 +110,10 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			if (appear.magma) { const b = buildMagmaVents(R, appear.magma, node.id, hotspotTexture); sphere.add(b.group); magmaVisuals.push(...b.visuals); }
 			if (appear.cryoPlumes) { const b = buildCryoPlumes(R, appear.cryoPlumes, node.id, plumeTexture); sphere.add(b.group); plumeVisuals.push(...b.visuals); }
 			if (appear.selfLumGlow) g.add(buildSelfLumGlow(R, appear.selfLumGlow.colorHex, glowTexture));
-			const aur = deriveAurora(node);
-			if (aur.strength > 0.06) {
-				const built = buildAuroraShell(R, auroraEmitter(node).hex, aur.strength);
+			// Auroras from the shared appearance MODEL (the aurora/* tag) — consistent with the 2D disc.
+			// (The live holo currently derives them from physics; the model tag is what the gallery shows.)
+			if (appear.aurora) {
+				const built = buildAuroraShell(R, appear.aurora.coreHex, appear.aurora.strength);
 				sphere.add(built.shell);
 				let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
 				auroraVisuals.push({ mat: built.mat, base: built.base, seed: seed / 997 });
@@ -194,6 +200,15 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		clock.t += 0.016;
 		for (const s of spinners) { _q.setFromAxisAngle(_yAxis, 0.016 * s.rate); s.obj.quaternion.multiply(_q); }
 		for (const d of discs) d.points.rotation.z += 0.016 * d.rate;
+		// Star flares: pulse each corona's size + brightness, amplitude ∝ flare activity, so an active
+		// flare star (an M dwarf) visibly throbs while a calm one barely moves — like the discs animate.
+		for (const s of starVisuals) {
+			const t = clock.t;
+			const flick = 0.5 + 0.5 * (0.6 * Math.sin(t * (2 + s.activity * 5) + s.seed * 6.283) + 0.4 * Math.sin(t * (5 + s.activity * 9) + s.seed * 12.57));
+			const a = s.activity;
+			s.corona.scale.setScalar(s.baseScale * (1 + a * 0.45 * flick));
+			(s.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.9 * (1 - a * 0.35 + a * 0.6 * flick));
+		}
 		updateMagma(magmaVisuals, clock.t);
 		updatePlumes(plumeVisuals, clock.t);
 		for (const a of auroraVisuals) {

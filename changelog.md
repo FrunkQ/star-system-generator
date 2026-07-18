@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.155-beta - 18th Jul 2026
+
+* 3D gallery: auroras now render (driven by the appearance model's aurora tag); and stars FLARE — each corona pulses in size + brightness scaled by the star's activity, so an active M-dwarf flare star visibly throbs while a calm A star barely moves (like the accretion discs animate).
+
 ## v2.1.154-beta - 18th Jul 2026
 
 * The 2D disc gallery (/discgallery) now leads with a Star types row too, and both galleries cross-link (2D <-> 3D).
