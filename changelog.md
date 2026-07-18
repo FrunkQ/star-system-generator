@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.158-beta - 18th Jul 2026
+
+* Black holes reworked toward the "Gargantua" look: killed the bright glow ball (it read as a crystal ball), auto-generate a temperature-graded accretion disc for a feeding hole (real BH systems carry no ring node), render the disc edge-on + over the shadow so the lensing wraps its far side OVER and UNDER a genuinely-black shadow, and give a bare hole a slim bright ring of refracted starlight. Live-holo composer gains an OutputPass so a BH scene keeps proper colour.
+
 ## v2.1.157-beta - 18th Jul 2026
 
 * Fixed the 3D gallery looking dull/flat (a regression from routing it through the lensing composer): added a final OutputPass so the composer applies the sRGB conversion that direct rendering does automatically. Colours are vivid again.

@@ -12,6 +12,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { makeLensingShader, MAX_LENSES } from './lensingShader';
@@ -402,6 +403,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   lensingPass.enabled = false;
   composer.addPass(lensingPass);
   let lensingOn = false;
+  // Final sRGB/tone-map — needed so a composer render (lensing on, no CRT filter) matches the direct
+  // renderer.render output. DISABLED while a CRT filter is active: the filter stays the last pass and
+  // owns the output exactly as before (so filtered views are unchanged).
+  const outputPass = new OutputPass();
+  composer.addPass(outputPass);
   const filterResolution = new THREE.Vector2(1, 1);
   const filterClock = new THREE.Clock();
   let filterPass: ShaderPass | null = null;
@@ -415,10 +421,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       filterPass = null;
     }
     const def = filterRegistry.get(filterId);
-    if (!def || filterId === 'none') return;
+    if (!def || filterId === 'none') { outputPass.enabled = true; return; }
     const params = { ...filterRegistry.defaultParams(filterId), ...filterParams };
     filterPass = new ShaderPass(buildShaderObject(def, params, filterResolution));
-    composer.addPass(filterPass);
+    composer.insertPass(filterPass, composer.passes.length - 1); // before the OutputPass
+    outputPass.enabled = false; // the CRT filter is the final pass now — output unchanged from before
   }
 
   function setFilter(id: string, params?: FilterParamValues) {
@@ -1231,12 +1238,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const eh = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
           mesh = eh;
           const edd = Math.max(0, Math.min(1, (node as any).accretionEddington ?? (feeding ? 0.5 : 0)));
-          const glowMat = new THREE.SpriteMaterial({ map: glowTexture, color: feeding ? 0xffe8b0 : 0x7f93b5, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: feeding ? 1 : 0.42 });
-          const glow = new THREE.Sprite(glowMat);
-          const glowScale = starR * (feeding ? 3.5 + edd * 3.5 : 2.3);
-          glow.scale.setScalar(glowScale);
-          eh.add(glow);
-          if (feeding) starVisuals.push({ corona: glow, coronaScale: glowScale, activity: Math.max(0.5, edd) }); // flickering accretion
+          // A black hole is BLACK — no big glow ball (that read as a "crystal ball"). The look is the
+          // temperature-graded accretion disc + the gravitational-lensing pass wrapping it + a small
+          // photon-ring glint (from the lensing). A quiescent hole is a bare, lensed shadow.
+          if (feeding) {
+            // Auto-generate a glowing, temperature-graded ACCRETION DISC (real BH systems carry no
+            // explicit ring node). It's a normal RingVisual so updateRings spins it + tracks the hole;
+            // the lensing pass then wraps its far side over/under the shadow (the Interstellar look).
+            const rkm = node.radiusKm || 30;
+            const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: rkm * 1.6, radiusOuterKm: rkm * (5 + edd * 4) };
+            const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs);
+            if (disc) { contentGroup.add(disc.pivot); ringVisuals.push(disc); }
+          }
         } else {
           // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
           // scales with the star's flare activity), so you see surface detail and it spins. Under the
@@ -1755,7 +1768,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       _lensEdge.copy(b.mesh.position).addScaledVector(_camRight, b.radiusScene ?? 0.02).project(camera);
       const rUV = Math.hypot((_lensEdge.x - _lensCentre.x) * 0.5, (_lensEdge.y - _lensCentre.y) * 0.5);
       if (rUV <= 0.0002) continue; // too small on screen to bother
-      arr[n].set(cx, cy, Math.min(0.5, rUV * 3.0)); // Einstein radius ≈ 3× the horizon's screen radius
+      arr[n].set(cx, cy, Math.min(0.5, rUV * 1.7)); // Einstein/ring radius relative to the horizon's screen radius
       if (++n >= MAX_LENSES) break;
     }
     lensingPass.uniforms.uCount.value = n;
@@ -2444,18 +2457,23 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
 }
 
 function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number): RingVisual | null {
+  const isAccretionDisc = isBlackHoleNode(parent);
   const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
   let innerScene: number;
   let outerScene: number;
   if (node.radiusInnerKm > 0 && node.radiusOuterKm > node.radiusInnerKm) {
     innerScene = (node.radiusInnerKm / planetKm) * planetRenderedR;
     outerScene = (node.radiusOuterKm / planetKm) * planetRenderedR;
+  } else if (isAccretionDisc) {
+    innerScene = planetRenderedR * 1.6; // just outside the ISCO
+    outerScene = planetRenderedR * 6.5;
   } else {
     innerScene = planetRenderedR * 1.35;
     outerScene = planetRenderedR * 2.3;
   }
-  innerScene = Math.max(innerScene, planetRenderedR * 1.08); // clear the planet surface
-  outerScene = Math.min(outerScene, planetRenderedR * 4.5); // don't let a ring dominate
+  // An accretion disc starts at the ISCO and reaches much further than a planet's ring.
+  innerScene = Math.max(innerScene, planetRenderedR * (isAccretionDisc ? 1.4 : 1.08));
+  outerScene = Math.min(outerScene, planetRenderedR * (isAccretionDisc ? 9 : 4.5));
   if (!(outerScene > innerScene)) return null;
 
   const massKg = parent.massKg || 0; // planet mass — host for the particles' orbital speed
@@ -2473,7 +2491,11 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
     radii[i] = r;
     baseAng[i] = ang;
     const rM = (r / planetRenderedR) * planetKm * 1000; // this particle's physical radius (m)
-    omega[i] = massKg > 0 && rM > 0 ? Math.sqrt((G * massKg) / (rM * rM * rM)) : 0.4 * Math.pow(innerScene / r, 1.5);
+    // A black hole's true Keplerian rate is relativistic (blur/garbage on screen), so an accretion disc
+    // uses a tame VISUAL differential rate (inner faster) instead of the physical one.
+    omega[i] = isAccretionDisc
+      ? 0.9 * Math.pow(innerScene / r, 1.5)
+      : (massKg > 0 && rM > 0 ? Math.sqrt((G * massKg) / (rM * rM * rM)) : 0.4 * Math.pow(innerScene / r, 1.5));
     pos[3 * i] = r * Math.cos(ang);
     pos[3 * i + 2] = r * Math.sin(ang);
   }
@@ -2481,7 +2503,6 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   // A black hole's ring is a glowing ACCRETION DISC: colour each particle by its radius on the hot-inner
   // → red-outer temperature gradient, self-luminous (additive), rather than a cool icy ring.
-  const isAccretionDisc = isBlackHoleNode(parent);
   const baseColor = new THREE.Color(isAccretionDisc ? 0xffd060 : 0xcdd6e2);
   const colors = new Float32Array(count * 3);
   let emissiveBase: Float32Array | undefined;
@@ -2503,6 +2524,7 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   const size = Math.max(0.008, planetRenderedR * (isAccretionDisc ? 0.09 : 0.06));
   const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true,
     opacity: isAccretionDisc ? Math.min(1, ringOpacity + 0.35) : ringOpacity, depthWrite: false,
+    depthTest: !isAccretionDisc, // the disc draws OVER the horizon so its far half is in the buffer for the lens to wrap
     blending: isAccretionDisc ? THREE.AdditiveBlending : THREE.NormalBlending });
   const points = new THREE.Points(geo, mat);
 

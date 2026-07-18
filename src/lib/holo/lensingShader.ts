@@ -41,15 +41,25 @@ export function makeLensingShader() {
 					vec2 d = (vUv - c) * asp;          // fragment relative to the hole, aspect-corrected
 					float b = length(d);
 					vec2 dir = d / max(b, 1e-4);
-					// Deflection toward the hole ∝ rE²/b, capped so a sample never crosses the centre.
-					float defl = min(rE * rE / max(b, 1e-4), b * 0.88);
+					// Thin-lens deflection ∝ rE²/b (the lens equation source-radius is b - rE²/b). At b = rE
+					// the sample reaches straight BEHIND the hole, so whatever is behind (the disc's far
+					// side, or the stars) is wrapped into a full ring — arcs OVER the top AND UNDER the
+					// bottom of the shadow, and a bright Einstein halo for a bare hole. Capped near the
+					// centre so it stays finite.
+					float defl = min(rE * rE / max(b, 1e-4), rE * 2.2);
 					sampleUv -= (dir * defl) / asp;
-					horizon = max(horizon, 1.0 - smoothstep(rE * 0.20, rE * 0.30, b)); // black event horizon (kept small so the accretion disc still shows around it)
-					ring = max(ring, exp(-pow((b - rE) / (rE * 0.16), 2.0)));          // brighten the Einstein ring
+					// The SHADOW is large — light from within the photon sphere is captured (black), and
+					// everything behind is thrown OUT to the bright ring at its edge (not leaking through
+					// the centre). Sits just inside the Einstein radius rE.
+					horizon = max(horizon, 1.0 - smoothstep(rE * 0.72, rE * 0.86, b));
+					ring = max(ring, exp(-pow((b - rE * 0.90) / (rE * 0.075), 2.0))); // slim, bright photon ring at the shadow edge
 				}
 				vec4 col = texture2D(tDiffuse, sampleUv);
-				col.rgb += col.rgb * ring * 0.6;                 // photon-ring glint from the lensed light
-				col.rgb = mix(col.rgb, vec3(0.0), horizon);      // swallow the horizon
+				// Photon ring at the shadow edge: brighten whatever lensed light lands there (disc/stars)
+				// AND add a faint self-lit halo, so even a bare (quiescent) hole shows the tell-tale ring
+				// of refracted starlight rather than nothing.
+				col.rgb += ring * (col.rgb * 0.8 + vec3(1.0, 1.0, 1.0)); // pure-white halo — the averaged lensed starlight
+				col.rgb = mix(col.rgb, vec3(0.0), horizon);      // swallow the horizon (pure-black centre)
 				gl_FragColor = col;
 			}
 		`

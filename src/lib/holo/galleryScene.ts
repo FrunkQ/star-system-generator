@@ -149,32 +149,32 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		const geo = new THREE.BufferGeometry();
 		geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
 		geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-		const mat = new THREE.PointsMaterial({ map: glowTexture, vertexColors: true, size: accretion ? outer * 0.18 : outer * 0.09, sizeAttenuation: true, transparent: true, opacity: accretion ? 0.95 : 0.7, depthWrite: false, blending: accretion ? THREE.AdditiveBlending : THREE.NormalBlending });
+		const mat = new THREE.PointsMaterial({ map: glowTexture, vertexColors: true, size: accretion ? outer * 0.13 : outer * 0.09, sizeAttenuation: true, transparent: true, opacity: accretion ? 1 : 0.7, depthWrite: false,
+			depthTest: !accretion, // accretion disc draws OVER the shadow so its far half is in the buffer for the lens to wrap
+			blending: accretion ? THREE.AdditiveBlending : THREE.NormalBlending });
 		const pts = new THREE.Points(geo, mat);
-		pts.rotation.x = accretion ? 1.15 : 1.35; // tilt the disc toward the viewer
+		pts.rotation.x = accretion ? 0.15 : 1.35; // accretion disc: nearly EDGE-ON so the far side lenses over/under
 		return pts;
 	}
 
 	function buildBlackHole(entry: { node: any; disc: any }, x: number, y: number): void {
 		const g = new THREE.Group(); g.position.set(x, y, 0);
-		const eh = new THREE.Mesh(new THREE.SphereGeometry(R * 0.55, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
-		g.add(eh);
+		const shadowR = R * 0.5;
+		const eh = new THREE.Mesh(new THREE.SphereGeometry(shadowR, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+		g.add(eh); // a black hole is BLACK — no glow ball; the disc + lensing are the whole look
 		const edd = entry.node.accretionEddington || 0;
-		const feeding = edd > 0.01;
-		const glowMat = new THREE.SpriteMaterial({ map: glowTexture, color: feeding ? 0xffe8b0 : 0x7f93b5, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: feeding ? 1 : 0.4 });
-		const glow = new THREE.Sprite(glowMat); glow.scale.setScalar(R * 0.55 * (feeding ? 3 + edd * 3 : 2)); g.add(glow);
-		if (feeding) {
-			const disc = buildStaticRing(R * 0.8, R * 0.8 + (R * 1.6) * (0.4 + edd * 0.6), 0xffd060, true);
+		if (edd > 0.01) {
+			const disc = buildStaticRing(shadowR * 1.5, shadowR * (2.6 + edd * 2.6), 0xffd060, true);
 			g.add(disc); discs.push({ points: disc, rate: 0.5 + edd });
 		}
 		const label = makeLabel(String(entry.node.name), '#ffd8a0'); label.position.set(0, -R - 0.34, 0); g.add(label);
 		scene.add(g);
-		lensBHs.push({ pos: new THREE.Vector3(x, y, 0), r: R * 0.55 }); // lens the backdrop stars around it
+		lensBHs.push({ pos: new THREE.Vector3(x, y, 0), r: shadowR }); // lens the disc + backdrop stars around it
 	}
 
 	// A patch of backdrop stars behind a row, so the black holes have something to lens.
 	function addStarBackdrop(y: number, halfW: number, halfH: number): void {
-		const count = 1400;
+		const count = 4200; // dense enough that the lens compresses them into a bright Einstein halo
 		const pos = new Float32Array(count * 3);
 		for (let i = 0; i < count; i++) {
 			pos[3 * i] = (Math.random() * 2 - 1) * halfW;
@@ -183,7 +183,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		}
 		const geo = new THREE.BufferGeometry();
 		geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-		const mat = new THREE.PointsMaterial({ color: 0xdfe6f2, size: 0.03, sizeAttenuation: true, transparent: true, opacity: 0.9 });
+		const mat = new THREE.PointsMaterial({ color: 0xeef2fa, size: 0.035, sizeAttenuation: true, transparent: true, opacity: 0.95 });
 		scene.add(new THREE.Points(geo, mat));
 		disposables.push(geo, mat);
 	}
@@ -244,7 +244,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			_le.copy(b.pos).addScaledVector(_cr, b.r).project(camera);
 			const rUV = Math.hypot((_le.x - _lc.x) * 0.5, (_le.y - _lc.y) * 0.5);
 			if (rUV <= 0.0002 || n >= MAX_LENSES) continue;
-			arr[n++].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rUV * 3.0));
+			arr[n++].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rUV * 1.7));
 		}
 		lensingPass.uniforms.uCount.value = n;
 		lensingPass.uniforms.uAspect.value = vpW / Math.max(1, vpH);
