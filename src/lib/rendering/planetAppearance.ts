@@ -76,6 +76,10 @@ export interface SelfLumSpec {
 	teff: number;
 	colorHex: string;
 }
+export interface CryoPlumeSpec {
+	jets: number; // how many plume jets (clustered near a pole, Enceladus-style)
+	reachRadii: number; // how far the jets throw, in body radii — driven by (low) surface gravity
+}
 
 /** Everything about a body's appearance that follows from its data + tags, renderer-agnostic. */
 export interface AppearanceModel {
@@ -98,9 +102,18 @@ export interface AppearanceModel {
 	polarIce: boolean;
 	craters: boolean;
 	magma: MagmaSpec | null;
+	cryoPlumes: CryoPlumeSpec | null;
 	aurora: AuroraSpec | null;
 	atmGlow: AtmGlowSpec | null;
 	selfLumGlow: SelfLumSpec | null;
+}
+
+const GRAV_CONST = 6.674e-11;
+/** Surface gravity (m/s²) from mass + radius; a safe mid value if either is missing. */
+function surfaceGravity(body: CelestialBody): number {
+	const rM = (body.radiusKm ?? 0) * 1000;
+	const m = (body as any).massKg ?? 0;
+	return rM > 0 && m > 0 ? (GRAV_CONST * m) / (rM * rM) : 1.5;
 }
 
 const isStarRole = (b: CelestialBody) => b.roleHint === 'star';
@@ -143,6 +156,18 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		? null
 		: { vents: isLava ? 7 : has('tidal/volcanism') ? 5 : 3, lava: isLava };
 
+	// Cryovolcanic plumes (Enceladus/Triton/Europa): icy jets vented through a frozen crust. Gate on the
+	// AUTHORITATIVE geoActivity regime — the `activity/cryovolcanism` TAG mis-fires on non-cryo bodies
+	// (gas giants, dry moons) because its classifier condition is loose, whereas `regime==='cryovolcanic'`
+	// correctly identifies the real icy-plume worlds. Giants can never crust-vent, so exclude them.
+	// Plume REACH is driven by (low) surface gravity — a small moon like Enceladus throws its plumes far;
+	// a heavier body's stay short. (Forcefulness folds in later per Alex's banked backlog.)
+	const cryoRegime = (body as any).geoActivity?.regime === 'cryovolcanic';
+	const isCryo = !isStar && !isBelt && !rendersAsGiant(body) && cryoRegime;
+	const cryoPlumes: CryoPlumeSpec | null = isCryo
+		? { jets: 3, reachRadii: Math.max(0.8, Math.min(6, 0.9 / Math.max(0.05, surfaceGravity(body)))) }
+		: null;
+
 	// Auroras (aurora/* tag; strength = its value; colour from the atmosphere's auroral emitter).
 	const auroraTag = (body.tags ?? []).find((t) => t.key.startsWith('aurora/'));
 	const auroraStr = auroraTag ? Math.max(0, Math.min(1.3, parseFloat(auroraTag.value ?? '0') || 0)) : 0;
@@ -181,6 +206,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		polarIce,
 		craters,
 		magma,
+		cryoPlumes,
 		aurora,
 		atmGlow,
 		selfLumGlow

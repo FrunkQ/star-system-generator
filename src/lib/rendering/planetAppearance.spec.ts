@@ -52,6 +52,21 @@ describe('deriveAppearance — feature resolution', () => {
 		expect(bright.aurora?.coreHex).toMatch(/^#/);
 	});
 
+	it('gives cryovolcanic worlds plumes whose reach grows as gravity falls', () => {
+		// Gated on the authoritative geoActivity regime (the tag mis-fires on non-cryo bodies).
+		// Enceladus-like: tiny, low gravity → jets throw far (reach clamps high).
+		const ence = deriveAppearance(mk({ radiusKm: 252, massKg: 1.08e20, geoActivity: { regime: 'cryovolcanic' } } as any));
+		expect(ence.cryoPlumes).not.toBeNull();
+		expect(ence.cryoPlumes!.reachRadii).toBeGreaterThan(3);
+		// A heavy cryovolcanic body: same regime, high gravity → short plumes (reach clamps low).
+		const heavy = deriveAppearance(mk({ radiusKm: 6000, massKg: 5e24, geoActivity: { regime: 'cryovolcanic' } } as any));
+		expect(heavy.cryoPlumes!.reachRadii).toBeCloseTo(0.8, 6);
+		// A body carrying the loose activity/cryovolcanism TAG but NOT the cryovolcanic regime → NO plumes.
+		expect(deriveAppearance(mk({ tags: [{ key: 'activity/cryovolcanism' }] })).cryoPlumes).toBeNull();
+		// No cryovolcanism at all → no plumes.
+		expect(deriveAppearance(mk({})).cryoPlumes).toBeNull();
+	});
+
 	it('resolves polar ice, atmosphere glow and self-luminous glow', () => {
 		expect(deriveAppearance(mk({ tags: [{ key: 'climate/polar-ice' }] })).polarIce).toBe(true);
 

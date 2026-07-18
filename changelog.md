@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.150-beta - 18th Jul 2026
+
+* 3D holo: cryovolcanic worlds (Enceladus / Triton type) now vent icy PLUMES — jets of glistening spray from the southern polar region that throw further out on low-gravity moons and shorter on heavier ones. Driven by the shared appearance model (geoActivity cryovolcanic regime).
+
 ## v2.1.149-beta - 18th Jul 2026
 
 * 3D holo: volcanic worlds now GLOW. Tidally heated / lava bodies (like Io) get flickering emissive vents that turn with the surface — a full lava world glows white-hot all over, a few hotspots get orange vents — scaled by how volcanic the world is. Driven by the shared appearance model, so it stays consistent with the 2D disc.
