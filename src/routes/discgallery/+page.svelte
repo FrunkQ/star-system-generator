@@ -5,6 +5,7 @@
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import type { CelestialBody } from '$lib/types';
   import { deriveApparentColorParts } from '$lib/rendering/apparentColor';
+  import { GALLERY_STAR_TYPES } from '$lib/catalogue/galleryExamples';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
     id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
@@ -134,7 +135,15 @@
 
 <div class="page">
   <h1>Rendered worlds — reference gallery</h1>
-  <p class="lead">How The Guide draws a world from its physics and tags. These are illustrative examples.</p>
+  <p class="lead">How The Guide draws a world from its physics and tags. These are illustrative examples.
+    <a href="/discgallery3d">3D holo gallery →</a></p>
+
+  <h2>Star types — by temperature</h2>
+  <div class="gallery">
+    {#each GALLERY_STAR_TYPES as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
 
   <h2>Surface features</h2>
   <div class="gallery">

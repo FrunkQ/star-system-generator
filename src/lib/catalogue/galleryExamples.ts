@@ -137,7 +137,7 @@ function rgbHex(rgb: [number, number, number]): string {
 	const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
 	return `#${c(rgb[0])}${c(rgb[1])}${c(rgb[2])}`;
 }
-const stars = [
+export const GALLERY_STAR_TYPES: CelestialBody[] = [
 	star('M dwarf · 3200 K', 3200, 350000, 0.6),
 	star('K star · 4500 K', 4500, 550000),
 	star('G / Sun · 5800 K', 5800, 696000),
@@ -175,7 +175,7 @@ export const GALLERY_ROWS: GalleryRow[] = [
 	{ title: 'Self-luminous brown dwarfs', bodies: brownDwarfs },
 	{ title: 'Volcanism — glowing vents (3D)', bodies: volcanism },
 	{ title: 'Cryovolcanic plumes (3D)', bodies: cryoPlumes },
-	{ title: 'Star types — by temperature', bodies: stars },
+	{ title: 'Star types — by temperature', bodies: GALLERY_STAR_TYPES },
 ];
 
 // Black holes are handled specially (event horizon + accretion disc), kept separate from the sphere rows.

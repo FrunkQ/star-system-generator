@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.154-beta - 18th Jul 2026
+
+* The 2D disc gallery (/discgallery) now leads with a Star types row too, and both galleries cross-link (2D <-> 3D).
+
 ## v2.1.153-beta - 18th Jul 2026
 
 * New 3D reference gallery at /discgallery3d — the holo counterpart of /discgallery. Lays out every example body in ONE scene so all the 3D renderings are reviewable at a glance: textured surfaces, atmosphere glows, gas giants + rings, auroras, self-luminous brown dwarfs, glowing volcanic vents, cryovolcanic plumes, star types across the temperature range, and black holes at different accretion levels (with temperature-graded discs). Each body spins slowly so asymmetric features read as it turns. Refactored the shared emissive builders into one module used by both the live holo and the gallery.
