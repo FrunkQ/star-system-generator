@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.160-beta - 18th Jul 2026
+
+* Black-hole lensing simplified AND completed: replaced the depth-buffer machinery with an analytic exemption — since the accretion disc is auto-generated, the shader is simply told where its projected band is and passes it through un-lensed. The disc's near side now crosses in front of the shadow in BOTH the gallery and the live player views, with the far side still wrapping over/under. Lighter than before (no offscreen target, no depth texture, no twin geometry — back to a single fullscreen pass) and fully mobile-friendly.
+
 ## v2.1.159-beta - 18th Jul 2026
 
 * Black-hole lensing is now DEPTH-AWARE: the accretion disc's near side (in front of the hole) crosses straight in front of the shadow — its light reaches us unbent — while the far side still wraps over the top, so you get the full disc, not just the arcs. Pure-white refracted-starlight halo. (3D gallery; live-holo depth wiring to follow.)

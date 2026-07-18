@@ -6,10 +6,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { TexturePass } from 'three/examples/jsm/postprocessing/TexturePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { makeLensingShader, MAX_LENSES } from './lensingShader';
+import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { buildAuroraShell } from './scene';
@@ -73,7 +73,9 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	const auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
 	const discs: { points: THREE.Points; rate: number }[] = [];
 	const starVisuals: { corona: THREE.Sprite; baseScale: number; activity: number; seed: number }[] = [];
-	const lensBHs: { pos: THREE.Vector3; r: number }[] = []; // black-hole lensing centres (world pos + horizon radius)
+	// Black-hole lensing centres: world pos + horizon radius, and (when feeding) the accretion disc's
+	// object + radii so the lens can exempt its projected band (the front-of-hole fix).
+	const lensBHs: { pos: THREE.Vector3; r: number; disc?: { obj: THREE.Object3D; inner: number; outer: number } }[] = [];
 
 	// Build a single planet/moon/star/brown-dwarf tile at (x,y). Returns the group.
 	function buildBody(node: any, x: number, y: number): void {
@@ -163,19 +165,16 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		const eh = new THREE.Mesh(new THREE.SphereGeometry(shadowR, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
 		g.add(eh); // a black hole is BLACK — no glow ball; the disc + lensing are the whole look
 		const edd = entry.node.accretionEddington || 0;
+		const lens: (typeof lensBHs)[number] = { pos: new THREE.Vector3(x, y, 0), r: shadowR };
 		if (edd > 0.01) {
-			const disc = buildStaticRing(shadowR * 1.5, shadowR * (2.6 + edd * 2.6), 0xffd060, true);
+			const outer = shadowR * (2.6 + edd * 2.6);
+			const disc = buildStaticRing(shadowR * 1.5, outer, 0xffd060, true);
 			g.add(disc); discs.push({ points: disc, rate: 0.5 + edd });
-			// Depth twin: writes the disc's DEPTH (colour off, depth-tested against the shadow sphere) so
-			// the lens sees the NEAR side as foreground and shows it un-lensed, crossing in front of the hole.
-			const depthMat = new THREE.PointsMaterial({ size: (disc.material as THREE.PointsMaterial).size * 1.6, sizeAttenuation: true, colorWrite: false, depthWrite: true, depthTest: true });
-			const depthDisc = new THREE.Points(disc.geometry, depthMat);
-			depthDisc.rotation.copy(disc.rotation);
-			g.add(depthDisc); discs.push({ points: depthDisc, rate: 0.5 + edd });
+			lens.disc = { obj: disc, inner: shadowR * 1.5, outer }; // the band the lens exempts
 		}
 		const label = makeLabel(String(entry.node.name), '#ffd8a0'); label.position.set(0, -R - 0.34, 0); g.add(label);
 		scene.add(g);
-		lensBHs.push({ pos: new THREE.Vector3(x, y, 0), r: shadowR }); // lens the disc + backdrop stars around it
+		lensBHs.push(lens); // lens the disc + backdrop stars around it
 	}
 
 	// A patch of backdrop stars behind a row, so the black holes have something to lens.
@@ -211,17 +210,12 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	// Backdrop stars behind the black-hole row so the lensing has something to bend.
 	addStarBackdrop(bhRowY, (GALLERY_BLACK_HOLES.length / 2) * COL_GAP + COL_GAP, ROW_GAP * 0.75);
 
-	// Post-processing: the black-hole lensing pass (same shader as the live holo), fed a DEPTH texture so
-	// foreground disc geometry passes through un-lensed. We render the scene ourselves to sceneRT (with a
-	// DepthTexture) and feed it via a TexturePass, so the depth is available to the lens shader.
-	const depthTexture = new THREE.DepthTexture(1, 1);
-	const sceneRT = new THREE.WebGLRenderTarget(1, 1, { depthTexture, depthBuffer: true });
-	disposables.push(sceneRT, depthTexture);
+	// Post-processing: the black-hole lensing pass (same shader as the live holo). The front-of-hole
+	// disc is handled ANALYTICALLY in the shader (the projected disc-ellipse band passes through
+	// un-lensed) — no depth buffer, no offscreen target, no twin geometry.
 	const composer = new EffectComposer(renderer);
-	composer.addPass(new TexturePass(sceneRT.texture));
+	composer.addPass(new RenderPass(scene, camera));
 	const lensingPass = new ShaderPass(makeLensingShader());
-	lensingPass.uniforms.tDepth.value = depthTexture;
-	lensingPass.uniforms.uHasDepth.value = 1;
 	composer.addPass(lensingPass);
 	// Final tone-map + sRGB (composer.render outputs LINEAR otherwise — that dulled the whole gallery).
 	composer.addPass(new OutputPass());
@@ -237,10 +231,8 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	function resize() {
 		const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
 		vpW = w; vpH = h;
-		const pr = renderer.getPixelRatio();
 		renderer.setSize(w, h, false);
 		composer.setSize(w, h);
-		sceneRT.setSize(Math.max(1, Math.floor(w * pr)), Math.max(1, Math.floor(h * pr)));
 		camera.aspect = w / h; camera.updateProjectionMatrix();
 	}
 	resize();
@@ -251,23 +243,32 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	function updateLensing() {
 		_cr.setFromMatrixColumn(camera.matrixWorld, 0);
 		const arr = lensingPass.uniforms.uBH.value as THREE.Vector4[];
+		const discArr = lensingPass.uniforms.uDisc.value as THREE.Vector4[];
+		const aspect = vpW / Math.max(1, vpH);
 		let n = 0;
 		for (const b of lensBHs) {
 			_lc.copy(b.pos).project(camera);
 			if (_lc.z >= 1) continue;
 			_le.copy(b.pos).addScaledVector(_cr, b.r).project(camera);
-			const rUV = Math.hypot((_le.x - _lc.x) * 0.5, (_le.y - _lc.y) * 0.5);
-			if (rUV <= 0.0002 || n >= MAX_LENSES) continue;
-			arr[n++].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rUV * 1.7), _lc.z * 0.5 + 0.5);
+			// Horizon screen radius in the shader's aspect-corrected UV space (pixels/height).
+			const rC = Math.hypot((_le.x - _lc.x) * 0.5 * aspect, (_le.y - _lc.y) * 0.5);
+			if (rC <= 0.0002 || n >= MAX_LENSES) continue;
+			const k = b.disc ? b.disc.inner / b.disc.outer : 0;
+			arr[n].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rC * 0.85), k);
+			if (b.disc) feedDiscEllipse(discArr[n], b.disc.obj, b.pos, b.disc.outer, camera, _lc.x, _lc.y, aspect);
+			else discArr[n].set(0, 0, 0, 0);
+			n++;
 		}
 		lensingPass.uniforms.uCount.value = n;
-		lensingPass.uniforms.uAspect.value = vpW / Math.max(1, vpH);
+		lensingPass.uniforms.uAspect.value = aspect;
 	}
 	function frame() {
 		if (disposed) return;
 		clock.t += 0.016;
 		for (const s of spinners) { _q.setFromAxisAngle(_yAxis, 0.016 * s.rate); s.obj.quaternion.multiply(_q); }
-		for (const d of discs) d.points.rotation.z += 0.016 * d.rate;
+		// Spin in-plane about the disc's local Y (its plane normal after the X-tilt). NB not rotation.z —
+		// with XYZ euler order that would wobble the plane, not spin it, and break the lens's ellipse feed.
+		for (const d of discs) d.points.rotation.y += 0.016 * d.rate;
 		// Star flares: pulse each corona's size + brightness, amplitude ∝ flare activity, so an active
 		// flare star (an M dwarf) visibly throbs while a calm one barely moves — like the discs animate.
 		for (const s of starVisuals) {
@@ -285,11 +286,6 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		}
 		controls.update();
 		updateLensing();
-		// Render the scene ourselves to sceneRT so the lens pass gets the DEPTH texture, then post-process.
-		renderer.setRenderTarget(sceneRT);
-		renderer.clear();
-		renderer.render(scene, camera);
-		renderer.setRenderTarget(null);
 		composer.render();
 		raf = requestAnimationFrame(frame);
 	}

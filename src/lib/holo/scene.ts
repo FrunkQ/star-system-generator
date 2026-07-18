@@ -15,7 +15,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
-import { makeLensingShader, MAX_LENSES } from './lensingShader';
+import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import type { FilterParamValues } from './filters/schema';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
@@ -559,6 +559,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // sprites whose opacity is flickered/glistened each frame by updateMagma / updatePlumes.
   let magmaVisuals: EmissiveVisual[] = [];
   let plumeVisuals: EmissiveVisual[] = [];
+  // Auto-generated black-hole accretion discs, by BH node id — the lens exempts each disc's projected
+  // band so its near side shows in front of the shadow (see lensingShader).
+  const bhDiscInfo = new Map<string, { pivot: THREE.Group; inner: number; outer: number }>();
   // Orbit path rings, keyed by node id so they can follow the SAME visibility rule as the names
   // ("if you show a name, show an orbit"). Moon rings carry trackParentId to follow the parent.
   let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string }[] = [];
@@ -1144,6 +1147,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     auroraVisuals = [];
     magmaVisuals = [];
     plumeVisuals = [];
+    bhDiscInfo.clear();
   }
 
   function setSystem(system: System | null) {
@@ -1248,7 +1252,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             const rkm = node.radiusKm || 30;
             const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: rkm * 1.6, radiusOuterKm: rkm * (5 + edd * 4) };
             const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs);
-            if (disc) { contentGroup.add(disc.pivot); ringVisuals.push(disc); }
+            if (disc) {
+              contentGroup.add(disc.pivot);
+              ringVisuals.push(disc);
+              bhDiscInfo.set(node.id, { pivot: disc.pivot, inner: starR * 1.6, outer: starR * (5 + edd * 4) });
+            }
           }
         } else {
           // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
@@ -1759,20 +1767,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (!lensingOn) { lensingPass.enabled = false; return; }
     _camRight.setFromMatrixColumn(camera.matrixWorld, 0); // camera's world-space right vector
     const arr = lensingPass.uniforms.uBH.value as THREE.Vector4[];
+    const discArr = lensingPass.uniforms.uDisc.value as THREE.Vector4[];
+    const aspect = viewW / Math.max(1, viewH);
     let n = 0;
     for (const b of bodies) {
       if (!b.isBH) continue;
       _lensCentre.copy(b.mesh.position).project(camera);
       if (_lensCentre.z >= 1) continue; // behind the camera / clipped
-      const cx = _lensCentre.x * 0.5 + 0.5, cy = _lensCentre.y * 0.5 + 0.5;
       _lensEdge.copy(b.mesh.position).addScaledVector(_camRight, b.radiusScene ?? 0.02).project(camera);
-      const rUV = Math.hypot((_lensEdge.x - _lensCentre.x) * 0.5, (_lensEdge.y - _lensCentre.y) * 0.5);
-      if (rUV <= 0.0002) continue; // too small on screen to bother
-      arr[n].set(cx, cy, Math.min(0.5, rUV * 1.7), _lensCentre.z * 0.5 + 0.5); // xy centre, z ring radius, w depth
+      // Horizon screen radius in the shader's aspect-corrected UV space (pixels/height).
+      const rC = Math.hypot((_lensEdge.x - _lensCentre.x) * 0.5 * aspect, (_lensEdge.y - _lensCentre.y) * 0.5);
+      if (rC <= 0.0002) continue; // too small on screen to bother
+      const disc = bhDiscInfo.get(b.id);
+      arr[n].set(_lensCentre.x * 0.5 + 0.5, _lensCentre.y * 0.5 + 0.5, Math.min(0.5, rC * 0.85), disc ? disc.inner / disc.outer : 0);
+      if (disc) feedDiscEllipse(discArr[n], disc.pivot, b.mesh.position, disc.outer, camera, _lensCentre.x, _lensCentre.y, aspect);
+      else discArr[n].set(0, 0, 0, 0);
       if (++n >= MAX_LENSES) break;
     }
     lensingPass.uniforms.uCount.value = n;
-    lensingPass.uniforms.uAspect.value = viewW / Math.max(1, viewH);
+    lensingPass.uniforms.uAspect.value = aspect;
     lensingPass.enabled = n > 0;
   }
   function setLensing(on: boolean) { lensingOn = on; }
