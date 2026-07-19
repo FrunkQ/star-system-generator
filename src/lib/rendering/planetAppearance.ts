@@ -201,6 +201,12 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const icyShell = iceFrac > 0.2 || regime === 'cryovolcanic'
 		|| retained.includes('nitrogen') || retained.includes('methane')
 		|| (retained.includes('water') && iceFrac > 0.1);
+	// A world with a STANDING LIQUID SEA (a surface hydrosphere layer) has a liquid surface, not a
+	// frozen crust — so it neither craters nor fractures. Only a FROZEN icy shell cracks into lineae.
+	const hydro = (body as any).hydrosphere;
+	const hasSurfaceLiquid = (hydro?.coverage ?? 0) > 0.05
+		&& ((hydro?.layers ?? []).some((l: any) => l?.location === 'surface') || (hydro?.composition && regime !== 'cryovolcanic'));
+	const frozenIcySurface = icyShell && !hasSurfaceLiquid;
 	const thickAir = atmPressureBar > 0.5; // dense air ablates impactors + erodes craters (Venus/Titan)
 
 	// CRATERS — rocky, exposed surfaces only; density from SURFACE AGE (a young resurfaced world is
@@ -235,7 +241,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 
 	// ICE CRACKS / RIDGES — an icy crust flexed by tidal/freezing stress splits into a lineae network
 	// (Europa). Stronger on tidally-worked / cryovolcanic crusts.
-	const crackSeverity = solid && icyShell
+	const crackSeverity = solid && frozenIcySurface
 		? clamp01(0.45 + (regime === 'cryovolcanic' ? 0.35 : 0) + (has('tidal/hotspots') || has('tidal/volcanism') ? 0.2 : 0))
 		: 0;
 	const iceCracks: IceCrackSpec | null = crackSeverity > 0
@@ -249,7 +255,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// have differentiated an ocean, small enough to have frozen through). A retained-water ice by itself
 	// is NOT enough — every icy world has that; without this gate a rift striped every frost world.
 	const rKm = body.radiusKm ?? 0;
-	const frozenOcean = has('structure/icy-shell') && regime === 'inactive'
+	const frozenOcean = has('structure/icy-shell') && regime === 'inactive' && !hasSurfaceLiquid
 		&& !has('structure/subsurface-ocean') && rKm >= 300 && rKm <= 1600;
 	const rifts: RiftSpec | null = solid && frozenOcean ? { extent: 0.5 } : null;
 

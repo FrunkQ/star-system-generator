@@ -59,6 +59,15 @@ describe('deriveAppearance — feature resolution', () => {
 		expect(europa.craters).toBeNull(); // ice cracks, doesn't crater
 	});
 
+	it('a LIQUID-ocean world with bulk ice does NOT fracture (a liquid sea is not a frozen crust)', () => {
+		const oceanWorld = deriveAppearance(mk({
+			makeup: { rock: 0.5, ice: 0.5 }, temperatureK: 94,
+			hydrosphere: { coverage: 0.71, composition: 'methane', layers: [{ location: 'surface', liquid: 'methane' }] }
+		} as any));
+		expect(oceanWorld.iceCracks).toBeNull(); // liquid surface, not a cracked ice shell
+		expect(oceanWorld.craters).toBeNull();
+	});
+
 	it('tholins need an organic precursor AND dose: Pluto reddens, Europa (no CH4/N2) does not', () => {
 		const pluto = deriveAppearance(mk({
 			makeup: { ice: 0.5, rock: 0.5 }, irradiationDose: 0.2,
