@@ -12,10 +12,18 @@ export interface GalleryRow {
 	bodies: CelestialBody[];
 }
 
-const mk = (over: Partial<CelestialBody> & { name: string }) => ({
-	id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
-	temperatureK: 288, temperatureRangeK: { min: 240, max: 305 }, tags: [], ...over
-}) as unknown as CelestialBody;
+const mk = (over: Partial<CelestialBody> & { name: string }) => {
+	const hex = (over as any).apparentColorHex ?? '#3a6ea5';
+	// Give every example a minimal apparentColor (a surface-role palette) so the 3D holo actually
+	// TEXTURES it (and thus shows ice caps, craters, weathering…) — without one the sphere falls back
+	// to a flat untextured colour. A richer apparentColor passed in `over` (giants) overrides this.
+	return {
+		id: over.name, roleHint: 'planet', apparentColorHex: hex,
+		temperatureK: 288, temperatureRangeK: { min: 240, max: 305 }, tags: [],
+		apparentColor: { hex, banding: 0, palette: [{ hex, role: 'surface', weight: 1 }] },
+		...over
+	} as unknown as CelestialBody;
+};
 
 const ammonia = (b: string, c1: string, c2: string) => ([
 	{ hex: b, role: 'cloud', weight: 1 }, { hex: c1, role: 'cloud', weight: 0.6 }, { hex: c2, role: 'cloud', weight: 0.4 },
@@ -111,7 +119,7 @@ const brownDwarfs = [
 // --- NEW rows (mainly 3D-only features) -----------------------------------------------------------
 
 // Volcanism tiers: a full lava world vs a few discrete vents / hotspots (glow in 3D).
-const volcanism = [
+export const GALLERY_VOLCANISM: CelestialBody[] = [
 	mk({ name: 'Lava world (7 vents)', apparentColorHex: '#7a2e1e', radiusKm: 1800, tags: [{ key: 'tidal/lava-flows' }] }),
 	mk({ name: 'Volcanism (5 vents)', apparentColorHex: '#8a4a30', radiusKm: 2100, tags: [{ key: 'tidal/volcanism' }] }),
 	mk({ name: 'Hotspots (3 vents)', apparentColorHex: '#7c5a44', radiusKm: 2400, tags: [{ key: 'tidal/hotspots' }] }),
@@ -123,7 +131,7 @@ const cryo = (name: string, radiusKm: number, massKg: number, hex: string) =>
 	mk({ name, apparentColorHex: hex, radiusKm, massKg, temperatureK: 90,
 		makeup: { ice: 0.6, rock: 0.4 } as any, atmosphere: { pressure_bar: 0 } as any,
 		geoActivity: { regime: 'cryovolcanic' } as any, tags: [{ key: 'activity/cryovolcanism' }] });
-const cryoPlumes = [
+export const GALLERY_CRYO_PLUMES: CelestialBody[] = [
 	cryo('Enceladus-like · 252 km', 252, 1.08e20, '#dfeaf2'),   // tiny, low-g → long jets
 	cryo('Triton-like · 1350 km', 1350, 2.14e22, '#d8e2e8'),
 	cryo('Europa-like · 1560 km', 1560, 4.8e22, '#cfd8de'),     // heavier → short jets
@@ -243,8 +251,8 @@ export const GALLERY_ROWS: GalleryRow[] = [
 	{ title: 'Gas & ice giants (+ ring, tilt)', bodies: giants },
 	{ title: 'Auroras — gas-coloured', bodies: auroras },
 	{ title: 'Self-luminous brown dwarfs', bodies: brownDwarfs },
-	{ title: 'Volcanism — glowing vents (3D)', bodies: volcanism },
-	{ title: 'Cryovolcanic plumes (3D)', bodies: cryoPlumes },
+	{ title: 'Volcanism — glowing vents (3D)', bodies: GALLERY_VOLCANISM },
+	{ title: 'Cryovolcanic plumes (3D)', bodies: GALLERY_CRYO_PLUMES },
 	{ title: 'Surface weathering — cratering by age', bodies: GALLERY_CRATERING },
 	{ title: 'Ice fractures vs rock craters (+ rift)', bodies: GALLERY_ICE_VS_ROCK },
 	{ title: 'Tholins & volatile frosts', bodies: GALLERY_THOLIN_FROST },

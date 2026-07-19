@@ -270,6 +270,16 @@
           <stop offset="100%" stop-color={base} stop-opacity="0" />
         </radialGradient>
       {/if}
+      <!-- Eyeball: a tidally-STAR-locked world's day/night split, substellar face toward us — a hot
+           (baked or molten) eye fading through a terminator to a frozen limb. -->
+      {#if a.eyeball}
+        <radialGradient id="eyeball-{uid}" cx="50%" cy="50%" r="52%">
+          <stop offset="0%" stop-color={a.eyeball.dayHex} />
+          <stop offset="34%" stop-color={a.eyeball.dayHex} />
+          <stop offset="62%" stop-color={a.eyeball.kind === 'cold' ? '#5a6b82' : shade(a.eyeball.dayHex, -0.5)} />
+          <stop offset="100%" stop-color={a.eyeball.nightHex} />
+        </radialGradient>
+      {/if}
       <!-- Crater bowl (dark centre → transparent) + fresh-crater ejecta halo (bright centre → out). -->
       <radialGradient id="crater-{uid}" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="rgba(0,0,0,0.32)" />
@@ -416,6 +426,21 @@
           </g>
           <circle cx="50" cy="50" r="30" fill="url(#sph-{uid})" opacity="0.35" />
         {/if}
+      {/if}
+
+      <!-- Eyeball day/night split (star-locked worlds); molten day glows. Painted over the base. -->
+      {#if a.eyeball}
+        <g clip-path="url(#clip-{uid})">
+          <circle cx="50" cy="50" r="30" fill="url(#eyeball-{uid})" opacity={a.eyeball.molten ? 0.92 : 0.82} />
+          {#if a.eyeball.molten}
+            <circle cx="50" cy="50" r="14" fill={a.eyeball.dayHex} opacity="0.55" />
+          {/if}
+        </g>
+      {/if}
+
+      <!-- Uniform thermal incandescence (a super-hot lava world glows all over). -->
+      {#if a.thermalGlow}
+        <circle cx="50" cy="50" r="30" fill={a.thermalGlow.colorHex} opacity={0.35 + a.thermalGlow.strength * 0.5} clip-path="url(#clip-{uid})" />
       {/if}
 
       <!-- Tholin mottling: irradiated organics stain the crust. Atmospheric (Titan) = a whole-disc haze

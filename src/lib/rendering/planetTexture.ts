@@ -249,6 +249,20 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
   }
 
+  // POLAR ICE CAPS — bright frozen caps at the two poles (the equirect's top and bottom rows ARE the
+  // poles). A soft gradient fading toward the equator; craters/features drawn after show faintly through.
+  if (a.polarIce) {
+    // Bright frozen caps. The equirect pinches at the poles, so keep the cap SOLID across most of its
+    // latitude band (only fading near the equator edge) — otherwise it collapses into an invisible speck.
+    const capH = EQ_H * 0.26;
+    for (const top of [true, false]) {
+      const y0 = top ? 0 : EQ_H, y1 = top ? capH : EQ_H - capH;
+      const cg = ctx.createLinearGradient(0, y0, 0, y1);
+      cg.addColorStop(0, 'rgba(242,248,255,0.95)'); cg.addColorStop(0.7, 'rgba(242,248,255,0.9)'); cg.addColorStop(1, 'rgba(242,248,255,0)');
+      ctx.fillStyle = cg; ctx.fillRect(0, Math.min(y0, y1), EQ_W, capH);
+    }
+  }
+
   if (a.tholin) {
     if (a.tholin.atmospheric) {
       ctx.globalAlpha = 0.22 + a.tholin.strength * 0.35; ctx.fillStyle = a.tholin.colorHex;
@@ -439,7 +453,7 @@ export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement
   if (typeof document === 'undefined' || !body.apparentColor) return null;
   const ap = body.apparentColor;
   const g = (body as any).geoActivity;
-  const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}:${(body as any).makeup?.ice ?? ''}`;
+  const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}:${(body as any).starTidallyLocked ? 1 : 0}:${(body as any).makeup?.ice ?? ''}:${(body.tags ?? []).some((t) => t.key === 'climate/polar-ice') ? 'pi' : ''}:${(body as any).temperatureRangeK?.max ?? ''}`;
   const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = eqCache.get(key);

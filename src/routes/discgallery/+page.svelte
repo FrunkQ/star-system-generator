@@ -5,7 +5,8 @@
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import type { CelestialBody } from '$lib/types';
   import { deriveApparentColorParts } from '$lib/rendering/apparentColor';
-  import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST } from '$lib/catalogue/galleryExamples';
+  import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST,
+    GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL } from '$lib/catalogue/galleryExamples';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
     id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
@@ -145,6 +146,31 @@
     {/each}
   </div>
 
+  <h2>Black holes — by accretion level (2D schematic; comes alive with lensing in 3D)</h2>
+  <div class="gallery">
+    {#each [{ n: 'Quiescent', e: 0 }, { n: 'Feeding · 20%', e: 0.2 }, { n: 'Feeding · 50%', e: 0.5 }, { n: 'Feeding · 100%', e: 1 }] as bh, i}
+      <figure>
+        <svg viewBox="0 0 100 100" width="168" height="168">
+          <defs>
+            <linearGradient id="acc-{i}" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#6e2610" /><stop offset="0.3" stop-color="#e08a1e" />
+              <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.7" stop-color="#e08a1e" /><stop offset="1" stop-color="#6e2610" />
+            </linearGradient>
+          </defs>
+          {#if bh.e > 0}
+            <ellipse cx="50" cy="52" rx={30 + bh.e * 6} ry={7 + bh.e * 5} fill="none" stroke="url(#acc-{i})" stroke-width={5 + bh.e * 5} opacity="0.9" />
+          {/if}
+          <circle cx="50" cy="50" r="15" fill="#000" />
+          <circle cx="50" cy="50" r="17.5" fill="none" stroke="#fff" stroke-width="2.5" />
+          {#if bh.e > 0}
+            <path d="M20 46 A30 8 0 0 1 80 46" fill="none" stroke="url(#acc-{i})" stroke-width={2 + bh.e * 2} opacity="0.75" />
+          {/if}
+        </svg>
+        <figcaption>{bh.n}</figcaption>
+      </figure>
+    {/each}
+  </div>
+
   <h2>Surface features</h2>
   <div class="gallery">
     {#each surface as b}
@@ -212,6 +238,27 @@
   <h2>Tholins &amp; volatile frosts — irradiated organics redden; retained ices frost</h2>
   <div class="gallery">
     {#each GALLERY_THOLIN_FROST as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Thermal emission &amp; eyeball worlds — a super-hot surface glows; star-locked worlds split day/night</h2>
+  <div class="gallery">
+    {#each GALLERY_HOT_EYEBALL as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Volcanism — glowing vents by tier</h2>
+  <div class="gallery">
+    {#each GALLERY_VOLCANISM as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Cryovolcanic plumes — icy jets vented through the crust</h2>
+  <div class="gallery">
+    {#each GALLERY_CRYO_PLUMES as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>
