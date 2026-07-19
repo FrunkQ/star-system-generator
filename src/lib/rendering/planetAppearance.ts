@@ -80,6 +80,19 @@ export interface CryoPlumeSpec {
 	jets: number; // how many plume jets (clustered near a pole, Enceladus-style)
 	reachRadii: number; // how far the jets throw, in body radii — driven by (low) surface gravity
 }
+export interface ThermalGlowSpec {
+	tempK: number;     // the incandescing (hottest) surface temperature
+	colorHex: string;  // blackbody-ish glow colour (dull red → orange → yellow-white)
+	strength: number;  // 0..1, ramps in above ~1000 K toward molten
+}
+export interface EyeballSpec {
+	substellarK: number;   // day-side (substellar) temperature — temperatureRangeK.max
+	antistellarK: number;  // night-side (antistellar) temperature — temperatureRangeK.min
+	dayHex: string;        // substellar surface tint (baked-dark, or molten glow colour)
+	nightHex: string;      // antistellar surface tint (frost / cold)
+	molten: boolean;       // substellar above rock melting → a glowing molten day hemisphere
+	kind: 'hot' | 'cold';  // hot eyeball (baked day) vs cold eyeball (a warm eye on a frozen world)
+}
 export interface CraterSpec {
 	density: number;   // 0..1 impact-record density, from SURFACE AGE (young resurfaced → 0, ancient → 1)
 	rayed: number;     // count of FRESH bright-ejecta-ray craters punched into an old surface (0..4)
@@ -127,6 +140,8 @@ export interface AppearanceModel {
 	rifts: RiftSpec | null;
 	tholin: TholinSpec | null;
 	frost: FrostSpec | null;
+	thermalGlow: ThermalGlowSpec | null; // incandescent glow of a super-hot surface (uniform)
+	eyeball: EyeballSpec | null;         // day/night hemisphere split of a tidally-locked world
 	magma: MagmaSpec | null;
 	cryoPlumes: CryoPlumeSpec | null;
 	aurora: AuroraSpec | null;
@@ -262,6 +277,33 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		? { coverage: frostCoverage, colorHex: so2 && brightIces.length === 0 ? '#f0e28a' : '#eaf2fb' }
 		: null;
 
+	// THERMAL EMISSION + EYEBALL. temperatureRangeK captures the hottest (substellar) and coldest
+	// (antistellar) points, so a tidally-locked world's day/night extreme falls straight out. A surface
+	// above ~1000 K INCANDESCES (blackbody glow, dull-red→molten yellow-white). A LOCKED world with a big
+	// day/night contrast is an EYEBALL: a hot (baked or molten-glowing) substellar hemisphere fading to a
+	// frozen antistellar one — or, when the day side merely reaches liquid-water warmth, a COLD eyeball
+	// (a temperate eye on an otherwise frozen world).
+	const hotK = (body as any).temperatureRangeK?.max ?? body.temperatureK ?? 0;
+	const coldK = (body as any).temperatureRangeK?.min ?? hotK;
+	const GLOW_ONSET = 1000, GLOW_FULL = 2200, ROCK_MELT = 1200;
+	const locked = !!(body as any).tidallyLocked;
+	const eyeball: EyeballSpec | null = (solid && locked && hotK - coldK > 120)
+		? {
+			substellarK: hotK, antistellarK: coldK, molten: hotK > ROCK_MELT,
+			kind: hotK > 350 ? 'hot' : 'cold',
+			dayHex: hotK > GLOW_ONSET ? bdGlowColour(hotK) // molten/incandescent
+				: hotK > 350 ? shade(baseColorHex, -0.35)   // baked, dark-dry
+				: hotK > 255 ? '#3a6ea5'                    // temperate eye — liquid water
+				: shade(baseColorHex, 0.12),
+			nightHex: coldK < 180 ? '#c3d0e0' : shade(baseColorHex, -0.45)
+		}
+		: null;
+	// Uniform incandescent glow only when it ISN'T an eyeball (the eyeball confines the glow to the day
+	// hemisphere itself).
+	const thermalGlow: ThermalGlowSpec | null = (solid && hotK > GLOW_ONSET && !eyeball)
+		? { tempK: hotK, colorHex: bdGlowColour(hotK), strength: clamp01((hotK - GLOW_ONSET) / (GLOW_FULL - GLOW_ONSET)) }
+		: null;
+
 	// Magma / lava: a full lava world, or discrete tidal volcanism / hotspots.
 	const isLava = has('tidal/lava-flows');
 	const volc = isLava || has('tidal/volcanism') || has('tidal/hotspots');
@@ -323,6 +365,8 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		rifts,
 		tholin,
 		frost,
+		thermalGlow,
+		eyeball,
 		magma,
 		cryoPlumes,
 		aurora,

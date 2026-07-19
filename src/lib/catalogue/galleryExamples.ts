@@ -184,6 +184,21 @@ export const GALLERY_THOLIN_FROST: CelestialBody[] = [
 		tags: [{ key: 'tidal/lava-flows' }] } as any)
 ].map(withAp);
 
+// Thermal emission + eyeballs — a super-hot surface INCANDESCES; a tidally-locked world splits into a
+// hot (baked/molten) day hemisphere and a frozen night one. temperatureRangeK carries the day/night
+// extreme.
+export const GALLERY_HOT_EYEBALL: CelestialBody[] = [
+	mk({ name: 'Lava world · 2000 K', apparentColorHex: '#6a2a18', radiusKm: 3200, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, temperatureK: 1900, temperatureRangeK: { min: 1850, max: 2000 } } as any),
+	mk({ name: 'Hot eyeball · molten day', apparentColorHex: '#7a4a34', radiusKm: 3200, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, tidallyLocked: true, temperatureK: 720, temperatureRangeK: { min: 110, max: 1550 } } as any),
+	mk({ name: 'Hot eyeball · baked day', apparentColorHex: '#9a7e54', radiusKm: 3200, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, tidallyLocked: true, temperatureK: 430, temperatureRangeK: { min: 40, max: 760 } } as any),
+	mk({ name: 'Cold eyeball · temperate eye', apparentColorHex: '#7a8896', radiusKm: 3200, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.6, ice: 0.4 } as any, tidallyLocked: true, temperatureK: 175, temperatureRangeK: { min: 70, max: 292 },
+		volatiles: vol('water', 'carbon-dioxide') } as any)
+].map(withAp);
+
 // Star types by temperature (roleHint 'star').
 const star = (name: string, t: number, radiusKm: number, flare = 0.2) =>
 	({ id: name, name, roleHint: 'star', temperatureK: t, radiusKm, flareActivity: flare,
@@ -233,6 +248,7 @@ export const GALLERY_ROWS: GalleryRow[] = [
 	{ title: 'Surface weathering — cratering by age', bodies: GALLERY_CRATERING },
 	{ title: 'Ice fractures vs rock craters (+ rift)', bodies: GALLERY_ICE_VS_ROCK },
 	{ title: 'Tholins & volatile frosts', bodies: GALLERY_THOLIN_FROST },
+	{ title: 'Thermal emission & eyeball worlds', bodies: GALLERY_HOT_EYEBALL },
 	{ title: 'Star types — by temperature', bodies: GALLERY_STAR_TYPES },
 ];
 

@@ -84,6 +84,35 @@ describe('deriveAppearance — feature resolution', () => {
 		expect(io.frost!.colorHex.toLowerCase()).toBe('#f0e28a');
 	});
 
+	it('a super-hot surface incandesces (thermal glow); a cool one does not', () => {
+		const lava = deriveAppearance(mk({ temperatureRangeK: { min: 1850, max: 2000 } } as any));
+		expect(lava.thermalGlow).toBeTruthy();
+		expect(lava.thermalGlow!.strength).toBeGreaterThan(0.7);
+		expect(deriveAppearance(mk({ temperatureRangeK: { min: 240, max: 320 } } as any)).thermalGlow).toBeNull();
+	});
+
+	it('a tidally-locked hot world is an eyeball; >1200 K substellar is molten (glow confined to the day side)', () => {
+		const molten = deriveAppearance(mk({ tidallyLocked: true, temperatureRangeK: { min: 110, max: 1550 } } as any));
+		expect(molten.eyeball).toBeTruthy();
+		expect(molten.eyeball!.molten).toBe(true);
+		expect(molten.eyeball!.kind).toBe('hot');
+		expect(molten.thermalGlow).toBeNull(); // the eyeball owns the glow (substellar hemisphere), not a uniform one
+
+		const mercury = deriveAppearance(mk({ tidallyLocked: true, temperatureRangeK: { min: 3, max: 796 } } as any));
+		expect(mercury.eyeball!.molten).toBe(false); // baked, not molten
+		expect(mercury.eyeball!.kind).toBe('hot');
+	});
+
+	it('a locked world with a temperate day side reads a COLD eyeball (an eye of liquid on a frozen world)', () => {
+		const cold = deriveAppearance(mk({ tidallyLocked: true, temperatureRangeK: { min: 70, max: 292 } } as any));
+		expect(cold.eyeball!.kind).toBe('cold');
+		expect(cold.eyeball!.molten).toBe(false);
+	});
+
+	it('an UNLOCKED world (no day/night lock) gets no eyeball even if hot', () => {
+		expect(deriveAppearance(mk({ temperatureRangeK: { min: 720, max: 772 } } as any)).eyeball).toBeNull();
+	});
+
 	it('scales magma vents by volcanism tier and flags a lava world', () => {
 		expect(deriveAppearance(mk({ tags: [{ key: 'tidal/lava-flows' }] })).magma).toEqual({ vents: 7, lava: true });
 		expect(deriveAppearance(mk({ tags: [{ key: 'tidal/volcanism' }] })).magma).toEqual({ vents: 5, lava: false });

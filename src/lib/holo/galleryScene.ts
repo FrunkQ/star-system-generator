@@ -10,7 +10,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
-import { getPlanetTextureEquirect } from '$lib/rendering/planetTexture';
+import { getPlanetTextureEquirect, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { buildAuroraShell } from './scene';
 import {
@@ -101,6 +101,8 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			const texCanvas = getPlanetTextureEquirect(node);
 			const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
 			if (texCanvas) { const t = new THREE.CanvasTexture(texCanvas); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.map = t; }
+			const emCanvas = getEmissiveEquirect(node);
+			if (emCanvas) { const et = new THREE.CanvasTexture(emCanvas); et.colorSpace = THREE.SRGBColorSpace; et.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.emissiveMap = et; mat.emissive = new THREE.Color(0xffffff); mat.emissiveIntensity = 1.15; }
 			else mat.color.set(node.apparentColorHex || '#8a8f99');
 			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), mat);
 			const polF = appear.oblatePolarFactor;

@@ -20,7 +20,7 @@ import type { FilterParamValues } from './filters/schema';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
-import { getPlanetTextureEquirect, getPlanetTexture } from '$lib/rendering/planetTexture';
+import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
@@ -1364,6 +1364,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               mat.map = t;
             } else {
               mat.color.set(colorHex);
+            }
+            // Thermal EMISSION: a super-hot / molten surface glows of its own heat (the molten eyeball's
+            // substellar hemisphere, or a uniformly incandescent lava world). Self-lit emissiveMap so it
+            // shows against space and on the night side.
+            if (!useUnlit) {
+              const emCanvas = getEmissiveEquirect(node);
+              if (emCanvas) {
+                const et = new THREE.CanvasTexture(emCanvas);
+                et.colorSpace = THREE.SRGBColorSpace;
+                et.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                const sm = mat as THREE.MeshStandardMaterial;
+                sm.emissiveMap = et; sm.emissive = new THREE.Color(0xffffff); sm.emissiveIntensity = 1.15;
+              }
             }
           }
           // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).

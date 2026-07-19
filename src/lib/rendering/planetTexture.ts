@@ -235,6 +235,20 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
 
+  // EYEBALL — a tidally-locked world's permanent day/night split: a hot (baked or molten-glowing)
+  // substellar hemisphere fading through a terminator ring to a frozen antistellar one. The substellar
+  // point sits at the sheet centre (the 3D scene turns that face toward the star); the radial gradient
+  // reads as concentric climate zones out to the frozen far side.
+  if (a.eyeball) {
+    const g = ctx.createRadialGradient(EQ_W / 2, EQ_H / 2, 0, EQ_W / 2, EQ_H / 2, EQ_W * 0.45);
+    g.addColorStop(0, a.eyeball.dayHex);
+    g.addColorStop(0.32, a.eyeball.dayHex);
+    g.addColorStop(0.62, a.eyeball.kind === 'cold' ? '#5a6b82' : shade(a.eyeball.dayHex, -0.5)); // terminator
+    g.addColorStop(1, a.eyeball.nightHex);
+    ctx.globalAlpha = a.eyeball.molten ? 0.9 : 0.8; ctx.fillStyle = g;
+    ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
+  }
+
   if (a.tholin) {
     if (a.tholin.atmospheric) {
       ctx.globalAlpha = 0.22 + a.tholin.strength * 0.35; ctx.fillStyle = a.tholin.colorHex;
@@ -273,13 +287,13 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
       ctx.strokeStyle = fresh ? 'rgba(248,250,255,0.72)' : 'rgba(238,238,244,0.42)'; // bright rim
       ctx.lineWidth = Math.max(0.5 * S, r * 0.22); ctx.beginPath(); ctx.arc(cx, y, r * 0.88, 0, 2 * Math.PI); ctx.stroke();
     });
-    const n = Math.round(28 + a.craters.density * 170);  // saturates an ancient highland
+    const n = Math.round(45 + a.craters.density * 300);  // dense saturation to match the 2D disc
     for (let i = 0; i < n; i++) {
       let x = rnd() * EQ_W;
       if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = rnd() * 0.5 * EQ_W; // leading hemisphere
-      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, (1.1 + rnd() * rnd() * 6) * S, false);
+      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, (1.3 + rnd() * rnd() * 7) * S, false);
     }
-    for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, (3 + rnd() * 3) * S, true);
+    for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, (3.5 + rnd() * 3) * S, true);
   }
 
   if (a.iceCracks) {
@@ -434,6 +448,38 @@ export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement
     tex = renderEquirect(body);
     eqCache.set(key, tex);
   }
+  return tex;
+}
+
+// EMISSIVE equirect: where the surface GLOWS of its own heat (a super-hot molten world, or a molten
+// eyeball's substellar hemisphere). Black elsewhere. Used as the sphere's emissiveMap in the 3D scene,
+// so the glow is self-lit and shows on the night side / against space. Returns null for cool worlds.
+const emCache = new Map<string, HTMLCanvasElement | null>();
+function renderEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
+  const a = deriveAppearance(body);
+  const molten = !!a.eyeball?.molten;
+  if (!a.thermalGlow && !molten) return null;
+  const c = document.createElement('canvas'); c.width = EQ_W; c.height = EQ_H;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, EQ_W, EQ_H);
+  if (molten && a.eyeball) {
+    // Glow confined to the molten substellar hemisphere; falls to black by the terminator.
+    const g = ctx.createRadialGradient(EQ_W / 2, EQ_H / 2, 0, EQ_W / 2, EQ_H / 2, EQ_W * 0.34);
+    g.addColorStop(0, a.eyeball.dayHex); g.addColorStop(0.55, shade(a.eyeball.dayHex, -0.35)); g.addColorStop(1, '#000');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, EQ_W, EQ_H);
+  } else if (a.thermalGlow) {
+    ctx.globalAlpha = 0.45 + a.thermalGlow.strength * 0.55; ctx.fillStyle = a.thermalGlow.colorHex;
+    ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
+  }
+  return c;
+}
+export function getEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
+  if (typeof document === 'undefined' || !body.apparentColor) return null;
+  const key = `em|${body.id}|${(body as any).temperatureRangeK?.max ?? ''}|${(body as any).temperatureRangeK?.min ?? ''}|${(body as any).tidallyLocked ? 1 : 0}`;
+  if (emCache.has(key)) return emCache.get(key)!;
+  if (emCache.size > 80) emCache.clear();
+  const tex = renderEmissiveEquirect(body);
+  emCache.set(key, tex);
   return tex;
 }
 
