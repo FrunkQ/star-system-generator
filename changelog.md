@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.187-beta - 20th Jul 2026
+
+* Cloud decks now read clearly: a thin deck (Earth) draws a few bold white cloud systems with open gaps over the surface instead of a faint same-colour smear, and only a thick veil (Venus) takes the haze colour. Clouds are a touch self-lit so they stay legible on the shadowed side.
+
 ## v2.1.186-beta - 20th Jul 2026
 
 * Starmap black holes now distinguish feeding from quiescent: a FEEDING (active) hole shows the accretion-disc image, while a quiescent one shows the plain black-hole image in the 3D starmap and a clean white-edged black circle on the 2D map (so it always reads clearly, never black-on-black).

@@ -178,37 +178,47 @@ export function buildAtmoGlow(radius: number, colorHex: string, strength: number
 	return shell;
 }
 
-// A patchy cloud/haze equirect texture: soft tinted blobs on transparent, their DENSITY set by coverage
-// (Earth ≈ scattered, Venus ≈ a near-solid veil). Seeded per body so it's stable across frames.
+// A cloud/haze equirect texture. A THIN deck (Earth) = a few BOLD, well-defined cloud systems (bright
+// opaque cores, soft edges) with clear ocean gaps between — so it reads as distinct clouds, not a
+// uniform smear. A THICK deck (Venus) = a near-solid veil plus swirl texture. Seeded per body.
 export function makeCloudTexture(colorHex: string, coverage: number, seed: number): THREE.Texture {
-	const W = 256, H = 128, c = document.createElement('canvas'); c.width = W; c.height = H;
+	const W = 512, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
 	const ctx = c.getContext('2d')!;
 	let s = (seed || 1) >>> 0;
 	const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
 	const col = new THREE.Color(colorHex);
 	const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
-	// A base veil for a thick deck (opaque worlds), then blobs on top for texture.
-	if (coverage > 0.75) { ctx.fillStyle = `rgba(${r},${g},${b},${(coverage - 0.75) * 3.2})`; ctx.fillRect(0, 0, W, H); }
-	const blobs = Math.round(40 + coverage * 160);
-	for (let i = 0; i < blobs; i++) {
-		const x = rnd() * W, y = rnd() * H, rad = (4 + rnd() * rnd() * 26) * (0.6 + coverage);
-		const a = (0.10 + rnd() * 0.35) * coverage;
-		const grad = ctx.createRadialGradient(x, y, 0, x, y, rad);
-		grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
-		grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-		ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, rad, 0, 2 * Math.PI); ctx.fill();
+	const thick = coverage > 0.72;
+	if (thick) { ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(0.95, 0.45 + (coverage - 0.72) * 2)})`; ctx.fillRect(0, 0, W, H); }
+	// Build cloud systems from CLUSTERS of overlapping puffs → lumpy, organic shapes rather than dots.
+	const systems = thick ? Math.round(24 + coverage * 40) : Math.round(7 + coverage * 10);
+	for (let i = 0; i < systems; i++) {
+		const cx = rnd() * W, cy = H * (0.12 + rnd() * 0.76);          // keep clear of the pinching poles
+		const spanX = (thick ? 30 : 60) + rnd() * (thick ? 40 : 90), spanY = spanX * (0.4 + rnd() * 0.4);
+		const puffs = thick ? 6 : 10 + Math.floor(rnd() * 10);
+		const core = thick ? 0.18 + rnd() * 0.22 : 0.75 + rnd() * 0.25; // thin deck = bold, near-opaque cores
+		for (let j = 0; j < puffs; j++) {
+			const px = cx + (rnd() - 0.5) * spanX, py = cy + (rnd() - 0.5) * spanY;
+			const rad = (thick ? 10 : 14) + rnd() * (thick ? 22 : 34);
+			const a = core * (0.5 + rnd() * 0.5);
+			const grad = ctx.createRadialGradient(px, py, 0, px, py, rad);
+			grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+			grad.addColorStop(0.6, `rgba(${r},${g},${b},${a * 0.4})`);
+			grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+			ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(px, py, rad, 0, 2 * Math.PI); ctx.fill();
+		}
 	}
 	const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
 	tex.wrapS = THREE.RepeatWrapping;
 	return tex;
 }
 
-// CLOUD SHELL — a semi-transparent cloud/haze deck on its OWN sphere just above the surface, so it
-// floats separately (the caller drifts it). Normal-blended (a real veil, not a glow). Returns the mesh
-// and a slow longitudinal drift rate (rad/s) relative to the surface.
+// CLOUD SHELL — a cloud/haze deck on its OWN sphere just above the surface, so it floats separately (the
+// caller drifts it). Normal-blended (a real veil, not a glow); the texture's own alpha carries the gaps,
+// so opacity stays near 1 and the bright cloud cores read clearly. Returns the mesh + a slow drift rate.
 export function buildCloudShell(radius: number, colorHex: string, coverage: number, seed: number): { mesh: THREE.Mesh; drift: number } {
 	const tex = makeCloudTexture(colorHex, coverage, seed);
-	const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false, opacity: Math.min(1, 0.55 + coverage * 0.5) });
+	const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false, emissive: new THREE.Color(colorHex), emissiveMap: tex, emissiveIntensity: 0.25, opacity: 1 });
 	const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.03, 40, 28), mat);
 	mesh.renderOrder = 1;
 	return { mesh, drift: 0.02 + 0.03 * (1 - coverage) }; // thinner decks drift a touch faster
