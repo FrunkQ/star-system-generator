@@ -73,7 +73,7 @@ describe('PlanetDisc', () => {
       expect(container.querySelector('path[fill^="url(#sph"]')).toBeTruthy();
       expect(container.querySelector('circle[r="30"][fill^="url(#sph"]')).toBeFalsy();
       expect(container.querySelector('clipPath path')).toBeTruthy();     // features clip to the shape
-      expect(container.querySelectorAll('g[clip-path] circle[fill^="rgba(0,0,0"]').length).toBeGreaterThan(0); // cratered
+      expect(container.querySelectorAll('g[clip-path] circle[fill^="url(#crater"]').length).toBeGreaterThan(0); // cratered (bowl gradient)
     });
 
     it('the outline is repeatable per id and differs between ids', () => {

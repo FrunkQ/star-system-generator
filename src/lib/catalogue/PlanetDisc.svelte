@@ -145,10 +145,10 @@
       const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 22;
       const cx = 50 + Math.cos(t) * rr, cy = 50 + Math.sin(t) * rr, r = 1.6 + rnd() * 1.8;
       let rays = '';
-      const nr = 7 + Math.floor(rnd() * 4);
+      const nr = 14 + Math.floor(rnd() * 7);                    // many, short, jittered → a splash not a star
       for (let i = 0; i < nr; i++) {
-        const ang = (i / nr) * 2 * Math.PI + rnd() * 0.3, len = r * (2.5 + rnd() * 2.5);
-        rays += `M${cx.toFixed(1)} ${cy.toFixed(1)} L${(cx + Math.cos(ang) * len).toFixed(1)} ${(cy + Math.sin(ang) * len).toFixed(1)} `;
+        const ang = (i / nr) * 2 * Math.PI + (rnd() - 0.5) * 0.4, len = r * (1.2 + rnd() * rnd() * 2.6);
+        rays += `M${(cx + Math.cos(ang) * r).toFixed(1)} ${(cy + Math.sin(ang) * r).toFixed(1)} L${(cx + Math.cos(ang) * len).toFixed(1)} ${(cy + Math.sin(ang) * len).toFixed(1)} `;
       }
       return { cx, cy, r, rays };
     });
@@ -263,6 +263,16 @@
           <stop offset="100%" stop-color={base} stop-opacity="0" />
         </radialGradient>
       {/if}
+      <!-- Crater bowl (dark centre → transparent) + fresh-crater ejecta halo (bright centre → out). -->
+      <radialGradient id="crater-{uid}" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="rgba(0,0,0,0.32)" />
+        <stop offset="70%" stop-color="rgba(0,0,0,0.12)" />
+        <stop offset="100%" stop-color="rgba(0,0,0,0)" />
+      </radialGradient>
+      <radialGradient id="ejecta-{uid}" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="rgba(230,236,246,0.28)" />
+        <stop offset="100%" stop-color="rgba(230,236,246,0)" />
+      </radialGradient>
       <clipPath id="clip-{uid}">{#if isSmallBody}<path d={smallBodyPath} />{:else}<circle cx="50" cy="50" r="30" />{/if}</clipPath>
       <clipPath id="front-{uid}"><rect x="0" y="50" width="100" height="50" /></clipPath>
       <clipPath id="belt-{uid}"><ellipse cx="50" cy="50" rx="46" ry="15" /></clipPath>
@@ -424,21 +434,24 @@
         </g>
       {/if}
 
-      <!-- Impact craters on an old airless surface: a dark bowl with a faint sunlit rim. -->
+      <!-- Impact craters: a shadowed bowl (radial gradient) ringed by a brighter rim — reads as a pit. -->
       {#if hasCraters}
         <g clip-path="url(#clip-{uid})">
           {#each craters as c}
-            <circle cx={c.cx} cy={c.cy} r={c.r} fill="rgba(0,0,0,0.16)" stroke="rgba(236,236,240,0.16)" stroke-width={Math.max(0.25, c.r * 0.16)} />
+            <circle cx={c.cx} cy={c.cy} r={c.r} fill="url(#crater-{uid})" />
+            <circle cx={c.cx} cy={c.cy} r={c.r * 0.9} fill="none" stroke="rgba(232,232,238,0.22)" stroke-width={Math.max(0.3, c.r * 0.2)} />
           {/each}
         </g>
       {/if}
 
-      <!-- Fresh rayed craters: a bright pit with radiating ejecta rays over the older terrain. -->
+      <!-- Fresh rayed craters: a soft ejecta halo + diffuse ray splash + a bright-rimmed bowl. -->
       {#if rayedCraters.length}
         <g clip-path="url(#clip-{uid})">
           {#each rayedCraters as c}
-            <path d={c.rays} stroke="rgba(240,244,252,0.5)" stroke-width="0.4" fill="none" />
-            <circle cx={c.cx} cy={c.cy} r={c.r} fill="rgba(0,0,0,0.22)" stroke="rgba(245,248,255,0.75)" stroke-width="0.5" />
+            <circle cx={c.cx} cy={c.cy} r={c.r * 3} fill="url(#ejecta-{uid})" />
+            <path d={c.rays} stroke="rgba(238,242,250,0.16)" stroke-width="0.4" fill="none" stroke-linecap="round" />
+            <circle cx={c.cx} cy={c.cy} r={c.r} fill="url(#crater-{uid})" />
+            <circle cx={c.cx} cy={c.cy} r={c.r * 0.9} fill="none" stroke="rgba(245,248,255,0.5)" stroke-width={Math.max(0.3, c.r * 0.2)} />
           {/each}
         </g>
       {/if}

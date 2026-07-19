@@ -146,8 +146,18 @@ function render(body: CelestialBody): HTMLCanvasElement {
     }
   }
 
-  // Foundation-driven surface weathering (craters/cracks/rifts/tholins/frost), disc-space.
-  paintFeaturesDisc(ctx, body, rnd, R);
+  // Space-weathering regolith greying of the BASE only (Moon/Mercury go grey). The feature OVERLAYS
+  // (craters/cracks/tholins/frost/rifts) are NOT baked here: this disc texture is the base layer for
+  // PlanetDisc, which draws those crisply as SVG on top; baking them too would double them. (The 3D
+  // equirect sibling has no such overlay, so it DOES bake the full set.)
+  {
+    const a = deriveAppearance(body);
+    if (a.regolith > 0) {
+      ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = a.regolith;
+      ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, SIZE, SIZE);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    }
+  }
 
   // --- Haze: a wash plus a stronger limb tint (atmosphere reads thickest at the edge).
   if (haze) {
@@ -217,6 +227,13 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
   const a = deriveAppearance(body);
   const wrap = (draw: (dx: number) => void) => { for (const dx of [-EQ_W, 0, EQ_W]) draw(dx); };
 
+  // Space-weathered regolith: desaturate an airless silicate surface toward grey (Moon/Mercury).
+  if (a.regolith > 0) {
+    ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = a.regolith;
+    ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, EQ_W, EQ_H);
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+
   if (a.tholin) {
     if (a.tholin.atmospheric) {
       ctx.globalAlpha = 0.22 + a.tholin.strength * 0.35; ctx.fillStyle = a.tholin.colorHex;
@@ -228,27 +245,36 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
   if (a.frost) drawPatchesEquirect(ctx, rnd, a.frost.colorHex, 0.18 + a.frost.coverage * 0.32, 0.45);
 
   if (a.craters) {
+    // A crater = a shadowed BOWL (dark radial gradient) ringed by a brighter RIM — reads as a real pit,
+    // not a flat dot. A FRESH one adds a soft ejecta blanket and a DIFFUSE ray splash (short, jittered,
+    // faint — not clean spokes).
+    const crater = (x: number, y: number, r: number, fresh: boolean) => wrap((dx) => {
+      const cx = x + dx;
+      if (fresh) {
+        const eg = ctx.createRadialGradient(cx, y, r * 0.6, cx, y, r * 3.2);
+        eg.addColorStop(0, 'rgba(228,234,244,0.18)'); eg.addColorStop(1, 'rgba(228,234,244,0)');
+        ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(cx, y, r * 3.2, 0, 2 * Math.PI); ctx.fill();
+        ctx.strokeStyle = 'rgba(235,240,250,0.12)';
+        const nr = 16 + Math.floor(rnd() * 8);
+        for (let k = 0; k < nr; k++) {
+          const ang = (k / nr) * 2 * Math.PI + (rnd() - 0.5) * 0.4, len = r * (1.2 + rnd() * rnd() * 2.8);
+          ctx.lineWidth = 0.4 + rnd() * 0.4;
+          ctx.beginPath(); ctx.moveTo(cx + Math.cos(ang) * r, y + Math.sin(ang) * r); ctx.lineTo(cx + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke();
+        }
+      }
+      const fg = ctx.createRadialGradient(cx, y, 0, cx, y, r);
+      fg.addColorStop(0, 'rgba(0,0,0,0.30)'); fg.addColorStop(0.72, 'rgba(0,0,0,0.12)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(cx, y, r, 0, 2 * Math.PI); ctx.fill();
+      ctx.strokeStyle = fresh ? 'rgba(245,248,255,0.5)' : 'rgba(232,232,238,0.22)';
+      ctx.lineWidth = Math.max(0.4, r * 0.2); ctx.beginPath(); ctx.arc(cx, y, r * 0.9, 0, 2 * Math.PI); ctx.stroke();
+    });
     const n = Math.round(10 + a.craters.density * 55);
     for (let i = 0; i < n; i++) {
       let x = rnd() * EQ_W;
       if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = rnd() * 0.5 * EQ_W; // leading hemisphere
-      const y = EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, r = 2 + rnd() * rnd() * 7;
-      wrap((dx) => {
-        ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.strokeStyle = 'rgba(240,240,245,0.18)'; ctx.lineWidth = Math.max(0.4, r * 0.16);
-        ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.stroke();
-      });
+      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, 2 + rnd() * rnd() * 7, false);
     }
-    for (let i = 0; i < a.craters.rayed; i++) {
-      const x = rnd() * EQ_W, y = EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, r = 3 + rnd() * 3, nr = 8 + Math.floor(rnd() * 4);
-      wrap((dx) => {
-        ctx.strokeStyle = 'rgba(240,244,252,0.5)'; ctx.lineWidth = 0.7;
-        for (let k = 0; k < nr; k++) { const ang = (k / nr) * 2 * Math.PI, len = r * (2.5 + rnd() * 2.5);
-          ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.lineTo(x + dx + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke(); }
-        ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.strokeStyle = 'rgba(245,248,255,0.8)'; ctx.lineWidth = 0.8; ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.stroke();
-      });
-    }
+    for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, 3 + rnd() * 3, true);
   }
 
   if (a.iceCracks) {
@@ -278,59 +304,6 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
   }
 }
 
-// Same foundation-driven weathering as the equirect, but in the round DISC space (centre R,R, radius
-// R) for the flat true-colour disc (2D orrery). Already clipped to the disc by the caller.
-function paintFeaturesDisc(ctx: CanvasRenderingContext2D, body: CelestialBody, rnd: () => number, R: number) {
-  const a = deriveAppearance(body);
-  const S = R * 2;
-  const rpt = (): [number, number] => { const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * R * 0.9; return [R + Math.cos(t) * rr, R + Math.sin(t) * rr]; };
-
-  if (a.tholin) {
-    if (a.tholin.atmospheric) { ctx.globalAlpha = 0.22 + a.tholin.strength * 0.35; ctx.fillStyle = a.tholin.colorHex; ctx.fillRect(0, 0, S, S); ctx.globalAlpha = 1; }
-    else drawPatches(ctx, rnd, a.tholin.colorHex, 0.22 + a.tholin.strength * 0.4, 0.5);
-  }
-  if (a.frost) drawPatches(ctx, rnd, a.frost.colorHex, 0.18 + a.frost.coverage * 0.32, 0.45);
-
-  if (a.craters) {
-    const n = Math.round(6 + a.craters.density * 30);
-    for (let i = 0; i < n; i++) {
-      let [x, y] = rpt(); if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = R - Math.abs(x - R);
-      const r = 1 + rnd() * rnd() * R * 0.09;
-      ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fill();
-      ctx.beginPath(); ctx.strokeStyle = 'rgba(240,240,245,0.18)'; ctx.lineWidth = Math.max(0.3, r * 0.16); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.stroke();
-    }
-    for (let i = 0; i < a.craters.rayed; i++) {
-      const [x, y] = rpt(), r = 1.4 + rnd() * 1.4, nr = 8;
-      ctx.strokeStyle = 'rgba(240,244,252,0.5)'; ctx.lineWidth = 0.4;
-      for (let k = 0; k < nr; k++) { const ang = (k / nr) * 2 * Math.PI, len = r * (2.5 + rnd() * 2); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke(); }
-      ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fill();
-    }
-  }
-
-  if (a.iceCracks) {
-    const n = Math.round(4 + a.iceCracks.severity * 10);
-    ctx.strokeStyle = a.iceCracks.colorHex; ctx.globalAlpha = 0.5; ctx.lineWidth = 0.5 + a.iceCracks.severity * 0.6;
-    for (let i = 0; i < n; i++) {
-      const a1 = rnd() * 2 * Math.PI, a2 = a1 + (0.5 + rnd()) * Math.PI;
-      const x1 = R + Math.cos(a1) * R * 0.95, y1 = R + Math.sin(a1) * R * 0.95, x2 = R + Math.cos(a2) * R * 0.95, y2 = R + Math.sin(a2) * R * 0.95;
-      const mx = (x1 + x2) / 2 + (rnd() - 0.5) * R * 0.3, my = (y1 + y2) / 2 + (rnd() - 0.5) * R * 0.3;
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  if (a.rifts) {
-    const n = 1 + Math.round(a.rifts.extent); ctx.lineCap = 'round';
-    for (let i = 0; i < n; i++) {
-      const a1 = rnd() * 2 * Math.PI, span = (0.5 + rnd() * 0.5) * Math.PI, r1 = R * (0.3 + rnd() * 0.3);
-      const x1 = R + Math.cos(a1) * r1, y1 = R + Math.sin(a1) * r1, x2 = R + Math.cos(a1 + span) * (r1 + R * 0.12), y2 = R + Math.sin(a1 + span) * (r1 + R * 0.12);
-      const mx = (x1 + x2) / 2 + (rnd() - 0.5) * R * 0.15, my = (y1 + y2) / 2 + (rnd() - 0.5) * R * 0.15;
-      ctx.strokeStyle = 'rgba(34,40,52,0.4)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
-      ctx.strokeStyle = 'rgba(210,222,238,0.28)'; ctx.lineWidth = 0.4; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
-    }
-    ctx.lineCap = 'butt';
-  }
-}
 
 function renderEquirect(body: CelestialBody): HTMLCanvasElement {
   const c = document.createElement('canvas');

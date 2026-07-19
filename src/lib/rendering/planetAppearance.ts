@@ -121,6 +121,7 @@ export interface AppearanceModel {
 	tidallyLocked: boolean;
 	// surface features (flags + params; renderers seed any positions themselves)
 	polarIce: boolean;
+	regolith: number;             // 0..1 space-weathering desaturation of an airless silicate surface (Moon/Mercury grey)
 	craters: CraterSpec | null;   // rocky impact record (icy worlds fracture instead — see iceCracks)
 	iceCracks: IceCrackSpec | null;
 	rifts: RiftSpec | null;
@@ -209,6 +210,13 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const craters: CraterSpec | null = craterDensity > 0.05
 		? { density: craterDensity, rayed: atmPressureBar < 0.02 && craterDensity > 0.4 ? 2 : 0, leadBias }
 		: null;
+
+	// SPACE-WEATHERED REGOLITH — micrometeorite + solar-wind maturation greys an AIRLESS silicate surface
+	// toward neutral (the Moon and Mercury are grey, not the tan of fresh rock); maturity tracks the
+	// irradiation dose. Gated on true vacuum, so thin-air, OXIDISED Mars keeps its red — its colour is
+	// rust, not space weathering.
+	const regolith = (solid && !icyShell && atmPressureBar < 0.001)
+		? clamp01(Math.min(1, dose) * 0.7) : 0;
 
 	// ICE CRACKS / RIDGES — an icy crust flexed by tidal/freezing stress splits into a lineae network
 	// (Europa). Stronger on tidally-worked / cryovolcanic crusts.
@@ -309,6 +317,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		atmPressureBar,
 		tidallyLocked: !!(body as any).tidallyLocked,
 		polarIce,
+		regolith,
 		craters,
 		iceCracks,
 		rifts,

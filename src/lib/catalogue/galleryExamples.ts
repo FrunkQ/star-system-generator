@@ -145,14 +145,14 @@ const withAp = (b: CelestialBody): CelestialBody => {
 
 // Cratering climbs with SURFACE AGE; the last one is tidally locked (leading-hemisphere bias).
 export const GALLERY_CRATERING: CelestialBody[] = [
-	mk({ name: 'Young · resurfaced', apparentColorHex: '#8a8f99', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
-		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('plate-tectonics', 0.05) }),
-	mk({ name: 'Moderate · 1 Gyr', apparentColorHex: '#9a9088', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
-		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('stagnant-lid', 1.0) }),
-	mk({ name: 'Ancient · 4.6 Gyr', apparentColorHex: '#a49a8e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
-		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('inactive', 4.6) }),
-	mk({ name: 'Ancient · tidally locked', apparentColorHex: '#a49a8e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
-		makeup: { rock: 0.7, metal: 0.3 } as any, tidallyLocked: true, geoActivity: geo('inactive', 4.6) } as any)
+	mk({ name: 'Young · resurfaced', apparentColorHex: '#8a7a5e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, irradiationDose: 0.05, geoActivity: geo('plate-tectonics', 0.05) } as any),
+	mk({ name: 'Moderate · 1 Gyr', apparentColorHex: '#8a7a5e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, irradiationDose: 0.4, geoActivity: geo('stagnant-lid', 1.0) } as any),
+	mk({ name: 'Ancient · 4.6 Gyr', apparentColorHex: '#8a7a5e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, irradiationDose: 2.5, geoActivity: geo('inactive', 4.6) } as any),
+	mk({ name: 'Ancient · tidally locked', apparentColorHex: '#8a7a5e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, irradiationDose: 2.5, tidallyLocked: true, geoActivity: geo('inactive', 4.6) } as any)
 ].map(withAp);
 
 // Ice FRACTURES where rock craters; a frozen former ocean RIFTS the crust.
