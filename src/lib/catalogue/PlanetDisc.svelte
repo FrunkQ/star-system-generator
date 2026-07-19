@@ -165,14 +165,14 @@
       return `M${x1.toFixed(1)} ${y1.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
     });
   })();
-  // Crustal rifts (Charon canyon): one or two bold chasms slicing the crust.
+  // Crustal rifts (Charon canyon): one or two subtle chasms — a shorter arc, not a full-disc slash.
   $: rifts = (() => {
     if (!a.rifts) return [] as string[];
-    const rnd = seeded(97), n = Math.round(1 + a.rifts.extent * 2);
+    const rnd = seeded(97), n = 1 + Math.round(a.rifts.extent);
     return Array.from({ length: n }, () => {
-      const a1 = rnd() * 2 * Math.PI, a2 = a1 + Math.PI + (rnd() - 0.5) * 0.8;
-      const x1 = 50 + Math.cos(a1) * 30, y1 = 50 + Math.sin(a1) * 30;
-      const x2 = 50 + Math.cos(a2) * 30, y2 = 50 + Math.sin(a2) * 30;
+      const a1 = rnd() * 2 * Math.PI, span = (0.5 + rnd() * 0.5) * Math.PI, r1 = 16 + rnd() * 12;
+      const x1 = 50 + Math.cos(a1) * r1, y1 = 50 + Math.sin(a1) * r1;
+      const x2 = 50 + Math.cos(a1 + span) * (r1 + 6), y2 = 50 + Math.sin(a1 + span) * (r1 + 6);
       const mx = (x1 + x2) / 2 + (rnd() - 0.5) * 8, my = (y1 + y2) / 2 + (rnd() - 0.5) * 8;
       return `M${x1.toFixed(1)} ${y1.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
     });
@@ -456,8 +456,8 @@
       {#if rifts.length}
         <g clip-path="url(#clip-{uid})">
           {#each rifts as d}
-            <path {d} fill="none" stroke="rgba(20,26,36,0.55)" stroke-width="2.4" />
-            <path {d} fill="none" stroke="rgba(210,222,238,0.5)" stroke-width="0.6" />
+            <path {d} fill="none" stroke="rgba(34,40,52,0.4)" stroke-width="1.6" stroke-linecap="round" />
+            <path {d} fill="none" stroke="rgba(210,222,238,0.3)" stroke-width="0.4" stroke-linecap="round" />
           {/each}
         </g>
       {/if}

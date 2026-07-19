@@ -146,6 +146,9 @@ function render(body: CelestialBody): HTMLCanvasElement {
     }
   }
 
+  // Foundation-driven surface weathering (craters/cracks/rifts/tholins/frost), disc-space.
+  paintFeaturesDisc(ctx, body, rnd, R);
+
   // --- Haze: a wash plus a stronger limb tint (atmosphere reads thickest at the edge).
   if (haze) {
     const w = Math.min(0.8, haze.weight);
@@ -259,16 +262,73 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
   }
 
   if (a.rifts) {
-    const n = Math.round(1 + a.rifts.extent * 2);
+    const n = 1 + Math.round(a.rifts.extent);         // one or two canyons, not a barcode
+    ctx.lineCap = 'round';
     for (let i = 0; i < n; i++) {
-      const y = EQ_H * (0.25 + rnd() * 0.5), x = rnd() * EQ_W, len = EQ_W * (0.4 + rnd() * 0.4), bow = (rnd() - 0.5) * 30;
+      const y = EQ_H * (0.3 + rnd() * 0.4), x = rnd() * EQ_W, len = EQ_W * (0.16 + rnd() * 0.18); // shorter
+      const ey = y + (rnd() - 0.5) * 16, bow = (rnd() - 0.5) * 18;
       wrap((dx) => {
-        ctx.strokeStyle = 'rgba(20,26,36,0.6)'; ctx.lineWidth = 5;
-        ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, y + (rnd() - 0.5) * 20); ctx.stroke();
-        ctx.strokeStyle = 'rgba(210,222,238,0.5)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, y + (rnd() - 0.5) * 20); ctx.stroke();
+        ctx.strokeStyle = 'rgba(34,40,52,0.4)'; ctx.lineWidth = 2.4;   // a soft shadowed trough, not a bar
+        ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, ey); ctx.stroke();
+        ctx.strokeStyle = 'rgba(210,222,238,0.28)'; ctx.lineWidth = 0.5; // faint sunlit rim
+        ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, ey); ctx.stroke();
       });
     }
+    ctx.lineCap = 'butt';
+  }
+}
+
+// Same foundation-driven weathering as the equirect, but in the round DISC space (centre R,R, radius
+// R) for the flat true-colour disc (2D orrery). Already clipped to the disc by the caller.
+function paintFeaturesDisc(ctx: CanvasRenderingContext2D, body: CelestialBody, rnd: () => number, R: number) {
+  const a = deriveAppearance(body);
+  const S = R * 2;
+  const rpt = (): [number, number] => { const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * R * 0.9; return [R + Math.cos(t) * rr, R + Math.sin(t) * rr]; };
+
+  if (a.tholin) {
+    if (a.tholin.atmospheric) { ctx.globalAlpha = 0.22 + a.tholin.strength * 0.35; ctx.fillStyle = a.tholin.colorHex; ctx.fillRect(0, 0, S, S); ctx.globalAlpha = 1; }
+    else drawPatches(ctx, rnd, a.tholin.colorHex, 0.22 + a.tholin.strength * 0.4, 0.5);
+  }
+  if (a.frost) drawPatches(ctx, rnd, a.frost.colorHex, 0.18 + a.frost.coverage * 0.32, 0.45);
+
+  if (a.craters) {
+    const n = Math.round(6 + a.craters.density * 30);
+    for (let i = 0; i < n; i++) {
+      let [x, y] = rpt(); if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = R - Math.abs(x - R);
+      const r = 1 + rnd() * rnd() * R * 0.09;
+      ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fill();
+      ctx.beginPath(); ctx.strokeStyle = 'rgba(240,240,245,0.18)'; ctx.lineWidth = Math.max(0.3, r * 0.16); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.stroke();
+    }
+    for (let i = 0; i < a.craters.rayed; i++) {
+      const [x, y] = rpt(), r = 1.4 + rnd() * 1.4, nr = 8;
+      ctx.strokeStyle = 'rgba(240,244,252,0.5)'; ctx.lineWidth = 0.4;
+      for (let k = 0; k < nr; k++) { const ang = (k / nr) * 2 * Math.PI, len = r * (2.5 + rnd() * 2); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke(); }
+      ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fill();
+    }
+  }
+
+  if (a.iceCracks) {
+    const n = Math.round(4 + a.iceCracks.severity * 10);
+    ctx.strokeStyle = a.iceCracks.colorHex; ctx.globalAlpha = 0.5; ctx.lineWidth = 0.5 + a.iceCracks.severity * 0.6;
+    for (let i = 0; i < n; i++) {
+      const a1 = rnd() * 2 * Math.PI, a2 = a1 + (0.5 + rnd()) * Math.PI;
+      const x1 = R + Math.cos(a1) * R * 0.95, y1 = R + Math.sin(a1) * R * 0.95, x2 = R + Math.cos(a2) * R * 0.95, y2 = R + Math.sin(a2) * R * 0.95;
+      const mx = (x1 + x2) / 2 + (rnd() - 0.5) * R * 0.3, my = (y1 + y2) / 2 + (rnd() - 0.5) * R * 0.3;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  if (a.rifts) {
+    const n = 1 + Math.round(a.rifts.extent); ctx.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      const a1 = rnd() * 2 * Math.PI, span = (0.5 + rnd() * 0.5) * Math.PI, r1 = R * (0.3 + rnd() * 0.3);
+      const x1 = R + Math.cos(a1) * r1, y1 = R + Math.sin(a1) * r1, x2 = R + Math.cos(a1 + span) * (r1 + R * 0.12), y2 = R + Math.sin(a1 + span) * (r1 + R * 0.12);
+      const mx = (x1 + x2) / 2 + (rnd() - 0.5) * R * 0.15, my = (y1 + y2) / 2 + (rnd() - 0.5) * R * 0.15;
+      ctx.strokeStyle = 'rgba(34,40,52,0.4)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(210,222,238,0.28)'; ctx.lineWidth = 0.4; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(mx, my, x2, y2); ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
   }
 }
 
@@ -392,7 +452,9 @@ export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement
 export function getPlanetTexture(body: CelestialBody): HTMLCanvasElement | null {
   if (typeof document === 'undefined' || !body.apparentColor) return null;
   const ap = body.apparentColor;
-  const key = `${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|` +
+  const g = (body as any).geoActivity;
+  const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}`;
+  const key = `${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = cache.get(key);
   if (!tex) {

@@ -164,7 +164,7 @@ export const GALLERY_ICE_VS_ROCK: CelestialBody[] = [
 		tags: [{ key: 'tidal/hotspots' }] }),
 	mk({ name: 'Charon · crustal rift', apparentColorHex: '#b8b0a6', radiusKm: 606, atmosphere: { pressure_bar: 0 } as any,
 		makeup: { ice: 0.5, rock: 0.5 } as any, geoActivity: geo('inactive', 4.0), volatiles: vol('water'),
-		tags: [{ key: 'structure/subsurface-ocean' }] })
+		tags: [{ key: 'structure/icy-shell' }] })
 ].map(withAp);
 
 // Tholins (irradiated organics) + frosts (retained bright ices). Pluto reddens; young Triton stays

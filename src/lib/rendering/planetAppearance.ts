@@ -197,8 +197,14 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		? clamp01(isSmallBody ? Math.max(0.6, ageDensity) : ageDensity)
 		: 0;
 	// A tidally-locked body sweeps up more impactors on its LEADING (apex) hemisphere → a lop-sided
-	// record. (A fixed moderate bias for now; scales with orbital speed in a later pass.)
-	const leadBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked) ? 0.6 : 0;
+	// record whose strength scales with orbital speed vs. the impactor population: a fast inner moon
+	// (Io) is strongly asymmetric, a slow distant one (Charon) barely. v = sqrt(μ/a). Falls back to a
+	// fixed moderate bias when a body carries no orbit (gallery examples).
+	const orb = (body as any).orbit;
+	let vKms = 0;
+	if (orb?.hostMu > 0 && orb?.elements?.a_AU > 0) vKms = Math.sqrt(orb.hostMu / (orb.elements.a_AU * 1.495978707e11)) / 1000;
+	const leadBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked)
+		? (vKms > 0 ? clamp01(vKms / (vKms + 8)) : 0.5) : 0;
 	// A few FRESH craters (bright ejecta rays) punched into an otherwise old, airless surface.
 	const craters: CraterSpec | null = craterDensity > 0.05
 		? { density: craterDensity, rayed: atmPressureBar < 0.02 && craterDensity > 0.4 ? 2 : 0, leadBias }
@@ -213,12 +219,16 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		? { severity: crackSeverity, colorHex: '#dfeaf5' }
 		: null;
 
-	// CRUSTAL RIFTS — a former subsurface ocean that has since FROZEN expands and splits the crust into
-	// deep canyons (Charon's Serenity Chasma). Needs the ocean signal but a now-quiet (non-cryo) crust.
-	const hadOcean = has('structure/subsurface-ocean') || retained.includes('water');
-	const riftExtent = solid && icyShell && hadOcean && regime !== 'cryovolcanic' && surfaceAgeGyr > 1
-		? 0.6 : 0;
-	const rifts: RiftSpec | null = riftExtent > 0 ? { extent: riftExtent } : null;
+	// CRUSTAL RIFTS — a former subsurface ocean that has since FROZEN expands (~8%) and splits the crust
+	// into extensional canyons (Charon's Serenity Chasma, Tethys' Ithaca Chasma). The signal is a
+	// FROZEN icy body: an icy shell that is now geologically dead, NO current subsurface ocean (that
+	// one still holds liquid — Europa — so its crust isn't stretched), and mid-sized (big enough to
+	// have differentiated an ocean, small enough to have frozen through). A retained-water ice by itself
+	// is NOT enough — every icy world has that; without this gate a rift striped every frost world.
+	const rKm = body.radiusKm ?? 0;
+	const frozenOcean = has('structure/icy-shell') && regime === 'inactive'
+		&& !has('structure/subsurface-ocean') && rKm >= 300 && rKm <= 1600;
+	const rifts: RiftSpec | null = solid && frozenOcean ? { extent: 0.5 } : null;
 
 	// THOLINS — irradiated organic ices redden/darken over time. Needs a CH4/N2 PRECURSOR: either
 	// retained on the surface (Pluto's dark-red patches) or a thick CH4/N2 atmosphere whose haze rains
