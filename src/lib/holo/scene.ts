@@ -24,7 +24,7 @@ import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from 
 import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, updateMagma, updatePlumes, accretionColor,
+  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudShell, updateMagma, updatePlumes, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
@@ -567,6 +567,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // sprites whose opacity is flickered/glistened each frame by updateMagma / updatePlumes.
   let magmaVisuals: EmissiveVisual[] = [];
   let plumeVisuals: EmissiveVisual[] = [];
+  // Cloud decks: a translucent shell per cloudy body, drifted in longitude each frame so it floats over
+  // the surface (its own spin, on top of the parent sphere's).
+  let cloudVisuals: { mesh: THREE.Object3D; drift: number }[] = [];
   // Auto-generated black-hole accretion discs, by BH node id — the lens exempts each disc's projected
   // band so its near side shows in front of the shadow (see lensingShader).
   const bhDiscInfo = new Map<string, { pivot: THREE.Group; inner: number; outer: number }>();
@@ -1155,6 +1158,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     auroraVisuals = [];
     magmaVisuals = [];
     plumeVisuals = [];
+    cloudVisuals = [];
     bhDiscInfo.clear();
   }
 
@@ -1431,10 +1435,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             if (appear.selfLumGlow) {
               sphere.add(buildSelfLumGlow(radius, appear.selfLumGlow.colorHex, glowTexture));
             }
-            // Atmosphere limb-glow: a Fresnel halo hugging the silhouette, brightness + reach scaling
-            // with surface pressure (thin exosphere → faint rim; thick air → a broad soft glow).
+            // Atmosphere limb-glow: a thin Fresnel halo hugging the silhouette, coloured by the air/haze.
             if (appear.atmGlow) {
               sphere.add(buildAtmoGlow(radius, appear.atmGlow.colorHex, appear.atmGlow.strength));
+            }
+            // Cloud deck: a separate translucent shell above the surface that DRIFTS on its own — a
+            // patchy deck on Earth-likes, an opaque haze veil on Venus-likes. Parented to the sphere so
+            // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
+            if (appear.clouds) {
+              let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
+              const cl = buildCloudShell(radius, appear.clouds.colorHex, appear.clouds.coverage, cseed || 1);
+              sphere.add(cl.mesh);
+              cloudVisuals.push({ mesh: cl.mesh, drift: cl.drift });
             }
           }
         }
@@ -1871,6 +1883,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateAuroras(nowSec);
     updateMagma(magmaVisuals, nowSec);
     updatePlumes(plumeVisuals, nowSec);
+    for (const c of cloudVisuals) c.mesh.rotation.y = nowSec * c.drift; // clouds drift over the surface
     updateConstructs();
     updateShadows();
     updateRings();

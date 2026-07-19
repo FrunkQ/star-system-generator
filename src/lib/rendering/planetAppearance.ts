@@ -72,6 +72,10 @@ export interface AtmGlowSpec {
 	strength: number; // 0..1 (log-scaled from pressure)
 	colorHex: string;
 }
+export interface CloudSpec {
+	coverage: number;  // 0..1 completeness/opacity of the deck (Venus ≈ opaque, Earth ≈ patchy)
+	colorHex: string;  // haze / cloud-top tint
+}
 export interface SelfLumSpec {
 	teff: number;
 	colorHex: string;
@@ -150,6 +154,7 @@ export interface AppearanceModel {
 	cryoPlumes: CryoPlumeSpec | null;
 	aurora: AuroraSpec | null;
 	atmGlow: AtmGlowSpec | null;
+	clouds: CloudSpec | null;
 	selfLumGlow: SelfLumSpec | null;
 }
 
@@ -357,13 +362,25 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		? (() => { const e = auroraEmitter(body); return { strength: auroraStr, coreHex: e.hex, tipHex: e.tip, brilliant: auroraStr >= 0.55 }; })()
 		: null;
 
-	// Atmosphere limb-glow (strength log-scaled from pressure; colour from atmosphere/cloud palette).
+	// Atmosphere limb-glow (strength log-scaled from pressure). Colour is the atmosphere/cloud tint, and
+	// falls back to the body's OWN apparent colour (for a cloud-veiled world that IS the haze colour —
+	// Venus reads yellow) rather than a generic blue.
+	const atmColorHex = palette.find((p) => p.role === 'atmosphere')?.hex
+		?? palette.find((p) => p.role === 'cloud')?.hex ?? baseColorHex;
 	const atmGlow: AtmGlowSpec | null = (!isStar && !isBelt && atmPressureBar > 0.02)
 		? {
 				strength: Math.max(0, Math.min(1, (Math.log10(Math.max(1e-3, atmPressureBar)) + 2) / 3)),
-				colorHex: palette.find((p) => p.role === 'atmosphere')?.hex
-					?? palette.find((p) => p.role === 'cloud')?.hex ?? '#9fc6e8'
+				colorHex: atmColorHex
 			}
+		: null;
+
+	// CLOUD DECK — a condensed layer that floats above the surface, rendered as its OWN shell in 3D so
+	// it drifts separately (parallax) and, when thick, veils the ground (Venus = an opaque hazy ball;
+	// Earth = a partial patchy deck). Opacity climbs with pressure. Giants are excluded: their banded
+	// texture already IS their cloud tops.
+	const hasCloudTag = (body.tags ?? []).some((t) => t.key === 'structure/cloud-deck');
+	const clouds: CloudSpec | null = (!isStar && !isBelt && !isSmallBody && !rendersAsGiant(body) && (hasCloudTag || atmPressureBar > 0.3))
+		? { coverage: clamp01(0.3 + (Math.log10(Math.max(0.1, atmPressureBar)) + 0.5) * 0.35), colorHex: atmColorHex }
 		: null;
 
 	// Self-luminous brown dwarf (thermal/self-luminous, value = effective temperature).
@@ -399,6 +416,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		cryoPlumes,
 		aurora,
 		atmGlow,
+		clouds,
 		selfLumGlow
 	};
 }

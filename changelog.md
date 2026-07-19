@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.185-beta - 20th Jul 2026
+
+* Atmosphere overhaul on the 3D holo: the limb-glow now hugs the surface tightly (was a big bubble) and takes the world's own air/haze colour instead of a generic blue - so Venus reads hazy yellow, not a clear blue rim. Added a separate cloud deck that floats above the surface on its own drifting shell: a patchy layer on Earth-likes, an opaque haze veil on Venus-likes (giants excluded - their bands already are the cloud tops).
+
 ## v2.1.184-beta - 20th Jul 2026
 
 * Deleting a system now asks for confirmation first (naming the system) - it was wiping the whole system, its routes and notes with no warning.

@@ -150,8 +150,9 @@ export function buildSelfLumGlow(radius: number, colorHex: string, glowTexture: 
 
 // ATMOSPHERE LIMB-GLOW — a translucent shell that lights up at the LIMB (grazing viewing angle, where
 // the line of sight passes through the most air) and is clear over the disc centre, so it reads as a
-// halo hugging the silhouette. A Fresnel term on a slightly-enlarged back-side sphere, additive-blended.
-// `strength` (0..1, log-scaled from pressure) sets both the halo brightness and how far it reaches.
+// thin halo hugging the silhouette. A Fresnel term on a slightly-enlarged back-side sphere, additive-
+// blended. `strength` (0..1, log-scaled from pressure) sets the halo brightness; the shell sits CLOSE
+// to the surface so it reads as an atmosphere skin, not a big bubble.
 export function buildAtmoGlow(radius: number, colorHex: string, strength: number): THREE.Mesh {
 	const mat = new THREE.ShaderMaterial({
 		uniforms: { uColor: { value: new THREE.Color(colorHex) }, uStrength: { value: strength } },
@@ -167,14 +168,50 @@ export function buildAtmoGlow(radius: number, colorHex: string, strength: number
 			uniform vec3 uColor; uniform float uStrength; varying vec3 vN; varying vec3 vView;
 			void main() {
 				float f = 1.0 - abs(dot(normalize(vN), normalize(vView)));  // 0 face-on → 1 at the limb
-				f = pow(f, 2.4);
-				gl_FragColor = vec4(uColor, f * (0.35 + 0.65 * uStrength));
+				f = pow(f, 3.0);                                            // tight to the limb
+				gl_FragColor = vec4(uColor, f * (0.35 + 0.6 * uStrength));
 			}`,
 		transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false
 	});
-	const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.08 + 0.1 * strength), 32, 24), mat);
+	const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.015 + 0.03 * strength), 32, 24), mat);
 	shell.renderOrder = 2;
 	return shell;
+}
+
+// A patchy cloud/haze equirect texture: soft tinted blobs on transparent, their DENSITY set by coverage
+// (Earth ≈ scattered, Venus ≈ a near-solid veil). Seeded per body so it's stable across frames.
+export function makeCloudTexture(colorHex: string, coverage: number, seed: number): THREE.Texture {
+	const W = 256, H = 128, c = document.createElement('canvas'); c.width = W; c.height = H;
+	const ctx = c.getContext('2d')!;
+	let s = (seed || 1) >>> 0;
+	const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+	const col = new THREE.Color(colorHex);
+	const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
+	// A base veil for a thick deck (opaque worlds), then blobs on top for texture.
+	if (coverage > 0.75) { ctx.fillStyle = `rgba(${r},${g},${b},${(coverage - 0.75) * 3.2})`; ctx.fillRect(0, 0, W, H); }
+	const blobs = Math.round(40 + coverage * 160);
+	for (let i = 0; i < blobs; i++) {
+		const x = rnd() * W, y = rnd() * H, rad = (4 + rnd() * rnd() * 26) * (0.6 + coverage);
+		const a = (0.10 + rnd() * 0.35) * coverage;
+		const grad = ctx.createRadialGradient(x, y, 0, x, y, rad);
+		grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+		grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+		ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, rad, 0, 2 * Math.PI); ctx.fill();
+	}
+	const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+	tex.wrapS = THREE.RepeatWrapping;
+	return tex;
+}
+
+// CLOUD SHELL — a semi-transparent cloud/haze deck on its OWN sphere just above the surface, so it
+// floats separately (the caller drifts it). Normal-blended (a real veil, not a glow). Returns the mesh
+// and a slow longitudinal drift rate (rad/s) relative to the surface.
+export function buildCloudShell(radius: number, colorHex: string, coverage: number, seed: number): { mesh: THREE.Mesh; drift: number } {
+	const tex = makeCloudTexture(colorHex, coverage, seed);
+	const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false, opacity: Math.min(1, 0.55 + coverage * 0.5) });
+	const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.03, 40, 28), mat);
+	mesh.renderOrder = 1;
+	return { mesh, drift: 0.02 + 0.03 * (1 - coverage) }; // thinner decks drift a touch faster
 }
 
 // --- Animation helpers ----------------------------------------------------------------------------
