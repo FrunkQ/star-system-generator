@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.180-beta - 19th Jul 2026
+
+* Texture pole-pinch fix: craters now pre-stretch horizontally by 1/cos(latitude) so the equirect UV squeeze brings them back round at the poles instead of smearing into swirls.
+* Polar vortices: a gas giant's standing polar jet can lock into a geometric polygon (Saturn's hexagon; Jupiter's poles run 5-8 sided) - spawned at generation with the side count carried on a feature/polar-vortex tag (not always six), rendered in 2D + 3D, documented on /physics, with a new gallery row in both reference galleries.
+
 ## v2.1.167-beta - 19th Jul 2026
 
 * Geo foundations step 4 - IRRADIATION DOSE: the last foundation. Each world derives how much space-weathering radiation its surface has taken - stellar UV (from its equilibrium temperature) plus a cosmic-ray floor so even distant, dimly-lit worlds redden over time, cut by any magnetosphere, multiplied by how long the surface has been exposed. This drives tholin darkening. A neat result falls out: ancient Pluto (with methane/nitrogen ices) reads a real dose and reddens, while Triton - which has the same ices but a young, cryovolcanically resurfaced crust - reads almost none and stays fresh, exactly as the two look in reality. Shown in the Newton panel and as a low/moderate/high tag. Completes the four physics foundations behind the coming frost/tholin/crater/ice-crack visuals.

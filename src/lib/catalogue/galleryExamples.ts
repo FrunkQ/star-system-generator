@@ -100,6 +100,20 @@ const giants = [
 		apparentColor: { hex: '#a6d8dc', banding: 4, palette: iceGiant('#b8e0e4') } as any }),
 ];
 
+// Polar vortices — a gas giant's geometric polar jet. Saturn's is a hexagon (6); Jupiter's poles run
+// polygonal cyclone rings 5–9. Side count rides on the feature/polar-vortex tag value.
+const polarVortices = [
+	mk({ name: 'Pentagon jet (5)', apparentColorHex: '#d8c89a', radiusKm: 58000, makeup: { gas: 0.9, ice: 0.1 } as any,
+		apparentColor: { hex: '#d8c89a', banding: 6, palette: ammonia('#e6dcb8', '#c8b888', '#a89860') } as any,
+		tags: [{ key: 'feature/polar-vortex', value: '5' }] }),
+	mk({ name: 'Hexagon jet (6) · Saturn', apparentColorHex: '#d8c89a', radiusKm: 58000, makeup: { gas: 0.9, ice: 0.1 } as any,
+		apparentColor: { hex: '#d8c89a', banding: 6, palette: ammonia('#e6dcb8', '#c8b888', '#a89860') } as any,
+		tags: [{ key: 'feature/polar-vortex', value: '6' }] }),
+	mk({ name: 'Octagon jet (8) · Jupiter N', apparentColorHex: '#d8b888', radiusKm: 69000, makeup: { gas: 0.9, ice: 0.1 } as any,
+		apparentColor: { hex: '#d8b888', banding: 9, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any,
+		tags: [{ key: 'feature/polar-vortex', value: '8' }] }),
+];
+
 const auroras = [
 	mk({ name: 'Oxygen · green', apparentColorHex: '#2f6ea5', magnetism: { strengthG: 0.5 } as any, atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.42' }, { key: 'climate/polar-ice', value: 'water' }] }),
 	mk({ name: 'Nitrogen · blue · 40° tilt', apparentColorHex: '#37589a', axial_tilt_deg: 40, magnetism: { strengthG: 0.6 } as any, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
@@ -249,6 +263,7 @@ export const GALLERY_ROWS: GalleryRow[] = [
 	{ title: 'Oceans of different liquids', bodies: oceanWorlds },
 	{ title: 'Rotational shape — flattening to break-up', bodies: shapes },
 	{ title: 'Gas & ice giants (+ ring, tilt)', bodies: giants },
+	{ title: 'Polar vortices — geometric polar jets', bodies: polarVortices },
 	{ title: 'Auroras — gas-coloured', bodies: auroras },
 	{ title: 'Self-luminous brown dwarfs', bodies: brownDwarfs },
 	{ title: 'Volcanism — glowing vents (3D)', bodies: GALLERY_VOLCANISM },

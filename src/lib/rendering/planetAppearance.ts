@@ -114,6 +114,9 @@ export interface FrostSpec {
 	coverage: number;  // 0..1 bright volatile-ice cover from retained species
 	colorHex: string;  // N2/CO2/water → white-blue; SO2 → sulphur yellow
 }
+export interface PolarVortexSpec {
+	sides: number;     // a polar jet-stream polygon (Saturn's hexagon=6; Jupiter's poles run 5–9)
+}
 
 /** Everything about a body's appearance that follows from its data + tags, renderer-agnostic. */
 export interface AppearanceModel {
@@ -142,6 +145,7 @@ export interface AppearanceModel {
 	frost: FrostSpec | null;
 	thermalGlow: ThermalGlowSpec | null; // incandescent glow of a super-hot surface (uniform)
 	eyeball: EyeballSpec | null;         // day/night hemisphere split of a tidally-locked world
+	polarVortex: PolarVortexSpec | null; // a gas giant's geometric polar jet (Saturn hexagon)
 	magma: MagmaSpec | null;
 	cryoPlumes: CryoPlumeSpec | null;
 	aurora: AuroraSpec | null;
@@ -317,6 +321,14 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		? { tempK: hotK, colorHex: bdGlowColour(hotK), strength: clamp01((hotK - GLOW_ONSET) / (GLOW_FULL - GLOW_ONSET)) }
 		: null;
 
+	// POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Hard to predict, so
+	// it's spawned as a tag at generation; the SIDE COUNT rides as the value (Saturn 6; Jupiter's poles
+	// run 5–9). The renderer draws a many-sided polygon ringing the pole.
+	const vortexTag = (body.tags ?? []).find((t) => t.key === 'feature/polar-vortex');
+	const polarVortex: PolarVortexSpec | null = (!isStar && !isBelt && rendersAsGiant(body) && vortexTag)
+		? { sides: Math.max(4, Math.min(9, parseInt(vortexTag.value ?? '6', 10) || 6)) }
+		: null;
+
 	// Magma / lava: a full lava world, or discrete tidal volcanism / hotspots.
 	const isLava = has('tidal/lava-flows');
 	const volc = isLava || has('tidal/volcanism') || has('tidal/hotspots');
@@ -380,6 +392,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		frost,
 		thermalGlow,
 		eyeball,
+		polarVortex,
 		magma,
 		cryoPlumes,
 		aurora,

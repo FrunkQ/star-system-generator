@@ -251,6 +251,23 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
 
   // POLAR ICE CAPS — bright frozen caps at the two poles (the equirect's top and bottom rows ARE the
   // poles). A soft gradient fading toward the equator; craters/features drawn after show faintly through.
+  // POLAR VORTEX — a gas giant's geometric polar jet (Saturn hexagon). A polygon ringing the north
+  // pole: the boundary latitude waves N times with longitude, so from the pole it reads as an N-gon.
+  if (a.polarVortex) {
+    const sides = a.polarVortex.sides, baseLat = EQ_H * 0.1, amp = EQ_H * 0.028;
+    const yb = (x: number) => baseLat + amp * Math.cos(sides * (x / EQ_W) * 2 * Math.PI);
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yb(x));
+    ctx.lineTo(EQ_W, 0); ctx.closePath();
+    ctx.fillStyle = 'rgba(70,90,130,0.32)'; ctx.fill();                 // stormy vortex interior
+    ctx.strokeStyle = 'rgba(210,222,245,0.5)'; ctx.lineWidth = 2 * S;   // bright jet rim
+    ctx.beginPath();
+    for (let x = 0; x <= EQ_W; x += 3) (x === 0 ? ctx.moveTo(x, yb(x)) : ctx.lineTo(x, yb(x)));
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(200,215,240,0.35)';                          // a small bright eye at the pole
+    ctx.beginPath(); ctx.ellipse(EQ_W / 2, baseLat * 0.35, EQ_W * 0.12, baseLat * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
+  }
+
   if (a.polarIce) {
     // Bright frozen caps. The equirect pinches at the poles, so keep the cap SOLID across most of its
     // latitude band (only fading near the equator edge) — otherwise it collapses into an invisible speck.
@@ -279,28 +296,36 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     // faint — not clean spokes).
     // High contrast so the pit survives the sphere's diffuse lighting: a deep dark floor, a crisp bright
     // rim, and a thin dark outer shadow so it reads as a raised-rim bowl rather than a smudge.
-    const crater = (x: number, y: number, r: number, fresh: boolean) => wrap((dx) => {
-      const cx = x + dx;
-      if (fresh) {
-        const eg = ctx.createRadialGradient(cx, y, r * 0.6, cx, y, r * 3.2);
-        eg.addColorStop(0, 'rgba(230,236,246,0.24)'); eg.addColorStop(1, 'rgba(230,236,246,0)');
-        ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(cx, y, r * 3.2, 0, 2 * Math.PI); ctx.fill();
-        ctx.strokeStyle = 'rgba(238,242,250,0.16)';
-        const nr = 16 + Math.floor(rnd() * 8);
-        for (let k = 0; k < nr; k++) {
-          const ang = (k / nr) * 2 * Math.PI + (rnd() - 0.5) * 0.4, len = r * (1.2 + rnd() * rnd() * 2.8);
-          ctx.lineWidth = (0.4 + rnd() * 0.4) * S;
-          ctx.beginPath(); ctx.moveTo(cx + Math.cos(ang) * r, y + Math.sin(ang) * r); ctx.lineTo(cx + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke();
+    // POLE-PINCH FIX: near the poles the equirect squeezes horizontally (longitude lines converge), so
+    // a crater drawn round would smear into a pinched swirl. Pre-STRETCH each crater horizontally by
+    // 1/cos(latitude) (a save/scale transform); the sphere's UV squeeze then brings it back to round.
+    const crater = (x: number, y: number, r: number, fresh: boolean) => {
+      const cosLat = Math.max(0.16, Math.cos((0.5 - y / EQ_H) * Math.PI));
+      const xs = 1 / cosLat, lw = (w: number) => w / xs; // undo the h-scale for stroke widths
+      wrap((dx) => {
+        ctx.save(); ctx.translate(x + dx, y); ctx.scale(xs, 1);
+        if (fresh) {
+          const eg = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 3.2);
+          eg.addColorStop(0, 'rgba(230,236,246,0.24)'); eg.addColorStop(1, 'rgba(230,236,246,0)');
+          ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(0, 0, r * 3.2, 0, 2 * Math.PI); ctx.fill();
+          ctx.strokeStyle = 'rgba(238,242,250,0.16)';
+          const nr = 16 + Math.floor(rnd() * 8);
+          for (let k = 0; k < nr; k++) {
+            const ang = (k / nr) * 2 * Math.PI + (rnd() - 0.5) * 0.4, len = r * (1.2 + rnd() * rnd() * 2.8);
+            ctx.lineWidth = lw((0.4 + rnd() * 0.4) * S);
+            ctx.beginPath(); ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r); ctx.lineTo(Math.cos(ang) * len, Math.sin(ang) * len); ctx.stroke();
+          }
         }
-      }
-      const fg = ctx.createRadialGradient(cx, y, 0, cx, y, r);
-      fg.addColorStop(0, 'rgba(0,0,0,0.5)'); fg.addColorStop(0.68, 'rgba(0,0,0,0.22)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(cx, y, r, 0, 2 * Math.PI); ctx.fill();
-      ctx.strokeStyle = 'rgba(12,12,16,0.35)'; ctx.lineWidth = Math.max(0.5 * S, r * 0.12); // outer shadow
-      ctx.beginPath(); ctx.arc(cx, y, r * 1.04, 0, 2 * Math.PI); ctx.stroke();
-      ctx.strokeStyle = fresh ? 'rgba(248,250,255,0.72)' : 'rgba(238,238,244,0.42)'; // bright rim
-      ctx.lineWidth = Math.max(0.5 * S, r * 0.22); ctx.beginPath(); ctx.arc(cx, y, r * 0.88, 0, 2 * Math.PI); ctx.stroke();
-    });
+        const fg = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+        fg.addColorStop(0, 'rgba(0,0,0,0.5)'); fg.addColorStop(0.68, 'rgba(0,0,0,0.22)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill();
+        ctx.strokeStyle = 'rgba(12,12,16,0.35)'; ctx.lineWidth = lw(Math.max(0.5 * S, r * 0.12));
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.04, 0, 2 * Math.PI); ctx.stroke();
+        ctx.strokeStyle = fresh ? 'rgba(248,250,255,0.72)' : 'rgba(238,238,244,0.42)';
+        ctx.lineWidth = lw(Math.max(0.5 * S, r * 0.22)); ctx.beginPath(); ctx.arc(0, 0, r * 0.88, 0, 2 * Math.PI); ctx.stroke();
+        ctx.restore();
+      });
+    };
     const n = Math.round(45 + a.craters.density * 300);  // dense saturation to match the 2D disc
     for (let i = 0; i < n; i++) {
       let x = rnd() * EQ_W;
@@ -453,7 +478,7 @@ export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement
   if (typeof document === 'undefined' || !body.apparentColor) return null;
   const ap = body.apparentColor;
   const g = (body as any).geoActivity;
-  const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}:${(body as any).starTidallyLocked ? 1 : 0}:${(body as any).makeup?.ice ?? ''}:${(body.tags ?? []).some((t) => t.key === 'climate/polar-ice') ? 'pi' : ''}:${(body as any).temperatureRangeK?.max ?? ''}`;
+  const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}:${(body as any).starTidallyLocked ? 1 : 0}:${(body as any).makeup?.ice ?? ''}:${(body.tags ?? []).some((t) => t.key === 'climate/polar-ice') ? 'pi' : ''}:${(body as any).temperatureRangeK?.max ?? ''}:${(body.tags ?? []).find((t) => t.key === 'feature/polar-vortex')?.value ?? ''}`;
   const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = eqCache.get(key);

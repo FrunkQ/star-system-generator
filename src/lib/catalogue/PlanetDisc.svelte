@@ -203,6 +203,17 @@
     });
   })();
 
+  // Polar vortex: a gas giant's geometric polar jet, drawn as a foreshortened polygon near the top pole.
+  $: vortexPoly = (() => {
+    if (!a.polarVortex) return '';
+    const sides = a.polarVortex.sides, cx = 50, cy = 25, rx = 11, ry = 4;
+    const pts = Array.from({ length: sides }, (_, i) => {
+      const th = (i / sides) * 2 * Math.PI + Math.PI / sides;
+      return `${(cx + rx * Math.cos(th)).toFixed(1)},${(cy + ry * Math.sin(th)).toFixed(1)}`;
+    });
+    return 'M' + pts.join(' L') + ' Z';
+  })();
+
   // Auroras: a spiky glowing OVAL ringing each magnetic pole (Hubble-Jupiter style). Strength + emitter
   // colour are model-derived; the swirled oval PATHS are generated here (auroraOval).
   $: auroraStr = a.aurora?.strength ?? 0;
@@ -441,6 +452,13 @@
       <!-- Uniform thermal incandescence (a super-hot lava world glows all over). -->
       {#if a.thermalGlow}
         <circle cx="50" cy="50" r="30" fill={a.thermalGlow.colorHex} opacity={0.35 + a.thermalGlow.strength * 0.5} clip-path="url(#clip-{uid})" />
+      {/if}
+
+      <!-- Polar vortex: a gas giant's geometric polar jet (Saturn hexagon), foreshortened at the top pole. -->
+      {#if a.polarVortex}
+        <g clip-path="url(#clip-{uid})">
+          <path d={vortexPoly} fill="rgba(60,80,120,0.32)" stroke="rgba(210,222,245,0.6)" stroke-width="0.7" stroke-linejoin="round" />
+        </g>
       {/if}
 
       <!-- Tholin mottling: irradiated organics stain the crust. Atmospheric (Titan) = a whole-disc haze

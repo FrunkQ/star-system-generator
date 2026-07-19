@@ -25,6 +25,15 @@ import { brownDwarfThermal } from '../physics/substellar';
 // processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
 const FORMATION_DELAY_GYR = 0.005;
 
+// Deterministic 0..1 hash of a string — for procedural features that must be STABLE across
+// re-processing (they key off the body id, not the shared per-run RNG whose stream depends on
+// iteration order).
+function hash01(s: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return ((h >>> 0) % 100000) / 100000;
+}
+
 // Old friendly-label tags that duplicate physics-derived ones — dropped on load (the physics
 // re-adds the correct namespaced versions). Explicit so user free-text tags are never touched.
 // A few friendly-label duplicates of CURRENT physics tags (the new label differs from the key).
@@ -652,6 +661,16 @@ export class SystemProcessor implements ISystemProcessor {
         }
         const cloudLayer = mk.gas <= 0.5 ? fluidLayers.find((l) => l.location === 'cloud') : undefined;
         if (cloudLayer) body.tags.push({ key: 'structure/cloud-deck', value: cloudColourName(cloudLayer.liquid) });
+
+        // POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Too emergent to
+        // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8
+        // (6 = the Saturn hexagon, the commonest). Deterministic on the body id so it's stable across
+        // re-runs. Re-derived → strip any prior auto copy but keep a user's manual one.
+        body.tags = body.tags.filter((t) => t.key !== 'feature/polar-vortex' || t.manual);
+        if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex') && hash01(`${body.id}|vortex`) < 0.7) {
+            const sides = [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|vsides`) * 6) % 6];
+            body.tags.push({ key: 'feature/polar-vortex', value: String(sides) });
+        }
 
         // Ring system — DERIVED from geometry (does the body host ring children?), not hand-tagged.
         // One ring → "ringed"; more than one → "multiple rings". Each ring's debris mass sorts it into

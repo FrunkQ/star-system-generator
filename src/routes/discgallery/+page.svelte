@@ -124,6 +124,17 @@
         apparentColor: { hex: '#a6d8dc', banding: 4, palette: iceGiant('#b8e0e4') } as any }),
   ];
 
+  // Polar vortices — a gas giant's geometric polar jet. Saturn's north pole is a hexagon (6); Jupiter's
+  // poles run polygonal cyclone rings 5–9. Side count rides on the feature/polar-vortex tag value.
+  const gasGiant = (name: string, sides: number, hex: string, banding: number, pal: any) =>
+    mk({ name, apparentColorHex: hex, radiusKm: 60000, makeup: { gas: 0.9, ice: 0.1 } as any,
+        apparentColor: { hex, banding, palette: pal } as any, tags: [{ key: 'feature/polar-vortex', value: String(sides) }] });
+  const polarVortices = [
+    gasGiant('Pentagon jet (5)', 5, '#d8c89a', 6, ammonia('#e6dcb8', '#c8b888', '#a89860')),
+    gasGiant('Hexagon jet (6) · Saturn', 6, '#d8c89a', 6, ammonia('#e6dcb8', '#c8b888', '#a89860')),
+    gasGiant('Octagon jet (8) · Jupiter N', 8, '#d8b888', 9, ammonia('#e8d3ab', '#c89868', '#9c6b3e')),
+  ];
+
   // Self-luminous brown dwarfs: the emission halo's colour comes from the thermal/self-luminous tag's
   // value (its effective temperature). Cool T-dwarf → deep red; hot young L-dwarf → amber.
   const brownDwarfs = [
@@ -280,6 +291,13 @@
   <h2>Gas &amp; ice giants — banding from spin, tilted by the axis</h2>
   <div class="gallery">
     {#each giants as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Polar vortices — a gas giant's geometric polar jet (Saturn's hexagon; 5–8 sides)</h2>
+  <div class="gallery">
+    {#each polarVortices as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>

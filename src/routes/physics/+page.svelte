@@ -396,6 +396,10 @@
           following the axial tilt.</li>
         <li><strong>Cloud decks &amp; gas bands</strong> — condensed clouds veil the surface; gas giants get
           latitudinal bands, tinted by chromophore (methane, ammonia) and temperature.</li>
+        <li><strong>Polar vortices</strong> — a gas giant's standing polar jet stream can lock into a geometric
+          polygon (Saturn's north pole is a famous <em>hexagon</em>; Jupiter's poles hold polygonal cyclone rings).
+          Too emergent to predict from bulk parameters, so it's spawned at generation with a side count of 5–8
+          carried on the <code>feature/polar-vortex</code> tag — not always six.</li>
         <li><strong>Atmosphere limb-glow</strong> — a soft halo whose thickness scales with surface pressure and
           whose colour comes from the haze.</li>
         <li><strong>Auroras</strong> — the pole-hugging ovals described <a href="#aurora">above</a>, coloured by the
