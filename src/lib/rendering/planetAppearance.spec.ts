@@ -17,7 +17,7 @@ describe('deriveAppearance — feature resolution', () => {
 	it('classifies stars and belts and gives them no surface features', () => {
 		const star = deriveAppearance(mk({ roleHint: 'star', temperatureK: 5778 }));
 		expect(star.isStar).toBe(true);
-		expect(star.craters).toBe(false);
+		expect(star.craters).toBeNull();
 		expect(star.magma).toBeNull();
 		expect(star.aurora).toBeNull();
 
@@ -28,11 +28,60 @@ describe('deriveAppearance — feature resolution', () => {
 
 	it('draws craters on an airless, geologically dead world but not a giant', () => {
 		const dead = deriveAppearance(mk({ tags: [{ key: 'geology/inactive' }] }));
-		expect(dead.craters).toBe(true);
+		expect(dead.craters).toBeTruthy();
+		expect(dead.craters!.density).toBeGreaterThan(0);
 
-		// With a thick atmosphere the impactors burn up → no craters.
+		// With a thick atmosphere the impactors burn up + erode → no craters.
 		const airy = deriveAppearance(mk({ tags: [{ key: 'geology/inactive' }], atmosphere: { pressure_bar: 1 } as any }));
-		expect(airy.craters).toBe(false);
+		expect(airy.craters).toBeNull();
+	});
+
+	it('crater density tracks surface age; a young resurfaced world stays smooth', () => {
+		const ancient = deriveAppearance(mk({ geoActivity: { regime: 'inactive', surfaceAgeGyr: 4.6 } } as any));
+		const young = deriveAppearance(mk({ geoActivity: { regime: 'plate-tectonics', surfaceAgeGyr: 0.2 } } as any));
+		expect(ancient.craters!.density).toBeGreaterThan(0.9);
+		expect((young.craters?.density ?? 0)).toBeLessThan(0.1);
+	});
+
+	it('a tidally-locked cratered world reads a leading-hemisphere bias', () => {
+		const locked = deriveAppearance(mk({ tidallyLocked: true, geoActivity: { regime: 'inactive', surfaceAgeGyr: 4.6 } } as any));
+		const free = deriveAppearance(mk({ geoActivity: { regime: 'inactive', surfaceAgeGyr: 4.6 } } as any));
+		expect(locked.craters!.leadBias).toBeGreaterThan(0);
+		expect(free.craters!.leadBias).toBe(0);
+	});
+
+	it('an icy world FRACTURES instead of cratering (Europa)', () => {
+		const europa = deriveAppearance(mk({
+			makeup: { ice: 0.5, rock: 0.5 }, geoActivity: { regime: 'cryovolcanic', surfaceAgeGyr: 0.05 },
+			volatiles: { retained: ['carbon-dioxide', 'water'] }, tags: [{ key: 'tidal/hotspots' }]
+		} as any));
+		expect(europa.iceCracks).toBeTruthy();
+		expect(europa.craters).toBeNull(); // ice cracks, doesn't crater
+	});
+
+	it('tholins need an organic precursor AND dose: Pluto reddens, Europa (no CH4/N2) does not', () => {
+		const pluto = deriveAppearance(mk({
+			makeup: { ice: 0.5, rock: 0.5 }, irradiationDose: 0.2,
+			geoActivity: { regime: 'inactive', surfaceAgeGyr: 4.6 },
+			volatiles: { retained: ['nitrogen', 'methane', 'water'] }
+		} as any));
+		const europa = deriveAppearance(mk({
+			makeup: { ice: 0.5, rock: 0.5 }, irradiationDose: 0.002,
+			geoActivity: { regime: 'cryovolcanic', surfaceAgeGyr: 0.05 },
+			volatiles: { retained: ['carbon-dioxide', 'water'] }
+		} as any));
+		expect(pluto.tholin).toBeTruthy();
+		expect(pluto.tholin!.strength).toBeGreaterThan(0);
+		expect(europa.tholin).toBeNull();
+	});
+
+	it('retained bright ices give a frost overlay; SO2-only frost is sulphur-yellow', () => {
+		const io = deriveAppearance(mk({
+			geoActivity: { regime: 'tidal-volcanic', surfaceAgeGyr: 0.002 },
+			volatiles: { retained: ['sulfur-dioxide'] }
+		} as any));
+		expect(io.frost).toBeTruthy();
+		expect(io.frost!.colorHex.toLowerCase()).toBe('#f0e28a');
 	});
 
 	it('scales magma vents by volcanism tier and flags a lava world', () => {

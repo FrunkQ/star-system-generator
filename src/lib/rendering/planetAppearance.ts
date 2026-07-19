@@ -80,6 +80,27 @@ export interface CryoPlumeSpec {
 	jets: number; // how many plume jets (clustered near a pole, Enceladus-style)
 	reachRadii: number; // how far the jets throw, in body radii — driven by (low) surface gravity
 }
+export interface CraterSpec {
+	density: number;   // 0..1 impact-record density, from SURFACE AGE (young resurfaced → 0, ancient → 1)
+	rayed: number;     // count of FRESH bright-ejecta-ray craters punched into an old surface (0..4)
+	leadBias: number;  // 0..1 leading-hemisphere asymmetry on a tidally-locked body (apex sweeps up more)
+}
+export interface IceCrackSpec {
+	severity: number;  // 0..1 density of the fracture/ridge network (Europa lineae, Charon striae)
+	colorHex: string;  // ridge tint (icy blue-white, or organic-stained when tholins present)
+}
+export interface RiftSpec {
+	extent: number;    // 0..1 — a frozen former subsurface ocean expanded and split the crust (Charon canyon)
+}
+export interface TholinSpec {
+	strength: number;      // 0..1 how reddened/darkened (from IRRADIATION DOSE, needs CH4/N2 precursors)
+	colorHex: string;      // organic tint: low pressure → dark red, higher → pale yellow-brown
+	atmospheric: boolean;  // Titan-style haze (thick CH4/N2 air) vs surface patches (Pluto)
+}
+export interface FrostSpec {
+	coverage: number;  // 0..1 bright volatile-ice cover from retained species
+	colorHex: string;  // N2/CO2/water → white-blue; SO2 → sulphur yellow
+}
 
 /** Everything about a body's appearance that follows from its data + tags, renderer-agnostic. */
 export interface AppearanceModel {
@@ -100,13 +121,19 @@ export interface AppearanceModel {
 	tidallyLocked: boolean;
 	// surface features (flags + params; renderers seed any positions themselves)
 	polarIce: boolean;
-	craters: boolean;
+	craters: CraterSpec | null;   // rocky impact record (icy worlds fracture instead — see iceCracks)
+	iceCracks: IceCrackSpec | null;
+	rifts: RiftSpec | null;
+	tholin: TholinSpec | null;
+	frost: FrostSpec | null;
 	magma: MagmaSpec | null;
 	cryoPlumes: CryoPlumeSpec | null;
 	aurora: AuroraSpec | null;
 	atmGlow: AtmGlowSpec | null;
 	selfLumGlow: SelfLumSpec | null;
 }
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 const GRAV_CONST = 6.674e-11;
 /** Surface gravity (m/s²) from mass + radius; a safe mid value if either is missing. */
@@ -145,9 +172,77 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// Polar ice caps (tag-driven).
 	const polarIce = !isStar && !isBelt && has('climate/polar-ice');
 
-	// Cratered: old, airless, geologically dead world (or a small body); giants never crater.
-	const craters = !isStar && !isBelt && !rendersAsGiant(body) && atmPressureBar < 0.02
-		&& (has('geology/inactive') || has('science/impact-record') || isSmallBody);
+	// ── Foundation-driven surface weathering (geo-foundations.md consumers) ──────────────────────────
+	const solid = !isStar && !isBelt && !rendersAsGiant(body);
+	const regime = (body as any).geoActivity?.regime as string | undefined;
+	const surfaceAgeGyr = (body as any).geoActivity?.surfaceAgeGyr ?? 0;
+	const dose = (body as any).irradiationDose ?? 0;
+	const retained: string[] = (body as any).volatiles?.retained ?? [];
+	const iceFrac = ((body as any).makeup?.ice ?? 0) as number;
+	// An ICY-surfaced world (bulk ice, a cryovolcanic crust, or supervolatile ice) FRACTURES under
+	// stress rather than holding impact craters; a ROCKY world keeps the crater record. This split is
+	// the "ice cracks, doesn't crater" rule.
+	const icyShell = iceFrac > 0.2 || regime === 'cryovolcanic'
+		|| retained.includes('nitrogen') || retained.includes('methane')
+		|| (retained.includes('water') && iceFrac > 0.1);
+	const thickAir = atmPressureBar > 0.5; // dense air ablates impactors + erodes craters (Venus/Titan)
+
+	// CRATERS — rocky, exposed surfaces only; density from SURFACE AGE (a young resurfaced world is
+	// smooth, an ancient dead one is saturated). Small bodies always carry a heavy record. When no
+	// derived surface age is present (a bare tagged body / import / example), fall back to the legacy
+	// impact tags so those still crater.
+	const tagCratered = has('geology/inactive') || has('science/impact-record');
+	const ageDensity = surfaceAgeGyr > 0 ? surfaceAgeGyr / 4.5 : (tagCratered ? 0.7 : 0);
+	const craterDensity = solid && !icyShell && !thickAir
+		? clamp01(isSmallBody ? Math.max(0.6, ageDensity) : ageDensity)
+		: 0;
+	// A tidally-locked body sweeps up more impactors on its LEADING (apex) hemisphere → a lop-sided
+	// record. (A fixed moderate bias for now; scales with orbital speed in a later pass.)
+	const leadBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked) ? 0.6 : 0;
+	// A few FRESH craters (bright ejecta rays) punched into an otherwise old, airless surface.
+	const craters: CraterSpec | null = craterDensity > 0.05
+		? { density: craterDensity, rayed: atmPressureBar < 0.02 && craterDensity > 0.4 ? 2 : 0, leadBias }
+		: null;
+
+	// ICE CRACKS / RIDGES — an icy crust flexed by tidal/freezing stress splits into a lineae network
+	// (Europa). Stronger on tidally-worked / cryovolcanic crusts.
+	const crackSeverity = solid && icyShell
+		? clamp01(0.45 + (regime === 'cryovolcanic' ? 0.35 : 0) + (has('tidal/hotspots') || has('tidal/volcanism') ? 0.2 : 0))
+		: 0;
+	const iceCracks: IceCrackSpec | null = crackSeverity > 0
+		? { severity: crackSeverity, colorHex: '#dfeaf5' }
+		: null;
+
+	// CRUSTAL RIFTS — a former subsurface ocean that has since FROZEN expands and splits the crust into
+	// deep canyons (Charon's Serenity Chasma). Needs the ocean signal but a now-quiet (non-cryo) crust.
+	const hadOcean = has('structure/subsurface-ocean') || retained.includes('water');
+	const riftExtent = solid && icyShell && hadOcean && regime !== 'cryovolcanic' && surfaceAgeGyr > 1
+		? 0.6 : 0;
+	const rifts: RiftSpec | null = riftExtent > 0 ? { extent: riftExtent } : null;
+
+	// THOLINS — irradiated organic ices redden/darken over time. Needs a CH4/N2 PRECURSOR: either
+	// retained on the surface (Pluto's dark-red patches) or a thick CH4/N2 atmosphere whose haze rains
+	// organics (Titan's orange). Strength from the accumulated IRRADIATION DOSE; colour runs dark-red
+	// at low pressure to pale yellow-brown when a thick haze scatters it.
+	const atmComp = (body.atmosphere?.composition ?? {}) as Record<string, number>;
+	const atmOrganics = ((atmComp.CH4 ?? 0) + (atmComp.N2 ?? 0)) > 0.3 && atmPressureBar > 0.1;
+	const surfOrganics = retained.includes('methane') || retained.includes('nitrogen');
+	const tholinStrength = solid && (surfOrganics || atmOrganics)
+		? clamp01(dose * 2 + (atmOrganics ? 0.3 : 0)) : 0;
+	const tholin: TholinSpec | null = tholinStrength > 0.05
+		? { strength: tholinStrength, colorHex: atmOrganics ? '#c99a5a' : '#7a3320', atmospheric: atmOrganics }
+		: null;
+
+	// FROST — bright volatile ice cover from retained species (N2/CO2/water read white-blue; SO2 sulphur
+	// yellow). Space weathering (dose) dulls it, so an ancient irradiated frost is less brilliant.
+	const brightIces = retained.filter((s) => s === 'nitrogen' || s === 'carbon-dioxide' || s === 'water');
+	const so2 = retained.includes('sulfur-dioxide');
+	const frostCoverage = solid
+		? clamp01((brightIces.length * 0.25 + (so2 ? 0.35 : 0)) * (1 - 0.5 * clamp01(dose)))
+		: 0;
+	const frost: FrostSpec | null = frostCoverage > 0.05
+		? { coverage: frostCoverage, colorHex: so2 && brightIces.length === 0 ? '#f0e28a' : '#eaf2fb' }
+		: null;
 
 	// Magma / lava: a full lava world, or discrete tidal volcanism / hotspots.
 	const isLava = has('tidal/lava-flows');
@@ -205,6 +300,10 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		tidallyLocked: !!(body as any).tidallyLocked,
 		polarIce,
 		craters,
+		iceCracks,
+		rifts,
+		tholin,
+		frost,
 		magma,
 		cryoPlumes,
 		aurora,
