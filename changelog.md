@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.164-beta - 19th Jul 2026
+
+* Geo foundations step 1 - activity LADDER: the dry radiogenic geology path is now graded, adding two regimes derived from the same interior-vigor number - PLUTONIC (0.35-0.6: enough heat to melt at depth but not to erupt or move the lid - intrusive only) and EPISODIC (vigorous dry lid that traps heat until it overturns in catastrophic global resurfacing - Venus, promoted from a note to a real regime). Habitability, Newton notes and reasons-to-visit follow. No change to wet (plate-tectonics), tidal, cryo or inactive worlds beyond the new bands.
+
 ## v2.1.163-beta - 18th Jul 2026
 
 * Dev doc: geo-foundations design (docs/dev/geo-foundations.md) — activity ladder (plutonic/episodic), per-species volatile-ice retention, surface age, irradiation dose; the physics-first base for the banked appearance backlog.

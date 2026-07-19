@@ -23,10 +23,29 @@ describe('deriveGeoActivity — reference worlds', () => {
     expect(w({ hasSurfaceWater: true }).regime).toBe('plate-tectonics');
   });
 
-  it('Venus: vigorous but dry → stagnant lid', () => {
+  it('Venus: vigorous but dry → episodic (heat-trapping lid overturns catastrophically)', () => {
     const v = w({ massMe: 0.815, radiusRe: 0.95, hasSurfaceWater: false });
-    expect(v.regime).toBe('stagnant-lid');
+    expect(v.regime).toBe('episodic');
     expect(v.volcanism).toBe('resurfacing');
+  });
+
+  it('a cooler dry world (below the episodic onset) sits on a quiet stagnant lid', () => {
+    // Dry, active, but not vigorous enough to trap heat to catastrophic overturn: vigor in [0.6, 0.7).
+    const s = w({ massMe: 0.65, radiusRe: 0.9, hasSurfaceWater: false });
+    expect(s.vigor).toBeGreaterThanOrEqual(0.6);
+    expect(s.vigor).toBeLessThan(0.7);
+    expect(s.regime).toBe('stagnant-lid');
+  });
+
+  it('a waning mid world (vigor 0.35–0.6) → plutonic (intrusive-only, no surface volcanism)', () => {
+    // An aging Earth-clone past its plate-tectonic prime: still warm at depth, but the heat no longer
+    // reaches the surface or mobilises the lid.
+    const p = w({ hasSurfaceWater: true, ageGyr: 7 });
+    expect(p.vigor).toBeGreaterThanOrEqual(0.35);
+    expect(p.vigor).toBeLessThan(0.6);
+    expect(p.regime).toBe('plutonic');
+    expect(p.volcanism).toBe('intrusive');
+    expect(p.active).toBe(true);
   });
 
   it('Mars: small + old → inactive (radiogenics decayed below threshold)', () => {
@@ -77,6 +96,6 @@ describe('deriveGeoActivity — age turns Earth into Mars', () => {
 
   it('tags are mechanism-specific and unique per regime', () => {
     expect(w({ hasSurfaceWater: true }).tags).toEqual(['geology/plate-tectonics']);
-    expect(w({}).tags).toEqual(['geology/stagnant-lid']);
+    expect(w({}).tags).toEqual(['geology/episodic']); // dry Earth-mass, vigor ≈ 1 → heat-trapping lid
   });
 });

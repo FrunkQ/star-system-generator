@@ -467,7 +467,7 @@
           "key": "magnetic/unshielded"
         },
         {
-          "key": "geology/stagnant-lid"
+          "key": "geology/episodic"
         },
         {
           "key": "habitability/none"
@@ -475,10 +475,6 @@
         {
           "key": "resource/volatiles",
           "source": "rule:d16"
-        },
-        {
-          "key": "science/runaway-greenhouse",
-          "source": "rule:d26"
         }
       ],
       "areas": [],
@@ -581,16 +577,16 @@
       },
       "oblateness": 7.637335768889923e-8,
       "geoActivity": {
-        "regime": "stagnant-lid",
+        "regime": "episodic",
         "volcanism": "resurfacing",
         "vigor": 0.803,
         "active": true,
-        "driver": "radiogenic (dry)",
+        "driver": "radiogenic (dry, heat-trapping)",
         "tags": [
-          "geology/stagnant-lid"
+          "geology/episodic"
         ],
         "notes": [
-          "Vigorous interior but a DRY, rigid lithosphere traps heat → stagnant lid with episodic catastrophic resurfacing → no CO2 drawdown (Venus-like)."
+          "Vigorous interior but a DRY, rigid lithosphere traps heat until it overturns in periodic catastrophic global resurfacing (Venus-like); no carbonate–silicate drawdown → runaway greenhouse."
         ]
       },
       "apparentColor": {
@@ -779,7 +775,7 @@
         "surfaceScore": 32,
         "modifiers": [
           {
-            "label": "Stagnant lid (runaway-greenhouse risk)",
+            "label": "Episodic resurfacing (runaway-greenhouse risk)",
             "delta": -25
           }
         ],
@@ -7165,22 +7161,16 @@
           "value": "water"
         },
         {
-          "key": "structure/subsurface-ocean"
-        },
-        {
           "key": "activity/sublimating"
         },
         {
-          "key": "activity/cryovolcanism"
+          "key": "magnetic/unshielded"
         },
         {
-          "key": "magnetic/induced"
+          "key": "geology/inactive"
         },
         {
-          "key": "geology/cryovolcanic"
-        },
-        {
-          "key": "habitability/subsurface"
+          "key": "habitability/none"
         },
         {
           "key": "resource/helium-3",
@@ -7193,14 +7183,6 @@
         {
           "key": "resource/volatiles",
           "source": "rule:d8"
-        },
-        {
-          "key": "science/biosignature",
-          "source": "rule:d18"
-        },
-        {
-          "key": "science/extremophile-niche",
-          "source": "rule:d19"
         },
         {
           "key": "science/tidal-laboratory",
@@ -7295,44 +7277,34 @@
         "min": 7,
         "max": 320
       },
-      "hydrosphere": {
-        "layers": [
-          {
-            "liquid": "salty-water",
-            "location": "subsurface",
-            "conductive": true,
-            "colorHex": "#3a6ea5"
-          }
-        ]
-      },
       "magnetism": {
-        "source": "salty-ocean-induced",
-        "geometry": "induced",
+        "source": "none",
+        "geometry": "none",
         "intrinsic": false,
         "estimatedRangeGauss": {
-          "min": 0.0005,
-          "max": 0.01
+          "min": 0,
+          "max": 0
         },
-        "nominalGauss": 0.005,
+        "nominalGauss": 0,
         "notes": [
-          "Conductive subsurface ocean induces a weak field within the host planet's magnetosphere (Europa-like)."
+          "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
       "magneticField": {
-        "strengthGauss": 0.005
+        "strengthGauss": 0
       },
       "oblateness": 0.023273436592320042,
       "geoActivity": {
-        "regime": "cryovolcanic",
-        "volcanism": "cryo",
+        "regime": "inactive",
+        "volcanism": "none",
         "vigor": 0,
-        "active": true,
-        "driver": "tidal flexing (icy)",
+        "active": false,
+        "driver": "cooled interior",
         "tags": [
-          "geology/cryovolcanic"
+          "geology/inactive"
         ],
         "notes": [
-          "Tidal flexing keeps a subsurface ocean liquid; cryovolcanic plumes vent water/ice (Europa/Enceladus-like)."
+          "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
       "apparentColor": {
@@ -7349,45 +7321,33 @@
       },
       "apparentColorHex": "#d8ecff",
       "classification": {
-        "base": "planet/subsurface-ocean",
-        "baseScore": 2.16,
+        "base": "asteroid/comet",
+        "baseScore": 1.43,
         "bands": [
           {
-            "feature": "hasSubsurfaceOcean",
-            "value": 1,
-            "band": "1 – 1",
+            "feature": "mass_Me",
+            "value": 0.000006279303415941058,
+            "band": "0 – 0.0001",
             "fit": 1
           },
           {
-            "feature": "Teq_K",
-            "value": 75.52068188790528,
-            "band": "0 – 273",
+            "feature": "makeup.ice",
+            "value": 0.7559644436449754,
+            "band": "0.35 – 1",
+            "fit": 1
+          },
+          {
+            "feature": "density",
+            "value": 1.1498248965954432,
+            "band": "0.2 – 1.5",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "asteroid/comet",
-          "score": 1.43
+          "class": "planet/planetesimal",
+          "score": 1.2
         },
         "candidates": [
-          {
-            "class": "planet/subsurface-ocean",
-            "score": 2.16,
-            "bands": [
-              {
-                "feature": "hasSubsurfaceOcean",
-                "value": 1,
-                "band": "1 – 1",
-                "fit": 1
-              },
-              {
-                "feature": "Teq_K",
-                "value": 75.52068188790528,
-                "band": "0 – 273",
-                "fit": 1
-              }
-            ]
-          },
           {
             "class": "asteroid/comet",
             "score": 1.43,
@@ -7489,7 +7449,7 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 35,
+      "habitabilityScore": 0,
       "habitabilityBreakdown": {
         "factors": [
           {
@@ -7563,12 +7523,16 @@
         "surfaceScore": 17,
         "modifiers": [
           {
-            "label": "Subsurface-ocean niche (floor)",
-            "delta": 18
+            "label": "Geologically inactive (no recycling)",
+            "delta": -10
+          },
+          {
+            "label": "No magnetosphere (atmosphere stripping)",
+            "delta": -8
           }
         ],
-        "finalScore": 35,
-        "tier": "habitability/subsurface"
+        "finalScore": 0,
+        "tier": "habitability/none"
       },
       "orbitalBoundaries": {
         "minLeoKm": 30,

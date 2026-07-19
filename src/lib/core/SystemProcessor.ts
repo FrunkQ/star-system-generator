@@ -973,8 +973,10 @@ export class SystemProcessor implements ISystemProcessor {
         //     penalise. Super-habitability (below) is what pushes a world above Earth. ---
         let geoMod = 0;
         const regime = planet.geoActivity?.regime;
-        if (regime === 'stagnant-lid') geoMod -= 25;          // runaway-greenhouse risk (Venus)
+        if (regime === 'episodic') geoMod -= 25;              // catastrophic resurfacing + runaway greenhouse (Venus)
+        else if (regime === 'stagnant-lid') geoMod -= 25;     // heat-trapping dry lid, no CO2 drawdown
         else if (regime === 'tidal-volcanic') geoMod -= 20;   // resurfaced too fast for surface life
+        else if (regime === 'plutonic') geoMod -= 10;         // intrusive only → no surface outgassing/recycling
         else if (regime === 'inactive') geoMod -= 10;         // no outgassing / nutrient recycling
         if (planet.magnetism && !planet.magnetism.intrinsic && planet.magnetism.source === 'none') {
             geoMod -= 8;                                       // unshielded → atmosphere stripping
@@ -1015,7 +1017,7 @@ export class SystemProcessor implements ISystemProcessor {
         // Determine Tier and add Tag. The top tiers now require a geologically STABLE world —
         // plate tectonics for Earth-like; not stagnant-lid/tidal-volcanic for human-habitable.
         const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1 && regime === 'plate-tectonics';
-        const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6 && regime !== 'stagnant-lid' && regime !== 'tidal-volcanic';
+        const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6 && regime !== 'stagnant-lid' && regime !== 'episodic' && regime !== 'tidal-volcanic';
         const isAlienHabitable = planet.habitabilityScore > 40 && factors.solvent > 0; // needs SOME usable solvent
         const isSuperHabitable = planet.habitabilityScore > 100; // better-than-Earth (only super-habitable worlds)
 
@@ -1038,8 +1040,10 @@ export class SystemProcessor implements ISystemProcessor {
         const tempIdeal = planet.hydrosphere?.composition === 'methane' ? '−162 °C ±30'
             : planet.hydrosphere?.composition === 'ammonia' ? '−55 °C ±30' : '10–25 °C';
         const modifiers: { label: string; delta: number }[] = [];
-        if (regime === 'stagnant-lid') modifiers.push({ label: 'Stagnant lid (runaway-greenhouse risk)', delta: -25 });
+        if (regime === 'episodic') modifiers.push({ label: 'Episodic resurfacing (runaway-greenhouse risk)', delta: -25 });
+        else if (regime === 'stagnant-lid') modifiers.push({ label: 'Stagnant lid (no CO2 drawdown)', delta: -25 });
         else if (regime === 'tidal-volcanic') modifiers.push({ label: 'Tidal volcanism (resurfaced)', delta: -20 });
+        else if (regime === 'plutonic') modifiers.push({ label: 'Plutonic (no surface outgassing)', delta: -10 });
         else if (regime === 'inactive') modifiers.push({ label: 'Geologically inactive (no recycling)', delta: -10 });
         if (planet.magnetism && !planet.magnetism.intrinsic && planet.magnetism.source === 'none') modifiers.push({ label: 'No magnetosphere (atmosphere stripping)', delta: -8 });
         if (superBonus > 0) modifiers.push({ label: 'Super-habitable bonus', delta: superBonus });

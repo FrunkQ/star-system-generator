@@ -14,8 +14,9 @@
 // small bodies cool fastest (low thermal mass per surface area).
 
 export type TectonicRegime =
-  | 'plate-tectonics' | 'stagnant-lid' | 'tidal-volcanic' | 'cryovolcanic' | 'inactive';
-export type VolcanismStyle = 'arc-effusive' | 'resurfacing' | 'silicate-tidal' | 'cryo' | 'none';
+  | 'plate-tectonics' | 'stagnant-lid' | 'episodic' | 'plutonic'
+  | 'tidal-volcanic' | 'cryovolcanic' | 'inactive';
+export type VolcanismStyle = 'arc-effusive' | 'resurfacing' | 'intrusive' | 'silicate-tidal' | 'cryo' | 'none';
 
 export interface GeoActivity {
   regime: TectonicRegime;
@@ -46,6 +47,12 @@ export interface GeoInputs {
 }
 
 const ACTIVE_THRESHOLD = 0.35;   // relative vigor below which a rocky world is geologically dead
+// The dry radiogenic path is a graded LADDER on the same vigor: dead → plutonic (melt at depth only)
+// → stagnant lid → episodic (heat-trapping lid that overturns catastrophically, Venus). Calibrated so
+// Mars/Moon/Mercury (~0.1–0.14) read inactive, a waning/mid world (0.35–0.6) plutonic, and Venus
+// (~0.82) episodic; a cooler dry world between sits on the quiet stagnant lid. See docs/dev/geo-foundations.md.
+const PLUTONIC_MAX = 0.6;        // below this (but active): intrusive-only, no surface volcanism
+const EPISODIC_ONSET = 0.7;      // dry + at/above this: catastrophic periodic resurfacing (Venus)
 const RADIOGENIC_HALFLIFE_GYR = 2.8;
 // How much a GM radiogenic-heat override (in K) adds to the relative vigor: ~12 K ≈ +1 (Earth-now),
 // so a modest slider can wake a dead world and cranking it hard drives vigorous tectonics/volcanism.
@@ -104,10 +111,18 @@ export function deriveGeoActivity(i: GeoInputs): GeoActivity {
     return mk('cryovolcanic', 'cryo', Math.max(vigor, 0.15), 'solar-seasonal sublimation', ['geology/cryovolcanic'], notes);
   }
 
-  // --- Radiogenic / secular heat path (the rocky planets). ---
+  // --- Radiogenic / secular heat path (the rocky planets), as a graded LADDER on the same vigor. ---
   if (vigor < ACTIVE_THRESHOLD) {
     notes.push(`Radiogenic heat has decayed below the convection threshold (vigor ${vigor.toFixed(2)} < ${ACTIVE_THRESHOLD}); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like).`);
     return mk('inactive', 'none', vigor, 'cooled interior', ['geology/inactive'], notes);
+  }
+
+  // Enough heat to melt at depth, but too little to erupt or to mobilise the lid — magmatism stays
+  // INTRUSIVE (plutons, dykes) beneath an intact crust. Independent of water: the heat simply doesn't
+  // reach the surface. Mars a couple of Gyr ago, or an aging Earth past its plate-tectonic prime.
+  if (vigor < PLUTONIC_MAX) {
+    notes.push(`Modest interior heat (vigor ${vigor.toFixed(2)}) melts rock at depth but cannot reach the surface or mobilise the lithosphere — magmatism stays intrusive (plutons, dykes) under an intact crust.`);
+    return mk('plutonic', 'intrusive', vigor, 'radiogenic (waning)', ['geology/plutonic'], notes);
   }
 
   if (i.hasSurfaceWater) {
@@ -118,7 +133,14 @@ export function deriveGeoActivity(i: GeoInputs): GeoActivity {
     return mk('plate-tectonics', 'arc-effusive', vigor, 'radiogenic + water', ['geology/plate-tectonics'], notes);
   }
 
-  notes.push('Vigorous interior but a DRY, rigid lithosphere traps heat → stagnant lid with episodic catastrophic resurfacing → no CO2 drawdown (Venus-like).');
+  // Dry + vigorous → a single stagnant lid. At/above the episodic onset the rigid dry lid can't shed
+  // heat fast enough, so it builds until the lithosphere overturns in catastrophic global resurfacing
+  // (Venus, ~700 Myr cycle); below it, the lid sheds heat quietly with only occasional hotspots.
+  if (vigor >= EPISODIC_ONSET) {
+    notes.push('Vigorous interior but a DRY, rigid lithosphere traps heat until it overturns in periodic catastrophic global resurfacing (Venus-like); no carbonate–silicate drawdown → runaway greenhouse.');
+    return mk('episodic', 'resurfacing', vigor, 'radiogenic (dry, heat-trapping)', ['geology/episodic'], notes);
+  }
+  notes.push('Vigorous interior but a DRY, rigid lithosphere → a quiet stagnant lid: heat conducts out through one unbroken plate with only occasional hotspot volcanism; no CO2 drawdown.');
   return mk('stagnant-lid', 'resurfacing', vigor, 'radiogenic (dry)', ['geology/stagnant-lid'], notes);
 }
 
