@@ -13,6 +13,7 @@ import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
 import { deriveAurora } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
 import { deriveGeoActivity } from '../physics/geoActivity';
+import { deriveVolatileRetention } from '../physics/volatileRetention';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
@@ -735,6 +736,28 @@ export class SystemProcessor implements ISystemProcessor {
             body.geoActivity = undefined;
             features['geoActive'] = 0;
             features['plateTectonics'] = 0;
+        }
+
+        // Volatile-ice retention (which ices survive on the surface as frost/bright ice) — the physics
+        // base for frost/tholin/bright-ice visuals. Cold trap (surface below the ice's melt point) +
+        // gravity trap (Jeans λ holds the sublimated vapour). Solid surfaces only; giants excluded.
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('volatiles/'));
+        if (mk.gas <= 0.5 && (body.roleHint === 'planet' || body.roleHint === 'moon') && body.massKg && body.radiusKm) {
+            body.volatiles = deriveVolatileRetention({
+                massKg: body.massKg,
+                radiusKm: body.radiusKm,
+                surfaceTempK: body.temperatureK ?? body.equilibriumTempK ?? 0,
+                equilibriumTempK: body.equilibriumTempK ?? body.temperatureK ?? 0,
+                // Availability: a condensed-ice inventory (bulk ice / icy shell / hydrosphere) for the
+                // water + supervolatiles; active silicate volcanism (Io) for the SO2 frost source.
+                iceBearing: mk.ice > 0.05 || icyShell || (body.hydrosphere?.coverage ?? 0) > 0.05,
+                volcanic: body.geoActivity?.regime === 'tidal-volcanic'
+            }, pack);
+            if (body.volatiles.retained.length) {
+                body.tags.push({ key: 'volatiles/ices', value: body.volatiles.retained.join('+') });
+            }
+        } else {
+            body.volatiles = undefined;
         }
 
         // Re-run Classification

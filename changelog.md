@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.165-beta - 19th Jul 2026
+
+* Geo foundations step 2 - volatile-ice RETENTION: a body now derives which ices it can hold on its surface, from real physics - the species must be available (an ice inventory for water/N2/CH4/CO2; active volcanism for Io-style SO2 frost), cold enough to stay solid (the liquids phase data), and heavy/gravity-bound enough that the sublimated vapour cannot escape to space (Jeans parameter). Reproduces the solar system: Io keeps SO2, the icy Galilean moons keep CO2 + water, Pluto and Triton keep CO2 + nitrogen + water + methane. Surfaced as a volatiles/ices tag and a Newton-panel explanation; the base for coming frost/tholin/bright-ice visuals.
+
 ## v2.1.164-beta - 19th Jul 2026
 
 * Geo foundations step 1 - activity LADDER: the dry radiogenic geology path is now graded, adding two regimes derived from the same interior-vigor number - PLUTONIC (0.35-0.6: enough heat to melt at depth but not to erupt or move the lid - intrusive only) and EPISODIC (vigorous dry lid that traps heat until it overturns in catastrophic global resurfacing - Venus, promoted from a note to a real regime). Habitability, Newton notes and reasons-to-visit follow. No change to wet (plate-tectonics), tidal, cryo or inactive worlds beyond the new bands.

@@ -208,6 +208,16 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.10 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 35.6,
+          "methane": 20.3,
+          "carbon-dioxide": 55.9,
+          "water": 22.9,
+          "sulfur-dioxide": 81.3
+        }
+      },
       "apparentColor": {
         "hex": "#977e44",
         "palette": [
@@ -588,6 +598,16 @@
         "notes": [
           "Vigorous interior but a DRY, rigid lithosphere traps heat until it overturns in periodic catastrophic global resurfacing (Venus-like); no carbonate–silicate drawdown → runaway greenhouse."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 369.4,
+          "methane": 211.1,
+          "carbon-dioxide": 580.5,
+          "water": 237.5,
+          "sulfur-dioxide": 844.4
+        }
       },
       "apparentColor": {
         "hex": "#937559",
@@ -1024,6 +1044,16 @@
         "notes": [
           "Vigorous interior with surface water hydrating the lithosphere → mobile-lid plate tectonics → the carbonate–silicate cycle regulates climate."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 412.3,
+          "methane": 235.6,
+          "carbon-dioxide": 647.9,
+          "water": 265.1,
+          "sulfur-dioxide": 942.4
+        }
       },
       "apparentColor": {
         "hex": "#718aa2",
@@ -1480,6 +1510,16 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 17.8,
+          "methane": 10.2,
+          "carbon-dioxide": 27.9,
+          "water": 11.4,
+          "sulfur-dioxide": 40.6
+        }
+      },
       "apparentColor": {
         "hex": "#9c7a5a",
         "palette": [
@@ -1864,6 +1904,16 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.13 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 100.3,
+          "methane": 57.3,
+          "carbon-dioxide": 157.6,
+          "water": 64.5,
+          "sulfur-dioxide": 229.2
+        }
+      },
       "apparentColor": {
         "hex": "#957659",
         "palette": [
@@ -2218,6 +2268,16 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 0,
+          "methane": 0,
+          "carbon-dioxide": 0,
+          "water": 0,
+          "sulfur-dioxide": 0
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -2590,6 +2650,16 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 0,
+          "methane": 0,
+          "carbon-dioxide": 0,
+          "water": 0,
+          "sulfur-dioxide": 0
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -3429,6 +3499,10 @@
           "key": "geology/volcanic-tidal"
         },
         {
+          "key": "volatiles/ices",
+          "value": "sulfur-dioxide"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -3566,6 +3640,18 @@
         "notes": [
           "Tidal flexing drives silicate volcanism far exceeding radiogenic heat (Io-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [
+          "sulfur-dioxide"
+        ],
+        "lambda": {
+          "nitrogen": 47.9,
+          "methane": 27.4,
+          "carbon-dioxide": 75.2,
+          "water": 30.8,
+          "sulfur-dioxide": 109.4
+        }
       },
       "apparentColor": {
         "hex": "#ac9274",
@@ -3850,6 +3936,10 @@
           "key": "geology/cryovolcanic"
         },
         {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+water"
+        },
+        {
           "key": "habitability/subsurface"
         },
         {
@@ -4017,6 +4107,19 @@
         "notes": [
           "Tidal flexing keeps a subsurface ocean liquid; cryovolcanic plumes vent water/ice (Europa/Enceladus-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "water"
+        ],
+        "lambda": {
+          "nitrogen": 36,
+          "methane": 20.6,
+          "carbon-dioxide": 56.6,
+          "water": 23.2,
+          "sulfur-dioxide": 82.4
+        }
       },
       "apparentColor": {
         "hex": "#becddc",
@@ -4292,6 +4395,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+water"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -4429,6 +4536,19 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "water"
+        ],
+        "lambda": {
+          "nitrogen": 65.9,
+          "methane": 37.6,
+          "carbon-dioxide": 103.5,
+          "water": 42.3,
+          "sulfur-dioxide": 150.6
+        }
       },
       "apparentColor": {
         "hex": "#c4d8ec",
@@ -4693,6 +4813,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+water"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -4812,6 +4936,19 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.01 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "water"
+        ],
+        "lambda": {
+          "nitrogen": 52.1,
+          "methane": 29.8,
+          "carbon-dioxide": 81.8,
+          "water": 33.5,
+          "sulfur-dioxide": 119
+        }
       },
       "apparentColor": {
         "hex": "#c4d8ec",
@@ -5570,6 +5707,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+water"
+        },
+        {
           "key": "habitability/alien"
         },
         {
@@ -5726,6 +5867,19 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "water"
+        ],
+        "lambda": {
+          "nitrogen": 71,
+          "methane": 40.6,
+          "carbon-dioxide": 111.6,
+          "water": 45.7,
+          "sulfur-dioxide": 162.4
+        }
       },
       "apparentColor": {
         "hex": "#cadff1",
@@ -6112,6 +6266,16 @@
         "notes": [
           "A mean-motion resonance continually pumps the orbital eccentricity; the resulting tidal flexing is modest by silicate standards but ample to melt ICE (~273 K vs ~1000 K) — geysers vent a subsurface ocean (Enceladus-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 0.7,
+          "methane": 0.4,
+          "carbon-dioxide": 1.1,
+          "water": 0.4,
+          "sulfur-dioxide": 1.5
+        }
       },
       "apparentColor": {
         "hex": "#c4d8ec",
@@ -6501,6 +6665,16 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 1.8,
+          "methane": 1,
+          "carbon-dioxide": 2.9,
+          "water": 1.2,
+          "sulfur-dioxide": 4.2
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -6911,6 +7085,16 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 2.7,
+          "methane": 1.6,
+          "carbon-dioxide": 4.3,
+          "water": 1.8,
+          "sulfur-dioxide": 6.3
+        }
+      },
       "apparentColor": {
         "hex": "#d8ecff",
         "palette": [
@@ -7306,6 +7490,16 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 0.3,
+          "methane": 0.2,
+          "carbon-dioxide": 0.4,
+          "water": 0.2,
+          "sulfur-dioxide": 0.6
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -7705,6 +7899,16 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 4.4,
+          "methane": 2.5,
+          "carbon-dioxide": 6.9,
+          "water": 2.8,
+          "sulfur-dioxide": 10.1
+        }
+      },
       "apparentColor": {
         "hex": "#d8ecff",
         "palette": [
@@ -8066,6 +8270,16 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 3.7,
+          "methane": 2.1,
+          "carbon-dioxide": 5.8,
+          "water": 2.4,
+          "sulfur-dioxide": 8.5
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -8862,6 +9076,16 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 8.5,
+          "methane": 4.8,
+          "carbon-dioxide": 13.3,
+          "water": 5.4,
+          "sulfur-dioxide": 19.3
+        }
+      },
       "apparentColor": {
         "hex": "#d8ecff",
         "palette": [
@@ -9226,6 +9450,16 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 7.7,
+          "methane": 4.4,
+          "carbon-dioxide": 12.2,
+          "water": 5,
+          "sulfur-dioxide": 17.7
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -9595,6 +9829,16 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 4.4,
+          "methane": 2.5,
+          "carbon-dioxide": 6.9,
+          "water": 2.8,
+          "sulfur-dioxide": 10
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -10326,6 +10570,10 @@
           "key": "geology/cryovolcanic"
         },
         {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+nitrogen+water+methane"
+        },
+        {
           "key": "habitability/subsurface"
         },
         {
@@ -10479,6 +10727,21 @@
         "notes": [
           "Sunlight through translucent nitrogen ice drives a solid-state greenhouse; sub-surface gas pockets erupt as seasonal geysers (Triton-like). Driven by the distant sun, not interior heat."
         ]
+      },
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "nitrogen",
+          "water",
+          "methane"
+        ],
+        "lambda": {
+          "nitrogen": 44.6,
+          "methane": 25.5,
+          "carbon-dioxide": 70,
+          "water": 28.7,
+          "sulfur-dioxide": 101.9
+        }
       },
       "apparentColor": {
         "hex": "#bacee2",
@@ -10846,6 +11109,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+nitrogen+water+methane"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -10995,6 +11262,21 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "nitrogen",
+          "water",
+          "methane"
+        ],
+        "lambda": {
+          "nitrogen": 30.1,
+          "methane": 17.2,
+          "carbon-dioxide": 47.3,
+          "water": 19.4,
+          "sulfur-dioxide": 68.9
+        }
       },
       "apparentColor": {
         "hex": "#cadff1",
@@ -11377,6 +11659,16 @@
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 7.2,
+          "methane": 4.1,
+          "carbon-dioxide": 11.4,
+          "water": 4.7,
+          "sulfur-dioxide": 16.6
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",

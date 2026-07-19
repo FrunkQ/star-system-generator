@@ -247,6 +247,20 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     });
   }
 
+  // 6b. Volatile-ice retention
+  if (body.volatiles && body.volatiles.retained.length) {
+    const v = body.volatiles;
+    layers.push({
+      id: 'volatiles', title: 'Volatile-ice retention', link: '/physics#geology',
+      inputs: [
+        { label: 'Surface temp', value: n(body.temperatureK ?? 0, 0, 'K') },
+        { label: 'Escape (Jeans λ)', value: Object.entries(v.lambda).map(([s, l]) => `${s} ${l}`).join(' · ') }
+      ],
+      outputs: [{ label: 'Retained as surface ice', value: v.retained.join(', ') }],
+      notes: ['An ice survives on the surface only if it is cold enough to stay solid AND the body\'s gravity holds the vapour it sublimates (Jeans parameter λ above the retention floor). Cold, heavy species on small distant worlds are kept in a closed sublimate–recondense cycle; light species on warm or low-gravity worlds are lost to space.']
+    });
+  }
+
   // 7. Apparent colour
   if (body.apparentColor) {
     layers.push({

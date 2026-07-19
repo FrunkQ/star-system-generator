@@ -32,7 +32,7 @@ const DERIVED_FIELDS = [
 // Tag namespaces the processor owns (re-derived every run).
 const DERIVED_TAG_PREFIXES = [
   'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/', 'shape/', 'aurora/', 'thermal/',
-  'resonance/', 'fate/'  // re-derived every run by the resonance + stability passes
+  'resonance/', 'fate/', 'volatiles/'  // re-derived every run by the resonance + stability + volatile passes
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([

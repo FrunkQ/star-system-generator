@@ -56,7 +56,25 @@ vigor < 0.35            → inactive        (Moon, Mars today)
 Nothing downstream breaks: `active` stays `regime !== 'inactive'` (plutonic counts as active —
 its heat is real), and every existing regime keeps its name.
 
-## Foundation 2 — volatile-ice RETENTION, per species
+## Foundation 2 — volatile-ice RETENTION, per species  ✅ SHIPPED (v2.1.165-beta)
+
+Built as `physics/volatileRetention.ts`. Final model = three gates per species:
+- **(0) Availability** — a body must HAVE the species before it can keep it (the refinement that
+  stops a desiccated Io being frosted with water): condensed volatiles (water, N2, CH4, CO2) require
+  an ice inventory (`makeup.ice > 0.05 || icyShell || hydrosphere`); SO2 requires active silicate
+  volcanism (`regime === 'tidal-volcanic'`, Io's plume-sourced frost).
+- **(1) Cold trap** — `surfaceTempK < meltK` (solid at all), from the liquids phase data.
+- **(2) Gravity trap** — Jeans `λ = G·M·μ/(R·R_gas·T_esc) ≥ LAM_RETAIN` (15), with
+  `T_esc = max(2·Teq, 50)` — deliberately NOT the 800 K near-star XUV floor, which would strip cold
+  Kuiper ices. Fixed threshold at present age (age term = future refinement).
+
+Result on the real solar system (baseline): Io → SO2; Europa/Ganymede/Callisto/Titan → CO2+water;
+Pluto/Triton → CO2+N2+water+CH4. Emits `volatiles/ices` tag (value = species list) + Newton panel.
+Mars gets nothing (bulk ice <5%; its polar caps are below our global-surface resolution, same as
+Luna) — accepted. Ammonia dropped from the set (rarely a standalone surface ice; lives as
+water-ammonia cryo). 8 anchor tests. `body.volatiles = { retained, lambda }`.
+
+### Original design notes
 
 Question answered: "can this body hold surface ice of species X?" for X in
 N2, CH4, CO, CO2, SO2, NH3, H2O — the species the liquids model already defines.

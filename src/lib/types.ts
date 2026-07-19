@@ -1,6 +1,7 @@
 // ===== types.ts =====
 import type { OrbitalBoundaries } from './physics/orbits';
 import type { GeoActivity } from './physics/geoActivity';
+import type { VolatileRetention } from './physics/volatileRetention';
 import type { ClassExplanation } from './system/classification';
 import type { TravellerWorldData } from './traveller/types';
 import type { ScheduledJourneyLog } from './transit/types';
@@ -240,6 +241,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   magnetic_field?: MagneticField;
   magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
+  volatiles?: VolatileRetention; // derived surface-ice retention per species (see deriveVolatileRetention)
   habitabilityBreakdown?: {    // the AUTHORITATIVE habitability breakdown the Bio tab renders
     factors: {
       label: string; points: number; max: number; value: string; ideal: string;
