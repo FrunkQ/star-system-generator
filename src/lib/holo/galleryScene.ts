@@ -100,7 +100,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		} else {
 			const texCanvas = getPlanetTextureEquirect(node);
 			const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-			if (texCanvas) { const t = new THREE.CanvasTexture(texCanvas); t.colorSpace = THREE.SRGBColorSpace; mat.map = t; }
+			if (texCanvas) { const t = new THREE.CanvasTexture(texCanvas); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.map = t; }
 			else mat.color.set(node.apparentColorHex || '#8a8f99');
 			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), mat);
 			const polF = appear.oblatePolarFactor;

@@ -1360,6 +1360,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             if (texCanvas) {
               const t = new THREE.CanvasTexture(texCanvas);
               t.colorSpace = THREE.SRGBColorSpace;
+              t.anisotropy = renderer.capabilities.getMaxAnisotropy(); // keep surface detail crisp at the limb
               mat.map = t;
             } else {
               mat.color.set(colorHex);

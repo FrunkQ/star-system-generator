@@ -216,7 +216,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// irradiation dose. Gated on true vacuum, so thin-air, OXIDISED Mars keeps its red — its colour is
 	// rust, not space weathering.
 	const regolith = (solid && !icyShell && atmPressureBar < 0.001)
-		? clamp01(Math.min(1, dose) * 0.7) : 0;
+		? clamp01(Math.min(1, dose) * 0.95) : 0;
 
 	// ICE CRACKS / RIDGES — an icy crust flexed by tidal/freezing stress splits into a lineae network
 	// (Europa). Stronger on tidally-worked / cryovolcanic crusts.

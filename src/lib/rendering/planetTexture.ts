@@ -194,8 +194,8 @@ function render(body: CelestialBody): HTMLCanvasElement {
 // equirect sheet that wraps onto a sphere. No baked terminator/limb here — the 3D scene lights the
 // sphere and draws the atmosphere, so this is pure day-side albedo. Blobs are drawn three times
 // (x, x±W) so nothing seams at the ±180° meridian. Poles pinch is acceptable for stylised worlds.
-const EQ_W = 512;
-const EQ_H = 256;
+const EQ_W = 1024;  // hi-res so surface detail (craters, lineae) stays crisp wrapped onto the 3D sphere
+const EQ_H = 512;
 const eqCache = new Map<string, HTMLCanvasElement>();
 
 function drawPatchesEquirect(ctx: CanvasRenderingContext2D, rnd: () => number, color: string, fraction: number, alpha = 1) {
@@ -226,6 +226,7 @@ function drawPatchesEquirect(ctx: CanvasRenderingContext2D, rnd: () => number, c
 function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBody, rnd: () => number) {
   const a = deriveAppearance(body);
   const wrap = (draw: (dx: number) => void) => { for (const dx of [-EQ_W, 0, EQ_W]) draw(dx); };
+  const S = EQ_W / 512; // absolute-px sizes scale with the sheet resolution (relative ones auto-scale)
 
   // Space-weathered regolith: desaturate an airless silicate surface toward grey (Moon/Mercury).
   if (a.regolith > 0) {
@@ -248,33 +249,37 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     // A crater = a shadowed BOWL (dark radial gradient) ringed by a brighter RIM — reads as a real pit,
     // not a flat dot. A FRESH one adds a soft ejecta blanket and a DIFFUSE ray splash (short, jittered,
     // faint — not clean spokes).
+    // High contrast so the pit survives the sphere's diffuse lighting: a deep dark floor, a crisp bright
+    // rim, and a thin dark outer shadow so it reads as a raised-rim bowl rather than a smudge.
     const crater = (x: number, y: number, r: number, fresh: boolean) => wrap((dx) => {
       const cx = x + dx;
       if (fresh) {
         const eg = ctx.createRadialGradient(cx, y, r * 0.6, cx, y, r * 3.2);
-        eg.addColorStop(0, 'rgba(228,234,244,0.18)'); eg.addColorStop(1, 'rgba(228,234,244,0)');
+        eg.addColorStop(0, 'rgba(230,236,246,0.24)'); eg.addColorStop(1, 'rgba(230,236,246,0)');
         ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(cx, y, r * 3.2, 0, 2 * Math.PI); ctx.fill();
-        ctx.strokeStyle = 'rgba(235,240,250,0.12)';
+        ctx.strokeStyle = 'rgba(238,242,250,0.16)';
         const nr = 16 + Math.floor(rnd() * 8);
         for (let k = 0; k < nr; k++) {
           const ang = (k / nr) * 2 * Math.PI + (rnd() - 0.5) * 0.4, len = r * (1.2 + rnd() * rnd() * 2.8);
-          ctx.lineWidth = 0.4 + rnd() * 0.4;
+          ctx.lineWidth = (0.4 + rnd() * 0.4) * S;
           ctx.beginPath(); ctx.moveTo(cx + Math.cos(ang) * r, y + Math.sin(ang) * r); ctx.lineTo(cx + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke();
         }
       }
       const fg = ctx.createRadialGradient(cx, y, 0, cx, y, r);
-      fg.addColorStop(0, 'rgba(0,0,0,0.30)'); fg.addColorStop(0.72, 'rgba(0,0,0,0.12)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+      fg.addColorStop(0, 'rgba(0,0,0,0.5)'); fg.addColorStop(0.68, 'rgba(0,0,0,0.22)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(cx, y, r, 0, 2 * Math.PI); ctx.fill();
-      ctx.strokeStyle = fresh ? 'rgba(245,248,255,0.5)' : 'rgba(232,232,238,0.22)';
-      ctx.lineWidth = Math.max(0.4, r * 0.2); ctx.beginPath(); ctx.arc(cx, y, r * 0.9, 0, 2 * Math.PI); ctx.stroke();
+      ctx.strokeStyle = 'rgba(12,12,16,0.35)'; ctx.lineWidth = Math.max(0.5 * S, r * 0.12); // outer shadow
+      ctx.beginPath(); ctx.arc(cx, y, r * 1.04, 0, 2 * Math.PI); ctx.stroke();
+      ctx.strokeStyle = fresh ? 'rgba(248,250,255,0.72)' : 'rgba(238,238,244,0.42)'; // bright rim
+      ctx.lineWidth = Math.max(0.5 * S, r * 0.22); ctx.beginPath(); ctx.arc(cx, y, r * 0.88, 0, 2 * Math.PI); ctx.stroke();
     });
     const n = Math.round(28 + a.craters.density * 170);  // saturates an ancient highland
     for (let i = 0; i < n; i++) {
       let x = rnd() * EQ_W;
       if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = rnd() * 0.5 * EQ_W; // leading hemisphere
-      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, 1.1 + rnd() * rnd() * 6, false);
+      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, (1.1 + rnd() * rnd() * 6) * S, false);
     }
-    for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, 3 + rnd() * 3, true);
+    for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, (3 + rnd() * 3) * S, true);
   }
 
   if (a.iceCracks) {
@@ -285,7 +290,7 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     const maxLen = EQ_W * 0.14;
     const nodes: [number, number][] = [];
     for (let i = 0; i < nn; i++) nodes.push([rnd() * EQ_W, EQ_H * 0.08 + rnd() * EQ_H * 0.84]);
-    ctx.strokeStyle = a.iceCracks.colorHex; ctx.globalAlpha = 0.5; ctx.lineWidth = 0.6 + sev * 0.7; ctx.lineCap = 'round';
+    ctx.strokeStyle = a.iceCracks.colorHex; ctx.globalAlpha = 0.55; ctx.lineWidth = (0.7 + sev * 0.8) * S; ctx.lineCap = 'round';
     for (let i = 0; i < nodes.length; i++) {
       const near = nodes.map((p, j) => ({ j, d: Math.hypot(p[0] - nodes[i][0], p[1] - nodes[i][1]) }))
         .filter((o) => o.j > i && o.d < maxLen).sort((a2, b2) => a2.d - b2.d).slice(0, 3);
@@ -303,11 +308,11 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     ctx.lineCap = 'round';
     for (let i = 0; i < n; i++) {
       const y = EQ_H * (0.3 + rnd() * 0.4), x = rnd() * EQ_W, len = EQ_W * (0.16 + rnd() * 0.18); // shorter
-      const ey = y + (rnd() - 0.5) * 16, bow = (rnd() - 0.5) * 18;
+      const ey = y + (rnd() - 0.5) * 16 * S, bow = (rnd() - 0.5) * 18 * S;
       wrap((dx) => {
-        ctx.strokeStyle = 'rgba(34,40,52,0.4)'; ctx.lineWidth = 2.4;   // a soft shadowed trough, not a bar
+        ctx.strokeStyle = 'rgba(34,40,52,0.4)'; ctx.lineWidth = 2.4 * S;   // a soft shadowed trough, not a bar
         ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, ey); ctx.stroke();
-        ctx.strokeStyle = 'rgba(210,222,238,0.28)'; ctx.lineWidth = 0.5; // faint sunlit rim
+        ctx.strokeStyle = 'rgba(210,222,238,0.28)'; ctx.lineWidth = 0.5 * S; // faint sunlit rim
         ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, ey); ctx.stroke();
       });
     }
@@ -425,7 +430,7 @@ export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = eqCache.get(key);
   if (!tex) {
-    if (eqCache.size > 200) eqCache.clear();
+    if (eqCache.size > 80) eqCache.clear(); // 1024×512 canvases are ~2 MB each — keep the cache bounded
     tex = renderEquirect(body);
     eqCache.set(key, tex);
   }
