@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.186-beta - 20th Jul 2026
+
+* Starmap black holes now distinguish feeding from quiescent: a FEEDING (active) hole shows the accretion-disc image, while a quiescent one shows the plain black-hole image in the 3D starmap and a clean white-edged black circle on the 2D map (so it always reads clearly, never black-on-black).
+
 ## v2.1.185-beta - 20th Jul 2026
 
 * Atmosphere overhaul on the 3D holo: the limb-glow now hugs the surface tightly (was a big bubble) and takes the world's own air/haze colour instead of a generic blue - so Venus reads hazy yellow, not a clear blue rim. Added a separate cloud deck that floats above the surface on its own drifting shell: a patchy layer on Earth-likes, an opaque haze veil on Venus-likes (giants excluded - their bands already are the cloud tops).

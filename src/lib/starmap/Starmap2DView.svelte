@@ -54,9 +54,13 @@
           {#each stars as s, i}
             {@const sx = c.x + (offs[i]?.dx ?? 0) * R}
             {@const sy = c.y + (offs[i]?.dy ?? 0) * R}
-            {#if s.bh}
-              <!-- A black hole is #000000 → invisible as a plain dot; draw its image glyph instead. -->
-              <image href="/images/star_types/BH.webp" x={sx - R * 1.4} y={sy - R * 1.4} width={R * 2.8} height={R * 2.8} class="bh-glyph" />
+            {#if s.bh === 'active'}
+              <!-- A FEEDING black hole: show the accretion-disc image (bright, clearly reads as a BH). -->
+              <image href="/images/star_types/BH_accretion_disk.png" x={sx - R * 1.6} y={sy - R * 1.6} width={R * 3.2} height={R * 3.2} class="bh-glyph" />
+            {:else if s.bh}
+              <!-- A quiescent black hole is #000000 → invisible on the dark map; a white-edged black disc reads clearly.
+                   Inline style (beats the .star CSS stroke) keeps the white ring. -->
+              <circle cx={sx} cy={sy} r={R} style="fill:#000; stroke:#dfe8f4; stroke-width:{R * 0.35}" class="star" />
             {:else}
               <circle cx={sx} cy={sy} r={R} style="fill:{s.color}" class="star" />
             {/if}

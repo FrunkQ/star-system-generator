@@ -8,13 +8,17 @@ export interface VisualStar {
   id: string;
   name: string;
   color: string;
-  bh?: boolean;  // a black hole — colour is #000000, so the glyph renderer swaps in the BH image
+  bh?: 'quiescent' | 'active';  // a black hole — colour is #000000; the glyph renderer swaps in the BH / accretion-disc image
 }
 
-// A black hole reads black-on-black as a plain colour dot, so flag it for image rendering. Matches
-// getBlackHoleType in Starmap.svelte (classes carry "star/BH" / "star/BH_active", sometimes bare).
-function isBlackHole(b: CelestialBody): boolean {
-  return (b.classes ?? []).some((c) => c === 'star/BH' || c === 'star/BH_active' || c === 'BH' || c === 'BH_active');
+// A black hole reads black-on-black as a plain colour dot, so flag it for image rendering — and note
+// whether it's FEEDING (accretion disc) or quiescent. Matches getBlackHoleType in Starmap.svelte
+// (classes carry "star/BH" / "star/BH_active", sometimes bare).
+function blackHoleState(b: CelestialBody): 'quiescent' | 'active' | undefined {
+  const cs = b.classes ?? [];
+  if (cs.some((c) => c === 'star/BH_active' || c === 'BH_active')) return 'active';
+  if (cs.some((c) => c === 'star/BH' || c === 'BH')) return 'quiescent';
+  return undefined;
 }
 
 export function systemVisualStars(system: System | null | undefined): VisualStar[] {
@@ -24,11 +28,11 @@ export function systemVisualStars(system: System | null | undefined): VisualStar
     return stars
       .slice()
       .sort((a, b) => (b.massKg || 0) - (a.massKg || 0)) // primary first
-      .map((s) => ({ id: s.id, name: s.name, color: getPlanetColor(s), bh: isBlackHole(s) }));
+      .map((s) => ({ id: s.id, name: s.name, color: getPlanetColor(s), bh: blackHoleState(s) }));
   }
   // No explicit stars (e.g. a rogue world / lone body): use the root body if there is one.
   const root = system.nodes.find((n) => n.parentId === null);
-  if (root && root.kind === 'body') return [{ id: root.id, name: root.name, color: getPlanetColor(root as CelestialBody), bh: isBlackHole(root as CelestialBody) }];
+  if (root && root.kind === 'body') return [{ id: root.id, name: root.name, color: getPlanetColor(root as CelestialBody), bh: blackHoleState(root as CelestialBody) }];
   return [];
 }
 
