@@ -241,6 +241,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         { label: 'Regime', value: g.regime },
         { label: 'Volcanism', value: g.volcanism },
         { label: 'Geothermal vigor (Earth=1)', value: n(g.vigor, 2) },
+        { label: 'Surface age', value: n(g.surfaceAgeGyr, g.surfaceAgeGyr < 0.1 ? 3 : 2, 'Gyr') },
         { label: 'Driver', value: g.driver }
       ],
       notes: g.notes.slice(0, 1)

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveGeoActivity, geothermalVigor, type GeoInputs } from './geoActivity';
+import { deriveGeoActivity, geothermalVigor, deriveSurfaceAgeGyr, type GeoInputs } from './geoActivity';
 
 const ROCK = { metal: 0.3, rock: 0.7, carbon: 0, ice: 0, gas: 0 };
 const base: GeoInputs = {
@@ -92,6 +92,25 @@ describe('deriveGeoActivity — age turns Earth into Mars', () => {
   it('an Earth-clone goes geologically dead by ~9 Gyr', () => {
     expect(w({ hasSurfaceWater: true, ageGyr: 4.5 }).regime).toBe('plate-tectonics');
     expect(w({ hasSurfaceWater: true, ageGyr: 9.5 }).regime).toBe('inactive');
+  });
+
+  it('surface age: active worlds read their resurfacing timescale, capped at system age', () => {
+    // Earth (plate tectonics) → young ocean-floor surface; Io (tidal) → almost freshly repaved.
+    expect(deriveGeoActivity({ ...base, hasSurfaceWater: true }).surfaceAgeGyr).toBeCloseTo(0.2, 2);
+    const io = w({ massMe: 0.015, radiusRe: 0.28, tidalLavaFlows: true });
+    expect(io.surfaceAgeGyr).toBeLessThan(0.01);
+    // A young system caps the surface age (a 0.5 Gyr system can't have a 1 Gyr stagnant surface).
+    expect(deriveSurfaceAgeGyr('stagnant-lid', 0.8, 0.5)).toBeCloseTo(0.5, 2);
+  });
+
+  it('surface age: a dead world froze when its vigor decayed below the active threshold', () => {
+    // Mars died early → an ancient surface (~3.8 Gyr exposed); the inversion recovers that from vigor.
+    const mars = w({ massMe: 0.107, radiusRe: 0.532, ageGyr: 4.6 });
+    expect(mars.regime).toBe('inactive');
+    expect(mars.surfaceAgeGyr).toBeGreaterThan(3);
+    expect(mars.surfaceAgeGyr).toBeLessThanOrEqual(4.6);
+    // A world that was never active reads the full system age (capped), not more.
+    expect(deriveSurfaceAgeGyr('inactive', 0.02, 4.5)).toBeCloseTo(4.5, 2);
   });
 
   it('tags are mechanism-specific and unique per regime', () => {

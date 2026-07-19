@@ -97,7 +97,41 @@ Ganymede retain H2O only; Luna and Mercury retain nothing (polar-crater cold tra
 resolution — acceptable); Io retains SO2 (frost) but not H2O at the sub-solar point — SO2's curve
 and Io's temperature range make that fall out naturally.
 
-## Foundation 3 — SURFACE AGE
+## Generation / classification fit (analysis 2026-07-19) — decision: leave gen ORGANIC
+
+Do the two shipped foundations get the inputs they need from the current generator, with NO data
+edits? Grounded audit verdict:
+- **Solar data: no update needed.** The baseline runs the existing `solar-system-input.json` and the
+  tags fire correctly (Io→SO2, Galileans→CO2+water, Pluto/Triton→CO2+N2+water+CH4, Venus→episodic).
+  All derived from mass/radius/orbit/makeup already present.
+- **Dry-episodic worlds: occur naturally AND reliably.** The `desert` class + dry inner terrestrials
+  give dry ~Earth-mass vigor-≥0.7 bodies → episodic; smaller/older dry rockies → plutonic. No tweak.
+- **Cold-icy-volatile worlds: occur naturally but NOT reliably.** Single-star limit = CO-ice-line×2
+  (T_eq→~20–30 K) and cold ice worlds / icy moons / dwarf planets are offered there, so CO2+water
+  fire on any cold icy body and N2/CH4 on massive-enough cold carriers — but which system gets a
+  Pluto-analog is a rarity-weighted draw (luck), not guaranteed.
+- **Classification: mostly covered.** Cold/icy classes exist (`planet/ice`, `methane`, `ice-giant`,
+  `dwarf-planet`, `subsurface-ocean`, `cold-eyeball`, `comet`). Gap: no single class pins BOTH cold
+  placement AND bulk-ice makeup for a KBO (`dwarf-planet` has neither Teq nor ice-makeup band; only
+  `comet` bands on `makeup.ice`) — a KBO's iciness is emergent via density inference. No dedicated
+  Venus/stagnant class (Venus reads `desert`), which is fine — regime is separate from class.
+
+**Decision (Alex, 2026-07-19): leave generation organic** — cold-icy worlds appear at natural
+frequency; revisit only if playtesting shows them too rare. BANKED robustness tweaks if wanted later:
+(1) give `planet/ice` + `dwarf-planet` an explicit `makeup.ice` band (mirror `comet` at
+classification.json:365) so a KBO is authentically icy, not luck-of-density; (2) bias outer typed
+slots toward ice-bearing types / guarantee an outer giant (its icy moons carry the ices);
+(3) optionally raise the 40 AU multi-star slot cap for N2/CH4 in binaries.
+
+## Foundation 3 — SURFACE AGE  ✅ SHIPPED (v2.1.166-beta)
+
+`deriveSurfaceAgeGyr(regime, vigor, systemAge)` in geoActivity.ts, stamped onto `geoActivity.surfaceAgeGyr`
++ a coarse `surface/age` tag (young/moderate/old/ancient) + Newton output. Active regimes read the
+resurfacing timescale below (capped at system age); a dead world inverts the age-decay to recover
+when vigor last crossed the active threshold. Baseline results are spot-on: Venus 0.70, Earth 0.20,
+Io 0.002, Europa/Triton/Enceladus 0.05, Mars 3.85 (died early), Callisto/Luna/Mercury 4.60 Gyr.
+
+### Original design notes
 
 The quantity cratering, cracking and tholins all secretly need: how long has this surface been
 exposed? Derived, not stored: each regime implies a resurfacing timescale, capped by system age.

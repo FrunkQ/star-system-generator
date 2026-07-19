@@ -76,6 +76,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -201,6 +205,7 @@
         "vigor": 0.099,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -480,6 +485,10 @@
           "key": "geology/episodic"
         },
         {
+          "key": "surface/age",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -592,6 +601,7 @@
         "vigor": 0.803,
         "active": true,
         "driver": "radiogenic (dry, heat-trapping)",
+        "surfaceAgeGyr": 0.7,
         "tags": [
           "geology/episodic"
         ],
@@ -873,6 +883,10 @@
           "key": "geology/plate-tectonics"
         },
         {
+          "key": "surface/age",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/earth-like"
         },
         {
@@ -1038,6 +1052,7 @@
         "vigor": 0.975,
         "active": true,
         "driver": "radiogenic + water",
+        "surfaceAgeGyr": 0.2,
         "tags": [
           "geology/plate-tectonics"
         ],
@@ -1394,6 +1409,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -1503,6 +1522,7 @@
         "vigor": 0.022,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -1787,6 +1807,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -1897,6 +1921,7 @@
         "vigor": 0.135,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 3.8483074413881933,
         "tags": [
           "geology/inactive"
         ],
@@ -2146,6 +2171,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -2262,6 +2291,7 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -2531,6 +2561,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -2644,6 +2678,7 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -3499,6 +3534,10 @@
           "key": "geology/volcanic-tidal"
         },
         {
+          "key": "surface/age",
+          "value": "young"
+        },
+        {
           "key": "volatiles/ices",
           "value": "sulfur-dioxide"
         },
@@ -3634,6 +3673,7 @@
         "vigor": 0.027,
         "active": true,
         "driver": "tidal flexing",
+        "surfaceAgeGyr": 0.002,
         "tags": [
           "geology/volcanic-tidal"
         ],
@@ -3936,6 +3976,10 @@
           "key": "geology/cryovolcanic"
         },
         {
+          "key": "surface/age",
+          "value": "young"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -4101,6 +4145,7 @@
         "vigor": 0.014,
         "active": true,
         "driver": "tidal flexing (icy)",
+        "surfaceAgeGyr": 0.05,
         "tags": [
           "geology/cryovolcanic"
         ],
@@ -4395,6 +4440,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -4530,6 +4579,7 @@
         "vigor": 0.019,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -4813,6 +4863,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -4930,6 +4984,7 @@
         "vigor": 0.013,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -5707,6 +5762,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -5861,6 +5920,7 @@
         "vigor": 0.016,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -6103,6 +6163,10 @@
           "key": "geology/cryovolcanic"
         },
         {
+          "key": "surface/age",
+          "value": "young"
+        },
+        {
           "key": "habitability/subsurface"
         },
         {
@@ -6260,6 +6324,7 @@
         "vigor": 0.4,
         "active": true,
         "driver": "resonance-pumped tidal flexing (icy)",
+        "surfaceAgeGyr": 0.05,
         "tags": [
           "geology/cryovolcanic"
         ],
@@ -6549,6 +6614,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -6659,6 +6728,7 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -6964,6 +7034,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -7078,6 +7152,7 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -7354,6 +7429,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -7484,6 +7563,7 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -7783,6 +7863,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -7892,6 +7976,7 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -8155,6 +8240,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -8264,6 +8353,7 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -8964,6 +9054,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -9069,6 +9163,7 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -9335,6 +9430,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -9444,6 +9543,7 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -9710,6 +9810,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -9823,6 +9927,7 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -10570,6 +10675,10 @@
           "key": "geology/cryovolcanic"
         },
         {
+          "key": "surface/age",
+          "value": "young"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+nitrogen+water+methane"
         },
@@ -10721,6 +10830,7 @@
         "vigor": 0.15,
         "active": true,
         "driver": "solar-seasonal sublimation",
+        "surfaceAgeGyr": 0.05,
         "tags": [
           "geology/cryovolcanic"
         ],
@@ -11109,6 +11219,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+nitrogen+water+methane"
         },
@@ -11256,6 +11370,7 @@
         "vigor": 0.003,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
@@ -11527,6 +11642,10 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -11653,6 +11772,7 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],

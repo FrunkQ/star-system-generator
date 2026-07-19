@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.166-beta - 19th Jul 2026
+
+* Geo foundations step 3 - SURFACE AGE: every solid world now derives how long its visible surface has been exposed. An active world reads its regime's resurfacing pace (Io repaves in ~2 Myr, Earth ocean-floor ~0.2 Gyr, Venus ~0.7 Gyr); a dead world inverts the radiogenic decay to recover when it froze (Mars ~3.8 Gyr, the Moon and the old outer moons ~4.6 Gyr). This is the quantity cratering, weathering and tholin build-up all key off. Shown in the Newton panel and as a young/moderate/old/ancient tag.
+
 ## v2.1.165-beta - 19th Jul 2026
 
 * Geo foundations step 2 - volatile-ice RETENTION: a body now derives which ices it can hold on its surface, from real physics - the species must be available (an ice inventory for water/N2/CH4/CO2; active volcanism for Io-style SO2 frost), cold enough to stay solid (the liquids phase data), and heavy/gravity-bound enough that the sublimated vapour cannot escape to space (Jeans parameter). Reproduces the solar system: Io keeps SO2, the icy Galilean moons keep CO2 + water, Pluto and Triton keep CO2 + nitrogen + water + methane. Surfaced as a volatiles/ices tag and a Newton-panel explanation; the base for coming frost/tholin/bright-ice visuals.

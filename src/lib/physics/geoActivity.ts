@@ -24,6 +24,8 @@ export interface GeoActivity {
   vigor: number;            // relative geothermal vigor (Earth today ≈ 1)
   active: boolean;
   driver: string;           // short human label of the dominant heat source
+  surfaceAgeGyr: number;    // how long the visible surface has been exposed (resurfacing timescale, or
+                            // — for a dead world — how long ago it froze; drives cratering/weathering)
   tags: string[];
   notes: string[];
 }
@@ -70,6 +72,36 @@ export function geothermalVigor(i: Pick<GeoInputs, 'makeup' | 'massMe' | 'radius
 }
 
 export function deriveGeoActivity(i: GeoInputs): GeoActivity {
+  const g = deriveGeoActivityCore(i);
+  g.surfaceAgeGyr = deriveSurfaceAgeGyr(g.regime, g.vigor, i.ageGyr);
+  return g;
+}
+
+// How long the visible surface has been exposed (Gyr) — the driver of cratering, weathering and (via
+// irradiation) tholin build-up. An ACTIVE world's surface is continually renewed on its regime's
+// resurfacing timescale; a DEAD world's surface froze when radiogenic vigor decayed below the active
+// threshold, so we invert the age-decay to recover how long ago that was. Capped at the system age.
+const RESURFACE_GYR: Record<TectonicRegime, number> = {
+  'tidal-volcanic': 0.002,   // Io repaves almost continuously
+  'cryovolcanic': 0.05,      // Europa/Enceladus — young icy surfaces
+  'plate-tectonics': 0.2,    // Earth's ocean floor
+  'episodic': 0.7,           // mid-cycle Venus
+  'stagnant-lid': 1.0,       // one lid sheds heat slowly
+  'plutonic': 2.0,           // intrusive renewal only — old surface
+  'inactive': Infinity       // no renewal — set by the vigor inversion below
+};
+export function deriveSurfaceAgeGyr(regime: TectonicRegime, vigor: number, systemAgeGyr: number): number {
+  const age = Math.max(0.1, systemAgeGyr);
+  if (regime !== 'inactive') return Math.min(RESURFACE_GYR[regime] ?? age, age);
+  // Dead world: vigor(t) = vigor_now · 2^(-(t-now)/halflife). Solve for when it last crossed the
+  // active threshold. A world that was never active (would-be crossing older than the system) reads
+  // the full system age.
+  if (vigor <= 0 || vigor >= ACTIVE_THRESHOLD) return age;
+  const sinceGyr = RADIOGENIC_HALFLIFE_GYR * Math.log2(ACTIVE_THRESHOLD / vigor);
+  return Math.min(age, Math.max(0, sinceGyr));
+}
+
+function deriveGeoActivityCore(i: GeoInputs): GeoActivity {
   const iceFrac = i.makeup.ice;
   const carbonRich = i.makeup.carbon > 0.3;
   // A GM radiogenic-heat override adds directly to the derived vigor (extra internal heat = more
@@ -148,5 +180,5 @@ function mk(
   regime: TectonicRegime, volcanism: VolcanismStyle, vigor: number,
   driver: string, tags: string[], notes: string[]
 ): GeoActivity {
-  return { regime, volcanism, vigor: +vigor.toFixed(3), active: regime !== 'inactive', driver, tags, notes };
+  return { regime, volcanism, vigor: +vigor.toFixed(3), active: regime !== 'inactive', driver, surfaceAgeGyr: 0, tags, notes };
 }

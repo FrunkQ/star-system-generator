@@ -730,6 +730,12 @@ export class SystemProcessor implements ISystemProcessor {
                 radiogenicOverrideK: body.radiogenicHeatK ?? 0
             });
             for (const key of body.geoActivity.tags) body.tags.push({ key });
+            // Surface age (Gyr the visible surface has been exposed) drives cratering / weathering /
+            // tholin build-up. Bucketed into a coarse tag for filtering; the number lives on geoActivity.
+            body.tags = body.tags.filter((t) => !t.key.startsWith('surface/age'));
+            const sAge = body.geoActivity.surfaceAgeGyr;
+            const ageBucket = sAge < 0.1 ? 'young' : sAge < 1 ? 'moderate' : sAge < 3 ? 'old' : 'ancient';
+            body.tags.push({ key: 'surface/age', value: ageBucket });
             features['geoActive'] = body.geoActivity.active ? 1 : 0;
             features['plateTectonics'] = body.geoActivity.regime === 'plate-tectonics' ? 1 : 0;
         } else {
