@@ -526,7 +526,9 @@
               if (systemNode) {
                   systemNode.viewport = currentViewport;
                   systemNode.system = currentSystem;
-                  systemNode.name = currentSystem.name;
+                  // The map label tracks the primary star's name only until the GM gives the system
+                  // its own name (see isNameUserDefined) — then it's pinned.
+                  if (!systemNode.isNameUserDefined) systemNode.name = currentSystem.name;
                   const fallbackSec = BigInt(Math.floor((currentSystem.epochT0 || Date.now()) / 1000));
                   const temporalDisplaySec = parseClockSeconds(starmap.temporal?.displayTimeSec, fallbackSec).toString();
                   systemNode.time = { ...(systemNode.time || {}), displayTimeSec: temporalDisplaySec };
@@ -669,7 +671,7 @@
           const systemNode = starmap.systems.find(s => s.id === system.id || s.system.id === system.id);
           if (systemNode) {
             systemNode.system = system;
-            systemNode.name = system.name;
+            if (!systemNode.isNameUserDefined) systemNode.name = system.name;
           }
         }
         return starmap;
@@ -1106,7 +1108,7 @@
     starmapStore.update(starmap => {
       if (starmap) {
         const node = starmap.systems.find(s => s.id === systemId || s.system?.id === systemId);
-        if (node) node.name = name;
+        if (node) { node.name = name; node.isNameUserDefined = true; }
       }
       return starmap;
     });
@@ -1114,6 +1116,12 @@
 
   function handleDeleteSystem(event: CustomEvent<string>) {
     const target = event.detail;
+    // Deleting a system is destructive and irreversible — everything in it (bodies, constructs,
+    // routes, notes) is lost. Confirm first, naming the system so the GM knows exactly what goes.
+    const existing = get(starmapStore);
+    const targetNode = existing?.systems.find(s => s.id === target || s.system?.id === target);
+    const label = targetNode?.name || 'this system';
+    if (!confirm(`Delete "${label}"?\n\nThe entire system — every body, construct, route and note — will be permanently removed. This cannot be undone.\n\nDownload the starmap first if you want to keep a copy.`)) return;
     starmapStore.update(starmap => {
       if (starmap) {
         // Systems are keyed on the wrapper NODE id, but a delete can arrive with either that node id

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.184-beta - 20th Jul 2026
+
+* Deleting a system now asks for confirmation first (naming the system) - it was wiping the whole system, its routes and notes with no warning.
+* System names are now their own value, separate from the primary star: a system defaults to its star's name but can be renamed independently (right-click a system on the starmap), and that custom name now survives a save / load / refresh instead of being overwritten by the star name.
+* Tidally-locked moons now correctly keep one face toward their parent in the 3D holo. They were spun by a free clock that started at an arbitrary phase, so each moon locked at a different offset (some facing right, others ~90° out); the facing is now derived from the live orbital geometry, so the battered anti-parent hemisphere consistently points away.
+
 ## v2.1.183-beta - 19th Jul 2026
 
 * Black holes were invisible on the starmap - a black hole's colour is #000000, so its glyph read black-on-black on the dark map (and player views). Now draws the black-hole image instead of an unlit colour dot, in both the 3D starmap (used for the flat "2D" view too) and the SVG 2D map.

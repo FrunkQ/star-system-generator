@@ -530,6 +530,10 @@ export type ViableOrbitResult = {
 export interface StarSystemNode {
   id: ID;
   name: string;
+  // The system was renamed independently of its primary star. While false/undefined the map label
+  // defaults to (and tracks) the primary star's name; once the GM sets a custom system name this
+  // pins it, so renaming the star no longer overwrites it.
+  isNameUserDefined?: boolean;
   position: { x: number; y: number };
   system: System;
   viewport?: { pan: { x: number; y: number }; zoom: number; }; // Fixed panX/panY to pan object

@@ -133,6 +133,7 @@ interface BodyVisual {
   occluderId?: string | null; // body whose shadow can eclipse this one (a moon's parent planet)
   shadow?: { uStarPos: { value: THREE.Vector3 }; uOcc: { value: THREE.Vector4 }; uHasOcc: { value: number } };
   isBH?: boolean; // a black hole — a lensing centre for the gravitational-lensing pass
+  tidallyLocked?: boolean; // keeps one face toward its parent — orientation is geometry-locked, not free-spun
 }
 
 // A planetary ring: a particle disc in the planet's tilted equatorial plane, spinning DIFFERENTIALLY
@@ -1457,7 +1458,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
       const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node) });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked });
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
     // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
@@ -1608,7 +1609,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function updateSpin() {
     const tSec = timeMs / 1000;
     for (const b of bodies) {
-      if (!b.tiltQuat || !b.spinPeriodSec) continue;
+      if (!b.tiltQuat) continue;
+      // A tidally-locked body keeps ONE face toward its parent — its orientation is a function of where
+      // it is in its orbit, NOT a free clock spin. A plain rate-matched spin (below) starts at an
+      // arbitrary phase, so each moon ends up locked at a DIFFERENT constant offset (Mimas faces us,
+      // Rhea sits 90° out). Geometry-lock it instead: aim the sub-parent meridian at the parent.
+      if (b.tidallyLocked && b.parentId && bodyById.has(b.parentId)) { faceParent(b); continue; }
+      if (!b.spinPeriodSec) continue;
       // Negated so a prograde body (positive period) turns +X->+Z about +Y — the SAME sense its moons,
       // rings and belts orbit (all +X->+Z in the ground plane) and the way it orbits its own star. A
       // plain +angle would spin the surface the opposite way (a THREE +Y rotation sends +X->-Z), which
@@ -1618,6 +1625,26 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       spinQuat.setFromAxisAngle(spinAxis, angle); // spin about local (pre-tilt) pole
       b.mesh.quaternion.copy(b.tiltQuat).multiply(spinQuat); // tilt the axis, then spin about it
     }
+  }
+
+  // Aim a tidally-locked body's sub-parent meridian (equirect texture centre = local +X) at its parent,
+  // rotating only about its (tilted) pole so the axial tilt is preserved. Runs each frame off the LIVE
+  // rendered positions, so the near face tracks the parent through the whole orbit — and, since the
+  // crater far-side bias lives at the texture edges, the battered anti-parent hemisphere faces away.
+  const _pole = new THREE.Vector3(), _toParent = new THREE.Vector3(), _refX = new THREE.Vector3(), _cross = new THREE.Vector3();
+  function faceParent(b: BodyVisual) {
+    const pv = bodyById.get(b.parentId!);
+    if (!pv) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
+    _pole.set(0, 1, 0).applyQuaternion(b.tiltQuat!).normalize();          // world spin axis
+    _toParent.copy(pv.mesh.position).sub(b.mesh.position);                 // moon → parent
+    _toParent.addScaledVector(_pole, -_toParent.dot(_pole));               // project into the equatorial plane
+    if (_toParent.lengthSq() < 1e-12) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
+    _toParent.normalize();
+    _refX.set(1, 0, 0).applyQuaternion(b.tiltQuat!);                       // where +X points at spin angle 0
+    _refX.addScaledVector(_pole, -_refX.dot(_pole)).normalize();
+    const angle = Math.atan2(_cross.crossVectors(_refX, _toParent).dot(_pole), _refX.dot(_toParent));
+    spinQuat.setFromAxisAngle(spinAxis, angle);
+    b.mesh.quaternion.copy(b.tiltQuat!).multiply(spinQuat);
   }
 
   // Surface-locked constructs (see BodyVisual.surfaceLock): re-glue each to its fixed surface point,
