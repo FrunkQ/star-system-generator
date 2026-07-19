@@ -52,7 +52,14 @@
            on:keydown={(e) => { if (selectable && (e.key === 'Enter' || e.key === ' ')) dispatch('select', node.id); }}>
           {#if selectable}<circle cx={c.x} cy={c.y} r={R * 3} class="hit" />{/if}
           {#each stars as s, i}
-            <circle cx={c.x + (offs[i]?.dx ?? 0) * R} cy={c.y + (offs[i]?.dy ?? 0) * R} r={R} style="fill:{s.color}" class="star" />
+            {@const sx = c.x + (offs[i]?.dx ?? 0) * R}
+            {@const sy = c.y + (offs[i]?.dy ?? 0) * R}
+            {#if s.bh}
+              <!-- A black hole is #000000 → invisible as a plain dot; draw its image glyph instead. -->
+              <image href="/images/star_types/BH.webp" x={sx - R * 1.4} y={sy - R * 1.4} width={R * 2.8} height={R * 2.8} class="bh-glyph" />
+            {:else}
+              <circle cx={sx} cy={sy} r={R} style="fill:{s.color}" class="star" />
+            {/if}
           {/each}
           {#if showLabels}<text x={c.x + R * 2 + 3} y={c.y + 4} class="lbl">{node.name}</text>{/if}
         </g>

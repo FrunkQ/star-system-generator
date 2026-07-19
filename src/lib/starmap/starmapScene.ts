@@ -17,7 +17,7 @@ import { starClusterOffsets } from './systemStars';
 const GRID_RADIUS = 12; // scene units the map's extent maps to
 const HOLO_TINT = 0x63b3ff;
 
-export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string }[] }
+export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string; bh?: boolean }[] }
 export interface SmRoute { fromId: string; toId: string; dashed?: boolean }
 export type GridMode = 'off' | 'plain' | 'scaled' | 'hex';
 
@@ -70,6 +70,17 @@ function starGlow(): THREE.Texture {
   ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
   glowTex = new THREE.CanvasTexture(c); glowTex.colorSpace = THREE.SRGBColorSpace;
   return glowTex;
+}
+
+// The black-hole glyph image. A BH's colour is #000000, so on the (dark) starmap it reads black-on-
+// black as a plain dot — swap in the BH image so it's actually visible. Loaded once, cached; the
+// render loop picks it up automatically once decoded.
+let bhTex: THREE.Texture | null = null;
+function bhGlyph(): THREE.Texture {
+  if (bhTex) return bhTex;
+  bhTex = new THREE.TextureLoader().load('/images/star_types/BH.webp');
+  bhTex.colorSpace = THREE.SRGBColorSpace;
+  return bhTex;
 }
 
 // A soft cross-section band (bright core row fading to transparent edges) for an emissively-glowing
@@ -388,10 +399,14 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       const offs = starClusterOffsets(stars.length);
       const R = 0.22; // star glyph radius in scene units
       stars.forEach((st, i) => {
-        const mat = new THREE.SpriteMaterial({ map: glow, color: monoOn ? new THREE.Color(MONO_HEX) : new THREE.Color(st.color), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+        // A black hole is drawn as its image glyph (normal-blended, so black reads as black) rather
+        // than an additive colour-tinted glow that would vanish on the dark map.
+        const mat = st.bh
+          ? new THREE.SpriteMaterial({ map: bhGlyph(), color: monoOn ? new THREE.Color(MONO_HEX) : 0xffffff, transparent: true, depthWrite: false })
+          : new THREE.SpriteMaterial({ map: glow, color: monoOn ? new THREE.Color(MONO_HEX) : new THREE.Color(st.color), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
         const sp = new THREE.Sprite(mat);
         sp.position.copy(center).add(new THREE.Vector3((offs[i]?.dx ?? 0) * R, 0.0, (offs[i]?.dy ?? 0) * R));
-        sp.scale.setScalar(R * 3.2);
+        sp.scale.setScalar(st.bh ? R * 2.6 : R * 3.2);
         content.add(sp);
       });
       placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name) });

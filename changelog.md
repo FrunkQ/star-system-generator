@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.183-beta - 19th Jul 2026
+
+* Black holes were invisible on the starmap - a black hole's colour is #000000, so its glyph read black-on-black on the dark map (and player views). Now draws the black-hole image instead of an unlit colour dot, in both the 3D starmap (used for the flat "2D" view too) and the SVG 2D map.
+
 ## v2.1.182-beta - 19th Jul 2026
 
 * Dialled the 3D atmosphere limb-glow back to the subtler level - the last bump made it too prominent.
