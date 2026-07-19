@@ -114,17 +114,85 @@
   $: atmColor = a.atmGlow?.colorHex ?? '#9fc6e8';
   $: atmStrength = a.atmGlow?.strength ?? 0;
 
-  // Cratered surface: an old, airless, geologically dead world (or a small body) accumulates craters;
-  // giants are excluded. The DECISION is the model's; the seeded crater positions are generated here.
-  $: hasCraters = a.craters;
+  // Seeded PRNG (by body id + a salt) — every feature seeds its own positions so the look is stable.
+  function seeded(salt: number) {
+    let s = salt; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
+    return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  }
+
+  // Cratered surface: count scales with the model's crater DENSITY (surface age); a tidally-locked
+  // world biases craters to its LEADING (left) hemisphere. The decision + params are the model's; the
+  // seeded positions are generated here.
+  $: hasCraters = !!a.craters;
   $: craters = (() => {
-    if (!hasCraters) return [] as { cx: number; cy: number; r: number }[];
-    let s = 41; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
-    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
-    const n = 12 + Math.floor(rnd() * 6);                       // 12..17 craters, seeded by the body id
+    if (!a.craters) return [] as { cx: number; cy: number; r: number }[];
+    const rnd = seeded(41);
+    const n = Math.round(4 + a.craters.density * 22);          // 4..26 craters by density
+    const lead = a.craters.leadBias;
     return Array.from({ length: n }, () => {
       const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 26; // spread over the disc, inside the limb
-      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 1.1 + rnd() * rnd() * 4 };
+      let cx = 50 + Math.cos(t) * rr;
+      const cy = 50 + Math.sin(t) * rr;
+      if (lead > 0 && rnd() < lead) cx = 50 - Math.abs(cx - 50); // reflect onto the leading limb
+      return { cx, cy, r: 1.1 + rnd() * rnd() * 4 };
+    });
+  })();
+  // Fresh rayed craters: a bright pit with radiating ejecta, punched into an old surface.
+  $: rayedCraters = (() => {
+    if (!a.craters || a.craters.rayed <= 0) return [] as { cx: number; cy: number; r: number; rays: string }[];
+    const rnd = seeded(83);
+    return Array.from({ length: a.craters.rayed }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 22;
+      const cx = 50 + Math.cos(t) * rr, cy = 50 + Math.sin(t) * rr, r = 1.6 + rnd() * 1.8;
+      let rays = '';
+      const nr = 7 + Math.floor(rnd() * 4);
+      for (let i = 0; i < nr; i++) {
+        const ang = (i / nr) * 2 * Math.PI + rnd() * 0.3, len = r * (2.5 + rnd() * 2.5);
+        rays += `M${cx.toFixed(1)} ${cy.toFixed(1)} L${(cx + Math.cos(ang) * len).toFixed(1)} ${(cy + Math.sin(ang) * len).toFixed(1)} `;
+      }
+      return { cx, cy, r, rays };
+    });
+  })();
+  // Ice cracks / ridges (Europa lineae): a network of thin bowed chords across the icy crust.
+  $: iceCracks = (() => {
+    if (!a.iceCracks) return [] as string[];
+    const rnd = seeded(59), n = Math.round(4 + a.iceCracks.severity * 12);
+    return Array.from({ length: n }, () => {
+      const a1 = rnd() * 2 * Math.PI, a2 = a1 + (0.5 + rnd()) * Math.PI;
+      const x1 = 50 + Math.cos(a1) * 29, y1 = 50 + Math.sin(a1) * 29;
+      const x2 = 50 + Math.cos(a2) * 29, y2 = 50 + Math.sin(a2) * 29;
+      const mx = (x1 + x2) / 2 + (rnd() - 0.5) * 12, my = (y1 + y2) / 2 + (rnd() - 0.5) * 12;
+      return `M${x1.toFixed(1)} ${y1.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+    });
+  })();
+  // Crustal rifts (Charon canyon): one or two bold chasms slicing the crust.
+  $: rifts = (() => {
+    if (!a.rifts) return [] as string[];
+    const rnd = seeded(97), n = Math.round(1 + a.rifts.extent * 2);
+    return Array.from({ length: n }, () => {
+      const a1 = rnd() * 2 * Math.PI, a2 = a1 + Math.PI + (rnd() - 0.5) * 0.8;
+      const x1 = 50 + Math.cos(a1) * 30, y1 = 50 + Math.sin(a1) * 30;
+      const x2 = 50 + Math.cos(a2) * 30, y2 = 50 + Math.sin(a2) * 30;
+      const mx = (x1 + x2) / 2 + (rnd() - 0.5) * 8, my = (y1 + y2) / 2 + (rnd() - 0.5) * 8;
+      return `M${x1.toFixed(1)} ${y1.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+    });
+  })();
+  // Tholin mottling (irradiated organics): reddish patches (Pluto) or a whole-disc haze tint (Titan).
+  $: tholinPatches = (() => {
+    if (!a.tholin || a.tholin.atmospheric) return [] as { cx: number; cy: number; r: number }[];
+    const rnd = seeded(131), n = 3 + Math.round(a.tholin.strength * 4);
+    return Array.from({ length: n }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 22;
+      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 6 + rnd() * 9 };
+    });
+  })();
+  // Frost: bright volatile-ice patches (retained N2/CO2/water/SO2).
+  $: frostPatches = (() => {
+    if (!a.frost) return [] as { cx: number; cy: number; r: number }[];
+    const rnd = seeded(163), n = 3 + Math.round(a.frost.coverage * 5);
+    return Array.from({ length: n }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 24;
+      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 5 + rnd() * 8 };
     });
   })();
 
@@ -333,11 +401,63 @@
         {/if}
       {/if}
 
+      <!-- Tholin mottling: irradiated organics stain the crust. Atmospheric (Titan) = a whole-disc haze
+           tint; surface (Pluto) = dark-red patches. Drawn under craters/frost as base albedo. -->
+      {#if a.tholin}
+        <g clip-path="url(#clip-{uid})">
+          {#if a.tholin.atmospheric}
+            <circle cx="50" cy="50" r="30" fill={a.tholin.colorHex} opacity={0.28 + a.tholin.strength * 0.4} />
+          {:else}
+            {#each tholinPatches as p}
+              <circle cx={p.cx} cy={p.cy} r={p.r} fill={a.tholin.colorHex} opacity={0.18 + a.tholin.strength * 0.32} />
+            {/each}
+          {/if}
+        </g>
+      {/if}
+
+      <!-- Frost: bright volatile-ice patches (retained N2/CO2/water = white-blue, SO2 = sulphur-yellow). -->
+      {#if a.frost}
+        <g clip-path="url(#clip-{uid})">
+          {#each frostPatches as p}
+            <circle cx={p.cx} cy={p.cy} r={p.r} fill={a.frost.colorHex} opacity={0.2 + a.frost.coverage * 0.4} />
+          {/each}
+        </g>
+      {/if}
+
       <!-- Impact craters on an old airless surface: a dark bowl with a faint sunlit rim. -->
       {#if hasCraters}
         <g clip-path="url(#clip-{uid})">
           {#each craters as c}
             <circle cx={c.cx} cy={c.cy} r={c.r} fill="rgba(0,0,0,0.16)" stroke="rgba(236,236,240,0.16)" stroke-width={Math.max(0.25, c.r * 0.16)} />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Fresh rayed craters: a bright pit with radiating ejecta rays over the older terrain. -->
+      {#if rayedCraters.length}
+        <g clip-path="url(#clip-{uid})">
+          {#each rayedCraters as c}
+            <path d={c.rays} stroke="rgba(240,244,252,0.5)" stroke-width="0.4" fill="none" />
+            <circle cx={c.cx} cy={c.cy} r={c.r} fill="rgba(0,0,0,0.22)" stroke="rgba(245,248,255,0.75)" stroke-width="0.5" />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Ice cracks / ridges: a network of fine lineae threading the icy crust (Europa). -->
+      {#if iceCracks.length}
+        <g clip-path="url(#clip-{uid})">
+          {#each iceCracks as d}
+            <path {d} fill="none" stroke={a.iceCracks?.colorHex} stroke-width={0.5 + (a.iceCracks?.severity ?? 0) * 0.6} opacity="0.55" />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Crustal rifts: bold chasms where a frozen former ocean split the crust (Charon). -->
+      {#if rifts.length}
+        <g clip-path="url(#clip-{uid})">
+          {#each rifts as d}
+            <path {d} fill="none" stroke="rgba(20,26,36,0.55)" stroke-width="2.4" />
+            <path {d} fill="none" stroke="rgba(210,222,238,0.5)" stroke-width="0.6" />
           {/each}
         </g>
       {/if}

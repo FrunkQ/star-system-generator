@@ -5,7 +5,7 @@
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import type { CelestialBody } from '$lib/types';
   import { deriveApparentColorParts } from '$lib/rendering/apparentColor';
-  import { GALLERY_STAR_TYPES } from '$lib/catalogue/galleryExamples';
+  import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST } from '$lib/catalogue/galleryExamples';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
     id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
@@ -191,6 +191,27 @@
   <h2>Small bodies — irregular below ~300 km, repeatable per body, coloured by composition</h2>
   <div class="gallery">
     {#each smallBodies as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Surface weathering — cratering climbs with surface age (last is tidally locked)</h2>
+  <div class="gallery">
+    {#each GALLERY_CRATERING as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Ice fractures vs rock craters — a frozen former ocean rifts the crust</h2>
+  <div class="gallery">
+    {#each GALLERY_ICE_VS_ROCK as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Tholins &amp; volatile frosts — irradiated organics redden; retained ices frost</h2>
+  <div class="gallery">
+    {#each GALLERY_THOLIN_FROST as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>

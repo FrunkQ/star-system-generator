@@ -129,6 +129,53 @@ const cryoPlumes = [
 	cryo('Europa-like · 1560 km', 1560, 4.8e22, '#cfd8de'),     // heavier → short jets
 ];
 
+// --- Foundation-driven surface weathering (geo-foundations.md consumers) ---------------------------
+// These carry the DERIVED fields the appearance model reads (geoActivity/volatiles/irradiationDose),
+// since gallery bodies bypass the processor.
+const geo = (regime: string, surfaceAgeGyr: number) => ({ regime, surfaceAgeGyr } as any);
+const vol = (...retained: string[]) => ({ retained } as any);
+
+// Cratering climbs with SURFACE AGE; the last one is tidally locked (leading-hemisphere bias).
+export const GALLERY_CRATERING: CelestialBody[] = [
+	mk({ name: 'Young · resurfaced', apparentColorHex: '#8a8f99', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('plate-tectonics', 0.05) }),
+	mk({ name: 'Moderate · 1 Gyr', apparentColorHex: '#9a9088', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('stagnant-lid', 1.0) }),
+	mk({ name: 'Ancient · 4.6 Gyr', apparentColorHex: '#a49a8e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('inactive', 4.6) }),
+	mk({ name: 'Ancient · tidally locked', apparentColorHex: '#a49a8e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, tidallyLocked: true, geoActivity: geo('inactive', 4.6) } as any)
+];
+
+// Ice FRACTURES where rock craters; a frozen former ocean RIFTS the crust.
+export const GALLERY_ICE_VS_ROCK: CelestialBody[] = [
+	mk({ name: 'Rocky · cratered', apparentColorHex: '#9a9088', radiusKm: 2600, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('inactive', 4.6) }),
+	mk({ name: 'Europa · ice cracks', apparentColorHex: '#cdd8e0', radiusKm: 1560, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { ice: 0.5, rock: 0.5 } as any, geoActivity: geo('cryovolcanic', 0.05), volatiles: vol('carbon-dioxide', 'water'),
+		tags: [{ key: 'tidal/hotspots' }] }),
+	mk({ name: 'Charon · crustal rift', apparentColorHex: '#b8b0a6', radiusKm: 606, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { ice: 0.5, rock: 0.5 } as any, geoActivity: geo('inactive', 4.0), volatiles: vol('water'),
+		tags: [{ key: 'structure/subsurface-ocean' }] })
+];
+
+// Tholins (irradiated organics) + frosts (retained bright ices). Pluto reddens; young Triton stays
+// fresh despite the same ices; Titan's haze is atmospheric; Io wears SO2 frost.
+export const GALLERY_THOLIN_FROST: CelestialBody[] = [
+	mk({ name: 'Pluto · tholin + N₂ frost', apparentColorHex: '#c8a488', radiusKm: 1188,
+		makeup: { ice: 0.6, rock: 0.4 } as any, irradiationDose: 0.2, geoActivity: geo('inactive', 4.6),
+		volatiles: vol('carbon-dioxide', 'nitrogen', 'water', 'methane') } as any),
+	mk({ name: 'Triton · young, fresh', apparentColorHex: '#d8e2e8', radiusKm: 1353,
+		makeup: { ice: 0.5, rock: 0.5 } as any, irradiationDose: 0.002, geoActivity: geo('cryovolcanic', 0.05),
+		volatiles: vol('carbon-dioxide', 'nitrogen', 'water', 'methane') } as any),
+	mk({ name: 'Titan · haze tholin', apparentColorHex: '#c9a24a', radiusKm: 2575,
+		makeup: { ice: 0.5, rock: 0.5 } as any, irradiationDose: 0.16, geoActivity: geo('inactive', 4.6),
+		atmosphere: { pressure_bar: 1.5, composition: { N2: 0.95, CH4: 0.05 } } as any, volatiles: vol('water') } as any),
+	mk({ name: 'Io · SO₂ frost + lava', apparentColorHex: '#b8a24a', radiusKm: 1821, atmosphere: { pressure_bar: 0 } as any,
+		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('tidal-volcanic', 0.002), volatiles: vol('sulfur-dioxide'),
+		tags: [{ key: 'tidal/lava-flows' }] } as any)
+];
+
 // Star types by temperature (roleHint 'star').
 const star = (name: string, t: number, radiusKm: number, flare = 0.2) =>
 	({ id: name, name, roleHint: 'star', temperatureK: t, radiusKm, flareActivity: flare,
@@ -175,6 +222,9 @@ export const GALLERY_ROWS: GalleryRow[] = [
 	{ title: 'Self-luminous brown dwarfs', bodies: brownDwarfs },
 	{ title: 'Volcanism — glowing vents (3D)', bodies: volcanism },
 	{ title: 'Cryovolcanic plumes (3D)', bodies: cryoPlumes },
+	{ title: 'Surface weathering — cratering by age', bodies: GALLERY_CRATERING },
+	{ title: 'Ice fractures vs rock craters (+ rift)', bodies: GALLERY_ICE_VS_ROCK },
+	{ title: 'Tholins & volatile frosts', bodies: GALLERY_THOLIN_FROST },
 	{ title: 'Star types — by temperature', bodies: GALLERY_STAR_TYPES },
 ];
 
