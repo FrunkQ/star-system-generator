@@ -167,12 +167,12 @@ export function buildAtmoGlow(radius: number, colorHex: string, strength: number
 			uniform vec3 uColor; uniform float uStrength; varying vec3 vN; varying vec3 vView;
 			void main() {
 				float f = 1.0 - abs(dot(normalize(vN), normalize(vView)));  // 0 face-on → 1 at the limb
-				f = pow(f, 2.0);
-				gl_FragColor = vec4(uColor, f * (0.5 + 0.8 * uStrength));
+				f = pow(f, 2.4);
+				gl_FragColor = vec4(uColor, f * (0.35 + 0.65 * uStrength));
 			}`,
 		transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false
 	});
-	const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.1 + 0.14 * strength), 32, 24), mat);
+	const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.08 + 0.1 * strength), 32, 24), mat);
 	shell.renderOrder = 2;
 	return shell;
 }

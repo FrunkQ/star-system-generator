@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.182-beta - 19th Jul 2026
+
+* Dialled the 3D atmosphere limb-glow back to the subtler level - the last bump made it too prominent.
+
 ## v2.1.181-beta - 19th Jul 2026
 
 * Tidally-locked cratering was back-to-front: it clustered impacts on the sub-parent (near) face. The parent body actually OCCULTS incoming impactors, so the shielded near side takes fewer hits and the anti-parent FAR side is the more-cratered one - now biased that way in both 2D (shadowed limb) and 3D (antistellar edges). Renamed the model's `leadBias` to `farSideBias`.
