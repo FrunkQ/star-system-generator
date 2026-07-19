@@ -242,6 +242,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
   volatiles?: VolatileRetention; // derived surface-ice retention per species (see deriveVolatileRetention)
+  irradiationDose?: number;    // derived cumulative space-weathering dose (relative) — drives tholins
   habitabilityBreakdown?: {    // the AUTHORITATIVE habitability breakdown the Bio tab renders
     factors: {
       label: string; points: number; max: number; value: string; ideal: string;

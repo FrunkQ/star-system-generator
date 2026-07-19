@@ -154,7 +154,16 @@ Gyr because it died early, while a recently-dead larger world reads younger. Emi
 Impact-flux modifier (coarse, optional in v1): proximity to a belt or a crowded region scales the
 crater DENSITY for a given age; default 1 keeps it honest without orbital analysis.
 
-## Foundation 4 — IRRADIATION DOSE
+## Foundation 4 — IRRADIATION DOSE  ✅ SHIPPED (v2.1.167-beta)
+
+`deriveIrradiationDose(teqK, magShield, surfaceAgeGyr)` in radiation.ts → `body.irradiationDose` +
+`surface/irradiation` tag (low/moderate/high). `dose = ((Teq/255)^4 + GCR_FLOOR 0.15) · (1−magShield)
+· clamp(surfaceAge/4.5, 0, 1.5)`. Baseline: Mercury 8.1 (baked, weathered — but no organics so grey),
+Pluto 0.15 WITH CH4/N2 → tholins, Triton 0.002 (young resurfaced crust → stays fresh, unlike ancient
+Pluto — emergent!), Earth 0.02 (shielded + young). Necessary-not-sufficient for tholins: the visual
+also needs retained CH4/N2 (surface) or a CH4/N2 atmosphere (Titan's haze — separate pathway).
+
+### Original design notes
 
 Tholin chemistry needs total high-energy exposure: dose = (stellar UV at the body's orbit from
 `radiation.ts` + a cosmic-ray floor so far-out bodies still tholinise) × (1 − magnetosphere

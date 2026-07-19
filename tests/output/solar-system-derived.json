@@ -80,6 +80,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "high"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -213,6 +217,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.10 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 8.077,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -489,6 +494,10 @@
           "value": "moderate"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -609,6 +618,7 @@
           "Vigorous interior but a DRY, rigid lithosphere traps heat until it overturns in periodic catastrophic global resurfacing (Venus-like); no carbonate–silicate drawdown → runaway greenhouse."
         ]
       },
+      "irradiationDose": 0.155,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -887,6 +897,10 @@
           "value": "moderate"
         },
         {
+          "key": "surface/irradiation",
+          "value": "low"
+        },
+        {
           "key": "habitability/earth-like"
         },
         {
@@ -1060,6 +1074,7 @@
           "Vigorous interior with surface water hydrating the lithosphere → mobile-lid plate tectonics → the carbonate–silicate cycle regulates climate."
         ]
       },
+      "irradiationDose": 0.022,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -1413,6 +1428,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "high"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -1530,6 +1549,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 1.386,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -1811,6 +1831,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "high"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -1929,6 +1953,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.13 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.531,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -2175,6 +2200,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "high"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -2299,6 +2328,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.59,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -2565,6 +2595,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "high"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -2686,6 +2720,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.541,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -3538,6 +3573,10 @@
           "value": "young"
         },
         {
+          "key": "surface/irradiation",
+          "value": "low"
+        },
+        {
           "key": "volatiles/ices",
           "value": "sulfur-dioxide"
         },
@@ -3681,6 +3720,7 @@
           "Tidal flexing drives silicate volcanism far exceeding radiogenic heat (Io-like)."
         ]
       },
+      "irradiationDose": 0,
       "volatiles": {
         "retained": [
           "sulfur-dioxide"
@@ -3980,6 +4020,10 @@
           "value": "young"
         },
         {
+          "key": "surface/irradiation",
+          "value": "low"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -4153,6 +4197,7 @@
           "Tidal flexing keeps a subsurface ocean liquid; cryovolcanic plumes vent water/ice (Europa/Enceladus-like)."
         ]
       },
+      "irradiationDose": 0.002,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -4444,6 +4489,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -4587,6 +4636,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.16,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -4867,6 +4917,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -4992,6 +5046,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.01 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.174,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -5766,6 +5821,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -5928,6 +5987,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.165,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -6167,6 +6227,10 @@
           "value": "young"
         },
         {
+          "key": "surface/irradiation",
+          "value": "low"
+        },
+        {
           "key": "habitability/subsurface"
         },
         {
@@ -6332,6 +6396,7 @@
           "A mean-motion resonance continually pumps the orbital eccentricity; the resulting tidal flexing is modest by silicate standards but ample to melt ICE (~273 K vs ~1000 K) — geysers vent a subsurface ocean (Enceladus-like)."
         ]
       },
+      "irradiationDose": 0.002,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -6618,6 +6683,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -6736,6 +6805,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.16,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -7038,6 +7108,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -7160,6 +7234,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.163,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -7433,6 +7508,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -7571,6 +7650,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.161,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -7867,6 +7947,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -7984,6 +8068,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.162,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -8244,6 +8329,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -8361,6 +8450,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.161,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -9058,6 +9148,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -9171,6 +9265,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.156,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -9434,6 +9529,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -9551,6 +9650,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.156,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -9814,6 +9914,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -9935,6 +10039,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.156,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -10679,6 +10784,10 @@
           "value": "young"
         },
         {
+          "key": "surface/irradiation",
+          "value": "low"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+nitrogen+water+methane"
         },
@@ -10838,6 +10947,7 @@
           "Sunlight through translucent nitrogen ice drives a solid-state greenhouse; sub-surface gas pockets erupt as seasonal geysers (Triton-like). Driven by the distant sun, not interior heat."
         ]
       },
+      "irradiationDose": 0.002,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -11223,6 +11333,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+nitrogen+water+methane"
         },
@@ -11378,6 +11492,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.154,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -11646,6 +11761,10 @@
           "value": "ancient"
         },
         {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -11780,6 +11899,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
+      "irradiationDose": 0.154,
       "volatiles": {
         "retained": [],
         "lambda": {

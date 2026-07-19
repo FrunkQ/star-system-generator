@@ -3,7 +3,7 @@ import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK } from '../physics/temperature';
 import { deriveAlbedo } from '../physics/albedo';
-import { calculateSurfaceRadiation, calculateTotalStellarRadiation } from '../physics/radiation';
+import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
@@ -736,6 +736,16 @@ export class SystemProcessor implements ISystemProcessor {
             const sAge = body.geoActivity.surfaceAgeGyr;
             const ageBucket = sAge < 0.1 ? 'young' : sAge < 1 ? 'moderate' : sAge < 3 ? 'old' : 'ancient';
             body.tags.push({ key: 'surface/age', value: ageBucket });
+            // Irradiation dose (space weathering) — stellar UV + cosmic-ray floor, unshielded, over the
+            // surface's exposure time. Drives tholin darkening (with retained organics as the precursor).
+            body.tags = body.tags.filter((t) => !t.key.startsWith('surface/irradiation'));
+            body.irradiationDose = deriveIrradiationDose(
+                body.equilibriumTempK ?? body.temperatureK ?? 0,
+                body.radiationShieldingMag ?? 0,
+                sAge
+            );
+            const doseBucket = body.irradiationDose < 0.05 ? 'low' : body.irradiationDose < 0.2 ? 'moderate' : 'high';
+            body.tags.push({ key: 'surface/irradiation', value: doseBucket });
             features['geoActive'] = body.geoActivity.active ? 1 : 0;
             features['plateTectonics'] = body.geoActivity.regime === 'plate-tectonics' ? 1 : 0;
         } else {

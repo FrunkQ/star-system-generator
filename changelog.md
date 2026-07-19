@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.167-beta - 19th Jul 2026
+
+* Geo foundations step 4 - IRRADIATION DOSE: the last foundation. Each world derives how much space-weathering radiation its surface has taken - stellar UV (from its equilibrium temperature) plus a cosmic-ray floor so even distant, dimly-lit worlds redden over time, cut by any magnetosphere, multiplied by how long the surface has been exposed. This drives tholin darkening. A neat result falls out: ancient Pluto (with methane/nitrogen ices) reads a real dose and reddens, while Triton - which has the same ices but a young, cryovolcanically resurfaced crust - reads almost none and stays fresh, exactly as the two look in reality. Shown in the Newton panel and as a low/moderate/high tag. Completes the four physics foundations behind the coming frost/tholin/crater/ice-crack visuals.
+
 ## v2.1.166-beta - 19th Jul 2026
 
 * Geo foundations step 3 - SURFACE AGE: every solid world now derives how long its visible surface has been exposed. An active world reads its regime's resurfacing pace (Io repaves in ~2 Myr, Earth ocean-floor ~0.2 Gyr, Venus ~0.7 Gyr); a dead world inverts the radiogenic decay to recover when it froze (Mars ~3.8 Gyr, the Moon and the old outer moons ~4.6 Gyr). This is the quantity cratering, weathering and tholin build-up all key off. Shown in the Newton panel and as a young/moderate/old/ancient tag.
