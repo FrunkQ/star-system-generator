@@ -127,7 +127,7 @@
   $: craters = (() => {
     if (!a.craters) return [] as { cx: number; cy: number; r: number }[];
     const rnd = seeded(41);
-    const n = Math.round(8 + a.craters.density * 46);          // up to saturation on an ancient surface
+    const n = Math.round(12 + a.craters.density * 78);         // saturates an ancient highland
     const lead = a.craters.leadBias;
     return Array.from({ length: n }, () => {
       const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 26; // spread over the disc, inside the limb

@@ -289,8 +289,12 @@
       <ul>
         <li><strong>Plate tectonics</strong> — vigorous interior + surface water → mobile lid → the carbonate–silicate
           cycle regulates climate (Earth).</li>
-        <li><strong>Stagnant lid</strong> — vigorous but <em>dry</em> → trapped heat, episodic resurfacing, runaway
-          greenhouse (Venus).</li>
+        <li><strong>Plutonic</strong> — modest interior heat (vigor 0.35–0.6) melts rock at depth but can't reach the
+          surface or mobilise the lid: intrusive magmatism (plutons, dykes) under an intact crust — a waning or
+          mid-size world.</li>
+        <li><strong>Stagnant lid</strong> — vigorous but <em>dry</em> → a single unbroken plate sheds heat quietly.</li>
+        <li><strong>Episodic</strong> — a vigorous <em>dry</em> lid traps heat until it overturns in catastrophic global
+          resurfacing (Venus, ~700 Myr cycle); no CO₂ drawdown → runaway greenhouse.</li>
         <li><strong>Tidal-volcanic</strong> — tidal flux ≫ radiogenic, silicate lava (Io); <strong>cryovolcanic</strong>
           — icy shell + subsurface ocean (Europa).</li>
         <li><strong>Resonance-pumped cryovolcanic</strong> — a mean-motion resonance keeps pumping the orbital
@@ -304,6 +308,43 @@
       <p><strong>Age</strong> is the knob that turns Earth into Mars: radiogenic heat halves roughly every 2.8 Gyr
         and small bodies cool fastest, so <code>geothermalVigor</code> is calibrated to Earth-now ≈ 1 and an
         Earth-clone goes geologically dead by ~9 Gyr. Each body gets a unique <code>geology/*</code> tag.</p>
+    </section>
+
+    <section id="surface">
+      <h2>Resurfacing &amp; surface features</h2>
+      <p>What a world <em>wears</em> is not painted on — it follows from four derived quantities, so a generated
+        planet grows a Moon or a Pluto because the physics says so, not because a generator sprinkled it.</p>
+      <ul>
+        <li><strong>Surface age</strong> — how long the visible crust has been exposed. An active world is repaved on
+          its regime's timescale (Io ~2&nbsp;Myr, Earth's ocean floor ~0.2&nbsp;Gyr, Venus ~0.7&nbsp;Gyr, cryovolcanic
+          moons ~0.05&nbsp;Gyr); a dead world's surface froze when its vigor last crossed the active threshold — we
+          invert the age-decay to recover <em>when</em>, so Mars reads ~3.8&nbsp;Gyr and the Moon ~4.6.</li>
+        <li><strong>Volatile-ice retention</strong> — which ices survive on the surface: a species must be present, cold
+          enough to stay solid (its phase curve) <em>and</em> gravity-bound (Jeans λ holds the sublimated vapour). So
+          Pluto and Triton keep N₂/CH₄/CO₂, the icy Galilean moons keep CO₂+water, Io keeps SO₂ frost, and the Moon
+          keeps nothing.</li>
+        <li><strong>Irradiation dose</strong> — cumulative space-weathering: stellar UV (from equilibrium temperature)
+          plus a cosmic-ray floor so distant dim worlds still weather, cut by any magnetosphere, over the surface age.</li>
+      </ul>
+      <p>Each renderer (the 2D disc, the 3D holo sphere) draws the SAME features from those quantities:</p>
+      <ul>
+        <li><strong>Cratering</strong> — density tracks surface age; a young resurfaced world is smooth, an ancient dead
+          one saturates. A <strong>tidally-locked</strong> body sweeps up more impactors on its leading (apex)
+          hemisphere, so its crater record is lop-sided (strength scales with orbital speed). Fresh craters wear bright
+          ejecta rays.</li>
+        <li><strong>Ice fractures</strong> — an icy crust under stress <em>cracks</em> rather than holding craters,
+          forming a cellular, tortoise-shell lineae network (Europa). A frozen former subsurface ocean expands ~8% and
+          splits the crust into a deep <strong>rift</strong> canyon (Charon).</li>
+        <li><strong>Regolith greying</strong> — micrometeorite + solar-wind maturation greys an <em>airless</em> silicate
+          surface toward neutral; that's why the Moon and Mercury are grey, not the tan of fresh rock. Strength tracks
+          the irradiation dose, so fresh surfaces keep colour and ancient ones grey out. Thin-air, oxidised Mars stays
+          red — its colour is rust, not space weathering.</li>
+        <li><strong>Tholins</strong> — irradiated organic ices redden and darken over time. They need a CH₄/N₂
+          precursor (retained surface ice, or a thick CH₄/N₂ atmosphere whose haze rains organics) times the dose —
+          which is why ancient Pluto reddens while young, freshly-resurfaced Triton, with the same ices, stays pale.</li>
+        <li><strong>Frost</strong> — retained bright ices (N₂/CO₂/water read white-blue, SO₂ sulphur-yellow) frost the
+          surface, dulled where the weathering dose is high.</li>
+      </ul>
     </section>
 
     <section id="resonance">

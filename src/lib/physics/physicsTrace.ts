@@ -8,6 +8,7 @@ import { EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
 import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
 import { auroraEmitter } from './aurora';
+import { deriveAppearance } from '$lib/rendering/planetAppearance';
 
 export interface TraceField { label: string; value: string; }
 export interface TraceLayer {
@@ -260,6 +261,30 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       outputs: [{ label: 'Retained as surface ice', value: v.retained.join(', ') }],
       notes: ['An ice survives on the surface only if it is cold enough to stay solid AND the body\'s gravity holds the vapour it sublimates (Jeans parameter λ above the retention floor). Cold, heavy species on small distant worlds are kept in a closed sublimate–recondense cycle; light species on warm or low-gravity worlds are lost to space.']
     });
+  }
+
+  // 6c. Surface features & weathering — how the physics turns into what the world WEARS (the shared
+  // appearance model both renderers draw from).
+  {
+    const ap = deriveAppearance(body);
+    const feats: string[] = [];
+    if (ap.craters) feats.push(`craters — density ${pct(ap.craters.density)}${ap.craters.leadBias > 0 ? `, leading-hemisphere biased (${pct(ap.craters.leadBias)})` : ''}${ap.craters.rayed > 0 ? `, ${ap.craters.rayed} fresh rayed` : ''}`);
+    if (ap.iceCracks) feats.push(`ice-fracture network — severity ${pct(ap.iceCracks.severity)}`);
+    if (ap.rifts) feats.push('crustal rift (a frozen former ocean split the crust)');
+    if (ap.regolith > 0) feats.push(`space-weathered regolith greying ${pct(ap.regolith)}`);
+    if (ap.tholin) feats.push(`tholins — ${ap.tholin.atmospheric ? 'atmospheric haze' : 'surface'}, strength ${pct(ap.tholin.strength)}`);
+    if (ap.frost) feats.push(`bright volatile frost — ${pct(ap.frost.coverage)} cover`);
+    if (feats.length) {
+      layers.push({
+        id: 'surface', title: 'Surface features & weathering', link: '/physics#surface',
+        inputs: [
+          { label: 'Surface age', value: n(body.geoActivity?.surfaceAgeGyr ?? 0, 2, 'Gyr') },
+          { label: 'Irradiation dose', value: n(body.irradiationDose ?? 0, 2) }
+        ],
+        outputs: feats.map((f, i) => ({ label: i === 0 ? 'Shows' : '·', value: f })),
+        notes: ['What a world wears follows from its physics: an old surface accumulates impact CRATERS (an icy crust FRACTURES instead of holding them); a tidally-locked world is cratered harder on its leading (apex) face; airless silicate regolith GREYS as space-weathering dose matures it (Moon/Mercury); irradiated organic ices redden into THOLINS; and retained volatiles FROST the surface bright.']
+      });
+    }
   }
 
   // 7. Apparent colour

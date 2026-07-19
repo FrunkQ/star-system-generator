@@ -268,11 +268,11 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
       ctx.strokeStyle = fresh ? 'rgba(245,248,255,0.5)' : 'rgba(232,232,238,0.22)';
       ctx.lineWidth = Math.max(0.4, r * 0.2); ctx.beginPath(); ctx.arc(cx, y, r * 0.9, 0, 2 * Math.PI); ctx.stroke();
     });
-    const n = Math.round(18 + a.craters.density * 95);  // up to saturation on an ancient surface
+    const n = Math.round(28 + a.craters.density * 170);  // saturates an ancient highland
     for (let i = 0; i < n; i++) {
       let x = rnd() * EQ_W;
       if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = rnd() * 0.5 * EQ_W; // leading hemisphere
-      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, 1.5 + rnd() * rnd() * 6.5, false);
+      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, 1.1 + rnd() * rnd() * 6, false);
     }
     for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, 3 + rnd() * 3, true);
   }
