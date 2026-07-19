@@ -268,23 +268,34 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
       ctx.strokeStyle = fresh ? 'rgba(245,248,255,0.5)' : 'rgba(232,232,238,0.22)';
       ctx.lineWidth = Math.max(0.4, r * 0.2); ctx.beginPath(); ctx.arc(cx, y, r * 0.9, 0, 2 * Math.PI); ctx.stroke();
     });
-    const n = Math.round(10 + a.craters.density * 55);
+    const n = Math.round(18 + a.craters.density * 95);  // up to saturation on an ancient surface
     for (let i = 0; i < n; i++) {
       let x = rnd() * EQ_W;
       if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = rnd() * 0.5 * EQ_W; // leading hemisphere
-      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, 2 + rnd() * rnd() * 7, false);
+      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, 1.5 + rnd() * rnd() * 6.5, false);
     }
     for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, 3 + rnd() * 3, true);
   }
 
   if (a.iceCracks) {
-    const n = Math.round(6 + a.iceCracks.severity * 16);
-    ctx.strokeStyle = a.iceCracks.colorHex; ctx.globalAlpha = 0.5; ctx.lineWidth = 0.7 + a.iceCracks.severity * 0.8;
-    for (let i = 0; i < n; i++) {
-      const y = rnd() * EQ_H, x = rnd() * EQ_W, len = EQ_W * (0.12 + rnd() * 0.22), bow = (rnd() - 0.5) * 34;
-      wrap((dx) => { ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, y + (rnd() - 0.5) * 18); ctx.stroke(); });
+    // A cellular / tortoise-shell fracture NETWORK — scatter nodes and link each to its nearest few
+    // with short, slightly-bowed ridges. This reads like Europa's lineae / Pluto's polygonal terrain,
+    // and every segment is length-capped so no crack loops the whole globe.
+    const sev = a.iceCracks.severity, nn = Math.round(22 + sev * 34);
+    const maxLen = EQ_W * 0.14;
+    const nodes: [number, number][] = [];
+    for (let i = 0; i < nn; i++) nodes.push([rnd() * EQ_W, EQ_H * 0.08 + rnd() * EQ_H * 0.84]);
+    ctx.strokeStyle = a.iceCracks.colorHex; ctx.globalAlpha = 0.5; ctx.lineWidth = 0.6 + sev * 0.7; ctx.lineCap = 'round';
+    for (let i = 0; i < nodes.length; i++) {
+      const near = nodes.map((p, j) => ({ j, d: Math.hypot(p[0] - nodes[i][0], p[1] - nodes[i][1]) }))
+        .filter((o) => o.j > i && o.d < maxLen).sort((a2, b2) => a2.d - b2.d).slice(0, 3);
+      for (const { j, d } of near) {
+        const [x1, y1] = nodes[i], [x2, y2] = nodes[j];
+        const mx = (x1 + x2) / 2 + (rnd() - 0.5) * d * 0.35, my = (y1 + y2) / 2 + (rnd() - 0.5) * d * 0.35;
+        wrap((dx) => { ctx.beginPath(); ctx.moveTo(x1 + dx, y1); ctx.quadraticCurveTo(mx + dx, my, x2 + dx, y2); ctx.stroke(); });
+      }
     }
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1; ctx.lineCap = 'butt';
   }
 
   if (a.rifts) {

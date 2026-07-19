@@ -205,7 +205,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	let vKms = 0;
 	if (orb?.hostMu > 0 && orb?.elements?.a_AU > 0) vKms = Math.sqrt(orb.hostMu / (orb.elements.a_AU * 1.495978707e11)) / 1000;
 	const leadBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked)
-		? (vKms > 0 ? clamp01(vKms / (vKms + 8)) : 0.5) : 0;
+		? (vKms > 0 ? clamp01(0.25 + vKms / (vKms + 10)) : 0.7) : 0;
 	// A few FRESH craters (bright ejecta rays) punched into an otherwise old, airless surface.
 	const craters: CraterSpec | null = craterDensity > 0.05
 		? { density: craterDensity, rayed: atmPressureBar < 0.02 && craterDensity > 0.4 ? 2 : 0, leadBias }

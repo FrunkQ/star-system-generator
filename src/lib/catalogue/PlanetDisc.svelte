@@ -127,7 +127,7 @@
   $: craters = (() => {
     if (!a.craters) return [] as { cx: number; cy: number; r: number }[];
     const rnd = seeded(41);
-    const n = Math.round(4 + a.craters.density * 22);          // 4..26 craters by density
+    const n = Math.round(8 + a.craters.density * 46);          // up to saturation on an ancient surface
     const lead = a.craters.leadBias;
     return Array.from({ length: n }, () => {
       const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 26; // spread over the disc, inside the limb
@@ -153,17 +153,24 @@
       return { cx, cy, r, rays };
     });
   })();
-  // Ice cracks / ridges (Europa lineae): a network of thin bowed chords across the icy crust.
+  // Ice cracks / ridges (Europa lineae): a cellular TORTOISE-SHELL network — scatter nodes inside the
+  // disc, link each to its nearest few with short bowed ridges (length-capped, so nothing loops the disc).
   $: iceCracks = (() => {
     if (!a.iceCracks) return [] as string[];
-    const rnd = seeded(59), n = Math.round(4 + a.iceCracks.severity * 12);
-    return Array.from({ length: n }, () => {
-      const a1 = rnd() * 2 * Math.PI, a2 = a1 + (0.5 + rnd()) * Math.PI;
-      const x1 = 50 + Math.cos(a1) * 29, y1 = 50 + Math.sin(a1) * 29;
-      const x2 = 50 + Math.cos(a2) * 29, y2 = 50 + Math.sin(a2) * 29;
-      const mx = (x1 + x2) / 2 + (rnd() - 0.5) * 12, my = (y1 + y2) / 2 + (rnd() - 0.5) * 12;
-      return `M${x1.toFixed(1)} ${y1.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
-    });
+    const rnd = seeded(59), sev = a.iceCracks.severity, nn = Math.round(14 + sev * 22), maxLen = 22;
+    const nodes: [number, number][] = [];
+    for (let i = 0; i < nn; i++) { const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 28; nodes.push([50 + Math.cos(t) * rr, 50 + Math.sin(t) * rr]); }
+    const paths: string[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      const near = nodes.map((p, j) => ({ j, d: Math.hypot(p[0] - nodes[i][0], p[1] - nodes[i][1]) }))
+        .filter((o) => o.j > i && o.d < maxLen).sort((x, y) => x.d - y.d).slice(0, 3);
+      for (const { j, d } of near) {
+        const [x1, y1] = nodes[i], [x2, y2] = nodes[j];
+        const mx = (x1 + x2) / 2 + (rnd() - 0.5) * d * 0.4, my = (y1 + y2) / 2 + (rnd() - 0.5) * d * 0.4;
+        paths.push(`M${x1.toFixed(1)} ${y1.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`);
+      }
+    }
+    return paths;
   })();
   // Crustal rifts (Charon canyon): one or two subtle chasms — a shorter arc, not a full-disc slash.
   $: rifts = (() => {
