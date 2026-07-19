@@ -292,8 +292,15 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const hotK = (body as any).temperatureRangeK?.max ?? body.temperatureK ?? 0;
 	const coldK = (body as any).temperatureRangeK?.min ?? hotK;
 	const GLOW_ONSET = 1000, GLOW_FULL = 2200, ROCK_MELT = 1200;
-	const locked = !!(body as any).tidallyLocked;
-	const eyeball: EyeballSpec | null = (solid && locked && hotK - coldK > 120)
+	// An EYEBALL needs a permanent substellar face — i.e. locked to the STAR (tag surfaced by the
+	// processor, which alone can see the parent chain). A moon locked to its PLANET keeps turning
+	// relative to the sun, so its whole surface weathers uniformly — no eyeball.
+	// Star-locked = a permanent substellar face → eyeball. Robustly: a body locked AND orbiting a star
+	// rather than a planet. roleHint 'moon' orbits a PLANET (locked to it, whole surface still sun-cycles
+	// → no eyeball); a planet/dwarf orbits the star. (Prefers the explicit flag/tag when present.)
+	const starLocked = (body as any).starTidallyLocked ?? (has('orbit/locked-star')
+		|| (!!(body as any).tidallyLocked && (body as any).roleHint !== 'moon'));
+	const eyeball: EyeballSpec | null = (solid && starLocked && hotK - coldK > 120)
 		? {
 			substellarK: hotK, antistellarK: coldK, molten: hotK > ROCK_MELT,
 			kind: hotK > 350 ? 'hot' : 'cold',

@@ -70,6 +70,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-star"
+        },
+        {
           "key": "magnetic/tenuous"
         },
         {
@@ -149,6 +152,7 @@
       "equilibriumTempK": 425.41259320721076,
       "surfaceRadiation": 3499.876774278839,
       "tidalHeatK": 0,
+      "starTidallyLocked": true,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 4.326640157213818e-9,
       "temperatureK": 425.4125932115374,
@@ -552,6 +556,7 @@
       "equilibriumTempK": 244.6440078746525,
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 501.1240884959156,
       "temperatureK": 745.7680963705681,
@@ -1014,6 +1019,7 @@
       "equilibriumTempK": 255.49408288423908,
       "surfaceRadiation": 2.298990432085668,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 32.80114380821948,
       "temperatureK": 288.2952266924585,
@@ -1418,6 +1424,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -1478,13 +1487,14 @@
       "surfaceRadiation": 512.3836279632528,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 267.19206115251916,
       "temperatureProfile": {
         "meanK": 267,
-        "totalMinK": 5,
-        "totalMaxK": 476,
+        "totalMinK": 3,
+        "totalMaxK": 569,
         "components": [
           {
             "source": "latitude",
@@ -1499,24 +1509,16 @@
             "highK": 310
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 267,
-            "highK": 374,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 107,
-            "highK": 267,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 67,
+            "highK": 468
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 5,
-        "max": 476
+        "min": 3,
+        "max": 569
       },
       "magnetism": {
         "source": "none",
@@ -1893,6 +1895,7 @@
       "equilibriumTempK": 211.2578927318618,
       "surfaceRadiation": 213.69242475056376,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 5.811580890688286,
       "temperatureK": 217.06947362255008,
@@ -2180,6 +2183,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -2250,13 +2256,14 @@
       "surfaceRadiation": 223.89323317583214,
       "tidalHeatK": 0.24412215742011018,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 206.3342426978193,
       "temperatureProfile": {
         "meanK": 206,
-        "totalMinK": 9,
-        "totalMaxK": 362,
+        "totalMinK": 102,
+        "totalMaxK": 311,
         "components": [
           {
             "source": "latitude",
@@ -2271,18 +2278,10 @@
             "highK": 234
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 206,
-            "highK": 289,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 83,
-            "highK": 206,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 175,
+            "highK": 237
           },
           {
             "source": "tidal-hotspot",
@@ -2294,8 +2293,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 9,
-        "max": 362
+        "min": 102,
+        "max": 311
       },
       "magnetism": {
         "source": "none",
@@ -2578,6 +2577,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -2649,13 +2651,14 @@
       "surfaceRadiation": 223.86590122376526,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 200.01352688297754,
       "temperatureProfile": {
         "meanK": 200,
-        "totalMinK": 11,
-        "totalMaxK": 349,
+        "totalMinK": 55,
+        "totalMaxK": 345,
         "components": [
           {
             "source": "latitude",
@@ -2670,24 +2673,16 @@
             "highK": 225
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 200,
-            "highK": 280,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 80,
-            "highK": 200,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 125,
+            "highK": 275
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 11,
-        "max": 349
+        "min": 55,
+        "max": 345
       },
       "magnetism": {
         "source": "none",
@@ -3029,6 +3024,7 @@
       "equilibriumTempK": 161.89530157466643,
       "surfaceRadiation": 70.53487638711071,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 161.89530157466643,
@@ -3187,6 +3183,7 @@
       "equilibriumTempK": 110.11372430182148,
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 11.018301556485874,
       "temperatureK": 165.9797756348331,
@@ -3484,6 +3481,7 @@
       "equilibriumTempK": 116.56004482844226,
       "surfaceRadiation": 18.9524671384648,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 116.56004482844226,
@@ -3558,6 +3556,9 @@
         },
         {
           "key": "orbit/tidally-locked"
+        },
+        {
+          "key": "orbit/locked-planet"
         },
         {
           "key": "tidal/volcanism"
@@ -3642,12 +3643,13 @@
       "surfaceRadiation": 20.939663111605615,
       "tidalHeatK": 4.107586565502499,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0.0000016660940237464605,
       "temperatureK": 119.17948275766433,
       "temperatureProfile": {
         "meanK": 119,
-        "totalMinK": 10,
+        "totalMinK": 18,
         "totalMaxK": 1240,
         "components": [
           {
@@ -3663,18 +3665,10 @@
             "highK": 134
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 119,
-            "highK": 165,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 50,
-            "highK": 119,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 58,
+            "highK": 180
           },
           {
             "source": "tidal-hotspot",
@@ -3686,7 +3680,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 10,
+        "min": 18,
         "max": 1240
       },
       "magnetism": {
@@ -3996,6 +3990,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "oxidizer"
         },
         {
@@ -4119,12 +4116,13 @@
       "surfaceRadiation": 20.927586179598723,
       "tidalHeatK": 3.5914357329356754,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 99.46841494675006,
       "temperatureProfile": {
         "meanK": 99,
-        "totalMinK": 8,
+        "totalMinK": 3,
         "totalMaxK": 674,
         "components": [
           {
@@ -4140,18 +4138,10 @@
             "highK": 112
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 99,
-            "highK": 138,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 42,
-            "highK": 99,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 28,
+            "highK": 171
           },
           {
             "source": "tidal-hotspot",
@@ -4163,7 +4153,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 8,
+        "min": 3,
         "max": 674
       },
       "magnetism": {
@@ -4468,6 +4458,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -4568,13 +4561,14 @@
       "surfaceRadiation": 20.729950827259554,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 95.85237968671684,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 5,
-        "totalMaxK": 168,
+        "totalMinK": 3,
+        "totalMaxK": 201,
         "components": [
           {
             "source": "latitude",
@@ -4589,24 +4583,16 @@
             "highK": 108
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 96,
-            "highK": 134,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 38,
-            "highK": 96,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 24,
+            "highK": 168
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 5,
-        "max": 168
+        "min": 3,
+        "max": 201
       },
       "magnetism": {
         "source": "none",
@@ -4896,6 +4882,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -4975,13 +4964,14 @@
       "surfaceRadiation": 20.868796287830442,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 95.80244283934795,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 5,
-        "totalMaxK": 168,
+        "totalMinK": 3,
+        "totalMaxK": 201,
         "components": [
           {
             "source": "latitude",
@@ -4996,24 +4986,16 @@
             "highK": 108
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 96,
-            "highK": 134,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 38,
-            "highK": 96,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 24,
+            "highK": 168
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 5,
-        "max": 168
+        "min": 3,
+        "max": 201
       },
       "magnetism": {
         "source": "none",
@@ -5408,6 +5390,7 @@
       "equilibriumTempK": 81.15750990778466,
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 5.258171591390225,
       "temperatureK": 134.44983435793435,
@@ -5723,6 +5706,7 @@
       "equilibriumTempK": 85.9661103740463,
       "surfaceRadiation": 5.594091223855793,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 85.9661103740463,
@@ -5788,6 +5772,9 @@
       "tags": [
         {
           "key": "orbit/tidally-locked"
+        },
+        {
+          "key": "orbit/locked-planet"
         },
         {
           "key": "inert"
@@ -5919,13 +5906,14 @@
       "surfaceRadiation": 2.0001915525995857,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 13.82556199811241,
       "temperatureK": 96.15066124375716,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 69,
-        "totalMaxK": 119,
+        "totalMinK": 66,
+        "totalMaxK": 126,
         "components": [
           {
             "source": "latitude",
@@ -5940,24 +5928,16 @@
             "highK": 102
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 96,
-            "highK": 105,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 83,
-            "highK": 96,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 80,
+            "highK": 112
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 69,
-        "max": 119
+        "min": 66,
+        "max": 126
       },
       "magnetism": {
         "source": "none",
@@ -6191,6 +6171,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "greenhouse"
         },
         {
@@ -6325,13 +6308,14 @@
       "surfaceRadiation": 7.593041652371447,
       "tidalHeatK": 3.032238426788762,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 2.5740848340110443e-8,
       "temperatureK": 74.54399032061438,
       "temperatureProfile": {
         "meanK": 75,
-        "totalMinK": 7,
-        "totalMaxK": 128,
+        "totalMinK": 20,
+        "totalMaxK": 129,
         "components": [
           {
             "source": "latitude",
@@ -6346,24 +6330,16 @@
             "highK": 84
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 75,
-            "highK": 103,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 32,
-            "highK": 75,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 45,
+            "highK": 104
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 7,
-        "max": 128
+        "min": 20,
+        "max": 129
       },
       "magnetism": {
         "source": "salty-ocean-induced",
@@ -6666,6 +6642,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -6733,14 +6712,15 @@
       "surfaceRadiationMax": 8.114068685809151,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "internalHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 71.73387579592591,
       "temperatureProfile": {
         "meanK": 72,
-        "totalMinK": 4,
-        "totalMaxK": 125,
+        "totalMinK": 6,
+        "totalMaxK": 137,
         "components": [
           {
             "source": "latitude",
@@ -6755,24 +6735,16 @@
             "highK": 81
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 72,
-            "highK": 100,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 29,
-            "highK": 72,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 31,
+            "highK": 112
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 4,
-        "max": 125
+        "min": 6,
+        "max": 137
       },
       "magnetism": {
         "source": "none",
@@ -7091,6 +7063,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -7162,14 +7137,15 @@
       "surfaceRadiationMax": 8.113327779468168,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "internalHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 79.75917635626027,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 4,
-        "totalMaxK": 139,
+        "totalMinK": 3,
+        "totalMaxK": 167,
         "components": [
           {
             "source": "latitude",
@@ -7184,24 +7160,16 @@
             "highK": 90
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 80,
-            "highK": 112,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 32,
-            "highK": 80,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 20,
+            "highK": 140
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 4,
-        "max": 139
+        "min": 3,
+        "max": 167
       },
       "magnetism": {
         "source": "none",
@@ -7491,6 +7459,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -7572,12 +7543,13 @@
       "surfaceRadiation": 7.593451429166878,
       "tidalHeatK": 4.0361754106310945,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 79.55685729853637,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 7,
+        "totalMinK": 31,
         "totalMaxK": 320,
         "components": [
           {
@@ -7593,18 +7565,10 @@
             "highK": 90
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 80,
-            "highK": 110,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 34,
-            "highK": 80,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 58,
+            "highK": 101
           },
           {
             "source": "tidal-hotspot",
@@ -7616,7 +7580,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 7,
+        "min": 31,
         "max": 320
       },
       "magnetism": {
@@ -7930,6 +7894,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -7997,13 +7964,14 @@
       "surfaceRadiation": 7.590786065141442,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 76.84869268124385,
       "temperatureProfile": {
         "meanK": 77,
-        "totalMinK": 4,
-        "totalMaxK": 134,
+        "totalMinK": 3,
+        "totalMaxK": 161,
         "components": [
           {
             "source": "latitude",
@@ -8018,24 +7986,16 @@
             "highK": 87
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 77,
-            "highK": 108,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 31,
-            "highK": 77,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 19,
+            "highK": 134
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 4,
-        "max": 134
+        "min": 3,
+        "max": 161
       },
       "magnetism": {
         "source": "none",
@@ -8312,6 +8272,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -8379,13 +8342,14 @@
       "surfaceRadiation": 7.567190044330053,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 74.14197330317803,
       "temperatureProfile": {
         "meanK": 74,
         "totalMinK": 3,
-        "totalMaxK": 131,
+        "totalMaxK": 157,
         "components": [
           {
             "source": "latitude",
@@ -8400,24 +8364,16 @@
             "highK": 85
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 74,
-            "highK": 104,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 30,
-            "highK": 74,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 19,
+            "highK": 130
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 131
+        "max": 157
       },
       "magnetism": {
         "source": "none",
@@ -8783,6 +8739,7 @@
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
       "tidallyLocked": false,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 4.254974642156193,
       "temperatureK": 83.78277651216443,
@@ -9068,6 +9025,7 @@
       "equilibriumTempK": 60.66002987010062,
       "surfaceRadiation": 1.3902003978183888,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 60.66002987010062,
@@ -9134,6 +9092,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -9194,13 +9155,14 @@
       "surfaceRadiation": 3.389844863084501,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 57.317413140429025,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 3,
-        "totalMaxK": 100,
+        "totalMaxK": 120,
         "components": [
           {
             "source": "latitude",
@@ -9215,24 +9177,16 @@
             "highK": 65
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 57,
-            "highK": 80,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 23,
-            "highK": 57,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 14,
+            "highK": 100
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 100
+        "max": 120
       },
       "magnetism": {
         "source": "none",
@@ -9515,6 +9469,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -9579,13 +9536,14 @@
       "surfaceRadiation": 3.389701558634683,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 57.141721023777,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 3,
-        "totalMaxK": 100,
+        "totalMaxK": 120,
         "components": [
           {
             "source": "latitude",
@@ -9600,24 +9558,16 @@
             "highK": 64
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 57,
-            "highK": 80,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 23,
-            "highK": 57,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 14,
+            "highK": 100
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 100
+        "max": 120
       },
       "magnetism": {
         "source": "none",
@@ -9900,6 +9850,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -9968,13 +9921,14 @@
       "surfaceRadiation": 3.3900823120513093,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 56.96979976867991,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 3,
-        "totalMaxK": 100,
+        "totalMaxK": 119,
         "components": [
           {
             "source": "latitude",
@@ -9989,24 +9943,16 @@
             "highK": 64
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 57,
-            "highK": 80,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 23,
-            "highK": 57,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 14,
+            "highK": 100
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 100
+        "max": 119
       },
       "magnetism": {
         "source": "none",
@@ -10379,6 +10325,7 @@
       "equilibriumTempK": 46.44477891503087,
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 3.6917906597062884,
       "temperatureK": 71.60672086130536,
@@ -10692,6 +10639,7 @@
       "equilibriumTempK": 48.45052591890719,
       "surfaceRadiation": 0.5657973531214614,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 48.45052591890719,
@@ -10757,6 +10705,9 @@
       "tags": [
         {
           "key": "orbit/tidally-locked"
+        },
+        {
+          "key": "orbit/locked-planet"
         },
         {
           "key": "inert"
@@ -10876,13 +10827,14 @@
       "surfaceRadiation": 2.565664450687255,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0.000020408335639210383,
       "temperatureK": 39.86496792560042,
       "temperatureProfile": {
         "meanK": 40,
         "totalMinK": 3,
-        "totalMaxK": 70,
+        "totalMaxK": 84,
         "components": [
           {
             "source": "latitude",
@@ -10897,24 +10849,16 @@
             "highK": 45
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 40,
-            "highK": 56,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 16,
-            "highK": 40,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 10,
+            "highK": 70
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 70
+        "max": 84
       },
       "magnetism": {
         "source": "none",
@@ -11235,6 +11179,7 @@
       "equilibriumTempK": 42.0886574693289,
       "surfaceRadiation": 0.3222012500736142,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 42.0886574693289,
@@ -11307,6 +11252,9 @@
         },
         {
           "key": "orbit/tidally-locked"
+        },
+        {
+          "key": "orbit/locked-planet"
         },
         {
           "key": "inert"
@@ -11412,13 +11360,14 @@
       "surfaceRadiation": 2.339746346658621,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0.00005526266059632093,
       "temperatureK": 40.89980323292139,
       "temperatureProfile": {
         "meanK": 41,
         "totalMinK": 3,
-        "totalMaxK": 78,
+        "totalMaxK": 92,
         "components": [
           {
             "source": "latitude",
@@ -11433,24 +11382,16 @@
             "highK": 52
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 41,
-            "highK": 57,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 16,
-            "highK": 41,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 10,
+            "highK": 72
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 78
+        "max": 92
       },
       "hydrosphere": {
         "layers": [
@@ -11747,6 +11688,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -11828,13 +11772,14 @@
       "surfaceRadiation": 2.3397689809061775,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 40.439825009162014,
       "temperatureProfile": {
         "meanK": 40,
         "totalMinK": 3,
-        "totalMaxK": 77,
+        "totalMaxK": 91,
         "components": [
           {
             "source": "latitude",
@@ -11849,24 +11794,16 @@
             "highK": 52
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 40,
-            "highK": 57,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 16,
-            "highK": 40,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 10,
+            "highK": 71
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 77
+        "max": 91
       },
       "magnetism": {
         "source": "none",

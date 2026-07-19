@@ -222,10 +222,23 @@ describe('Solar System Physics Baseline', () => {
         expect(io.tags?.some(t => t.key === 'orbit/tidally-locked')).toBe(true);
         expect(earth.tags?.some(t => t.key === 'orbit/tidally-locked')).toBeFalsy();
 
+        // --- Lock TARGET: a planet locks to its STAR (permanent substellar face → eyeball); a moon
+        //     locks to its PLANET (whole surface still sun-cycles → no eyeball). Surfaced as tags +
+        //     a field so the renderer can tell them apart. (Also guards the processor against the
+        //     scope bug where a per-pass helper went undefined and process() threw, leaving stale data.)
+        const mercury = processedSystem.nodes.find(n => n.name === 'Mercury') as CelestialBody;
+        expect(mercury.starTidallyLocked).toBe(true);
+        expect(mercury.tags?.some(t => t.key === 'orbit/locked-star')).toBe(true);
+        expect(moon.starTidallyLocked).toBeFalsy();
+        expect(moon.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(true);
+        expect(io.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(true);
+        // A moon locked to its planet must NOT read a permanent frozen far side (Luna day/night is a
+        // cycle, not a 3 K / 796 K face split).
+        expect(moon.temperatureRangeK!.max).toBeLessThan(600);
+
         // --- Authored end-state preservation (the "double-aging" fix) ---
         // Hand-authored bodies carry no evolveAtmosphere/autoClassify flags, so processing must
         // NOT erode their deliberate trace exospheres nor overwrite their authored classes.
-        const mercury = processedSystem.nodes.find(n => n.name === 'Mercury') as CelestialBody;
         expect(io.atmosphere?.main).toBe('SO2');                 // was wiped to 'None' pre-fix
         expect(mercury.atmosphere?.main).toBe('Na');
         expect(pluto.atmosphere?.main).toBe('N2');

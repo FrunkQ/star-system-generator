@@ -404,19 +404,37 @@ export class SystemProcessor implements ISystemProcessor {
 
         // Tidal locking — derived from the despinning timescale vs the system age (a moon locks to
         // its planet, a planet to its star/barycentre). DYNAMIC by default; the body editor's
-        // checkbox pins it (tidalLockManual) and skips this assessment. Emits orbit/tidally-locked.
+        // checkbox pins it (tidalLockManual) and skips this assessment.
+        // WHAT it locks to matters for the renderer, and the renderer (a pure function of one body)
+        // can't see the parent chain — so we surface it here as tags: orbit/locked-star (a planet with a
+        // PERMANENT substellar face → an eyeball world) vs orbit/locked-planet (a moon; its whole surface
+        // still cycles through stellar day/night, so NO eyeball — but its cratering still skews to its
+        // orbital leading face).
+        const lockParent = allNodes.find((n) => n.id === body.parentId);
+        const orbitsStar = !!lockParent && (
+            (lockParent.kind === 'body' && (lockParent as CelestialBody).roleHint === 'star') ||
+            (lockParent.kind === 'barycenter' && ((lockParent as Barycenter).memberIds || []).some((mid) => {
+                const m = allNodes.find((n) => n.id === mid); return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
+            }))
+        );
         if (!(body as any).tidalLockManual && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
-            const lockHost = allNodes.find(n => n.id === body.parentId);
-            const lockHostMass = lockHost
-                ? (lockHost.kind === 'barycenter' ? (lockHost as Barycenter).effectiveMassKg : (lockHost as CelestialBody).massKg)
+            const lockHostMass = lockParent
+                ? (lockParent.kind === 'barycenter' ? (lockParent as Barycenter).effectiveMassKg : (lockParent as CelestialBody).massKg)
                 : 0;
             body.tidallyLocked = predictTidalLock(
                 body.orbit?.elements.a_AU || 0, body.radiusKm || 0, body.massKg || 0,
                 lockHostMass || 0, this.systemAgeGyr
             );
         }
-        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked');
-        if (body.tidallyLocked) body.tags.push({ key: 'orbit/tidally-locked' });
+        body.starTidallyLocked = !!body.tidallyLocked && orbitsStar;
+        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked' && t.key !== 'orbit/locked-star' && t.key !== 'orbit/locked-planet');
+        // Surface the lock TARGET as its own tag (both are registered so they survive tag sanitising):
+        // locked-star = a permanent substellar face (eyeball candidate); locked-planet = a moon whose
+        // whole surface still cycles through stellar day/night.
+        if (body.tidallyLocked) {
+            body.tags.push({ key: 'orbit/tidally-locked' });
+            body.tags.push({ key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
+        }
 
         // Radiogenic Heating — a GM OVERRIDE (body.overrides.radiogenicHeatK), re-derived from it each run
         // so it survives save/load. Default 0 (radiogenic surface heat is negligible vs sunlight for most
@@ -445,6 +463,8 @@ export class SystemProcessor implements ISystemProcessor {
             pressureBar: body.atmosphere?.pressure_bar ?? 0,
             rotationHours: body.rotation_period_hours,
             tidallyLocked: body.tidallyLocked,
+            starTidallyLocked: body.starTidallyLocked,
+            orbitalPeriodHours: (body.orbital_period_days ?? 0) * 24,
             eccentricity: body.orbit?.elements.e,
             obliquityDeg: body.obliquity_deg,
             hasLiquidOcean: surfaceLiquidWater,
@@ -463,7 +483,7 @@ export class SystemProcessor implements ISystemProcessor {
     }
 
     private processClassification(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG) {
-        // Skip classification for Stars, Barycenters, etc. 
+        // Skip classification for Stars, Barycenters, etc.
         // Only Planets and Moons need dynamic classification based on physics.
         if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return;
 
@@ -483,18 +503,15 @@ export class SystemProcessor implements ISystemProcessor {
         // Does this body orbit a star (or a star-pair barycentre)? a_AU/period/eccentricity
         // are otherwise relative to a planet/moon barycentre, so star-relative modifiers
         // (ultra-short-period, disrupted) must not use them. Circumbinary planets count.
+        // orbitsStar: this body orbits a star / stellar barycentre (a planet), not a planet (a moon).
+        // (processEnvironment computes the same for the lock target; this pass has its own scope.)
         const parentNode = allNodes.find((n) => n.id === body.parentId);
-        let orbitsStar = 0;
-        if (parentNode?.kind === 'body' && (parentNode as CelestialBody).roleHint === 'star') {
-            orbitsStar = 1;
-        } else if (parentNode?.kind === 'barycenter') {
-            const memberIds = (parentNode as Barycenter).memberIds || [];
-            const membersAreStars = memberIds.some((mid) => {
-                const m = allNodes.find((n) => n.id === mid);
-                return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
-            });
-            if (membersAreStars) orbitsStar = 1;
-        }
+        const orbitsStar = !!parentNode && (
+            (parentNode.kind === 'body' && (parentNode as CelestialBody).roleHint === 'star') ||
+            (parentNode.kind === 'barycenter' && ((parentNode as Barycenter).memberIds || []).some((mid) => {
+                const m = allNodes.find((n) => n.id === mid); return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
+            }))
+        );
 
         // Feature vector for classification
         const features: Record<string, number | string> = {
@@ -506,7 +523,7 @@ export class SystemProcessor implements ISystemProcessor {
             escapeVelocity_kms,
             a_AU: body.orbit?.elements.a_AU || 0,
             eccentricity: body.orbit?.elements.e || 0,
-            orbitsStar,
+            orbitsStar: orbitsStar ? 1 : 0,
             age_Gyr: this.systemAgeGyr,
             stellarType,
             stellarIrradiation: body.stellarRadiation || 0, // incident flux, ~1 at Earth
@@ -521,7 +538,7 @@ export class SystemProcessor implements ISystemProcessor {
             // tidally locked to its PLANET, not the star, so its far side still cycles through stellar
             // day/night — it can never be an eyeball. orbitsStar is 0 for moons (they orbit a planet /
             // planet-moon barycentre), so this is 0 for them even when tidallyLocked is 1.
-            starTidallyLocked: (body.tidallyLocked && orbitsStar) ? 1 : 0
+            starTidallyLocked: body.starTidallyLocked ? 1 : 0
         };
 
         // Default the environment features so airless/dry bodies match (undefined would

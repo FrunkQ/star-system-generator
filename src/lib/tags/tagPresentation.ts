@@ -167,6 +167,14 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Tidally locked',
     description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, Mercury, most close-in worlds). Pin it by hand in the body editor to override.'
   },
+  'orbit/locked-star': {
+    label: 'Locked to its star',
+    description: 'Tidally locked to the STAR — one face permanently sunward. A permanent day/night split (an eyeball world): a baked or molten substellar hemisphere and a frozen far side.'
+  },
+  'orbit/locked-planet': {
+    label: 'Locked to its planet',
+    description: 'A moon tidally locked to its planet — one face permanently toward the planet, but its whole surface still cycles through stellar day and night over its orbit, so it weathers evenly (no eyeball).'
+  },
   'orbit/retrograde': {
     label: 'Retrograde orbit',
     description: 'Orbits opposite to the system\'s general direction — usually the signature of a captured body or a violent dynamical past.'

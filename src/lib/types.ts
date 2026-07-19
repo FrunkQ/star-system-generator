@@ -211,7 +211,8 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // summer or tidal-volcanic hotspots). The mean alone hides this. (§ surface-temperature model)
   temperatureRangeK?: { min: number; max: number };
   temperatureProfile?: SurfaceTempProfile;  // the range DECOMPOSED by cause (seasonal/diurnal/…)
-  tidallyLocked?: boolean;      // one face permanently toward its primary (no day/night cycle)
+  tidallyLocked?: boolean;      // one face permanently toward its primary (planet or star)
+  starTidallyLocked?: boolean;  // locked specifically to its STAR → a permanent substellar face (eyeball)
   oblateness?: number;          // DERIVED equatorial flattening f=(a−c)/a from spin vs the breakup limit; renderers draw the squashed shape
   obliquity_deg?: number;       // axial tilt — drives seasonal variation
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };

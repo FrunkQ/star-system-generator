@@ -17,11 +17,19 @@ describe('surfaceTempProfile — decomposition by cause', () => {
     expect(diurnal.highK - diurnal.lowK).toBeGreaterThan(300); // airless + slow → enormous
   });
 
-  it('a tidally-locked world has day/night FACES, not a cycle', () => {
-    const { profile } = surfaceTempProfile({ meanK: 300, equilibriumK: 300, pressureBar: 0.1, tidallyLocked: true });
+  it('a STAR-locked world has permanent day/night FACES, not a cycle', () => {
+    const { profile } = surfaceTempProfile({ meanK: 300, equilibriumK: 300, pressureBar: 0.1, tidallyLocked: true, starTidallyLocked: true });
     expect(sources(profile)).toContain('locked-day');
     expect(sources(profile)).toContain('locked-night');
     expect(sources(profile)).not.toContain('diurnal');
+  });
+
+  it('a MOON locked to its PLANET still has a (slow) day/night cycle, not permanent faces', () => {
+    // Locked to a planet (not the star), so it turns relative to the sun once per orbit → a big but
+    // NOT permanent swing. No locked-day/night faces.
+    const { profile } = surfaceTempProfile({ meanK: 300, equilibriumK: 300, pressureBar: 0.1, tidallyLocked: true, starTidallyLocked: false, orbitalPeriodHours: 655 });
+    expect(sources(profile)).toContain('diurnal');
+    expect(sources(profile)).not.toContain('locked-day');
   });
 
   it('an Io-like moon shows a cold surface AND a hot tidal hotspot component', () => {

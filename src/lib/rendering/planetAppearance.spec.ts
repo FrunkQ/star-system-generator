@@ -112,6 +112,14 @@ describe('deriveAppearance — feature resolution', () => {
 		expect(mercury.eyeball!.kind).toBe('hot');
 	});
 
+	it('a MOON tidally locked to its planet is NOT an eyeball (whole surface still sun-cycles)', () => {
+		const moon = deriveAppearance(mk({ roleHint: 'moon', tidallyLocked: true, temperatureRangeK: { min: 5, max: 476 } } as any));
+		expect(moon.eyeball).toBeNull();
+		// but a locked PLANET with the same contrast IS an eyeball
+		const planet = deriveAppearance(mk({ roleHint: 'planet', tidallyLocked: true, temperatureRangeK: { min: 5, max: 476 } } as any));
+		expect(planet.eyeball).toBeTruthy();
+	});
+
 	it('a locked world with a temperate day side reads a COLD eyeball (an eye of liquid on a frozen world)', () => {
 		const cold = deriveAppearance(mk({ tidallyLocked: true, temperatureRangeK: { min: 70, max: 292 } } as any));
 		expect(cold.eyeball!.kind).toBe('cold');
