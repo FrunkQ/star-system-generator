@@ -134,6 +134,14 @@ const cryoPlumes = [
 // since gallery bodies bypass the processor.
 const geo = (regime: string, surfaceAgeGyr: number) => ({ regime, surfaceAgeGyr } as any);
 const vol = (...retained: string[]) => ({ retained } as any);
+// The 3D holo texture needs an apparentColor (palette) to render; give these a minimal surface one
+// from their base hex so the sphere textures (and the new weathering features) show in /discgallery3d.
+const withAp = (b: CelestialBody): CelestialBody => {
+	const any = b as any;
+	if (any.apparentColor) return b;
+	any.apparentColor = { hex: any.apparentColorHex, banding: 0, palette: [{ hex: any.apparentColorHex, role: 'surface', weight: 1 }] };
+	return b;
+};
 
 // Cratering climbs with SURFACE AGE; the last one is tidally locked (leading-hemisphere bias).
 export const GALLERY_CRATERING: CelestialBody[] = [
@@ -145,7 +153,7 @@ export const GALLERY_CRATERING: CelestialBody[] = [
 		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('inactive', 4.6) }),
 	mk({ name: 'Ancient · tidally locked', apparentColorHex: '#a49a8e', radiusKm: 3000, atmosphere: { pressure_bar: 0 } as any,
 		makeup: { rock: 0.7, metal: 0.3 } as any, tidallyLocked: true, geoActivity: geo('inactive', 4.6) } as any)
-];
+].map(withAp);
 
 // Ice FRACTURES where rock craters; a frozen former ocean RIFTS the crust.
 export const GALLERY_ICE_VS_ROCK: CelestialBody[] = [
@@ -157,7 +165,7 @@ export const GALLERY_ICE_VS_ROCK: CelestialBody[] = [
 	mk({ name: 'Charon · crustal rift', apparentColorHex: '#b8b0a6', radiusKm: 606, atmosphere: { pressure_bar: 0 } as any,
 		makeup: { ice: 0.5, rock: 0.5 } as any, geoActivity: geo('inactive', 4.0), volatiles: vol('water'),
 		tags: [{ key: 'structure/subsurface-ocean' }] })
-];
+].map(withAp);
 
 // Tholins (irradiated organics) + frosts (retained bright ices). Pluto reddens; young Triton stays
 // fresh despite the same ices; Titan's haze is atmospheric; Io wears SO2 frost.
@@ -174,7 +182,7 @@ export const GALLERY_THOLIN_FROST: CelestialBody[] = [
 	mk({ name: 'Io · SO₂ frost + lava', apparentColorHex: '#b8a24a', radiusKm: 1821, atmosphere: { pressure_bar: 0 } as any,
 		makeup: { rock: 0.7, metal: 0.3 } as any, geoActivity: geo('tidal-volcanic', 0.002), volatiles: vol('sulfur-dioxide'),
 		tags: [{ key: 'tidal/lava-flows' }] } as any)
-];
+].map(withAp);
 
 // Star types by temperature (roleHint 'star').
 const star = (name: string, t: number, radiusKm: number, flare = 0.2) =>

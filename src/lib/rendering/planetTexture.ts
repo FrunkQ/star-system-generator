@@ -9,6 +9,7 @@
 // sliding a gas mix / coverage / temperature in the editor visibly changes the disc. Textures are
 // seeded from the body id (stable frame-to-frame) and cached on an offscreen canvas.
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
+import { deriveAppearance } from './planetAppearance';
 
 const SIZE = 96; // offscreen texture resolution (diameter in px)
 const cache = new Map<string, HTMLCanvasElement>();
@@ -205,6 +206,72 @@ function drawPatchesEquirect(ctx: CanvasRenderingContext2D, rnd: () => number, c
   ctx.globalAlpha = 1;
 }
 
+// Paint the foundation-driven surface weathering into the equirect sheet (512×256), reading the shared
+// appearance model so the 3D holo sphere shows the SAME features the 2D disc draws: age-graded craters
+// (leading-hemisphere biased when tidally locked) + fresh rayed craters, icy lineae, crustal rifts,
+// tholin staining and bright volatile frost. Longitude = x, latitude = y; strokes wrap at the seam.
+function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBody, rnd: () => number) {
+  const a = deriveAppearance(body);
+  const wrap = (draw: (dx: number) => void) => { for (const dx of [-EQ_W, 0, EQ_W]) draw(dx); };
+
+  if (a.tholin) {
+    if (a.tholin.atmospheric) {
+      ctx.globalAlpha = 0.22 + a.tholin.strength * 0.35; ctx.fillStyle = a.tholin.colorHex;
+      ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
+    } else {
+      drawPatchesEquirect(ctx, rnd, a.tholin.colorHex, 0.22 + a.tholin.strength * 0.4, 0.5);
+    }
+  }
+  if (a.frost) drawPatchesEquirect(ctx, rnd, a.frost.colorHex, 0.18 + a.frost.coverage * 0.32, 0.45);
+
+  if (a.craters) {
+    const n = Math.round(10 + a.craters.density * 55);
+    for (let i = 0; i < n; i++) {
+      let x = rnd() * EQ_W;
+      if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = rnd() * 0.5 * EQ_W; // leading hemisphere
+      const y = EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, r = 2 + rnd() * rnd() * 7;
+      wrap((dx) => {
+        ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.strokeStyle = 'rgba(240,240,245,0.18)'; ctx.lineWidth = Math.max(0.4, r * 0.16);
+        ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.stroke();
+      });
+    }
+    for (let i = 0; i < a.craters.rayed; i++) {
+      const x = rnd() * EQ_W, y = EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, r = 3 + rnd() * 3, nr = 8 + Math.floor(rnd() * 4);
+      wrap((dx) => {
+        ctx.strokeStyle = 'rgba(240,244,252,0.5)'; ctx.lineWidth = 0.7;
+        for (let k = 0; k < nr; k++) { const ang = (k / nr) * 2 * Math.PI, len = r * (2.5 + rnd() * 2.5);
+          ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.lineTo(x + dx + Math.cos(ang) * len, y + Math.sin(ang) * len); ctx.stroke(); }
+        ctx.beginPath(); ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.strokeStyle = 'rgba(245,248,255,0.8)'; ctx.lineWidth = 0.8; ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.stroke();
+      });
+    }
+  }
+
+  if (a.iceCracks) {
+    const n = Math.round(6 + a.iceCracks.severity * 16);
+    ctx.strokeStyle = a.iceCracks.colorHex; ctx.globalAlpha = 0.5; ctx.lineWidth = 0.7 + a.iceCracks.severity * 0.8;
+    for (let i = 0; i < n; i++) {
+      const y = rnd() * EQ_H, x = rnd() * EQ_W, len = EQ_W * (0.12 + rnd() * 0.22), bow = (rnd() - 0.5) * 34;
+      wrap((dx) => { ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, y + (rnd() - 0.5) * 18); ctx.stroke(); });
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  if (a.rifts) {
+    const n = Math.round(1 + a.rifts.extent * 2);
+    for (let i = 0; i < n; i++) {
+      const y = EQ_H * (0.25 + rnd() * 0.5), x = rnd() * EQ_W, len = EQ_W * (0.4 + rnd() * 0.4), bow = (rnd() - 0.5) * 30;
+      wrap((dx) => {
+        ctx.strokeStyle = 'rgba(20,26,36,0.6)'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, y + (rnd() - 0.5) * 20); ctx.stroke();
+        ctx.strokeStyle = 'rgba(210,222,238,0.5)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, y + (rnd() - 0.5) * 20); ctx.stroke();
+      });
+    }
+  }
+}
+
 function renderEquirect(body: CelestialBody): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = EQ_W;
@@ -284,6 +351,9 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
     }
   }
 
+  // Foundation-driven surface weathering (craters/cracks/rifts/tholins/frost) over the base surface.
+  paintFeaturesEquirect(ctx, body, rnd);
+
   // Haze: a uniform wash (the limb glow is drawn in 3D, not baked here).
   if (haze) {
     ctx.globalAlpha = Math.min(0.8, haze.weight) * 0.18;
@@ -305,7 +375,9 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
 export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement | null {
   if (typeof document === 'undefined' || !body.apparentColor) return null;
   const ap = body.apparentColor;
-  const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|` +
+  const g = (body as any).geoActivity;
+  const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}:${(body as any).makeup?.ice ?? ''}`;
+  const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = eqCache.get(key);
   if (!tex) {
