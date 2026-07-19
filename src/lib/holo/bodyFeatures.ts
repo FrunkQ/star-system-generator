@@ -148,6 +148,35 @@ export function buildSelfLumGlow(radius: number, colorHex: string, glowTexture: 
 	return halo;
 }
 
+// ATMOSPHERE LIMB-GLOW — a translucent shell that lights up at the LIMB (grazing viewing angle, where
+// the line of sight passes through the most air) and is clear over the disc centre, so it reads as a
+// halo hugging the silhouette. A Fresnel term on a slightly-enlarged back-side sphere, additive-blended.
+// `strength` (0..1, log-scaled from pressure) sets both the halo brightness and how far it reaches.
+export function buildAtmoGlow(radius: number, colorHex: string, strength: number): THREE.Mesh {
+	const mat = new THREE.ShaderMaterial({
+		uniforms: { uColor: { value: new THREE.Color(colorHex) }, uStrength: { value: strength } },
+		vertexShader: `
+			varying vec3 vN; varying vec3 vView;
+			void main() {
+				vec4 mv = modelViewMatrix * vec4(position, 1.0);
+				vN = normalize(normalMatrix * normal);
+				vView = normalize(-mv.xyz);
+				gl_Position = projectionMatrix * mv;
+			}`,
+		fragmentShader: `
+			uniform vec3 uColor; uniform float uStrength; varying vec3 vN; varying vec3 vView;
+			void main() {
+				float f = 1.0 - abs(dot(normalize(vN), normalize(vView)));  // 0 face-on → 1 at the limb
+				f = pow(f, 2.0);
+				gl_FragColor = vec4(uColor, f * (0.5 + 0.8 * uStrength));
+			}`,
+		transparent: true, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false
+	});
+	const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.1 + 0.14 * strength), 32, 24), mat);
+	shell.renderOrder = 2;
+	return shell;
+}
+
 // --- Animation helpers ----------------------------------------------------------------------------
 
 /** Flicker volcanic vents like heat — faster + hotter than the aurora shimmer. */

@@ -15,7 +15,7 @@ import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { buildAuroraShell } from './scene';
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, updateMagma, updatePlumes, accretionColor,
+	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, updateMagma, updatePlumes, accretionColor,
 	type EmissiveVisual
 } from './bodyFeatures';
 import { GALLERY_ROWS, GALLERY_BLACK_HOLES } from '$lib/catalogue/galleryExamples';
@@ -58,9 +58,11 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 
 	// Lighting: a key light from the upper-front (so each body shows a soft terminator) + fill so the
 	// far side isn't black in a review context.
-	scene.add(new THREE.HemisphereLight(0xbfd0e6, 0x202430, 0.85));
-	const key = new THREE.DirectionalLight(0xffffff, 1.6);
+	scene.add(new THREE.HemisphereLight(0xbfd0e6, 0x2a2f3c, 1.25));
+	const key = new THREE.DirectionalLight(0xffffff, 2.1);
 	key.position.set(0.4, 0.7, 1); scene.add(key);
+	const fill = new THREE.DirectionalLight(0xdfe8f4, 0.55); // soft front fill so textures don't read dark
+	fill.position.set(-0.3, 0.1, 0.8); scene.add(fill);
 
 	const glowTexture = makeGlowTexture();
 	const hotspotTexture = makeHotspotTexture();
@@ -120,6 +122,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			if (appear.magma) { const b = buildMagmaVents(R, appear.magma, node.id, hotspotTexture); sphere.add(b.group); magmaVisuals.push(...b.visuals); }
 			if (appear.cryoPlumes) { const b = buildCryoPlumes(R, appear.cryoPlumes, node.id, plumeTexture); sphere.add(b.group); plumeVisuals.push(...b.visuals); }
 			if (appear.selfLumGlow) g.add(buildSelfLumGlow(R, appear.selfLumGlow.colorHex, glowTexture));
+			if (appear.atmGlow) g.add(buildAtmoGlow(R, appear.atmGlow.colorHex, appear.atmGlow.strength));
 			// Auroras from the shared appearance MODEL (the aurora/* tag) — consistent with the 2D disc.
 			// (The live holo currently derives them from physics; the model tag is what the gallery shows.)
 			if (appear.aurora) {

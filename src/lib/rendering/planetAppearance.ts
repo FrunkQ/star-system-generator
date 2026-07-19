@@ -96,7 +96,7 @@ export interface EyeballSpec {
 export interface CraterSpec {
 	density: number;   // 0..1 impact-record density, from SURFACE AGE (young resurfaced → 0, ancient → 1)
 	rayed: number;     // count of FRESH bright-ejecta-ray craters punched into an old surface (0..4)
-	leadBias: number;  // 0..1 leading-hemisphere asymmetry on a tidally-locked body (apex sweeps up more)
+	farSideBias: number;  // 0..1 crater asymmetry on a tidally-locked body: the parent occults impactors, so the ANTI-parent (far) hemisphere takes more hits
 }
 export interface IceCrackSpec {
 	severity: number;  // 0..1 density of the fracture/ridge network (Europa lineae, Charon striae)
@@ -222,18 +222,20 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const craterDensity = solid && !icyShell && !thickAir
 		? clamp01(isSmallBody ? Math.max(0.6, ageDensity) : ageDensity)
 		: 0;
-	// A tidally-locked body sweeps up more impactors on its LEADING (apex) hemisphere → a lop-sided
-	// record whose strength scales with orbital speed vs. the impactor population: a fast inner moon
-	// (Io) is strongly asymmetric, a slow distant one (Charon) barely. v = sqrt(μ/a). Falls back to a
-	// fixed moderate bias when a body carries no orbit (gallery examples).
+	// A tidally-locked body keeps one face toward its parent, and the parent's disc OCCULTS a slice of
+	// the incoming impactor flux — so the near (sub-parent) hemisphere is shielded and the FAR side takes
+	// more hits (the anti-parent hemisphere is the more-cratered one). The asymmetry strength scales with
+	// how large the parent looms, proxied by orbital speed (a close, fast moon like Io sees a big parent →
+	// strong shielding; a slow distant one barely). v = sqrt(μ/a). Falls back to a fixed moderate bias
+	// when a body carries no orbit (gallery examples).
 	const orb = (body as any).orbit;
 	let vKms = 0;
 	if (orb?.hostMu > 0 && orb?.elements?.a_AU > 0) vKms = Math.sqrt(orb.hostMu / (orb.elements.a_AU * 1.495978707e11)) / 1000;
-	const leadBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked)
+	const farSideBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked)
 		? (vKms > 0 ? clamp01(0.25 + vKms / (vKms + 10)) : 0.7) : 0;
 	// A few FRESH craters (bright ejecta rays) punched into an otherwise old, airless surface.
 	const craters: CraterSpec | null = craterDensity > 0.05
-		? { density: craterDensity, rayed: atmPressureBar < 0.02 && craterDensity > 0.4 ? 2 : 0, leadBias }
+		? { density: craterDensity, rayed: atmPressureBar < 0.02 && craterDensity > 0.4 ? 2 : 0, farSideBias }
 		: null;
 
 	// SPACE-WEATHERED REGOLITH — micrometeorite + solar-wind maturation greys an AIRLESS silicate surface

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.181-beta - 19th Jul 2026
+
+* Tidally-locked cratering was back-to-front: it clustered impacts on the sub-parent (near) face. The parent body actually OCCULTS incoming impactors, so the shielded near side takes fewer hits and the anti-parent FAR side is the more-cratered one - now biased that way in both 2D (shadowed limb) and 3D (antistellar edges). Renamed the model's `leadBias` to `farSideBias`.
+* 3D crater density roughly doubled - the sphere disperses impacts over far more visible surface than the flat 2D disc, so old worlds now read as properly saturated.
+* 3D reference gallery: added the atmosphere limb-glow (a pressure-scaled Fresnel halo hugging the silhouette) that only the 2D disc had before, wired into both the gallery and the live holo; and brightened the gallery lighting a chunk so surfaces and glows read clearly.
+
 ## v2.1.180-beta - 19th Jul 2026
 
 * Texture pole-pinch fix: craters now pre-stretch horizontally by 1/cos(latitude) so the equirect UV squeeze brings them back round at the poles instead of smearing into swirls.

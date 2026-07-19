@@ -121,19 +121,20 @@
   }
 
   // Cratered surface: count scales with the model's crater DENSITY (surface age); a tidally-locked
-  // world biases craters to its LEADING (left) hemisphere. The decision + params are the model's; the
-  // seeded positions are generated here.
+  // world biases craters to its FAR (anti-parent) hemisphere — the parent occults impactors, so the
+  // near/sub-parent face is shielded. The near face reads as the star-lit (upper-left) side here, so the
+  // far side is the shadowed right hemisphere. The decision + params are the model's; positions here.
   $: hasCraters = !!a.craters;
   $: craters = (() => {
     if (!a.craters) return [] as { cx: number; cy: number; r: number }[];
     const rnd = seeded(41);
     const n = Math.round(12 + a.craters.density * 78);         // saturates an ancient highland
-    const lead = a.craters.leadBias;
+    const far = a.craters.farSideBias;
     return Array.from({ length: n }, () => {
       const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 26; // spread over the disc, inside the limb
       let cx = 50 + Math.cos(t) * rr;
       const cy = 50 + Math.sin(t) * rr;
-      if (lead > 0 && rnd() < lead) cx = 50 - Math.abs(cx - 50); // reflect onto the leading limb
+      if (far > 0 && rnd() < far) cx = 50 + Math.abs(cx - 50); // reflect onto the shadowed FAR limb
       return { cx, cy, r: 1.1 + rnd() * rnd() * 4 };
     });
   })();

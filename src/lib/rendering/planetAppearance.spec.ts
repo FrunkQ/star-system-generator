@@ -43,11 +43,11 @@ describe('deriveAppearance — feature resolution', () => {
 		expect((young.craters?.density ?? 0)).toBeLessThan(0.1);
 	});
 
-	it('a tidally-locked cratered world reads a leading-hemisphere bias', () => {
+	it('a tidally-locked cratered world reads a far-side (anti-parent) bias', () => {
 		const locked = deriveAppearance(mk({ tidallyLocked: true, geoActivity: { regime: 'inactive', surfaceAgeGyr: 4.6 } } as any));
 		const free = deriveAppearance(mk({ geoActivity: { regime: 'inactive', surfaceAgeGyr: 4.6 } } as any));
-		expect(locked.craters!.leadBias).toBeGreaterThan(0);
-		expect(free.craters!.leadBias).toBe(0);
+		expect(locked.craters!.farSideBias).toBeGreaterThan(0);
+		expect(free.craters!.farSideBias).toBe(0);
 	});
 
 	it('an icy world FRACTURES instead of cratering (Europa)', () => {

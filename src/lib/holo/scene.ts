@@ -24,7 +24,7 @@ import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from 
 import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, updateMagma, updatePlumes, accretionColor,
+  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, updateMagma, updatePlumes, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
@@ -1429,6 +1429,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // blazing stellar corona).
             if (appear.selfLumGlow) {
               sphere.add(buildSelfLumGlow(radius, appear.selfLumGlow.colorHex, glowTexture));
+            }
+            // Atmosphere limb-glow: a Fresnel halo hugging the silhouette, brightness + reach scaling
+            // with surface pressure (thin exosphere → faint rim; thick air → a broad soft glow).
+            if (appear.atmGlow) {
+              sphere.add(buildAtmoGlow(radius, appear.atmGlow.colorHex, appear.atmGlow.strength));
             }
           }
         }

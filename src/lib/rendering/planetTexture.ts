@@ -326,10 +326,13 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
         ctx.restore();
       });
     };
-    const n = Math.round(45 + a.craters.density * 300);  // dense saturation to match the 2D disc
+    const n = Math.round(90 + a.craters.density * 620);  // ~2x areal density: the sphere disperses them over far more visible surface than the 2D disc
     for (let i = 0; i < n; i++) {
       let x = rnd() * EQ_W;
-      if (a.craters.leadBias > 0 && rnd() < a.craters.leadBias) x = rnd() * 0.5 * EQ_W; // leading hemisphere
+      // FAR-side bias: the substellar/sub-parent face sits at the sheet CENTRE, so the shielded near
+      // hemisphere is the middle and the more-cratered anti-parent side is the texture EDGES (which wrap
+      // to the antistellar point). Push biased craters into the outer quarters.
+      if (a.craters.farSideBias > 0 && rnd() < a.craters.farSideBias) x = rnd() < 0.5 ? rnd() * 0.25 * EQ_W : (0.75 + rnd() * 0.25) * EQ_W;
       crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, (1.3 + rnd() * rnd() * 7) * S, false);
     }
     for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, (3.5 + rnd() * 3) * S, true);

@@ -268,7 +268,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   {
     const ap = deriveAppearance(body);
     const feats: string[] = [];
-    if (ap.craters) feats.push(`craters — density ${pct(ap.craters.density)}${ap.craters.leadBias > 0 ? `, leading-hemisphere biased (${pct(ap.craters.leadBias)})` : ''}${ap.craters.rayed > 0 ? `, ${ap.craters.rayed} fresh rayed` : ''}`);
+    if (ap.craters) feats.push(`craters — density ${pct(ap.craters.density)}${ap.craters.farSideBias > 0 ? `, far-side biased (${pct(ap.craters.farSideBias)}) — parent shields the near face` : ''}${ap.craters.rayed > 0 ? `, ${ap.craters.rayed} fresh rayed` : ''}`);
     if (ap.iceCracks) feats.push(`ice-fracture network — severity ${pct(ap.iceCracks.severity)}`);
     if (ap.rifts) feats.push('crustal rift (a frozen former ocean split the crust)');
     if (ap.regolith > 0) feats.push(`space-weathered regolith greying ${pct(ap.regolith)}`);
