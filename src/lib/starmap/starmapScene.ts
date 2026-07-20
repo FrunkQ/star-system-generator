@@ -72,16 +72,32 @@ function starGlow(): THREE.Texture {
   return glowTex;
 }
 
-// The black-hole glyph images. A BH's colour is #000000, so on the (dark) starmap it reads black-on-
-// black as a plain dot — swap in an image so it's actually visible: the plain BH for a quiescent hole,
-// the accretion disc for a FEEDING one. Loaded once, cached; the render loop picks them up once decoded.
+// The black-hole glyph, drawn PROCEDURALLY to match the reference gallery (rather than a pasted photo):
+// a black event horizon ringed by a bright white photon ring, plus — when FEEDING — a temperature-graded
+// accretion disc (an orange ellipse whose near half crosses in front). Cached per state.
 const bhTex: Record<string, THREE.Texture> = {};
 function bhGlyph(active: boolean): THREE.Texture {
   const key = active ? 'active' : 'quiescent';
   if (bhTex[key]) return bhTex[key];
-  const url = active ? '/images/star_types/BH_accretion_disk.png' : '/images/star_types/BH.webp';
-  const t = new THREE.TextureLoader().load(url);
-  t.colorSpace = THREE.SRGBColorSpace;
+  const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const ctx = cv.getContext('2d')!;
+  const k = S / 100, cx = 50 * k, cy = 50 * k, hole = 15 * k, e = active ? 0.85 : 0;
+  const disc = () => { const g = ctx.createLinearGradient(cx - 36 * k, 0, cx + 36 * k, 0);
+    g.addColorStop(0, '#6e2610'); g.addColorStop(0.3, '#e08a1e'); g.addColorStop(0.5, '#fff4d0');
+    g.addColorStop(0.7, '#e08a1e'); g.addColorStop(1, '#6e2610'); return g; };
+  if (e > 0) { // full accretion ellipse (its back centre is then hidden behind the horizon)
+    ctx.strokeStyle = disc(); ctx.lineWidth = (5 + e * 5) * k; ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.ellipse(cx, 52 * k, (30 + e * 6) * k, (7 + e * 5) * k, 0, 0, 2 * Math.PI); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, hole, 0, 2 * Math.PI); ctx.fill();       // event horizon
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5 * k; ctx.beginPath(); ctx.arc(cx, cy, 17.5 * k, 0, 2 * Math.PI); ctx.stroke(); // photon ring
+  if (e > 0) { // the disc's near half, lensed up and OVER the top of the hole
+    ctx.strokeStyle = disc(); ctx.lineWidth = (2 + e * 2) * k; ctx.globalAlpha = 0.75;
+    ctx.beginPath(); ctx.ellipse(cx, 46 * k, 30 * k, 8 * k, 0, Math.PI, 2 * Math.PI); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   bhTex[key] = t;
   return t;
 }
@@ -410,7 +426,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
           : new THREE.SpriteMaterial({ map: glow, color: monoOn ? new THREE.Color(MONO_HEX) : new THREE.Color(st.color), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
         const sp = new THREE.Sprite(mat);
         sp.position.copy(center).add(new THREE.Vector3((offs[i]?.dx ?? 0) * R, 0.0, (offs[i]?.dy ?? 0) * R));
-        sp.scale.setScalar(!st.bh ? R * 3.2 : st.bh === 'active' ? R * 3.4 : R * 2.6);
+        sp.scale.setScalar(!st.bh ? R * 3.2 : st.bh === 'active' ? R * 4.2 : R * 3.0);
         content.add(sp);
       });
       placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name) });

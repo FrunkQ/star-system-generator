@@ -34,6 +34,13 @@
 
 <div class="sm2d" style="font-family:{font}; --accent:{accentColor}">
   <svg viewBox="0 0 {view.W} {view.H}" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <!-- Accretion-disc gradient for feeding black holes (matches the reference gallery). -->
+      <linearGradient id="sm2d-acc" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#6e2610" /><stop offset="0.3" stop-color="#e08a1e" />
+        <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.7" stop-color="#e08a1e" /><stop offset="1" stop-color="#6e2610" />
+      </linearGradient>
+    </defs>
     <!-- routes -->
     {#each routes as r (r.id)}
       {@const a = posById.get(r.sourceSystemId)}
@@ -55,8 +62,12 @@
             {@const sx = c.x + (offs[i]?.dx ?? 0) * R}
             {@const sy = c.y + (offs[i]?.dy ?? 0) * R}
             {#if s.bh === 'active'}
-              <!-- A FEEDING black hole: show the accretion-disc image (bright, clearly reads as a BH). -->
-              <image href="/images/star_types/BH_accretion_disk.png" x={sx - R * 1.6} y={sy - R * 1.6} width={R * 3.2} height={R * 3.2} class="bh-glyph" />
+              <!-- A FEEDING black hole: the accretion-disc schematic (matches the gallery) — an orange
+                   ellipse, a black horizon, the white photon ring, and the near half lensed over the top. -->
+              <ellipse cx={sx} cy={sy + R * 0.13} rx={R * 2} ry={R * 0.7} fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.7} opacity="0.9" />
+              <circle cx={sx} cy={sy} r={R} fill="#000" />
+              <circle cx={sx} cy={sy} r={R * 1.17} fill="none" stroke="#fff" stroke-width={R * 0.17} />
+              <path d="M{sx - R * 2} {sy - R * 0.27} A{R * 2} {R * 0.55} 0 0 1 {sx + R * 2} {sy - R * 0.27}" fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.28} opacity="0.75" />
             {:else if s.bh}
               <!-- A quiescent black hole is #000000 → invisible on the dark map; a white-edged black disc reads clearly.
                    Inline style (beats the .star CSS stroke) keeps the white ring. -->
