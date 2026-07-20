@@ -287,6 +287,29 @@ starMap?: {
 - GM preview: the GM's own canvas area shows the same layer (the GM's *control*
   surface remains the SSE2 tab, per the guiding principle — the Mappadux preview
   is just "what players see").
+- **Full fidelity by construction**: the iframe is the real SSE2 app running in
+  its own browsing context — its own WebGL, shaders, filters and input. Nothing
+  is proxied or re-rendered by Mappadux, so the embedded view is pixel-identical
+  to a directly-opened player view.
+
+### 4.5b Instant switching: pre-warm + render pause
+
+The target table flow is "station map / terminal screens in Mappadux, then drop
+straight into the starmap". Two measures make that cut instant instead of a
+1-3 s cold iframe boot (SvelteKit load + lazy three chunk + starmap handshake):
+
+- **Pre-warm/keep-alive**: when the loaded pack contains any StarMap map, the
+  player view mounts the catalogue iframe hidden at session start — loaded,
+  connected and ticking. Activating a StarMap map is then a show/hide toggle;
+  switching back to a normal map keeps the iframe warm. Multiple StarMap maps
+  (different presets) share one iframe, swapping preset without reload (URL
+  param on first load; postMessage or a preset-swap message later).
+- **Render pause**: while the iframe is visible, pause Mappadux's own WebGL
+  render loop (canvas is already hidden) so the player device runs exactly one
+  3D app at a time. Resume on switch-back. Matters on tablets/Smart TVs.
+
+Mappadux map transitions still play over the swap, so the station-deck-to-
+starmap cut can be styled.
 
 ### 4.6 Complementary mode: SSE2 snapshot → Mappadux handout/asset
 
