@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.212-beta - 20th Jul 2026
+
+* Molten liquids now glow. New `incandescent` flag on liquids (magma, molten iron, molten glass) drives a temperature-scaled thermal-glow emissive layer through the 3D render path (the same emissive material stars use) — colour and brightness ramp with heat (dull red → orange → gold, brighter the hotter). Crucially it fires even when the world's stellar temperature is low, so a tidally/internally-heated molten ocean lights up under a dim star. Editable via a new "Incandescent" checkbox in the Liquid editor. Molten iron / molten glass also got proper warm colours (were dull grey).
+* Fixed the interior-iron name mismatch: the conductive core layer used `liquid-iron` while the solvent def is `molten-iron`, so `liquidDef()` found nothing. Unified on `molten-iron` (dynamo/magnetism unaffected — it string-matched either way).
+
 ## v2.1.211-beta - 20th Jul 2026
 
 * Aurora-bands editor now explains itself: column headings (Colour / Name / Efficiency / Altitude / Min frac.) with hover help, and a note that bands set the palette only — a world glows when it also has a magnetic field and particle flux. "Min frac." tooltip spells out the concentration threshold (only O₂'s crimson uses it, at 0.12).

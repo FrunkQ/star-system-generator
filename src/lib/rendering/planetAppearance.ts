@@ -15,6 +15,7 @@
 // renderer gains it at once.
 
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
+import { LIQUIDS } from '$lib/constants';
 import { starColorFromTempK } from './apparentColor';
 import { oblatePolarFactor } from './bodyShape';
 import { auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
@@ -344,10 +345,17 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 			nightHex: coldK < 180 ? '#c3d0e0' : shade(baseColorHex, -0.45)
 		}
 		: null;
+	// A molten (incandescent-flagged) surface ocean self-glows at least at its melting point, even when
+	// the world's stellar temperature range is modest (kept molten by internal / tidal heat). So the glow
+	// temperature is the hotter of the surface range and the molten solvent's melt point.
+	const surfLiquidName = body.hydrosphere?.layers?.find((l) => l.location === 'surface')?.liquid ?? body.hydrosphere?.composition;
+	const moltenDef = surfLiquidName ? LIQUIDS.find((l) => l.name === surfLiquidName) : undefined;
+	const moltenOcean = !!moltenDef?.incandescent && (body.hydrosphere?.coverage ?? 0) > 0.05;
+	const glowK = Math.max(hotK, moltenOcean ? (moltenDef?.meltK ?? 0) : 0);
 	// Uniform incandescent glow only when it ISN'T an eyeball (the eyeball confines the glow to the day
-	// hemisphere itself).
-	const thermalGlow: ThermalGlowSpec | null = (solid && hotK > GLOW_ONSET && !eyeball)
-		? { tempK: hotK, colorHex: bdGlowColour(hotK), strength: clamp01((hotK - GLOW_ONSET) / (GLOW_FULL - GLOW_ONSET)) }
+	// hemisphere itself). Colour AND strength scale with temperature — hotter runs brighter and whiter.
+	const thermalGlow: ThermalGlowSpec | null = ((solid || moltenOcean) && glowK > GLOW_ONSET && !eyeball)
+		? { tempK: glowK, colorHex: bdGlowColour(glowK), strength: clamp01((glowK - GLOW_ONSET) / (GLOW_FULL - GLOW_ONSET)) }
 		: null;
 
 	// POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Hard to predict, so

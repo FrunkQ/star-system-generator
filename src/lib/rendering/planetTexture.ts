@@ -517,7 +517,8 @@ function renderEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
 }
 export function getEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
   if (typeof document === 'undefined' || !body.apparentColor) return null;
-  const key = `em|${body.id}|${(body as any).temperatureRangeK?.max ?? ''}|${(body as any).temperatureRangeK?.min ?? ''}|${(body as any).tidallyLocked ? 1 : 0}`;
+  const surfLiq = body.hydrosphere?.layers?.find((l) => l.location === 'surface')?.liquid ?? body.hydrosphere?.composition ?? '';
+  const key = `em|${body.id}|${(body as any).temperatureRangeK?.max ?? ''}|${(body as any).temperatureRangeK?.min ?? ''}|${(body as any).tidallyLocked ? 1 : 0}|${surfLiq}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}`;
   if (emCache.has(key)) return emCache.get(key)!;
   if (emCache.size > 80) emCache.clear();
   const tex = renderEmissiveEquirect(body);

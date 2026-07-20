@@ -419,6 +419,8 @@ export interface LiquidDef {
     tripleBar?: number;       // below this pressure there is NO liquid phase (sublimation regime)
     criticalK?: number;       // above this temperature the substance is supercritical at any pressure
     criticalBar?: number;     // pressure at the critical point (upper anchor of the boil curve)
+    incandescent?: boolean;   // self-luminous when molten (magma / molten metals): drives a temperature-
+                              // scaled thermal-glow emissive layer, so the ocean glows even under a dim star
 }
 
 export interface FuelDefinition {

@@ -1,6 +1,6 @@
 // Derived MAGNETISM profile (proposal §2d). A planetary dynamo needs a convecting, electrically
 // CONDUCTIVE fluid layer plus ROTATION. We already derive the conductive interior layers
-// (fluidLayers.ts: metallic-hydrogen / superionic-water / liquid-iron / salty subsurface ocean),
+// (fluidLayers.ts: metallic-hydrogen / superionic-water / molten-iron / salty subsurface ocean),
 // so magnetism reads those + rotation + makeup and reports WHAT field the physics implies and its
 // GEOMETRY — descriptively. It does NOT overwrite the editable MagneticField.strengthGauss; it
 // grounds a plausible RANGE and explains the dynamo (intrinsic vs induced, dipolar vs tilted/off-
@@ -107,10 +107,10 @@ export function deriveMagnetism(body: CelestialBody, opts: MagnetismOpts = {}): 
     range = band(0.1 * rot, 1.0 * rot);
     nominalGauss = 0.15 * rot; // Uranus/Neptune ≈ 0.14–0.23 G
     notes.push('Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like).');
-    // A molten iron core drives a dynamo. Normally that shows up as a conductive liquid-iron layer on a
+    // A molten iron core drives a dynamo. Normally that shows up as a conductive molten-iron layer on a
     // rocky-mass world; but a metal-RICH body (Mercury is ~70 % iron) retains a partially molten core and
     // a weak field even when it's small and the layer model calls the core solid — hence the metal escape.
-  } else if ((interior?.liquid === 'liquid-iron' && massMe > 0.3) || (mk.metal > 0.5 && massMe > 0.02)) {
+  } else if ((interior?.liquid === 'molten-iron' && massMe > 0.3) || (mk.metal > 0.5 && massMe > 0.02)) {
     const sizeF = Math.min(1.4, Math.max(0.3, Math.cbrt(massMe))); // bigger core → stronger
     if (carbonSuppressed) {
       source = 'suppressed';

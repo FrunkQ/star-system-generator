@@ -143,6 +143,13 @@
                             </div>
                         </div>
                         <div class="field">
+                            <label title="Self-luminous when molten (magma, molten metals). Adds a temperature-scaled thermal glow so the ocean lights up on its own — brighter and whiter the hotter it is — even under a dim star.">Incandescent</label>
+                            <div class="colour-row">
+                                <input type="checkbox" bind:checked={liq.incandescent} />
+                                <span class="muted">self-glowing molten</span>
+                            </div>
+                        </div>
+                        <div class="field">
                             <label title={familyHelp}>Family</label>
                             <select bind:value={liq.family}>
                                 {#each FAMILIES as f}

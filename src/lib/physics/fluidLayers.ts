@@ -98,7 +98,7 @@ export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLa
       : { liquid: 'superionic-water', location: 'interior', conductive: true });  // ice giant
   } else if (mk.metal > 0.1 && massMe > 0.3) {
     // Rocky world with a metal core → (partially) molten, convecting iron → dynamo.
-    layers.push({ liquid: 'liquid-iron', location: 'interior', conductive: true });
+    layers.push({ liquid: 'molten-iron', location: 'interior', conductive: true });
   }
 
   return layers;
