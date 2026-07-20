@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.204-beta - 20th Jul 2026
+
+* Liquids are now a single source of truth: `constants.LIQUIDS` imports the starter-sf `liquids.json` (the same file the loader serves at runtime), so the built-in defaults and the pack can never drift again. Removed the stale truncated `LiquidDef` duplicate in `constants.ts`.
+* Procedural generation can now place any non-internal solvent as a surface ocean wherever it is liquid at the orbit's temperature (ammonia, nitrogen, ethane, sulfuric acid, sulfur, H₂S, HCN, magma…) instead of defaulting every unpinned hydrosphere to water; designed liquid-water worlds are unchanged. Dropped the now-redundant `autoGenerate` flag.
+
 ## v2.1.203-beta - 20th Jul 2026
 
 * Fixed the body Hydrosphere tab showing a duplicated/stale liquid list: it now receives the rule pack so it reads the pack's `liquids.json` instead of the built-in fallback set. Also finished the starter-sf liquids dedup (removed two leftover `hydrogen-sulfide`/`hydrogen-cyanide` copies so the `autoGenerate:false` versions take effect).

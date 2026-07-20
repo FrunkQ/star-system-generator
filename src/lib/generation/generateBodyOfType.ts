@@ -4,7 +4,7 @@
 // biosphere…). The orbit sets temperature, so a type is only offered where its T_eq band fits —
 // which is why a biome/life world can be dropped into the Goldilocks zone and a lava world can't.
 import type { CelestialBody, Fingerprint, FingerprintBand, Makeup } from '$lib/types';
-import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
+import { EARTH_MASS_KG, EARTH_RADIUS_KM, LIQUIDS } from '$lib/constants';
 import { radiusReFromMassMakeup, gasThermalInflationFactor } from '$lib/physics/makeup';
 
 type RNG = () => number;
@@ -29,6 +29,19 @@ function pickStr(band: FingerprintBand | undefined): string | undefined {
   if (typeof band === 'string') return band;
   if (Array.isArray(band) && typeof band[0] === 'string') return (band as string[])[0];
   return undefined;
+}
+
+// Pick a hydrosphere solvent that is actually LIQUID at this orbit's equilibrium temperature, so any
+// solvent — not just water — can appear on a generated world where physics allows: a cryo world gets
+// nitrogen/methane/ethane, a hot world sulfuric acid or a magma/molten-iron sea. Excludes 'internal'
+// derived-only fluids (cloud-deck / interior layers, never surface oceans). Only used when the type's
+// fingerprint does NOT pin a composition — a water/methane ocean type keeps its designed solvent.
+// Falls back to water when nothing fits (the processor's phase check then reads it honestly).
+function pickSolventForTemp(teqK: number | undefined, rng: RNG): string {
+  const t = teqK ?? 288;
+  const candidates = LIQUIDS.filter((l) => l.family !== 'internal' && t >= l.meltK && t <= l.boilK);
+  if (!candidates.length) return 'water';
+  return candidates[Math.floor(rng() * candidates.length)].name;
 }
 
 // Greenhouse COLD-EDGE slack (Kelvin). The fingerprint T_eq bands are the BARE equilibrium
@@ -190,7 +203,15 @@ export function generateBodyOfType(
   // Ocean-family types band on `hydrosphere.liquidCoverage` (phase-gated, liquids L2); dryness/ice
   // types still band on raw `hydrosphere.coverage`. Either drives the generated coverage.
   const covBand = m['hydrosphere.liquidCoverage'] ?? m['hydrosphere.coverage'];
-  const hydroComp = pickStr(m['hydrosphere.composition']);
+  let hydroComp = pickStr(m['hydrosphere.composition']);
+  // When the type doesn't pin a solvent, choose one that is liquid at this orbit's temperature so
+  // exotic oceans (ammonia, nitrogen, ethane, sulfuric acid, sulfur, H₂S, HCN, magma…) can appear
+  // wherever physics allows, instead of always defaulting to water. Designed liquid-WATER types are
+  // kept as water — they are defined by a greenhouse atmosphere that holds water liquid at an orbit
+  // whose BARE T_eq looks too cold (so a temperature pick would wrongly reject water).
+  if (!hydroComp && covBand) {
+    hydroComp = LIQUID_WATER_TYPE.test(fp.class) ? 'water' : pickSolventForTemp(ctx.teqK, rng);
+  }
   if (covBand || hydroComp) {
     out.hydrosphere = { composition: hydroComp || 'water', coverage: covBand ? pick(covBand, rng, 0.5) : 0.5 };
   }
