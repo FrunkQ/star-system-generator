@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.194-beta - 20th Jul 2026
+
+* Fix: the redrawn 2D black-hole diagram (the fuzzy edge-on blaze) was left out of the v2.1.193 commit, so the reference gallery still showed the old version. Now included.
+
 ## v2.1.193-beta - 20th Jul 2026
 
 * Auroras now stack by ALTITUDE like the real thing: the purple nitrogen fringe sits below the bright green oxygen band, and a rich oxygen sky (Earth-like) adds the tenuous deep-red crimson crown high above. Each colour layer fades in and out on its own slow phase, so a mixed sky shows one colour or several - never a merged white.

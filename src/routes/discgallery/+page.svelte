@@ -162,35 +162,38 @@
   <h2>Black holes — by accretion level (2D schematic; comes alive with lensing in 3D)</h2>
   <div class="gallery">
     {#each [{ n: 'Quiescent', e: 0 }, { n: 'Feeding · 20%', e: 0.2 }, { n: 'Feeding · 50%', e: 0.5 }, { n: 'Feeding · 100%', e: 1 }] as bh, i}
-      {@const rx = 40 + bh.e * 8}
-      {@const ry = 5 + bh.e * 2.5}
+      {@const rx = 22 + bh.e * 26}
+      {@const ry = 2.5 + bh.e * 3.5}
       <figure>
         <svg viewBox="0 0 100 100" width="168" height="168">
           <defs>
             <!-- Concentric temperature grade across the disc: hot-white inner (at the hole) → orange → fade. -->
             <radialGradient id="acc-{i}" cx="0.5" cy="0.5" r="0.5">
-              <stop offset="0" stop-color="#fff4d0" stop-opacity="0" /><stop offset="0.3" stop-color="#fff4d0" />
-              <stop offset="0.48" stop-color="#f0a030" /><stop offset="0.78" stop-color="#8a3212" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
+              <stop offset="0" stop-color="#fff4d0" stop-opacity="0" /><stop offset="0.24" stop-color="#fff4d0" />
+              <stop offset="0.45" stop-color="#f0a030" /><stop offset="0.75" stop-color="#8a3212" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
             </radialGradient>
-            <!-- The lensed rims run hot-white in the middle, fading at the tips. -->
+            <!-- The bright blade / lensed rims: hot-white in the middle, fading at the tips. -->
             <linearGradient id="accl-{i}" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stop-color="#8a3212" stop-opacity="0" /><stop offset="0.22" stop-color="#f0a030" />
               <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.78" stop-color="#f0a030" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
             </linearGradient>
+            <!-- Particle fuzz for the blaze — heavier at higher accretion. -->
+            <filter id="bhb-{i}" x="-40%" y="-300%" width="180%" height="700%"><feGaussianBlur stdDeviation={1.1 + bh.e * 1.7} /></filter>
           </defs>
           {#if bh.e > 0}
-            <!-- Accretion disc seen nearly edge-on: a wide, thin blade whose centre is hidden by the hole. -->
-            <ellipse cx="50" cy="50" rx={rx} ry={ry} fill="url(#acc-{i})" />
-            <!-- Far side of the disc lensed up and over the top. -->
-            <path d="M{50 - rx} 50 Q 50 18 {50 + rx} 50" fill="none" stroke="url(#accl-{i})" stroke-width={1.4 + bh.e * 1.6} opacity="0.85" />
+            <!-- The edge-on particle blaze: fuzzy blurred gradient ellipses, WIDTH growing with feeding. -->
+            <ellipse cx="50" cy="50" rx={rx} ry={ry} fill="url(#acc-{i})" filter="url(#bhb-{i})" />
+            <ellipse cx="50" cy="50" rx={rx * 0.72} ry={ry * 0.75} fill="url(#acc-{i})" filter="url(#bhb-{i})" opacity="0.95" />
+            <!-- Far side of the disc lensed over the top, hugging the ring. -->
+            <path d="M{50 - rx * 0.5} 50 Q 50 {28 - bh.e * 4} {50 + rx * 0.5} 50" fill="none" stroke="url(#accl-{i})" stroke-width={1.2 + bh.e * 1.2} opacity="0.9" />
           {/if}
           <!-- Event horizon + a bright photon ring (with a soft outer glow). -->
-          <circle cx="50" cy="50" r="13" fill="#000" />
-          <circle cx="50" cy="50" r="15.5" fill="none" stroke="#fff" stroke-width="1" opacity="0.35" />
-          <circle cx="50" cy="50" r="14" fill="none" stroke="#fff" stroke-width="2.4" />
+          <circle cx="50" cy="50" r="11" fill="#000" />
+          <circle cx="50" cy="50" r="13.4" fill="none" stroke="#fff" stroke-width="1.1" opacity="0.3" />
+          <circle cx="50" cy="50" r="12.2" fill="none" stroke="#fff" stroke-width="2.1" />
           {#if bh.e > 0}
-            <!-- Near side of the disc, in FRONT, crossing below the hole. -->
-            <path d="M{50 - rx} 50 Q 50 82 {50 + rx} 50" fill="none" stroke="url(#accl-{i})" stroke-width={2 + bh.e * 2} opacity="0.92" />
+            <!-- The near-side blade crossing IN FRONT of the hole — the signature of the lensed look. -->
+            <ellipse cx="50" cy="50.8" rx={rx * 0.98} ry={0.9 + bh.e * 1.1} fill="url(#accl-{i})" opacity="0.95" />
           {/if}
         </svg>
         <figcaption>{bh.n}</figcaption>
