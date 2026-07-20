@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.208-beta - 20th Jul 2026
+
+* Fixed the dev server being taken down by v2.1.204's liquids change: `constants.ts` imported the canonical `liquids.json` from `static/` (public dir), which Vite refuses in `npm run dev` (production was unaffected). Moved the canonical file to `src/lib/data/liquids.json` and import that; still a single source of truth. The rulepack loader now treats a pack's `liquids.json` as an optional override (missing = use the built-in default, quietly). Verified in dev, build and tests.
+
 ## v2.1.207-beta - 20th Jul 2026
 
 * WS2 Phase 3 follow-up: the preset editor now offers "Guide document" in the System-view dropdown and renders a LIVE preview of it (tap a world on the schematic to drill into its file), so the Guide document is designable/testable in-editor without a live broadcast. Also fixed the Player Views summary showing "System (undefined)" for document presets (added the missing view label).

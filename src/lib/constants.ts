@@ -33,12 +33,12 @@ export const EARTH_DENSITY = 5514; // kg/m^3
 // Approx baseline for GCR + Solar Particle Events in free space.
 export const RADIATION_UNSHIELDED_DOSE_MSV_YR = 500;
 
-// Liquid solvent definitions — SINGLE source of truth. Authored in the starter-sf rulepack's
-// liquids.json and imported here, so the built-in engine defaults and the rulepack the loader fetches
-// at runtime read the SAME file and can never drift. Edit the JSON, not this file. (A pack that ships
-// its own liquids.json still overrides this list via allLiquids(pack).)
+// Liquid solvent definitions — SINGLE source of truth, in src/lib/data/liquids.json (imported here so
+// it works in both dev and prod — a public /static import breaks the Vite dev server). This is the
+// built-in engine default; a rule pack may still override it by shipping its own liquids.json, which
+// the loader merges into pack.liquids (allLiquids(pack) prefers the pack copy). Edit the JSON only.
 import type { LiquidDef } from '$lib/types';
-import LIQUIDS_JSON from '../../static/rulepacks/starter-sf/liquids.json';
+import LIQUIDS_JSON from './data/liquids.json';
 export type { LiquidDef };
 export const LIQUIDS: LiquidDef[] = LIQUIDS_JSON as unknown as LiquidDef[];
 

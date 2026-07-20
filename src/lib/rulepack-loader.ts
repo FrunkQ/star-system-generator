@@ -69,13 +69,14 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
         console.warn(`Failed to load fuel definitions from ${new URL('fuel-definitions.json', baseUrl).href}: ${fuelDefinitionsResponse.statusText}`);
     }
 
-    // Fetch liquid definitions
-    const liquidsResponse = await fetch(new URL('liquids.json', baseUrl).href);
-    if (liquidsResponse.ok) {
-        mainPack.liquids = await liquidsResponse.json();
-    } else {
-        console.warn(`Failed to load liquid definitions from ${new URL('liquids.json', baseUrl).href}: ${liquidsResponse.statusText}`);
-    }
+    // Fetch liquid definitions (OPTIONAL override). The built-in engine default lives in
+    // src/lib/data/liquids.json (constants.LIQUIDS); a pack only needs a liquids.json if it wants to
+    // override it. A missing file is normal — allLiquids(pack) falls back to the default — so it's not
+    // an error and must stay quiet (a 404 warn on every load reads as breakage).
+    try {
+        const liquidsResponse = await fetch(new URL('liquids.json', baseUrl).href);
+        if (liquidsResponse.ok) mainPack.liquids = await liquidsResponse.json();
+    } catch { /* no pack override — use the built-in default */ }
 
     // Fetch classification definitions (including tagVocab, planetImages etc.)
     const classificationResponse = await fetch(new URL('classification.json', baseUrl).href);
