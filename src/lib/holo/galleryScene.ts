@@ -103,7 +103,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		} else {
 			const texCanvas = getPlanetTextureEquirect(node);
 			const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-			if (texCanvas) { const t = new THREE.CanvasTexture(texCanvas); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.map = t; }
+			if (texCanvas) { const t = new THREE.CanvasTexture(texCanvas); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.map = t; }
 			const emCanvas = getEmissiveEquirect(node);
 			if (emCanvas) { const et = new THREE.CanvasTexture(emCanvas); et.colorSpace = THREE.SRGBColorSpace; et.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.emissiveMap = et; mat.emissive = new THREE.Color(0xffffff); mat.emissiveIntensity = 1.15; }
 			else mat.color.set(node.apparentColorHex || '#8a8f99');
@@ -115,6 +115,9 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			// than straight down out of sight — the sphere still spins about that (now-tilted) pole axis,
 			// so the jets stay put while the surface turns.
 			if (appear.cryoPlumes) sphere.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -1.15);
+			// A polar vortex lives at the north pole — tip it toward the camera for a 3/4 top-down view so
+			// the hexagon/polygon actually shows (side-on you'd never see it). Still spins about that pole.
+			else if (appear.polarVortex) sphere.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.95);
 			else sphere.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), (appear.axialTiltDeg * Math.PI) / 180);
 			g.add(sphere);
 			spinners.push({ obj: sphere, rate: 0.35 });
@@ -126,7 +129,7 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			if (appear.atmGlow) g.add(buildAtmoGlow(R, appear.atmGlow.colorHex, appear.atmGlow.strength));
 			if (appear.clouds) {
 				let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-				const cl = buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1);
+				const cl = buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
 				sphere.add(cl.group);           // tracks the sphere's spin; the gallery drifts each layer separately
 				for (const l of cl.layers) cloudSpinners.push({ obj: l.mesh, drift: l.drift });
 			}

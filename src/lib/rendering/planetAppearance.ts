@@ -85,6 +85,7 @@ export interface CloudSpec {
 	coverage: number;  // 0..1 completeness/opacity of the deck (Venus ≈ opaque, Earth ≈ patchy)
 	colorHex: string;  // main (low) deck tint — water = white, a haze takes the atmosphere colour
 	colorHex2: string; // high deck tint — nudged toward the dominant gas's colour, for per-world variety
+	giant: boolean;    // a gas giant: the deck hugs the surface (its clouds ARE the surface), not floating shells
 }
 export interface SelfLumSpec {
 	teff: number;
@@ -111,6 +112,9 @@ export interface CraterSpec {
 	density: number;   // 0..1 impact-record density, from SURFACE AGE (young resurfaced → 0, ancient → 1)
 	rayed: number;     // count of FRESH bright-ejecta-ray craters punched into an old surface (0..4)
 	farSideBias: number;  // 0..1 crater asymmetry on a tidally-locked body: the parent occults impactors, so the ANTI-parent (far) hemisphere takes more hits
+}
+export interface RoughSpec {
+	strength: number;  // 0..1 general knobbly/regolith roughness for a small strengthless rubble pile — it deforms rather than cratering (the reason small asteroids & comets aren't crater-pocked)
 }
 export interface IceCrackSpec {
 	severity: number;  // 0..1 density of the fracture/ridge network (Europa lineae, Charon striae)
@@ -153,6 +157,7 @@ export interface AppearanceModel {
 	polarIce: boolean;
 	regolith: number;             // 0..1 space-weathering desaturation of an airless silicate surface (Moon/Mercury grey)
 	craters: CraterSpec | null;   // rocky impact record (icy worlds fracture instead — see iceCracks)
+	rough: RoughSpec | null;      // knobbly regolith of a small strengthless rubble pile (instead of craters)
 	iceCracks: IceCrackSpec | null;
 	rifts: RiftSpec | null;
 	tholin: TholinSpec | null;
@@ -234,9 +239,16 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// impact tags so those still crater.
 	const tagCratered = has('geology/inactive') || has('science/impact-record');
 	const ageDensity = surfaceAgeGyr > 0 ? surfaceAgeGyr / 4.5 : (tagCratered ? 0.7 : 0);
-	const craterDensity = solid && !icyShell && !thickAir
+	// A small, strengthless RUBBLE PILE (a little asteroid / comet) is too soft and porous to hold impact
+	// craters — hits just compact and slump it — so it wears a general rough regolith instead. (Threshold
+	// is a deliberate simplification; big irregular bodies like Vesta still crater.)
+	const rubblePile = solid && isSmallBody && (body.radiusKm ?? 999) < 60;
+	const craterDensity = solid && !icyShell && !thickAir && !rubblePile
 		? clamp01(isSmallBody ? Math.max(0.6, ageDensity) : ageDensity)
 		: 0;
+	const rough: RoughSpec | null = rubblePile
+		? { strength: clamp01(0.55 + (1 - Math.min(1, (body.radiusKm ?? 30) / 60)) * 0.35) }
+		: null;
 	// A tidally-locked body keeps one face toward its parent, and the parent's disc OCCULTS a slice of
 	// the incoming impactor flux — so the near (sub-parent) hemisphere is shielded and the FAR side takes
 	// more hits (the anti-parent hemisphere is the more-cratered one). The asymmetry strength scales with
@@ -410,7 +422,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	for (const k in GAS_TINT) { const w = atmC[k] ?? 0; if (w > accW) { accW = w; accentHex = GAS_TINT[k]; } }
 	const cloudColorHex2 = accentHex ? mixHex(cloudColorHex, accentHex, 0.4) : shade(cloudColorHex, 0.18);
 	const clouds: CloudSpec | null = (!isStar && !isBelt && !isSmallBody && (isGiantCloud || hasCloudTag || atmPressureBar > 0.3))
-		? { coverage: cloudCoverage, colorHex: cloudColorHex, colorHex2: cloudColorHex2 }
+		? { coverage: cloudCoverage, colorHex: cloudColorHex, colorHex2: cloudColorHex2, giant: isGiantCloud }
 		: null;
 
 	// Self-luminous brown dwarf (thermal/self-luminous, value = effective temperature).
@@ -435,6 +447,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		polarIce,
 		regolith,
 		craters,
+		rough,
 		iceCracks,
 		rifts,
 		tholin,

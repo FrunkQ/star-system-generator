@@ -1365,6 +1365,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             if (texCanvas) {
               const t = new THREE.CanvasTexture(texCanvas);
               t.colorSpace = THREE.SRGBColorSpace;
+              t.wrapS = THREE.RepeatWrapping; // wrap the longitude seam so u=0/u=1 blend (no vertical seam line)
               t.anisotropy = renderer.capabilities.getMaxAnisotropy(); // keep surface detail crisp at the limb
               mat.map = t;
             } else {
@@ -1450,7 +1451,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
             if (appear.clouds) {
               let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-              const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1);
+              const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
               sphere.add(cl.group);
               cloudVisuals.push(...cl.layers);
             }

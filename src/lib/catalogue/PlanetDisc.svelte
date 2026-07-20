@@ -124,6 +124,16 @@
   // world biases craters to its FAR (anti-parent) hemisphere — the parent occults impactors, so the
   // near/sub-parent face is shielded. The near face reads as the star-lit (upper-left) side here, so the
   // far side is the shadowed right hemisphere. The decision + params are the model's; positions here.
+  // Rough regolith for a small rubble pile (no craters): a knobbly speckle of light boulders + dark pits.
+  $: roughSpeckle = (() => {
+    if (!a.rough) return [] as { cx: number; cy: number; r: number; light: boolean; op: number }[];
+    const rnd = seeded(97), n = Math.round(50 + a.rough.strength * 110);
+    return Array.from({ length: n }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 29;
+      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 0.5 + rnd() * rnd() * 2.4, light: rnd() < 0.5, op: 0.12 + rnd() * 0.2 };
+    });
+  })();
+
   $: hasCraters = !!a.craters;
   $: craters = (() => {
     if (!a.craters) return [] as { cx: number; cy: number; r: number }[];
@@ -279,6 +289,21 @@
       return { cx: 50 + lon * 26 * Math.sqrt(Math.max(0, 1 - latEq * latEq)), cy: 50 + latEq * 28, r: 1.8 + rnd() * 3 };
     });
   })();
+  // Cryovolcanic plumes / geysers (Enceladus, Triton): icy jets. In 2D we show them poking out around
+  // the LIMB as misty tapering sprays (their reach scales with the model's gravity-driven reachRadii).
+  $: plumes = (() => {
+    if (!a.cryoPlumes) return [] as { path: string; ang: number }[];
+    const rnd = seeded(71), n = a.cryoPlumes.jets;
+    const reach = Math.min(18, 6 + a.cryoPlumes.reachRadii * 4.5);
+    return Array.from({ length: n }, () => {
+      const ang = rnd() * 2 * Math.PI, baseR = 29, tipR = baseR + reach * (0.7 + rnd() * 0.5), sp = 0.09 + rnd() * 0.05;
+      const bx1 = 50 + Math.cos(ang - sp) * baseR, by1 = 50 + Math.sin(ang - sp) * baseR;
+      const bx2 = 50 + Math.cos(ang + sp) * baseR, by2 = 50 + Math.sin(ang + sp) * baseR;
+      const tx = 50 + Math.cos(ang) * tipR, ty = 50 + Math.sin(ang) * tipR;
+      return { path: `M${bx1.toFixed(1)} ${by1.toFixed(1)} Q ${tx.toFixed(1)} ${ty.toFixed(1)} ${bx2.toFixed(1)} ${by2.toFixed(1)} Z`, ang };
+    });
+  })();
+
   $: showShade = !isStar(body) && !isBelt(body);
 
   const uid = Math.random().toString(36).slice(2, 8);
@@ -396,6 +421,14 @@
           <stop offset="45%" stop-color={isLava ? 'rgba(255,120,20,0.9)' : 'rgba(220,70,18,0.9)'} />
           <stop offset="100%" stop-color={isLava ? 'rgba(255,120,20,0)' : 'rgba(220,70,18,0)'} />
         </radialGradient>
+      {/if}
+      {#if plumes.length}
+        <radialGradient id="plume-{uid}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgba(226,240,252,0.72)" />
+          <stop offset="55%" stop-color="rgba(198,222,246,0.28)" />
+          <stop offset="100%" stop-color="rgba(198,222,246,0)" />
+        </radialGradient>
+        <filter id="plumeblur-{uid}"><feGaussianBlur stdDeviation="0.9" /></filter>
       {/if}
       {#if isToroid}
         <mask id="torus-{uid}">
@@ -517,6 +550,15 @@
         </g>
       {/if}
 
+      <!-- Rough regolith (a small rubble pile): knobbly light/dark speckle instead of craters. -->
+      {#if a.rough}
+        <g clip-path="url(#clip-{uid})">
+          {#each roughSpeckle as p}
+            <circle cx={p.cx} cy={p.cy} r={p.r} fill={p.light ? '#fff8ee' : '#141008'} opacity={p.op} />
+          {/each}
+        </g>
+      {/if}
+
       <!-- Impact craters: a shadowed bowl (radial gradient) ringed by a brighter rim — reads as a pit. -->
       {#if hasCraters}
         <g clip-path="url(#clip-{uid})">
@@ -577,6 +619,12 @@
       {#if magma.length}
         <g clip-path="url(#clip-{uid})">
           {#each magma as m}<circle cx={m.cx} cy={m.cy} r={m.r} fill="url(#magma-{uid})" />{/each}
+        </g>
+      {/if}
+      <!-- Cryovolcanic plumes / geysers: misty icy sprays poking out past the limb (NOT clipped). -->
+      {#if plumes.length}
+        <g filter="url(#plumeblur-{uid})">
+          {#each plumes as p}<path d={p.path} fill="url(#plume-{uid})" />{/each}
         </g>
       {/if}
       <!-- Auroral ovals ringing the poles: spiky glowing rings, colour set by the atmosphere gas. -->

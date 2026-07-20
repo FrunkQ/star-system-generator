@@ -2,6 +2,21 @@
 
 All notable changes are listed here:
 
+## V2.2.0 — coming soon (in development on beta)
+
+A big pass on how a world is modelled and drawn: the physics engine now derives far more about each body and tags it, and both the 2D and 3D renderers turn those tags into matching visuals.
+
+* **Surface detail — far more variety, driven by the physics:**
+  * A planetary **activity ladder** models how a world resurfaces over time, then ages: surface dating, irradiation bleaching, volcanism tiers, subsurface oceans.
+  * **Liquids remodelled** — pressure/temperature phase behaviour, volatile-ice retention and escape (as geysers/plumes), solvent colours, and better sublimation/freezing. New liquids including lava.
+  * These feed the surface look: **cratering** (with tidally-locked lop-sided profiles), ice **cracking**, **geysers/plumes**, crustal **rifts**, **tholin** darkening, frost and regolith.
+* **Atmospheres:** multi-layer **cloud decks** (water = white, hazes take the air's colour — Titan orange, Venus yellow; giants swirl in their band colours at ground level), **frost**, geometric **polar vortices** on gas giants (Saturn's hexagon; 5–8 sides), and **multi-coloured auroras** stacked by altitude (green oxygen, purple nitrogen, violet CO₂, a crimson high crown…). *NB: auroras assume a polar magnetic field — a deliberate simplification.*
+* **Asteroids & comets:** irregular shapes at low mass; **rocky ones crater**, while small strengthless **rubble piles wear a rough regolith instead** (too soft to hold craters — as with comets).
+* **Black holes:** the accretion disc's blaze is set by how fast it's feeding; and in 3D the hole genuinely **bends light** (gravitational lensing).
+* **Brown dwarfs** give off their own dim light and harder radiation (and heat their moons).
+* **Tidally-locked effects:** lop-sided cratering, lop-sided bleaching, and hot / cold **eyeball** worlds.
+* Every one of these has **matching 2D and 3D visuals**, both driven by the same physics-generated tags.
+
 ## v2.1.194-beta - 20th Jul 2026
 
 * Fix: the redrawn 2D black-hole diagram (the fuzzy edge-on blaze) was left out of the v2.1.193 commit, so the reference gallery still showed the old version. Now included.

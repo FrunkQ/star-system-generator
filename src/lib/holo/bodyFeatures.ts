@@ -229,7 +229,7 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 // (of the planet's spin and of each other), so the deck has parallax depth: a lower main deck plus a high,
 // wispier deck that slides the other way a bit faster. Normal-blended (a real veil, not a glow); the
 // texture alpha carries the gaps so the surface shows between streaks. Returns the group + per-layer drift.
-export function buildCloudDeck(radius: number, colorHex: string, colorHex2: string, coverage: number, seed: number): { group: THREE.Group; layers: { mesh: THREE.Mesh; drift: number }[] } {
+export function buildCloudDeck(radius: number, colorHex: string, colorHex2: string, coverage: number, seed: number, giant = false): { group: THREE.Group; layers: { mesh: THREE.Mesh; drift: number }[] } {
 	const group = new THREE.Group();
 	const layers: { mesh: THREE.Mesh; drift: number }[] = [];
 	const layer = (rMul: number, cov: number, sd: number, hex: string, emissive: number, drift: number) => {
@@ -239,8 +239,15 @@ export function buildCloudDeck(radius: number, colorHex: string, colorHex2: stri
 		mesh.renderOrder = 1;
 		group.add(mesh); layers.push({ mesh, drift });
 	};
-	layer(1.02, coverage, seed || 1, colorHex, 0.22, 0.02 + 0.02 * (1 - coverage));                 // main deck
-	layer(1.05, coverage * 0.5, (Math.imul(seed || 1, 7) + 13) >>> 0 || 2, colorHex2, 0.16, -0.035 - 0.02 * (1 - coverage)); // high deck, a different gas tint, drifting the other way
+	if (giant) {
+		// A GAS/ICE GIANT is all atmosphere: its clouds ARE the surface. So bake the deck to ground level
+		// (one layer right on the surface, no floating shells — those read wrong on a giant and hide the
+		// poles); it just slides slowly over the banding to give the storms a little drift.
+		layer(1.003, coverage, seed || 1, colorHex, 0.12, 0.012);
+	} else {
+		layer(1.02, coverage, seed || 1, colorHex, 0.22, 0.02 + 0.02 * (1 - coverage));                 // main deck
+		layer(1.05, coverage * 0.5, (Math.imul(seed || 1, 7) + 13) >>> 0 || 2, colorHex2, 0.16, -0.035 - 0.02 * (1 - coverage)); // high deck, a different gas tint, drifting the other way
+	}
 	return { group, layers };
 }
 

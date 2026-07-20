@@ -259,12 +259,12 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     ctx.beginPath(); ctx.moveTo(0, 0);
     for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yb(x));
     ctx.lineTo(EQ_W, 0); ctx.closePath();
-    ctx.fillStyle = 'rgba(70,90,130,0.32)'; ctx.fill();                 // stormy vortex interior
-    ctx.strokeStyle = 'rgba(210,222,245,0.5)'; ctx.lineWidth = 2 * S;   // bright jet rim
+    ctx.fillStyle = 'rgba(48,64,104,0.42)'; ctx.fill();                 // stormy vortex interior (darker = more contrast)
+    ctx.strokeStyle = 'rgba(220,230,250,0.7)'; ctx.lineWidth = 2.6 * S; // bright jet rim
     ctx.beginPath();
     for (let x = 0; x <= EQ_W; x += 3) (x === 0 ? ctx.moveTo(x, yb(x)) : ctx.lineTo(x, yb(x)));
     ctx.stroke();
-    ctx.fillStyle = 'rgba(200,215,240,0.35)';                          // a small bright eye at the pole
+    ctx.fillStyle = 'rgba(205,218,242,0.42)';                          // a small bright eye at the pole
     ctx.beginPath(); ctx.ellipse(EQ_W / 2, baseLat * 0.35, EQ_W * 0.12, baseLat * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
   }
 
@@ -336,6 +336,22 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
       crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, (1.3 + rnd() * rnd() * 7) * S, false);
     }
     for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, (3.5 + rnd() * 3) * S, true);
+  }
+
+  // ROUGH REGOLITH — a small rubble pile: no craters, just a knobbly speckle of light highlights and
+  // dark hollows (boulders + shadowed pits), denser/rougher the stronger it is.
+  if (a.rough) {
+    const n = Math.round(240 + a.rough.strength * 520);
+    for (let i = 0; i < n; i++) {
+      const x = rnd() * EQ_W, y = EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.98, r = (0.6 + rnd() * rnd() * 3.2) * S;
+      const light = rnd() < 0.5;
+      wrap((dx) => {
+        const g = ctx.createRadialGradient(x + dx, y, 0, x + dx, y, r);
+        g.addColorStop(0, light ? `rgba(255,250,240,${0.12 + rnd() * 0.16})` : `rgba(20,16,12,${0.14 + rnd() * 0.2})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.fill();
+      });
+    }
   }
 
   if (a.iceCracks) {
@@ -436,24 +452,8 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
       ctx.fillRect(0, 0, EQ_W, EQ_H);
       if (ocean && cover > 0.02) drawPatchesEquirect(ctx, rnd, ocean.hex, cover);
     }
-    const deck = clouds[0];
-    if (deck) {
-      ctx.globalAlpha = Math.min(0.85, 0.35 + deck.weight * 0.5);
-      ctx.fillStyle = deck.hex;
-      const streaks = 6 + Math.floor(rnd() * 5);
-      for (let i = 0; i < streaks; i++) {
-        const y = EQ_H * rnd();
-        const cx = EQ_W * rnd();
-        const rx = EQ_W * (0.1 + rnd() * 0.12);
-        const ry = EQ_H * 0.04;
-        for (const dx of [-EQ_W, 0, EQ_W]) {
-          ctx.beginPath();
-          ctx.ellipse(cx + dx, y, rx, ry, 0, 0, 2 * Math.PI);
-          ctx.fill();
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
+    // NB: clouds are NOT baked into the 3D surface — the holo draws them as separate drifting shells
+    // (buildCloudDeck). The 2D disc still paints its own cloud streaks (it has no shell layer).
   }
 
   // Foundation-driven surface weathering (craters/cracks/rifts/tholins/frost) over the base surface.
