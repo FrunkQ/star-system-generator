@@ -73,7 +73,9 @@ describe('PlanetDisc', () => {
       expect(container.querySelector('path[fill^="url(#sph"]')).toBeTruthy();
       expect(container.querySelector('circle[r="30"][fill^="url(#sph"]')).toBeFalsy();
       expect(container.querySelector('clipPath path')).toBeTruthy();     // features clip to the shape
-      expect(container.querySelectorAll('g[clip-path] circle[fill^="url(#crater"]').length).toBeGreaterThan(0); // cratered (bowl gradient)
+      // A small strengthless rubble pile (<60km) is too soft to hold impact craters — it wears a rough
+      // regolith speckle instead (planetAppearance `rubblePile`). Light boulders / dark pits, clipped.
+      expect(container.querySelectorAll('g[clip-path] circle[fill="#fff8ee"], g[clip-path] circle[fill="#141008"]').length).toBeGreaterThan(0);
     });
 
     it('the outline is repeatable per id and differs between ids', () => {
