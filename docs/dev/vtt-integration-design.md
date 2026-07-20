@@ -602,13 +602,54 @@ Thin generalised "live GM screen" module; working id `gm-screen-embed`
 - Pointing an entry at a Mappadux player URL (`player.html#<roomcode>`) gives
   the Mappadux-in-Foundry auxiliary-screen story for free (section 6).
 
-### 9.5 Phase 5 — Owlbear Rodeo (after Foundry lessons learned)
+### 9.5 Phase 5 — Owlbear Rodeo extension (after Foundry lessons learned)
 
-Placeholder pending the extension-API research pass; to be filled in with the
-same rigour as 9.4. Working assumption: Owlbear 2.0 extensions are iframes
-with an SDK broadcast channel, which matches this architecture unusually well
-— the extension may be servable directly from the SSE2 origin. Confirm and
-spec before scheduling.
+Research verdict (2026-07-20): **feasible, no hard blockers found**, and the
+fit is unusually clean — Owlbear 2.0 extensions ARE developer-hosted iframes,
+so SSE2 can serve the extension directly from its own origin with no wrapper
+domain.
+
+Confirmed mechanics (docs.owlbear.rodeo, fetched):
+
+- Extension = a hosted `manifest.json` (name, version, icon, `action` popover
+  URL, optional `background_url`, `permissions`). Users add it in their
+  profile; the room owner enables it per room — **players install nothing**;
+  room-enabled extensions load for every member.
+- Render surfaces: action popover (resizable), arbitrary-size
+  `OBR.popover.open`, and `OBR.modal.open({fullScreen: true})` — a true
+  fullscreen surface for the live view.
+- `background_url` = a hidden page running on EVERY client with no click.
+  Push pattern: GM control panel calls `OBR.broadcast.sendMessage` (16 KB
+  cap, fine for control frames) → each player's background page receives it →
+  opens/closes the fullscreen modal locally. Durable state (sid, current
+  preset, live flag) sits in `OBR.room` metadata (16 KB total) so late
+  joiners sync without a rebroadcast. `OBR.player.getRole()` gates the GM UI.
+- Precedent: dddice runs fullscreen external-origin WebGL overlays on all
+  players' screens synced via its own backend; Theatre!/PDF/Sheet-from-Beyond
+  push shared popups. Distribution: free PR to the owlbear-rodeo/extensions
+  repo, optional; direct manifest-URL install works for private beta.
+  SDK is MIT; commercial extensions are normal.
+
+Module shape (mirrors the Foundry split, all served from the SSE2 origin):
+
+- `/obr/manifest.json` — the extension manifest.
+- `/obr/panel` — action popover: GM-only controls (session paste-or-detect,
+  preset list, Open/Change/Close on players) writing room metadata +
+  broadcasting control frames; player role sees a status line.
+- `/obr/background` — background page: listens, opens
+  `OBR.modal.open({url: '/catalogue?sid=…&preset=…&embed=1', fullScreen})`.
+- `/catalogue` unchanged beyond the existing `embed=1`; the page
+  feature-detects the OBR SDK rather than requiring it. Data plane stays
+  SSE2's PeerJS (players are on different machines; the 16 KB OBR caps never
+  carry view data).
+
+De-risk spike before scheduling (~1 hour): a bare page inside an OBR room
+confirming PeerJS data connections + localStorage behave in the extension
+iframe (expected yes — WebRTC data channels are not gated by iframe
+permissions policy; unverified only because no existing extension uses
+PeerJS specifically). One verification-badge note: the optional "works with
+cookies disabled" guideline may conflict with catalogue localStorage use —
+only matters if the badge is chased.
 
 ### 9.6 Market context (scan run 2026-07-20)
 
