@@ -35,7 +35,7 @@ import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frame
 import { perfCount, perfFrame } from '$lib/perfTrace';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
-import { deriveAurora, auroraEmitter } from '$lib/physics/aurora';
+import { deriveAurora, auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import { AU_KM, G } from '$lib/constants';
 import type { System } from '$lib/types';
@@ -1408,10 +1408,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (!unlit) {
             const aur = deriveAurora(node as any);
             if (aur.strength > 0.06) {
-              const built = buildAuroraShell(radius, auroraEmitter(node as any).hex, aur.strength);
-              sphere.add(built.shell);
+              // One additive shell per emitting gas, layered (slightly offset radii, fainter for the
+              // lower-concentration gases) so a multi-gas sky shows its colours — Earth green + purple.
+              const ems = auroraEmitters(node as any);
               let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
-              auroraVisuals.push({ mat: built.mat, base: built.base, seed: seed / 997 });
+              ems.forEach((e, i) => {
+                const built = buildAuroraShell(radius * (1 + i * 0.006), e.hex, aur.strength, e.weight / ems[0].weight);
+                sphere.add(built.shell);
+                auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.17) % 1 });
+              });
             }
             // Emissive surface activity (3D-only wins) from the shared appearance model. Volcanism =
             // additive hot-spot vents that flicker like heat (lava world = many white-hot; hotspots = a
@@ -1444,7 +1449,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
             if (appear.clouds) {
               let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-              const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.coverage, cseed || 1);
+              const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1);
               sphere.add(cl.group);
               cloudVisuals.push(...cl.layers);
             }
@@ -2134,12 +2139,14 @@ function buildWireAurora(radius: number, hex: string, strength: number): { group
 }
 
 // A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
-// aurora strength; the render loop shimmers it around that.
-export function buildAuroraShell(radius: number, hex: string, strength: number): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
+// aurora strength; `weight` (0..1, relative to the dominant gas) fades the lower-concentration emitters
+// so a multi-gas sky layers correctly (Earth's bright green over fainter purple). The render loop
+// shimmers each around its base.
+export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
   const tex = new THREE.CanvasTexture(makeAuroraTexture(hex));
   tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-  const base = Math.min(0.85, 0.28 + strength * 0.6);
+  const base = Math.min(0.85, 0.28 + strength * 0.6) * (0.35 + 0.65 * weight);
   mat.opacity = base;
   const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.06, 28, 20), mat);
   shell.renderOrder = 2; // draw over the body surface

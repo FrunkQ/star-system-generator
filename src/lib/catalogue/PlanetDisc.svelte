@@ -241,6 +241,9 @@
   $: hasAurora = !!a.aurora;
   $: auroraBrilliant = a.aurora?.brilliant ?? false;
   $: auroraCol = { core: a.aurora?.coreHex ?? '#8fe6a0', tip: a.aurora?.tipHex ?? '#dfffe6' };
+  // Secondary emitting gases (nitrogen purple over oxygen green, …) — layered as lighter strokes so the
+  // aurora hints at the atmosphere's mix, fainter for the lower-concentration gases.
+  $: auroraExtra = (a.aurora?.emitters ?? []).slice(1);
   // Spiky, swirled oval ringing a pole — a foreshortened ellipse whose points alternate out into spikes
   // (auroral curtains) and drift tangentially (a swirl), so it hugs the pole rather than floating flat.
   function auroraOval(cy: number, off: number): string {
@@ -588,17 +591,17 @@
         <g clip-path="url(#aurclip-{uid})">
           <path d={auroraTop} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
           <path d={auroraTop} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-          {#if auroraBrilliant}
-            <path d={auroraTop} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-          {/if}
+          {#each auroraExtra as em}
+            <path d={auroraTop} fill="none" stroke={em.colorHex} stroke-width={cw * 0.7} stroke-linejoin="round" opacity={Math.min(0.75, 0.25 + em.weight)} />
+          {/each}
         </g>
         <!-- Far pole (bottom): upper half fades behind the planet; lower arc pokes past the bottom limb. -->
         <g clip-path="url(#aurclip-{uid})" mask="url(#aurbotmask-{uid})">
           <path d={auroraBot} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
           <path d={auroraBot} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-          {#if auroraBrilliant}
-            <path d={auroraBot} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-          {/if}
+          {#each auroraExtra as em}
+            <path d={auroraBot} fill="none" stroke={em.colorHex} stroke-width={cw * 0.7} stroke-linejoin="round" opacity={Math.min(0.75, 0.25 + em.weight)} />
+          {/each}
         </g>
       {/if}
 

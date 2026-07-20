@@ -17,7 +17,7 @@
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
 import { starColorFromTempK } from './apparentColor';
 import { oblatePolarFactor } from './bodyShape';
-import { auroraEmitter } from '$lib/physics/aurora';
+import { auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { isSmallBodyShape } from '$lib/catalogue/smallBodyShape';
 
@@ -30,6 +30,11 @@ export function hexToRgb(hex: string): [number, number, number] {
 	const h = hex.replace('#', '');
 	const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
 	return [parseInt(n.slice(0, 2), 16), parseInt(n.slice(2, 4), 16), parseInt(n.slice(4, 6), 16)];
+}
+/** Blend two hex colours: t=0 → a, t=1 → b. */
+export function mixHex(a: string, b: string, t: number): string {
+	const [ar, ag, ab] = hexToRgb(a), [br, bg, bb] = hexToRgb(b);
+	return rgbHex([ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t]);
 }
 /** Lighten (f>0) or darken (f<0) a hex colour by fraction f. */
 export function shade(hex: string, f: number): string {
@@ -64,9 +69,10 @@ export interface MagmaSpec {
 }
 export interface AuroraSpec {
 	strength: number; // 0..1.3
-	coreHex: string;
-	tipHex: string;
+	coreHex: string;  // dominant emitter colour (2D primary / fallback)
+	tipHex: string;   // second emitter colour (2D gradient tip)
 	brilliant: boolean; // strength >= 0.55 → add a bright tip stroke
+	emitters: { colorHex: string; weight: number }[]; // one per emitting gas, weight-sorted — the renderer layers them (fainter for lower weight) so the colours hint at the composition
 }
 export interface AtmGlowSpec {
 	strength: number; // 0..1 (log-scaled from pressure)
@@ -74,7 +80,8 @@ export interface AtmGlowSpec {
 }
 export interface CloudSpec {
 	coverage: number;  // 0..1 completeness/opacity of the deck (Venus ≈ opaque, Earth ≈ patchy)
-	colorHex: string;  // haze / cloud-top tint
+	colorHex: string;  // main (low) deck tint — water = white, a haze takes the atmosphere colour
+	colorHex2: string; // high deck tint — nudged toward the dominant gas's colour, for per-world variety
 }
 export interface SelfLumSpec {
 	teff: number;
@@ -359,7 +366,11 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const auroraTag = (body.tags ?? []).find((t) => t.key.startsWith('aurora/'));
 	const auroraStr = auroraTag ? Math.max(0, Math.min(1.3, parseFloat(auroraTag.value ?? '0') || 0)) : 0;
 	const aurora: AuroraSpec | null = (!isStar && !isBelt && auroraStr > 0)
-		? (() => { const e = auroraEmitter(body); return { strength: auroraStr, coreHex: e.hex, tipHex: e.tip, brilliant: auroraStr >= 0.55 }; })()
+		? (() => {
+				const e = auroraEmitter(body);
+				const emitters = auroraEmitters(body).map((m) => ({ colorHex: m.hex, weight: m.weight }));
+				return { strength: auroraStr, coreHex: e.hex, tipHex: e.tip, brilliant: auroraStr >= 0.55, emitters };
+			})()
 		: null;
 
 	// Atmosphere limb-glow (strength log-scaled from pressure). Colour is the atmosphere/cloud tint, and
@@ -381,13 +392,22 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const isGiantCloud = rendersAsGiant(body);
 	const hasCloudTag = (body.tags ?? []).some((t) => t.key === 'structure/cloud-deck');
 	const cloudCoverage = isGiantCloud ? 0.6 : clamp01(0.18 + (Math.log10(Math.max(0.1, atmPressureBar)) + 0.5) * 0.3);
-	// Cloud tint: an explicit cloud-deck colour if we have one; else a giant / thick veil takes the haze
-	// (gas) colour — Venus stays yellow, a giant swirls in its band colour — while a thin rocky deck is
-	// bright WHITE so Earth's clouds read as distinct white systems over the ocean, not a same-blue smear.
+	// Cloud CONDENSATE colour: only WATER condenses white. A hydrocarbon/sulphur haze (Titan's tholin,
+	// Venus's sulphuric) or a gas giant takes the atmosphere's OWN colour — so Titan reads orange, Venus
+	// yellow, not everything white. An explicit cloud-deck palette colour still wins.
+	const atmC = (body.atmosphere?.composition ?? {}) as Record<string, number>;
+	const waterClouds = body.hydrosphere?.composition === 'water' || body.hydrosphere?.composition === 'salty-water' || (atmC.H2O ?? 0) > 0.02;
 	const cloudColorHex = palette.find((p) => p.role === 'cloud')?.hex
-		?? (isGiantCloud || cloudCoverage > 0.72 ? atmColorHex : '#f4f8fc');
+		?? (waterClouds && !isGiantCloud ? '#f4f8fc' : atmColorHex);
+	// A second tint for the HIGH layer, nudged toward the most abundant atmospheric gas's colour — so
+	// each world's two-layer deck reads a little differently (a hint of the air's composition + variety
+	// between planets), rather than every deck being one flat tone.
+	const GAS_TINT: Record<string, string> = { CH4: '#d99a5a', CO2: '#e6dca6', SO2: '#e8d24a', N2: '#b6c4e6', NH3: '#d8c48c', H2: '#efe3cc', He: '#efe3cc', O2: '#dfeeff', H2O: '#f4f8fc' };
+	let accentHex = '', accW = 0;
+	for (const k in GAS_TINT) { const w = atmC[k] ?? 0; if (w > accW) { accW = w; accentHex = GAS_TINT[k]; } }
+	const cloudColorHex2 = accentHex ? mixHex(cloudColorHex, accentHex, 0.4) : shade(cloudColorHex, 0.18);
 	const clouds: CloudSpec | null = (!isStar && !isBelt && !isSmallBody && (isGiantCloud || hasCloudTag || atmPressureBar > 0.3))
-		? { coverage: cloudCoverage, colorHex: cloudColorHex }
+		? { coverage: cloudCoverage, colorHex: cloudColorHex, colorHex2: cloudColorHex2 }
 		: null;
 
 	// Self-luminous brown dwarf (thermal/self-luminous, value = effective temperature).

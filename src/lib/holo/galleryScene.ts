@@ -126,17 +126,20 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			if (appear.atmGlow) g.add(buildAtmoGlow(R, appear.atmGlow.colorHex, appear.atmGlow.strength));
 			if (appear.clouds) {
 				let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-				const cl = buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.coverage, cseed || 1);
+				const cl = buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1);
 				sphere.add(cl.group);           // tracks the sphere's spin; the gallery drifts each layer separately
 				for (const l of cl.layers) cloudSpinners.push({ obj: l.mesh, drift: l.drift });
 			}
 			// Auroras from the shared appearance MODEL (the aurora/* tag) — consistent with the 2D disc.
 			// (The live holo currently derives them from physics; the model tag is what the gallery shows.)
 			if (appear.aurora) {
-				const built = buildAuroraShell(R, appear.aurora.coreHex, appear.aurora.strength);
-				sphere.add(built.shell);
+				const ems = appear.aurora.emitters.length ? appear.aurora.emitters : [{ colorHex: appear.aurora.coreHex, weight: 1 }];
 				let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
-				auroraVisuals.push({ mat: built.mat, base: built.base, seed: seed / 997 });
+				ems.forEach((e, i) => {
+					const built = buildAuroraShell(R * (1 + i * 0.006), e.colorHex, appear.aurora!.strength, e.weight / ems[0].weight);
+					sphere.add(built.shell);
+					auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.17) % 1 });
+				});
 			}
 			// A simple ring for a ringed giant.
 			if (node.ringed) g.add(buildStaticRing(R * 1.35, R * 2.2, 0xcdd6e2, false));

@@ -40,16 +40,34 @@ export function deriveAurora(body: CelestialBody): Aurora {
   return { strength, tier: auroraTier(strength) };
 }
 
-// The dominant auroral emitter and its colour, from the atmosphere — like real skies: atomic oxygen
-// glows green, nitrogen blue-violet, CO₂ violet, a hydrogen/helium giant red-pink. Shared by the
-// renderer (uses the hex) and the physics trace (uses the gas + colour name) so they can't drift.
-export function auroraEmitter(body: CelestialBody): { gas: string; colour: string; hex: string; tip: string } {
+// The auroral EMITTERS present in the atmosphere, weight-sorted (dominant first). Real skies glow in
+// more than one colour at once: each gas fluoresces its own colour (atomic oxygen green, nitrogen
+// purple, CO₂ violet, a H/He giant red-pink, methane blue), and you see them layered — Earth's green
+// oxygen curtains fringed with purple nitrogen. WEIGHT = concentration × emission EFFICIENCY: atomic
+// oxygen glows far brighter per molecule, which is why Earth reads green though the air is mostly N₂.
+// The renderer layers a shell per emitter, fainter for the lower-weighted gases, so the colours HINT at
+// the composition. Shared with the physics trace (via auroraEmitter) so they can't drift.
+export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; }
+export function auroraEmitters(body: CelestialBody): AuroraEmitter[] {
   const c: any = body.atmosphere?.composition ?? {};
   const g = (k: string) => c[k] ?? 0;
-  const o = g('O2') + g('O'), n = g('N2'), hhe = g('H2') + g('He'), co2 = g('CO2');
-  if (hhe > 0.4) return { gas: 'hydrogen/helium', colour: 'red-pink', hex: '#ff7e6a', tip: '#8ab6ff' };
-  if (co2 > 0.4) return { gas: 'carbon dioxide', colour: 'violet', hex: '#c86ad0', tip: '#ff7a9a' };
-  if (o > 0.04) return { gas: 'atomic oxygen', colour: 'green', hex: '#57e39a', tip: '#e88ad6' };
-  if (n > 0.5) return { gas: 'nitrogen', colour: 'blue-violet', hex: '#7ea6ff', tip: '#c877e0' };
-  return { gas: 'mixed gases', colour: 'green', hex: '#57e39a', tip: '#e88ad6' };
+  const defs = [
+    { gas: 'atomic oxygen',    colour: 'green',    hex: '#57e39a', amt: g('O2') + g('O'), eff: 5 },
+    { gas: 'nitrogen',         colour: 'purple',   hex: '#9a6bff', amt: g('N2'),          eff: 1 },
+    { gas: 'carbon dioxide',   colour: 'violet',   hex: '#c86ad0', amt: g('CO2'),         eff: 1.4 },
+    { gas: 'hydrogen/helium',  colour: 'red-pink', hex: '#ff7e6a', amt: g('H2') + g('He'), eff: 1.8 },
+    { gas: 'methane',          colour: 'blue',     hex: '#6ab6ff', amt: g('CH4'),         eff: 1.2 }
+  ];
+  let list = defs.filter((d) => d.amt > 0.02).map((d) => ({ gas: d.gas, colour: d.colour, hex: d.hex, w: d.amt * d.eff }));
+  if (!list.length) list = [{ gas: 'mixed gases', colour: 'green', hex: '#57e39a', w: 1 }];
+  const total = list.reduce((s, d) => s + d.w, 0);
+  return list.map((d) => ({ gas: d.gas, colour: d.colour, hex: d.hex, weight: d.w / total }))
+    .sort((a, b) => b.weight - a.weight);
+}
+
+// The DOMINANT emitter (+ the second colour as its gradient "tip"), for the physics trace and the 2D
+// gradient. Derived from auroraEmitters so the colours never drift from the layered 3D shells.
+export function auroraEmitter(body: CelestialBody): { gas: string; colour: string; hex: string; tip: string } {
+  const ems = auroraEmitters(body);
+  return { gas: ems[0].gas, colour: ems[0].colour, hex: ems[0].hex, tip: ems[1]?.hex ?? '#e88ad6' };
 }

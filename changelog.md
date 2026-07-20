@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.191-beta - 20th Jul 2026
+
+* Multi-coloured auroras: a sky with more than one auroral gas now glows in more than one colour at once (atomic oxygen green, nitrogen purple, CO2 violet, a H/He giant red-pink, methane blue), layered and weighted by concentration x emission efficiency - so Earth shows green fringed with purple, and the colours hint at the atmosphere's mix. Applies in the 3D holo (was single-colour) and the 2D disc.
+* Clouds are no longer always white: only water condenses white; a hydrocarbon or sulphur haze takes the atmosphere's own colour, so Titan reads orange and Venus yellow. The high cloud layer is also tinted toward the dominant gas's colour, giving each world's deck a bit of variety.
+
 ## v2.1.190-beta - 20th Jul 2026
 
 * Clouds got a physics pass: weather now organises into east-west latitude BANDS (winds run E-W, not N-S) with a clear equatorial lane, and the bands follow the planet's axial tilt. The 3D deck is now TWO layers drifting independently for parallax, and each cloud puff carries a tonal shift so a single-colour deck swirls in shades rather than reading flat (Venus swirls in yellows).

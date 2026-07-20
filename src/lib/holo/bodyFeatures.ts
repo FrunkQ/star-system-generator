@@ -229,18 +229,18 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 // (of the planet's spin and of each other), so the deck has parallax depth: a lower main deck plus a high,
 // wispier deck that slides the other way a bit faster. Normal-blended (a real veil, not a glow); the
 // texture alpha carries the gaps so the surface shows between streaks. Returns the group + per-layer drift.
-export function buildCloudDeck(radius: number, colorHex: string, coverage: number, seed: number): { group: THREE.Group; layers: { mesh: THREE.Mesh; drift: number }[] } {
+export function buildCloudDeck(radius: number, colorHex: string, colorHex2: string, coverage: number, seed: number): { group: THREE.Group; layers: { mesh: THREE.Mesh; drift: number }[] } {
 	const group = new THREE.Group();
 	const layers: { mesh: THREE.Mesh; drift: number }[] = [];
-	const layer = (rMul: number, cov: number, sd: number, emissive: number, drift: number) => {
-		const tex = makeCloudTexture(colorHex, cov, sd);
-		const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false, emissive: new THREE.Color(colorHex), emissiveMap: tex, emissiveIntensity: emissive, opacity: 1 });
+	const layer = (rMul: number, cov: number, sd: number, hex: string, emissive: number, drift: number) => {
+		const tex = makeCloudTexture(hex, cov, sd);
+		const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false, emissive: new THREE.Color(hex), emissiveMap: tex, emissiveIntensity: emissive, opacity: 1 });
 		const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * rMul, 40, 28), mat);
 		mesh.renderOrder = 1;
 		group.add(mesh); layers.push({ mesh, drift });
 	};
-	layer(1.02, coverage, seed || 1, 0.22, 0.02 + 0.02 * (1 - coverage));                 // main deck
-	layer(1.05, coverage * 0.5, (Math.imul(seed || 1, 7) + 13) >>> 0 || 2, 0.16, -0.035 - 0.02 * (1 - coverage)); // high wispy deck, other way
+	layer(1.02, coverage, seed || 1, colorHex, 0.22, 0.02 + 0.02 * (1 - coverage));                 // main deck
+	layer(1.05, coverage * 0.5, (Math.imul(seed || 1, 7) + 13) >>> 0 || 2, colorHex2, 0.16, -0.035 - 0.02 * (1 - coverage)); // high deck, a different gas tint, drifting the other way
 	return { group, layers };
 }
 
