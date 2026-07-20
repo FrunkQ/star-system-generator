@@ -433,34 +433,28 @@ per decision Q9 (see 4.6).
 - **Cross-origin fullscreen blank**: already solved by the `refresh()` pattern
   in `TextMapVideoLayer`; carry it into `StarMapLayer`.
 
-## 9. Open questions (settle before detailed design)
+## 9. Decision log (settled 2026-07-20)
 
-- **Q1 — Session identity.** Adopt persistent per-starmap `broadcastId` (G1) as
-  described? (Recommended: yes — it also fixes stale QR/player links generally.)
-- **Q2 — Discovery UX.** Hidden `/bridge` auto-discovery (recommended) vs
-  paste-the-share-URL into Mappadux? (Bridge is more code but "it just found my
-  starmap" is the magic moment; paste-URL could still be the fallback.)
-- **Q3 — Preset pinning.** Each Mappadux StarMap map carries one preset via URL.
-  If the GM pushes `SYNC_PRESET` from SSE2, should embedded views (a) follow the
-  push (current catalogue behaviour — one live view for everyone), or (b) stay
-  pinned to their configured preset? Follow-the-push matches "GM drives from
-  SSE2"; pinning matches "this Mappadux map *is* the datapad view". Pick one, or
-  add a per-map "pinned" flag.
-- **Q4 — Overlays.** Confirm v1 disables markers/pings/annotations/measure on
-  StarMap maps (recommended). A later idea: forward Mappadux pings into SSE2 via
-  the bridge as a "GM points at body X" gesture — banked, not v1.
-- **Q5 — Projector.** Full-bleed same-as-player iframe on the projector surface
-  (recommended v1), or exclude StarMap maps from projector output entirely?
-- **Q6 — Hold behaviour inside Mappadux.** When SSE2 pushes hold
-  (`SYNC_PRESET: null`) or the GM tab closes, the embedded view shows SSE2's
-  hold/waiting screen. Acceptable, or should Mappadux fall back to its splash /
-  previous map automatically?
-- **Q7 — Where does the doc/contract live.** This file sits in SSE2 `docs/dev/`;
-  the Mappadux-side implementation notes could stay here or split into the
-  Mappadux repo at Phase 3. Preference?
-- **Q8 — Foundry timing.** Build the generalised Foundry embed module right
-  after Phase 1 (cheap, independent), or hold until the Mappadux integration has
-  proven the embed contract in real sessions?
-- **Q9 — Snapshot export scope.** Is a plain PNG "Export view as image" enough
-  for the snapshot path, or is a sized/framed export (choose resolution, hide
-  UI, transparent background for composite tiles) wanted from day one?
+- **Q1 — Session identity: PERSIST.** Per-starmap `broadcastId` stored with the
+  starmap (G1); stable player URLs/QRs/pack references across GM restarts.
+- **Q2 — Discovery: BRIDGE AUTO-DISCOVERY**, plus connection-aware StarMap
+  create/edit UI — when no SSE2 instance answers, Mappadux says so inline and
+  offers a one-click "Open Star System Explorer" to get one running (§3.1).
+- **Q3 — Preset pushes: FOLLOW THE GM PUSH.** The configured Player View is the
+  starting view; `SYNC_PRESET` switches embedded views live like any other
+  player window. No pinning.
+- **Q4 — Overlays: PINGS ONLY.** Screen-space pings stay available over the
+  iframe; markers/annotations/measure/fog/grid disabled, and the player tool
+  dropdown offers Ping only on StarMap maps. Non-map-space features (chat,
+  audio, soundboard, tracker) are unaffected and keep working. Banked idea:
+  forward pings into SSE2 via the bridge as "GM points at body X".
+- **Q5 — Projector: FULL-BLEED** same-as-player iframe. (A per-map separate
+  projector preset — e.g. top-down Projection view — noted as a possible v2.)
+- **Q6 — Hold behaviour: SSE2'S HOLD SCREEN.** No Mappadux-side fallback; the
+  GM controls standby from SSE2 like any player window.
+- **Q7 — Doc home: SSE2 `docs/dev/`**, with the Mappadux-side implementation
+  spec splitting into the Mappadux repo when Phase 3 starts.
+- **Q8 — Foundry timing: AFTER the Mappadux integration** has proven the embed
+  contract in real sessions.
+- **Q9 — Snapshot export: SKIPPED.** No static export path; live StarMap only
+  (§4.6 kept as a banked record).
