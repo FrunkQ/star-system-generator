@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.205-beta - 20th Jul 2026
+
+* Liquid labels now carry a chemical formula and use British spelling (e.g. Sulphuric Acid (H₂SO₄), Molten Sulphur (S₈), Hydrogen Sulphide (H₂S), Molten Glass (SiO₂)). Data only — identifiers unchanged. Confirmed every defined liquid is in use: 14 are surface/ocean solvents; the 6 `internal` fluids (SO₂, molten sodium/potassium, molten glass, metallic hydrogen, superionic water) are live cloud-condensate or interior-dynamo fluids, so nothing was removable.
+
 ## v2.1.204-beta - 20th Jul 2026
 
 * Liquids are now a single source of truth: `constants.LIQUIDS` imports the starter-sf `liquids.json` (the same file the loader serves at runtime), so the built-in defaults and the pack can never drift again. Removed the stale truncated `LiquidDef` duplicate in `constants.ts`.
