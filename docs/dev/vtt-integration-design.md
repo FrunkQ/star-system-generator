@@ -433,7 +433,186 @@ per decision Q9 (see 4.6).
 - **Cross-origin fullscreen blank**: already solved by the `refresh()` pattern
   in `TextMapVideoLayer`; carry it into `StarMapLayer`.
 
-## 9. Decision log (settled 2026-07-20)
+## 9. Part II — Detailed design
+
+Part I above is the settled high-level design. This part is the build spec.
+The Mappadux Phase 3 spec lives in the Mappadux repo
+(`docs/starmap-map-kind-design.md`) per decision Q7; Phases 1-2 and 4-5 are
+specified here because they are SSE2-side (or SSE2-adjacent) work.
+
+### 9.1 Phase 1 — SSE2 embed contract
+
+All changes are additive to the one deployed app. No integration-specific
+build or origin: direct players, Mappadux, Foundry and Owlbear all consume the
+same URL and the same broadcast contract.
+
+**1A. Stable session id (G1)**
+
+- `src/lib/types.ts`: add `broadcastId?: string` to `Starmap`.
+- New `ensureBroadcastId(starmap): string` helper (suggested home
+  `src/lib/broadcastId.ts`): return `starmap.broadcastId` if present, else
+  generate via `generateId()`, assign, and let the existing auto-persist path
+  save it. Called from the GM route.
+- `src/routes/+page.svelte`: replace the static
+  `let broadcastSessionId = generateId()` (line ~64) with a reactive derivation
+  from the loaded starmap. `initSender(broadcastSessionId)` must re-run when
+  the id changes (it is a cheap field-set; safe to call repeatedly). The
+  `PlayerViewModal`/`CompanionModal`/`SystemView` props are already reactive.
+- Fallback: before any starmap is loaded, keep an ephemeral `generateId()` so
+  the broadcast service is never idless.
+- **Collision handling**: a starmap file copied to another GM duplicates the
+  id. The PeerJS host emits an `unavailable-id` error when a second host
+  claims the same peer id — on that error, generate a fresh `broadcastId`,
+  persist it, and re-init the host. (Hook: the `peer.on('error')` handler in
+  `initPeerHost`, `src/lib/broadcast.ts:101`.)
+- Redaction: `computePlayerStarmapSnapshot` may keep or strip `broadcastId`;
+  players already know the sid from their URL. No requirement either way.
+
+**1B. Discovery + remote-request messages (G2/G5)**
+
+Extend the `BroadcastMessage` union (`src/lib/broadcast.ts:20-44`):
+
+```ts
+| { type: 'REQUEST_HELLO'; payload: string | null }   // target sid, null = any host
+| { type: 'ANNOUNCE'; payload: AnnouncePayload }
+| { type: 'REQUEST_REMOTE'; payload: string | null }  // target sid
+| { type: 'SYNC_HEARTBEAT'; payload: number }         // GM wall-clock ms (see 1D)
+
+interface AnnouncePayload {
+  sessionId: string;      // = starmap.broadcastId
+  starmapId: string;
+  starmapName: string;
+  presets: { id: string; name: string }[];  // playerPresetList, names only
+  appVersion: string;     // package.json version, for integration gating
+}
+```
+
+- `handleMessage` routing follows the existing patterns exactly:
+  `REQUEST_HELLO`/`REQUEST_REMOTE` are sender-side handlers with the same
+  null-or-matching-target rule as `REQUEST_SYNC` (broadcast.ts:355-362);
+  `ANNOUNCE`/`SYNC_HEARTBEAT` are receiver-side handlers
+  (`onAnnounce`, `onHeartbeat` public fields).
+- New lightweight receiver mode `initProbe(onAnnounce)` — sets
+  `isSender=false`, `targetSessionId=null`, wires only `onAnnounce`, and does
+  NOT dial PeerJS (the bridge is same-machine by definition). Avoids the
+  8-callback `initReceiver` ceremony.
+- GM side (`src/routes/+page.svelte`, next to the existing
+  `onRequestStarmap` wiring at ~632):
+  - `onRequestHello` → `sendMessage({type:'ANNOUNCE', ...})` built from
+    `$starmapStore` + `playerPresetList`.
+  - Proactive `sendIfChanged(ANNOUNCE)` reactive on starmap id/name/preset
+    list, so an open bridge hears mid-session changes without polling.
+  - `onRequestRemote` → `broadcastService.enableRemote()` + a small transient
+    GM-side notice ("Remote sharing enabled for <starmap name>") so hosting on
+    the public broker is never silent.
+
+**1C. Embed mode (G4) + parent command listener**
+
+- `/catalogue` reads `embed=1` → `embedMode`. In embed mode: hide the status
+  header bar (branding/LIVE pill) and any host-duplicated chrome; keep the
+  hold screen, waiting/"Reaching the host" states, and all in-view navigation
+  (system list, back button) — those are content, not chrome. Exact element
+  list to be finalised against the live DOM at build time.
+- **Parent postMessage commands (embed mode only)**: the catalogue registers a
+  `window.addEventListener('message')` handler, active only when `embedMode`
+  and `window.parent !== window`, accepting only allowlisted origins (shared
+  constant with the bridge, §9.2). Command set v1:
+  - `{ns:'sse2-embed', v:1, cmd:'setPreset', presetId}` — switch the active
+    preset locally (same code path as a `SYNC_PRESET` arrival, without
+    overrides). A later GM `SYNC_PRESET` still wins (last-write-wins), which
+    is exactly decision Q3.
+  - `{ns:'sse2-embed', v:1, cmd:'ping'}` → reply `{event:'pong'}` (host-side
+    liveness/handshake).
+  This is what lets a host switch between StarMap maps with different presets
+  on ONE warm iframe — no reload, instant cut.
+
+**1D. Disconnect detection (G6) + guest reconnect**
+
+- GM sends `SYNC_HEARTBEAT` every 5 s (interval owned by `+page.svelte`,
+  started with `initSender`; plain `sendMessage`, one tiny frame).
+- Catalogue: track `lastHeardAt` on every accepted message; a 5 s ticker sets
+  `connected = (now - lastHeardAt) < 15_000`. Any arrival flips it back —
+  replaces the current latch-true-forever behaviour.
+- Guest PeerJS reconnect (fixes the long-banked refinement): on
+  `peerOut.on('close')` or heartbeat loss while remote, retry
+  `initPeerGuest(sid)` every 10 s until reconnected.
+
+### 9.2 Phase 2 — `/bridge` route
+
+- `src/routes/bridge/+page.svelte` (+ `+page.ts`, `ssr=false`). No visible UI
+  (renders nothing but a debug line when opened directly).
+- **Origin allowlist** (shared constant, suggested
+  `src/lib/embedOrigins.ts`): exact-match list
+  `https://www.mappadux.com`, `https://mappadux.com` (+ beta origin when one
+  exists) plus a dev regex `^http://(localhost|127\.0\.0\.1)(:\d+)?$`.
+  Checked against `event.origin` on every inbound message; every outbound
+  `postMessage` uses the caller's origin as explicit `targetOrigin` — never
+  `'*'`.
+- Protocol (all frames carry `{ns:'sse2-bridge', v:1}`):
+  - bridge → parent on mount: `{event:'ready'}`
+  - parent → bridge: `{cmd:'hello', requestId}` — bridge calls
+    `initProbe(onAnnounce)`, sends `REQUEST_HELLO(null)`, answers with
+    `{event:'announce', requestId, payload: AnnouncePayload}` or, after a
+    2.5 s timeout, `{event:'gone', requestId}`. Unsolicited ANNOUNCE arrivals
+    (proactive re-announces) are forwarded as `{event:'announce'}` without a
+    requestId — this is how the host's "Open SSE2, then auto-resume" flow
+    completes without polling.
+  - parent → bridge: `{cmd:'ensureRemote', sessionId, requestId}` — sends
+    `REQUEST_REMOTE(sessionId)`, replies `{event:'ok', requestId}`.
+  - errors: `{event:'error', requestId, message}`.
+- The bridge is read/relay only; it exposes starmap identity + preset names,
+  nothing an sid-holder could not already obtain.
+
+### 9.3 Phase 3 — Mappadux StarMap map kind
+
+Specified in the Mappadux repo: `docs/starmap-map-kind-design.md`
+(decision Q7). Summary of the contract it consumes from this side:
+`AnnouncePayload` (discovery), `/catalogue?sid&preset&embed=1` (view),
+`setPreset` postMessage (instant preset switch on a warm iframe),
+`SYNC_HEARTBEAT` semantics (its own connection pill). It requires
+`AnnouncePayload.appVersion` >= the Phase 1 release version and degrades to
+"update Star System Explorer" messaging below that.
+
+### 9.4 Phase 4 — Foundry module (after Mappadux, decision Q8)
+
+Thin generalised "live GM screen" module; working id `gm-screen-embed`
+(final name at build).
+
+- `module.json`: `id`, `title`, `compatibility {minimum: 13, verified: 13}`,
+  `socket: true`, `esmodules: ["module.js"]`; distributed via GitHub releases
+  (`manifest`/`download` URLs). ApplicationV2 only.
+- **Config** (world settings): a list of named screen entries
+  `{name, url}`. For SSE2 the GM pastes the share URL from the Player Views
+  modal; the module recognises SSE2 URLs and appends `embed=1`. (Bridge-based
+  discovery inside Foundry is possible later — the module could host the same
+  hidden `/bridge` iframe — but paste-URL ships first.)
+- **GM UI**: a scene-controls button opening a small AppV2 picker listing the
+  entries with Open / Change / Close — deliberately mirroring the SSE2 Player
+  Views modal verbs.
+- **Socket protocol** on `module.<id>`:
+  `{action:'show', url, w?, h?}` | `{action:'close'}`. Receivers (players)
+  open/replace/close a frameless-ish AppV2 window containing
+  `<iframe src=url allow="autoplay">`. The GM client applies the same action
+  locally (socket emit does not echo to sender).
+- **Late joiners**: GM client re-emits current state on the `userConnected`
+  hook; current state also mirrored to a world setting as backstop.
+- Player connectivity is always the PeerJS path (assume no shared browser
+  profile). Known caveats to document in the README: focused iframe eats
+  Foundry hotkeys; Electron client has no OS popouts (in-app window only).
+- Pointing an entry at a Mappadux player URL (`player.html#<roomcode>`) gives
+  the Mappadux-in-Foundry auxiliary-screen story for free (section 6).
+
+### 9.5 Phase 5 — Owlbear Rodeo (after Foundry lessons learned)
+
+Placeholder pending the extension-API research pass; to be filled in with the
+same rigour as 9.4. Working assumption: Owlbear 2.0 extensions are iframes
+with an SDK broadcast channel, which matches this architecture unusually well
+— the extension may be servable directly from the SSE2 origin. Confirm and
+spec before scheduling.
+
+---
+
+## 10. Decision log (settled 2026-07-20)
 
 - **Q1 — Session identity: PERSIST.** Per-starmap `broadcastId` stored with the
   starmap (G1); stable player URLs/QRs/pack references across GM restarts.
