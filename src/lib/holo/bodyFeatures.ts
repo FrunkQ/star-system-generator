@@ -211,13 +211,19 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 			// (Venus yellow, a giant's band colour) SWIRLS with shades instead of reading as one flat tone.
 			const sh = 0.72 + rnd() * 0.56;
 			const rr = Math.min(255, Math.round(r * sh)), gg = Math.min(255, Math.round(g * sh)), bb = Math.min(255, Math.round(b * sh));
-			ctx.save(); ctx.translate(px, py); ctx.scale(radX / radY, 1);
-			const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radY);
-			grad.addColorStop(0, `rgba(${rr},${gg},${bb},${a})`);
-			grad.addColorStop(0.6, `rgba(${rr},${gg},${bb},${a * 0.4})`);
-			grad.addColorStop(1, `rgba(${rr},${gg},${bb},0)`);
-			ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, radY, 0, 2 * Math.PI); ctx.fill();
-			ctx.restore();
+			// Draw the puff — and a wrapped copy when it straddles the u=0/1 seam, so the deck tiles
+			// horizontally and no cut-off edge shows as a vertical seam on the sphere.
+			const drawPuff = (ox: number) => {
+				ctx.save(); ctx.translate(ox, py); ctx.scale(radX / radY, 1);
+				const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radY);
+				grad.addColorStop(0, `rgba(${rr},${gg},${bb},${a})`);
+				grad.addColorStop(0.6, `rgba(${rr},${gg},${bb},${a * 0.4})`);
+				grad.addColorStop(1, `rgba(${rr},${gg},${bb},0)`);
+				ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, radY, 0, 2 * Math.PI); ctx.fill();
+				ctx.restore();
+			};
+			drawPuff(px);
+			if (px < radX * 1.5) drawPuff(px + W); else if (px > W - radX * 1.5) drawPuff(px - W);
 		}
 	}
 	const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;

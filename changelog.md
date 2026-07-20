@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+
+## v2.1.198-beta - 20th Jul 2026
+
+* Fixed the vertical seam that sometimes showed on cloudy worlds in 3D: the cloud-deck texture now wraps its puffs across the u=0/1 boundary so the deck tiles seamlessly around the sphere (the base surface already did this).
 ## v2.1.196-beta - 20th Jul 2026
 
 * Cryovolcanic plumes read consistently in 2D and 3D now: the 2D disc clusters its jets at the SOUTH POLE (physically where they vent, e.g. Enceladus) fanning out with a chain of brightening puffs, rather than scattered round the whole limb; the 3D jets were nudged a touch more prominent to meet in the middle.
