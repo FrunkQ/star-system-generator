@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.214-beta - 21st Jul 2026
+
+* Preset editor: stop showing controls that don't apply to the Guide document. The scene "Background" (space/greenscreen/…) is hidden for the document (it sets its own ground from its theme), and "Info panel width" is hidden too (the document's info block is part of the page, not a docked panel — only a text-size applies). Also wired "Hide body info block" so a document preset can show the schematic alone (a clean kiosk/projector display).
+
 ## v2.1.213-beta - 21st Jul 2026
 
 * Guide document now shows body PICTURES (was text-only): the info block draws the body's illustrated procedural disc — a shaded, true-coloured sphere with a Saturn-ring for ringed worlds — from its Body-graphics choice. Body graphics gains a "None" option (honoured in the document; intended to carry across every info surface, incl. the 3D holo, so a preset can show 2D images or nothing). Photo mode still shows a GM/stock picture when one is loaded (data-URL only, to keep the WebGL filter untainted).

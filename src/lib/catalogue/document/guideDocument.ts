@@ -16,9 +16,10 @@ export interface GuideDocOpts {
   units?: MeasurementUnits;
   tempUnit?: TemperatureUnit;
   colorful?: boolean;                    // The Guide's rainbow schematic
-  imagery?: 'disc' | 'photo' | 'none';   // how the body picture is shown (disc = Phase-4 procedural)
+  imagery?: 'disc' | 'photo' | 'none';   // how the body picture is shown
   image?: CanvasImageSource | null;      // a loaded picture for the selected body (photo mode)
   imageAspect?: number;                  // width/height of that picture
+  hideInfo?: boolean;                    // clean display: schematic only, no per-body file block
 }
 
 // Order-preserving lookup of a node by id.
@@ -33,6 +34,9 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
 
   // 1) The orbital schematic — the interactive map + the "simple system drawing."
   blocks.push({ kind: 'schematic', system, selectedId, colorful });
+
+  // Clean display: schematic only, no per-body file (a locked kiosk / projector look).
+  if (opts.hideInfo) return blocks;
 
   const selected = nodeById(system, selectedId);
   if (!selected) {

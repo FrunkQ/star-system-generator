@@ -26,6 +26,7 @@
   export let themeColors: DocColors | undefined = undefined;
   export let fontScale = 1;
   export let imagery: 'disc' | 'photo' | 'none' = 'none';
+  export let hideInfoBlock = false; // clean display: schematic only, no per-body file
   export let filterId = 'none';
   export let filterParams: FilterParamValues = {};
   export let selectable = false;
@@ -88,7 +89,7 @@
 
     const blocks = buildGuideDocument(system, selectedId, {
       units, tempUnit, colorful, imagery,
-      image: bodyImg, imageAspect: bodyImgAspect
+      image: bodyImg, imageAspect: bodyImgAspect, hideInfo: hideInfoBlock
     });
     const res = renderDocument(ctx, blocks, theme, { x: mx, y: my, w: vw - mx * 2, maxY: vh - my, scrollY });
     regions = res.regions;
@@ -131,7 +132,7 @@
   onDestroy(() => { ro?.disconnect(); ctrl?.dispose(); ctrl = null; });
 
   // Redraw on data / theme / selection / scroll change; re-apply the filter separately.
-  $: if (ctrl) { system; selectedId; font; accent; mono; colorful; listStyle; documentStyle; themeColors; fontScale; imagery; tips; overlay; companyName; footerText; scrollY; render(); }
+  $: if (ctrl) { system; selectedId; font; accent; mono; colorful; listStyle; documentStyle; themeColors; fontScale; imagery; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
   $: ctrl?.setFilter(filterId, filterParams);
 
   function onWheel(e: WheelEvent) {

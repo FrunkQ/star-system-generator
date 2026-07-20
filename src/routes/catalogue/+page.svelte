@@ -972,7 +972,7 @@
         <FilteredDocumentView
           system={displaySystem} selectedId={selectedBody?.id ?? null}
           font={presetFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
-          colorful={docColorful} imagery={docImagery}
+          colorful={docColorful} imagery={docImagery} hideInfoBlock={activePreset.hideInfoPanel}
           listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} themeColors={activePreset.themeColors}
           fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}

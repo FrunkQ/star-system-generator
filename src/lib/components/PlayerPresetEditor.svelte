@@ -293,14 +293,18 @@
                   <option value="none">None</option>
                 </select>
               </label>
-              <label>Background
-                <select bind:value={draft.background}>
-                  <option value="space">Space</option>
-                  <option value="green">Greenscreen</option>
-                  <option value="blue">Bluescreen</option>
-                  <option value="black">Black</option>
-                </select>
-              </label>
+              {#if draft.systemView !== 'document'}
+                <!-- The scene background (space / chroma key). The document sets its own ground via its
+                     style/theme colours, so this doesn't apply there. -->
+                <label>Background
+                  <select bind:value={draft.background}>
+                    <option value="space">Space</option>
+                    <option value="green">Greenscreen</option>
+                    <option value="blue">Bluescreen</option>
+                    <option value="black">Black</option>
+                  </select>
+                </label>
+              {/if}
               <!-- The 2D map is the same engine locked flat, so the LOOK controls apply to both. Only the
                    genuinely 3D ideas (tilt, lock-overhead, lighting, the turntable) are 3D-only — a flat map
                    can't use them — and 2D gets its own "Lock rotation" in their place. -->
@@ -358,10 +362,16 @@
                   <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
                 {/if}
               {/if}
-              <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info panel (clean display)</label>
-              {#if draft.systemView !== 'list' && !draft.hideInfoPanel}
-                <label>Info panel width (desktop) <span>{draft.inspectorWidth}px</span><input type="range" min="240" max="560" step="10" bind:value={draft.inspectorWidth} /></label>
-                <label>Info panel font size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="1.6" step="0.05" bind:value={draft.infoFontScale} /></label>
+              <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info {draft.systemView === 'document' ? 'block' : 'panel'} (clean display)</label>
+              {#if !draft.hideInfoPanel}
+                <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block is
+                     part of the page, so it has no width to set — only a text size. -->
+                {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
+                  <label>Info panel width (desktop) <span>{draft.inspectorWidth}px</span><input type="range" min="240" max="560" step="10" bind:value={draft.inspectorWidth} /></label>
+                {/if}
+                {#if draft.systemView !== 'list'}
+                  <label>Info text size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="1.6" step="0.05" bind:value={draft.infoFontScale} /></label>
+                {/if}
               {/if}
             </fieldset>
             <fieldset>
@@ -458,6 +468,7 @@
                 font={draft.font} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 colorful={draft.accentColor === 'rainbow'}
                 imagery={draft.bodyGfx === 'photo' ? 'photo' : draft.bodyGfx === 'none' ? 'none' : 'disc'}
+                hideInfoBlock={draft.hideInfoPanel}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} themeColors={draft.themeColors}
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
