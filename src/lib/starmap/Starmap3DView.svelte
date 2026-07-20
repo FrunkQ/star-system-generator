@@ -49,7 +49,7 @@
 
   $: smSystems = ((starmap?.systems ?? []) as any[]).map<SmSystem>((s) => ({
     id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0,
-    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh }))
+    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd }))
   }));
   $: smRoutes = ((starmap?.routes ?? []) as any[]).map<SmRoute>((r) => ({ fromId: r.sourceSystemId, toId: r.targetSystemId, dashed: r.lineStyle === 'dashed' }));
 

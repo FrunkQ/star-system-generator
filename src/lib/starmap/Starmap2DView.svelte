@@ -44,6 +44,7 @@
         <stop offset="0" stop-color="#8a3212" stop-opacity="0" /><stop offset="0.22" stop-color="#f0a030" />
         <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.78" stop-color="#f0a030" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
       </linearGradient>
+      <filter id="sm2d-bhb" x="-40%" y="-300%" width="180%" height="700%"><feGaussianBlur stdDeviation="1.4" /></filter>
     </defs>
     <!-- routes -->
     {#each routes as r (r.id)}
@@ -66,13 +67,16 @@
             {@const sx = c.x + (offs[i]?.dx ?? 0) * R}
             {@const sy = c.y + (offs[i]?.dy ?? 0) * R}
             {#if s.bh === 'active'}
-              <!-- A FEEDING black hole: the wide, thin accretion disc (hot-white inner → orange), a black
-                   horizon inside the bright photon ring, with the disc lensed over the top + in front below. -->
-              <ellipse cx={sx} cy={sy} rx={R * 3.4} ry={R * 0.6} fill="url(#sm2d-accr)" />
-              <path d="M{sx - R * 3.4} {sy} Q {sx} {sy - R * 2.4} {sx + R * 3.4} {sy}" fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.28} opacity="0.85" />
-              <circle cx={sx} cy={sy} r={R} fill="#000" />
-              <circle cx={sx} cy={sy} r={R * 1.08} fill="none" stroke="#fff" stroke-width={R * 0.18} />
-              <path d="M{sx - R * 3.4} {sy} Q {sx} {sy + R * 2.4} {sx + R * 3.4} {sy}" fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.34} opacity="0.92" />
+              {@const e = Math.max(0.15, Math.min(1, s.edd ?? 0.6))}
+              {@const brx = R * (2 + e * 2.4)}
+              <!-- A FEEDING black hole: the fuzzy edge-on blaze (width grows with accretion), the far side
+                   lensed over the top, a black horizon inside the photon ring, and the bright near-side
+                   blade crossing IN FRONT of the hole. -->
+              <ellipse cx={sx} cy={sy} rx={brx} ry={R * (0.25 + e * 0.35)} fill="url(#sm2d-accr)" filter="url(#sm2d-bhb)" />
+              <path d="M{sx - brx * 0.5} {sy} Q {sx} {sy - R * 1.9} {sx + brx * 0.5} {sy}" fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.16} opacity="0.9" />
+              <circle cx={sx} cy={sy} r={R * 0.92} fill="#000" />
+              <circle cx={sx} cy={sy} r={R * 1.04} fill="none" stroke="#fff" stroke-width={R * 0.18} />
+              <ellipse cx={sx} cy={sy + R * 0.07} rx={brx * 0.98} ry={R * (0.1 + e * 0.12)} fill="url(#sm2d-acc)" opacity="0.95" />
             {:else if s.bh}
               <!-- A quiescent black hole is #000000 → invisible on the dark map; a white-edged black disc reads clearly.
                    Inline style (beats the .star CSS stroke) keeps the white ring. -->

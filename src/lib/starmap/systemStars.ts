@@ -8,10 +8,11 @@ export interface VisualStar {
   id: string;
   name: string;
   color: string;
-  bh?: 'quiescent' | 'active';  // a black hole — colour is #000000; the glyph renderer swaps in the BH / accretion-disc image
+  bh?: 'quiescent' | 'active';  // a black hole — colour is #000000; the glyph renderer draws the schematic instead
+  edd?: number;                 // accretion level (Eddington fraction) — sizes a feeding hole's disc blaze
 }
 
-// A black hole reads black-on-black as a plain colour dot, so flag it for image rendering — and note
+// A black hole reads black-on-black as a plain colour dot, so flag it for glyph rendering — and note
 // whether it's FEEDING (accretion disc) or quiescent. Matches getBlackHoleType in Starmap.svelte
 // (classes carry "star/BH" / "star/BH_active", sometimes bare).
 function blackHoleState(b: CelestialBody): 'quiescent' | 'active' | undefined {
@@ -23,16 +24,18 @@ function blackHoleState(b: CelestialBody): 'quiescent' | 'active' | undefined {
 
 export function systemVisualStars(system: System | null | undefined): VisualStar[] {
   if (!system?.nodes) return [];
+  const vs = (s: CelestialBody): VisualStar =>
+    ({ id: s.id, name: s.name, color: getPlanetColor(s), bh: blackHoleState(s), edd: (s as any).accretionEddington });
   const stars = system.nodes.filter((n) => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
   if (stars.length) {
     return stars
       .slice()
       .sort((a, b) => (b.massKg || 0) - (a.massKg || 0)) // primary first
-      .map((s) => ({ id: s.id, name: s.name, color: getPlanetColor(s), bh: blackHoleState(s) }));
+      .map(vs);
   }
   // No explicit stars (e.g. a rogue world / lone body): use the root body if there is one.
   const root = system.nodes.find((n) => n.parentId === null);
-  if (root && root.kind === 'body') return [{ id: root.id, name: root.name, color: getPlanetColor(root as CelestialBody), bh: blackHoleState(root as CelestialBody) }];
+  if (root && root.kind === 'body') return [vs(root as CelestialBody)];
   return [];
 }
 

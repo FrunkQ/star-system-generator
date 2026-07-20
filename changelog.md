@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.193-beta - 20th Jul 2026
+
+* Auroras now stack by ALTITUDE like the real thing: the purple nitrogen fringe sits below the bright green oxygen band, and a rich oxygen sky (Earth-like) adds the tenuous deep-red crimson crown high above. Each colour layer fades in and out on its own slow phase, so a mixed sky shows one colour or several - never a merged white.
+* Black-hole diagram redrawn again against the 3D reference: the disc is now a fuzzy edge-on particle blaze whose width clearly grows with the feeding level (20% to 100%), with the bright near-side blade crossing in front of the hole - no more "eye". Starmap glyphs now read the actual accretion level, so different feeders look different on the map.
+
 ## v2.1.192-beta - 20th Jul 2026
 
 * 2D black-hole diagram redrawn to match the 3D lensed look: a wide, thin accretion disc (hot-white inner fading to orange at the tips) with a black event horizon inside a bright photon ring, and the disc lensed up over the top and passing in front below. Applied to the reference gallery and both starmap glyphs.

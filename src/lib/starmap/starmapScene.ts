@@ -17,7 +17,7 @@ import { starClusterOffsets } from './systemStars';
 const GRID_RADIUS = 12; // scene units the map's extent maps to
 const HOLO_TINT = 0x63b3ff;
 
-export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string; bh?: 'quiescent' | 'active' }[] }
+export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string; bh?: 'quiescent' | 'active'; edd?: number }[] }
 export interface SmRoute { fromId: string; toId: string; dashed?: boolean }
 export type GridMode = 'off' | 'plain' | 'scaled' | 'hex';
 
@@ -72,39 +72,50 @@ function starGlow(): THREE.Texture {
   return glowTex;
 }
 
-// The black-hole glyph, drawn PROCEDURALLY to match the reference gallery (rather than a pasted photo):
-// a black event horizon ringed by a bright white photon ring, plus — when FEEDING — a temperature-graded
-// accretion disc (an orange ellipse whose near half crosses in front). Cached per state.
+// The black-hole glyph, drawn PROCEDURALLY to match the reference gallery: a black event horizon inside
+// a bright photon ring; a FEEDING hole adds the edge-on particle blaze — a fuzzy hot-white→orange disc
+// whose WIDTH grows with the accretion level, the far side lensed over the top, and the bright near-side
+// blade crossing IN FRONT of the hole. Cached per accretion bucket.
 const bhTex: Record<string, THREE.Texture> = {};
-function bhGlyph(active: boolean): THREE.Texture {
-  const key = active ? 'active' : 'quiescent';
+function bhGlyph(active: boolean, eddington = 0.6): THREE.Texture {
+  const e = active ? Math.max(0.15, Math.min(1, eddington || 0.6)) : 0;
+  const key = active ? `a${Math.round(e * 10)}` : 'q';
   if (bhTex[key]) return bhTex[key];
-  const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const S = 160, cv = document.createElement('canvas'); cv.width = cv.height = S;
   const ctx = cv.getContext('2d')!;
-  const k = S / 100, cx = 50 * k, cy = 50 * k, hole = 13 * k, e = active ? 0.85 : 0;
-  const rx = (40 + e * 8) * k, ry = (5 + e * 2.5) * k;
-  // Hot-white-in-the-middle rim gradient, fading at the tips (used for the lensed arcs).
-  const rim = () => { const g = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
+  const k = S / 100, cx = 50 * k, cy = 50 * k;
+  const rx = (22 + e * 26) * k, ry = (2.5 + e * 3.5) * k;
+  // Hot-white-in-the-middle blade gradient, fading at the tips. x0..x1 in the CURRENT transform's coords
+  // (the blade fills inside a translated context, the arcs stroke in canvas coords).
+  const rim = (x0: number, x1: number) => { const g = ctx.createLinearGradient(x0, 0, x1, 0);
     g.addColorStop(0, 'rgba(138,50,18,0)'); g.addColorStop(0.22, 'rgba(240,160,48,1)'); g.addColorStop(0.5, 'rgba(255,244,208,1)');
     g.addColorStop(0.78, 'rgba(240,160,48,1)'); g.addColorStop(1, 'rgba(138,50,18,0)'); return g; };
+  const blaze = (rxx: number, ryy: number, alpha: number) => {
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ryy / rxx); ctx.globalAlpha = alpha;
+    const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, rxx);
+    rg.addColorStop(0, 'rgba(255,244,208,0)'); rg.addColorStop(0.24, 'rgba(255,244,208,1)');
+    rg.addColorStop(0.45, 'rgba(240,160,48,1)'); rg.addColorStop(0.75, 'rgba(138,50,18,1)'); rg.addColorStop(1, 'rgba(138,50,18,0)');
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, rxx, 0, 2 * Math.PI); ctx.fill(); ctx.restore(); ctx.globalAlpha = 1;
+  };
   if (e > 0) {
-    // Accretion disc, nearly edge-on: a wide thin blade, hot-white inner → orange → fading tips (its
-    // centre hidden behind the hole). An elliptical radial gradient via a squashed circle.
-    ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
-    const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-    rg.addColorStop(0, 'rgba(255,244,208,0)'); rg.addColorStop(0.3, 'rgba(255,244,208,1)');
-    rg.addColorStop(0.48, 'rgba(240,160,48,1)'); rg.addColorStop(0.78, 'rgba(138,50,18,1)'); rg.addColorStop(1, 'rgba(138,50,18,0)');
-    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 2 * Math.PI); ctx.fill(); ctx.restore();
-    // Far side lensed up and over the top.
-    ctx.strokeStyle = rim(); ctx.lineWidth = (1.4 + e * 1.6) * k; ctx.globalAlpha = 0.85;
-    ctx.beginPath(); ctx.moveTo(cx - rx, cy); ctx.quadraticCurveTo(cx, 18 * k, cx + rx, cy); ctx.stroke(); ctx.globalAlpha = 1;
+    // The particle blaze: blurred where the browser supports canvas filters (fuzz), layered sharp inside.
+    const hasFilter = 'filter' in ctx;
+    if (hasFilter) (ctx as any).filter = `blur(${(1.1 + e * 1.7) * k}px)`;
+    blaze(rx, ry, 1);
+    if (hasFilter) (ctx as any).filter = 'none';
+    blaze(rx * 0.72, ry * 0.75, 0.95);
+    // Far side lensed over the top, hugging the ring.
+    ctx.strokeStyle = rim(cx - rx, cx + rx); ctx.lineWidth = (1.2 + e * 1.2) * k; ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.moveTo(cx - rx * 0.5, cy); ctx.quadraticCurveTo(cx, (28 - e * 4) * k, cx + rx * 0.5, cy); ctx.stroke(); ctx.globalAlpha = 1;
   }
-  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, hole, 0, 2 * Math.PI); ctx.fill();          // event horizon
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1 * k; ctx.beginPath(); ctx.arc(cx, cy, 15.5 * k, 0, 2 * Math.PI); ctx.stroke(); // ring glow
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.4 * k; ctx.beginPath(); ctx.arc(cx, cy, 14 * k, 0, 2 * Math.PI); ctx.stroke();                   // photon ring
-  if (e > 0) { // near side of the disc, in FRONT, crossing below the hole
-    ctx.strokeStyle = rim(); ctx.lineWidth = (2 + e * 2) * k; ctx.globalAlpha = 0.92;
-    ctx.beginPath(); ctx.moveTo(cx - rx, cy); ctx.quadraticCurveTo(cx, 82 * k, cx + rx, cy); ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, 11 * k, 0, 2 * Math.PI); ctx.fill();        // event horizon
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.1 * k; ctx.beginPath(); ctx.arc(cx, cy, 13.4 * k, 0, 2 * Math.PI); ctx.stroke(); // ring glow
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.1 * k; ctx.beginPath(); ctx.arc(cx, cy, 12.2 * k, 0, 2 * Math.PI); ctx.stroke();                  // photon ring
+  if (e > 0) {
+    // The bright near-side blade crossing IN FRONT of the hole — the signature of the lensed look.
+    ctx.save(); ctx.translate(cx, cy + 0.8 * k); ctx.scale(1, ((0.9 + e * 1.1) * k) / (rx * 0.98)); ctx.globalAlpha = 0.95;
+    ctx.fillStyle = rim(-rx * 0.98, rx * 0.98); ctx.beginPath(); ctx.arc(0, 0, rx * 0.98, 0, 2 * Math.PI); ctx.fill();
+    ctx.restore(); ctx.globalAlpha = 1;
   }
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   bhTex[key] = t;
@@ -427,15 +438,15 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       const offs = starClusterOffsets(stars.length);
       const R = 0.22; // star glyph radius in scene units
       stars.forEach((st, i) => {
-        // A black hole is drawn as its image glyph (normal-blended, so black reads as black) rather
-        // than an additive colour-tinted glow that would vanish on the dark map — the accretion disc
-        // when feeding, the plain hole when quiescent.
+        // A black hole is drawn as its schematic glyph (normal-blended, so black reads as black) rather
+        // than an additive colour-tinted glow that would vanish on the dark map — the disc blaze sized
+        // by the accretion level when feeding, the bare ringed hole when quiescent.
         const mat = st.bh
-          ? new THREE.SpriteMaterial({ map: bhGlyph(st.bh === 'active'), color: monoOn ? new THREE.Color(MONO_HEX) : 0xffffff, transparent: true, depthWrite: false })
+          ? new THREE.SpriteMaterial({ map: bhGlyph(st.bh === 'active', st.edd), color: monoOn ? new THREE.Color(MONO_HEX) : 0xffffff, transparent: true, depthWrite: false })
           : new THREE.SpriteMaterial({ map: glow, color: monoOn ? new THREE.Color(MONO_HEX) : new THREE.Color(st.color), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
         const sp = new THREE.Sprite(mat);
         sp.position.copy(center).add(new THREE.Vector3((offs[i]?.dx ?? 0) * R, 0.0, (offs[i]?.dy ?? 0) * R));
-        sp.scale.setScalar(!st.bh ? R * 3.2 : st.bh === 'active' ? R * 4.2 : R * 3.0);
+        sp.scale.setScalar(!st.bh ? R * 3.2 : st.bh === 'active' ? R * (3.6 + Math.min(1, st.edd ?? 0.6) * 1.2) : R * 3.4);
         content.add(sp);
       });
       placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name) });

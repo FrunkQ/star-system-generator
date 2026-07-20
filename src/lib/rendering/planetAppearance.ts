@@ -72,7 +72,10 @@ export interface AuroraSpec {
 	coreHex: string;  // dominant emitter colour (2D primary / fallback)
 	tipHex: string;   // second emitter colour (2D gradient tip)
 	brilliant: boolean; // strength >= 0.55 → add a bright tip stroke
-	emitters: { colorHex: string; weight: number }[]; // one per emitting gas, weight-sorted — the renderer layers them (fainter for lower weight) so the colours hint at the composition
+	// One per emitting gas, weight-sorted. altitude (0 low fringe / 1 main / 2 high tenuous) stacks the
+	// 3D shells in physical order (purple N₂ fringe below the green O band, crimson O crown on top);
+	// weight fades the lower-concentration gases — so the colours hint at the composition.
+	emitters: { colorHex: string; weight: number; altitude: number }[];
 }
 export interface AtmGlowSpec {
 	strength: number; // 0..1 (log-scaled from pressure)
@@ -368,7 +371,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const aurora: AuroraSpec | null = (!isStar && !isBelt && auroraStr > 0)
 		? (() => {
 				const e = auroraEmitter(body);
-				const emitters = auroraEmitters(body).map((m) => ({ colorHex: m.hex, weight: m.weight }));
+				const emitters = auroraEmitters(body).map((m) => ({ colorHex: m.hex, weight: m.weight, altitude: m.altitude }));
 				return { strength: auroraStr, coreHex: e.hex, tipHex: e.tip, brilliant: auroraStr >= 0.55, emitters };
 			})()
 		: null;

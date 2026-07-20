@@ -1408,14 +1408,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (!unlit) {
             const aur = deriveAurora(node as any);
             if (aur.strength > 0.06) {
-              // One additive shell per emitting gas, layered (slightly offset radii, fainter for the
-              // lower-concentration gases) so a multi-gas sky shows its colours — Earth green + purple.
+              // One additive shell per emitting gas, stacked at its physical ALTITUDE (purple N₂ fringe
+              // low, green O main, crimson O crown high) and fading independently — so at any moment the
+              // sky shows one colour or several, never a merged white.
               const ems = auroraEmitters(node as any);
               let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
               ems.forEach((e, i) => {
-                const built = buildAuroraShell(radius * (1 + i * 0.006), e.hex, aur.strength, e.weight / ems[0].weight);
+                const built = buildAuroraShell(radius, e.hex, aur.strength, e.weight / ems[0].weight, e.altitude);
                 sphere.add(built.shell);
-                auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.17) % 1 });
+                auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.31) % 1 });
               });
             }
             // Emissive surface activity (3D-only wins) from the shared appearance model. Volcanism =
@@ -1694,8 +1695,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function updateAuroras(nowSec: number) {
     for (const a of auroraVisuals) {
       if (!aurorasOn) { a.mat.opacity = 0; continue; } // GM toggle off → hide (additive, so opacity 0 = gone)
-      const s = 0.5 + 0.5 * (0.62 * Math.sin(nowSec * 2.6 + a.seed * 6.283) + 0.38 * Math.sin(nowSec * 5.9 + a.seed * 12.57));
-      a.mat.opacity = a.base * (0.4 + 0.6 * Math.max(0, Math.min(1, s)));
+      // A slow deep SWELL (each colour layer fades nearly out and back on its own phase — so a mixed sky
+      // shows one colour, then both, never a merged white) times a fast shimmer for the curtain flicker.
+      const swell = 0.5 + 0.5 * Math.sin(nowSec * 0.45 + a.seed * 6.283);
+      const shimmer = 0.5 + 0.5 * (0.62 * Math.sin(nowSec * 2.6 + a.seed * 6.283) + 0.38 * Math.sin(nowSec * 5.9 + a.seed * 12.57));
+      a.mat.opacity = a.base * (0.08 + 0.92 * swell) * (0.55 + 0.45 * Math.max(0, Math.min(1, shimmer)));
     }
   }
 
@@ -2139,16 +2143,17 @@ function buildWireAurora(radius: number, hex: string, strength: number): { group
 }
 
 // A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
-// aurora strength; `weight` (0..1, relative to the dominant gas) fades the lower-concentration emitters
-// so a multi-gas sky layers correctly (Earth's bright green over fainter purple). The render loop
-// shimmers each around its base.
-export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
+// aurora strength; `weight` (0..1, relative to the dominant gas) fades the lower-concentration emitters;
+// `altitude` (0 low fringe / 1 main band / 2 high tenuous) sets the shell height so a multi-gas sky
+// STACKS physically — Earth's purple nitrogen fringe under the green oxygen band, the crimson oxygen
+// crown above. The render loop swells each layer independently around its base.
+export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1, altitude = 1): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
   const tex = new THREE.CanvasTexture(makeAuroraTexture(hex));
   tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
   const base = Math.min(0.85, 0.28 + strength * 0.6) * (0.35 + 0.65 * weight);
   mat.opacity = base;
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.06, 28, 20), mat);
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.04 + altitude * 0.025), 28, 20), mat);
   shell.renderOrder = 2; // draw over the body surface
   return { shell, mat, base };
 }

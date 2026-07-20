@@ -41,27 +41,32 @@ export function deriveAurora(body: CelestialBody): Aurora {
 }
 
 // The auroral EMITTERS present in the atmosphere, weight-sorted (dominant first). Real skies glow in
-// more than one colour at once: each gas fluoresces its own colour (atomic oxygen green, nitrogen
-// purple, CO₂ violet, a H/He giant red-pink, methane blue), and you see them layered — Earth's green
-// oxygen curtains fringed with purple nitrogen. WEIGHT = concentration × emission EFFICIENCY: atomic
-// oxygen glows far brighter per molecule, which is why Earth reads green though the air is mostly N₂.
-// The renderer layers a shell per emitter, fainter for the lower-weighted gases, so the colours HINT at
-// the composition. Shared with the physics trace (via auroraEmitter) so they can't drift.
-export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; }
+// more than one colour at once, LAYERED BY ALTITUDE: each gas fluoresces its own colour at its own
+// height — Earth runs a purple/magenta nitrogen fringe at the bottom (~80 km), the bright apple-green
+// atomic-oxygen band above it (~100 km), and, when the oxygen column is rich enough, a tenuous deep-red
+// crimson oxygen band high above (200–400 km). WEIGHT = concentration × emission EFFICIENCY (atomic
+// oxygen glows far brighter per molecule, which is why Earth reads green though the air is mostly N₂).
+// ALTITUDE (0 = low fringe, 1 = main band, 2 = high tenuous band) stacks the renderer's shells in the
+// right order. Shared with the physics trace (via auroraEmitter) so they can't drift.
+export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; altitude: number; }
 export function auroraEmitters(body: CelestialBody): AuroraEmitter[] {
   const c: any = body.atmosphere?.composition ?? {};
   const g = (k: string) => c[k] ?? 0;
+  const o = g('O2') + g('O');
   const defs = [
-    { gas: 'atomic oxygen',    colour: 'green',    hex: '#57e39a', amt: g('O2') + g('O'), eff: 5 },
-    { gas: 'nitrogen',         colour: 'purple',   hex: '#9a6bff', amt: g('N2'),          eff: 1 },
-    { gas: 'carbon dioxide',   colour: 'violet',   hex: '#c86ad0', amt: g('CO2'),         eff: 1.4 },
-    { gas: 'hydrogen/helium',  colour: 'red-pink', hex: '#ff7e6a', amt: g('H2') + g('He'), eff: 1.8 },
-    { gas: 'methane',          colour: 'blue',     hex: '#6ab6ff', amt: g('CH4'),         eff: 1.2 }
+    { gas: 'atomic oxygen',    colour: 'green',    hex: '#57e39a', amt: o,                 eff: 5,   alt: 1 },
+    { gas: 'nitrogen',         colour: 'purple',   hex: '#9a6bff', amt: g('N2'),           eff: 1,   alt: 0 },
+    { gas: 'carbon dioxide',   colour: 'violet',   hex: '#c86ad0', amt: g('CO2'),          eff: 1.4, alt: 0 },
+    { gas: 'hydrogen/helium',  colour: 'red-pink', hex: '#ff7e6a', amt: g('H2') + g('He'), eff: 1.8, alt: 1 },
+    { gas: 'methane',          colour: 'blue',     hex: '#6ab6ff', amt: g('CH4'),          eff: 1.2, alt: 0 }
   ];
-  let list = defs.filter((d) => d.amt > 0.02).map((d) => ({ gas: d.gas, colour: d.colour, hex: d.hex, w: d.amt * d.eff }));
-  if (!list.length) list = [{ gas: 'mixed gases', colour: 'green', hex: '#57e39a', w: 1 }];
+  let list = defs.filter((d) => d.amt > 0.02).map((d) => ({ gas: d.gas, colour: d.colour, hex: d.hex, w: d.amt * d.eff, alt: d.alt }));
+  // A RICH oxygen column (Earth-like) also excites the high-altitude crimson band — the deep-red crown
+  // seen above the green curtains in strong storms.
+  if (o > 0.12) list.push({ gas: 'atomic oxygen (high)', colour: 'crimson', hex: '#e14b3a', w: o * 5 * 0.3, alt: 2 });
+  if (!list.length) list = [{ gas: 'mixed gases', colour: 'green', hex: '#57e39a', w: 1, alt: 1 }];
   const total = list.reduce((s, d) => s + d.w, 0);
-  return list.map((d) => ({ gas: d.gas, colour: d.colour, hex: d.hex, weight: d.w / total }))
+  return list.map((d) => ({ gas: d.gas, colour: d.colour, hex: d.hex, weight: d.w / total, altitude: d.alt }))
     .sort((a, b) => b.weight - a.weight);
 }
 

@@ -133,12 +133,14 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			// Auroras from the shared appearance MODEL (the aurora/* tag) — consistent with the 2D disc.
 			// (The live holo currently derives them from physics; the model tag is what the gallery shows.)
 			if (appear.aurora) {
-				const ems = appear.aurora.emitters.length ? appear.aurora.emitters : [{ colorHex: appear.aurora.coreHex, weight: 1 }];
+				const ems = appear.aurora.emitters.length ? appear.aurora.emitters : [{ colorHex: appear.aurora.coreHex, weight: 1, altitude: 1 }];
 				let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
 				ems.forEach((e, i) => {
-					const built = buildAuroraShell(R * (1 + i * 0.006), e.colorHex, appear.aurora!.strength, e.weight / ems[0].weight);
+					// Stacked at each gas's ALTITUDE (purple fringe low, green main, crimson crown high),
+					// fading independently so the mix reads as separate colours, not merged white.
+					const built = buildAuroraShell(R, e.colorHex, appear.aurora!.strength, e.weight / ems[0].weight, e.altitude);
 					sphere.add(built.shell);
-					auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.17) % 1 });
+					auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.31) % 1 });
 				});
 			}
 			// A simple ring for a ringed giant.
@@ -301,8 +303,10 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		updateMagma(magmaVisuals, clock.t);
 		updatePlumes(plumeVisuals, clock.t);
 		for (const a of auroraVisuals) {
+			// Slow deep swell per colour layer (independent phases → one colour or both at any moment) × shimmer.
+			const swell = 0.5 + 0.5 * Math.sin(clock.t * 0.45 + a.seed * 6.283);
 			const s = 0.5 + 0.5 * Math.sin(clock.t * 2.6 + a.seed * 6.283);
-			a.mat.opacity = a.base * (0.5 + 0.5 * s);
+			a.mat.opacity = a.base * (0.08 + 0.92 * swell) * (0.6 + 0.4 * s);
 		}
 		controls.update();
 		updateLensing();
