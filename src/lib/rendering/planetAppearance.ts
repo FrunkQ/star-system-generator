@@ -379,7 +379,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// Earth = a partial patchy deck). Opacity climbs with pressure. Giants are excluded: their banded
 	// texture already IS their cloud tops.
 	const hasCloudTag = (body.tags ?? []).some((t) => t.key === 'structure/cloud-deck');
-	const cloudCoverage = clamp01(0.3 + (Math.log10(Math.max(0.1, atmPressureBar)) + 0.5) * 0.35);
+	const cloudCoverage = clamp01(0.18 + (Math.log10(Math.max(0.1, atmPressureBar)) + 0.5) * 0.3);
 	// Cloud tint: an explicit cloud-deck colour if we have one; otherwise a THICK veil takes the haze
 	// colour (Venus stays yellow) while a THIN, patchy deck is bright WHITE — so Earth's clouds read as
 	// distinct white systems over the ocean instead of a same-blue smear.

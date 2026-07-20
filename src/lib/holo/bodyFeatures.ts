@@ -190,16 +190,18 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 	const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
 	const thick = coverage > 0.72;
 	if (thick) { ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(0.95, 0.45 + (coverage - 0.72) * 2)})`; ctx.fillRect(0, 0, W, H); }
-	// Build cloud systems from CLUSTERS of overlapping puffs → lumpy, organic shapes rather than dots.
-	const systems = thick ? Math.round(24 + coverage * 40) : Math.round(7 + coverage * 10);
+	// Build cloud systems from CLUSTERS of overlapping puffs → lumpy, organic shapes rather than dots. A
+	// thin deck gets MANY small, scattered systems (patchy, plenty of clear surface) instead of a few big
+	// masses, so it reads at the right scale against the globe.
+	const systems = thick ? Math.round(24 + coverage * 40) : Math.round(16 + coverage * 26);
 	for (let i = 0; i < systems; i++) {
 		const cx = rnd() * W, cy = H * (0.12 + rnd() * 0.76);          // keep clear of the pinching poles
-		const spanX = (thick ? 30 : 60) + rnd() * (thick ? 40 : 90), spanY = spanX * (0.4 + rnd() * 0.4);
-		const puffs = thick ? 6 : 10 + Math.floor(rnd() * 10);
-		const core = thick ? 0.18 + rnd() * 0.22 : 0.75 + rnd() * 0.25; // thin deck = bold, near-opaque cores
+		const spanX = (thick ? 30 : 20) + rnd() * (thick ? 40 : 34), spanY = spanX * (0.4 + rnd() * 0.4);
+		const puffs = thick ? 6 : 4 + Math.floor(rnd() * 5);
+		const core = thick ? 0.18 + rnd() * 0.22 : 0.55 + rnd() * 0.33; // thin deck = defined but not solid
 		for (let j = 0; j < puffs; j++) {
 			const px = cx + (rnd() - 0.5) * spanX, py = cy + (rnd() - 0.5) * spanY;
-			const rad = (thick ? 10 : 14) + rnd() * (thick ? 22 : 34);
+			const rad = (thick ? 10 : 6) + rnd() * (thick ? 22 : 15);
 			const a = core * (0.5 + rnd() * 0.5);
 			const grad = ctx.createRadialGradient(px, py, 0, px, py, rad);
 			grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
