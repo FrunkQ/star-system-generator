@@ -84,12 +84,27 @@
               greenhouse: 0,
               specificHeat: 1.0,
               radiativeCooling: 0.1,
+              colorHex: null,
               meltK: 100,
               boilK: 150,
-              tags: []
+              tags: [],
+              aurora: []
           };
           gases = { ...gases };
       }
+  }
+
+  function addAuroraBand(gas: any) {
+      gas.aurora = [...(gas.aurora ?? []), { colour: 'green', hex: '#57e39a', efficiency: 1, altitude: 1 }];
+      gases = { ...gases };
+  }
+  function removeAuroraBand(gas: any, i: number) {
+      gas.aurora = (gas.aurora ?? []).filter((_: any, j: number) => j !== i);
+      gases = { ...gases };
+  }
+  function toggleGasColour(gas: any, on: boolean) {
+      gas.colorHex = on ? (gas.colorHex ?? '#8aa0b8') : null;
+      gases = { ...gases };
   }
 
   function removeGas(key: string) {
@@ -192,6 +207,51 @@
                             <div class="field">
                                 <label>Boiling Point (K)</label>
                                 <input type="number" bind:value={gas.boilK} />
+                            </div>
+                            <div class="field">
+                                <label>Melting Point (K)</label>
+                                <input type="number" bind:value={gas.meltK} />
+                            </div>
+                            <div class="field">
+                                <label title="Heat capacity coefficient (model term)">Specific Heat</label>
+                                <input type="number" step="0.01" bind:value={gas.specificHeat} />
+                            </div>
+                            <div class="field">
+                                <label title="Radiative cooling coefficient (model term)">Radiative Cooling</label>
+                                <input type="number" step="0.01" bind:value={gas.radiativeCooling} />
+                            </div>
+                            <div class="field">
+                                <label title="Intrinsic tint of the gas. Colourless gases (N₂/O₂/CO₂) have none.">Gas Colour</label>
+                                <div class="colour-row">
+                                    <input type="checkbox" checked={gas.colorHex !== null && gas.colorHex !== undefined} on:change={(e) => toggleGasColour(gas, e.currentTarget.checked)} />
+                                    {#if gas.colorHex !== null && gas.colorHex !== undefined}
+                                        <input type="color" bind:value={gas.colorHex} />
+                                    {:else}
+                                        <span class="muted">colourless</span>
+                                    {/if}
+                                </div>
+                            </div>
+                            <div class="field aurora-field">
+                                <label title="Auroral emission bands. A gas can emit more than one colour (atomic oxygen glows green low + crimson high).">Aurora Emission Bands</label>
+                                {#if gas.aurora && gas.aurora.length}
+                                    {#each gas.aurora as band, bi}
+                                        <div class="aurora-band">
+                                            <input type="color" bind:value={band.hex} title="Emission colour" />
+                                            <input type="text" class="band-name" bind:value={band.colour} placeholder="name" title="Colour name" />
+                                            <input type="number" step="0.1" class="band-num" bind:value={band.efficiency} placeholder="eff" title="Brightness per unit gas" />
+                                            <select bind:value={band.altitude} title="Altitude layer">
+                                                <option value={0}>low</option>
+                                                <option value={1}>main</option>
+                                                <option value={2}>high</option>
+                                            </select>
+                                            <input type="number" step="0.01" min="0" max="1" class="band-num" value={band.minFraction ?? ''} on:input={(e) => band.minFraction = e.currentTarget.value === '' ? undefined : +e.currentTarget.value} placeholder="min" title="Only emit above this gas fraction (optional)" />
+                                            <button class="mini-del" on:click={() => removeAuroraBand(gas, bi)} title="Remove band">✕</button>
+                                        </div>
+                                    {/each}
+                                {:else}
+                                    <span class="muted">none (does not fluoresce)</span>
+                                {/if}
+                                <button class="mini-add" on:click={() => addAuroraBand(gas)}>+ Band</button>
                             </div>
                         </div>
                     </div>
@@ -353,6 +413,19 @@
   input, select {
       background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); padding: 4px; border-radius: 3px;
   }
+  input[type="color"] { padding: 0; width: 34px; height: 26px; }
+  .colour-row { display: flex; align-items: center; gap: 6px; }
+  .muted { font-size: 0.8em; color: var(--text-faint); font-style: italic; }
+  .aurora-field { flex-basis: 100%; }
+  .aurora-band { display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+  .aurora-band .band-name { width: 78px; }
+  .aurora-band .band-num { width: 60px; }
+  .mini-add, .mini-del {
+      background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted);
+      border-radius: 3px; cursor: pointer; font-size: 0.75em; padding: 2px 6px;
+  }
+  .mini-add { margin-top: 5px; }
+  .mini-del:hover { color: var(--status-bad); }
 
   .mix-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 5px; margin-top: 5px;

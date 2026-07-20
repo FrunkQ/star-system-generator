@@ -200,6 +200,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
   roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
   classes?: string[];
+  auroraEmitters?: AuroraEmitter[];  // resolved at process time from atmosphere × gas AuroraBand data
   orbit?: Orbit;
 
   // Physical parameters
@@ -451,6 +452,25 @@ export interface GasTag {
   trigger: string; // e.g. "pp > 0.05 AND O2_gas_present"
 }
 
+// One auroral emission band a gas produces when excited at the magnetic poles. A gas can have MORE
+// THAN ONE (atomic oxygen glows apple-green in its main band AND deep-red crimson high above), so this
+// is an ARRAY on the gas. efficiency = brightness per unit concentration (atomic oxygen glows far
+// brighter per molecule than N₂). altitude 0=low fringe, 1=main band, 2=high tenuous band (stacks the
+// renderer's shells). minFraction gates a band to gas-rich atmospheres (the crimson crown only appears
+// when the oxygen column is thick).
+export interface AuroraBand {
+  colour: string;        // human name (e.g. 'green', 'crimson') — for the trace/description
+  hex: string;           // emission colour
+  efficiency: number;    // brightness weight per unit gas fraction
+  altitude: number;      // 0 low | 1 main | 2 high
+  minFraction?: number;  // only emit when the gas fraction is at least this (default 0)
+}
+
+// A resolved auroral emitter present on a specific body, weight-normalised (dominant first). Derived
+// from the atmosphere composition × each gas's AuroraBand data at process time and stored on the body,
+// so every renderer draws the same colours without needing the rule pack.
+export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; altitude: number; }
+
 export interface GasPhysics {
   molarMass: number;
   shielding: number;
@@ -461,6 +481,7 @@ export interface GasPhysics {
   meltK: number;
   boilK: number;
   tags?: GasTag[];
+  aurora?: AuroraBand[];  // auroral emission bands (empty/absent = this gas does not fluoresce)
 }
 
 export interface ClimateModelGreenhouseConfig {

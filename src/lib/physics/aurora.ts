@@ -7,7 +7,20 @@
 // exposed numerically so the renderer can scale a subtle shimmer up to a huge curtain. Calibrated on
 // the solar system: Jupiter brilliant, Earth + Saturn strong, Uranus/Neptune moderate, Venus/Mars
 // (no field) and Mercury/Io (no air) none.
-import type { CelestialBody } from '$lib/types';
+import type { CelestialBody, RulePack, AuroraBand, AuroraEmitter } from '$lib/types';
+
+// Built-in default emission bands per gas — the engine fallback when a rule pack's gasPhysics doesn't
+// carry `aurora` data. Kept byte-for-byte equal to the old hardcoded table so behaviour is unchanged
+// until someone edits the data. Oxygen has TWO bands (green main + crimson high). Grouped species
+// (O2+O = atomic oxygen, H2+He) are handled in the resolver.
+const DEFAULT_AURORA: Record<string, AuroraBand[]> = {
+  O2:  [{ colour: 'green',    hex: '#57e39a', efficiency: 5,   altitude: 1 },
+        { colour: 'crimson',  hex: '#e14b3a', efficiency: 1.5, altitude: 2, minFraction: 0.12 }],
+  N2:  [{ colour: 'purple',   hex: '#9a6bff', efficiency: 1,   altitude: 0 }],
+  CO2: [{ colour: 'violet',   hex: '#c86ad0', efficiency: 1.4, altitude: 0 }],
+  H2:  [{ colour: 'red-pink', hex: '#ff7e6a', efficiency: 1.8, altitude: 1 }],
+  CH4: [{ colour: 'blue',     hex: '#6ab6ff', efficiency: 1.2, altitude: 0 }]
+};
 
 export type AuroraTier = 'faint' | 'moderate' | 'strong' | 'brilliant';
 export interface Aurora { strength: number; tier: AuroraTier | null; }
@@ -48,26 +61,43 @@ export function deriveAurora(body: CelestialBody): Aurora {
 // oxygen glows far brighter per molecule, which is why Earth reads green though the air is mostly N₂).
 // ALTITUDE (0 = low fringe, 1 = main band, 2 = high tenuous band) stacks the renderer's shells in the
 // right order. Shared with the physics trace (via auroraEmitter) so they can't drift.
-export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; altitude: number; }
-export function auroraEmitters(body: CelestialBody): AuroraEmitter[] {
-  const c: any = body.atmosphere?.composition ?? {};
+export type { AuroraEmitter };
+
+// DATA-DRIVEN resolve: reads each gas's emission bands from the rule pack (pack.gasPhysics[gas].aurora),
+// falling back to DEFAULT_AURORA when a pack doesn't carry the data. Grouped species preserve the old
+// physics: atomic oxygen = O2+O (bands from O2), hydrogen/helium share H2's band. Weight = fraction ×
+// band efficiency; a band with minFraction only emits in a gas-rich atmosphere; altitude 2 gets a
+// "(high)" label. Called by SystemProcessor with the pack; the result is stored on body.auroraEmitters.
+export function resolveAuroraEmitters(body: CelestialBody, pack?: RulePack | null): AuroraEmitter[] {
+  const c: Record<string, number> = (body.atmosphere?.composition as Record<string, number>) ?? {};
   const g = (k: string) => c[k] ?? 0;
-  const o = g('O2') + g('O');
-  const defs = [
-    { gas: 'atomic oxygen',    colour: 'green',    hex: '#57e39a', amt: o,                 eff: 5,   alt: 1 },
-    { gas: 'nitrogen',         colour: 'purple',   hex: '#9a6bff', amt: g('N2'),           eff: 1,   alt: 0 },
-    { gas: 'carbon dioxide',   colour: 'violet',   hex: '#c86ad0', amt: g('CO2'),          eff: 1.4, alt: 0 },
-    { gas: 'hydrogen/helium',  colour: 'red-pink', hex: '#ff7e6a', amt: g('H2') + g('He'), eff: 1.8, alt: 1 },
-    { gas: 'methane',          colour: 'blue',     hex: '#6ab6ff', amt: g('CH4'),          eff: 1.2, alt: 0 }
+  const bandsFor = (gas: string): AuroraBand[] => pack?.gasPhysics?.[gas]?.aurora ?? DEFAULT_AURORA[gas] ?? [];
+  const groups: { label: string; amount: number; bands: AuroraBand[] }[] = [
+    { label: 'atomic oxygen',   amount: g('O2') + g('O'),   bands: bandsFor('O2') },
+    { label: 'nitrogen',        amount: g('N2'),            bands: bandsFor('N2') },
+    { label: 'carbon dioxide',  amount: g('CO2'),           bands: bandsFor('CO2') },
+    { label: 'hydrogen/helium', amount: g('H2') + g('He'),  bands: bandsFor('H2') },
+    { label: 'methane',         amount: g('CH4'),           bands: bandsFor('CH4') }
   ];
-  let list = defs.filter((d) => d.amt > 0.02).map((d) => ({ gas: d.gas, colour: d.colour, hex: d.hex, w: d.amt * d.eff, alt: d.alt }));
-  // A RICH oxygen column (Earth-like) also excites the high-altitude crimson band — the deep-red crown
-  // seen above the green curtains in strong storms.
-  if (o > 0.12) list.push({ gas: 'atomic oxygen (high)', colour: 'crimson', hex: '#e14b3a', w: o * 5 * 0.3, alt: 2 });
+  let list: { gas: string; colour: string; hex: string; w: number; alt: number }[] = [];
+  for (const grp of groups) {
+    if (grp.amount <= 0.02) continue;
+    for (const b of grp.bands) {
+      if (grp.amount < (b.minFraction ?? 0)) continue;
+      const gas = b.altitude >= 2 ? `${grp.label} (high)` : grp.label;
+      list.push({ gas, colour: b.colour, hex: b.hex, w: grp.amount * b.efficiency, alt: b.altitude });
+    }
+  }
   if (!list.length) list = [{ gas: 'mixed gases', colour: 'green', hex: '#57e39a', w: 1, alt: 1 }];
   const total = list.reduce((s, d) => s + d.w, 0);
   return list.map((d) => ({ gas: d.gas, colour: d.colour, hex: d.hex, weight: d.w / total, altitude: d.alt }))
     .sort((a, b) => b.weight - a.weight);
+}
+
+// The emitter list for renderers: prefers the bands resolved onto the body at process time (so edited
+// gas data shows), else resolves from the built-in default (unprocessed bodies / tests).
+export function auroraEmitters(body: CelestialBody): AuroraEmitter[] {
+  return body.auroraEmitters ?? resolveAuroraEmitters(body, null);
 }
 
 // The DOMINANT emitter (+ the second colour as its gradient "tip"), for the physics trace and the 2D

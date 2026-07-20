@@ -10,7 +10,7 @@ import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
-import { deriveAurora } from '../physics/aurora';
+import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveVolatileRetention } from '../physics/volatileRetention';
@@ -734,6 +734,9 @@ export class SystemProcessor implements ISystemProcessor {
         body.tags = (body.tags || []).filter((t) => !t.key.startsWith('aurora/'));
         const aurora = deriveAurora(body);
         if (aurora.tier) body.tags.push({ key: `aurora/${aurora.tier}`, value: aurora.strength.toFixed(2) });
+        // Resolve the emission-colour bands from the pack's gas data (data-driven, editable) onto the
+        // body so every renderer reads the same colours without needing the rule pack.
+        body.auroraEmitters = body.atmosphere ? resolveAuroraEmitters(body, pack) : undefined;
 
         // Geological activity (tectonics + volcanism by MECHANISM) — the biosphere keystone. Uses
         // makeup (radiogenic budget + iron core), mass/radius (cooling rate), system AGE (radiogenic

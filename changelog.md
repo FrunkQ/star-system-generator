@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.209-beta - 20th Jul 2026
+
+* Auroras are now data-driven: each base gas carries its emission bands (`GasPhysics.aurora`) in `atmospheres.json` instead of a hardcoded table. A gas can have multiple bands — atomic oxygen glows green (main) AND crimson (high) — with per-band colour, efficiency, altitude and an optional concentration threshold. Resolved onto the body at process time (`resolveAuroraEmitters`); the built-in default matches the old values exactly, so no visual change until edited.
+* The atmosphere editor caught up to the data: the Gases tab now exposes Melting Point, Specific Heat, Radiative Cooling, Gas Colour (with a colourless option) and an Aurora Emission Bands editor (add/remove bands, colour, efficiency, altitude, min fraction) — previously only 4 of the gas fields were editable.
+
 ## v2.1.208-beta - 20th Jul 2026
 
 * Fixed the dev server being taken down by v2.1.204's liquids change: `constants.ts` imported the canonical `liquids.json` from `static/` (public dir), which Vite refuses in `npm run dev` (production was unaffected). Moved the canonical file to `src/lib/data/liquids.json` and import that; still a single source of truth. The rulepack loader now treats a pack's `liquids.json` as an optional override (missing = use the built-in default, quietly). Verified in dev, build and tests.
