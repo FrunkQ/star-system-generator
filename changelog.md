@@ -2,6 +2,20 @@
 
 All notable changes are listed here:
 
+## v2.1.190-beta - 20th Jul 2026
+
+* Clouds got a physics pass: weather now organises into east-west latitude BANDS (winds run E-W, not N-S) with a clear equatorial lane, and the bands follow the planet's axial tilt. The 3D deck is now TWO layers drifting independently for parallax, and each cloud puff carries a tonal shift so a single-colour deck swirls in shades rather than reading flat (Venus swirls in yellows).
+* Gas giants now get a swirling gas-coloured cloud deck over their banding — an easy visual "perk" — while still requiring real atmospheric pressure elsewhere (no clouds on Mars).
+* Clouds now render on the 2D disc icons too (they were 3D-only): banded E-W streaks, white on rocky worlds, gas-coloured on giants.
+
+## v2.1.189-beta - 20th Jul 2026
+
+* Starmap black holes are now drawn procedurally to match the reference gallery instead of pasting the photo images: a black event horizon inside a bright white photon ring, plus a temperature-graded accretion disc when feeding - so they sit alongside the generated stars in the same style, on both the 3D starmap and the 2D map.
+
+## v2.1.188-beta - 20th Jul 2026
+
+* Cloud decks dialled back: smaller, patchier cloud systems and a lower coverage curve so an Earth-like reads as scattered white clouds over open ocean rather than a heavy overcast.
+
 ## v2.1.187-beta - 20th Jul 2026
 
 * Cloud decks now read clearly: a thin deck (Earth) draws a few bold white cloud systems with open gaps over the surface instead of a faint same-colour smear, and only a thick veil (Venus) takes the haze colour. Clouds are a touch self-lit so they stay legible on the shadowed side.

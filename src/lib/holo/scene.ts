@@ -24,7 +24,7 @@ import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from 
 import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudShell, updateMagma, updatePlumes, accretionColor,
+  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, updateMagma, updatePlumes, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
@@ -1444,9 +1444,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
             if (appear.clouds) {
               let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-              const cl = buildCloudShell(radius, appear.clouds.colorHex, appear.clouds.coverage, cseed || 1);
-              sphere.add(cl.mesh);
-              cloudVisuals.push({ mesh: cl.mesh, drift: cl.drift });
+              const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.coverage, cseed || 1);
+              sphere.add(cl.group);
+              cloudVisuals.push(...cl.layers);
             }
           }
         }

@@ -178,9 +178,10 @@ export function buildAtmoGlow(radius: number, colorHex: string, strength: number
 	return shell;
 }
 
-// A cloud/haze equirect texture. A THIN deck (Earth) = a few BOLD, well-defined cloud systems (bright
-// opaque cores, soft edges) with clear ocean gaps between — so it reads as distinct clouds, not a
-// uniform smear. A THICK deck (Venus) = a near-solid veil plus swirl texture. Seeded per body.
+// A cloud/haze equirect texture. Clouds aren't random blobs — winds run EAST-WEST (Coriolis/convection),
+// so weather organises into latitude BANDS of E-W streaks with clearer lanes between. An even band count
+// leaves the EQUATOR in a clear lane, so the surface shows through there. A THIN deck (Earth) draws
+// scattered streaks with open surface; a THICK deck (Venus) adds a near-solid base veil. Seeded per body.
 export function makeCloudTexture(colorHex: string, coverage: number, seed: number): THREE.Texture {
 	const W = 512, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
 	const ctx = c.getContext('2d')!;
@@ -190,24 +191,33 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 	const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
 	const thick = coverage > 0.72;
 	if (thick) { ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(0.95, 0.45 + (coverage - 0.72) * 2)})`; ctx.fillRect(0, 0, W, H); }
-	// Build cloud systems from CLUSTERS of overlapping puffs → lumpy, organic shapes rather than dots. A
-	// thin deck gets MANY small, scattered systems (patchy, plenty of clear surface) instead of a few big
-	// masses, so it reads at the right scale against the globe.
-	const systems = thick ? Math.round(24 + coverage * 40) : Math.round(16 + coverage * 26);
+	const bands = thick ? 6 : 4;                                     // even → a clear equatorial lane
+	const systems = thick ? Math.round(30 + coverage * 44) : Math.round(16 + coverage * 24);
 	for (let i = 0; i < systems; i++) {
-		const cx = rnd() * W, cy = H * (0.12 + rnd() * 0.76);          // keep clear of the pinching poles
-		const spanX = (thick ? 30 : 20) + rnd() * (thick ? 40 : 34), spanY = spanX * (0.4 + rnd() * 0.4);
-		const puffs = thick ? 6 : 4 + Math.floor(rnd() * 5);
-		const core = thick ? 0.18 + rnd() * 0.22 : 0.55 + rnd() * 0.33; // thin deck = defined but not solid
+		const bandY = ((Math.floor(rnd() * bands) + 0.5) / bands) * H;
+		const cy = bandY + (rnd() - 0.5) * (H / bands) * 0.55;       // jitter within the band; lanes stay clear
+		if (cy < H * 0.08 || cy > H * 0.92) continue;               // skip the pinching poles
+		const cx = rnd() * W;
+		const spanX = (thick ? 70 : 48) + rnd() * (thick ? 70 : 80); // wide  E-W
+		const spanY = (thick ? 16 : 7) + rnd() * (thick ? 14 : 8);   // narrow N-S
+		const puffs = thick ? 7 : 4 + Math.floor(rnd() * 5);
+		const core = thick ? 0.18 + rnd() * 0.2 : 0.5 + rnd() * 0.35;
 		for (let j = 0; j < puffs; j++) {
 			const px = cx + (rnd() - 0.5) * spanX, py = cy + (rnd() - 0.5) * spanY;
-			const rad = (thick ? 10 : 6) + rnd() * (thick ? 22 : 15);
+			const radY = (thick ? 9 : 5) + rnd() * (thick ? 16 : 11);
+			const radX = radY * (1.6 + rnd() * 1.2);                 // stretched east-west
 			const a = core * (0.5 + rnd() * 0.5);
-			const grad = ctx.createRadialGradient(px, py, 0, px, py, rad);
-			grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
-			grad.addColorStop(0.6, `rgba(${r},${g},${b},${a * 0.4})`);
-			grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-			ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(px, py, rad, 0, 2 * Math.PI); ctx.fill();
+			// Per-puff tonal shift: some puffs lighter, some darker than the base — so a same-colour deck
+			// (Venus yellow, a giant's band colour) SWIRLS with shades instead of reading as one flat tone.
+			const sh = 0.72 + rnd() * 0.56;
+			const rr = Math.min(255, Math.round(r * sh)), gg = Math.min(255, Math.round(g * sh)), bb = Math.min(255, Math.round(b * sh));
+			ctx.save(); ctx.translate(px, py); ctx.scale(radX / radY, 1);
+			const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radY);
+			grad.addColorStop(0, `rgba(${rr},${gg},${bb},${a})`);
+			grad.addColorStop(0.6, `rgba(${rr},${gg},${bb},${a * 0.4})`);
+			grad.addColorStop(1, `rgba(${rr},${gg},${bb},0)`);
+			ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, radY, 0, 2 * Math.PI); ctx.fill();
+			ctx.restore();
 		}
 	}
 	const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
@@ -215,15 +225,23 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 	return tex;
 }
 
-// CLOUD SHELL — a cloud/haze deck on its OWN sphere just above the surface, so it floats separately (the
-// caller drifts it). Normal-blended (a real veil, not a glow); the texture's own alpha carries the gaps,
-// so opacity stays near 1 and the bright cloud cores read clearly. Returns the mesh + a slow drift rate.
-export function buildCloudShell(radius: number, colorHex: string, coverage: number, seed: number): { mesh: THREE.Mesh; drift: number } {
-	const tex = makeCloudTexture(colorHex, coverage, seed);
-	const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false, emissive: new THREE.Color(colorHex), emissiveMap: tex, emissiveIntensity: 0.25, opacity: 1 });
-	const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.03, 40, 28), mat);
-	mesh.renderOrder = 1;
-	return { mesh, drift: 0.02 + 0.03 * (1 - coverage) }; // thinner decks drift a touch faster
+// CLOUD DECK — TWO cloud shells just above the surface, each on its own sphere and drifting INDEPENDENTLY
+// (of the planet's spin and of each other), so the deck has parallax depth: a lower main deck plus a high,
+// wispier deck that slides the other way a bit faster. Normal-blended (a real veil, not a glow); the
+// texture alpha carries the gaps so the surface shows between streaks. Returns the group + per-layer drift.
+export function buildCloudDeck(radius: number, colorHex: string, coverage: number, seed: number): { group: THREE.Group; layers: { mesh: THREE.Mesh; drift: number }[] } {
+	const group = new THREE.Group();
+	const layers: { mesh: THREE.Mesh; drift: number }[] = [];
+	const layer = (rMul: number, cov: number, sd: number, emissive: number, drift: number) => {
+		const tex = makeCloudTexture(colorHex, cov, sd);
+		const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false, emissive: new THREE.Color(colorHex), emissiveMap: tex, emissiveIntensity: emissive, opacity: 1 });
+		const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * rMul, 40, 28), mat);
+		mesh.renderOrder = 1;
+		group.add(mesh); layers.push({ mesh, drift });
+	};
+	layer(1.02, coverage, seed || 1, 0.22, 0.02 + 0.02 * (1 - coverage));                 // main deck
+	layer(1.05, coverage * 0.5, (Math.imul(seed || 1, 7) + 13) >>> 0 || 2, 0.16, -0.035 - 0.02 * (1 - coverage)); // high wispy deck, other way
+	return { group, layers };
 }
 
 // --- Animation helpers ----------------------------------------------------------------------------

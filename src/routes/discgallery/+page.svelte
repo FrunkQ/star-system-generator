@@ -114,13 +114,13 @@
   ];
 
   const giants = [
-    mk({ name: 'Jupiter-like · fast spin · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3,
+    mk({ name: 'Jupiter-like · fast spin · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3, makeup: { gas: 0.9, ice: 0.1 } as any,
         apparentColor: { hex: '#d8b888', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any }),
-    mk({ name: 'Saturn-like · 27° tilt', apparentColorHex: '#d8c89a', axial_tilt_deg: 27,
+    mk({ name: 'Saturn-like · 27° tilt', apparentColorHex: '#d8c89a', axial_tilt_deg: 27, makeup: { gas: 0.9, ice: 0.1 } as any,
         apparentColor: { hex: '#d8c89a', banding: 5, palette: ammonia('#e6dcb8', '#c8b888', '#a89860') } as any }),
-    mk({ name: 'Ice giant · smooth', apparentColorHex: '#8fc4d6', axial_tilt_deg: 28,
+    mk({ name: 'Ice giant · smooth', apparentColorHex: '#8fc4d6', axial_tilt_deg: 28, makeup: { gas: 0.6, ice: 0.4 } as any,
         apparentColor: { hex: '#8fc4d6', banding: 3, palette: iceGiant('#a6d4e2') } as any }),
-    mk({ name: 'Uranus-like · 98° tilt (on its side)', apparentColorHex: '#a6d8dc', axial_tilt_deg: 98,
+    mk({ name: 'Uranus-like · 98° tilt (on its side)', apparentColorHex: '#a6d8dc', axial_tilt_deg: 98, makeup: { gas: 0.6, ice: 0.4 } as any,
         apparentColor: { hex: '#a6d8dc', banding: 4, palette: iceGiant('#b8e0e4') } as any }),
   ];
 

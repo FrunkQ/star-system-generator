@@ -204,6 +204,26 @@
     });
   })();
 
+  // Cloud deck (2D): east-west streaks organised into a few latitude BANDS with a clear equatorial lane —
+  // the same physics the 3D deck uses (winds run E-W; an even band count leaves the equator visible). Each
+  // patch is a flattened ellipse; x is placed within the disc's width at that latitude. Seeded, static.
+  $: cloudPatches = (() => {
+    if (!a.clouds) return [] as { cx: number; cy: number; rx: number; ry: number; op: number }[];
+    const rnd = seeded(211), cov = a.clouds.coverage, thick = cov > 0.72;
+    const bands = thick ? 6 : 4, n = Math.round((thick ? 16 : 8) + cov * (thick ? 22 : 14));
+    const out: { cx: number; cy: number; rx: number; ry: number; op: number }[] = [];
+    for (let i = 0; i < n; i++) {
+      const band = Math.floor(rnd() * bands);
+      const cy = 50 + (((band + 0.5) / bands - 0.5) * 2 * 27) + (rnd() - 0.5) * (54 / bands) * 0.5;
+      const half = Math.sqrt(Math.max(0, 30 * 30 - (cy - 50) * (cy - 50))); // disc half-width at this latitude
+      if (half < 3) continue;
+      const cx = 50 + (rnd() - 0.5) * 2 * half * 0.9;
+      const rx = (thick ? 5 : 3) + rnd() * (thick ? 7 : 5), ry = rx * (0.32 + rnd() * 0.16);
+      out.push({ cx, cy, rx, ry, op: (thick ? 0.4 : 0.22) + rnd() * 0.35 * cov });
+    }
+    return out;
+  })();
+
   // Polar vortex: a gas giant's geometric polar jet, drawn as a foreshortened polygon near the top pole.
   $: vortexPoly = (() => {
     if (!a.polarVortex) return '';
@@ -481,6 +501,15 @@
         <g clip-path="url(#clip-{uid})">
           {#each frostPatches as p}
             <circle cx={p.cx} cy={p.cy} r={p.r} fill={a.frost.colorHex} opacity={0.2 + a.frost.coverage * 0.4} />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Cloud deck: E-W streaks in latitude bands (clear equatorial lane), floating over the surface. -->
+      {#if a.clouds}
+        <g clip-path="url(#clip-{uid})">
+          {#each cloudPatches as p}
+            <ellipse cx={p.cx} cy={p.cy} rx={p.rx} ry={p.ry} fill={a.clouds.colorHex} opacity={p.op} />
           {/each}
         </g>
       {/if}

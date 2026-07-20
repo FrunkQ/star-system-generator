@@ -15,7 +15,7 @@ import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { buildAuroraShell } from './scene';
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudShell, updateMagma, updatePlumes, accretionColor,
+	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, updateMagma, updatePlumes, accretionColor,
 	type EmissiveVisual
 } from './bodyFeatures';
 import { GALLERY_ROWS, GALLERY_BLACK_HOLES } from '$lib/catalogue/galleryExamples';
@@ -126,9 +126,9 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			if (appear.atmGlow) g.add(buildAtmoGlow(R, appear.atmGlow.colorHex, appear.atmGlow.strength));
 			if (appear.clouds) {
 				let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-				const cl = buildCloudShell(R, appear.clouds.colorHex, appear.clouds.coverage, cseed || 1);
-				sphere.add(cl.mesh);            // tracks the sphere's spin; the gallery drifts it via cloudSpinners
-				cloudSpinners.push({ obj: cl.mesh, drift: cl.drift });
+				const cl = buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.coverage, cseed || 1);
+				sphere.add(cl.group);           // tracks the sphere's spin; the gallery drifts each layer separately
+				for (const l of cl.layers) cloudSpinners.push({ obj: l.mesh, drift: l.drift });
 			}
 			// Auroras from the shared appearance MODEL (the aurora/* tag) — consistent with the 2D disc.
 			// (The live holo currently derives them from physics; the model tag is what the gallery shows.)

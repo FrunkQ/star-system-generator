@@ -374,18 +374,19 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 			}
 		: null;
 
-	// CLOUD DECK — a condensed layer that floats above the surface, rendered as its OWN shell in 3D so
-	// it drifts separately (parallax) and, when thick, veils the ground (Venus = an opaque hazy ball;
-	// Earth = a partial patchy deck). Opacity climbs with pressure. Giants are excluded: their banded
-	// texture already IS their cloud tops.
+	// CLOUD DECK — a condensed layer that floats above the surface, rendered as its OWN drifting shell(s)
+	// in 3D so it has parallax. A rocky world needs real pressure to hold clouds (none on Mars). A GAS
+	// GIANT is all atmosphere: it gets a moderate, gas-coloured swirling deck over its banding to add life
+	// (kept partial so the bands still show through). Venus-type thick decks veil the ground.
+	const isGiantCloud = rendersAsGiant(body);
 	const hasCloudTag = (body.tags ?? []).some((t) => t.key === 'structure/cloud-deck');
-	const cloudCoverage = clamp01(0.18 + (Math.log10(Math.max(0.1, atmPressureBar)) + 0.5) * 0.3);
-	// Cloud tint: an explicit cloud-deck colour if we have one; otherwise a THICK veil takes the haze
-	// colour (Venus stays yellow) while a THIN, patchy deck is bright WHITE — so Earth's clouds read as
-	// distinct white systems over the ocean instead of a same-blue smear.
+	const cloudCoverage = isGiantCloud ? 0.6 : clamp01(0.18 + (Math.log10(Math.max(0.1, atmPressureBar)) + 0.5) * 0.3);
+	// Cloud tint: an explicit cloud-deck colour if we have one; else a giant / thick veil takes the haze
+	// (gas) colour — Venus stays yellow, a giant swirls in its band colour — while a thin rocky deck is
+	// bright WHITE so Earth's clouds read as distinct white systems over the ocean, not a same-blue smear.
 	const cloudColorHex = palette.find((p) => p.role === 'cloud')?.hex
-		?? (cloudCoverage > 0.72 ? atmColorHex : '#f4f8fc');
-	const clouds: CloudSpec | null = (!isStar && !isBelt && !isSmallBody && !rendersAsGiant(body) && (hasCloudTag || atmPressureBar > 0.3))
+		?? (isGiantCloud || cloudCoverage > 0.72 ? atmColorHex : '#f4f8fc');
+	const clouds: CloudSpec | null = (!isStar && !isBelt && !isSmallBody && (isGiantCloud || hasCloudTag || atmPressureBar > 0.3))
 		? { coverage: cloudCoverage, colorHex: cloudColorHex }
 		: null;
 
