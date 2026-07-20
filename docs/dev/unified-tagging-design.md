@@ -1,8 +1,8 @@
 # Unified Tagging — high-level design
 
-Status: HIGH-LEVEL DRAFT — open questions at the end must be answered before the detailed
-system design is written. This doc will then grow into the implementation spec handed to a
-coding agent, including the full deployment/migration plan.
+Status: DECISIONS LOCKED (2026-07-20) bar three small clarifications (§10). Next revision
+becomes the detailed implementation spec for a coding agent, including the full
+deployment/migration plan. Target: separate worktree, V2.2.x scope.
 
 ## 1. Why
 
@@ -23,9 +23,10 @@ The duplication is real and already bites:
 - **Two pack formats** (`sse-poi-pack`, `sse-coi-pack`), two export/import/merge paths, two
   settings sections, two category editors.
 - **Provenance by flag soup**: `Tag` carries `manual` / `coi` / `inherited` / `derived` /
-  `source` in ad-hoc combinations; three different strip passes (`reasonsToVisit` clear step,
-  `importFixup`, `starmapSanitizer`) each decide "which tags survive" with slightly different
-  rules.
+  `source` in ad-hoc combinations.
+- **Three different strip passes** (`reasonsToVisit` clear step, `importFixup`,
+  `starmapSanitizer`) each decide "which tags survive" with slightly different rules. This
+  is a named problem: they get unified into ONE lifecycle module (§4).
 - The `resource/` namespace is deliberately shared between body deposits (PoI-emitted) and
   construct cargo (CoI hand-set), distinguished only by flags — which is exactly what the
   autopilot routes on.
@@ -36,21 +37,25 @@ tags) would multiply every one of these seams. Unify first.
 ## 2. Goals
 
 1. **One mental model**: a tag is a tag. It has one key, optional value, one provenance.
-   Three provenances only: **system**, **physics**, **user**.
+   Three provenances only: **system**, **physics**, **user**. The PoI and CoI concepts are
+   removed from the UI and docs entirely — "just tags".
 2. **One category schema** covering everything PoI categories and CoI categories do today,
-   plus new capability (applies-to roles, priority promotion).
+   plus new capability (applies-to roles, priority promotion, player visibility).
 3. **One settings surface** ("Tagging" replaces PoI + CoIs), one store, one pack format,
-   one starmap-embedding path, one survive-a-rederive rule.
-4. **Priority Tags**: promote a category so its tags render as badges/rings on maps and all
-   player surfaces, consistently.
+   one starmap-embedding path, and **one tag-lifecycle rule** (§4).
+4. **Priority Tags**: promote a category so its tags render as map markers across GM and
+   player surfaces, consistently, with selectable marker styles.
 5. **GM-override physics tags**: manually add tags from physics namespaces even where the
-   physics wouldn't produce them; clearly marked, explained in /physics and the Newton panel.
-6. **Zero behavioural change to the engine couplings** (autopilot, readiness, tardiness,
+   physics wouldn't produce them; clearly marked, explained in /physics and the Newton
+   panel. Add-only (no suppression) — physics tags are wiped and re-derived every process
+   anyway, so suppression has no stable meaning.
+6. **Secret tags**: per-tag "secret" and per-category "hidden from players" — redacted from
+   every player surface.
+7. **Zero behavioural change to the engine couplings** (autopilot, readiness, tardiness,
    drive inheritance, refuelling) — slugs are preserved 1:1.
 
-Non-goals (this pass): icon badges (colour + label only for now), new rule-engine
-capability (the PoI condition engine is kept as-is), redesigning the Find-by-tag UI beyond
-what the unification forces, per-player tag visibility (unless answered otherwise in Q6).
+Non-goals (this pass): icon/art badges (shape + colour + text only), new rule-engine
+condition capability, redesigning Find-by-tag beyond what unification forces.
 
 ## 3. The unified model
 
@@ -59,15 +64,18 @@ what the unification forces, per-player tag visibility (unless answered otherwis
 `Tag` on a body/construct gets a single discriminator replacing the flag soup:
 
 - **physics** — emitted by the physics layers; cleared + re-derived every process; never
-  saved. (Unchanged behaviour, new explicit marker.)
+  saved.
 - **rule** — emitted by an automated tagging rule (`source: 'rule:<id>'` kept); cleared +
-  re-rolled per category on every process, deterministic seeded roll unchanged.
+  re-rolled per category on every process; deterministic seeded roll unchanged.
 - **manual** — hand-added by the GM; never stripped by anything. Sub-case: **manual
   override** — a manual tag whose key sits in a physics namespace. Kept, flagged
-  `override: true`, displayed under a "GM override — may not respect the physics" heading;
-  the Newton panel and /physics explain the mechanism.
+  `override: true`, displayed under "GM override — may not respect the physics"; the
+  Newton panel and /physics explain the mechanism. Overrides feed every consumer (visuals,
+  rules, find-by-tag) exactly like the real physics tag would.
 - **inherited/derived** — construct tags computed from hardware (drive/refuel) or runtime
-  state (status/in-transit-*, adrift). Unchanged mechanics, now uniformly marked.
+  state (status/in-transit-*, adrift). Unchanged mechanics, uniformly marked.
+
+Plus one orthogonal flag: `secret?: true` — redacted from all player surfaces (§7).
 
 Body `tags[]` keys do not change. No starmap data migration needed at the node level.
 
@@ -76,22 +84,24 @@ Body `tags[]` keys do not change. No starmap data migration needed at the node l
 ```ts
 interface TagCategory {
   id: string;                       // namespace slug, e.g. 'faction' → keys 'faction/*'
-  shortName: string;                // chip label context
-  longName: string;                 // settings list / editor title
+  shortName: string;
+  longName: string;
   description?: string;
-  color: string; textColor: string; // base chip colours (as PoI today)
+  color: string; textColor: string; // base chip colours
   appliesTo: TagRole[];             // star | planet | moon | belt | ring | construct
   system?: boolean;                 // SYSTEM category: cannot delete, cannot disable
   enabled: boolean;
-  tags: TagDef[];                   // defined tags (label, slug, optional engine data)
+  playerHidden?: boolean;           // whole category redacted from player surfaces
+  tags: TagDef[];
   rules: TagRule[];                 // automated tagging rules (current PoI engine + schema)
-  priority?: PriorityConfig;        // present = promoted to Priority Tags (see §6)
+  priority?: PriorityConfig;        // present = promoted to Priority Tags (§6)
 }
 
 interface TagDef {
   slug: string; label: string; description?: string;
-  badge?: { label: string; color: string };   // priority badge override (see §6)
-  // engine data, only meaningful on specific SYSTEM categories:
+  badge?: { label: string; color: string };   // priority marker override
+  // engine data, only meaningful on specific SYSTEM categories (fixed fields, not a
+  // general attribute mechanism — decided Q11):
   tardiness?: number; readiness?: number; rate?: number; locked?: boolean;
 }
 ```
@@ -102,172 +112,196 @@ registry (`tagPresentation.ts`) is fed from this single source.
 
 ### 3.3 The three tag families as the user sees them
 
-- **SYSTEM tags** (rename of CORE): categories SSE itself depends on. Cannot be deleted or
-  disabled; their *tag lists* remain fully editable (add/remove tags). Proposed set = the
-  current CoI required six (status, owner, purpose, resource, class, drive) + whatever Q1/Q3
-  decides about body-side resource/frontier.
-- **Physics tags**: not categories in Settings at all — the Tagging section *explains* them
-  and links to /physics and the Newton panel. Plus GM overrides per §3.1.
-- **User tags**: everything else — current optional CoI categories (universe, tech,
-  disposition), current PoI categories (science, intrigue, …), and any category the GM
-  creates. Fully editable, deletable, disableable.
+- **SYSTEM tags** (rename of CORE): categories SSE itself depends on — status, owner,
+  purpose, resource, class, drive, **frontier** (decided Q2/Q3; frontier is SYSTEM because
+  fuel `refuel_tags` reference `frontier/*`). Cannot be deleted or disabled; everything
+  else about them — tag lists AND rules — remains fully user-editable. SYSTEM protects
+  *existence*, not content: these tags are still largely **generated by user-tweakable
+  rules** (see §10 clarification C1 on exact wording in the UI copy).
+- **Physics tags**: not categories in Settings — the Tagging section *explains* them and
+  links to /physics and the Newton panel. GM overrides per §3.1.
+- **User tags**: everything else — former optional CoI categories (universe, tech,
+  disposition → now plain deletable categories), former PoI categories (science,
+  intrigue), and anything the GM creates. Fully editable, deletable, disableable.
 
-## 4. Settings → Tagging
+**Resources is ONE category** (decided Q1), applying to bodies and constructs; meaning
+stays contextual — on a body = available/extractable, on a construct = carried. That is
+how the autopilot already reads it, so nothing to infer and zero migration risk.
+
+Rules are available on every category including SYSTEM (decided Q8) — the rules editor is
+simply present everywhere; appliesTo ghosts what a rule can target.
+
+## 4. Tag lifecycle — ONE strip rule (new, first-class)
+
+Today three code paths decide which tags survive, with subtly different logic:
+
+1. `reasonsToVisit.annotate` clear step — strips rule tags by category prefix, spares `manual`
+2. `importFixup.isInterferingTag` — strips derived namespaces + legacy shapes, does NOT
+   check `manual` (a manual tag in a derived namespace would be wrongly stripped — this
+   becomes load-bearing once GM overrides exist)
+3. `starmapSanitizer.sanitizeTags` — strips V1 legacy tags, spares `manual`
+
+These collapse into one module, `lib/tags/tagLifecycle.ts`, the single authority on
+provenance semantics:
+
+- `survivesRederive(tag)` — manual (incl. overrides) and secret flags always survive;
+  physics + rule tags never do.
+- `stripForReprocess(tags, scope)` — used by SystemProcessor + the rules pass.
+- `stripForExport(tags)` — used by save/export (drops everything re-derivable).
+- `sanitizeOnLoad(tags)` — legacy-shape cleanup + flag-soup → new provenance normalisation.
+
+Every current caller (SystemProcessor, reasonsToVisit, importFixup, starmapSanitizer,
+export paths) delegates to these four functions. The detailed spec will name each use case
+and its exact call, so it is always obvious which one applies. Unit-tested as a matrix:
+every provenance × every operation → survive/strip.
+
+## 5. Settings → Tagging
 
 PoI and CoIs sections are replaced by one **Tagging** section:
 
 - Intro copy: tags come from physics (see /physics), from automated rules, and from you.
-- List of all categories: SYSTEM first (lock glyph, toggle disabled-on), then user
-  categories with enable/disable toggles, rule counts, applies-to chips.
-- Buttons: add category, edit, delete (ghosted on SYSTEM), save/load category.
+- List of all categories: SYSTEM first (lock glyph, enable toggle locked on), then user
+  categories with enable/disable, rule counts, applies-to chips, priority + hidden marks.
+- Buttons: add category, edit, delete (ghosted on SYSTEM), save/load category to file.
 - Category editor (one modal, evolved from PoIPackEditor + CoIEditor):
   1. short/long name, description
   2. base colours (chip bg + text)
   3. applies-to role checkboxes
-  4. Priority Tags promotion block (§6)
-  5. defined-tags list (add/remove; engine-data fields shown only on the SYSTEM categories
-     that use them)
-  6. "Edit automated tagging rules" — the existing rule list/condition builder, with
+  4. player visibility (hide whole category)
+  5. Priority Tags promotion block (§6)
+  6. defined-tags list (add/remove; engine-data fields shown only where they apply;
+     per-tag badge label/colour when promoted; per-tag secret default)
+  7. "Edit automated tagging rules" — existing rule list/condition builder, with
      "Applies to" entries ghosted to the category's `appliesTo`
-  7. save/load this category to file
-
-Old PoI/CoI pack files are **not** importable (dead format, no shim) — per Q9 unless
-overturned.
-
-## 5. Manual tagging on bodies & constructs
-
-The Tags tab keeps its current shape (grouped chips + add form) with these changes:
-
-- Category dropdown lists: Custom, every *enabled* category whose `appliesTo` includes this
-  object's role, and — new — the **physics namespaces** (geology, tidal, climate, aurora, …)
-  for GM overrides.
-- Adding a physics-namespace tag files it as a manual override (§3.1): grouped separately
-  ("GM override · may not respect physics"), removable, survives re-process, and — the
-  point — feeds every consumer exactly like the real physics tag would (visual features,
-  rules, find-by-tag).
-- You cannot *create categories* from this tab (Settings only), but you can add new tags to
-  an existing category (they get registered on the category, as PoI manual filing works now).
-- Groups render as: Yours → GM overrides → per-category rule tags (orange lock) → physics
-  (red lock).
+- Old PoI/CoI pack files are NOT importable (decided Q9 — if one of the 1–2 users who made
+  packs needs theirs, we convert it for them by hand).
 
 ## 6. Priority Tags
 
-A category can be **promoted to Priority Tags**. Config on the category:
+A category can be **promoted to Priority Tags**; its tags then render as markers on maps.
 
-```ts
-interface PriorityConfig {
-  display: 'label' | 'ring' | 'both';
-}
-// per-tag: TagDef.badge = { label, color } — defaults to tag label + category colour
-```
+### Marker styles (decided Q5 — multiple styles, be creative)
 
-Rendering rules (kept deliberately simple this pass):
+- **Pin** — Google-Maps-style teardrop pin in the badge colour, optional 1–2 letter
+  monogram; a thin leader line to the body when fanned out.
+- **Flag** — simple line + small coloured flag/label off the body edge (compact, reads at
+  distance).
+- **Pill** — the existing tag-chip pill (label text in badge colours), anchored under the
+  body name.
+- **Ring** — thin coloured circle around the body disc/marker; multiple rings nest as
+  concentric strokes.
+- Styles must remain legible when colour is unreliable (player-view CRT filters, colour
+  overlays, colour-blind users): pin monograms, flag labels and pill text carry the
+  information without colour.
 
-- **System map / orrery / holo**: each priority tag on a body/construct renders its badge —
-  a small pill in the map's existing label style ('label'), a coloured ring around the
-  object ('ring'), or both. Multiple badges fan around the object edge in a stable order;
-  multiple rings nest as thin concentric strokes. A clutter cap with "+N" overflow.
-- **Starmap**: a star carrying a priority tag shows its badge at starmap level (Q4: rollup
-  of the whole system's priority tags is an open question).
+Where the style choice lives is clarification C2 (§10) — proposed: the category sets a
+default; a viewer-level preference (GM map settings + player view settings) can force a
+style globally.
+
+### Rendering rules
+
+- **System map / orrery / holo**: each priority tag renders its marker; multiple markers
+  fan around the object edge in stable order; clutter cap (~4) with "+N" overflow.
+- **Starmap — ROLLED UP** (decided Q4): a system's star shows the union of priority tags
+  carried by ANY body/construct in that system (deduped per tag). Multiple factions on one
+  system is expected on contested/cooperating areas. Aggregation rule: dedupe by tag key,
+  order by category then slug, same clutter cap.
 - **Player surfaces** (/catalogue, player views, holo, ReportDocument): priority tags are
-  listed *separately* from ordinary tags, directly under the body/construct name, in the
-  same visual style as the map badges.
+  listed *separately* from ordinary tags, directly under the body/construct name, same
+  visual language as the map markers. Secret/hidden tags redacted first (§7).
 - **Filters / Find-by-tag**: priority tags behave as normal tags in filters; map filter
-  presets can toggle badge visibility as a layer.
+  presets can toggle the marker layer.
 
-Badges are visual clutter by design intent — docs will say "use sparingly". Icons and
-richer badge art are explicitly banked for a later pass.
+Docs will say "use sparingly". Icon/art badges banked for a later pass.
 
-## 7. Engine couplings that must not move
+## 7. Secret tags & player redaction (decided Q6)
 
-Preserved slug-for-slug (all become SYSTEM categories or stay data-driven):
+- Per-tag `secret: true` (settable when adding/editing a tag on a body/construct, and as a
+  per-TagDef default) — the tag is stripped by `computePlayerSnapshot` and never reaches
+  /catalogue, player views, holo, broadcast snapshots or reports.
+- Per-category `playerHidden: true` — the whole category is stripped the same way.
+- Redaction happens in ONE place: `computePlayerSnapshot` calls a
+  `redactTagsForPlayers(tags, categories)` helper from the lifecycle module, so every
+  player surface inherits it (they all already flow through the snapshot).
+- GM surfaces show secret tags with a distinguishing mark (e.g. eye-slash glyph).
+
+## 8. Manual tagging on bodies & constructs
+
+The Tags tab keeps its current shape (grouped chips + add form) with these changes:
+
+- Category dropdown lists: Custom, every *enabled* category whose `appliesTo` includes
+  this object's role, and the **physics namespaces** (geology, tidal, climate, aurora, …)
+  for GM overrides.
+- Adding a physics-namespace tag files it as a manual override (§3.1), grouped under
+  "GM override · may not respect physics", removable, survives re-process.
+- No category *creation* from this tab (Settings only), but adding new tags to an existing
+  category is allowed and registers the tag on the category.
+- A "secret" toggle on the add form (and on existing manual chips).
+- Groups render as: Yours → GM overrides → per-category rule tags (orange lock) → physics
+  (red lock).
+
+## 9. Engine couplings that must not move
+
+Preserved slug-for-slug (all in SYSTEM categories or data-driven):
 
 - `resource/*` prefix matching + tag `value` as abundance — autopilotAdapter
 - fuel `refuel_tags` (data-driven set, typically `resource/*` + `frontier/*`)
 - `purpose/mining|survey-prospecting|science|research|patrol` — leg inference
 - `drive/*` ranking + inheritance; `status/*` readiness (incl. derived in-transit/adrift);
   `owner/*` tardiness
-- physics namespaces consumed by classification visuals, PlanetDisc, PoI rule conditions
+- physics namespaces consumed by classification visuals, PlanetDisc, rule conditions
 
-## 8. Migration & deployment (sketch — detailed plan comes with the full spec)
+Migration tests assert route-resolution parity on a fixture starmap before/after.
+
+## 10. Remaining clarifications
+
+- **C1 — "system = user-rules-generated" wording**: Q3's answer said to frame SYSTEM tags
+  as generated by user-tweakable rules. Reading taken: SYSTEM protects a category's
+  *existence and enabled state only*; its rules and tag lists stay fully editable, and the
+  UI copy says so ("System categories are needed for SSE to operate — you can still edit
+  their tags and the rules that generate them, you just can't remove them"). Confirm, or
+  was a different family *name* than "System" intended?
+- **C2 — marker style: who chooses?** Proposed: category default (GM, in the promotion
+  block) + a viewer-level override preference on GM map settings and player-view settings
+  (so a colour-reliant table can force pins/flags with text). Confirm or simplify to one.
+- **C3 — worktree base**: V2.2.x scope ⇒ branch from `beta` (the live V2.2 line) in a
+  separate worktree. Confirm.
+
+## 11. Migration & deployment (sketch — full plan lands with the detailed spec)
 
 Data migration is load-time, one-way, automatic:
 
-1. `poi-packs` + `reasons-to-visit-config` + `coi-categories` (localStorage and the
+1. `poi-packs` + `reasons-to-visit-config` + `coi-categories` (localStorage AND the
    starmap-embedded copies) → one `tagCategories` set. Category identities, colours,
-   enable states, rules, and user-authored packs all carry over; the current CORE sets are
-   marked `system: true`.
+   enable states, rules and user-authored pack content carry over; the SYSTEM set
+   (status, owner, purpose, resource, class, drive, frontier) marked `system: true`.
 2. Node `tags[]` untouched (keys stable); flag soup normalised to the new provenance
-   discriminator by the sanitizer on first load.
-3. The three strip passes collapse into one rule: *physics + rule tags are cleared and
-   re-derived; manual (incl. overrides) and inherited/derived always survive*.
-4. Old pack *files* die; starmap-embedded old blocks are migrated then dropped from saves.
-5. Autopilot: no slug changes, so no behaviour change; migration tests assert route
-   resolution parity on a fixture starmap before/after.
+   discriminator by `sanitizeOnLoad` on first load.
+3. The three strip passes replaced by the lifecycle module (§4).
+4. Old pack *files* die (hand-convert on request); starmap-embedded old blocks are
+   migrated then dropped from saves.
+5. Autopilot: no slug changes ⇒ no behaviour change; parity tests as §9.
 
-Deployment is phased on beta (each phase shippable, tests green):
-A. data model + single store + migration (UI unchanged, old editors reading new store) →
-B. Settings Tagging section + unified category editor →
-C. Tags-tab changes + GM physics overrides + Newton/physics explanations →
-D. Priority badges on GM surfaces (system map, starmap, orrery/holo) →
-E. Priority tags on player surfaces + reports + filters →
-F. docs overhaul (tags-guide, autopilot-guide, README, Help) + old-code deletion.
+Deployment is phased in the V2.2.x worktree (each phase shippable, tests + build green):
 
-## 9. Open questions
+- **A** — lifecycle module + unified store + migration (UI unchanged, old editors reading
+  the new store through shims)
+- **B** — Settings Tagging section + unified category editor; PoI/CoI editors deleted
+- **C** — Tags-tab changes + GM physics overrides + secret toggles + Newton//physics copy
+- **D** — priority markers on GM surfaces (system map, starmap rollup, orrery/holo)
+- **E** — priority tags + redaction on player surfaces, reports, filters
+- **F** — docs overhaul (tags-guide, autopilot-guide, README, Help, /poi-reference →
+  retired or renamed /tags-reference) + dead-code deletion + rename sweep (PoI/CoI gone
+  from UI and docs entirely)
 
-Answered inline in the next revision; numbered for reply-by-number.
+## Appendix — decision log (2026-07-20)
 
-**Q1 — Resources: one category or two?** Today `resource/*` means "extractable here" on a
-body and "carried/handled" on a construct, same slugs, and autopilot needs both sides.
-Options: (a) one SYSTEM category "Resources" applying to both roles, meaning stays
-contextual (matches today, zero migration risk); (b) split into "Resources (available)"
-[bodies] and "Cargo" [constructs] with shared slug vocabulary. My recommendation: (a) now —
-the availability-vs-need inference lives in *where* the tag sits, which is how the engine
-already reads it, so nothing to infer.
-
-**Q2 — Which categories are SYSTEM?** Proposed: status, owner, purpose, resource, class,
-drive (the current CoI six, resource per Q1). Universe, tech and disposition become plain
-user categories (deletable). Confirm?
-
-**Q3 — frontier/***: fuel `refuel_tags` reference `frontier/*` (gas-giant/ice refuelling),
-so deleting the frontier category could silently break refuelling. Make frontier SYSTEM
-too, or leave it a user category and have the fuel editor warn when a referenced tag's
-category is missing? (science and intrigue stay plain user categories either way.)
-
-**Q4 — Starmap badges**: strictly "badge shows only if the tag is on the STAR itself", or
-should the starmap roll up priority tags from anywhere in the system (e.g. a faction tag on
-a planet lights up the system on the starmap)? Rollup is more useful for factions but
-noisier and needs an aggregation rule.
-
-**Q5 — Ring vs label look**: 'ring' = thin coloured circle around the body disc/marker
-(nested when multiple), 'label' = the existing map-label pill style in badge colour. Cap at
-~4 badges + "+N" overflow? Any strong feeling on fan direction (below name vs radial)?
-
-**Q6 — Player visibility**: currently ALL tags pass through computePlayerSnapshot
-unredacted. Keep that (tags are public), or add a per-category "GM only" flag while we're
-in here? Priority badges on player views make this sharper — a hidden-agenda faction tag
-badge would be visible to players.
-
-**Q7 — Override reach**: GM physics-override tags feed all consumers (visuals like volcano
-vents/auroras, rules, find-by-tag) — assumed yes, that's the point. And is *suppressing* a
-physics tag (force-remove one the physics emits) in scope, or add-only for now? Add-only
-keeps the model much simpler.
-
-**Q8 — Rules everywhere?** In the unified schema every category (SYSTEM included) carries a
-rules list, and rules may target constructs when appliesTo allows. That means e.g. an
-automated rule could set `purpose/*` on constructs. Fine, or should SYSTEM categories be
-manual/engine-only (rules hidden)?
-
-**Q9 — Old packs**: confirmed no import shim for `sse-poi-pack` / `sse-coi-pack` files —
-they die. The starmap-embedded equivalents ARE migrated (that's people's live data).
-
-**Q10 — Naming**: section = "Tagging"; the terms "PoI" and "CoI" disappear from the UI and
-docs entirely, or survive as flavour ("points of interest" as prose when describing rule
-packs)? Also: keep the /poi-reference route (renamed), and "Reasons to visit" wording?
-
-**Q11 — Tag attributes**: tardiness/readiness/rate stay as fixed engine fields shown only
-on their SYSTEM categories (simple), or become a general "attributes" mechanism user
-categories can also use (bigger, banked?). Recommendation: fixed fields now.
-
-**Q12 — Release line**: this is a big rewrite. Land it as the next V2.1.x beta line as
-usual, or branch/worktree it until phase C is stable given the other in-flight work?
+Q1 one Resources category (contextual meaning) · Q2 SYSTEM = status/owner/purpose/
+resource/class/drive; universe/tech/disposition demoted to deletable user categories ·
+Q3 frontier is SYSTEM; SYSTEM framed as user-rules-generated (C1) · Q4 starmap badges
+roll up from the whole system · Q5 multiple marker styles (pin/flag/pill/ring), style as
+a preference, colour-independent legibility (C2) · Q6 secret per-tag + hidden per-category,
+redacted from players · Q7 overrides add-only · Q8 rules allowed on SYSTEM categories ·
+Q9 no import shim for old packs (hand-convert on request) · Q10 PoI/CoI concepts removed
+entirely — "just tags" · Q11 tardiness/readiness/rate stay fixed engine fields ·
+Q12 separate worktree, V2.2.x scope (C3).
