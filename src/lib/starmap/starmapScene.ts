@@ -81,21 +81,30 @@ function bhGlyph(active: boolean): THREE.Texture {
   if (bhTex[key]) return bhTex[key];
   const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S;
   const ctx = cv.getContext('2d')!;
-  const k = S / 100, cx = 50 * k, cy = 50 * k, hole = 15 * k, e = active ? 0.85 : 0;
-  const disc = () => { const g = ctx.createLinearGradient(cx - 36 * k, 0, cx + 36 * k, 0);
-    g.addColorStop(0, '#6e2610'); g.addColorStop(0.3, '#e08a1e'); g.addColorStop(0.5, '#fff4d0');
-    g.addColorStop(0.7, '#e08a1e'); g.addColorStop(1, '#6e2610'); return g; };
-  if (e > 0) { // full accretion ellipse (its back centre is then hidden behind the horizon)
-    ctx.strokeStyle = disc(); ctx.lineWidth = (5 + e * 5) * k; ctx.globalAlpha = 0.9;
-    ctx.beginPath(); ctx.ellipse(cx, 52 * k, (30 + e * 6) * k, (7 + e * 5) * k, 0, 0, 2 * Math.PI); ctx.stroke();
-    ctx.globalAlpha = 1;
+  const k = S / 100, cx = 50 * k, cy = 50 * k, hole = 13 * k, e = active ? 0.85 : 0;
+  const rx = (40 + e * 8) * k, ry = (5 + e * 2.5) * k;
+  // Hot-white-in-the-middle rim gradient, fading at the tips (used for the lensed arcs).
+  const rim = () => { const g = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
+    g.addColorStop(0, 'rgba(138,50,18,0)'); g.addColorStop(0.22, 'rgba(240,160,48,1)'); g.addColorStop(0.5, 'rgba(255,244,208,1)');
+    g.addColorStop(0.78, 'rgba(240,160,48,1)'); g.addColorStop(1, 'rgba(138,50,18,0)'); return g; };
+  if (e > 0) {
+    // Accretion disc, nearly edge-on: a wide thin blade, hot-white inner → orange → fading tips (its
+    // centre hidden behind the hole). An elliptical radial gradient via a squashed circle.
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
+    const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+    rg.addColorStop(0, 'rgba(255,244,208,0)'); rg.addColorStop(0.3, 'rgba(255,244,208,1)');
+    rg.addColorStop(0.48, 'rgba(240,160,48,1)'); rg.addColorStop(0.78, 'rgba(138,50,18,1)'); rg.addColorStop(1, 'rgba(138,50,18,0)');
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 2 * Math.PI); ctx.fill(); ctx.restore();
+    // Far side lensed up and over the top.
+    ctx.strokeStyle = rim(); ctx.lineWidth = (1.4 + e * 1.6) * k; ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.moveTo(cx - rx, cy); ctx.quadraticCurveTo(cx, 18 * k, cx + rx, cy); ctx.stroke(); ctx.globalAlpha = 1;
   }
-  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, hole, 0, 2 * Math.PI); ctx.fill();       // event horizon
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5 * k; ctx.beginPath(); ctx.arc(cx, cy, 17.5 * k, 0, 2 * Math.PI); ctx.stroke(); // photon ring
-  if (e > 0) { // the disc's near half, lensed up and OVER the top of the hole
-    ctx.strokeStyle = disc(); ctx.lineWidth = (2 + e * 2) * k; ctx.globalAlpha = 0.75;
-    ctx.beginPath(); ctx.ellipse(cx, 46 * k, 30 * k, 8 * k, 0, Math.PI, 2 * Math.PI); ctx.stroke();
-    ctx.globalAlpha = 1;
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, hole, 0, 2 * Math.PI); ctx.fill();          // event horizon
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1 * k; ctx.beginPath(); ctx.arc(cx, cy, 15.5 * k, 0, 2 * Math.PI); ctx.stroke(); // ring glow
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.4 * k; ctx.beginPath(); ctx.arc(cx, cy, 14 * k, 0, 2 * Math.PI); ctx.stroke();                   // photon ring
+  if (e > 0) { // near side of the disc, in FRONT, crossing below the hole
+    ctx.strokeStyle = rim(); ctx.lineWidth = (2 + e * 2) * k; ctx.globalAlpha = 0.92;
+    ctx.beginPath(); ctx.moveTo(cx - rx, cy); ctx.quadraticCurveTo(cx, 82 * k, cx + rx, cy); ctx.stroke(); ctx.globalAlpha = 1;
   }
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   bhTex[key] = t;

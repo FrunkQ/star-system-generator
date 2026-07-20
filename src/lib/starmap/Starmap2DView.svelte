@@ -35,10 +35,14 @@
 <div class="sm2d" style="font-family:{font}; --accent:{accentColor}">
   <svg viewBox="0 0 {view.W} {view.H}" preserveAspectRatio="xMidYMid meet">
     <defs>
-      <!-- Accretion-disc gradient for feeding black holes (matches the reference gallery). -->
+      <!-- Accretion-disc gradients for feeding black holes (match the reference gallery / 3D look). -->
+      <radialGradient id="sm2d-accr" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="#fff4d0" stop-opacity="0" /><stop offset="0.3" stop-color="#fff4d0" />
+        <stop offset="0.48" stop-color="#f0a030" /><stop offset="0.78" stop-color="#8a3212" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
+      </radialGradient>
       <linearGradient id="sm2d-acc" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stop-color="#6e2610" /><stop offset="0.3" stop-color="#e08a1e" />
-        <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.7" stop-color="#e08a1e" /><stop offset="1" stop-color="#6e2610" />
+        <stop offset="0" stop-color="#8a3212" stop-opacity="0" /><stop offset="0.22" stop-color="#f0a030" />
+        <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.78" stop-color="#f0a030" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
       </linearGradient>
     </defs>
     <!-- routes -->
@@ -62,12 +66,13 @@
             {@const sx = c.x + (offs[i]?.dx ?? 0) * R}
             {@const sy = c.y + (offs[i]?.dy ?? 0) * R}
             {#if s.bh === 'active'}
-              <!-- A FEEDING black hole: the accretion-disc schematic (matches the gallery) — an orange
-                   ellipse, a black horizon, the white photon ring, and the near half lensed over the top. -->
-              <ellipse cx={sx} cy={sy + R * 0.13} rx={R * 2} ry={R * 0.7} fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.7} opacity="0.9" />
+              <!-- A FEEDING black hole: the wide, thin accretion disc (hot-white inner → orange), a black
+                   horizon inside the bright photon ring, with the disc lensed over the top + in front below. -->
+              <ellipse cx={sx} cy={sy} rx={R * 3.4} ry={R * 0.6} fill="url(#sm2d-accr)" />
+              <path d="M{sx - R * 3.4} {sy} Q {sx} {sy - R * 2.4} {sx + R * 3.4} {sy}" fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.28} opacity="0.85" />
               <circle cx={sx} cy={sy} r={R} fill="#000" />
-              <circle cx={sx} cy={sy} r={R * 1.17} fill="none" stroke="#fff" stroke-width={R * 0.17} />
-              <path d="M{sx - R * 2} {sy - R * 0.27} A{R * 2} {R * 0.55} 0 0 1 {sx + R * 2} {sy - R * 0.27}" fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.28} opacity="0.75" />
+              <circle cx={sx} cy={sy} r={R * 1.08} fill="none" stroke="#fff" stroke-width={R * 0.18} />
+              <path d="M{sx - R * 3.4} {sy} Q {sx} {sy + R * 2.4} {sx + R * 3.4} {sy}" fill="none" stroke="url(#sm2d-acc)" stroke-width={R * 0.34} opacity="0.92" />
             {:else if s.bh}
               <!-- A quiescent black hole is #000000 → invisible on the dark map; a white-edged black disc reads clearly.
                    Inline style (beats the .star CSS stroke) keeps the white ring. -->

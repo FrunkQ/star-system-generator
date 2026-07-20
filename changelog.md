@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.192-beta - 20th Jul 2026
+
+* 2D black-hole diagram redrawn to match the 3D lensed look: a wide, thin accretion disc (hot-white inner fading to orange at the tips) with a black event horizon inside a bright photon ring, and the disc lensed up over the top and passing in front below. Applied to the reference gallery and both starmap glyphs.
+* More aurora examples showing gas mixes on the 2D and 3D galleries — added CO2 (violet, previously missing from 3D), an O2+CO2 green/violet mix, and an N2+CH4 purple/blue mix, so the multi-colour auroras are demonstrated.
+
 ## v2.1.191-beta - 20th Jul 2026
 
 * Multi-coloured auroras: a sky with more than one auroral gas now glows in more than one colour at once (atomic oxygen green, nitrogen purple, CO2 violet, a H/He giant red-pink, methane blue), layered and weighted by concentration x emission efficiency - so Earth shows green fringed with purple, and the colours hint at the atmosphere's mix. Applies in the 3D holo (was single-colour) and the 2D disc.

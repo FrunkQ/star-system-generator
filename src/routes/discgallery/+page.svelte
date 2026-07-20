@@ -104,9 +104,11 @@
   ];
 
   const auroras = [
-    mk({ name: 'Oxygen · green (Earth)', apparentColorHex: '#2f6ea5', atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.42' }, { key: 'climate/polar-ice', value: 'water' }] }),
-    mk({ name: 'Nitrogen · blue-violet · 40° tilt', apparentColorHex: '#37589a', axial_tilt_deg: 40, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
-    mk({ name: 'CO₂ · violet', apparentColorHex: '#9a6a5a', atmosphere: { pressure_bar: 2, composition: { CO2: 0.95 } } as any, tags: [{ key: 'aurora/moderate', value: '0.28' }] }),
+    mk({ name: 'O₂ + N₂ · green/purple (Earth)', apparentColorHex: '#2f6ea5', atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }, { key: 'climate/polar-ice', value: 'water' }] }),
+    mk({ name: 'Nitrogen · purple · 40° tilt', apparentColorHex: '#37589a', axial_tilt_deg: 40, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
+    mk({ name: 'CO₂ · violet', apparentColorHex: '#9a6a5a', atmosphere: { pressure_bar: 2, composition: { CO2: 0.95, N2: 0.05 } } as any, tags: [{ key: 'aurora/strong', value: '0.4' }] }),
+    mk({ name: 'O₂ + CO₂ · green/violet', apparentColorHex: '#5a8a6a', atmosphere: { pressure_bar: 1.5, composition: { CO2: 0.55, O2: 0.3, N2: 0.15 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }] }),
+    mk({ name: 'N₂ + CH₄ · purple/blue', apparentColorHex: '#7a8a6a', atmosphere: { pressure_bar: 1.5, composition: { N2: 0.9, CH4: 0.1 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }] }),
     mk({ name: 'H/He giant · red-pink (brilliant)', apparentColorHex: '#c9a878', axial_tilt_deg: 3,
         atmosphere: { pressure_bar: 1000, composition: { H2: 0.9, He: 0.1 } } as any,
         apparentColor: { hex: '#c9a878', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any,
@@ -160,21 +162,35 @@
   <h2>Black holes — by accretion level (2D schematic; comes alive with lensing in 3D)</h2>
   <div class="gallery">
     {#each [{ n: 'Quiescent', e: 0 }, { n: 'Feeding · 20%', e: 0.2 }, { n: 'Feeding · 50%', e: 0.5 }, { n: 'Feeding · 100%', e: 1 }] as bh, i}
+      {@const rx = 40 + bh.e * 8}
+      {@const ry = 5 + bh.e * 2.5}
       <figure>
         <svg viewBox="0 0 100 100" width="168" height="168">
           <defs>
-            <linearGradient id="acc-{i}" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#6e2610" /><stop offset="0.3" stop-color="#e08a1e" />
-              <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.7" stop-color="#e08a1e" /><stop offset="1" stop-color="#6e2610" />
+            <!-- Concentric temperature grade across the disc: hot-white inner (at the hole) → orange → fade. -->
+            <radialGradient id="acc-{i}" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#fff4d0" stop-opacity="0" /><stop offset="0.3" stop-color="#fff4d0" />
+              <stop offset="0.48" stop-color="#f0a030" /><stop offset="0.78" stop-color="#8a3212" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
+            </radialGradient>
+            <!-- The lensed rims run hot-white in the middle, fading at the tips. -->
+            <linearGradient id="accl-{i}" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#8a3212" stop-opacity="0" /><stop offset="0.22" stop-color="#f0a030" />
+              <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.78" stop-color="#f0a030" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
             </linearGradient>
           </defs>
           {#if bh.e > 0}
-            <ellipse cx="50" cy="52" rx={30 + bh.e * 6} ry={7 + bh.e * 5} fill="none" stroke="url(#acc-{i})" stroke-width={5 + bh.e * 5} opacity="0.9" />
+            <!-- Accretion disc seen nearly edge-on: a wide, thin blade whose centre is hidden by the hole. -->
+            <ellipse cx="50" cy="50" rx={rx} ry={ry} fill="url(#acc-{i})" />
+            <!-- Far side of the disc lensed up and over the top. -->
+            <path d="M{50 - rx} 50 Q 50 18 {50 + rx} 50" fill="none" stroke="url(#accl-{i})" stroke-width={1.4 + bh.e * 1.6} opacity="0.85" />
           {/if}
-          <circle cx="50" cy="50" r="15" fill="#000" />
-          <circle cx="50" cy="50" r="17.5" fill="none" stroke="#fff" stroke-width="2.5" />
+          <!-- Event horizon + a bright photon ring (with a soft outer glow). -->
+          <circle cx="50" cy="50" r="13" fill="#000" />
+          <circle cx="50" cy="50" r="15.5" fill="none" stroke="#fff" stroke-width="1" opacity="0.35" />
+          <circle cx="50" cy="50" r="14" fill="none" stroke="#fff" stroke-width="2.4" />
           {#if bh.e > 0}
-            <path d="M20 46 A30 8 0 0 1 80 46" fill="none" stroke="url(#acc-{i})" stroke-width={2 + bh.e * 2} opacity="0.75" />
+            <!-- Near side of the disc, in FRONT, crossing below the hole. -->
+            <path d="M{50 - rx} 50 Q 50 82 {50 + rx} 50" fill="none" stroke="url(#accl-{i})" stroke-width={2 + bh.e * 2} opacity="0.92" />
           {/if}
         </svg>
         <figcaption>{bh.n}</figcaption>

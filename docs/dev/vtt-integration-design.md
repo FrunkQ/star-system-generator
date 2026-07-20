@@ -1,7 +1,7 @@
 # VTT Integration — SSE2 as a Map Source (Mappadux StarMap + Foundry sanity check)
 
-Status: HIGH-LEVEL DESIGN for review. Open questions at the end must be settled
-before this is driven to detailed design.
+Status: HIGH-LEVEL DESIGN, DECISIONS SETTLED (2026-07-20 review — see the
+decision log in section 9). Ready to drive to detailed design.
 
 Scope: three related integrations, in priority order.
 
@@ -160,6 +160,10 @@ origin checks. Mappadux never needs to implement the SSE2 wire protocol.
    System Explorer and load your starmap" with a link.
 4. Mappadux shows the discovered starmap name + the list of Player Views.
    The GM picks one or more; each becomes a StarMap map entry.
+   Additionally (decision Q2): every UI point where a StarMap could be created
+   or edited is connection-aware — if no SSE2 instance is reachable it says so
+   inline and offers a one-click "Open Star System Explorer" (new tab at the
+   configured origin), then resumes discovery when the tab announces itself.
 5. Each map stores a `StarMapConfig` (§4.4) including the starmap id/name — the
    "make sure the right starmap is loaded next time" anchor.
 
@@ -202,7 +206,8 @@ loaded" is a simple id comparison.
 | Filters | Force `none` via `_effectiveFilter()`; grey the filter dropdown + FX button. SSE2's preset filter is the filter. |
 | Viewport crop (`view_update`) | Bypassed; iframe is full-bleed. ViewportEditor hidden. `backgroundColor` still honoured behind the iframe (letterbox). |
 | Fog | Disabled (nothing to fog). |
-| Markers / pings / annotations / measure | Disabled in v1 — their coordinates are map-texture space, which does not exist here, and SSE2 has its own pointer story. (Q4.) |
+| Pings | KEPT (decision Q4) — screen-space pings over the iframe. Roughly aligned only (they do not track SSE2's pan/zoom); good enough for "look here". |
+| Markers / annotations / measure | Disabled — their coordinates are map-texture space, which does not exist here, and SSE2 has its own pointer story. The player-side tool dropdown restricts itself to Ping only (other tools hidden, not merely inert). |
 | Grid | Disabled. |
 | Transitions | Keep: transition out of the previous map, then reveal the iframe (nice continuity, cheap). |
 | Audio / soundboard / tracker | Unaffected — these are not map-space features and keep working alongside. |
@@ -311,23 +316,15 @@ straight into the starmap". Two measures make that cut instant instead of a
 Mappadux map transitions still play over the swap, so the station-deck-to-
 starmap cut can be styled.
 
-### 4.6 Complementary mode: SSE2 snapshot → Mappadux handout/asset
+### 4.6 Complementary mode: SSE2 snapshot → Mappadux handout/asset — DROPPED
 
-The live StarMap map deliberately disables Mappadux's own toys (filters, fog,
-annotations, composites). A cheap second path keeps them available where they
-shine:
-
-- SSE2 gains **Export view as image** (PNG capture of the current
-  orrery/holo/starmap render — the canvas is ours, `toDataURL` is trivial) and
-  the existing printed-report path already produces document-style content.
-- The GM imports that PNG into Mappadux as a normal `upload` asset — at which
-  point *everything* works on it: WebGL filters, fog reveals, markers, composite
-  tiles (a system diagram as one tile of a larger sector board), annotations,
-  text-map handout framing.
-- No new Mappadux code at all; SSE2-side it is one button. This is the answer to
-  "do composites/text-maps/effects have a role here": not in the live path
-  (redundant/conflicting), but as the static-content path they are exactly the
-  right tools, fed by SSE2 exports.
+**Decision (Q9): not building.** Kept on file because the reasoning stays valid
+if demand appears: an SSE2 "Export view as image" (PNG capture of the current
+render) would let star content enter Mappadux as a normal raster asset, where
+filters, fog, annotations, composite tiles and text-map handout framing all
+work (the live path deliberately disables them). Cost when revived: one SSE2
+button (plain capture) or a small export dialog (resolution / hide-UI /
+transparent background for composite tiles); zero Mappadux code. Banked.
 
 ---
 
@@ -405,14 +402,17 @@ review, one release pipeline.
 - **Phase 2 — SSE2 `/bridge` route** (G3) + postMessage contract with origin
   allowlist.
 - **Phase 3 — Mappadux StarMap map kind**: asset kind + Add-StarMap discovery
-  dialog, `MsgStarMap`, `StarMapLayer` (player/projector/GM), disable gates
-  (filters/viewport/fog/markers/grid), bundle export, reload-prompt flow.
-- **Phase 4 — snapshot path**: SSE2 "Export view as image"; no Mappadux work.
-- **Phase 5 — Foundry module** (generalised embed): after Phase 1; Phase 2
-  optional for discovery polish.
+  dialog (connection-aware, offers to open SSE2), `MsgStarMap`, `StarMapLayer`
+  (player/projector/GM) with pre-warm/keep-alive + render pause, ping-only
+  player tools, disable gates (filters/viewport/fog/markers/grid), bundle
+  export, reload-prompt flow.
+- **Phase 4 — Foundry module** (generalised "live GM screen" embed): after the
+  Mappadux integration has proven the embed contract in real sessions
+  (decision Q8).
 
 Phases 1–2 land on the SSE2 beta channel; Phase 3 on the Mappadux beta channel;
-they are independently shippable.
+they are independently shippable. The snapshot path (old Phase 4) is dropped
+per decision Q9 (see 4.6).
 
 ## 8. Risks / notes
 

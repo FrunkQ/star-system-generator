@@ -115,8 +115,11 @@ const polarVortices = [
 ];
 
 const auroras = [
-	mk({ name: 'Oxygen · green', apparentColorHex: '#2f6ea5', magnetism: { strengthG: 0.5 } as any, atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.42' }, { key: 'climate/polar-ice', value: 'water' }] }),
-	mk({ name: 'Nitrogen · blue · 40° tilt', apparentColorHex: '#37589a', axial_tilt_deg: 40, magnetism: { strengthG: 0.6 } as any, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
+	mk({ name: 'O₂ + N₂ · green/purple (Earth)', apparentColorHex: '#2f6ea5', magnetism: { strengthG: 0.5 } as any, atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }, { key: 'climate/polar-ice', value: 'water' }] }),
+	mk({ name: 'Nitrogen · purple · 40° tilt', apparentColorHex: '#37589a', axial_tilt_deg: 40, magnetism: { strengthG: 0.6 } as any, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
+	mk({ name: 'CO₂ · violet', apparentColorHex: '#9a6a5a', magnetism: { strengthG: 0.5 } as any, atmosphere: { pressure_bar: 2, composition: { CO2: 0.95, N2: 0.05 } } as any, tags: [{ key: 'aurora/strong', value: '0.4' }] }),
+	mk({ name: 'O₂ + CO₂ · green/violet', apparentColorHex: '#5a8a6a', magnetism: { strengthG: 0.5 } as any, atmosphere: { pressure_bar: 1.5, composition: { CO2: 0.55, O2: 0.3, N2: 0.15 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }] }),
+	mk({ name: 'N₂ + CH₄ · purple/blue', apparentColorHex: '#7a8a6a', magnetism: { strengthG: 0.6 } as any, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.9, CH4: 0.1 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }] }),
 	mk({ name: 'H/He giant · red-pink', apparentColorHex: '#c9a878', axial_tilt_deg: 3, radiusKm: 69911, magnetism: { strengthG: 4 } as any,
 		atmosphere: { pressure_bar: 1000, composition: { H2: 0.9, He: 0.1 } } as any,
 		apparentColor: { hex: '#c9a878', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any,
