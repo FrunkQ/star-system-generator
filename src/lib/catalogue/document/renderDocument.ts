@@ -8,6 +8,8 @@
 // time uniforms. See blocks.ts for the model and docs/dev/v2.2-player-view-visual-overhaul.md §WS2.
 import { wrap, ellipsise } from '../textLayout';
 import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle } from './blocks';
+import { drawSystemSchematic } from './systemSchematic';
+import type { System } from '$lib/types';
 
 // The content column the document flows within, in CSS px of the logical view.
 export interface DocLayout {
@@ -20,7 +22,9 @@ export interface DocLayout {
 }
 
 // A drawn, tappable region in view px (post-scroll). `id` comes from a block or a list item's id.
-export interface DocRegion { id: string; y0: number; y1: number; }
+// x0/x1 are optional horizontal bounds: 1D blocks (headings, list rows) span the whole column and omit
+// them; the 2D schematic sets them so a tap picks the body under the cursor, not just its row.
+export interface DocRegion { id: string; y0: number; y1: number; x0?: number; x1?: number; }
 export interface DocResult { regions: DocRegion[]; contentH: number; }
 
 // Vertical rhythm, all scaled by theme.fontScale. Sizes lifted to read like the existing card/list.
@@ -142,17 +146,15 @@ export function renderDocument(
         break;
       }
       case 'schematic': {
-        // Phase 1 placeholder: a captioned box reserving the schematic's band so the document flows.
-        // Phase 2 replaces this with the ported orbital line-diagram draw.
+        // The ported orbital line-diagram (systemSchematic.ts). It returns 2D hit boxes (view px) for
+        // its bodies, which become full DocRegions so a warp-mapped tap can pick a planet by position.
         const h = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.42);
         if (visible(top, h)) {
-          ctx.strokeStyle = c.rule;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x + 0.5, top + 0.5, w - 1, h - 1);
-          ctx.fillStyle = c.dim;
-          ctx.font = `${px(11, s)}px ${font}`;
-          ctx.textAlign = 'center';
-          ctx.fillText('[ system schematic ]', x + w / 2, top + h / 2);
+          const hits = drawSystemSchematic(ctx, {
+            system: b.system as System, x, y: top, w, h,
+            theme, selectedId: b.selectedId, colorful: b.colorful
+          });
+          for (const hit of hits) regions.push({ id: hit.id, x0: hit.x0, y0: hit.y0, x1: hit.x1, y1: hit.y1 });
         }
         if (b.id) regions.push({ id: b.id, y0: top, y1: top + h });
         y += h + px(GAP, s);

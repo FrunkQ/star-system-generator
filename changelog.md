@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.201-beta - 20th Jul 2026
+
+* WS2 Phase 2: ported the old Field Guide's log-scale orbital line-diagram to a canvas (`drawSystemSchematic`) so the "simple system drawing" goes through the GPU filter with the rest of the document — star distance-lines, planets placed by log(a), belt blobs, moon pips, labels, with The Guide's rainbow or a theme-coloured/mono look. Wired it into the engine's `schematic` block (replacing the placeholder), and it returns 2D hit boxes so a tap can pick a planet by position. Topology helpers extracted to a shared module for the Phase 3 navigator. Still not surfaced in any view — that's Phase 3.
+
 ## v2.1.200-beta - 20th Jul 2026
 
 * WS2 groundwork: added the Guide-document block-model engine (`renderDocument` over `heading|text|keyValue|list|image|schematic|spacer|rule` blocks with a full theme colour set + list/document style), lifted the shared `wrap`/`ellipsise` text primitives out of infoCard/listCanvas, and extended the preset theme with optional `documentStyle`/`listStyle`/`themeColors`. No visible change yet — the engine is proven by re-rendering the info card through it (unit test); shipped draw paths untouched.

@@ -16,12 +16,14 @@ function mockCtx() {
     _strokes: strokes,
     set font(v: string) { const m = /(\d+(?:\.\d+)?)px/.exec(v); if (m) fontPx = parseFloat(m[1]); },
     get font() { return `${fontPx}px sans`; },
-    textAlign: 'left', textBaseline: 'alphabetic', fillStyle: '#000', strokeStyle: '#000', lineWidth: 1,
+    textAlign: 'left', textBaseline: 'alphabetic', fillStyle: '#000', strokeStyle: '#000',
+    lineWidth: 1, globalAlpha: 1,
     measureText: (t: string) => ({ width: t.length * fontPx * 0.5 }),
     fillText: (text: string, x: number, y: number) => { texts.push({ text, x, y }); },
-    fillRect() {}, strokeRect() { strokes.push('rect'); },
+    fillRect() {}, strokeRect() { strokes.push('rect'); }, fill() {},
     beginPath() {}, moveTo() {}, lineTo() {}, stroke() { strokes.push('line'); }, arc() {},
-    drawImage() {}, save() {}, restore() {}, clip() {}, closePath() {}, arcTo() {}, scale() {}
+    drawImage() {}, save() {}, restore() {}, clip() {}, closePath() {}, arcTo() {},
+    scale() {}, translate() {}
   };
   return ctx;
 }
@@ -85,10 +87,30 @@ describe('renderDocument (WS2 engine)', () => {
     expect(ctx2._texts.length).toBeGreaterThan(1); // multiple wrapped lines drawn
   });
 
-  it('draws a placeholder for the schematic block (Phase 2 fills it)', () => {
+  it('draws the system schematic and returns 2D hit boxes per body', () => {
     const ctx = mockCtx();
-    renderDocument(ctx, [{ kind: 'schematic', system: {} }], hudCardTheme(card), layout);
-    expect(ctx._strokes).toContain('rect');
-    expect(ctx._texts.map((t: any) => t.text).join('')).toContain('schematic');
+    const system: any = {
+      id: 's', name: 'Sol', nodes: [
+        { id: 'star', name: 'Sol', kind: 'body', roleHint: 'star', parentId: null, massKg: 2e30 },
+        { id: 'earth', name: 'Earth', kind: 'body', roleHint: 'planet', parentId: 'star', massKg: 6e24, orbit: { hostId: 'star', elements: { a_AU: 1 } } },
+        { id: 'mars', name: 'Mars', kind: 'body', roleHint: 'planet', parentId: 'star', massKg: 6e23, orbit: { hostId: 'star', elements: { a_AU: 1.5 } } }
+      ]
+    };
+    const res = renderDocument(ctx, [{ kind: 'schematic', system, selectedId: 'earth' }], hudCardTheme(card), layout);
+    const drawn = ctx._texts.map((t: any) => t.text).join('\n');
+    expect(drawn).toContain('Sol');
+    expect(drawn).toContain('Earth');
+    expect(drawn).toContain('Mars');
+    // Star + both planets get pickable regions, each with horizontal bounds (2D, not just a row band).
+    const ids = res.regions.map((r) => r.id);
+    expect(ids).toContain('star');
+    expect(ids).toContain('earth');
+    expect(ids).toContain('mars');
+    const earth = res.regions.find((r) => r.id === 'earth')!;
+    expect(earth.x0).toBeTypeOf('number');
+    expect(earth.x1).toBeGreaterThan(earth.x0!);
+    // Mars is further out than Earth (log-scale a), so its box sits to the right.
+    const mars = res.regions.find((r) => r.id === 'mars')!;
+    expect(mars.x0!).toBeGreaterThan(earth.x0!);
   });
 });
