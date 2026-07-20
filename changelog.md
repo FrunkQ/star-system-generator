@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.202-beta - 20th Jul 2026
+
+* WS2 Phase 3: The Guide's system view is now the interactive canvas GUIDE DOCUMENT — the orbital schematic, the selected body's file (title/facts/description), and its moons/constructs as in-page navigator lists, all drawn by the block-model engine and wrecked by the real filter (new `FilteredDocumentView`). Tapping a world on the chart or a navigator row drills straight in; the info block is PART OF THE PAGE, so there's no separate floating inspector. The built-in "The Guide" preset points at it. (Procedural body discs return to the document in Phase 4; for now bodies show the schematic + text.)
+
 ## v2.1.201-beta - 20th Jul 2026
 
 * WS2 Phase 2: ported the old Field Guide's log-scale orbital line-diagram to a canvas (`drawSystemSchematic`) so the "simple system drawing" goes through the GPU filter with the rest of the document — star distance-lines, planets placed by log(a), belt blobs, moon pips, labels, with The Guide's rainbow or a theme-coloured/mono look. Wired it into the engine's `schematic` block (replacing the placeholder), and it returns 2D hit boxes so a tap can pick a planet by position. Topology helpers extracted to a shared module for the Phase 3 navigator. Still not surfaced in any view — that's Phase 3.

@@ -1,0 +1,105 @@
+// Builds the WS2 Guide document's block model from a system + the currently-selected body. This is the
+// content assembly that mirrors the legacy Field Guide's page (`CatalogueBrowser.svelte:187-317`): the
+// orbital schematic up top, then the selected body's title + imagery + facts + description, with its
+// moons / constructs as in-document navigator lists to drill into. The engine (`renderDocument`) draws
+// it; this file just decides WHAT appears, so the same content can be re-themed (book ↔ terminal) and
+// re-filtered without touching the layout code.
+import type { System, CelestialBody } from '$lib/types';
+import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
+import { bodyFacts, bodyGlyph } from '../bodyFacts';
+import type { DocBlock } from './blocks';
+import {
+  isBary, dominantOf, displayLabel, membersOf, moonsOf, constructsOf, type Node
+} from './systemTopology';
+
+export interface GuideDocOpts {
+  units?: MeasurementUnits;
+  tempUnit?: TemperatureUnit;
+  colorful?: boolean;                    // The Guide's rainbow schematic
+  imagery?: 'disc' | 'photo' | 'none';   // how the body picture is shown (disc = Phase-4 procedural)
+  image?: CanvasImageSource | null;      // a loaded picture for the selected body (photo mode)
+  imageAspect?: number;                  // width/height of that picture
+}
+
+// Order-preserving lookup of a node by id.
+function nodeById(system: System, id: string | null): Node | null {
+  if (!id) return null;
+  return (system?.nodes ?? []).find((n) => n.id === id) ?? null;
+}
+
+export function buildGuideDocument(system: System, selectedId: string | null, opts: GuideDocOpts = {}): DocBlock[] {
+  const blocks: DocBlock[] = [];
+  const colorful = !!opts.colorful;
+
+  // 1) The orbital schematic — the interactive map + the "simple system drawing."
+  blocks.push({ kind: 'schematic', system, selectedId, colorful });
+
+  const selected = nodeById(system, selectedId);
+  if (!selected) {
+    blocks.push({ kind: 'spacer', h: 8 });
+    blocks.push({ kind: 'text', text: 'Tap a world on the chart to read its file.', italic: true, align: 'center' });
+    return blocks;
+  }
+
+  // The subject we pull facts/imagery from: a barycentre is shown AS its dominant member (e.g. Pluto).
+  const bary = isBary(selected);
+  const subject = (bary ? dominantOf(system, selected) : selected) as CelestialBody | null;
+  const title = bary
+    ? `${dominantOf(system, selected)?.name ?? '?'} (${selected.name})`
+    : (selected.name ?? '');
+  const sub = ((subject as any)?.roleHint || 'body')
+    + ((subject as any)?.class ? ' · ' + (subject as any).class : '');
+
+  blocks.push({ kind: 'rule' });
+  blocks.push({ kind: 'heading', level: 1, text: title, sub, id: selected.id });
+
+  // 2) Back-to-parent navigator row (the old Guide's "↑ parent" button).
+  if (!bary) {
+    const pid = (selected as any).ui_parentId || selected.parentId || (selected as any).orbit?.hostId;
+    const parent = pid ? nodeById(system, pid) : null;
+    if (parent) blocks.push({ kind: 'list', items: [{ id: parent.id, text: `↑ ${displayLabel(system, parent)}` }] });
+  }
+
+  // 3) Imagery — a GM/stock picture when we have one (procedural disc is Phase 4).
+  if (opts.imagery === 'photo' && opts.image) {
+    blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, crop: 0.4 });
+  }
+
+  // 4) Facts + description.
+  if (subject) {
+    const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C');
+    if (facts.length) { blocks.push({ kind: 'spacer', h: 4 }); }
+    for (const f of facts) if (f.value) blocks.push({ kind: 'keyValue', label: f.label, value: f.value });
+  }
+  if (selected.description) {
+    blocks.push({ kind: 'spacer', h: 6 });
+    blocks.push({ kind: 'text', text: selected.description, italic: true });
+  }
+
+  // 5) Drill-in navigator lists: companion members (for a barycentre), moons, constructs.
+  const drillItems = (nodes: Node[]) => nodes.map((n) => ({ id: n.id, text: `${bodyGlyph(n as any)} ${displayLabel(system, n)}` }));
+
+  const companions = bary ? membersOf(system, selected).filter((m) => m.id !== subject?.id) : [];
+  const moons = subject ? moonsOf(system, subject.id) : [];
+  const moonRow = [...companions, ...moons];
+  if (moonRow.length) {
+    blocks.push({ kind: 'spacer', h: 6 });
+    blocks.push({ kind: 'heading', level: 3, text: 'Moons' });
+    blocks.push({ kind: 'list', items: drillItems(moonRow) });
+  }
+
+  const constructs = subject ? constructsOf(system, subject.id) : { surface: [], orbiting: [] };
+  if (constructs.surface.length) {
+    blocks.push({ kind: 'spacer', h: 6 });
+    blocks.push({ kind: 'heading', level: 3, text: `On ${subject?.name ?? 'surface'}` });
+    blocks.push({ kind: 'list', items: drillItems(constructs.surface) });
+  }
+  if (constructs.orbiting.length) {
+    blocks.push({ kind: 'spacer', h: 6 });
+    blocks.push({ kind: 'heading', level: 3, text: 'Orbiting' });
+    blocks.push({ kind: 'list', items: drillItems(constructs.orbiting) });
+  }
+
+  blocks.push({ kind: 'spacer', h: 12 });
+  return blocks;
+}

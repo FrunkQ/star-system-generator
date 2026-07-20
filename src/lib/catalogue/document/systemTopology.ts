@@ -57,6 +57,13 @@ export function moonsOf(system: System, id: string): Node[] {
     .filter((n: any) => n.kind !== 'construct' && (n.parentId === id || n.orbit?.hostId === id) && n.roleHint === 'moon')
     .sort((a: any, b: any) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0));
 }
+// Constructs attached to a body, split by placement (ON the surface vs ORBITING it).
+export function constructsOf(system: System, id: string): { surface: Node[]; orbiting: Node[] } {
+  const cs = (system?.nodes ?? []).filter((n: any) => n.kind === 'construct' && (n.parentId === id || n.orbit?.hostId === id));
+  const surface = cs.filter((c: any) => String(c.placement || '').toLowerCase() === 'surface');
+  return { surface, orbiting: cs.filter((c) => !surface.includes(c)) };
+}
+
 // Bodies with no stellar host (rogue planets / unparented objects).
 export function roguesOf(system: System): Node[] {
   return nodesOf(system).filter((n: any) =>

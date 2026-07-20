@@ -93,11 +93,12 @@ const F_MONO = 'ui-monospace, "Cascadia Mono", Consolas, monospace';
 const F_TYPEWRITER = '"Courier New", Courier, monospace';
 
 export const BUILTIN_PRESETS: PlayerPreset[] = [
-  // The Guide: friendly + ILLUSTRATED — procedural true-colour discs, rainbow chrome, funny margin notes,
-  // DON'T PANIC cover. Mirrors the old 'guide' skin (CatalogueBrowser disc imagery + guide notes).
+  // The Guide: friendly + ILLUSTRATED — the interactive canvas GUIDE DOCUMENT (WS2): rainbow orbital
+  // schematic + in-page body file + navigator, funny margin notes, DON'T PANIC cover. `bodyGfx: disc`
+  // keeps the procedural-disc imagery intent (rendered into the document from Phase 4).
   preset({
     id: 'guide', name: 'The Guide', description: "A traveller's field guide — friendly, illustrated, mostly accurate.",
-    systemView: 'diagram2d', bodyStyle: 'textured', bodyGfx: 'disc', accentColor: RAINBOW, font: F_SERIF,
+    systemView: 'document', bodyStyle: 'textured', bodyGfx: 'disc', accentColor: RAINBOW, font: F_SERIF,
     guideTips: 'both',
     cover: { enabled: true, title: "DON'T PANIC", subtitle: '', body: '', label: '', graphic: null }
   }),

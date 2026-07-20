@@ -76,6 +76,7 @@
   import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredListView from '$lib/components/FilteredListView.svelte';
+  import FilteredDocumentView from '$lib/components/FilteredDocumentView.svelte';
   import { systemVisualStars } from '$lib/starmap/systemStars';
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
@@ -543,6 +544,11 @@
     ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'holo' : 'static')
     : theme.tier;
   $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
+  // WS2 Guide document: the interactive canvas document (schematic + in-page info block + navigator),
+  // drawn by the block-model engine through the real filter. Falls under the 'static' tier (no 3D scene).
+  $: systemDoc = !!activePreset && activePreset.systemView === 'document';
+  $: docImagery = activePreset ? (activePreset.bodyGfx === 'photo' ? 'photo' : activePreset.bodyGfx === 'disc' ? 'disc' : 'none') : 'none';
+  $: docColorful = activePreset?.accentColor === 'rainbow';
   // 2D map = the holo locked overhead + flat. `whole` is NOT forced: with it off, tapping a body frames
   // (zooms) it just like the GM's orrery; a preset can still tick "Frame whole system" for a fixed plan view.
   // What the system stage renders with (the 2D map = the holo locked flat). Shared with the editor
@@ -954,6 +960,27 @@
         {@render inspectorAside()}
       {:else if !selectedBody && !activePreset?.hideInfoPanel}
         <div class="console-hint">Tap a world to read its file.</div>
+      {/if}
+    </div>
+  {:else if systemDoc}
+    <!-- WS2 Guide document: the interactive canvas document (schematic + in-page body file + navigator),
+         drawn by the block-model engine and wrecked by the real filter. The info block is PART OF THE
+         PAGE, so there's no separate DOM inspector — tapping a world (on the chart or a navigator row)
+         drills straight in. -->
+    <div class="preset-stage preset-doc" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
+      {#if displaySystem}
+        <FilteredDocumentView
+          system={displaySystem} selectedId={selectedBody?.id ?? null}
+          font={presetFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+          colorful={docColorful} imagery={docImagery}
+          listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} themeColors={activePreset.themeColors}
+          fontScale={infoFontScale}
+          filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
+          units={units} tempUnit={tempUnit}
+          tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={systemOverlayHud}
+          companyName={activePreset.companyName} footerText={activePreset.footerText}
+          selectable={presetInteractive}
+          on:select={(e) => selectBodyById(e.detail)} />
       {/if}
     </div>
   {:else if activePreset}
