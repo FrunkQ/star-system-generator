@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.203-beta - 20th Jul 2026
+
+* Fixed the body Hydrosphere tab showing a duplicated/stale liquid list: it now receives the rule pack so it reads the pack's `liquids.json` instead of the built-in fallback set. Also finished the starter-sf liquids dedup (removed two leftover `hydrogen-sulfide`/`hydrogen-cyanide` copies so the `autoGenerate:false` versions take effect).
+
 ## v2.1.202-beta - 20th Jul 2026
 
 * WS2 Phase 3: The Guide's system view is now the interactive canvas GUIDE DOCUMENT — the orbital schematic, the selected body's file (title/facts/description), and its moons/constructs as in-page navigator lists, all drawn by the block-model engine and wrecked by the real filter (new `FilteredDocumentView`). Tapping a world on the chart or a navigator row drills straight in; the info block is PART OF THE PAGE, so there's no separate floating inspector. The built-in "The Guide" preset points at it. (Procedural body discs return to the document in Phase 4; for now bodies show the schematic + text.)
