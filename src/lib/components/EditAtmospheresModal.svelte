@@ -233,18 +233,27 @@
                             </div>
                             <div class="field aurora-field">
                                 <label title="Auroral emission bands. A gas can emit more than one colour (atomic oxygen glows green low + crimson high).">Aurora Emission Bands</label>
+                                <p class="aurora-help">The colour(s) this gas glows at the magnetic poles — a gas can emit several (oxygen glows green <em>and</em> crimson). These set the palette only: a world shows an aurora when it <strong>also</strong> has a magnetic field and an incident particle flux.</p>
                                 {#if gas.aurora && gas.aurora.length}
+                                    <div class="aurora-head">
+                                        <span style="width:34px">Colour</span>
+                                        <span style="width:80px">Name</span>
+                                        <span style="width:62px" title="Brightness weight per unit of this gas. Atomic oxygen glows far brighter per molecule than nitrogen, which is why Earth's sky reads green.">Efficiency</span>
+                                        <span style="width:72px" title="Which layer the glow sits in — low fringe, main band, or high tenuous band. Stacks the 3D shells in the right order.">Altitude</span>
+                                        <span style="width:62px" title="Concentration threshold: the band only lights up once this gas is at least this fraction of the air (blank = always). Only O₂'s crimson band uses it, at 0.12 — the red crown appears only over a rich oxygen column.">Min frac.</span>
+                                        <span style="width:20px"></span>
+                                    </div>
                                     {#each gas.aurora as band, bi}
                                         <div class="aurora-band">
                                             <input type="color" bind:value={band.hex} title="Emission colour" />
-                                            <input type="text" class="band-name" bind:value={band.colour} placeholder="name" title="Colour name" />
+                                            <input type="text" class="band-name" bind:value={band.colour} placeholder="name" title="Colour name (label only)" />
                                             <input type="number" step="0.1" class="band-num" bind:value={band.efficiency} placeholder="eff" title="Brightness per unit gas" />
                                             <select bind:value={band.altitude} title="Altitude layer">
                                                 <option value={0}>low</option>
                                                 <option value={1}>main</option>
                                                 <option value={2}>high</option>
                                             </select>
-                                            <input type="number" step="0.01" min="0" max="1" class="band-num" value={band.minFraction ?? ''} on:input={(e) => band.minFraction = e.currentTarget.value === '' ? undefined : +e.currentTarget.value} placeholder="min" title="Only emit above this gas fraction (optional)" />
+                                            <input type="number" step="0.01" min="0" max="1" class="band-num" value={band.minFraction ?? ''} on:input={(e) => band.minFraction = e.currentTarget.value === '' ? undefined : +e.currentTarget.value} placeholder="—" title="Min gas fraction before this band lights up (blank = always)" />
                                             <button class="mini-del" on:click={() => removeAuroraBand(gas, bi)} title="Remove band">✕</button>
                                         </div>
                                     {/each}
@@ -417,9 +426,14 @@
   .colour-row { display: flex; align-items: center; gap: 6px; }
   .muted { font-size: 0.8em; color: var(--text-faint); font-style: italic; }
   .aurora-field { flex-basis: 100%; }
-  .aurora-band { display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
-  .aurora-band .band-name { width: 78px; }
-  .aurora-band .band-num { width: 60px; }
+  .aurora-help { margin: 2px 0 6px; font-size: 0.75em; color: var(--text-faint); line-height: 1.35; }
+  .aurora-help strong { color: var(--text-muted); }
+  .aurora-head { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+  .aurora-head span { font-size: 0.7em; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.03em; }
+  .aurora-band { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+  .aurora-band .band-name { width: 80px; }
+  .aurora-band .band-num { width: 62px; }
+  .aurora-band select { width: 72px; }
   .mini-add, .mini-del {
       background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted);
       border-radius: 3px; cursor: pointer; font-size: 0.75em; padding: 2px 6px;

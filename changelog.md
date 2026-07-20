@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.211-beta - 20th Jul 2026
+
+* Aurora-bands editor now explains itself: column headings (Colour / Name / Efficiency / Altitude / Min frac.) with hover help, and a note that bands set the palette only — a world glows when it also has a magnetic field and particle flux. "Min frac." tooltip spells out the concentration threshold (only O₂'s crimson uses it, at 0.12).
+
 ## v2.1.210-beta - 20th Jul 2026
 
 * New Liquid editor (Settings → Planets → Liquids…), mirroring the atmosphere editor: edit every field of each solvent — melt/boil, triple/critical points, colour, density, refractive index, conductivity, biosolvent quality and family — plus add custom liquids and revert built-ins. Saved as a per-starmap override (`rulePackOverrides.liquids`) merged into the effective rule pack, so edits reach the sim. Family is a free dropdown: promote a derived `internal` fluid (molten glass, SO₂…) to a real ocean solvent, or leave it as a cloud/interior fluid.
