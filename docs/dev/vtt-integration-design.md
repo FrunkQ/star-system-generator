@@ -610,6 +610,33 @@ with an SDK broadcast channel, which matches this architecture unusually well
 — the extension may be servable directly from the SSE2 origin. Confirm and
 spec before scheduling.
 
+### 9.6 Market context (scan run 2026-07-20)
+
+Question asked: is there anything like SSE2 in the VTT space? Short answer: as
+a combined product, no. The space splits into static generators (Sectors
+Without Number, donjon, Starsy, Cosmographer), static VTT content (Traveller
+Map importer modules, map packs), and exactly two tools with animated orbital
+mechanics — neither of which has redacted GM-driven player views, 3D, real
+physics AND transit planning together.
+
+| Tool | Live orbits | Player view / GM drive | Physics | Status | Delta vs SSE2 |
+|---|---|---|---|---|---|
+| Augur: Sci-Fi (paid Foundry module) | Yes, 2D | Foundry clients only; no redaction model or fiction skins | Deliberately none | ACTIVE, commercial, monthly releases | Foundry-locked, 2D, no physics/transit; has LLM descriptions |
+| Sectors Without Number (free web) | No (static hex) | Yes — hidden entities + player view (player-browsed, not driven) | None | Alive, slow | Sector scale only; proves demand for redaction |
+| AstroSynthesis 3 (Windows desktop) | Yes, Keplerian + time scrub, 3D | None (single-user) | Moderate | Legacy (~2011), still sold | No web/multiplayer/player views |
+| Traveller Map + Foundry importers | Pan/zoom only | None | Canon data | Active | Fixed-universe atlas, not a generator/table tool |
+| Starsy / donjon / itch generators | No | No | None | Various | Prep artefacts only |
+
+Implications for this design: (1) the "players open a link and get a live,
+in-fiction, filtered terminal the GM drives" loop appears genuinely unique —
+the integrations in this doc are how it reaches tables that live inside other
+VTTs; (2) the one competitor to watch is Augur Studios (active, commercial,
+could plausibly add a player-view layer); (3) positioning is "the sensor
+display beside any VTT", not "another VTT" — which is exactly the generalised
+embed-module shape chosen in section 6/9.4. Discovery is the challenge, not
+competition: the category has no shelf, so the Foundry/Owlbear listings double
+as the marketing surface.
+
 ---
 
 ## 10. Decision log (settled 2026-07-20)
