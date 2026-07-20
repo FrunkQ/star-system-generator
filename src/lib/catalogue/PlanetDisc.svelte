@@ -289,18 +289,23 @@
       return { cx: 50 + lon * 26 * Math.sqrt(Math.max(0, 1 - latEq * latEq)), cy: 50 + latEq * 28, r: 1.8 + rnd() * 3 };
     });
   })();
-  // Cryovolcanic plumes / geysers (Enceladus, Triton): icy jets. In 2D we show them poking out around
-  // the LIMB as misty tapering sprays (their reach scales with the model's gravity-driven reachRadii).
+  // Cryovolcanic plumes / geysers (Enceladus, Triton): icy jets. Physically these vent from the SOUTH
+  // POLAR region (Enceladus's tiger stripes) — so, like the 3D, we cluster them at the pole (bottom of
+  // the disc) fanning out, not scattered round the whole limb. Each jet tapers out and carries a couple
+  // of brightening puffs marching up it (the 3D's chain of spray). Reach scales with gravity (reachRadii).
   $: plumes = (() => {
-    if (!a.cryoPlumes) return [] as { path: string; ang: number }[];
-    const rnd = seeded(71), n = a.cryoPlumes.jets;
-    const reach = Math.min(18, 6 + a.cryoPlumes.reachRadii * 4.5);
+    if (!a.cryoPlumes) return [] as { path: string; puffs: { x: number; y: number; r: number; op: number }[] }[];
+    const rnd = seeded(71), n = Math.max(3, a.cryoPlumes.jets);
+    const reach = Math.min(24, 8 + a.cryoPlumes.reachRadii * 4.5);
+    const pole = Math.PI / 2; // south pole = bottom of the (equator-on) disc
     return Array.from({ length: n }, () => {
-      const ang = rnd() * 2 * Math.PI, baseR = 29, tipR = baseR + reach * (0.7 + rnd() * 0.5), sp = 0.09 + rnd() * 0.05;
+      const ang = pole + (rnd() - 0.5) * 1.7, baseR = 29, len = reach * (0.6 + rnd() * 0.6), tipR = baseR + len, sp = 0.05 + rnd() * 0.04;
       const bx1 = 50 + Math.cos(ang - sp) * baseR, by1 = 50 + Math.sin(ang - sp) * baseR;
       const bx2 = 50 + Math.cos(ang + sp) * baseR, by2 = 50 + Math.sin(ang + sp) * baseR;
       const tx = 50 + Math.cos(ang) * tipR, ty = 50 + Math.sin(ang) * tipR;
-      return { path: `M${bx1.toFixed(1)} ${by1.toFixed(1)} Q ${tx.toFixed(1)} ${ty.toFixed(1)} ${bx2.toFixed(1)} ${by2.toFixed(1)} Z`, ang };
+      const path = `M${bx1.toFixed(1)} ${by1.toFixed(1)} Q ${tx.toFixed(1)} ${ty.toFixed(1)} ${bx2.toFixed(1)} ${by2.toFixed(1)} Z`;
+      const puffs = [0.28, 0.58, 0.85].map((f) => ({ x: 50 + Math.cos(ang) * (baseR + len * f), y: 50 + Math.sin(ang) * (baseR + len * f), r: 1.3 + f * 2.4, op: 0.55 * (1 - f * 0.55) }));
+      return { path, puffs };
     });
   })();
 
@@ -621,10 +626,13 @@
           {#each magma as m}<circle cx={m.cx} cy={m.cy} r={m.r} fill="url(#magma-{uid})" />{/each}
         </g>
       {/if}
-      <!-- Cryovolcanic plumes / geysers: misty icy sprays poking out past the limb (NOT clipped). -->
+      <!-- Cryovolcanic plumes / geysers: misty icy sprays venting from the south pole, past the limb. -->
       {#if plumes.length}
         <g filter="url(#plumeblur-{uid})">
-          {#each plumes as p}<path d={p.path} fill="url(#plume-{uid})" />{/each}
+          {#each plumes as p}
+            <path d={p.path} fill="url(#plume-{uid})" />
+            {#each p.puffs as pf}<circle cx={pf.x} cy={pf.y} r={pf.r} fill="rgba(226,240,252,{pf.op})" />{/each}
+          {/each}
         </g>
       {/if}
       <!-- Auroral ovals ringing the poles: spiky glowing rings, colour set by the atmosphere gas. -->

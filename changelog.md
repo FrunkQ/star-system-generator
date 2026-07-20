@@ -17,6 +17,14 @@ A big pass on how a world is modelled and drawn: the physics engine now derives 
 * **Tidally-locked effects:** lop-sided cratering, lop-sided bleaching, and hot / cold **eyeball** worlds.
 * Every one of these has **matching 2D and 3D visuals**, both driven by the same physics-generated tags.
 
+## v2.1.196-beta - 20th Jul 2026
+
+* Cryovolcanic plumes read consistently in 2D and 3D now: the 2D disc clusters its jets at the SOUTH POLE (physically where they vent, e.g. Enceladus) fanning out with a chain of brightening puffs, rather than scattered round the whole limb; the 3D jets were nudged a touch more prominent to meet in the middle.
+
+## v2.1.195-beta - 20th Jul 2026
+
+* Gas/ice giant clouds baked to ground level (no floating shells); the 3D surface no longer double-bakes clouds; longitude texture seam removed; small rubble-pile asteroids wear a rough regolith instead of craters; 2D disc gained cryo plumes; gallery shows polar-vortex worlds in 3/4 view.
+
 ## v2.1.194-beta - 20th Jul 2026
 
 * Fix: the redrawn 2D black-hole diagram (the fuzzy edge-on blaze) was left out of the v2.1.193 commit, so the reference gallery still showed the old version. Now included.

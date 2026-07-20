@@ -127,10 +127,10 @@ export function buildCryoPlumes(
 		normal.set(Math.cos(lon) * cphi, Math.sin(lat), Math.sin(lon) * cphi).normalize();
 		for (let i = 0; i < N; i++) {
 			const f = i / (N - 1); // 0 (base) .. 1 (tip)
-			const mat = new THREE.SpriteMaterial({ map: plumeTexture, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.72 * (1 - f * 0.6) });
+			const mat = new THREE.SpriteMaterial({ map: plumeTexture, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.82 * (1 - f * 0.55) });
 			const sprite = new THREE.Sprite(mat);
 			sprite.position.copy(normal).multiplyScalar(radius + f * reach);
-			const sz = radius * (0.18 + f * 0.55); // widens toward the tip (spray)
+			const sz = radius * (0.22 + f * 0.62); // widens toward the tip (spray)
 			sprite.scale.set(sz, sz, 1);
 			group.add(sprite);
 			visuals.push({ mat, base: mat.opacity, seed: rnd() });
