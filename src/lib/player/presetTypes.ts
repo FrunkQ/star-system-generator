@@ -5,8 +5,14 @@
 // (campaign data), not in localStorage.
 
 // The three view modules a layer can use. `holo3d` for the starmap (galaxy view) is not built yet —
-// the editor offers it disabled until it exists.
-export type ViewModule = 'list' | 'diagram2d' | 'holo3d';
+// the editor offers it disabled until it exists. `document` (WS2) renders the system as the interactive
+// Guide document through the block-model engine — additive, does NOT replace the diagram2d→holo path.
+export type ViewModule = 'list' | 'diagram2d' | 'holo3d' | 'document';
+
+// WS2 document look (see catalogue/document/blocks.ts — the engine owns these). Re-exported here so a
+// preset can carry them; type-only, so no runtime coupling between presets and the renderer.
+export type { ListStyle, DocumentStyle, DocColors } from '$lib/catalogue/document/blocks';
+import type { ListStyle, DocumentStyle, DocColors } from '$lib/catalogue/document/blocks';
 
 // A 9-point anchor for placing a graphic on the cover or as a map overlay.
 export type PinPosition =
@@ -73,6 +79,12 @@ export interface PlayerPreset {
   // Preset-wide theme.
   font: string;            // one UI font across the player view
   accentColor: string;     // broad colour scheme (spectrum pick) — drives chrome/labels/tints
+  // WS2 Guide-document theme (all optional; the engine resolves sensible defaults from font+accent when
+  // absent, so existing presets are unaffected). `documentStyle` picks the coarse skin (book/terminal/
+  // dossier), `listStyle` the list rendering, `themeColors` a finer per-slot colour set.
+  documentStyle?: DocumentStyle;
+  listStyle?: ListStyle;
+  themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,
   // different position). The cover's own image lives in cover.graphic.
   starmapOverlay: GraphicPlacement | null;

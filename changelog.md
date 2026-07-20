@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.200-beta - 20th Jul 2026
+
+* WS2 groundwork: added the Guide-document block-model engine (`renderDocument` over `heading|text|keyValue|list|image|schematic|spacer|rule` blocks with a full theme colour set + list/document style), lifted the shared `wrap`/`ellipsise` text primitives out of infoCard/listCanvas, and extended the preset theme with optional `documentStyle`/`listStyle`/`themeColors`. No visible change yet — the engine is proven by re-rendering the info card through it (unit test); shipped draw paths untouched.
+
 ## v2.1.198-beta - 20th Jul 2026
 
 * Fixed the vertical seam that sometimes showed on cloudy worlds in 3D: the cloud-deck texture now wraps its puffs across the u=0/1 boundary so the deck tiles seamlessly around the sphere (the base surface already did this).

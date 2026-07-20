@@ -5,6 +5,7 @@
 // meant to colour it). The body photo is omitted (a cross-origin image would taint the WebGL texture).
 import type { Fact } from './bodyFacts';
 import type { GraphicPlacement } from '$lib/player/presetTypes';
+import { wrap } from './textLayout';
 
 export interface HudOverlay { img: HTMLImageElement; placement: GraphicPlacement; }
 // "The Guide" margin notes drawn INTO the filtered HUD (so the CRT/NV/thermal shader catches them),
@@ -28,19 +29,6 @@ export interface HudCard {
   mono: boolean;      // white scheme: draw everything white/grey so a filter colours it
 }
 export interface HudOpts { viewW: number; viewH: number; overlay?: HudOverlay | null; card?: HudCard | null; tips?: HudTips | null; }
-
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let line = '';
-  for (const w of words) {
-    const t = line ? line + ' ' + w : w;
-    if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; }
-    else line = t;
-  }
-  if (line) lines.push(line);
-  return lines;
-}
 
 // The per-screen overlay bitmap, placed by the standard 9-pin + size%/stretch + opacity rules.
 // Exported so the (gfx) list + cover surfaces composite an identical overlay INTO the real filter.
