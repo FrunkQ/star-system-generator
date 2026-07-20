@@ -39,6 +39,7 @@
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
   import AutopilotShipIcon from '$lib/components/AutopilotShipIcon.svelte';
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
+  import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
   import EditTemporalModal from '$lib/components/EditTemporalModal.svelte';
   import AboutModal from '$lib/components/AboutModal.svelte';
@@ -107,6 +108,7 @@
   // sectioned Settings modal can open them from either view.
   let showFuelModal = false;
   let showAtmosphereModal = false;
+  let showLiquidsModal = false;
   let showSensorsModal = false;
   let showTemporalModal = false;
   let showAbout = false;
@@ -588,6 +590,10 @@
 
           if (overrides.atmosphereCompositions && pack.distributions?.['atmosphere_composition']) {
               pack.distributions['atmosphere_composition'].entries = overrides.atmosphereCompositions;
+          }
+
+          if (overrides.liquids && overrides.liquids.length) {
+              pack.liquids = overrides.liquids;  // whole-list replace; allLiquids(pack) prefers pack.liquids
           }
       }
       return pack;
@@ -1392,6 +1398,7 @@
       on:edittemporal={() => { settingsReturnSection = 'time'; showTemporalModal = true; }}
       on:editfuel={() => { settingsReturnSection = 'technology'; showFuelModal = true; }}
       on:editatmospheres={() => { settingsReturnSection = 'planets'; showAtmosphereModal = true; }}
+      on:editliquids={() => { settingsReturnSection = 'planets'; showLiquidsModal = true; }}
       on:editsensors={() => { settingsReturnSection = 'technology'; showSensorsModal = true; }}
       on:editpoi={() => { settingsReturnSection = 'generation'; showPoiEditor = true; }}
       on:editcoi={() => { settingsReturnSection = 'coi'; showCoiEditor = true; }}
@@ -1415,6 +1422,9 @@
   {/if}
   {#if showAtmosphereModal && $starmapStore && selectedRulepack}
     <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
+  {/if}
+  {#if showLiquidsModal && $starmapStore && selectedRulepack}
+    <EditLiquidsModal showModal={showLiquidsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showLiquidsModal = false; returnToSettings(); }} />
   {/if}
   {#if showSensorsModal && $starmapStore && selectedRulepack}
     <EditSensorsModal showModal={showSensorsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showSensorsModal = false; returnToSettings(); }} />

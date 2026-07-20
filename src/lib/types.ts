@@ -637,6 +637,7 @@ export interface RulePackOverrides {
   sensorDefinitions?: SensorDefinition[];
   gasPhysics?: Record<string, GasPhysics>;
   atmosphereCompositions?: any[];
+  liquids?: LiquidDef[];
 }
 
 export interface TemporalHierarchyUnit {

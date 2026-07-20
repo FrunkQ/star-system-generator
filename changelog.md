@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.210-beta - 20th Jul 2026
+
+* New Liquid editor (Settings → Planets → Liquids…), mirroring the atmosphere editor: edit every field of each solvent — melt/boil, triple/critical points, colour, density, refractive index, conductivity, biosolvent quality and family — plus add custom liquids and revert built-ins. Saved as a per-starmap override (`rulePackOverrides.liquids`) merged into the effective rule pack, so edits reach the sim. Family is a free dropdown: promote a derived `internal` fluid (molten glass, SO₂…) to a real ocean solvent, or leave it as a cloud/interior fluid.
+
 ## v2.1.209-beta - 20th Jul 2026
 
 * Auroras are now data-driven: each base gas carries its emission bands (`GasPhysics.aurora`) in `atmospheres.json` instead of a hardcoded table. A gas can have multiple bands — atomic oxygen glows green (main) AND crimson (high) — with per-band colour, efficiency, altitude and an optional concentration threshold. Resolved onto the body at process time (`resolveAuroraEmitters`); the built-in default matches the old values exactly, so no visual change until edited.
