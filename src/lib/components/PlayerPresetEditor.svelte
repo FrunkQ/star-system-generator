@@ -26,6 +26,7 @@
   import GraphicPlacementControls from './GraphicPlacementControls.svelte';
   import StarmapListView from '$lib/starmap/StarmapListView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
+  import FilteredDocumentView from './FilteredDocumentView.svelte';
 
   export let preset: PlayerPreset;
 
@@ -264,6 +265,7 @@
               <label>View
                 <select bind:value={draft.systemView}>
                   <option value="list">Text list</option>
+                  <option value="document">Guide document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D holo</option>
                 </select>
@@ -447,6 +449,20 @@
             {:else if (draft.systemView === 'holo3d' || draft.systemView === 'diagram2d') && previewSystem && rulePack}
               <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle}
                 focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
+            {:else if draft.systemView === 'document' && previewSystem}
+              <!-- The WS2 Guide document, drawn through the real filter exactly as players get it. Tap a
+                   world on the schematic (or a navigator row) to drill in — the info block is in-page. -->
+              <FilteredDocumentView
+                system={previewSystem} selectedId={previewFocusId}
+                font={draft.font} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
+                colorful={draft.accentColor === 'rainbow'}
+                imagery={draft.bodyGfx === 'photo' ? 'photo' : draft.bodyGfx === 'disc' ? 'disc' : 'none'}
+                listStyle={draft.listStyle} documentStyle={draft.documentStyle} themeColors={draft.themeColors}
+                fontScale={draft.infoFontScale}
+                filterId={draft.filter} filterParams={draft.filterParams}
+                companyName={draft.companyName} footerText={draft.footerText}
+                selectable={true}
+                on:select={(e) => (previewFocusId = e.detail)} />
             {:else if draft.systemView === 'list' && previewSystem}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 <div class="sm-preview" style="font-family:{draft.font}; --accent:{accentCss}">

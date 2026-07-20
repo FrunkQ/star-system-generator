@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.207-beta - 20th Jul 2026
+
+* WS2 Phase 3 follow-up: the preset editor now offers "Guide document" in the System-view dropdown and renders a LIVE preview of it (tap a world on the schematic to drill into its file), so the Guide document is designable/testable in-editor without a live broadcast. Also fixed the Player Views summary showing "System (undefined)" for document presets (added the missing view label).
+
 ## v2.1.206-beta - 20th Jul 2026
 
 * Fixed a stale test: PlanetDisc's "asteroid renders an irregular path" still asserted impact craters on a sub-60km body, but small strengthless rubble piles now wear a rough regolith speckle instead of craters (the v2.1.195 change). Updated the assertion to match; full suite green again.
