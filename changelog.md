@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.213-beta - 21st Jul 2026
+
+* Guide document now shows body PICTURES (was text-only): the info block draws the body's illustrated procedural disc — a shaded, true-coloured sphere with a Saturn-ring for ringed worlds — from its Body-graphics choice. Body graphics gains a "None" option (honoured in the document; intended to carry across every info surface, incl. the 3D holo, so a preset can show 2D images or nothing). Photo mode still shows a GM/stock picture when one is loaded (data-URL only, to keep the WebGL filter untainted).
+
 ## v2.1.212-beta - 20th Jul 2026
 
 * Molten liquids now glow. New `incandescent` flag on liquids (magma, molten iron, molten glass) drives a temperature-scaled thermal-glow emissive layer through the 3D render path (the same emissive material stars use) — colour and brightness ramp with heat (dull red → orange → gold, brighter the hotter). Crucially it fires even when the world's stellar temperature is low, so a tidally/internally-heated molten ocean lights up under a dim star. Editable via a new "Incandescent" checkbox in the Liquid editor. Molten iron / molten glass also got proper warm colours (were dull grey).

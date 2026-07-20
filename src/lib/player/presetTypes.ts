@@ -105,7 +105,7 @@ export interface PlayerPreset {
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
   lensing?: boolean; // stylised black-hole gravitational lensing (§A13); default on (no-op without a BH)
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
-  bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat'; // 3D sphere vs a flat disc (photo / procedural / flat shape)
+  bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat' | 'none'; // body picture: 3D sphere / photo / procedural disc / flat shape / none (a new option honoured across every info surface — 2D document, 3D holo, …)
   beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black';
   grid: 'off' | 'plain' | 'scaled' | 'hex';

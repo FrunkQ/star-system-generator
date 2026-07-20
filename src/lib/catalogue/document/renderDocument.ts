@@ -9,7 +9,8 @@
 import { wrap, ellipsise } from '../textLayout';
 import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle } from './blocks';
 import { drawSystemSchematic } from './systemSchematic';
-import type { System } from '$lib/types';
+import { drawBodyDisc } from './bodyDisc';
+import type { System, CelestialBody } from '$lib/types';
 
 // The content column the document flows within, in CSS px of the logical view.
 export interface DocLayout {
@@ -143,6 +144,19 @@ export function renderDocument(
         if (visible(top, dh)) drawImageBlock(ctx, b.img, b.crop, dx, top, dw, dh, b.aspect || 1);
         if (b.id) regions.push({ id: b.id, y0: top, y1: top + dh });
         y += dh + px(GAP, s);
+        break;
+      }
+      case 'bodyDisc': {
+        // The illustrated body picture, centred; radius derives from the reserved band height.
+        const bandH = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.2);
+        const rad = Math.min(bandH, w) * 0.42;
+        if (visible(top, bandH) && rad > 2) {
+          drawBodyDisc(ctx, b.body as CelestialBody, x + w / 2, top + bandH / 2, rad, {
+            ringed: b.ringed, mono: theme.mono
+          });
+        }
+        if (b.id) regions.push({ id: b.id, y0: top, y1: top + bandH });
+        y += bandH + px(GAP, s);
         break;
       }
       case 'schematic': {

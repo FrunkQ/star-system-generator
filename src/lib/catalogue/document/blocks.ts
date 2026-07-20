@@ -96,6 +96,13 @@ export interface ImageBlock extends DocBlockBase {
   maxHFrac?: number; // cap height as a fraction of the view height (default 0.32)
   crop?: number;     // central vertical crop fraction (letterbox), like the Survey Datapad photo
 }
+// A procedural body disc (The Guide's illustrated picture) — drawn from the body's true colour.
+export interface BodyDiscBlock extends DocBlockBase {
+  kind: 'bodyDisc';
+  body: unknown;       // the CelestialBody to illustrate (typed loosely to avoid a cycle)
+  ringed?: boolean;
+  heightFrac?: number; // fraction of the view height to reserve (default 0.2)
+}
 export interface SpacerBlock extends DocBlockBase { kind: 'spacer'; h?: number; } // gap in px (× scale)
 export interface RuleBlock extends DocBlockBase { kind: 'rule'; }                  // a full-width divider
 
@@ -111,7 +118,7 @@ export interface SchematicBlock extends DocBlockBase {
 
 export type DocBlock =
   | HeadingBlock | TextBlock | KeyValueBlock | ListBlock
-  | ImageBlock | SpacerBlock | RuleBlock | SchematicBlock;
+  | ImageBlock | BodyDiscBlock | SpacerBlock | RuleBlock | SchematicBlock;
 
 // --- Resolved colours -------------------------------------------------------------------------------
 

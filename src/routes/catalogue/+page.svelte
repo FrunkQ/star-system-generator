@@ -547,7 +547,7 @@
   // WS2 Guide document: the interactive canvas document (schematic + in-page info block + navigator),
   // drawn by the block-model engine through the real filter. Falls under the 'static' tier (no 3D scene).
   $: systemDoc = !!activePreset && activePreset.systemView === 'document';
-  $: docImagery = activePreset ? (activePreset.bodyGfx === 'photo' ? 'photo' : activePreset.bodyGfx === 'disc' ? 'disc' : 'none') : 'none';
+  $: docImagery = activePreset ? (activePreset.bodyGfx === 'photo' ? 'photo' : activePreset.bodyGfx === 'none' ? 'none' : 'disc') : 'none';
   $: docColorful = activePreset?.accentColor === 'rainbow';
   // 2D map = the holo locked overhead + flat. `whole` is NOT forced: with it off, tapping a body frames
   // (zooms) it just like the GM's orrery; a preset can still tick "Frame whole system" for a fixed plan view.

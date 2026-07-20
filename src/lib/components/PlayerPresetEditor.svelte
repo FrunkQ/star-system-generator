@@ -290,6 +290,7 @@
                   <option value="photo">Photo</option>
                   <option value="disc">Simple disc</option>
                   <option value="flat">Flat shape</option>
+                  <option value="none">None</option>
                 </select>
               </label>
               <label>Background
@@ -456,7 +457,7 @@
                 system={previewSystem} selectedId={previewFocusId}
                 font={draft.font} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 colorful={draft.accentColor === 'rainbow'}
-                imagery={draft.bodyGfx === 'photo' ? 'photo' : draft.bodyGfx === 'disc' ? 'disc' : 'none'}
+                imagery={draft.bodyGfx === 'photo' ? 'photo' : draft.bodyGfx === 'none' ? 'none' : 'disc'}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} themeColors={draft.themeColors}
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}

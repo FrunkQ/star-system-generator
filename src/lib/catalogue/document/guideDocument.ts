@@ -9,7 +9,7 @@ import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
 import { bodyFacts, bodyGlyph } from '../bodyFacts';
 import type { DocBlock } from './blocks';
 import {
-  isBary, dominantOf, displayLabel, membersOf, moonsOf, constructsOf, type Node
+  isBary, dominantOf, displayLabel, membersOf, moonsOf, constructsOf, isRinged, type Node
 } from './systemTopology';
 
 export interface GuideDocOpts {
@@ -60,9 +60,12 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     if (parent) blocks.push({ kind: 'list', items: [{ id: parent.id, text: `↑ ${displayLabel(system, parent)}` }] });
   }
 
-  // 3) Imagery — a GM/stock picture when we have one (procedural disc is Phase 4).
+  // 3) Imagery — driven by the preset's Body-graphics choice. 'photo' shows a GM/stock picture (only
+  // if one loaded); 'disc' draws the illustrated procedural disc (The Guide); 'none' shows nothing.
   if (opts.imagery === 'photo' && opts.image) {
     blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, crop: 0.4 });
+  } else if (opts.imagery === 'disc' && subject) {
+    blocks.push({ kind: 'bodyDisc', body: subject, ringed: isRinged(system, subject.id) });
   }
 
   // 4) Facts + description.

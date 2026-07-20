@@ -57,6 +57,11 @@ export function moonsOf(system: System, id: string): Node[] {
     .filter((n: any) => n.kind !== 'construct' && (n.parentId === id || n.orbit?.hostId === id) && n.roleHint === 'moon')
     .sort((a: any, b: any) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0));
 }
+// A body is "ringed" if it hosts a ring child (drives the disc's Saturn ring).
+export function isRinged(system: System, id: string): boolean {
+  return (system?.nodes ?? []).some((n: any) => n.parentId === id && n.roleHint === 'ring');
+}
+
 // Constructs attached to a body, split by placement (ON the surface vs ORBITING it).
 export function constructsOf(system: System, id: string): { surface: Node[]; orbiting: Node[] } {
   const cs = (system?.nodes ?? []).filter((n: any) => n.kind === 'construct' && (n.parentId === id || n.orbit?.hostId === id));

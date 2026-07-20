@@ -41,6 +41,19 @@ describe('buildGuideDocument', () => {
     expect(allItemIds).toContain('iss');   // surface construct drill-in
   });
 
+  it('honours the imagery choice: disc draws a bodyDisc, none draws nothing, photo needs an image', () => {
+    const disc = buildGuideDocument(system, 'earth', { imagery: 'disc' });
+    expect(disc.some((b) => b.kind === 'bodyDisc')).toBe(true);
+
+    const none = buildGuideDocument(system, 'earth', { imagery: 'none' });
+    expect(none.some((b) => b.kind === 'bodyDisc' || b.kind === 'image')).toBe(false);
+
+    const photoNoImg = buildGuideDocument(system, 'earth', { imagery: 'photo' });
+    expect(photoNoImg.some((b) => b.kind === 'image')).toBe(false); // no image loaded → nothing
+    const photoWithImg = buildGuideDocument(system, 'earth', { imagery: 'photo', image: {} as any, imageAspect: 1.5 });
+    expect(photoWithImg.some((b) => b.kind === 'image')).toBe(true);
+  });
+
   it('offers a back-to-parent row for a child body', () => {
     const blocks = buildGuideDocument(system, 'earth');
     const lists = blocks.filter((b) => b.kind === 'list') as any[];
