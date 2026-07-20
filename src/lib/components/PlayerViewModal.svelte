@@ -77,7 +77,7 @@
     broadcastService.enableRemote(); // sharing intent: allow cross-device players to connect
   });
 
-  const VIEW_LABELS: Record<ViewModule, string> = { list: 'Text list', document: 'Guide document', diagram2d: '2D map', holo3d: '3D holo' };
+  const VIEW_LABELS: Record<ViewModule, string> = { list: 'Text list', document: 'Document', diagram2d: '2D map', holo3d: '3D holo' };
   const FILTER_LABELS: Record<string, string> = { none: 'None', crt: 'CRT Terminal', night_vision: 'Night Vision', thermal: 'Thermal' };
 
   function newPreset() {

@@ -44,6 +44,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   starmapView: 'diagram2d',
   systemEnabled: true,
   systemView: 'holo3d',
+  documentStyle: 'guide',
   font: 'system-ui',
   accentColor: '#6aa0ff',
   starmapOverlay: null,
@@ -98,7 +99,7 @@ export const BUILTIN_PRESETS: PlayerPreset[] = [
   // keeps the procedural-disc imagery intent (rendered into the document from Phase 4).
   preset({
     id: 'guide', name: 'The Guide', description: "A traveller's field guide — friendly, illustrated, mostly accurate.",
-    systemView: 'document', bodyStyle: 'textured', bodyGfx: 'disc', accentColor: RAINBOW, font: F_SERIF,
+    systemView: 'document', documentStyle: 'guide', bodyStyle: 'textured', bodyGfx: 'disc', accentColor: RAINBOW, font: F_SERIF,
     guideTips: 'both',
     cover: { enabled: true, title: "DON'T PANIC", subtitle: '', body: '', label: '', graphic: null }
   }),
@@ -112,11 +113,12 @@ export const BUILTIN_PRESETS: PlayerPreset[] = [
     id: 'console', name: 'Console', description: 'A ship-console orbital plot.',
     systemView: 'diagram2d', bodyGfx: 'flat', accentColor: '#7dff9e', font: F_MONO, grid: 'plain'
   }),
-  // CRT Terminal: a salvaged green-phosphor TEXT terminal — the body list in monochrome under the CRT
-  // filter (so the phosphor tints it) + scanlines. Old 'mono' skin (retro report, mono tint).
+  // CRT Terminal: a salvaged green-phosphor terminal — the Guide document in the TERMINAL style
+  // (phosphor mono, '>' log lines) under the CRT filter + scanlines. Old 'mono' skin, now a document.
   preset({
     id: 'crt', name: 'CRT Terminal', description: 'A green-phosphor CRT terminal with scanlines.',
-    systemView: 'list', filter: 'crt', filterParams: { phosphor: CRT_GREEN }, accentColor: CRT_GREEN,
+    systemView: 'document', documentStyle: 'terminal', bodyGfx: 'none',
+    filter: 'crt', filterParams: { phosphor: CRT_GREEN }, accentColor: CRT_GREEN,
     bodyStyle: 'white', starmapMono: true, font: F_TYPEWRITER
   }),
   // Holo Table: the 3D holographic orrery — textured spheres, tilted, starfield. Old 'holo' skin.

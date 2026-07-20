@@ -25,12 +25,13 @@ export type ListStyle =
   | 'ledger'               // ruled table rows
   | 'manifest';            // ticker / cargo-manifest columns
 
-// The overall document skin. A coarse selector the engine + presets use to pick sensible defaults
-// (background texture, rules, caret) when finer theme fields are absent.
+// The overall document skin — one renderer, many looks. Each maps to a full base theme in
+// documentStyles.ts (font + colour set + list glyphs); a preset's explicit fields override it.
 export type DocumentStyle =
-  | 'book'       // serif + parchment/texture, illustrated
-  | 'terminal'   // mono + phosphor, '>' prefixes, caret
-  | 'dossier';   // middle ground: ledger/report
+  | 'guide'      // dark, illustrated field guide (serif, gold-on-dark, rainbow schematic)
+  | 'report'     // monocolour company report (white paper, black ink, bold sans, numbered)
+  | 'brochure'   // pretty travel brochure (warm cream, coral/teal, illustrated)
+  | 'terminal';  // green-screen terminal (phosphor mono, '>' log lines) — shines under CRT
 
 // The full colour set threaded through EVERY text draw (not just an accent). Light-on-dark by default
 // so a luminance-tinting filter (CRT/NV) colours it; a `mono` theme collapses everything to grey/white

@@ -27,6 +27,7 @@
   import StarmapListView from '$lib/starmap/StarmapListView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredDocumentView from './FilteredDocumentView.svelte';
+  import { DOCUMENT_STYLES } from '$lib/catalogue/document/documentStyles';
 
   export let preset: PlayerPreset;
 
@@ -264,12 +265,20 @@
             {#if draft.systemEnabled}
               <label>View
                 <select bind:value={draft.systemView}>
-                  <option value="list">Text list</option>
-                  <option value="document">Guide document</option>
+                  <option value="document">Document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D holo</option>
                 </select>
               </label>
+              {#if draft.systemView === 'document'}
+                <!-- The document's whole look — one renderer, many skins (feedback: company report,
+                     travel brochure, The Guide, terminal). Drives font + colours + list style. -->
+                <label>Document style
+                  <select bind:value={draft.documentStyle}>
+                    {#each DOCUMENT_STYLES as ds}<option value={ds.value}>{ds.label}</option>{/each}
+                  </select>
+                </label>
+              {/if}
             {:else}
               <p class="hint">Disabled: systems aren't openable; the starmap (or cover) is the whole guide.</p>
             {/if}

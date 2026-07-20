@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.215-beta - 21st Jul 2026
+
+* Document STYLE range (one renderer, many looks): a new "Document style" picker gives the Guide document four distinct skins — The Guide (dark, illustrated, serif), Company report (white paper, black ink, bold sans, numbered rows — modelled on the paper Report), Travel brochure (warm cream, coral/teal), and Terminal (green phosphor mono, "> " log lines, shines under CRT). Each is a full theme (font + colour set + list style); a preset's own colours override it. The System "View" dropdown is renamed "Document" and the redundant "Text list" option is dropped — the CRT Terminal preset now IS the document in its terminal style.
+
 ## v2.1.214-beta - 21st Jul 2026
 
 * Preset editor: stop showing controls that don't apply to the Guide document. The scene "Background" (space/greenscreen/…) is hidden for the document (it sets its own ground from its theme), and "Info panel width" is hidden too (the document's info block is part of the page, not a docked panel — only a text-size applies). Also wired "Hide body info block" so a document preset can show the schematic alone (a clean kiosk/projector display).

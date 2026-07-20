@@ -12,6 +12,7 @@
   import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
   import { renderDocument, type DocRegion } from '$lib/catalogue/document/renderDocument';
   import { resolveDocColors, type DocTheme, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
+  import { documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { drawTipBanner, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
 
@@ -53,7 +54,18 @@
   let bodyImg: CanvasImageSource | null = null;
   let bodyImgAspect = 1.6;
   let imgForId: string | null = null;
-  $: theme = { font, fontScale, mono, accent, colors: themeColors, listStyle, documentStyle } as DocTheme;
+  // The documentStyle drives the whole look (font + colour set + list glyphs); the preset's explicit
+  // themeColors / listStyle / mono override it. A rainbow accent lights the schematic (colorful), while
+  // the text keeps the style's own readable accent.
+  $: styleBase = documentStyleBase(documentStyle);
+  $: theme = {
+    font: styleBase.font,
+    fontScale, mono,
+    accent: accent && accent !== 'rainbow' ? accent : styleBase.colors.accent,
+    colors: { ...styleBase.colors, ...(themeColors ?? {}) },
+    listStyle: listStyle ?? styleBase.listStyle,
+    documentStyle
+  } as DocTheme;
 
   $: if (imagery === 'photo' && selectedId && selectedId !== imgForId) loadBodyImage(selectedId);
   $: if (imagery !== 'photo' || !selectedId) { bodyImg = null; imgForId = selectedId; }
@@ -97,13 +109,13 @@
 
     if (overlay) drawOverlay(ctx, overlay, vw, vh);
     if (tips) {
-      const to = { accent, font, mono };
+      const to = { accent: c.accent, font: theme.font, mono };
       if (tips.top) drawTipBanner(ctx, tips.top, 'top', vw, vh, to);
       if (tips.bottom) drawTipBanner(ctx, tips.bottom, 'bottom', vw, vh, to);
     }
     // Footer corner stamps (inside the page, like the cover).
     if (companyName || footerText) {
-      ctx.font = `${Math.round(11 * fontScale)}px ${font}`;
+      ctx.font = `${Math.round(11 * fontScale)}px ${theme.font}`;
       ctx.fillStyle = c.dim;
       ctx.textBaseline = 'alphabetic';
       if (companyName) { ctx.textAlign = 'left'; ctx.fillText(companyName.toUpperCase(), mx, vh - Math.round(my * 0.4)); }
