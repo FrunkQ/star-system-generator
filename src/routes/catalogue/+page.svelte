@@ -982,6 +982,7 @@
           system={displaySystem} selectedId={selectedBody?.id ?? null}
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
           colorful={docColorful} imagery={docImagery} photoFrame={activePreset.photoFrame} hideInfoBlock={activePreset.hideInfoPanel}
+          bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
           listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} tagStyle={activePreset.tagStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
           fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}

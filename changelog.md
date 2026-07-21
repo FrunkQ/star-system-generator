@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.226-beta - 21st Jul 2026
+
+* The 3D body graphic is now the REAL 3D-view render, not a simplified stand-in. It reuses the holo engine (HoloView) on a single-body scene, so it gets the actual star photosphere + sunspots, black-hole accretion disc + gravitational lensing, and every render style — with a new Render dropdown (filled / lo-poly / wireframe) when Body graphics is set to 3D sphere. True/Flat/Monochrome colour now drive the body too, the ring shows, and the 3D scene's ground matches the page colour. Removed the bespoke single-body renderer.
+
 ## v2.1.225-beta - 21st Jul 2026
 
 * Document colouration fixes: the colour swatches now refresh when you change the Colouration style (they were staying stale). The Monochrome checkbox is now a Colour dropdown — True colour / Flat colour (by type) / Monochrome. And the Terminal colouration is now a neutral white monocolour rather than baked-in green, so a CRT/phosphor filter can tint it green, amber or anything.

@@ -34,6 +34,8 @@
   export let fontScale = 1;
   export let imagery: 'sphere' | 'disc' | 'flat' | 'photo' | 'none' = 'none';
   export let photoFrame: 'letterbox' | 'full' | 'sliver' = 'letterbox';
+  export let bodyRender: import('$lib/holo/scene').RenderStyle = 'filled'; // 3D body: filled / lo-poly / wireframe
+  export let bodyStyle: 'textured' | 'flat' | 'white' = 'textured';    // 3D body: true / flat / monochrome colour
   export let hideInfoBlock = false; // clean display: schematic only, no per-body file
   export let filterId = 'none';
   export let filterParams: FilterParamValues = {};
@@ -70,6 +72,18 @@
   })();
   $: subjectRinged = subjectBody ? isRinged(system, subjectBody.id) : false;
   $: gfxOn = imagery === 'sphere' || imagery === 'disc' || imagery === 'flat';
+  // A minimal single-body system for the 3D holo body graphic: the body (re-homed to origin) plus its
+  // ring child so a ringed world keeps its ring. The real HoloView renders it — sunspots, black-hole
+  // disc + lensing, render styles and true/flat/mono colour all come from the actual 3D engine.
+  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? {
+    id: 'bg', name: '', seed: 'bg', epochT0: 0, age_Gyr: (system as any)?.age_Gyr ?? 4.5,
+    nodes: [
+      { ...subjectBody, parentId: null, orbit: undefined },
+      ...(system?.nodes ?? []).filter((n: any) => (n.parentId === subjectBody.id || n.orbit?.hostId === subjectBody.id) && n.roleHint === 'ring')
+    ],
+    rulePackId: '', rulePackVersion: '', tags: []
+  } as any : null;
+  $: docBg = resolveDocColors(theme).bg;
 
   // The selected body's picture (GM uploads are data URLs → safe to texture; a cross-origin stock image
   // would taint the WebGL surface, so we only draw data-URL images).
@@ -237,7 +251,8 @@
   <!-- Body graphic: the REAL renderers (PlanetDisc 2D / holo 3D spin), overlaid in the reserved gap. -->
   {#if gfxOn && gfxRect && subjectBody}
     <div class="fd-bodygfx" style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
-      <BodyGraphic body={subjectBody} mode={imagery === 'sphere' ? 'sphere' : 'disc'} ringed={subjectRinged} {mono} />
+      <BodyGraphic body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : 'disc'}
+        ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} />
     </div>
   {/if}
   <!-- Transition overlay: the engine paints the outgoing snapshot here and animates it away. Sits above

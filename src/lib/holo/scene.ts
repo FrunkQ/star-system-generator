@@ -293,7 +293,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function setSkybox(on: boolean) { skyboxOn = on; applyStarfield(); }
   function setBackground(bg: string) {
     background = bg;
-    (scene.background as THREE.Color).set(BG_COLORS[bg] ?? BG_COLORS.space); // colour-managed on both paths
+    // Named preset, OR a raw #rrggbb (used when the holo is embedded — e.g. the Guide document's 3D body
+    // graphic — so its ground matches the surrounding page instead of the default navy).
+    const named = BG_COLORS[bg];
+    (scene.background as THREE.Color).set(named ?? (typeof bg === 'string' && bg[0] === '#' ? bg : BG_COLORS.space));
     applyStarfield();
   }
 

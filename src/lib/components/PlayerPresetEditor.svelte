@@ -371,6 +371,20 @@
                   <option value="none">None</option>
                 </select>
               </label>
+              {#if draft.systemView === 'document' && draft.bodyGfx === 'sphere'}
+                <!-- The 3D body graphic is the real holo render, so it takes the same render styles. -->
+                <label>Render
+                  <select bind:value={draft.render}>
+                    <option value="filled">Filled</option>
+                    <option value="lopoly-filled">Lo-poly — filled</option>
+                    <option value="lopoly-lines">Lo-poly — filled + lines</option>
+                    <option value="wire-glow">Wireframe — glow</option>
+                    <option value="wire-flat">Wireframe — flat</option>
+                    <option value="wire-glow-occ">Wireframe — glow (solid)</option>
+                    <option value="wire-flat-occ">Wireframe — flat (solid)</option>
+                  </select>
+                </label>
+              {/if}
               {#if draft.systemView === 'document' && draft.bodyGfx === 'photo'}
                 <label>Photo framing
                   <select bind:value={draft.photoFrame}>
@@ -590,6 +604,7 @@
                 imagery={draft.bodyGfx} photoFrame={draft.photoFrame}
                 hideInfoBlock={draft.hideInfoPanel}
                 transition={draft.transition} transitionParams={draft.transitionParams ?? {}}
+                bodyRender={draft.render} bodyStyle={draft.bodyStyle}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} tagStyle={draft.tagStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
