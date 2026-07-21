@@ -31,11 +31,12 @@
   // One holo look bundle: frame the single body (whole:false + focus zooms it in so it fills the
   // thumbnail), auto-turntable it, no starfield/grid, honour the preset's render + colour, keep the
   // black-hole lensing on. Filter is 'none' (the document's own filter wraps this separately).
-  // angleDeg tilts from overhead (0 = straight down, 64 = 3/4): a black hole is framed nearly top-down
-  // so we look DOWN onto the accretion disc (its full face), not edge-on where it collapses to a line.
+  // angleDeg tilts from overhead (0 = straight down, 85 = nearly edge-on): a black hole is framed almost
+  // edge-on with a slight tilt above the disc plane — the iconic accretion-disc look (disc as a band with
+  // the far side lensed up over the top), matching static/images/star_types/BH_accretion_disk.png.
   $: holoStyle = {
     ...DEFAULT_STYLE,
-    whole: false, orbitSpeed: 0.12, angleDeg: isBH ? 14 : 20, skybox: false, grid: 'off',
+    whole: false, orbitSpeed: 0.12, angleDeg: isBH ? 82 : 20, skybox: false, grid: 'off',
     lockOverhead: false, lockRotation: false, bodyGfx: 'sphere', render, bodyStyle,
     // auroras OFF for the isolated thumbnail — zoomed to fill the frame their additive shell blooms into a
     // "massive glow"; the full 3D view keeps them. Portrait key light gives the day/night terminator instead.

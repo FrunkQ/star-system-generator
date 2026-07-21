@@ -21,6 +21,7 @@ export interface GuideDocOpts {
   image?: CanvasImageSource | null;      // a loaded picture for the selected body (photo mode)
   imageAspect?: number;                  // width/height of that picture
   photoFrame?: 'letterbox' | 'full' | 'sliver'; // how the photo is framed
+  imageFocus?: import('./blocks').ImageFocus | null; // subject box → frame to the body's edge, not the pic's
   hideInfo?: boolean;                    // clean display: schematic only, no per-body file block
   tagStyle?: TagStyle;                   // how tags render: pills / list / grouped (default pills)
 }
@@ -86,7 +87,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // The 'sliver' photo frame is special: it becomes a LEFT column beside the facts (handled in 4).
   const sliver = opts.imagery === 'photo' && !!opts.image && opts.photoFrame === 'sliver';
   if (opts.imagery === 'photo' && opts.image && !sliver) {
-    blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox' });
+    blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox', focus: opts.imageFocus });
   } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat') && subject) {
     // '__bodygfx' lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
     blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
@@ -94,7 +95,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
 
   // 4) Facts + description. For the sliver frame these flow in a RIGHT column beside the left photo
   // strip. The 'Tags' fact is pulled out and rendered as a styled tags block below (full width).
-  if (sliver && opts.image) blocks.push({ kind: 'columnStart', img: opts.image, aspect: opts.imageAspect || 1.6 });
+  if (sliver && opts.image) blocks.push({ kind: 'columnStart', img: opts.image, aspect: opts.imageAspect || 1.6, focus: opts.imageFocus });
   if (subject) {
     const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C');
     const rows = facts.filter((f) => f.value && f.label !== 'Tags');

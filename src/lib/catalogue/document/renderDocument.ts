@@ -7,7 +7,7 @@
 // Static / low-fps: the caller redraws only on data/selection/theme change; the shader animates the
 // time uniforms. See blocks.ts for the model and docs/dev/v2.2-player-view-visual-overhaul.md §WS2.
 import { wrap, ellipsise } from '../textLayout';
-import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle, type TagsBlock, type TagStyle, type TagItem } from './blocks';
+import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle, type TagsBlock, type TagStyle, type TagItem, type ImageFocus } from './blocks';
 import { drawSystemSchematic, schematicHeight } from './systemSchematic';
 import type { System, CelestialBody } from '$lib/types';
 
@@ -59,7 +59,7 @@ export function renderDocument(
   // Two-column (sliver) state: while active, blocks render in the RIGHT column (indented) and an image
   // is drawn as a strip down the LEFT, sized to the right column's height when the column closes.
   let colIndent = 0;
-  let col: { img: CanvasImageSource; aspect: number; stripW: number; top: number } | null = null;
+  let col: { img: CanvasImageSource; aspect: number; stripW: number; top: number; focus?: ImageFocus | null } | null = null;
 
   // Only paint a block if any of it is inside the visible band; always advance + record its region.
   const visible = (top: number, h: number) => top + h > layout.y - 2 && top < maxY + 2;
@@ -72,7 +72,7 @@ export function renderDocument(
     switch (b.kind) {
       case 'columnStart': {
         const stripW = colW * (b.stripWFrac ?? 0.34);
-        col = { img: b.img, aspect: b.aspect, stripW, top: y };
+        col = { img: b.img, aspect: b.aspect, stripW, top: y, focus: b.focus };
         colIndent = stripW + px(12, s); // right column starts past the strip + a gap
         break; // don't advance y — the right column starts level with the strip top
       }
@@ -82,7 +82,7 @@ export function renderDocument(
           const stripH = Math.max(y - col.top, minH);
           if (col.top + stripH > layout.y - 2 && col.top < maxY + 2) {
             if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)';
-            drawImageBlock(ctx, col.img, 'sliver', colX, col.top, col.stripW, stripH, col.aspect);
+            drawImageBlock(ctx, col.img, 'sliver', colX, col.top, col.stripW, stripH, col.aspect, col.focus);
             ctx.filter = 'none';
           }
           y = Math.max(y, col.top + stripH);
@@ -187,7 +187,7 @@ export function renderDocument(
         const dx = x + (w - dw) / 2;
         if (visible(top, dh)) {
           if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)'; // bleach the photo under mono
-          drawImageBlock(ctx, b.img, frame, dx, top, dw, dh, aspect);
+          drawImageBlock(ctx, b.img, frame, dx, top, dw, dh, aspect, b.focus);
           ctx.filter = 'none';
         }
         if (b.id) regions.push({ id: b.id, y0: top, y1: top + dh });
@@ -393,14 +393,31 @@ function bullet(style: ListStyle, i: number): string {
   }
 }
 
-// Draw an image contained into a box, optionally letterboxing the central `crop` fraction of its height.
+// Draw an image contained into a box. With a `focus` (the subject's box, from imageFocus.ts) the source
+// crop is centred on the BODY and zoomed so it fills the frame with a small margin — so every frame shows
+// the planet's edge, not the picture's. Without focus it falls back to the old picture-centred crop.
 function drawImageBlock(
   ctx: CanvasRenderingContext2D, img: CanvasImageSource, frame: 'letterbox' | 'full' | 'sliver',
-  dx: number, dy: number, dw: number, dh: number, aspect: number
+  dx: number, dy: number, dw: number, dh: number, aspect: number, focus?: ImageFocus | null
 ) {
   const iw = (img as any).naturalWidth || (img as any).width || 0;
   const ih = (img as any).naturalHeight || (img as any).height || 0;
   if (!iw || !ih) { ctx.drawImage(img, dx, dy, dw, dh); return; }
+  if (focus) {
+    // Source crop, dest-aspect, centred on the subject and sized so its larger extent fills ~82%.
+    const destAspect = dw / dh;
+    const bw = Math.max(2, 2 * focus.hx * iw), bh = Math.max(2, 2 * focus.hy * ih);
+    const margin = frame === 'full' ? 1.14 : 1.22; // a touch tighter for the cropping frames
+    let sw = Math.max(bw * margin, bh * margin * destAspect);
+    let sh = sw / destAspect;
+    if (sw > iw) { sw = iw; sh = sw / destAspect; }
+    if (sh > ih) { sh = ih; sw = sh * destAspect; if (sw > iw) sw = iw; }
+    let sx = focus.cx * iw - sw / 2, sy = focus.cy * ih - sh / 2;
+    sx = Math.max(0, Math.min(iw - sw, sx));
+    sy = Math.max(0, Math.min(ih - sh, sy));
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    return;
+  }
   if (frame === 'full') {
     // Whole image (the dest box already matches the aspect ratio).
     ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);

@@ -105,12 +105,15 @@ export interface ListBlock extends DocBlockBase {
   style?: ListStyle; // overrides the theme's listStyle for this block
 }
 export type PhotoFrame = 'letterbox' | 'full' | 'sliver';
+// Auto-centre box of the SUBJECT within a photo (see imageFocus.ts): frame to the body's edge, not the pic's.
+export interface ImageFocus { cx: number; cy: number; hx: number; hy: number; }
 export interface ImageBlock extends DocBlockBase {
   kind: 'image';
   img: CanvasImageSource;
   aspect: number;    // width / height of the source, for layout
   maxHFrac?: number; // cap height as a fraction of the view height (default 0.32)
   frame?: PhotoFrame; // 'letterbox' = central band (default), 'full' = whole image, 'sliver' = tall slice
+  focus?: ImageFocus | null; // subject box to centre + zoom the crop on (null = picture-centred, as before)
 }
 // A procedural body disc (The Guide's illustrated picture) — drawn from the body's true colour.
 // `mode`: 'sphere' = glossy shaded ball, 'disc' = mild-shaded disc, 'flat' = flat fill + outline.
@@ -131,6 +134,7 @@ export interface ColumnStartBlock extends DocBlockBase {
   img: CanvasImageSource;
   aspect: number;
   stripWFrac?: number; // left strip width as a fraction of the column (default 0.34)
+  focus?: ImageFocus | null; // subject box to centre the strip crop on (null = picture-centred)
 }
 export interface ColumnEndBlock extends DocBlockBase { kind: 'columnEnd'; }
 

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.229-beta - 21st Jul 2026
+
+* Black holes in the 3D body graphic are now framed almost edge-on with a slight tilt, so the accretion disc reads as the iconic lensed band (far side arcing over the top) rather than a flat top-down ring.
+* Body photos auto-centre on the subject: a quick pixel scan finds the planet/star disc against the dark background, so every frame (full / letterbox / sliver) crops to the body's edge instead of the picture's, killing dead space. Degrades to the old picture-centred crop when the subject fills the frame or can't be sampled.
+
 ## v2.1.228-beta - 21st Jul 2026
 
 * Fixed the document's 3D body graphic: a lone planet was rendering as a glowing self-lit ball (the holo treats a root-level body as the system's star) with a massive aurora bloom. It now wraps the subject in an invisible root barycentre so a planet stays a planet, lit by a new PORTRAIT key light — coloured by the system's star, held at a fixed 3/4 angle relative to the camera — so the body always reads as mostly day with a sliver of night. Auroras are off in the thumbnail (they bloomed when zoomed to fill the frame). Flat colour now visibly takes effect, and a black hole is framed nearly top-down for the best view of its accretion disc.

@@ -15,6 +15,7 @@
   import { resolveDocColors, type DocTheme, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
   import { documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
+  import { analyzeImageFocus } from '$lib/catalogue/document/imageFocus';
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
   import { drawTipBanner, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
   import BodyGraphic from './BodyGraphic.svelte';
@@ -103,6 +104,7 @@
   // would taint the WebGL surface, so we only draw data-URL images).
   let bodyImg: CanvasImageSource | null = null;
   let bodyImgAspect = 1.6;
+  let bodyImgFocus: import('$lib/catalogue/document/blocks').ImageFocus | null = null;
   let imgForId: string | null = null;
   // The documentStyle drives the whole look (font + colour set + list glyphs); the preset's explicit
   // themeColors / listStyle / mono override it. A rainbow accent lights the schematic (colorful), while
@@ -123,7 +125,7 @@
   $: if (imagery !== 'photo' || !selectedId) { bodyImg = null; imgForId = selectedId; }
 
   function loadBodyImage(id: string) {
-    imgForId = id; bodyImg = null;
+    imgForId = id; bodyImg = null; bodyImgFocus = null;
     const n: any = (system?.nodes ?? []).find((x) => x.id === id);
     const url: string | undefined = n?.image?.url;
     // Same-origin images only (data: URLs, app-relative paths like /images/…, or this origin) — a
@@ -132,7 +134,13 @@
     const sameOrigin = !!url && (url.startsWith('data:') || url.startsWith('/') || (!!origin && url.startsWith(origin)));
     if (!sameOrigin) return;
     const im = new Image();
-    im.onload = () => { if (imgForId === id) { bodyImg = im; bodyImgAspect = (im.naturalWidth || 1) / (im.naturalHeight || 1); render(); } };
+    im.onload = () => {
+      if (imgForId !== id) return;
+      bodyImg = im;
+      bodyImgAspect = (im.naturalWidth || 1) / (im.naturalHeight || 1);
+      bodyImgFocus = analyzeImageFocus(im); // auto-centre: frame to the body's edge, not the picture's
+      render();
+    };
     im.src = url!;
   }
 
@@ -157,7 +165,7 @@
 
     const blocks = buildGuideDocument(system, selectedId, {
       units, tempUnit, colorful, imagery,
-      image: bodyImg, imageAspect: bodyImgAspect, hideInfo: hideInfoBlock, tagStyle, photoFrame
+      image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
     });
     const res = renderDocument(ctx, blocks, theme, { x: mx, y: my, w: vw - mx * 2, maxY: vh - my, scrollY });
     regions = res.regions;
