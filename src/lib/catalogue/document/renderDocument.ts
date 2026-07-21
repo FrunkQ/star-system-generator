@@ -266,6 +266,8 @@ function drawTags(
 ): number {
   const style: TagStyle = b.style ?? 'pills';
   if (!b.tags.length) return top;
+  // Monochrome bleaches EVERY object on the page — pills lose their type colour and go grey too.
+  const tags: TagItem[] = theme.mono ? b.tags.map((t) => ({ ...t, color: c.value })) : b.tags;
 
   if (style === 'list') {
     // Plain text list — comma-separated, wrapped, in the body colour.
@@ -274,8 +276,8 @@ function drawTags(
     ctx.fillStyle = c.body;
     const lh = px(12 * LINE, s);
     let y = top + px(12, s);
-    for (const ln of wrap(ctx, b.tags.map((t) => t.label).join(' · '), w)) { ctx.fillText(ln, x, y); y += lh; }
-    return top + wrap(ctx, b.tags.map((t) => t.label).join(' · '), w).length * lh;
+    for (const ln of wrap(ctx, tags.map((t) => t.label).join(' · '), w)) { ctx.fillText(ln, x, y); y += lh; }
+    return top + wrap(ctx, tags.map((t) => t.label).join(' · '), w).length * lh;
   }
 
   if (style === 'grouped' || style === 'grouped-list') {
@@ -283,7 +285,7 @@ function drawTags(
     // as a plain comma-separated line in the body colour.
     const asText = style === 'grouped-list';
     const groups = new Map<string, TagItem[]>();
-    for (const t of b.tags) { const g = t.group || 'Other'; (groups.get(g) ?? groups.set(g, []).get(g)!).push(t); }
+    for (const t of tags) { const g = t.group || 'Other'; (groups.get(g) ?? groups.set(g, []).get(g)!).push(t); }
     let y = top;
     for (const [g, items] of [...groups.entries()].sort((a, z) => a[0].localeCompare(z[0]))) {
       ctx.font = `${px(10, s)}px ${font}`;
@@ -305,7 +307,7 @@ function drawTags(
   }
 
   // Default: coloured pills, wrapping across the column.
-  return drawPillRow(ctx, b.tags, font, s, x, w, top);
+  return drawPillRow(ctx, tags, font, s, x, w, top);
 }
 
 // Lay out tag pills left-to-right, wrapping to new rows; returns the bottom y.

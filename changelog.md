@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.220-beta - 21st Jul 2026
+
+* Fixes on the Document body graphics + monochrome: "Photo" now actually shows the body's picture (the loader was rejecting the app's own same-origin image paths, only allowing data URLs). Monochrome now bleaches EVERY object on the page — the tag pills and the rainbow schematic go grey too, not just the text.
+
 ## v2.1.219-beta - 21st Jul 2026
 
 * Document look reworked around feedback. The chosen FONT is now respected throughout, with an optional separate heading font. "Document style" becomes "Colouration": each style is a starting point that seeds an editable per-slot colour set (background, heading, body, labels, values, accent, lines) you can then tweak — the layout is the same across styles. The Colour dropdown is gone; a single "Monochrome (bleach)" toggle now bleaches the WHOLE page to grey for a tinting filter. Tags gain a "Grouped list" (type headings, plain text) option, and navigation elements can render as plain text or as boxes/buttons.

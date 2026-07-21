@@ -70,7 +70,9 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
   // Stable hue index (star, then its bodies, then rogues) — only used in `colorful`.
   const hueIndex = new Map<string, number>();
   { let i = 0; for (const s of stars) { hueIndex.set(s.id, i++); for (const b of listBodiesOf(system, s.id)) hueIndex.set(b.id, i++); } for (const r of roguesOf(system)) hueIndex.set(r.id, i++); }
-  const tint = (id: string, fallback: string) => colorful ? hue(hueIndex.get(id) ?? 0) : fallback;
+  // Monochrome bleaches everything: the schematic drops its rainbow and uses the grey ramp too.
+  const colorfulEff = colorful && !theme.mono;
+  const tint = (id: string, fallback: string) => colorfulEff ? hue(hueIndex.get(id) ?? 0) : fallback;
 
   // Fit the virtual VB_W × (rows·ROW_H) diagram into the rect, centred horizontally, top-aligned.
   const virtH = stars.length * ROW_H;
@@ -96,7 +98,7 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
     const starCol = tint(star.id, c.heading);
 
     // Distance line.
-    ctx.strokeStyle = colorful ? starCol : c.rule;
+    ctx.strokeStyle = colorfulEff ? starCol : c.rule;
     ctx.beginPath(); ctx.moveTo(74, cy); ctx.lineTo(VB_W - 14, cy); ctx.stroke();
 
     // Star node.
@@ -104,7 +106,7 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
     ctx.beginPath(); ctx.arc(42, cy, 13, 0, Math.PI * 2);
     ctx.fillStyle = starCol; ctx.globalAlpha = starSel ? 1 : 0.9; ctx.fill(); ctx.globalAlpha = 1;
     if (starSel) { ctx.strokeStyle = c.value; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1.5; }
-    ctx.fillStyle = colorful ? starCol : c.body;
+    ctx.fillStyle = colorfulEff ? starCol : c.body;
     ctx.font = `600 13px ${font}`; ctx.textAlign = 'center';
     ctx.fillText(star.name, 42, cy + 27);
     pushHit(star.id, 42 - 15, cy - 15, 42 + 15, cy + 30);
@@ -126,7 +128,7 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
       ctx.fillStyle = col; ctx.fill();
       if (sel) { ctx.strokeStyle = c.value; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1.5; }
       if (e.hasMoons) { ctx.beginPath(); ctx.arc(e.x + 10, cy - 9, 2.4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
-      ctx.fillStyle = colorful ? col : (sel ? c.value : c.body);
+      ctx.fillStyle = colorfulEff ? col : (sel ? c.value : c.body);
       ctx.font = `${sel ? '600 ' : ''}10px ${font}`; ctx.textAlign = 'center';
       ctx.fillText(e.label, e.x, cy - 13);
       pushHit(e.id, e.x - 9, cy - 22, e.x + 9, cy + 9);

@@ -84,10 +84,14 @@
     imgForId = id; bodyImg = null;
     const n: any = (system?.nodes ?? []).find((x) => x.id === id);
     const url: string | undefined = n?.image?.url;
-    if (!url || !url.startsWith('data:')) return; // only same-origin data URLs (no WebGL taint)
+    // Same-origin images only (data: URLs, app-relative paths like /images/…, or this origin) — a
+    // cross-origin image would taint the WebGL surface the filter reads from.
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const sameOrigin = !!url && (url.startsWith('data:') || url.startsWith('/') || (!!origin && url.startsWith(origin)));
+    if (!sameOrigin) return;
     const im = new Image();
     im.onload = () => { if (imgForId === id) { bodyImg = im; bodyImgAspect = (im.naturalWidth || 1) / (im.naturalHeight || 1); render(); } };
-    im.src = url;
+    im.src = url!;
   }
 
   function render() {
