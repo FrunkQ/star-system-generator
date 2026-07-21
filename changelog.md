@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.228-beta - 21st Jul 2026
+
+* Fixed the document's 3D body graphic: a lone planet was rendering as a glowing self-lit ball (the holo treats a root-level body as the system's star) with a massive aurora bloom. It now wraps the subject in an invisible root barycentre so a planet stays a planet, lit by a new PORTRAIT key light — coloured by the system's star, held at a fixed 3/4 angle relative to the camera — so the body always reads as mostly day with a sliver of night. Auroras are off in the thumbnail (they bloomed when zoomed to fill the frame). Flat colour now visibly takes effect, and a black hole is framed nearly top-down for the best view of its accretion disc.
+
 ## v2.1.227-beta - 21st Jul 2026
 
 * Removed the redundant "Manage presets…" link from the Field Guide launcher — it just opened Player Views, which is reachable from the rail already.

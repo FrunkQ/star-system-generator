@@ -15,7 +15,7 @@
   import { resolveDocColors, type DocTheme, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
   import { documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
-  import { isBary, dominantOf, isRinged } from '$lib/catalogue/document/systemTopology';
+  import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
   import { drawTipBanner, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
   import BodyGraphic from './BodyGraphic.svelte';
 
@@ -72,17 +72,31 @@
   })();
   $: subjectRinged = subjectBody ? isRinged(system, subjectBody.id) : false;
   $: gfxOn = imagery === 'sphere' || imagery === 'disc' || imagery === 'flat';
-  // A minimal single-body system for the 3D holo body graphic: the body (re-homed to origin) plus its
-  // ring child so a ringed world keeps its ring. The real HoloView renders it — sunspots, black-hole
-  // disc + lensing, render styles and true/flat/mono colour all come from the actual 3D engine.
-  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? {
-    id: 'bg', name: '', seed: 'bg', epochT0: 0, age_Gyr: (system as any)?.age_Gyr ?? 4.5,
-    nodes: [
-      { ...subjectBody, parentId: null, orbit: undefined },
-      ...(system?.nodes ?? []).filter((n: any) => (n.parentId === subjectBody.id || n.orbit?.hostId === subjectBody.id) && n.roleHint === 'ring')
-    ],
-    rulePackId: '', rulePackVersion: '', tags: []
-  } as any : null;
+  // A minimal single-body system for the 3D holo body graphic. The BODY sits at origin (so the holo's
+  // focus fills the frame with it) with its ring child; the system's real STAR is placed OFF to the side
+  // (a big fabricated orbit around the body) so it stays off-frame but lights the body from a 3/4 angle —
+  // mostly day, a sliver of night — in the star's true colour. A planet with no star renders unlit (a
+  // flat circle), which is why the star must be present. The real HoloView draws it, so sunspots, the
+  // black-hole disc + lensing, render styles and true/flat/mono colour all come from the actual 3D engine.
+  // A single-body system for the 3D portrait: JUST the body (+ its rings). No fabricated star — a stray
+  // star sphere/corona would crash the frame and skew the aurora flux; the holo's PORTRAIT key light
+  // (coloured by the real star below) lights the day/night terminator instead.
+  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? (() => {
+    // Wrap the subject in a synthetic, invisible root barycentre and PARENT the body to it. The holo
+    // treats a root-level `kind:'body'` (parentId null) as the system's STAR (self-emissive + corona),
+    // so a lone planet would render as a glowing green ball — parenting it keeps it classified as a
+    // planet (a star subject still reads as a star via its own roleHint). No orbit → sits at the origin.
+    const root = { id: '__root', name: '', kind: 'barycenter', parentId: null, orbit: undefined };
+    const bodyNode = { ...subjectBody, parentId: '__root', orbit: undefined };
+    const rings = (system?.nodes ?? []).filter((n: any) => (n.parentId === subjectBody.id || n.orbit?.hostId === subjectBody.id) && n.roleHint === 'ring')
+      .map((r: any) => ({ ...r, parentId: subjectBody.id }));
+    return {
+      id: 'bg', name: '', seed: 'bg', epochT0: 0, age_Gyr: (system as any)?.age_Gyr ?? 4.5,
+      nodes: [root, bodyNode, ...rings], rulePackId: '', rulePackVersion: '', tags: []
+    };
+  })() as any : null;
+  // Colour of the system's star — "the sun provides the right colour" for the portrait key light.
+  $: starHex = (starsOf(system)[0] as any)?.apparentColorHex ?? null;
   $: docBg = resolveDocColors(theme).bg;
 
   // The selected body's picture (GM uploads are data URLs → safe to texture; a cross-origin stock image
@@ -252,7 +266,7 @@
   {#if gfxOn && gfxRect && subjectBody}
     <div class="fd-bodygfx" style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
       <BodyGraphic body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : 'disc'}
-        ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} />
+        ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex} />
     </div>
   {/if}
   <!-- Transition overlay: the engine paints the outgoing snapshot here and animates it away. Sits above

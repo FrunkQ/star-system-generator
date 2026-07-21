@@ -40,6 +40,7 @@
     controller?.setRender(s.render ?? 'filled');
     controller?.setUnlit(s.unlit ?? false);
     controller?.setLensing(s.lensing !== false); // black-hole gravitational lensing (default on)
+    controller?.setPortrait(s.portrait ?? null); // isolated-body portrait key light (document thumbnail)
     controller?.setFlatOverhead(s.lockOverhead ?? false); // 2D map: tilt pinned top-down
     controller?.setLockRotation(s.lockRotation ?? false); // fixed heading: follow by panning
     controller?.setAuroras(s.auroras ?? true);

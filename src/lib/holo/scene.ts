@@ -91,6 +91,8 @@ export interface HoloController {
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   setLensing(on: boolean): void; // stylised black-hole gravitational lensing (§A13)
+  setPortrait(colorHex: string | null): void; // isolated-body PORTRAIT key light in the star's colour at a fixed
+  // 3/4 angle relative to the camera (mostly day + a sliver of night). null = off (normal star lighting).
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -404,6 +406,41 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // day/night terminator (added per-star in setSystem so it tracks the star's position).
   const ambient = new THREE.HemisphereLight(0xaecbff, 0x0a0e16, 0.35);
   scene.add(ambient);
+
+  // Isolated-body PORTRAIT key light: when the document's body thumbnail frames a single planet there is
+  // no star node to cast a terminator, so a fabricated star would drag in a stray sphere + corona and skew
+  // the aurora flux. Instead a dedicated directional key — coloured by the real star ("the sun provides the
+  // colour") — is placed each frame at a fixed 3/4 angle RELATIVE TO THE CAMERA (offscreen, upper-front-
+  // side) so the framed body always reads as mostly day with a sliver of night whatever the turntable does.
+  let portraitLight: THREE.DirectionalLight | null = null;
+  let portraitOn = false;
+  const _portR = new THREE.Vector3();
+  const _portU = new THREE.Vector3();
+  const _portF = new THREE.Vector3();
+  function setPortrait(colorHex: string | null) {
+    portraitOn = !!colorHex;
+    if (colorHex) {
+      if (!portraitLight) {
+        portraitLight = new THREE.DirectionalLight(0xffffff, 2.4);
+        scene.add(portraitLight);
+        scene.add(portraitLight.target);
+      }
+      portraitLight.color.set(colorHex);
+      portraitLight.visible = true;
+    } else if (portraitLight) {
+      portraitLight.visible = false;
+    }
+  }
+  function updatePortraitLight() {
+    if (!portraitLight) return;
+    _portR.setFromMatrixColumn(camera.matrixWorld, 0); // camera right
+    _portU.setFromMatrixColumn(camera.matrixWorld, 1); // camera up
+    _portF.subVectors(camera.position, controls.target).normalize(); // toward the camera
+    // Front-dominant (day fills most of the disc) with a side+up offset so one limb falls into night.
+    portraitLight.target.position.copy(controls.target);
+    portraitLight.position.copy(controls.target)
+      .addScaledVector(_portF, 1.0).addScaledVector(_portR, 0.5).addScaledVector(_portU, 0.4);
+  }
 
   // --- GPU post-processing filter chain (Mappadux filter package, ported) ---
   const composer = new EffectComposer(renderer);
@@ -1903,6 +1940,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateBelts();
     updateOrbitRings();
     controls.update();
+    if (portraitOn) updatePortraitLight(); // AFTER controls.update so the camera basis is current this frame
     updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
     updateLensing();
     if (filterPass) filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
@@ -1942,7 +1980,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, resetView, resize, dispose };
 }
 
 // ---- helpers ----

@@ -19,18 +19,27 @@
   export let render: RenderStyle = 'filled';            // 3D: filled / lo-poly / wireframe
   export let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // 3D: true / flat / monochrome
   export let bg = '#05070c';                             // 3D scene ground — matches the page colour
+  export let starHex: string | null = null;              // 3D: colour of the system's star (lights the portrait)
 
   $: is3D = mode === 'sphere';
-  // One holo look bundle: frame the single body, auto-turntable it, no starfield/grid, honour the
-  // preset's render + colour, keep the black-hole lensing + auroras on. Filter is 'none' (the document's
-  // own filter is applied by the surrounding canvas, not here).
-  // whole:false + a focus on the body zooms the camera IN so the body fills the thumbnail (a whole-system
-  // frame leaves a single small body as a dot).
+  $: subjectIsStar = ((body as any)?.kind === 'star') || (((body as any)?.classes ?? []).some((c: string) => /star|dwarf/i.test(String(c))));
+  // A black hole reads best looking DOWN onto its accretion disc (a wide ellipse), not edge-on.
+  $: isBH = !!(body as any)?.isBH || (((body as any)?.classes ?? []).some((c: string) => /black.?hole/i.test(String(c))));
+  // Portrait key light: only a NON-luminous body needs one (a star / black hole lights itself). Coloured by
+  // the real star so "the sun provides the right colour"; a warm white fallback if the star has no colour.
+  $: portrait = (subjectIsStar || isBH) ? null : (starHex || '#fff4e0');
+  // One holo look bundle: frame the single body (whole:false + focus zooms it in so it fills the
+  // thumbnail), auto-turntable it, no starfield/grid, honour the preset's render + colour, keep the
+  // black-hole lensing on. Filter is 'none' (the document's own filter wraps this separately).
+  // angleDeg tilts from overhead (0 = straight down, 64 = 3/4): a black hole is framed nearly top-down
+  // so we look DOWN onto the accretion disc (its full face), not edge-on where it collapses to a line.
   $: holoStyle = {
     ...DEFAULT_STYLE,
-    whole: false, orbitSpeed: 0.12, angleDeg: 14, skybox: false, grid: 'off',
+    whole: false, orbitSpeed: 0.12, angleDeg: isBH ? 14 : 20, skybox: false, grid: 'off',
     lockOverhead: false, lockRotation: false, bodyGfx: 'sphere', render, bodyStyle,
-    unlit: false, lensing: true, auroras: true, bodySize: 1, compression: 0,
+    // auroras OFF for the isolated thumbnail — zoomed to fill the frame their additive shell blooms into a
+    // "massive glow"; the full 3D view keeps them. Portrait key light gives the day/night terminator instead.
+    unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, portrait,
     background: bg, beltStyle: 'rocks', labelSize: 0, filter: 'none', filterParams: undefined
   };
 </script>
