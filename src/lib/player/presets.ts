@@ -47,6 +47,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   documentStyle: 'guide',
   tagStyle: 'pills',
   navStyle: 'plain',
+  photoFrame: 'letterbox',
   transition: 'none',
   transitionParams: {},
   font: 'system-ui',

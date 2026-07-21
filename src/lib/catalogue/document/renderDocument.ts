@@ -142,11 +142,23 @@ export function renderDocument(
         break;
       }
       case 'image': {
-        const maxH = (layout.maxY && layout.maxY !== Infinity ? layout.maxY - layout.y : 10000) * (b.maxHFrac ?? 0.32);
-        let dw = w, dh = w / (b.aspect || 1);
-        if (dh > maxH) { dh = maxH; dw = dh * (b.aspect || 1); }
+        const frame = b.frame ?? 'letterbox';
+        const aspect = b.aspect || 1;
+        const viewH = (layout.maxY && layout.maxY !== Infinity ? layout.maxY - layout.y : 10000);
+        const maxH = viewH * (b.maxHFrac ?? (frame === 'sliver' ? 0.5 : frame === 'full' ? 0.42 : 0.32));
+        let dw: number, dh: number;
+        if (frame === 'full') {                 // whole image, contained
+          dw = w; dh = w / aspect;
+          if (dh > maxH) { dh = maxH; dw = dh * aspect; }
+        } else if (frame === 'sliver') {         // tall narrow vertical slice
+          dh = maxH; dw = Math.min(w, dh * 0.5);
+        } else {                                 // letterbox: full width, central band
+          const cropFrac = 0.4;
+          dw = w; dh = (w / aspect) * cropFrac;
+          if (dh > maxH) { dh = maxH; dw = (dh / cropFrac) * aspect; }
+        }
         const dx = x + (w - dw) / 2;
-        if (visible(top, dh)) drawImageBlock(ctx, b.img, b.crop, dx, top, dw, dh, b.aspect || 1);
+        if (visible(top, dh)) drawImageBlock(ctx, b.img, frame, dx, top, dw, dh, aspect);
         if (b.id) regions.push({ id: b.id, y0: top, y1: top + dh });
         y += dh + px(GAP, s);
         break;
@@ -157,7 +169,7 @@ export function renderDocument(
         const rad = Math.min(bandH, w) * 0.42;
         if (visible(top, bandH) && rad > 2) {
           drawBodyDisc(ctx, b.body as CelestialBody, x + w / 2, top + bandH / 2, rad, {
-            ringed: b.ringed, mono: theme.mono
+            ringed: b.ringed, mono: theme.mono, mode: b.mode
           });
         }
         if (b.id) regions.push({ id: b.id, y0: top, y1: top + bandH });
@@ -353,17 +365,22 @@ function bullet(style: ListStyle, i: number): string {
 
 // Draw an image contained into a box, optionally letterboxing the central `crop` fraction of its height.
 function drawImageBlock(
-  ctx: CanvasRenderingContext2D, img: CanvasImageSource, crop: number | undefined,
+  ctx: CanvasRenderingContext2D, img: CanvasImageSource, frame: 'letterbox' | 'full' | 'sliver',
   dx: number, dy: number, dw: number, dh: number, aspect: number
 ) {
   const iw = (img as any).naturalWidth || (img as any).width || 0;
   const ih = (img as any).naturalHeight || (img as any).height || 0;
-  if (crop && crop > 0 && crop < 1 && iw && ih) {
-    // Show the central `crop` fraction of the source height, full width (matches the Survey Datapad).
-    const sh = ih * crop;
-    const sy = (ih - sh) / 2;
-    ctx.drawImage(img, 0, sy, iw, sh, dx, dy, dw, dw * (sh / iw));
+  if (!iw || !ih) { ctx.drawImage(img, dx, dy, dw, dh); return; }
+  if (frame === 'full') {
+    // Whole image (the dest box already matches the aspect ratio).
+    ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
+  } else if (frame === 'sliver') {
+    // Central FULL-HEIGHT vertical slice, cropped to the tall dest box's aspect.
+    const sw = Math.min(iw, ih * (dw / dh));
+    ctx.drawImage(img, (iw - sw) / 2, 0, sw, ih, dx, dy, dw, dh);
   } else {
-    ctx.drawImage(img, dx, dy, dw, dh);
+    // Letterbox: central full-WIDTH horizontal band, cropped to the short dest box's aspect.
+    const sh = Math.min(ih, iw * (dh / dw));
+    ctx.drawImage(img, 0, (ih - sh) / 2, iw, sh, dx, dy, dw, dh);
   }
 }

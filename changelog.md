@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.221-beta - 21st Jul 2026
+
+* Document body graphics + entry polish. Entering the Document view now preselects the system's primary star, so a body's file shows straight away. The body-graphics options render distinctly: 3D sphere = a glossy shaded ball (specular highlight), Simple disc = a softer disc, Flat shape = a flat fill with an outline. Photo gains framing options — letterbox band (default), full image, or a tall vertical sliver.
+
 ## v2.1.220-beta - 21st Jul 2026
 
 * Fixes on the Document body graphics + monochrome: "Photo" now actually shows the body's picture (the loader was rejecting the app's own same-origin image paths, only allowing data URLs). Monochrome now bleaches EVERY object on the page — the tag pills and the rainbow schematic go grey too, not just the text.

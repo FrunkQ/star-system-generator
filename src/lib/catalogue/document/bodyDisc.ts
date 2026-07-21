@@ -17,31 +17,52 @@ function shade(hex: string | undefined, f: number): string {
   return `rgb(${clampByte(r)},${clampByte(g)},${clampByte(b)})`;
 }
 
-export interface BodyDiscOpts { ringed?: boolean; mono?: boolean; }
+export interface BodyDiscOpts { ringed?: boolean; mono?: boolean; mode?: 'sphere' | 'disc' | 'flat'; }
 
-// Draw a shaded disc of radius r centred at (cx, cy). Lit from the upper-left, limb-darkened; a ringed
-// body gets a tilted ellipse ring (back arc behind, front arc over). `mono` draws a grey ramp so a
-// tinting filter (CRT/NV) colours it.
+// Draw the body at radius r centred at (cx, cy). `mode` sets how 3D it reads:
+//   'sphere' — glossy shaded ball (radial gradient + specular highlight), limb-darkened.
+//   'disc'   — a mild-shaded disc (softer gradient, subtle rim). The middle ground.
+//   'flat'   — a flat single-colour fill with a bold outline (a 2D "shape").
+// A ringed body gets a tilted ellipse ring. `mono` draws a grey ramp so a tinting filter colours it.
 export function drawBodyDisc(
   ctx: CanvasRenderingContext2D, body: CelestialBody, cx: number, cy: number, r: number, opts: BodyDiscOpts = {}
 ): void {
   const base = opts.mono ? '#b7bec9' : ((body as any).apparentColorHex || '#8a8f98');
+  const mode = opts.mode || 'disc';
   const ringColor = shade(base, 0.1);
 
-  // Back half of the ring (occluded by the sphere's upper edge), drawn first.
   if (opts.ringed) drawRing(ctx, cx, cy, r, ringColor, 'back');
 
-  // Sphere: radial gradient offset toward the light, with a limb-darkened rim.
-  const g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.38, r * 0.08, cx, cy, r);
-  g.addColorStop(0, shade(base, 0.5));
-  g.addColorStop(0.55, base);
-  g.addColorStop(1, shade(base, -0.6));
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = g;
-  ctx.fill();
+  if (mode === 'flat') {
+    // Flat 2D shape: solid apparent colour + a darker outline.
+    ctx.fillStyle = base;
+    ctx.fill();
+    ctx.lineWidth = Math.max(1.5, r * 0.05);
+    ctx.strokeStyle = shade(base, -0.5);
+    ctx.stroke();
+  } else {
+    // Shaded: 'sphere' offsets the light hard and adds a specular dot; 'disc' is a gentler gradient.
+    const sphere = mode === 'sphere';
+    const g = ctx.createRadialGradient(
+      cx - r * (sphere ? 0.35 : 0.2), cy - r * (sphere ? 0.38 : 0.22), r * 0.08, cx, cy, r
+    );
+    g.addColorStop(0, shade(base, sphere ? 0.55 : 0.35));
+    g.addColorStop(sphere ? 0.55 : 0.65, base);
+    g.addColorStop(1, shade(base, sphere ? -0.62 : -0.4));
+    ctx.fillStyle = g;
+    ctx.fill();
+    if (sphere) {
+      // Specular highlight — a small bright spot toward the light for a glossy 3D read.
+      const hx = cx - r * 0.4, hy = cy - r * 0.42, hr = r * 0.5;
+      const spec = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+      spec.addColorStop(0, `rgba(255,255,255,${opts.mono ? 0.5 : 0.35})`);
+      spec.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = spec; ctx.fill();
+    }
+  }
 
-  // Front half of the ring, over the sphere.
   if (opts.ringed) drawRing(ctx, cx, cy, r, ringColor, 'front');
 }
 

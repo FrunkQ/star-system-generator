@@ -17,9 +17,10 @@ export interface GuideDocOpts {
   units?: MeasurementUnits;
   tempUnit?: TemperatureUnit;
   colorful?: boolean;                    // The Guide's rainbow schematic
-  imagery?: 'disc' | 'photo' | 'none';   // how the body picture is shown
+  imagery?: 'sphere' | 'disc' | 'flat' | 'photo' | 'none'; // how the body picture is shown
   image?: CanvasImageSource | null;      // a loaded picture for the selected body (photo mode)
   imageAspect?: number;                  // width/height of that picture
+  photoFrame?: 'letterbox' | 'full' | 'sliver'; // how the photo is framed
   hideInfo?: boolean;                    // clean display: schematic only, no per-body file block
   tagStyle?: TagStyle;                   // how tags render: pills / list / grouped (default pills)
 }
@@ -83,9 +84,9 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // 3) Imagery — driven by the preset's Body-graphics choice. 'photo' shows a GM/stock picture (only
   // if one loaded); 'disc' draws the illustrated procedural disc (The Guide); 'none' shows nothing.
   if (opts.imagery === 'photo' && opts.image) {
-    blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, crop: 0.4 });
-  } else if (opts.imagery === 'disc' && subject) {
-    blocks.push({ kind: 'bodyDisc', body: subject, ringed: isRinged(system, subject.id) });
+    blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox' });
+  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat') && subject) {
+    blocks.push({ kind: 'bodyDisc', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery });
   }
 
   // 4) Facts + description. The 'Tags' fact is pulled out and rendered as a styled tags block below.

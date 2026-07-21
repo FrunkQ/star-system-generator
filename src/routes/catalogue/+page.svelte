@@ -77,6 +77,7 @@
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredListView from '$lib/components/FilteredListView.svelte';
   import FilteredDocumentView from '$lib/components/FilteredDocumentView.svelte';
+  import { starsOf } from '$lib/catalogue/document/systemTopology';
   import { systemVisualStars } from '$lib/starmap/systemStars';
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
@@ -547,8 +548,16 @@
   // WS2 Guide document: the interactive canvas document (schematic + in-page info block + navigator),
   // drawn by the block-model engine through the real filter. Falls under the 'static' tier (no 3D scene).
   $: systemDoc = !!activePreset && activePreset.systemView === 'document';
-  $: docImagery = activePreset ? (activePreset.bodyGfx === 'photo' ? 'photo' : activePreset.bodyGfx === 'none' ? 'none' : 'disc') : 'none';
+  // Pass the body-graphics mode straight through (sphere / disc / flat / photo / none) so the document
+  // can render each distinctly.
+  $: docImagery = activePreset ? activePreset.bodyGfx : 'none';
   $: docColorful = activePreset?.accentColor === 'rainbow';
+  // Entering the Document view with nothing chosen: preselect the system's primary (most-massive) star
+  // so its file shows straight away, rather than an empty "tap a world" prompt.
+  $: if (systemDoc && displaySystem && !selectedBody) {
+    const star = starsOf(displaySystem)[0] as CelestialBody | undefined;
+    if (star) selectedBody = star;
+  }
   // 2D map = the holo locked overhead + flat. `whole` is NOT forced: with it off, tapping a body frames
   // (zooms) it just like the GM's orrery; a preset can still tick "Frame whole system" for a fixed plan view.
   // What the system stage renders with (the 2D map = the holo locked flat). Shared with the editor
@@ -972,7 +981,7 @@
         <FilteredDocumentView
           system={displaySystem} selectedId={selectedBody?.id ?? null}
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
-          colorful={docColorful} imagery={docImagery} hideInfoBlock={activePreset.hideInfoPanel}
+          colorful={docColorful} imagery={docImagery} photoFrame={activePreset.photoFrame} hideInfoBlock={activePreset.hideInfoPanel}
           listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} tagStyle={activePreset.tagStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
           fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}

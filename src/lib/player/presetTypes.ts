@@ -87,6 +87,7 @@ export interface PlayerPreset {
   listStyle?: ListStyle;
   tagStyle?: TagStyle;
   navStyle?: NavStyle;
+  photoFrame?: 'letterbox' | 'full' | 'sliver'; // document: how a body photo is framed
   themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,
   // different position). The cover's own image lives in cover.graphic.

@@ -30,6 +30,7 @@
   import { DOCUMENT_STYLES, documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import TransitionParamControls from './TransitionParamControls.svelte';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
+  import { starsOf } from '$lib/catalogue/document/systemTopology';
 
   // ── Document colouration (feedback): the documentStyle is a SEED — it fills the editable colour set,
   //    then the user tweaks individual slots. Each is a <input type=color> (hex), so rgba seed values are
@@ -138,6 +139,11 @@
   // the PARENT feeds it back as the prop; that loop-back is what makes click-to-frame (and the click
   // ladder) work. The catalogue always wired it; the preview didn't, so clicks there did nothing.
   let previewFocusId: string | null = null;
+  // Preselect the primary star so the Document preview shows a body's file straight away.
+  $: if (draft.systemView === 'document' && previewSystem && !previewFocusId) {
+    const star: any = starsOf(previewSystem)[0];
+    if (star) previewFocusId = star.id;
+  }
 
   // A real colour for CSS vars / non-cover components (rainbow → representative mid colour).
   $: accentCss = accentSolid(draft.accentColor);
@@ -354,6 +360,15 @@
                   <option value="none">None</option>
                 </select>
               </label>
+              {#if draft.systemView === 'document' && draft.bodyGfx === 'photo'}
+                <label>Photo framing
+                  <select bind:value={draft.photoFrame}>
+                    <option value="letterbox">Letterbox band</option>
+                    <option value="full">Full image</option>
+                    <option value="sliver">Vertical sliver</option>
+                  </select>
+                </label>
+              {/if}
               {#if draft.systemView === 'document'}
                 <label>Tags
                   <select bind:value={draft.tagStyle}>
@@ -561,7 +576,7 @@
                 system={previewSystem} selectedId={previewFocusId}
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 colorful={draft.accentColor === 'rainbow'}
-                imagery={draft.bodyGfx === 'photo' ? 'photo' : draft.bodyGfx === 'none' ? 'none' : 'disc'}
+                imagery={draft.bodyGfx} photoFrame={draft.photoFrame}
                 hideInfoBlock={draft.hideInfoPanel}
                 transition={draft.transition} transitionParams={draft.transitionParams ?? {}}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} tagStyle={draft.tagStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}

@@ -30,7 +30,8 @@
   export let tagStyle: import('$lib/catalogue/document/blocks').TagStyle | undefined = undefined;
   export let themeColors: DocColors | undefined = undefined;
   export let fontScale = 1;
-  export let imagery: 'disc' | 'photo' | 'none' = 'none';
+  export let imagery: 'sphere' | 'disc' | 'flat' | 'photo' | 'none' = 'none';
+  export let photoFrame: 'letterbox' | 'full' | 'sliver' = 'letterbox';
   export let hideInfoBlock = false; // clean display: schematic only, no per-body file
   export let filterId = 'none';
   export let filterParams: FilterParamValues = {};
@@ -115,7 +116,7 @@
 
     const blocks = buildGuideDocument(system, selectedId, {
       units, tempUnit, colorful, imagery,
-      image: bodyImg, imageAspect: bodyImgAspect, hideInfo: hideInfoBlock, tagStyle
+      image: bodyImg, imageAspect: bodyImgAspect, hideInfo: hideInfoBlock, tagStyle, photoFrame
     });
     const res = renderDocument(ctx, blocks, theme, { x: mx, y: my, w: vw - mx * 2, maxY: vh - my, scrollY });
     regions = res.regions;
@@ -161,7 +162,7 @@
 
   // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
   // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
-  $: if (ctrl) { system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; imagery; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
+  $: if (ctrl) { system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
   $: if (ctrl) handleSelection(selectedId);
   $: ctrl?.setFilter(filterId, filterParams);
 

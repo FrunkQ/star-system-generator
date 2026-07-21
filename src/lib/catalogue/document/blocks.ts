@@ -104,18 +104,21 @@ export interface ListBlock extends DocBlockBase {
   items: ListItem[];
   style?: ListStyle; // overrides the theme's listStyle for this block
 }
+export type PhotoFrame = 'letterbox' | 'full' | 'sliver';
 export interface ImageBlock extends DocBlockBase {
   kind: 'image';
   img: CanvasImageSource;
   aspect: number;    // width / height of the source, for layout
   maxHFrac?: number; // cap height as a fraction of the view height (default 0.32)
-  crop?: number;     // central vertical crop fraction (letterbox), like the Survey Datapad photo
+  frame?: PhotoFrame; // 'letterbox' = central band (default), 'full' = whole image, 'sliver' = tall slice
 }
 // A procedural body disc (The Guide's illustrated picture) — drawn from the body's true colour.
+// `mode`: 'sphere' = glossy shaded ball, 'disc' = mild-shaded disc, 'flat' = flat fill + outline.
 export interface BodyDiscBlock extends DocBlockBase {
   kind: 'bodyDisc';
   body: unknown;       // the CelestialBody to illustrate (typed loosely to avoid a cycle)
   ringed?: boolean;
+  mode?: 'sphere' | 'disc' | 'flat';
   heightFrac?: number; // fraction of the view height to reserve (default 0.2)
 }
 export interface SpacerBlock extends DocBlockBase { kind: 'spacer'; h?: number; } // gap in px (× scale)
