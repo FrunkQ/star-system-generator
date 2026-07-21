@@ -43,25 +43,51 @@ export function renderDocument(
   const c = resolveDocColors(theme);
   const font = theme.font;
   const headingFont = theme.headingFont || theme.font;
-  const { x, w } = layout;
+  const { x: colX, w: colW } = layout;   // full content column
   const maxY = layout.maxY ?? Infinity;
   const scroll = Math.max(0, layout.scrollY ?? 0);
   const regions: DocRegion[] = [];
 
   if (layout.fillBg) {
     ctx.fillStyle = c.bg;
-    ctx.fillRect(x, layout.y, w, (maxY === Infinity ? 0 : maxY - layout.y));
+    ctx.fillRect(colX, layout.y, colW, (maxY === Infinity ? 0 : maxY - layout.y));
   }
 
   ctx.textBaseline = 'alphabetic';
   let y = layout.y - scroll; // running baseline-ish cursor (top of the next block)
 
+  // Two-column (sliver) state: while active, blocks render in the RIGHT column (indented) and an image
+  // is drawn as a strip down the LEFT, sized to the right column's height when the column closes.
+  let colIndent = 0;
+  let col: { img: CanvasImageSource; aspect: number; stripW: number; top: number } | null = null;
+
   // Only paint a block if any of it is inside the visible band; always advance + record its region.
   const visible = (top: number, h: number) => top + h > layout.y - 2 && top < maxY + 2;
 
   for (const b of blocks) {
+    // Effective column for THIS block (shifted right while a left-image column is open).
+    const x = colX + colIndent;
+    const w = colW - colIndent;
     const top = y;
     switch (b.kind) {
+      case 'columnStart': {
+        const stripW = colW * (b.stripWFrac ?? 0.34);
+        col = { img: b.img, aspect: b.aspect, stripW, top: y };
+        colIndent = stripW + px(12, s); // right column starts past the strip + a gap
+        break; // don't advance y — the right column starts level with the strip top
+      }
+      case 'columnEnd': {
+        if (col) {
+          const minH = colW * 0.5 / (col.aspect || 1);
+          const stripH = Math.max(y - col.top, minH);
+          if (col.top + stripH > layout.y - 2 && col.top < maxY + 2) {
+            drawImageBlock(ctx, col.img, 'sliver', colX, col.top, col.stripW, stripH, col.aspect);
+          }
+          y = Math.max(y, col.top + stripH);
+        }
+        col = null; colIndent = 0;
+        break;
+      }
       case 'spacer': {
         y += px(b.h ?? GAP, s);
         break;

@@ -124,6 +124,16 @@ export interface BodyDiscBlock extends DocBlockBase {
 export interface SpacerBlock extends DocBlockBase { kind: 'spacer'; h?: number; } // gap in px (× scale)
 export interface RuleBlock extends DocBlockBase { kind: 'rule'; }                  // a full-width divider
 
+// Two-column layout: everything between columnStart and columnEnd flows in a RIGHT column, with the
+// image drawn as a tall strip down the LEFT (used by the photo 'sliver' frame — image left, text right).
+export interface ColumnStartBlock extends DocBlockBase {
+  kind: 'columnStart';
+  img: CanvasImageSource;
+  aspect: number;
+  stripWFrac?: number; // left strip width as a fraction of the column (default 0.34)
+}
+export interface ColumnEndBlock extends DocBlockBase { kind: 'columnEnd'; }
+
 // Phase 2 fills the draw; Phase 1 lays it out as a captioned placeholder box so the document flows.
 // Carries whatever the schematic drawer needs (kept loose until Phase 2 pins the shape).
 export interface SchematicBlock extends DocBlockBase {
@@ -136,7 +146,8 @@ export interface SchematicBlock extends DocBlockBase {
 
 export type DocBlock =
   | HeadingBlock | TextBlock | KeyValueBlock | ListBlock | TagsBlock
-  | ImageBlock | BodyDiscBlock | SpacerBlock | RuleBlock | SchematicBlock;
+  | ImageBlock | BodyDiscBlock | SpacerBlock | RuleBlock | SchematicBlock
+  | ColumnStartBlock | ColumnEndBlock;
 
 // --- Resolved colours -------------------------------------------------------------------------------
 

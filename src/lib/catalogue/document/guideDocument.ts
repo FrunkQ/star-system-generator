@@ -82,16 +82,19 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   }
 
   // 3) Imagery — driven by the preset's Body-graphics choice. 'photo' shows a GM/stock picture (only
-  // if one loaded); 'disc' draws the illustrated procedural disc (The Guide); 'none' shows nothing.
-  if (opts.imagery === 'photo' && opts.image) {
+  // if one loaded); 'disc'/'sphere'/'flat' reserve a gap the view overlays the real renderer into.
+  // The 'sliver' photo frame is special: it becomes a LEFT column beside the facts (handled in 4).
+  const sliver = opts.imagery === 'photo' && !!opts.image && opts.photoFrame === 'sliver';
+  if (opts.imagery === 'photo' && opts.image && !sliver) {
     blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox' });
   } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat') && subject) {
-    // Reserve a gap for the REAL renderer the view overlays here (PlanetDisc 2D / holo 3D). '__bodygfx'
-    // lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
+    // '__bodygfx' lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
     blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
   }
 
-  // 4) Facts + description. The 'Tags' fact is pulled out and rendered as a styled tags block below.
+  // 4) Facts + description. For the sliver frame these flow in a RIGHT column beside the left photo
+  // strip. The 'Tags' fact is pulled out and rendered as a styled tags block below (full width).
+  if (sliver && opts.image) blocks.push({ kind: 'columnStart', img: opts.image, aspect: opts.imageAspect || 1.6 });
   if (subject) {
     const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C');
     const rows = facts.filter((f) => f.value && f.label !== 'Tags');
@@ -102,6 +105,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     blocks.push({ kind: 'spacer', h: 6 });
     blocks.push({ kind: 'text', text: selected.description, italic: true });
   }
+  if (sliver) blocks.push({ kind: 'columnEnd' });
 
   // 4b) Tags — pills / plain list / grouped, per the preset.
   const tags = resolveTags(subject);

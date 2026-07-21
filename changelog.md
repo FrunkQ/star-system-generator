@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.223-beta - 21st Jul 2026
+
+* The photo "vertical sliver" frame now lays the info block out in two columns: the body name spans the top, the photo runs down the LEFT as a tall sliver, and the facts + description sit in the RIGHT column beside it (tags and moons stay full-width below). Added a lightweight two-column mode to the document engine to do it.
+
 ## v2.1.222-beta - 21st Jul 2026
 
 * Body graphics now REUSE the real renderers instead of a bespoke one: the 2D option is the actual PlanetDisc (the 2D disc gallery), and 3D is the holo body — a real textured, cloud-wrapped sphere that slowly spins, the same one the 3D gallery shows. The stand-in canvas disc has been removed. On the system map, the body markers now use each body's true/type colour (brown/red/blue by type) instead of a flat tint, the diagram takes only the vertical space it needs (no more black band), and planets take click priority over belts so a world inside a belt is still selectable.
