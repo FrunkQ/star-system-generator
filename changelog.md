@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.217-beta - 21st Jul 2026
+
+* Groundwork for player-view transitions (reused from Mappadux, the same way filters were): ported the transition engine (snapshot the current frame, rebuild underneath, animate the snapshot away to reveal it) plus the shipped set — fade, CRT collapse, static dissolve, wipe, terminal clear, and more — as an auto-discovered registry. Not wired into any view yet (a Transitions editor tab + view wiring follow).
+
 ## v2.1.216-beta - 21st Jul 2026
 
 * Tags in the Guide document now render three ways, chosen per preset: coloured pills (each tinted by its type), grouped by type (a small heading per category), or a plain text list. The tag list is pulled out of the fact rows into its own styled section. New "Tags" picker on the document's System tab.
