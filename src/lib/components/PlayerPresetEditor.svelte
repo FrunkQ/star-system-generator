@@ -328,7 +328,7 @@
           </fieldset>
           {#if draft.systemEnabled}
             <fieldset>
-              <legend>Appearance</legend>
+              <legend>Info Block Appearance</legend>
               {#if draft.systemView === 'document'}
                 <!-- Colouration: a documentStyle SEEDS the colours, then tweak each slot. Layout is the
                      same across styles — only the palette (and fonts, set on General) changes. -->
@@ -345,13 +345,16 @@
                   </select>
                 </label>
                 {#if draft.bodyStyle !== 'white'}
-                  <div class="doc-colours">
-                    {#each docColours as slot (slot.id)}
-                      <label class="col-row"><span>{slot.label}</span>
-                        <input type="color" value={slot.hex} on:input={(e) => setDocColour(slot.id, (e.currentTarget as HTMLInputElement).value)} />
-                      </label>
-                    {/each}
-                  </div>
+                  <details class="colour-picker">
+                    <summary>Colours</summary>
+                    <div class="doc-colours">
+                      {#each docColours as slot (slot.id)}
+                        <label class="col-row"><span>{slot.label}</span>
+                          <input type="color" value={slot.hex} on:input={(e) => setDocColour(slot.id, (e.currentTarget as HTMLInputElement).value)} />
+                        </label>
+                      {/each}
+                    </div>
+                  </details>
                 {/if}
               {:else}
                 <label>Colour
@@ -665,6 +668,8 @@
   input[type=range] { width: 100%; accent-color: var(--accent, #6aa0ff); }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4; }
   .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
+  .colour-picker > summary { font-size: 0.72rem; color: var(--text-muted); cursor: pointer; padding: 2px 0; list-style-position: inside; user-select: none; }
+  .colour-picker[open] > summary { margin-bottom: 3px; }
   .doc-colours { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; padding: 2px 0 2px 8px; border-left: 2px solid var(--border); }
   .col-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); gap: 6px; }
   .col-row input[type=color] { width: 34px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 3px; background: none; cursor: pointer; }

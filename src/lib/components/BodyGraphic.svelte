@@ -9,6 +9,8 @@
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import HoloView from '$lib/holo/HoloView.svelte';
   import { DEFAULT_STYLE } from '$lib/holo/holoStyle';
+  import { getClassColor } from '$lib/rendering/colors';
+  import { shade } from '$lib/rendering/planetAppearance';
 
   export let body: CelestialBody | null = null;
   export let system: System | null = null;              // a single-body system for the 3D holo
@@ -22,6 +24,13 @@
   export let starHex: string | null = null;              // 3D: colour of the system's star (lights the portrait)
 
   $: is3D = mode === 'sphere';
+  // Simple disc = a plain coloured circle BY TYPE (the schematic's flat class colour — brown/red/blue),
+  // as opposed to 'flat' which reuses the full 2D-gallery render (PlanetDisc). Kept stable regardless of
+  // the true/flat colour toggle; mono bleaches it via the .mono class.
+  $: discColor = body ? getClassColor(body) : '#8892a4';
+  $: discHi = shade(discColor, 0.42);
+  $: discLo = shade(discColor, -0.5);
+  $: discUid = (body?.id ?? 'bg').replace(/[^a-z0-9]/gi, '').slice(-8) || 'bg';
   $: subjectIsStar = ((body as any)?.kind === 'star') || (((body as any)?.classes ?? []).some((c: string) => /star|dwarf/i.test(String(c))));
   // A black hole reads best looking DOWN onto its accretion disc (a wide ellipse), not edge-on.
   $: isBH = !!(body as any)?.isBH || (((body as any)?.classes ?? []).some((c: string) => /black.?hole/i.test(String(c))));
@@ -47,8 +56,31 @@
 
 {#if is3D && system}
   <div class="bg-3d" class:mono><HoloView {system} style={holoStyle} focusedBodyId={body?.id ?? null} labelsVisible={false} /></div>
-{:else if body}
+{:else if mode === 'flat' && body}
+  <!-- Flat shape = the full 2D-gallery render (PlanetDisc: texture + surface features + terminator). -->
   <div class="bg-2d" class:mono><PlanetDisc {body} {ringed} {ringDensity} showStamp={false} size={220} /></div>
+{:else if body}
+  <!-- Simple disc = a plain coloured circle by body TYPE (no texture/features) — the lightweight look. -->
+  <div class="bg-2d" class:mono>
+    <svg viewBox="0 0 100 100" width="220" height="220" role="img" aria-label="{body.name} (type colour)">
+      <defs>
+        <radialGradient id="sd-{discUid}" cx="38%" cy="34%" r="72%">
+          <stop offset="0%" stop-color={discHi} />
+          <stop offset="55%" stop-color={discColor} />
+          <stop offset="100%" stop-color={discLo} />
+        </radialGradient>
+        <clipPath id="sdfront-{discUid}"><rect x="0" y="50" width="100" height="50" /></clipPath>
+      </defs>
+      {#if ringed}
+        <!-- Back half of the ring (behind the body), then the body, then the front half clipped below. -->
+        <ellipse cx="50" cy="50" rx="46" ry="13" fill="none" stroke={shade(discColor, 0.2)} stroke-width="4" opacity="0.4" transform="rotate(-18 50 50)" />
+      {/if}
+      <circle cx="50" cy="50" r="30" fill="url(#sd-{discUid})" />
+      {#if ringed}
+        <ellipse cx="50" cy="50" rx="46" ry="13" fill="none" stroke={shade(discColor, 0.34)} stroke-width="4" opacity="0.5" transform="rotate(-18 50 50)" clip-path="url(#sdfront-{discUid})" />
+      {/if}
+    </svg>
+  </div>
 {/if}
 
 <style>

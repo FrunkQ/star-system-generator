@@ -273,7 +273,7 @@
   <!-- Body graphic: the REAL renderers (PlanetDisc 2D / holo 3D spin), overlaid in the reserved gap. -->
   {#if gfxOn && gfxRect && subjectBody}
     <div class="fd-bodygfx" style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
-      <BodyGraphic body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : 'disc'}
+      <BodyGraphic body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
         ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex} />
     </div>
   {/if}

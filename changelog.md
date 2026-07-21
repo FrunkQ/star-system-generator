@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.232-beta - 21st Jul 2026
+
+* Rationalise the System-stage editor ahead of the info-block unify (D6): the "Appearance" section is now "Info Block Appearance", and the per-slot colour swatches are tucked into a collapsible "Colours" disclosure.
+* Body-graphics "Simple disc" and "Flat shape" no longer render identically: Simple disc is now a plain coloured circle by body TYPE (the schematic's class colour), while Flat shape reuses the full 2D-gallery render (texture, surface features, terminator, rings). 3D sphere and Photo unchanged.
+
 ## v2.1.231-beta - 21st Jul 2026
 
 * The "Body graphics" control (the per-body picture) is hidden for the 3D holo view — it's an info-block choice, not an orrery one, and the 3D orrery always renders bodies as 3D spheres. The 3D scene now forces sphere bodies so a value stored for another view can't flatten it to discs. Document and 2D map keep the control; it returns to 3D pointed at the info block once that formatting is unified (D6). Auroras toggle now shows for the 3D view regardless.
