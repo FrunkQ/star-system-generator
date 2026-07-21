@@ -5,7 +5,8 @@
   // Interactive: wheel/drag scrolls, and a tap is warp-mapped through the shader so it selects the body
   // the eye sees — either a planet/star on the schematic (2D hit box) or a navigator row. Mirrors
   // FilteredListView's filter + warp plumbing; lazy-imports the shader so it code-splits.
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
+  import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import type { FilteredCanvasController } from '$lib/holo/filteredCanvas';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
   import type { System } from '$lib/types';
@@ -38,11 +39,15 @@
   export let overlay: HudOverlay | null = null;
   export let companyName = '';
   export let footerText = '';
+  export let transition = 'none';                    // page/entry transition on selection change
+  export let transitionParams: FilterParamValues = {};
 
   const dispatch = createEventDispatcher<{ select: string }>();
 
   let container: HTMLDivElement;
   let canvas: HTMLCanvasElement;
+  let overlayCanvas: HTMLCanvasElement;              // transition plays here, above the filtered canvas
+  let engine: import('$lib/transitions/TransitionEngine').TransitionEngine | null = null;
   let ctrl: FilteredCanvasController | null = null;
   let ro: ResizeObserver | null = null;
   let vw = 0, vh = 0;
@@ -133,6 +138,8 @@
       if (cancelled || !canvas) return;
       ctrl = createFilteredCanvas(canvas);
       ctrl.setFilter(filterId, filterParams);
+      const { TransitionEngine } = await import('$lib/transitions/TransitionEngine');
+      if (!cancelled && overlayCanvas) engine = new TransitionEngine(overlayCanvas);
       const r = container.getBoundingClientRect();
       vw = r.width; vh = r.height;
       ctrl.resize(vw, vh);
@@ -142,11 +149,28 @@
     })();
     return () => { cancelled = true; };
   });
-  onDestroy(() => { ro?.disconnect(); ctrl?.dispose(); ctrl = null; });
+  onDestroy(() => { ro?.disconnect(); engine?.cancel(); engine = null; ctrl?.dispose(); ctrl = null; });
 
-  // Redraw on data / theme / selection / scroll change; re-apply the filter separately.
-  $: if (ctrl) { system; selectedId; font; accent; mono; colorful; listStyle; documentStyle; tagStyle; themeColors; fontScale; imagery; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
+  // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
+  // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
+  $: if (ctrl) { system; font; accent; mono; colorful; listStyle; documentStyle; tagStyle; themeColors; fontScale; imagery; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
+  $: if (ctrl) handleSelection(selectedId);
   $: ctrl?.setFilter(filterId, filterParams);
+
+  // On selection change, play the configured transition: the engine snapshots the current frame, we
+  // re-render underneath, then it animates the snapshot away to reveal the new page. The first pass and
+  // 'none' just render straight.
+  let firstSelDone = false, prevSel: string | null = null;
+  async function handleSelection(sel: string | null) {
+    if (!ctrl) return;
+    if (!firstSelDone) { firstSelDone = true; prevSel = sel; return; } // initial paint handled above
+    if (sel === prevSel) return;
+    prevSel = sel;
+    const def = engine ? transitionRegistry.get(transition) : null;
+    if (!engine || !def || def.id === 'none') { render(); return; }
+    try { await engine.run(def, transitionParams, canvas, async () => { render(); await tick(); }); }
+    catch { render(); }
+  }
 
   function onWheel(e: WheelEvent) {
     if (contentH <= vh) return;
@@ -186,10 +210,14 @@
 <div class="fd-root" bind:this={container} class:selectable
      on:wheel={onWheel} on:pointerdown={onPointerDown} on:pointermove={onPointerMove} on:pointerup={onPointerUp}>
   <canvas bind:this={canvas}></canvas>
+  <!-- Transition overlay: the engine paints the outgoing snapshot here and animates it away. Sits above
+       the filtered canvas, ignores pointer events (taps reach the document), and is clear when idle. -->
+  <canvas class="fd-transition" bind:this={overlayCanvas}></canvas>
 </div>
 
 <style>
   .fd-root { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
   .fd-root.selectable { cursor: pointer; }
   canvas { display: block; width: 100%; height: 100%; }
+  .fd-transition { position: absolute; inset: 0; pointer-events: none; }
 </style>

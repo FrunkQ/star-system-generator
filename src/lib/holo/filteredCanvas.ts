@@ -21,7 +21,10 @@ export interface FilteredCanvasController {
 }
 
 export function createFilteredCanvas(canvas: HTMLCanvasElement): FilteredCanvasController {
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  // preserveDrawingBuffer keeps the last frame readable so a transition can snapshot this canvas
+  // (createImageBitmap) for its "before" state — see TransitionEngine. Cheap here: these are static,
+  // low-fps surfaces (cover / list / document), not a hot render loop.
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
   renderer.setClearColor(0x000000, 0);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 

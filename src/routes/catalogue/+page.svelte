@@ -979,6 +979,7 @@
           units={units} tempUnit={tempUnit}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={systemOverlayHud}
           companyName={activePreset.companyName} footerText={activePreset.footerText}
+          transition={activePreset.transition} transitionParams={activePreset.transitionParams ?? {}}
           selectable={presetInteractive}
           on:select={(e) => selectBodyById(e.detail)} />
       {/if}

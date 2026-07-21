@@ -101,6 +101,10 @@ export interface PlayerPreset {
   // Look (generalised HoloStyle). Controls the editor shows are gated by the chosen view module.
   filter: string;                 // filter id — 'none' | 'crt' | 'night_vision' | 'thermal'
   filterParams: FilterParamValues; // e.g. CRT phosphor colour lives here
+  // Page/entry transition when the view changes (reused from Mappadux). 'none' = instant cut. The
+  // engine snapshots the frame, rebuilds underneath, then animates the snapshot away to reveal it.
+  transition: string;             // transition id — 'none' | 'fade' | 'crt_collapse' | 'wipe' | …
+  transitionParams: FilterParamValues; // per-transition control values (duration, direction, …)
   bodyStyle: 'textured' | 'flat' | 'white'; // colour selection: true colour / class swatch / white
   render: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead

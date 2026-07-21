@@ -36,11 +36,11 @@ export class TransitionEngine {
   constructor(overlayCanvas: HTMLCanvasElement) {
     this.overlay = overlayCanvas;
 
-    // Keep overlay canvas pixel dimensions in sync with the window.
-    // Position/size is handled by CSS (position: fixed; inset: 0).
+    // Keep overlay canvas pixel dimensions in sync with its own CSS box (SSE embeds transitions in a
+    // sized panel — the document view — not only full-screen). Falls back to the window if unlaid-out.
     const sync = () => {
-      this.overlay.width  = window.innerWidth;
-      this.overlay.height = window.innerHeight;
+      this.overlay.width  = this.overlay.clientWidth  || window.innerWidth;
+      this.overlay.height = this.overlay.clientHeight || window.innerHeight;
     };
     new ResizeObserver(sync).observe(overlayCanvas);
     sync();

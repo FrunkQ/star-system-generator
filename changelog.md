@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.218-beta - 21st Jul 2026
+
+* Page transitions are live in the Guide document. A new "Transitions" tab on the preset editor lets you pick a transition (Fade, CRT Collapse, Static Dissolve, Wipe, Terminal Clear, …) and tune its controls. Opening a different world captures the current page, rebuilds the next one underneath, then animates the snapshot away to reveal it — a bit of life between pages. (Filtered surfaces now keep their draw buffer so the snapshot reads cleanly.)
+
 ## v2.1.217-beta - 21st Jul 2026
 
 * Groundwork for player-view transitions (reused from Mappadux, the same way filters were): ported the transition engine (snapshot the current frame, rebuild underneath, animate the snapshot away to reveal it) plus the shipped set — fade, CRT collapse, static dissolve, wipe, terminal clear, and more — as an auto-discovered registry. Not wired into any view yet (a Transitions editor tab + view wiring follow).

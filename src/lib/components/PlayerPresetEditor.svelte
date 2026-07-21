@@ -28,6 +28,8 @@
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredDocumentView from './FilteredDocumentView.svelte';
   import { DOCUMENT_STYLES } from '$lib/catalogue/document/documentStyles';
+  import TransitionParamControls from './TransitionParamControls.svelte';
+  import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
 
   export let preset: PlayerPreset;
 
@@ -41,6 +43,7 @@
     { id: 'cover', label: 'Cover' },
     { id: 'starmap', label: 'Starmap' },
     { id: 'system', label: 'System' },
+    { id: 'transitions', label: 'Transitions' },
     { id: 'filter', label: 'Visual filter' }
   ] as const;
   type TabId = (typeof TABS)[number]['id'];
@@ -54,7 +57,7 @@
     // default to the first ENABLED layer, preferring system
     if (filterPreview === 'system' && !draft.systemEnabled) filterPreview = draft.starmapEnabled ? 'starmap' : 'cover';
   }
-  $: previewLayer = tab === 'filter' ? filterPreview : tab === 'general' ? 'theme' : tab;
+  $: previewLayer = tab === 'filter' ? filterPreview : tab === 'general' ? 'theme' : tab === 'transitions' ? 'system' : tab;
   $: filterActive = tab === 'filter' && draft.filter !== 'none';
 
   // The 3D style: filter only applied on the filter tab (set up clean, costume last).
@@ -396,6 +399,23 @@
                 on:change={(e) => (draft = { ...draft, systemOverlay: e.detail })} />
             </fieldset>
           {/if}
+        {:else if tab === 'transitions'}
+          <fieldset>
+            <legend>Page transition</legend>
+            <label>Transition
+              <select value={draft.transition}
+                on:change={(e) => { const id = (e.currentTarget as HTMLSelectElement).value; draft = { ...draft, transition: id, transitionParams: transitionRegistry.defaultParams(id) }; }}>
+                {#each transitionRegistry.getAll() as t}<option value={t.id}>{t.label}</option>{/each}
+              </select>
+            </label>
+            <p class="hint">Plays when the reader opens a different world in the Document view: the old page is captured, the new one is built underneath, then the snapshot is animated away. Tap a world in the preview to see it. (Other views cut instantly for now.)</p>
+            {#if draft.transition !== 'none'}
+              <div class="filter-params">
+                <TransitionParamControls transitionId={draft.transition} values={draft.transitionParams}
+                  on:change={(e) => (draft = { ...draft, transitionParams: e.detail })} />
+              </div>
+            {/if}
+          </fieldset>
         {:else if tab === 'filter'}
           <fieldset>
             <legend>Visual filter</legend>
@@ -485,6 +505,7 @@
                 colorful={draft.accentColor === 'rainbow'}
                 imagery={draft.bodyGfx === 'photo' ? 'photo' : draft.bodyGfx === 'none' ? 'none' : 'disc'}
                 hideInfoBlock={draft.hideInfoPanel}
+                transition={draft.transition} transitionParams={draft.transitionParams ?? {}}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} tagStyle={draft.tagStyle} themeColors={draft.themeColors}
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
