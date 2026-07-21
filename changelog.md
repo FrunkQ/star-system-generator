@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.230-beta - 21st Jul 2026
+
+* Unify (D6, step 1): the 3D holo's info card now renders its content through the SAME document engine as the Document system-view, via the existing card-blocks seam — retiring the card's bespoke title/facts/description drawing so there's one info-block code path to maintain. Panel chrome (rounded frame, close glyph) is unchanged.
+
 ## v2.1.229-beta - 21st Jul 2026
 
 * Black holes in the 3D body graphic are now framed almost edge-on with a slight tilt, so the accretion disc reads as the iconic lensed band (far side arcing over the top) rather than a flat top-down ring.

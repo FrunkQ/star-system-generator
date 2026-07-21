@@ -6,6 +6,8 @@
 import type { Fact } from './bodyFacts';
 import type { GraphicPlacement } from '$lib/player/presetTypes';
 import { wrap } from './textLayout';
+import { renderDocument } from './document/renderDocument';
+import { hudCardToBlocks, hudCardTheme } from './document/cardBlocks';
 
 export interface HudOverlay { img: HTMLImageElement; placement: GraphicPlacement; }
 // "The Guide" margin notes drawn INTO the filtered HUD (so the CRT/NV/thermal shader catches them),
@@ -122,7 +124,6 @@ function drawTips(ctx: CanvasRenderingContext2D, t: HudTips, viewW: number, view
 
 function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, viewH: number) {
   const panelW = Math.min(viewW, c.panelW);
-  const font = c.font;
   // Bezel margin: the CRT shader samples with fract() at the edges, so content flush to the edge wraps
   // around under barrel warp — inset keeps it in the safe area (reads like a screen with a bezel).
   const mx = Math.round(viewW * 0.035), my = Math.round(viewH * 0.045);
@@ -131,8 +132,6 @@ function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, view
   const pad = 18;
   const s = Math.max(0.7, Math.min(1.8, c.fontScale || 1));
   const cx = x0 + pad;
-  const rx = viewW - mx - pad;
-  const titleCol = c.mono ? '#f2f5fa' : (c.accent && c.accent !== 'rainbow' ? c.accent : '#e8edf4');
 
   const r = 10;
   ctx.beginPath();
@@ -156,44 +155,12 @@ function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, view
   ctx.moveTo(xcx + hs, xcy - hs); ctx.lineTo(xcx - hs, xcy + hs);
   ctx.stroke();
 
-  let y = pTop + pad + 20 * s;
-  ctx.textBaseline = 'alphabetic';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = titleCol;
-  ctx.font = `700 ${Math.round(22 * s)}px ${font}`;
-  ctx.fillText(c.title, cx, y);
-  y += 8 * s;
-  ctx.fillStyle = 'rgba(200,214,232,0.6)';
-  ctx.font = `${Math.round(11 * s)}px ${font}`;
-  y += 14 * s;
-  ctx.fillText(c.sub.toUpperCase(), cx, y);
-  y += 16 * s;
-
-  const rowH = Math.round(18 * s);
-  const rowFont = `${Math.round(12 * s)}px ${font}`;
-  for (const f of c.facts) {
-    if (y > pBot - pad - rowH) break;
-    ctx.font = rowFont;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(190,205,224,0.7)';
-    ctx.fillText(f.label, cx, y);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#e8edf4';
-    ctx.fillText(f.value, rx, y);
-    y += rowH;
-  }
-
-  if (c.description && y < pBot - pad - 20 * s) {
-    y += 10 * s;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(200,214,232,0.8)';
-    ctx.font = `italic ${Math.round(12 * s)}px ${font}`;
-    for (const ln of wrap(ctx, c.description, panelW - pad * 2)) {
-      if (y > pBot - pad) break;
-      ctx.fillText(ln, cx, y);
-      y += Math.round(16 * s);
-    }
-  }
+  // Content (title strap + fact rows + description) is drawn by the SHARED document engine — the same
+  // renderDocument that draws the Document system-view — so the 3D HUD card and the document stay one
+  // code path (D6 unify). The panel chrome (rounded bg, clip, close glyph) stays bespoke here.
+  renderDocument(ctx, hudCardToBlocks(c), hudCardTheme(c), {
+    x: cx, y: pTop + pad + 6 * s, w: panelW - pad * 2, maxY: pBot - pad, scrollY: 0
+  });
   ctx.restore();
 }
 
