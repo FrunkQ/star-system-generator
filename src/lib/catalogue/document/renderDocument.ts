@@ -81,7 +81,9 @@ export function renderDocument(
           const minH = colW * 0.5 / (col.aspect || 1);
           const stripH = Math.max(y - col.top, minH);
           if (col.top + stripH > layout.y - 2 && col.top < maxY + 2) {
+            if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)';
             drawImageBlock(ctx, col.img, 'sliver', colX, col.top, col.stripW, stripH, col.aspect);
+            ctx.filter = 'none';
           }
           y = Math.max(y, col.top + stripH);
         }
@@ -183,7 +185,11 @@ export function renderDocument(
           if (dh > maxH) { dh = maxH; dw = (dh / cropFrac) * aspect; }
         }
         const dx = x + (w - dw) / 2;
-        if (visible(top, dh)) drawImageBlock(ctx, b.img, frame, dx, top, dw, dh, aspect);
+        if (visible(top, dh)) {
+          if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)'; // bleach the photo under mono
+          drawImageBlock(ctx, b.img, frame, dx, top, dw, dh, aspect);
+          ctx.filter = 'none';
+        }
         if (b.id) regions.push({ id: b.id, y0: top, y1: top + dh });
         y += dh + px(GAP, s);
         break;

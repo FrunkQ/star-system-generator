@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.224-beta - 21st Jul 2026
+
+* Monochrome now bleaches the body graphics too — the 2D disc, the 3D body and a body photo all go grey under the monochrome scheme, so a tinting filter can colour them along with the rest of the page. The 3D body now inherits the body's ring (a ringed world shows its ring in the spinning 3D view).
+
 ## v2.1.223-beta - 21st Jul 2026
 
 * The photo "vertical sliver" frame now lays the info block out in two columns: the body name spans the top, the photo runs down the LEFT as a tall sliver, and the facts + description sit in the RIGHT column beside it (tags and moons stay full-width below). Added a lightweight two-column mode to the document engine to do it.

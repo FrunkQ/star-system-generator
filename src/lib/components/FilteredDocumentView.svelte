@@ -237,7 +237,7 @@
   <!-- Body graphic: the REAL renderers (PlanetDisc 2D / holo 3D spin), overlaid in the reserved gap. -->
   {#if gfxOn && gfxRect && subjectBody}
     <div class="fd-bodygfx" style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
-      <BodyGraphic body={subjectBody} mode={imagery === 'sphere' ? 'sphere' : 'disc'} ringed={subjectRinged} />
+      <BodyGraphic body={subjectBody} mode={imagery === 'sphere' ? 'sphere' : 'disc'} ringed={subjectRinged} {mono} />
     </div>
   {/if}
   <!-- Transition overlay: the engine paints the outgoing snapshot here and animates it away. Sits above

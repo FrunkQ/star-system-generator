@@ -10,6 +10,7 @@
   export let mode: 'sphere' | 'disc' | 'flat' = 'disc';
   export let ringed = false;
   export let ringDensity = 0.6;
+  export let mono = false; // bleach to grey (for a tinting filter / monochrome scheme)
 
   $: is3D = mode === 'sphere';
 
@@ -24,19 +25,21 @@
     if (id === builtId && scene) return;
     scene?.dispose(); scene = null; builtId = id ?? null;
     const { createBodyScene } = await import('$lib/holo/singleBodyScene');
-    if (canvas && body && body.id === builtId) scene = createBodyScene(canvas, body);
+    if (canvas && body && body.id === builtId) scene = createBodyScene(canvas, body, { ringed });
   }
   onDestroy(() => scene?.dispose());
 </script>
 
 {#if is3D}
-  <canvas class="bg-3d" bind:this={canvas}></canvas>
+  <canvas class="bg-3d" class:mono bind:this={canvas}></canvas>
 {:else if body}
-  <div class="bg-2d"><PlanetDisc {body} {ringed} {ringDensity} showStamp={false} size={220} /></div>
+  <div class="bg-2d" class:mono><PlanetDisc {body} {ringed} {ringDensity} showStamp={false} size={220} /></div>
 {/if}
 
 <style>
   .bg-3d { width: 100%; height: 100%; display: block; }
   .bg-2d { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
   .bg-2d :global(svg) { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+  /* Monochrome scheme: bleach the picture to grey so a tinting filter (CRT/NV) colours it. */
+  .mono { filter: grayscale(1) brightness(1.06) contrast(1.02); }
 </style>

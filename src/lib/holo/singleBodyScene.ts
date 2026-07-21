@@ -14,7 +14,7 @@ import {
 
 const R = 0.9; // rendered radius (scene units) — bigger than the gallery's 0.44 since it's one body
 
-export function createBodyScene(canvas: HTMLCanvasElement, node: any) {
+export function createBodyScene(canvas: HTMLCanvasElement, node: any, opts: { ringed?: boolean } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
   const scene = new THREE.Scene();
@@ -86,7 +86,7 @@ export function createBodyScene(canvas: HTMLCanvasElement, node: any) {
         auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.31) % 1 });
       });
     }
-    if (node.ringed) {
+    if (opts.ringed ?? node.ringed) {
       const ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.35, R * 2.15, 64), new THREE.MeshBasicMaterial({ color: 0xcdd6e2, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
       ring.rotation.x = Math.PI * 0.46; g.add(ring);
     }
