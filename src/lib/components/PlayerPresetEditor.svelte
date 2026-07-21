@@ -65,6 +65,13 @@
 
   let draft: PlayerPreset = structuredClone(preset);
 
+  // Colouration swatches — reactive so they refresh when the Colouration style (or a tweak) changes.
+  $: docSeedColors = (documentStyleBase(draft.documentStyle) as any).colors;
+  $: docColours = DOC_COLOUR_SLOTS.map((s) => ({
+    id: s.id, label: s.label,
+    hex: toHex((draft.themeColors as any)?.[s.id] ?? docSeedColors[s.id])
+  }));
+
   // ── Wizard tabs ─────────────────────────────────────────────────────────────
   const TABS = [
     { id: 'general', label: 'General' },
@@ -330,14 +337,18 @@
                     {#each DOCUMENT_STYLES as ds}<option value={ds.value}>{ds.label}</option>{/each}
                   </select>
                 </label>
-                <label class="chk"><input type="checkbox" checked={draft.bodyStyle === 'white'}
-                  on:change={(e) => draft = { ...draft, bodyStyle: (e.currentTarget as HTMLInputElement).checked ? 'white' : 'textured' }} />
-                  Monochrome (bleach the page for a tinting filter)</label>
+                <label>Colour
+                  <select bind:value={draft.bodyStyle}>
+                    <option value="textured">True colour</option>
+                    <option value="flat">Flat colour (by type)</option>
+                    <option value="white">Monochrome (bleach — for a tinting filter)</option>
+                  </select>
+                </label>
                 {#if draft.bodyStyle !== 'white'}
                   <div class="doc-colours">
-                    {#each DOC_COLOUR_SLOTS as slot}
+                    {#each docColours as slot (slot.id)}
                       <label class="col-row"><span>{slot.label}</span>
-                        <input type="color" value={docColour(slot.id)} on:input={(e) => setDocColour(slot.id, (e.currentTarget as HTMLInputElement).value)} />
+                        <input type="color" value={slot.hex} on:input={(e) => setDocColour(slot.id, (e.currentTarget as HTMLInputElement).value)} />
                       </label>
                     {/each}
                   </div>

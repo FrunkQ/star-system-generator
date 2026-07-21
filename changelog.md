@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.225-beta - 21st Jul 2026
+
+* Document colouration fixes: the colour swatches now refresh when you change the Colouration style (they were staying stale). The Monochrome checkbox is now a Colour dropdown — True colour / Flat colour (by type) / Monochrome. And the Terminal colouration is now a neutral white monocolour rather than baked-in green, so a CRT/phosphor filter can tint it green, amber or anything.
+
 ## v2.1.224-beta - 21st Jul 2026
 
 * Monochrome now bleaches the body graphics too — the 2D disc, the 3D body and a body photo all go grey under the monochrome scheme, so a tinting filter can colour them along with the rest of the page. The 3D body now inherits the body's ring (a ringed world shows its ring in the spinning 3D view).

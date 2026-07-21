@@ -19,13 +19,14 @@ const MONO = 'ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace'
 
 export function documentStyleBase(style: DocumentStyle | undefined): DocStyleBase {
   switch (style) {
-    // Green-screen terminal: phosphor on near-black, monospace, '>' log lines — comes alive under CRT.
+    // Terminal: a WHITE monocolour readout on near-black, monospace, '>' log lines. Left un-tinted so a
+    // CRT/phosphor filter colours it green/amber/whatever — the base is neutral, ready to be tinted.
     case 'terminal':
       return {
         font: MONO, listStyle: 'terminal-log',
         colors: {
-          bg: '#04120a', heading: '#8dffb0', body: '#59e089', label: '#3f9e63',
-          value: '#c6ffd9', rule: 'rgba(125,255,158,0.30)', accent: '#8dffb0', dim: 'rgba(125,255,158,0.5)'
+          bg: '#05070a', heading: '#f4f6fa', body: '#d7dde6', label: '#9aa3b0',
+          value: '#ffffff', rule: 'rgba(220,228,238,0.30)', accent: '#f4f6fa', dim: 'rgba(220,228,238,0.5)'
         }
       };
     // Monocolour company report: white paper, black ink, bold sans headers, numbered rows, a red stamp.
