@@ -272,9 +272,11 @@
   <canvas bind:this={canvas}></canvas>
   <!-- Body graphic: the REAL renderers (PlanetDisc 2D / holo 3D spin), overlaid in the reserved gap. -->
   {#if gfxOn && gfxRect && subjectBody}
-    <div class="fd-bodygfx" style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
+    <div class="fd-bodygfx" class:interactive={selectable && imagery === 'sphere'}
+         style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
       <BodyGraphic body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
-        ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex} />
+        ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex}
+        interactive={selectable && imagery === 'sphere'} />
     </div>
   {/if}
   <!-- Transition overlay: the engine paints the outgoing snapshot here and animates it away. Sits above
@@ -288,4 +290,7 @@
   canvas { display: block; width: 100%; height: 100%; }
   .fd-transition { position: absolute; inset: 0; pointer-events: none; }
   .fd-bodygfx { position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+  /* Interactive 3D thumbnail: capture drags so the player can spin the body by hand (grab cursor). */
+  .fd-bodygfx.interactive { pointer-events: auto; cursor: grab; }
+  .fd-bodygfx.interactive:active { cursor: grabbing; }
 </style>

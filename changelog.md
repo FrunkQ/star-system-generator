@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.234-beta - 21st Jul 2026
+
+* Document 3D body graphic: the default view now looks straight on to the equator, tilted ~20° down (was too top-down), and the turntable spins twice as fast.
+* A tidally-locked world keeps its key light WORLD-fixed so the same hemisphere stays lit as it turns (the permanent day side sweeps correctly to night), instead of the star appearing to follow the camera.
+* When "Players can click / focus / scrub" is on, players can drag the 3D body to spin it by hand (rotate only — no zoom out of the frame).
+
 ## v2.1.233-beta - 21st Jul 2026
 
 * Fixed: clicking a barycentre planet (e.g. Pluto/Pluto-Charon) on the document's system map in the live player view showed the primary star instead. The selection now resolves a barycentre to its dominant member (so the holo/inspector focus a real body) and feeds the document the barycentre id (so it reads "Pluto (Pluto-Charon…)" and the marker highlights).

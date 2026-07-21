@@ -24,6 +24,8 @@
   // A pre-rendered static info-card canvas composited INTO the scene so the GPU filter warps/tints it
   // like the 3D (no CSS approximation). null = no HUD.
   export let hudCanvas: HTMLCanvasElement | null = null;
+  // Isolated-body thumbnail (Guide document): let the player drag to spin the body by hand (rotate only).
+  export let userSpin: boolean = false;
   // Pixels of the right edge covered by the info panel — the scene gently shifts its projection centre
   // left so the framed body stays centred in the VISIBLE strip (0 = no panel / mobile).
   export let viewInsetRight: number = 0;
@@ -40,7 +42,7 @@
     controller?.setRender(s.render ?? 'filled');
     controller?.setUnlit(s.unlit ?? false);
     controller?.setLensing(s.lensing !== false); // black-hole gravitational lensing (default on)
-    controller?.setPortrait(s.portrait ?? null); // isolated-body portrait key light (document thumbnail)
+    controller?.setPortrait(s.portrait ?? null, s.portraitFixed ?? false); // isolated-body portrait key light
     controller?.setFlatOverhead(s.lockOverhead ?? false); // 2D map: tilt pinned top-down
     controller?.setLockRotation(s.lockRotation ?? false); // fixed heading: follow by panning
     controller?.setAuroras(s.auroras ?? true);
@@ -120,6 +122,7 @@
   $: controller?.focusBody(focusedBodyId);
   $: if (controller) applyStyle(style);
   $: controller?.setHud(hudCanvas);
+  $: controller?.setUserSpin(userSpin);
   $: controller?.setViewInset(viewInsetRight);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
   $: if (controller) { labelsVisible; filterBypass; orbitPaused; applyStyle(style); }

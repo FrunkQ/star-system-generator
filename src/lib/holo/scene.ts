@@ -91,8 +91,9 @@ export interface HoloController {
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
   setLensing(on: boolean): void; // stylised black-hole gravitational lensing (§A13)
-  setPortrait(colorHex: string | null): void; // isolated-body PORTRAIT key light in the star's colour at a fixed
-  // 3/4 angle relative to the camera (mostly day + a sliver of night). null = off (normal star lighting).
+  setPortrait(colorHex: string | null, fixed?: boolean): void; // isolated-body PORTRAIT key light in the star's
+  // colour at a fixed 3/4 angle (camera-relative; `fixed` = WORLD-fixed for a tidally-locked body). null = off.
+  setUserSpin(on: boolean): void; // isolated-body thumbnail: allow hand-drag to spin (rotate only, no zoom)
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -414,11 +415,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // side) so the framed body always reads as mostly day with a sliver of night whatever the turntable does.
   let portraitLight: THREE.DirectionalLight | null = null;
   let portraitOn = false;
+  let portraitFixed = false; // tidally-locked: light held in WORLD space so the same face stays lit
   const _portR = new THREE.Vector3();
   const _portU = new THREE.Vector3();
   const _portF = new THREE.Vector3();
-  function setPortrait(colorHex: string | null) {
+  function setPortrait(colorHex: string | null, fixed = false) {
     portraitOn = !!colorHex;
+    portraitFixed = fixed;
     if (colorHex) {
       if (!portraitLight) {
         portraitLight = new THREE.DirectionalLight(0xffffff, 2.4);
@@ -433,11 +436,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
   function updatePortraitLight() {
     if (!portraitLight) return;
+    portraitLight.target.position.copy(controls.target);
+    if (portraitFixed) {
+      // WORLD-fixed key (tidally-locked body): a constant direction, so as the turntable orbits the
+      // camera the same physical hemisphere stays lit — the permanent day side sweeps to night correctly.
+      portraitLight.position.copy(controls.target).add(_portF.set(3, 1.4, 2));
+      return;
+    }
     _portR.setFromMatrixColumn(camera.matrixWorld, 0); // camera right
     _portU.setFromMatrixColumn(camera.matrixWorld, 1); // camera up
     _portF.subVectors(camera.position, controls.target).normalize(); // toward the camera
     // Front-dominant (day fills most of the disc) with a side+up offset so one limb falls into night.
-    portraitLight.target.position.copy(controls.target);
     portraitLight.position.copy(controls.target)
       .addScaledVector(_portF, 1.0).addScaledVector(_portR, 0.5).addScaledVector(_portU, 0.4);
   }
@@ -1908,6 +1917,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     lensingPass.enabled = n > 0;
   }
   function setLensing(on: boolean) { lensingOn = on; }
+  // Isolated-body thumbnail: let the player drag to SPIN the body by hand. Rotate stays on (OrbitControls
+  // default) and whether events even reach the scene is gated by the overlay's pointer-events; here we
+  // only kill ZOOM in spin mode so a drag can't zoom the little frame away. Off restores zoom for the full
+  // 3D view (which passes userSpin=false). autoRotate (the turntable) runs independently either way.
+  function setUserSpin(on: boolean) { controls.enableZoom = !on; }
 
   function loop() {
     if (disposed) return;
@@ -1980,7 +1994,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
 }
 
 // ---- helpers ----

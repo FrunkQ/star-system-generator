@@ -10,7 +10,7 @@
   import HoloView from '$lib/holo/HoloView.svelte';
   import { DEFAULT_STYLE } from '$lib/holo/holoStyle';
   import { getClassColor } from '$lib/rendering/colors';
-  import { shade } from '$lib/rendering/planetAppearance';
+  import { shade, deriveAppearance } from '$lib/rendering/planetAppearance';
 
   export let body: CelestialBody | null = null;
   export let system: System | null = null;              // a single-body system for the 3D holo
@@ -22,6 +22,7 @@
   export let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // 3D: true / flat / monochrome
   export let bg = '#05070c';                             // 3D scene ground — matches the page colour
   export let starHex: string | null = null;              // 3D: colour of the system's star (lights the portrait)
+  export let interactive = false;                        // 3D: let the player drag to spin the body by hand
 
   $: is3D = mode === 'sphere';
   // Simple disc = a plain coloured circle BY TYPE (the schematic's flat class colour — brown/red/blue),
@@ -37,25 +38,31 @@
   // Portrait key light: only a NON-luminous body needs one (a star / black hole lights itself). Coloured by
   // the real star so "the sun provides the right colour"; a warm white fallback if the star has no colour.
   $: portrait = (subjectIsStar || isBH) ? null : (starHex || '#fff4e0');
+  // Tidally locked to its star: one hemisphere is permanent day. Keep the light WORLD-FIXED (not camera-
+  // relative) so as the turntable spins the same physical face stays lit — the eyeball reads correctly,
+  // day sweeping to night — instead of the star appearing to follow the camera and lighting every face.
+  $: tidal = !!(body && !subjectIsStar && !isBH && deriveAppearance(body as any)?.tidallyLocked);
   // One holo look bundle: frame the single body (whole:false + focus zooms it in so it fills the
   // thumbnail), auto-turntable it, no starfield/grid, honour the preset's render + colour, keep the
   // black-hole lensing on. Filter is 'none' (the document's own filter wraps this separately).
   // angleDeg tilts from overhead (0 = straight down, 85 = nearly edge-on): a black hole is framed almost
   // edge-on with a slight tilt above the disc plane — the iconic accretion-disc look (disc as a band with
   // the far side lensed up over the top), matching static/images/star_types/BH_accretion_disk.png.
+  // angleDeg for a normal world: 70 = looking straight on to the EQUATOR, tilted ~20° down from level
+  // (not the old near-overhead 20). orbitSpeed doubled to 0.24 for a livelier turntable.
   $: holoStyle = {
     ...DEFAULT_STYLE,
-    whole: false, orbitSpeed: 0.12, angleDeg: isBH ? 82 : 20, skybox: false, grid: 'off',
+    whole: false, orbitSpeed: 0.24, angleDeg: isBH ? 82 : 70, skybox: false, grid: 'off',
     lockOverhead: false, lockRotation: false, bodyGfx: 'sphere', render, bodyStyle,
     // auroras OFF for the isolated thumbnail — zoomed to fill the frame their additive shell blooms into a
     // "massive glow"; the full 3D view keeps them. Portrait key light gives the day/night terminator instead.
-    unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, portrait,
+    unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, portrait, portraitFixed: tidal,
     background: bg, beltStyle: 'rocks', labelSize: 0, filter: 'none', filterParams: undefined
   };
 </script>
 
 {#if is3D && system}
-  <div class="bg-3d" class:mono><HoloView {system} style={holoStyle} focusedBodyId={body?.id ?? null} labelsVisible={false} /></div>
+  <div class="bg-3d" class:mono><HoloView {system} style={holoStyle} focusedBodyId={body?.id ?? null} labelsVisible={false} userSpin={interactive} /></div>
 {:else if mode === 'flat' && body}
   <!-- Flat shape = the full 2D-gallery render (PlanetDisc: texture + surface features + terminator). -->
   <div class="bg-2d" class:mono><PlanetDisc {body} {ringed} {ringDensity} showStamp={false} size={220} /></div>

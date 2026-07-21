@@ -29,6 +29,7 @@ export interface HoloStyle {
   labelSize?: number; // in-scene body-label font size in px (default 11)
   font?: string; // in-scene label font-family — inherited from the preset theme when set
   portrait?: string | null; // isolated-body key light in this star colour at a 3/4 angle (null = normal star lighting)
+  portraitFixed?: boolean; // portrait light is WORLD-fixed (tidally-locked body) rather than camera-relative
 }
 
 export interface HoloPreset extends HoloStyle {
