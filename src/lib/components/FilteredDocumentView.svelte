@@ -173,11 +173,13 @@
     // wrecks them along with everything else.
     const tipOpts = { accent: c.accent, font: theme.font, mono };
     const gap = Math.round(vh * 0.012);
-    const headerH = tips?.top ? tipBannerHeight(ctx, tips.top, 'top', vw, vh, tipOpts) + gap : 0;
-    const footBanner = tips?.bottom ? tipBannerHeight(ctx, tips.bottom, 'bottom', vw, vh, tipOpts) : 0;
+    // The banners are full-width bands flush to the top/bottom EDGE (y=0 and vh-barH), so the body starts
+    // just below the header band and ends just above the footer band + any company/footer stamps.
+    const headBar = tips?.top ? tipBannerHeight(ctx, tips.top, 'top', vw, vh, tipOpts) : 0;
+    const footBar = tips?.bottom ? tipBannerHeight(ctx, tips.bottom, 'bottom', vw, vh, tipOpts) : 0;
     const footStamp = (companyName || footerText) ? Math.round(16 * fontScale) : 0;
-    const footerH = (footBanner || footStamp) ? Math.max(footBanner, footStamp) + gap : 0;
-    const bodyTop = my + headerH, bodyBot = vh - my - footerH;
+    const bodyTop = headBar ? headBar + gap : my;
+    const bodyBot = (footBar || footStamp) ? vh - footBar - footStamp - gap : vh - my;
     ctx.save();
     ctx.beginPath(); ctx.rect(0, bodyTop, vw, Math.max(0, bodyBot - bodyTop)); ctx.clip();
     const res = renderDocument(ctx, blocks, theme, { x: mx, y: bodyTop, w: vw - mx * 2, maxY: bodyBot, scrollY });
@@ -193,13 +195,14 @@
       if (tips.top) drawTipBanner(ctx, tips.top, 'top', vw, vh, to);
       if (tips.bottom) drawTipBanner(ctx, tips.bottom, 'bottom', vw, vh, to);
     }
-    // Footer corner stamps (inside the page, like the cover).
+    // Company / footer stamps sit just ABOVE any footer band (or at the bottom margin when there's none).
     if (companyName || footerText) {
+      const stampY = vh - footBar - Math.round(footStamp ? footStamp * 0.35 : my * 0.4);
       ctx.font = `${Math.round(11 * fontScale)}px ${theme.font}`;
       ctx.fillStyle = c.dim;
       ctx.textBaseline = 'alphabetic';
-      if (companyName) { ctx.textAlign = 'left'; ctx.fillText(companyName.toUpperCase(), mx, vh - Math.round(my * 0.4)); }
-      if (footerText) { ctx.textAlign = 'right'; ctx.fillText(footerText, vw - mx, vh - Math.round(my * 0.4)); }
+      if (companyName) { ctx.textAlign = 'left'; ctx.fillText(companyName.toUpperCase(), mx, stampY); }
+      if (footerText) { ctx.textAlign = 'right'; ctx.fillText(footerText, vw - mx, stampY); }
     }
 
     ctrl.setSource(off);

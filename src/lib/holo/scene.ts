@@ -1918,10 +1918,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
   function setLensing(on: boolean) { lensingOn = on; }
   // Isolated-body thumbnail: let the player drag to SPIN the body by hand. Rotate stays on (OrbitControls
-  // default) and whether events even reach the scene is gated by the overlay's pointer-events; here we
-  // only kill ZOOM in spin mode so a drag can't zoom the little frame away. Off restores zoom for the full
-  // 3D view (which passes userSpin=false). autoRotate (the turntable) runs independently either way.
-  function setUserSpin(on: boolean) { controls.enableZoom = !on; }
+  // default) and whether events even reach the scene is gated by the overlay's pointer-events. In spin
+  // mode we kill ZOOM (a drag mustn't zoom the little frame away) and DAMPING (so the globe stops the
+  // instant the button is released, rather than coasting). Off restores both for the full 3D view.
+  function setUserSpin(on: boolean) { controls.enableZoom = !on; controls.enableDamping = !on; }
 
   function loop() {
     if (disposed) return;

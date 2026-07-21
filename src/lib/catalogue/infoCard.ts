@@ -61,13 +61,14 @@ function tipBannerLayout(
   ctx: CanvasRenderingContext2D, text: string, edge: 'top' | 'bottom', viewW: number, viewH: number,
   opts: { accent: string; font: string; mono: boolean }
 ) {
-  const my = Math.round(viewH * 0.045);
   const fontPx = Math.max(12, Math.min(viewW * 0.011, viewH * 0.026, 20));
   const stampPx = Math.round(fontPx * 0.82);
-  const pad = Math.round(fontPx * 1.0);
+  const pad = Math.round(fontPx * 0.85);
   const lineH = Math.round(fontPx * 1.32);
-  const barW = Math.min(viewW * 0.92, Math.max(viewW * 0.42, fontPx * 44));
-  const x0 = Math.round((viewW - barW) / 2);
+  // Full-width bar flush to the edge — no centred pill, no dead space. Text runs the whole page width
+  // (minus a little side padding) before it wraps to a second line.
+  const barW = viewW;
+  const x0 = 0;
   const innerW = barW - pad * 2;
   const prefix = edge === 'top' ? 'TRAVELLER ADVISORY' : 'THE GUIDE SAYS';
   const stampFont = `700 ${stampPx}px ${opts.font}`;
@@ -77,8 +78,8 @@ function tipBannerLayout(
   ctx.font = noteFont;
   const lines = wrap(ctx, text, innerW - stampW);
   const barH = pad * 2 + Math.max(lineH, lines.length * lineH);
-  const y0 = edge === 'top' ? my : viewH - my - barH;
-  return { my, fontPx, pad, lineH, barW, x0, prefix, stampFont, noteFont, stampW, lines, barH, y0 };
+  const y0 = edge === 'top' ? 0 : viewH - barH; // hard up against the top / bottom edge
+  return { fontPx, pad, lineH, barW, x0, prefix, stampFont, noteFont, stampW, lines, barH, y0 };
 }
 
 // The on-screen height of a top/bottom tip banner (0 if no text) — the document reserves this so the
@@ -103,18 +104,14 @@ export function drawTipBanner(
   const { fontPx, pad, lineH, barW, x0, prefix, stampFont, noteFont, stampW, lines, barH, y0 } =
     tipBannerLayout(ctx, text, edge, viewW, viewH, opts);
 
-  const r = 8;
-  ctx.beginPath();
-  ctx.moveTo(x0 + r, y0);
-  ctx.arcTo(x0 + barW, y0, x0 + barW, y0 + barH, r);
-  ctx.arcTo(x0 + barW, y0 + barH, x0, y0 + barH, r);
-  ctx.arcTo(x0, y0 + barH, x0, y0, r);
-  ctx.arcTo(x0, y0, x0 + barW, y0, r);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(6,8,13,0.9)';
-  ctx.fill();
+  // Full-width band flush to the edge (no rounded pill). A hairline on the inner edge separates it from
+  // the body without a gap of dead space.
+  ctx.fillStyle = 'rgba(6,8,13,0.92)';
+  ctx.fillRect(x0, y0, barW, barH);
+  ctx.fillStyle = 'rgba(200,214,232,0.14)';
+  ctx.fillRect(x0, edge === 'top' ? y0 + barH - 1 : y0, barW, 1);
   ctx.save();
-  ctx.clip();
+  ctx.beginPath(); ctx.rect(x0, y0, barW, barH); ctx.clip();
 
   const accent = opts.mono ? '#cfd6e4' : (opts.accent && opts.accent !== 'rainbow' ? opts.accent : '#8ed0ff');
   ctx.textBaseline = 'alphabetic';

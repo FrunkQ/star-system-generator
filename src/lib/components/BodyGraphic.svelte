@@ -50,9 +50,11 @@
   // the far side lensed up over the top), matching static/images/star_types/BH_accretion_disk.png.
   // angleDeg for a normal world: 70 = looking straight on to the EQUATOR, tilted ~20° down from level
   // (not the old near-overhead 20). orbitSpeed doubled to 0.24 for a livelier turntable.
+  // Auto-turntable spins the thumbnail for life — but NOT when the player can grab it: an interactive
+  // globe should only move while they drag it (orbitSpeed 0), otherwise it looks like it never stops.
   $: holoStyle = {
     ...DEFAULT_STYLE,
-    whole: false, orbitSpeed: 0.24, angleDeg: isBH ? 82 : 70, skybox: false, grid: 'off',
+    whole: false, orbitSpeed: interactive ? 0 : 0.24, angleDeg: isBH ? 82 : 70, skybox: false, grid: 'off',
     lockOverhead: false, lockRotation: false, bodyGfx: 'sphere', render, bodyStyle,
     // auroras OFF for the isolated thumbnail — zoomed to fill the frame their additive shell blooms into a
     // "massive glow"; the full 3D view keeps them. Portrait key light gives the day/night terminator instead.

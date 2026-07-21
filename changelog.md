@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.236-beta - 21st Jul 2026
+
+* Header/footer tip banners are now full-width bands flush to the top/bottom edge — no centred pill, no dead space; the note runs the whole page width before wrapping. Applies everywhere a tip banner is drawn (document, 2D/3D HUD, cover, list).
+* Hand-spin fix: an interactive 3D globe no longer auto-spins forever — it only turns while you drag it, and stops the instant you release (auto-turntable and momentum damping are off in spin mode).
+
 ## v2.1.235-beta - 21st Jul 2026
 
 * Guide document header/footer are now genuine: the top/bottom tip banners (and the company/footer stamps) reserve their own band, and the body is clipped to flow between them instead of running underneath. They still live in the document canvas, so the visual filter wrecks them along with the rest of the page.
