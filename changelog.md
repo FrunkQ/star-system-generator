@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.233-beta - 21st Jul 2026
+
+* Fixed: clicking a barycentre planet (e.g. Pluto/Pluto-Charon) on the document's system map in the live player view showed the primary star instead. The selection now resolves a barycentre to its dominant member (so the holo/inspector focus a real body) and feeds the document the barycentre id (so it reads "Pluto (Pluto-Charon…)" and the marker highlights).
+* Document system map: planet names now slope up at 45° to the right of their marker so tightly-packed outer worlds no longer overprint each other (star and belt names stay below). The planet name is part of the clickable hit area too.
+
 ## v2.1.232-beta - 21st Jul 2026
 
 * Rationalise the System-stage editor ahead of the info-block unify (D6): the "Appearance" section is now "Info Block Appearance", and the per-slot colour swatches are tucked into a collapsible "Colours" disclosure.

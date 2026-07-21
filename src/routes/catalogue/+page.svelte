@@ -77,7 +77,7 @@
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredListView from '$lib/components/FilteredListView.svelte';
   import FilteredDocumentView from '$lib/components/FilteredDocumentView.svelte';
-  import { starsOf } from '$lib/catalogue/document/systemTopology';
+  import { starsOf, dominantOf } from '$lib/catalogue/document/systemTopology';
   import { systemVisualStars } from '$lib/starmap/systemStars';
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
@@ -474,10 +474,20 @@
       }))
   } as ListModel;
   function selectBodyById(id: string) {
-    const n = (displaySystem?.nodes ?? []).find((x: any) => x.id === id) as CelestialBody | undefined;
-    selectedBody = n && (n.kind === 'body' || n.kind === 'construct') ? n : null;
+    let n = (displaySystem?.nodes ?? []).find((x: any) => x.id === id) as any;
+    // A barycentre marker (e.g. Pluto-Charon) resolves to its dominant member — otherwise selectedBody
+    // is null (a barycentre isn't a body/construct) and the document falls back to the primary star.
+    if (n && n.kind === 'barycenter' && displaySystem) n = dominantOf(displaySystem, n);
+    selectedBody = n && (n.kind === 'body' || n.kind === 'construct') ? (n as CelestialBody) : null;
     bodyExpanded = false;
   }
+  // The document shows a barycentre AS its dominant member. When such a body is selected, feed the
+  // document the BARYCENTRE id so its schematic marker highlights and the title reads "Pluto (…)".
+  $: docSelectedId = (() => {
+    if (!selectedBody || !displaySystem) return null;
+    const bary = (displaySystem.nodes as any[]).find((n) => n.kind === 'barycenter' && dominantOf(displaySystem, n)?.id === selectedBody!.id);
+    return bary ? bary.id : selectedBody.id;
+  })();
   // The info panel eats the right edge of the holo stage on desktop/tablet, so the scene reframes
   // gently around the remaining strip while it's open (a phone panel is just a name bar — no reframe).
   $: holoPanelInset = !isPhone && selectedBody && !activePreset?.hideInfoPanel ? inspectorWidth : 0;
@@ -979,7 +989,7 @@
     <div class="preset-stage preset-doc" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
       {#if displaySystem}
         <FilteredDocumentView
-          system={displaySystem} selectedId={selectedBody?.id ?? null}
+          system={displaySystem} selectedId={docSelectedId}
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
           colorful={docColorful} imagery={docImagery} photoFrame={activePreset.photoFrame} hideInfoBlock={activePreset.hideInfoPanel}
           bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}

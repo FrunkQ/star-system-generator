@@ -131,7 +131,9 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
       beltHits.push({ id: e.id, x0: bx0, y0: by0, x1: bx1, y1: by1 });
     }
 
-    // Planets (drawn OVER belts; hit boxes pushed now so they take click priority).
+    // Planets (drawn OVER belts; hit boxes pushed now so they take click priority). The name is written
+    // at 45° sloping UP-RIGHT from the marker so tightly-packed outer planets (Uranus/Neptune/Pluto)
+    // don't overprint each other; the hit box grows to cover that diagonal label so the NAME is clickable.
     for (const e of row.planets) {
       const sel = selectedId === e.id;
       const col = markerCol(e.id, e.color, c.value);
@@ -139,10 +141,18 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
       ctx.fillStyle = col; ctx.fill();
       if (sel) { ctx.strokeStyle = c.value; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1.5; }
       if (e.hasMoons) { ctx.beginPath(); ctx.arc(e.x + 10, cy - 9, 2.4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
+      ctx.font = `${sel ? '600 ' : ''}10px ${font}`;
+      const lw = ctx.measureText(e.label).width;
+      ctx.save();
+      ctx.translate(e.x, cy - 9);
+      ctx.rotate(-Math.PI / 4); // up to the right
+      ctx.textAlign = 'left';
       ctx.fillStyle = colorfulEff ? col : (sel ? c.value : c.body);
-      ctx.font = `${sel ? '600 ' : ''}10px ${font}`; ctx.textAlign = 'center';
-      ctx.fillText(e.label, e.x, cy - 13);
-      pushHit(e.id, e.x - 9, cy - 22, e.x + 9, cy + 9);
+      ctx.fillText(e.label, 5, 3);
+      ctx.restore();
+      // Axis-aligned box over the marker + the diagonal label (extends up-right by (5+lw)/√2 each axis).
+      const diag = (5 + lw) * Math.SQRT1_2;
+      pushHit(e.id, e.x - 9, cy - 12 - diag, e.x + 12 + diag, cy + 9);
     }
   }
   for (const bh of beltHits) hits.push(bh); // belts last → planets/stars match first
