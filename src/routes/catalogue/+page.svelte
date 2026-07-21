@@ -971,9 +971,9 @@
       {#if displaySystem}
         <FilteredDocumentView
           system={displaySystem} selectedId={selectedBody?.id ?? null}
-          font={presetFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+          font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
           colorful={docColorful} imagery={docImagery} hideInfoBlock={activePreset.hideInfoPanel}
-          listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
+          listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} tagStyle={activePreset.tagStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
           fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           units={units} tempUnit={tempUnit}

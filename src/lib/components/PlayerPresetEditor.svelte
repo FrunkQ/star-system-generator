@@ -27,9 +27,36 @@
   import StarmapListView from '$lib/starmap/StarmapListView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredDocumentView from './FilteredDocumentView.svelte';
-  import { DOCUMENT_STYLES } from '$lib/catalogue/document/documentStyles';
+  import { DOCUMENT_STYLES, documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import TransitionParamControls from './TransitionParamControls.svelte';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
+
+  // ── Document colouration (feedback): the documentStyle is a SEED — it fills the editable colour set,
+  //    then the user tweaks individual slots. Each is a <input type=color> (hex), so rgba seed values are
+  //    shown as their opaque colour and become solid hex once edited.
+  const DOC_COLOUR_SLOTS = [
+    { id: 'bg', label: 'Background' }, { id: 'heading', label: 'Heading' }, { id: 'body', label: 'Body text' },
+    { id: 'label', label: 'Labels' }, { id: 'value', label: 'Values' }, { id: 'accent', label: 'Accent' },
+    { id: 'rule', label: 'Lines / rules' }
+  ] as const;
+  function toHex(c: string | undefined): string {
+    if (!c) return '#000000';
+    if (c[0] === '#') return c.length === 4 ? '#' + c.slice(1).split('').map((ch) => ch + ch).join('') : c.slice(0, 7);
+    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c);
+    if (m) { const h = (n: string) => parseInt(n).toString(16).padStart(2, '0'); return `#${h(m[1])}${h(m[2])}${h(m[3])}`; }
+    return '#888888';
+  }
+  function docColour(id: string): string {
+    const seed = (documentStyleBase(draft.documentStyle) as any).colors[id];
+    return toHex((draft.themeColors as any)?.[id] ?? seed);
+  }
+  function setDocColour(id: string, hex: string) {
+    draft = { ...draft, themeColors: { ...(draft.themeColors ?? {}), [id]: hex } };
+  }
+  function applyColouration(style: string) {
+    // New colouration → reset any per-slot tweaks so the picked style's colours show cleanly.
+    draft = { ...draft, documentStyle: style as any, themeColors: {} };
+  }
 
   export let preset: PlayerPreset;
 
@@ -164,11 +191,20 @@
           </fieldset>
           <fieldset>
             <legend>Theme (used by every stage)</legend>
-            <label>Font
+            <label>Font{draft.systemView === 'document' ? ' (body)' : ''}
               <select bind:value={draft.font}>
                 {#each FONT_STACKS as f}<option value={f.css}>{f.label}</option>{/each}
               </select>
             </label>
+            {#if draft.systemView === 'document'}
+              <!-- The document can use a separate heading font; default follows the body font. -->
+              <label>Heading font
+                <select value={draft.headingFont ?? ''} on:change={(e) => { const v = (e.currentTarget as HTMLSelectElement).value; draft = { ...draft, headingFont: v || undefined }; }}>
+                  <option value="">Same as body</option>
+                  {#each FONT_STACKS as f}<option value={f.css}>{f.label}</option>{/each}
+                </select>
+              </label>
+            {/if}
             <label class="chk"><input type="checkbox" checked={isRainbow(draft.accentColor)} on:change={(e) => (draft = { ...draft, accentColor: (e.currentTarget as HTMLInputElement).checked ? RAINBOW : '#6aa0ff' })} /> Rainbow (The Guide look)</label>
             {#if !isRainbow(draft.accentColor)}
               <label class="inline">Accent colour <input type="color" bind:value={draft.accentColor} /></label>
@@ -273,22 +309,6 @@
                   <option value="holo3d">3D holo</option>
                 </select>
               </label>
-              {#if draft.systemView === 'document'}
-                <!-- The document's whole look — one renderer, many skins (feedback: company report,
-                     travel brochure, The Guide, terminal). Drives font + colours + list style. -->
-                <label>Document style
-                  <select bind:value={draft.documentStyle}>
-                    {#each DOCUMENT_STYLES as ds}<option value={ds.value}>{ds.label}</option>{/each}
-                  </select>
-                </label>
-                <label>Tags
-                  <select bind:value={draft.tagStyle}>
-                    <option value="pills">Coloured pills</option>
-                    <option value="grouped">Grouped by type</option>
-                    <option value="list">Plain list</option>
-                  </select>
-                </label>
-              {/if}
             {:else}
               <p class="hint">Disabled: systems aren't openable; the starmap (or cover) is the whole guide.</p>
             {/if}
@@ -296,13 +316,35 @@
           {#if draft.systemEnabled}
             <fieldset>
               <legend>Appearance</legend>
-              <label>Colour
-                <select bind:value={draft.bodyStyle}>
-                  <option value="textured">True colour</option>
-                  <option value="flat">Flat colour</option>
-                  <option value="white">Monochrome (for tinting filters)</option>
-                </select>
-              </label>
+              {#if draft.systemView === 'document'}
+                <!-- Colouration: a documentStyle SEEDS the colours, then tweak each slot. Layout is the
+                     same across styles — only the palette (and fonts, set on General) changes. -->
+                <label>Colouration
+                  <select value={draft.documentStyle} on:change={(e) => applyColouration((e.currentTarget as HTMLSelectElement).value)}>
+                    {#each DOCUMENT_STYLES as ds}<option value={ds.value}>{ds.label}</option>{/each}
+                  </select>
+                </label>
+                <label class="chk"><input type="checkbox" checked={draft.bodyStyle === 'white'}
+                  on:change={(e) => draft = { ...draft, bodyStyle: (e.currentTarget as HTMLInputElement).checked ? 'white' : 'textured' }} />
+                  Monochrome (bleach the page for a tinting filter)</label>
+                {#if draft.bodyStyle !== 'white'}
+                  <div class="doc-colours">
+                    {#each DOC_COLOUR_SLOTS as slot}
+                      <label class="col-row"><span>{slot.label}</span>
+                        <input type="color" value={docColour(slot.id)} on:input={(e) => setDocColour(slot.id, (e.currentTarget as HTMLInputElement).value)} />
+                      </label>
+                    {/each}
+                  </div>
+                {/if}
+              {:else}
+                <label>Colour
+                  <select bind:value={draft.bodyStyle}>
+                    <option value="textured">True colour</option>
+                    <option value="flat">Flat colour</option>
+                    <option value="white">Monochrome (for tinting filters)</option>
+                  </select>
+                </label>
+              {/if}
               <label>Body graphics
                 <select bind:value={draft.bodyGfx}>
                   <option value="sphere">3D sphere</option>
@@ -312,6 +354,22 @@
                   <option value="none">None</option>
                 </select>
               </label>
+              {#if draft.systemView === 'document'}
+                <label>Tags
+                  <select bind:value={draft.tagStyle}>
+                    <option value="pills">Coloured pills</option>
+                    <option value="grouped">Grouped pills</option>
+                    <option value="grouped-list">Grouped list (headings, plain)</option>
+                    <option value="list">Plain list</option>
+                  </select>
+                </label>
+                <label>Navigation
+                  <select bind:value={draft.navStyle}>
+                    <option value="plain">Plain text</option>
+                    <option value="boxed">Boxes / buttons</option>
+                  </select>
+                </label>
+              {/if}
               {#if draft.systemView !== 'document'}
                 <!-- The scene background (space / chroma key). The document sets its own ground via its
                      style/theme colours, so this doesn't apply there. -->
@@ -501,12 +559,12 @@
                    world on the schematic (or a navigator row) to drill in — the info block is in-page. -->
               <FilteredDocumentView
                 system={previewSystem} selectedId={previewFocusId}
-                font={draft.font} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
+                font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 colorful={draft.accentColor === 'rainbow'}
                 imagery={draft.bodyGfx === 'photo' ? 'photo' : draft.bodyGfx === 'none' ? 'none' : 'disc'}
                 hideInfoBlock={draft.hideInfoPanel}
                 transition={draft.transition} transitionParams={draft.transitionParams ?? {}}
-                listStyle={draft.listStyle} documentStyle={draft.documentStyle} tagStyle={draft.tagStyle} themeColors={draft.themeColors}
+                listStyle={draft.listStyle} documentStyle={draft.documentStyle} tagStyle={draft.tagStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
                 companyName={draft.companyName} footerText={draft.footerText}
@@ -560,6 +618,9 @@
   input[type=range] { width: 100%; accent-color: var(--accent, #6aa0ff); }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4; }
   .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
+  .doc-colours { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; padding: 2px 0 2px 8px; border-left: 2px solid var(--border); }
+  .col-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); gap: 6px; }
+  .col-row input[type=color] { width: 34px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 3px; background: none; cursor: pointer; }
   .overlay-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
   .assets { display: flex; flex-direction: column; gap: 6px; }
   .asset { display: flex; align-items: center; gap: 8px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; }

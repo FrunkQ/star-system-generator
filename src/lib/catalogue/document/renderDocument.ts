@@ -43,6 +43,7 @@ export function renderDocument(
   const s = Math.max(0.7, Math.min(1.8, theme.fontScale || 1));
   const c = resolveDocColors(theme);
   const font = theme.font;
+  const headingFont = theme.headingFont || theme.font;
   const { x, w } = layout;
   const maxY = layout.maxY ?? Infinity;
   const scroll = Math.max(0, layout.scrollY ?? 0);
@@ -86,7 +87,7 @@ export function renderDocument(
         const h = lh + subLh + px(4, s);
         if (visible(top, h)) {
           ctx.textAlign = 'left';
-          ctx.font = `${weight} ${px(size, s)}px ${font}`;
+          ctx.font = `${weight} ${px(size, s)}px ${headingFont}`;
           ctx.fillStyle = level === 1 ? c.heading : c.body;
           ctx.fillText(b.text, x, top + px(size, s));
           if (b.sub) {
@@ -190,17 +191,31 @@ function drawList(
   font: string, s: number, x: number, w: number, top: number, colTop: number, maxY: number, regions: DocRegion[]
 ): number {
   const style: ListStyle = b.style ?? theme.listStyle ?? 'plain';
-  const lh = px(20, s);
-  const indent = px(18, s);
+  const boxed = theme.navStyle === 'boxed';
+  const lh = px(boxed ? 24 : 20, s);
+  const indent = px(boxed ? 12 : 18, s);
   ctx.font = `${px(13, s)}px ${font}`;
   ctx.textBaseline = 'alphabetic';
   let y = top;
   for (let i = 0; i < b.items.length; i++) {
     const it = b.items[i];
     const rowTop = y;
+    const sel = !!it.selected || (!!it.id && !!b.selected);
     const inBand = rowTop + lh > colTop - 2 && rowTop < maxY + 2;
-    if (inBand) {
-      if (it.selected || (it.id && b.selected)) {
+    if (inBand && boxed) {
+      // Boxed nav "buttons": a rounded box per row — the selected one coloured (accent), the rest plain.
+      const bx = x, bw = w, by = rowTop + px(2, s), bh = lh - px(5, s), r = px(6, s);
+      roundRectPath(ctx, bx, by, bw, bh, r);
+      ctx.fillStyle = sel ? hexA(c.accent, 0.16) : hexA(c.rule || '#8899aa', 0.08);
+      ctx.fill();
+      ctx.strokeStyle = sel ? c.accent : c.rule; ctx.lineWidth = 1; ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.fillStyle = sel ? c.value : c.body;
+      ctx.font = `${px(13, s)}px ${font}`;
+      ctx.fillText(ellipsise(ctx, it.text, bw - indent * 2 - (it.sub ? px(56, s) : 0)), bx + indent, by + bh - px(6, s));
+      if (it.sub) { ctx.textAlign = 'right'; ctx.fillStyle = c.label; ctx.fillText(it.sub, bx + bw - indent, by + bh - px(6, s)); }
+    } else if (inBand) {
+      if (sel) {
         ctx.fillStyle = theme.mono ? 'rgba(207,214,228,0.16)' : 'rgba(140,170,210,0.16)';
         ctx.fillRect(x - px(4, s), rowTop + px(2, s), w + px(8, s), lh - px(4, s));
       }
@@ -209,7 +224,7 @@ function drawList(
       ctx.fillStyle = c.accent;
       ctx.font = `${px(13, s)}px ${font}`;
       ctx.fillText(bullet(style, i), x, baseY);
-      ctx.fillStyle = it.selected ? c.value : c.body;
+      ctx.fillStyle = sel ? c.value : c.body;
       const tw = it.sub ? w - indent - px(60, s) : w - indent;
       ctx.fillText(ellipsise(ctx, it.text, tw), x + indent, baseY);
       if (it.sub) {
@@ -222,6 +237,18 @@ function drawList(
     y += lh;
   }
   return y;
+}
+
+// A rounded-rect path (caller fills/strokes).
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
 }
 
 // #rrggbb + alpha → rgba() (for translucent pill fills).
@@ -251,8 +278,10 @@ function drawTags(
     return top + wrap(ctx, b.tags.map((t) => t.label).join(' · '), w).length * lh;
   }
 
-  if (style === 'grouped') {
-    // Group by tag type, a small heading per group, then that group's pills.
+  if (style === 'grouped' || style === 'grouped-list') {
+    // Group by tag type, a small heading per group, then that group's tags — as pills, or (grouped-list)
+    // as a plain comma-separated line in the body colour.
+    const asText = style === 'grouped-list';
     const groups = new Map<string, TagItem[]>();
     for (const t of b.tags) { const g = t.group || 'Other'; (groups.get(g) ?? groups.set(g, []).get(g)!).push(t); }
     let y = top;
@@ -262,7 +291,15 @@ function drawTags(
       ctx.fillStyle = c.label;
       ctx.fillText(g.toUpperCase(), x, y + px(10, s));
       y += px(15, s);
-      y = drawPillRow(ctx, items, font, s, x, w, y) + px(6, s);
+      if (asText) {
+        ctx.font = `${px(12, s)}px ${font}`;
+        ctx.fillStyle = c.body;
+        const lh = px(12 * LINE, s);
+        for (const ln of wrap(ctx, items.map((t) => t.label).join(' · '), w)) { ctx.fillText(ln, x, y + px(12, s)); y += lh; }
+        y += px(4, s);
+      } else {
+        y = drawPillRow(ctx, items, font, s, x, w, y) + px(6, s);
+      }
     }
     return y;
   }

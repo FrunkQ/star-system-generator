@@ -33,6 +33,9 @@ export type DocumentStyle =
   | 'brochure'   // pretty travel brochure (warm cream, coral/teal, illustrated)
   | 'terminal';  // green-screen terminal (phosphor mono, '>' log lines) — shines under CRT
 
+// How navigator rows + key elements render: plain hanging text, or boxed "buttons".
+export type NavStyle = 'plain' | 'boxed';
+
 // The full colour set threaded through EVERY text draw (not just an accent). Light-on-dark by default
 // so a luminance-tinting filter (CRT/NV) colours it; a `mono` theme collapses everything to grey/white
 // and lets the filter do all the colouring. All optional so a caller can specify only what differs
@@ -49,13 +52,15 @@ export interface DocColors {
 }
 
 export interface DocTheme {
-  font: string;              // CSS font family stack, from the preset
+  font: string;              // body font family stack, from the preset
+  headingFont?: string;      // heading font (falls back to `font`)
   fontScale?: number;        // multiplier on every text size (~0.7..1.8); default 1
-  mono: boolean;             // white/monochrome scheme: draw grey so the filter colours it
+  mono: boolean;             // white/monochrome scheme: BLEACH the whole page to grey so a filter tints it
   accent: string;            // the preset accentColor ('rainbow' or a hex) — resolves the accent slot
-  colors?: DocColors;        // optional finer colour set (overrides the accent-derived defaults)
+  colors?: DocColors;        // the editable colour set (seeded from a documentStyle, tweaked per-slot)
   listStyle?: ListStyle;     // default 'plain'
-  documentStyle?: DocumentStyle; // default 'dossier'
+  documentStyle?: DocumentStyle; // colouration seed (guide/report/brochure/terminal)
+  navStyle?: NavStyle;       // how navigator rows / key elements render (plain text vs boxed)
 }
 
 // --- Block model ------------------------------------------------------------------------------------
@@ -85,7 +90,7 @@ export interface KeyValueBlock extends DocBlockBase {
   value: string;
 }
 // How the body's tags render (feedback: coloured pills / plain text list / grouped by type).
-export type TagStyle = 'pills' | 'list' | 'grouped';
+export type TagStyle = 'pills' | 'grouped' | 'grouped-list' | 'list';
 export interface TagItem { label: string; color: string; group?: string; }
 export interface TagsBlock extends DocBlockBase {
   kind: 'tags';
@@ -136,19 +141,20 @@ export type DocBlock =
 // Otherwise defaults are the dark-friendly ramp lifted from infoCard/listCanvas, with the accent slot
 // driven by the preset accent (a readable fallback for 'rainbow'), all overridable via colors{}.
 export function resolveDocColors(theme: DocTheme): Required<DocColors> {
-  const accent = theme.mono
-    ? '#cfd6e4'
-    : (theme.accent && theme.accent !== 'rainbow' ? theme.accent : '#8ed0ff');
-  const base: Required<DocColors> = theme.mono
-    ? {
-        bg: '#05070c', heading: '#f2f5fa', body: 'rgba(226,234,246,0.92)',
-        label: 'rgba(200,214,232,0.7)', value: '#e8edf4', rule: 'rgba(200,214,232,0.28)',
-        accent, dim: 'rgba(200,214,232,0.5)'
-      }
-    : {
-        bg: '#05070c', heading: accent, body: 'rgba(200,214,232,0.85)',
-        label: 'rgba(190,205,224,0.7)', value: '#e8edf4', rule: 'rgba(140,170,210,0.28)',
-        accent, dim: 'rgba(200,214,232,0.5)'
-      };
+  // Monochrome scheme BLEACHES the whole page: a fixed grey ramp that ignores the colour set entirely,
+  // so a tinting filter (CRT/NV) does all the colouring. No theme.colors leak through here.
+  if (theme.mono) {
+    return {
+      bg: '#05070c', heading: '#f2f5fa', body: 'rgba(226,234,246,0.92)',
+      label: 'rgba(200,214,232,0.7)', value: '#e8edf4', rule: 'rgba(200,214,232,0.28)',
+      accent: '#cfd6e4', dim: 'rgba(200,214,232,0.5)'
+    };
+  }
+  const accent = theme.accent && theme.accent !== 'rainbow' ? theme.accent : '#8ed0ff';
+  const base: Required<DocColors> = {
+    bg: '#05070c', heading: accent, body: 'rgba(200,214,232,0.85)',
+    label: 'rgba(190,205,224,0.7)', value: '#e8edf4', rule: 'rgba(140,170,210,0.28)',
+    accent, dim: 'rgba(200,214,232,0.5)'
+  };
   return { ...base, ...(theme.colors ?? {}) };
 }

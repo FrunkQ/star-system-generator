@@ -20,11 +20,13 @@
   export let system: System;
   export let selectedId: string | null = null;
   export let font = 'system-ui';
+  export let headingFont: string | undefined = undefined; // falls back to `font`
   export let accent = '#6aa0ff';
   export let mono = false;
   export let colorful = false;            // The Guide's rainbow schematic
   export let listStyle: ListStyle | undefined = undefined;
   export let documentStyle: DocumentStyle | undefined = undefined;
+  export let navStyle: import('$lib/catalogue/document/blocks').NavStyle | undefined = undefined;
   export let tagStyle: import('$lib/catalogue/document/blocks').TagStyle | undefined = undefined;
   export let themeColors: DocColors | undefined = undefined;
   export let fontScale = 1;
@@ -65,12 +67,14 @@
   // the text keeps the style's own readable accent.
   $: styleBase = documentStyleBase(documentStyle);
   $: theme = {
-    font: styleBase.font,
+    font,                                  // respect the preset's chosen body font
+    headingFont: headingFont || font,      // and its heading font (defaults to body)
     fontScale, mono,
     accent: accent && accent !== 'rainbow' ? accent : styleBase.colors.accent,
+    // The documentStyle SEEDS the colours; the preset's themeColors override any slot the user tweaked.
     colors: { ...styleBase.colors, ...(themeColors ?? {}) },
     listStyle: listStyle ?? styleBase.listStyle,
-    documentStyle
+    documentStyle, navStyle
   } as DocTheme;
 
   $: if (imagery === 'photo' && selectedId && selectedId !== imgForId) loadBodyImage(selectedId);
@@ -153,7 +157,7 @@
 
   // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
   // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
-  $: if (ctrl) { system; font; accent; mono; colorful; listStyle; documentStyle; tagStyle; themeColors; fontScale; imagery; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
+  $: if (ctrl) { system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; imagery; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
   $: if (ctrl) handleSelection(selectedId);
   $: ctrl?.setFilter(filterId, filterParams);
 

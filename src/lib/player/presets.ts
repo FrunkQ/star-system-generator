@@ -46,6 +46,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   systemView: 'holo3d',
   documentStyle: 'guide',
   tagStyle: 'pills',
+  navStyle: 'plain',
   transition: 'none',
   transitionParams: {},
   font: 'system-ui',

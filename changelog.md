@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.219-beta - 21st Jul 2026
+
+* Document look reworked around feedback. The chosen FONT is now respected throughout, with an optional separate heading font. "Document style" becomes "Colouration": each style is a starting point that seeds an editable per-slot colour set (background, heading, body, labels, values, accent, lines) you can then tweak — the layout is the same across styles. The Colour dropdown is gone; a single "Monochrome (bleach)" toggle now bleaches the WHOLE page to grey for a tinting filter. Tags gain a "Grouped list" (type headings, plain text) option, and navigation elements can render as plain text or as boxes/buttons.
+
 ## v2.1.218-beta - 21st Jul 2026
 
 * Page transitions are live in the Guide document. A new "Transitions" tab on the preset editor lets you pick a transition (Fade, CRT Collapse, Static Dissolve, Wipe, Terminal Clear, …) and tune its controls. Opening a different world captures the current page, rebuilds the next one underneath, then animates the snapshot away to reveal it — a bit of life between pages. (Filtered surfaces now keep their draw buffer so the snapshot reads cleanly.)
