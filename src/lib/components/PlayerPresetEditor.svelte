@@ -278,6 +278,13 @@
                     {#each DOCUMENT_STYLES as ds}<option value={ds.value}>{ds.label}</option>{/each}
                   </select>
                 </label>
+                <label>Tags
+                  <select bind:value={draft.tagStyle}>
+                    <option value="pills">Coloured pills</option>
+                    <option value="grouped">Grouped by type</option>
+                    <option value="list">Plain list</option>
+                  </select>
+                </label>
               {/if}
             {:else}
               <p class="hint">Disabled: systems aren't openable; the starmap (or cover) is the whole guide.</p>
@@ -478,7 +485,7 @@
                 colorful={draft.accentColor === 'rainbow'}
                 imagery={draft.bodyGfx === 'photo' ? 'photo' : draft.bodyGfx === 'none' ? 'none' : 'disc'}
                 hideInfoBlock={draft.hideInfoPanel}
-                listStyle={draft.listStyle} documentStyle={draft.documentStyle} themeColors={draft.themeColors}
+                listStyle={draft.listStyle} documentStyle={draft.documentStyle} tagStyle={draft.tagStyle} themeColors={draft.themeColors}
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
                 companyName={draft.companyName} footerText={draft.footerText}

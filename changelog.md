@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.216-beta - 21st Jul 2026
+
+* Tags in the Guide document now render three ways, chosen per preset: coloured pills (each tinted by its type), grouped by type (a small heading per category), or a plain text list. The tag list is pulled out of the fact rows into its own styled section. New "Tags" picker on the document's System tab.
+
 ## v2.1.215-beta - 21st Jul 2026
 
 * Document STYLE range (one renderer, many looks): a new "Document style" picker gives the Guide document four distinct skins — The Guide (dark, illustrated, serif), Company report (white paper, black ink, bold sans, numbered rows — modelled on the paper Report), Travel brochure (warm cream, coral/teal), and Terminal (green phosphor mono, "> " log lines, shines under CRT). Each is a full theme (font + colour set + list style); a preset's own colours override it. The System "View" dropdown is renamed "Document" and the redundant "Text list" option is dropped — the CRT Terminal preset now IS the document in its terminal style.

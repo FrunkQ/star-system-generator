@@ -7,7 +7,7 @@
 // Static / low-fps: the caller redraws only on data/selection/theme change; the shader animates the
 // time uniforms. See blocks.ts for the model and docs/dev/v2.2-player-view-visual-overhaul.md §WS2.
 import { wrap, ellipsise } from '../textLayout';
-import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle } from './blocks';
+import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle, type TagsBlock, type TagStyle, type TagItem } from './blocks';
 import { drawSystemSchematic } from './systemSchematic';
 import { drawBodyDisc } from './bodyDisc';
 import type { System, CelestialBody } from '$lib/types';
@@ -136,6 +136,10 @@ export function renderDocument(
         y = drawList(ctx, b, theme, c, font, s, x, w, top, layout.y, maxY, regions);
         break;
       }
+      case 'tags': {
+        y = drawTags(ctx, b, theme, c, font, s, x, w, top);
+        break;
+      }
       case 'image': {
         const maxH = (layout.maxY && layout.maxY !== Infinity ? layout.maxY - layout.y : 10000) * (b.maxHFrac ?? 0.32);
         let dw = w, dh = w / (b.aspect || 1);
@@ -218,6 +222,83 @@ function drawList(
     y += lh;
   }
   return y;
+}
+
+// #rrggbb + alpha → rgba() (for translucent pill fills).
+function hexA(hex: string, a: number): string {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || '');
+  if (!m) return hex || '#888';
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+// The body's tags, three ways (feedback): coloured pills, a plain text list, or grouped by type.
+function drawTags(
+  ctx: CanvasRenderingContext2D, b: TagsBlock, theme: DocTheme, c: Required<import('./blocks').DocColors>,
+  font: string, s: number, x: number, w: number, top: number
+): number {
+  const style: TagStyle = b.style ?? 'pills';
+  if (!b.tags.length) return top;
+
+  if (style === 'list') {
+    // Plain text list — comma-separated, wrapped, in the body colour.
+    ctx.font = `${px(12, s)}px ${font}`;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = c.body;
+    const lh = px(12 * LINE, s);
+    let y = top + px(12, s);
+    for (const ln of wrap(ctx, b.tags.map((t) => t.label).join(' · '), w)) { ctx.fillText(ln, x, y); y += lh; }
+    return top + wrap(ctx, b.tags.map((t) => t.label).join(' · '), w).length * lh;
+  }
+
+  if (style === 'grouped') {
+    // Group by tag type, a small heading per group, then that group's pills.
+    const groups = new Map<string, TagItem[]>();
+    for (const t of b.tags) { const g = t.group || 'Other'; (groups.get(g) ?? groups.set(g, []).get(g)!).push(t); }
+    let y = top;
+    for (const [g, items] of [...groups.entries()].sort((a, z) => a[0].localeCompare(z[0]))) {
+      ctx.font = `${px(10, s)}px ${font}`;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = c.label;
+      ctx.fillText(g.toUpperCase(), x, y + px(10, s));
+      y += px(15, s);
+      y = drawPillRow(ctx, items, font, s, x, w, y) + px(6, s);
+    }
+    return y;
+  }
+
+  // Default: coloured pills, wrapping across the column.
+  return drawPillRow(ctx, b.tags, font, s, x, w, top);
+}
+
+// Lay out tag pills left-to-right, wrapping to new rows; returns the bottom y.
+function drawPillRow(
+  ctx: CanvasRenderingContext2D, tags: TagItem[], font: string, s: number, x: number, w: number, top: number
+): number {
+  const padX = px(7, s), h = px(19, s), gap = px(6, s), r = h / 2;
+  ctx.font = `${px(11, s)}px ${font}`;
+  ctx.textBaseline = 'alphabetic';
+  let cx = x, y = top;
+  for (const t of tags) {
+    const tw = ctx.measureText(t.label).width;
+    const pw = tw + padX * 2;
+    if (cx + pw > x + w && cx > x) { cx = x; y += h + gap; } // wrap
+    // Pill: translucent fill + coloured border + coloured label.
+    ctx.beginPath();
+    ctx.moveTo(cx + r, y);
+    ctx.arcTo(cx + pw, y, cx + pw, y + h, r);
+    ctx.arcTo(cx + pw, y + h, cx, y + h, r);
+    ctx.arcTo(cx, y + h, cx, y, r);
+    ctx.arcTo(cx, y, cx + pw, y, r);
+    ctx.closePath();
+    ctx.fillStyle = hexA(t.color, 0.16); ctx.fill();
+    ctx.strokeStyle = hexA(t.color, 0.85); ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = t.color;
+    ctx.textAlign = 'left';
+    ctx.fillText(t.label, cx + padX, y + h - px(6, s));
+    cx += pw + gap;
+  }
+  return y + h;
 }
 
 // The leading glyph for a list item under a given style (Phase 1: mostly bullets; Phase 4 diverges).

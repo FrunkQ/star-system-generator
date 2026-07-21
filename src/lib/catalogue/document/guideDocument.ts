@@ -7,7 +7,8 @@
 import type { System, CelestialBody } from '$lib/types';
 import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
 import { bodyFacts, bodyGlyph } from '../bodyFacts';
-import type { DocBlock } from './blocks';
+import { describeTag, tagContextLabel } from '$lib/tags/tagPresentation';
+import type { DocBlock, TagItem, TagStyle } from './blocks';
 import {
   isBary, dominantOf, displayLabel, membersOf, moonsOf, constructsOf, isRinged, type Node
 } from './systemTopology';
@@ -20,6 +21,21 @@ export interface GuideDocOpts {
   image?: CanvasImageSource | null;      // a loaded picture for the selected body (photo mode)
   imageAspect?: number;                  // width/height of that picture
   hideInfo?: boolean;                    // clean display: schematic only, no per-body file block
+  tagStyle?: TagStyle;                   // how tags render: pills / list / grouped (default pills)
+}
+
+// Resolve a body's tags to display items (label + type colour + group), de-duplicated by label.
+function resolveTags(node: any): TagItem[] {
+  const out: TagItem[] = [];
+  const seen = new Set<string>();
+  for (const t of (node?.tags ?? [])) {
+    const label = tagContextLabel(String(t.key), t.value);
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    const d = describeTag(String(t.key));
+    out.push({ label, color: d.color || '#8aa0c0', group: d.group });
+  }
+  return out;
 }
 
 // Order-preserving lookup of a node by id.
@@ -72,15 +88,24 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     blocks.push({ kind: 'bodyDisc', body: subject, ringed: isRinged(system, subject.id) });
   }
 
-  // 4) Facts + description.
+  // 4) Facts + description. The 'Tags' fact is pulled out and rendered as a styled tags block below.
   if (subject) {
     const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C');
-    if (facts.length) { blocks.push({ kind: 'spacer', h: 4 }); }
-    for (const f of facts) if (f.value) blocks.push({ kind: 'keyValue', label: f.label, value: f.value });
+    const rows = facts.filter((f) => f.value && f.label !== 'Tags');
+    if (rows.length) blocks.push({ kind: 'spacer', h: 4 });
+    for (const f of rows) blocks.push({ kind: 'keyValue', label: f.label, value: f.value });
   }
   if (selected.description) {
     blocks.push({ kind: 'spacer', h: 6 });
     blocks.push({ kind: 'text', text: selected.description, italic: true });
+  }
+
+  // 4b) Tags — pills / plain list / grouped, per the preset.
+  const tags = resolveTags(subject);
+  if (tags.length) {
+    blocks.push({ kind: 'spacer', h: 6 });
+    blocks.push({ kind: 'heading', level: 3, text: 'Tags' });
+    blocks.push({ kind: 'tags', tags, style: opts.tagStyle });
   }
 
   // 5) Drill-in navigator lists: companion members (for a barycentre), moons, constructs.

@@ -45,6 +45,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   systemEnabled: true,
   systemView: 'holo3d',
   documentStyle: 'guide',
+  tagStyle: 'pills',
   font: 'system-ui',
   accentColor: '#6aa0ff',
   starmapOverlay: null,

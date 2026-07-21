@@ -11,8 +11,8 @@ export type ViewModule = 'list' | 'diagram2d' | 'holo3d' | 'document';
 
 // WS2 document look (see catalogue/document/blocks.ts — the engine owns these). Re-exported here so a
 // preset can carry them; type-only, so no runtime coupling between presets and the renderer.
-export type { ListStyle, DocumentStyle, DocColors } from '$lib/catalogue/document/blocks';
-import type { ListStyle, DocumentStyle, DocColors } from '$lib/catalogue/document/blocks';
+export type { ListStyle, DocumentStyle, DocColors, TagStyle } from '$lib/catalogue/document/blocks';
+import type { ListStyle, DocumentStyle, DocColors, TagStyle } from '$lib/catalogue/document/blocks';
 
 // A 9-point anchor for placing a graphic on the cover or as a map overlay.
 export type PinPosition =
@@ -84,6 +84,7 @@ export interface PlayerPreset {
   // dossier), `listStyle` the list rendering, `themeColors` a finer per-slot colour set.
   documentStyle?: DocumentStyle;
   listStyle?: ListStyle;
+  tagStyle?: TagStyle; // document: how body tags render (pills / list / grouped)
   themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,
   // different position). The cover's own image lives in cover.graphic.

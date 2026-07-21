@@ -54,6 +54,17 @@ describe('buildGuideDocument', () => {
     expect(photoWithImg.some((b) => b.kind === 'image')).toBe(true);
   });
 
+  it('renders tags as a styled tags block, not a plain fact row', () => {
+    const tagged: any = { ...system, nodes: system.nodes.map((n: any) => n.id === 'earth' ? { ...n, tags: [{ key: 'structure/cloud-deck' }] } : n) };
+    const blocks = buildGuideDocument(tagged, 'earth', { tagStyle: 'pills' });
+    const tagsBlock = blocks.find((b) => b.kind === 'tags') as any;
+    expect(tagsBlock).toBeTruthy();
+    expect(tagsBlock.tags.length).toBeGreaterThan(0);
+    expect(tagsBlock.style).toBe('pills');
+    // The 'Tags' fact is pulled out, not duplicated as a key/value row.
+    expect(blocks.some((b) => b.kind === 'keyValue' && (b as any).label === 'Tags')).toBe(false);
+  });
+
   it('offers a back-to-parent row for a child body', () => {
     const blocks = buildGuideDocument(system, 'earth');
     const lists = blocks.filter((b) => b.kind === 'list') as any[];

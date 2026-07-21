@@ -87,6 +87,16 @@ describe('renderDocument (WS2 engine)', () => {
     expect(ctx2._texts.length).toBeGreaterThan(1); // multiple wrapped lines drawn
   });
 
+  it('draws tag pills with their labels', () => {
+    const ctx = mockCtx();
+    renderDocument(ctx, [{ kind: 'tags', style: 'pills', tags: [
+      { label: 'Cloud deck', color: '#38bdf8' }, { label: 'Rare world', color: '#f472b6' }
+    ] }], hudCardTheme(card), layout);
+    const drawn = ctx._texts.map((t: any) => t.text).join('\n');
+    expect(drawn).toContain('Cloud deck');
+    expect(drawn).toContain('Rare world');
+  });
+
   it('draws the system schematic and returns 2D hit boxes per body', () => {
     const ctx = mockCtx();
     const system: any = {

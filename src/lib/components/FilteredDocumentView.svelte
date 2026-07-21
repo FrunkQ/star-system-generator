@@ -24,6 +24,7 @@
   export let colorful = false;            // The Guide's rainbow schematic
   export let listStyle: ListStyle | undefined = undefined;
   export let documentStyle: DocumentStyle | undefined = undefined;
+  export let tagStyle: import('$lib/catalogue/document/blocks').TagStyle | undefined = undefined;
   export let themeColors: DocColors | undefined = undefined;
   export let fontScale = 1;
   export let imagery: 'disc' | 'photo' | 'none' = 'none';
@@ -101,7 +102,7 @@
 
     const blocks = buildGuideDocument(system, selectedId, {
       units, tempUnit, colorful, imagery,
-      image: bodyImg, imageAspect: bodyImgAspect, hideInfo: hideInfoBlock
+      image: bodyImg, imageAspect: bodyImgAspect, hideInfo: hideInfoBlock, tagStyle
     });
     const res = renderDocument(ctx, blocks, theme, { x: mx, y: my, w: vw - mx * 2, maxY: vh - my, scrollY });
     regions = res.regions;
@@ -144,7 +145,7 @@
   onDestroy(() => { ro?.disconnect(); ctrl?.dispose(); ctrl = null; });
 
   // Redraw on data / theme / selection / scroll change; re-apply the filter separately.
-  $: if (ctrl) { system; selectedId; font; accent; mono; colorful; listStyle; documentStyle; themeColors; fontScale; imagery; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
+  $: if (ctrl) { system; selectedId; font; accent; mono; colorful; listStyle; documentStyle; tagStyle; themeColors; fontScale; imagery; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
   $: ctrl?.setFilter(filterId, filterParams);
 
   function onWheel(e: WheelEvent) {

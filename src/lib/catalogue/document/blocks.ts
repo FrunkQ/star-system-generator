@@ -84,6 +84,15 @@ export interface KeyValueBlock extends DocBlockBase {
   label: string;
   value: string;
 }
+// How the body's tags render (feedback: coloured pills / plain text list / grouped by type).
+export type TagStyle = 'pills' | 'list' | 'grouped';
+export interface TagItem { label: string; color: string; group?: string; }
+export interface TagsBlock extends DocBlockBase {
+  kind: 'tags';
+  tags: TagItem[];
+  style?: TagStyle; // overrides the theme/preset default
+}
+
 export interface ListItem { id?: string; text: string; selected?: boolean; sub?: string; }
 export interface ListBlock extends DocBlockBase {
   kind: 'list';
@@ -118,7 +127,7 @@ export interface SchematicBlock extends DocBlockBase {
 }
 
 export type DocBlock =
-  | HeadingBlock | TextBlock | KeyValueBlock | ListBlock
+  | HeadingBlock | TextBlock | KeyValueBlock | ListBlock | TagsBlock
   | ImageBlock | BodyDiscBlock | SpacerBlock | RuleBlock | SchematicBlock;
 
 // --- Resolved colours -------------------------------------------------------------------------------
