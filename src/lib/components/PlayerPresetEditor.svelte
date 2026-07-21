@@ -362,15 +362,20 @@
                   </select>
                 </label>
               {/if}
-              <label>Body graphics
-                <select bind:value={draft.bodyGfx}>
-                  <option value="sphere">3D sphere</option>
-                  <option value="photo">Photo</option>
-                  <option value="disc">Simple disc</option>
-                  <option value="flat">Flat shape</option>
-                  <option value="none">None</option>
-                </select>
-              </label>
+              {#if draft.systemView !== 'holo3d'}
+                <!-- "Body graphics" is the per-body PICTURE — an info-block choice. The 3D orrery is always
+                     3D spheres, so this control is hidden for the 3D view; it returns pointed at the info
+                     block once that formatting is pulled into 3D (D6). Document + 2D map keep it. -->
+                <label>Body graphics
+                  <select bind:value={draft.bodyGfx}>
+                    <option value="sphere">3D sphere</option>
+                    <option value="photo">Photo</option>
+                    <option value="disc">Simple disc</option>
+                    <option value="flat">Flat shape</option>
+                    <option value="none">None</option>
+                  </select>
+                </label>
+              {/if}
               {#if draft.systemView === 'document' && draft.bodyGfx === 'sphere'}
                 <!-- The 3D body graphic is the real holo render, so it takes the same render styles. -->
                 <label>Render
@@ -474,8 +479,9 @@
                      plan view that never zooms. -->
                 <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system (never zoom to a body)</label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
-                {#if draft.bodyGfx === 'sphere'}
-                  <!-- Auroras are an emissive shell on the 3D globe — the flat disc looks don't draw them. -->
+                {#if draft.systemView === 'holo3d' || draft.bodyGfx === 'sphere'}
+                  <!-- Auroras are an emissive shell on the 3D globe — the flat disc looks don't draw them.
+                       The 3D orrery is always spheres, so its toggle shows regardless of body-graphics. -->
                   <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
                 {/if}
               {/if}

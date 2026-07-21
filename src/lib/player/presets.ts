@@ -231,6 +231,11 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
  */
 export function systemStageStyle(p: PlayerPreset, base?: HoloStyle): HoloStyle {
   const s = base ?? holoStyleOf(p);
+  // The 3D orrery always renders bodies as 3D spheres — "body graphics" (disc / photo / flat) is an
+  // INFO-BLOCK choice, not an orrery one (it belongs to the per-body picture, coming to 3D with the
+  // unified info block). Forcing sphere here stops a value stored for another view (e.g. a duplicated
+  // document preset's 'photo') from flattening the 3D scene into discs.
+  if (p.systemView === 'holo3d') return { ...s, bodyGfx: 'sphere' };
   if (p.systemView !== 'diagram2d') return s;
   // A 2D map is ALWAYS flat — lockOverhead is not the GM's to unset here, or unticking Lock rotation
   // would tilt it into a 3D view. Lock rotation only fixes the HEADING (spin + follow-by-pan).

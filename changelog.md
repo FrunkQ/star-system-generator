@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.231-beta - 21st Jul 2026
+
+* The "Body graphics" control (the per-body picture) is hidden for the 3D holo view — it's an info-block choice, not an orrery one, and the 3D orrery always renders bodies as 3D spheres. The 3D scene now forces sphere bodies so a value stored for another view can't flatten it to discs. Document and 2D map keep the control; it returns to 3D pointed at the info block once that formatting is unified (D6). Auroras toggle now shows for the 3D view regardless.
+
 ## v2.1.230-beta - 21st Jul 2026
 
 * Unify (D6, step 1): the 3D holo's info card now renders its content through the SAME document engine as the Document system-view, via the existing card-blocks seam — retiring the card's bespoke title/facts/description drawing so there's one info-block code path to maintain. Panel chrome (rounded frame, close glyph) is unchanged.
