@@ -15,7 +15,9 @@
   import { resolveDocColors, type DocTheme, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
   import { documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
+  import { isBary, dominantOf, isRinged } from '$lib/catalogue/document/systemTopology';
   import { drawTipBanner, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
+  import BodyGraphic from './BodyGraphic.svelte';
 
   export let system: System;
   export let selectedId: string | null = null;
@@ -57,6 +59,17 @@
   let scrollY = 0;
   let regions: DocRegion[] = [];
   let contentH = 0;
+  // Screen rect (view px) of the reserved body-graphic gap, so the BodyGraphic overlay can sit there.
+  let gfxRect: { x: number; y: number; w: number; h: number } | null = null;
+
+  // The subject body for the picture (a barycentre shows its dominant member, matching the document).
+  $: subjectBody = (() => {
+    const n: any = (system?.nodes ?? []).find((x) => x.id === selectedId);
+    if (!n) return null;
+    return isBary(n) ? (dominantOf(system, n) as any) : n;
+  })();
+  $: subjectRinged = subjectBody ? isRinged(system, subjectBody.id) : false;
+  $: gfxOn = imagery === 'sphere' || imagery === 'disc' || imagery === 'flat';
 
   // The selected body's picture (GM uploads are data URLs → safe to texture; a cross-origin stock image
   // would taint the WebGL surface, so we only draw data-URL images).
@@ -121,6 +134,8 @@
     const res = renderDocument(ctx, blocks, theme, { x: mx, y: my, w: vw - mx * 2, maxY: vh - my, scrollY });
     regions = res.regions;
     contentH = my + res.contentH + my;
+    const gr = res.regions.find((r) => r.id === '__bodygfx');
+    gfxRect = gr ? { x: gr.x0 ?? mx, y: gr.y0, w: (gr.x1 ?? (vw - mx)) - (gr.x0 ?? mx), h: gr.y1 - gr.y0 } : null;
 
     if (overlay) drawOverlay(ctx, overlay, vw, vh);
     if (tips) {
@@ -212,13 +227,19 @@
     // First matching region: 2D schematic boxes check x + y; 1D rows (no x bounds) check y only.
     const hit = regions.find((r) =>
       py >= r.y0 && py < r.y1 && (r.x0 === undefined || (px >= r.x0 && px <= (r.x1 ?? vw))));
-    if (hit) dispatch('select', hit.id);
+    if (hit && !hit.id.startsWith('__')) dispatch('select', hit.id); // '__' regions (body-graphic gap) aren't selectable
   }
 </script>
 
 <div class="fd-root" bind:this={container} class:selectable
      on:wheel={onWheel} on:pointerdown={onPointerDown} on:pointermove={onPointerMove} on:pointerup={onPointerUp}>
   <canvas bind:this={canvas}></canvas>
+  <!-- Body graphic: the REAL renderers (PlanetDisc 2D / holo 3D spin), overlaid in the reserved gap. -->
+  {#if gfxOn && gfxRect && subjectBody}
+    <div class="fd-bodygfx" style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
+      <BodyGraphic body={subjectBody} mode={imagery === 'sphere' ? 'sphere' : 'disc'} ringed={subjectRinged} />
+    </div>
+  {/if}
   <!-- Transition overlay: the engine paints the outgoing snapshot here and animates it away. Sits above
        the filtered canvas, ignores pointer events (taps reach the document), and is clear when idle. -->
   <canvas class="fd-transition" bind:this={overlayCanvas}></canvas>
@@ -229,4 +250,5 @@
   .fd-root.selectable { cursor: pointer; }
   canvas { display: block; width: 100%; height: 100%; }
   .fd-transition { position: absolute; inset: 0; pointer-events: none; }
+  .fd-bodygfx { position: absolute; pointer-events: none; display: flex; align-items: center; justify-content: center; }
 </style>

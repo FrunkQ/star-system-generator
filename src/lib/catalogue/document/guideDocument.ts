@@ -86,7 +86,9 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   if (opts.imagery === 'photo' && opts.image) {
     blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox' });
   } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat') && subject) {
-    blocks.push({ kind: 'bodyDisc', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery });
+    // Reserve a gap for the REAL renderer the view overlays here (PlanetDisc 2D / holo 3D). '__bodygfx'
+    // lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
+    blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
   }
 
   // 4) Facts + description. The 'Tags' fact is pulled out and rendered as a styled tags block below.

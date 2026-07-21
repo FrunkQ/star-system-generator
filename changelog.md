@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.222-beta - 21st Jul 2026
+
+* Body graphics now REUSE the real renderers instead of a bespoke one: the 2D option is the actual PlanetDisc (the 2D disc gallery), and 3D is the holo body — a real textured, cloud-wrapped sphere that slowly spins, the same one the 3D gallery shows. The stand-in canvas disc has been removed. On the system map, the body markers now use each body's true/type colour (brown/red/blue by type) instead of a flat tint, the diagram takes only the vertical space it needs (no more black band), and planets take click priority over belts so a world inside a belt is still selectable.
+
 ## v2.1.221-beta - 21st Jul 2026
 
 * Document body graphics + entry polish. Entering the Document view now preselects the system's primary star, so a body's file shows straight away. The body-graphics options render distinctly: 3D sphere = a glossy shaded ball (specular highlight), Simple disc = a softer disc, Flat shape = a flat fill with an outline. Photo gains framing options — letterbox band (default), full image, or a tall vertical sliver.

@@ -8,8 +8,7 @@
 // time uniforms. See blocks.ts for the model and docs/dev/v2.2-player-view-visual-overhaul.md §WS2.
 import { wrap, ellipsise } from '../textLayout';
 import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle, type TagsBlock, type TagStyle, type TagItem } from './blocks';
-import { drawSystemSchematic } from './systemSchematic';
-import { drawBodyDisc } from './bodyDisc';
+import { drawSystemSchematic, schematicHeight } from './systemSchematic';
 import type { System, CelestialBody } from '$lib/types';
 
 // The content column the document flows within, in CSS px of the logical view.
@@ -164,22 +163,21 @@ export function renderDocument(
         break;
       }
       case 'bodyDisc': {
-        // The illustrated body picture, centred; radius derives from the reserved band height.
-        const bandH = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.2);
-        const rad = Math.min(bandH, w) * 0.42;
-        if (visible(top, bandH) && rad > 2) {
-          drawBodyDisc(ctx, b.body as CelestialBody, x + w / 2, top + bandH / 2, rad, {
-            ringed: b.ringed, mono: theme.mono, mode: b.mode
-          });
-        }
-        if (b.id) regions.push({ id: b.id, y0: top, y1: top + bandH });
+        // Reserve a transparent gap for the body graphic. It is NOT drawn into the filtered canvas — the
+        // caller overlays the REAL renderer here (PlanetDisc for 2D, the holo body scene for 3D, or a
+        // photo), positioned via this region. `b.id` (e.g. '__bodygfx') lets the caller find the rect.
+        const bandH = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.24);
+        if (b.id) regions.push({ id: b.id, x0: x, y0: top, x1: x + w, y1: top + bandH });
         y += bandH + px(GAP, s);
         break;
       }
       case 'schematic': {
         // The ported orbital line-diagram (systemSchematic.ts). It returns 2D hit boxes (view px) for
         // its bodies, which become full DocRegions so a warp-mapped tap can pick a planet by position.
-        const h = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.42);
+        // Reserve only the height the diagram needs at this width (capped), not a fixed band of black.
+        const cap = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.55);
+        const natural = schematicHeight(b.system as System, w);
+        const h = natural > 0 ? Math.min(natural, cap) : cap;
         if (visible(top, h)) {
           const hits = drawSystemSchematic(ctx, {
             system: b.system as System, x, y: top, w, h,

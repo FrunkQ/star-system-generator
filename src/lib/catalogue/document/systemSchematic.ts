@@ -26,8 +26,8 @@ const VB_W = 600, ROW_H = 88, INNER = 86, OUTER = VB_W - 26;
 const hue = (i: number) => `hsl(${(i * 47 + 8) % 360}, 95%, 66%)`;
 
 interface Row {
-  planets: { id: string; x: number; label: string; hasMoons: boolean }[];
-  belts: { id: string; x1: number; x2: number; label: string }[];
+  planets: { id: string; x: number; label: string; hasMoons: boolean; color?: string }[];
+  belts: { id: string; x1: number; x2: number; label: string; color?: string }[];
 }
 function diagramRow(system: System, hostId: string): Row {
   const planets = planetsOf(system, hostId).map((b) => ({ b, a: orbitAU(b) })).filter((v) => v.a > 0);
@@ -50,10 +50,12 @@ function diagramRow(system: System, hostId: string): Row {
     : INNER + (Math.log10(a + 1e-5) - minLog) / spread * (OUTER - INNER);
   return {
     planets: planets.map((v) => ({
-      id: v.b.id, x: pos(v.a), label: displayLabel(system, v.b), hasMoons: moonsOf(system, v.b.id).length > 0
+      id: v.b.id, x: pos(v.a), label: displayLabel(system, v.b), hasMoons: moonsOf(system, v.b.id).length > 0,
+      color: (v.b as any).apparentColorHex
     })),
     belts: belts.map((v) => ({
-      id: v.b.id, x1: pos(v.aIn), x2: Math.max(pos(v.aIn) + 14, pos(v.aOut)), label: displayLabel(system, v.b)
+      id: v.b.id, x1: pos(v.aIn), x2: Math.max(pos(v.aIn) + 14, pos(v.aOut)), label: displayLabel(system, v.b),
+      color: (v.b as any).apparentColorHex
     }))
   };
 }
@@ -72,7 +74,10 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
   { let i = 0; for (const s of stars) { hueIndex.set(s.id, i++); for (const b of listBodiesOf(system, s.id)) hueIndex.set(b.id, i++); } for (const r of roguesOf(system)) hueIndex.set(r.id, i++); }
   // Monochrome bleaches everything: the schematic drops its rainbow and uses the grey ramp too.
   const colorfulEff = colorful && !theme.mono;
-  const tint = (id: string, fallback: string) => colorfulEff ? hue(hueIndex.get(id) ?? 0) : fallback;
+  // Marker fill: rainbow hue (colorful), a bleached grey (mono), else the body's TRUE colour (its
+  // apparentColorHex — brown/red/blue by type), falling back to a theme colour when a body has none.
+  const markerCol = (id: string, bodyColor: string | undefined, fallback: string) =>
+    colorfulEff ? hue(hueIndex.get(id) ?? 0) : (theme.mono ? fallback : (bodyColor || fallback));
 
   // Fit the virtual VB_W × (rows·ROW_H) diagram into the rect, centred horizontally, top-aligned.
   const virtH = stars.length * ROW_H;
@@ -91,11 +96,15 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
   ctx.textBaseline = 'alphabetic';
   ctx.lineWidth = 1.5;
 
+  // Belt hit boxes are collected here and appended AFTER stars/planets, so a tap inside a belt that
+  // also overlaps a planet resolves to the PLANET first (regions are matched in order).
+  const beltHits: SchematicHit[] = [];
+
   for (let si = 0; si < stars.length; si++) {
     const star = stars[si] as any;
     const cy = si * ROW_H + ROW_H / 2;
     const row = diagramRow(system, star.id);
-    const starCol = tint(star.id, c.heading);
+    const starCol = markerCol(star.id, star.apparentColorHex, c.heading);
 
     // Distance line.
     ctx.strokeStyle = colorfulEff ? starCol : c.rule;
@@ -111,19 +120,21 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
     ctx.fillText(star.name, 42, cy + 27);
     pushHit(star.id, 42 - 15, cy - 15, 42 + 15, cy + 30);
 
-    // Belts (wide blobs — non-interactive here; picked from the navigator list in Phase 3).
+    // Belts (wide blobs, drawn UNDER the planets). Hit box deferred so planets win overlapping taps.
     for (const e of row.belts) {
-      ctx.fillStyle = tint(e.id, c.rule); ctx.globalAlpha = 0.55;
+      const beltCol = markerCol(e.id, e.color, c.rule);
+      ctx.fillStyle = beltCol; ctx.globalAlpha = 0.5;
       roundRect(ctx, e.x1, cy - 7, e.x2 - e.x1, 14, 7); ctx.fill(); ctx.globalAlpha = 1;
-      ctx.fillStyle = tint(e.id, c.label); ctx.font = `10px ${font}`; ctx.textAlign = 'center';
+      ctx.fillStyle = colorfulEff ? beltCol : c.label; ctx.font = `10px ${font}`; ctx.textAlign = 'center';
       ctx.fillText(e.label, (e.x1 + e.x2) / 2, cy + 25);
-      pushHit(e.id, e.x1, cy - 9, e.x2, cy + 9);
+      const [bx0, by0] = toView(e.x1, cy - 9); const [bx1, by1] = toView(e.x2, cy + 9);
+      beltHits.push({ id: e.id, x0: bx0, y0: by0, x1: bx1, y1: by1 });
     }
 
-    // Planets.
+    // Planets (drawn OVER belts; hit boxes pushed now so they take click priority).
     for (const e of row.planets) {
       const sel = selectedId === e.id;
-      const col = tint(e.id, c.value);
+      const col = markerCol(e.id, e.color, c.value);
       ctx.beginPath(); ctx.arc(e.x, cy, 6.5, 0, Math.PI * 2);
       ctx.fillStyle = col; ctx.fill();
       if (sel) { ctx.strokeStyle = c.value; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1.5; }
@@ -134,9 +145,18 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
       pushHit(e.id, e.x - 9, cy - 22, e.x + 9, cy + 9);
     }
   }
+  for (const bh of beltHits) hits.push(bh); // belts last → planets/stars match first
 
   ctx.restore();
   return hits;
+}
+
+// The natural height (view px) the diagram wants at a given column width — one ROW_H per star, fitted
+// width-first. The document reserves this (capped) so the schematic doesn't leave a band of black space.
+export function schematicHeight(system: System, w: number): number {
+  const rows = starsOf(system).length;
+  if (!rows) return 0;
+  return rows * ROW_H * (w / VB_W);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
