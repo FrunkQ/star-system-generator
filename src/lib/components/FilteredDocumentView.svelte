@@ -17,7 +17,7 @@
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { analyzeImageFocus } from '$lib/catalogue/document/imageFocus';
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
-  import { drawTipBanner, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
+  import { drawTipBanner, tipBannerHeight, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
   import BodyGraphic from './BodyGraphic.svelte';
 
   export let system: System;
@@ -167,9 +167,23 @@
       units, tempUnit, colorful, imagery,
       image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
     });
-    const res = renderDocument(ctx, blocks, theme, { x: mx, y: my, w: vw - mx * 2, maxY: vh - my, scrollY });
+    // GENUINE header/footer: reserve a band for the tip banners (and the company/footer stamps) so the
+    // body flows BETWEEN them instead of running underneath — and clip the body to that band so scrolled
+    // content can't spill into the header/footer either. They still live in this canvas, so the filter
+    // wrecks them along with everything else.
+    const tipOpts = { accent: c.accent, font: theme.font, mono };
+    const gap = Math.round(vh * 0.012);
+    const headerH = tips?.top ? tipBannerHeight(ctx, tips.top, 'top', vw, vh, tipOpts) + gap : 0;
+    const footBanner = tips?.bottom ? tipBannerHeight(ctx, tips.bottom, 'bottom', vw, vh, tipOpts) : 0;
+    const footStamp = (companyName || footerText) ? Math.round(16 * fontScale) : 0;
+    const footerH = (footBanner || footStamp) ? Math.max(footBanner, footStamp) + gap : 0;
+    const bodyTop = my + headerH, bodyBot = vh - my - footerH;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, bodyTop, vw, Math.max(0, bodyBot - bodyTop)); ctx.clip();
+    const res = renderDocument(ctx, blocks, theme, { x: mx, y: bodyTop, w: vw - mx * 2, maxY: bodyBot, scrollY });
+    ctx.restore();
     regions = res.regions;
-    contentH = my + res.contentH + my;
+    contentH = bodyTop + res.contentH + (vh - bodyBot);
     const gr = res.regions.find((r) => r.id === '__bodygfx');
     gfxRect = gr ? { x: gr.x0 ?? mx, y: gr.y0, w: (gr.x1 ?? (vw - mx)) - (gr.x0 ?? mx), h: gr.y1 - gr.y0 } : null;
 

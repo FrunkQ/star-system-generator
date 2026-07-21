@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.235-beta - 21st Jul 2026
+
+* Guide document header/footer are now genuine: the top/bottom tip banners (and the company/footer stamps) reserve their own band, and the body is clipped to flow between them instead of running underneath. They still live in the document canvas, so the visual filter wrecks them along with the rest of the page.
+* The preset editor's Document preview now shows sample header/footer notes when Guide tips are on, so the reserved bands are visible at design time.
+
 ## v2.1.234-beta - 21st Jul 2026
 
 * Document 3D body graphic: the default view now looks straight on to the equator, tilted ~20° down (was too top-down), and the turntable spins twice as fast.

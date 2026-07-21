@@ -618,6 +618,10 @@
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
                 companyName={draft.companyName} footerText={draft.footerText}
+                tips={draft.guideTips && draft.guideTips !== 'off' ? {
+                  top: (draft.guideTips === 'top' || draft.guideTips === 'both') ? 'Sample header note — players see a fresh quip each page.' : undefined,
+                  bottom: (draft.guideTips === 'bottom' || draft.guideTips === 'both') ? 'Sample footer note — reserved space, wrecked by the filter.' : undefined
+                } : null}
                 selectable={true}
                 on:select={(e) => (previewFocusId = e.detail)} />
             {:else if draft.systemView === 'list' && previewSystem}

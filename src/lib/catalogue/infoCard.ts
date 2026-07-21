@@ -55,6 +55,42 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, o: HudOverlay, W: num
 // A single "Guide" margin banner pinned to the top or bottom edge (inside the bezel safe-area).
 // Prefix stamp + wrapped note, on a dark translucent pill so the filter tints it by luminance.
 // Exported so the cover and the (gfx) list views draw an identical banner.
+// Shared layout for the tip banner — computed once so drawTipBanner and tipBannerHeight (which the
+// document uses to RESERVE a header/footer band, so the banner doesn't overlap the body) agree exactly.
+function tipBannerLayout(
+  ctx: CanvasRenderingContext2D, text: string, edge: 'top' | 'bottom', viewW: number, viewH: number,
+  opts: { accent: string; font: string; mono: boolean }
+) {
+  const my = Math.round(viewH * 0.045);
+  const fontPx = Math.max(12, Math.min(viewW * 0.011, viewH * 0.026, 20));
+  const stampPx = Math.round(fontPx * 0.82);
+  const pad = Math.round(fontPx * 1.0);
+  const lineH = Math.round(fontPx * 1.32);
+  const barW = Math.min(viewW * 0.92, Math.max(viewW * 0.42, fontPx * 44));
+  const x0 = Math.round((viewW - barW) / 2);
+  const innerW = barW - pad * 2;
+  const prefix = edge === 'top' ? 'TRAVELLER ADVISORY' : 'THE GUIDE SAYS';
+  const stampFont = `700 ${stampPx}px ${opts.font}`;
+  const noteFont = `italic ${Math.round(fontPx)}px ${opts.font}`;
+  ctx.font = stampFont;
+  const stampW = ctx.measureText(prefix + '  ').width;
+  ctx.font = noteFont;
+  const lines = wrap(ctx, text, innerW - stampW);
+  const barH = pad * 2 + Math.max(lineH, lines.length * lineH);
+  const y0 = edge === 'top' ? my : viewH - my - barH;
+  return { my, fontPx, pad, lineH, barW, x0, prefix, stampFont, noteFont, stampW, lines, barH, y0 };
+}
+
+// The on-screen height of a top/bottom tip banner (0 if no text) — the document reserves this so the
+// banner reads as a genuine header/footer instead of overprinting the body.
+export function tipBannerHeight(
+  ctx: CanvasRenderingContext2D, text: string, edge: 'top' | 'bottom', viewW: number, viewH: number,
+  opts: { accent: string; font: string; mono: boolean }
+): number {
+  if (!text) return 0;
+  return tipBannerLayout(ctx, text, edge, viewW, viewH, opts).barH;
+}
+
 export function drawTipBanner(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -64,28 +100,8 @@ export function drawTipBanner(
   opts: { accent: string; font: string; mono: boolean }
 ) {
   if (!text) return;
-  const my = Math.round(viewH * 0.045);
-  // Font + box are sized as a FRACTION of the view (the HUD canvas maps 1:1 onto the display), so the
-  // banner reads at a consistent on-screen size and never stretches edge-to-edge on a wide screen: it's
-  // a centred, bounded box that reflows. Sizes scale with the smaller of a width- and height-based cap.
-  const fontPx = Math.max(12, Math.min(viewW * 0.011, viewH * 0.026, 20));
-  const stampPx = Math.round(fontPx * 0.82);
-  const pad = Math.round(fontPx * 1.0);
-  const lineH = Math.round(fontPx * 1.32);
-  const barW = Math.min(viewW * 0.92, Math.max(viewW * 0.42, fontPx * 44)); // centred, bounded to ~mid-width
-  const x0 = Math.round((viewW - barW) / 2);
-  const innerW = barW - pad * 2;
-  const prefix = edge === 'top' ? 'TRAVELLER ADVISORY' : 'THE GUIDE SAYS';
-  const font = opts.font;
-  const stampFont = `700 ${stampPx}px ${font}`;
-  const noteFont = `italic ${Math.round(fontPx)}px ${font}`;
-
-  ctx.font = stampFont;
-  const stampW = ctx.measureText(prefix + '  ').width;
-  ctx.font = noteFont;
-  const lines = wrap(ctx, text, innerW - stampW);
-  const barH = pad * 2 + Math.max(lineH, lines.length * lineH);
-  const y0 = edge === 'top' ? my : viewH - my - barH;
+  const { fontPx, pad, lineH, barW, x0, prefix, stampFont, noteFont, stampW, lines, barH, y0 } =
+    tipBannerLayout(ctx, text, edge, viewW, viewH, opts);
 
   const r = 8;
   ctx.beginPath();
