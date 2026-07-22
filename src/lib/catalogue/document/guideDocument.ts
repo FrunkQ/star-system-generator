@@ -24,6 +24,9 @@ export interface GuideDocOpts {
   imageFocus?: import('./blocks').ImageFocus | null; // subject box → frame to the body's edge, not the pic's
   hideInfo?: boolean;                    // clean display: schematic only, no per-body file block
   tagStyle?: TagStyle;                   // how tags render: pills / list / grouped (default pills)
+  panel?: boolean;                       // INFO-BLOCK-ONLY: heading + facts + tags + description. Drops the
+  // schematic, body graphic, parent-nav and drill-in lists — for the 2D/3D side panel, where the live
+  // map already IS the schematic/body/navigator. One builder → the document AND the 2D/3D info block.
 }
 
 // Resolve a body's tags to display items (label + type colour + group), de-duplicated by label.
@@ -49,15 +52,17 @@ function nodeById(system: System, id: string | null): Node | null {
 export function buildGuideDocument(system: System, selectedId: string | null, opts: GuideDocOpts = {}): DocBlock[] {
   const blocks: DocBlock[] = [];
   const colorful = !!opts.colorful;
+  const panel = !!opts.panel; // 2D/3D info block: no schematic/nav — the live map is the navigator
 
   // 1) The orbital schematic — the interactive map + the "simple system drawing."
-  blocks.push({ kind: 'schematic', system, selectedId, colorful });
+  if (!panel) blocks.push({ kind: 'schematic', system, selectedId, colorful });
 
   // Clean display: schematic only, no per-body file (a locked kiosk / projector look).
   if (opts.hideInfo) return blocks;
 
   const selected = nodeById(system, selectedId);
   if (!selected) {
+    if (panel) return blocks; // side panel simply stays empty until a body is picked
     blocks.push({ kind: 'spacer', h: 8 });
     blocks.push({ kind: 'text', text: 'Tap a world on the chart to read its file.', italic: true, align: 'center' });
     return blocks;
@@ -72,11 +77,12 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   const sub = ((subject as any)?.roleHint || 'body')
     + ((subject as any)?.class ? ' · ' + (subject as any).class : '');
 
-  blocks.push({ kind: 'rule' });
+  if (!panel) blocks.push({ kind: 'rule' }); // the panel's frame is its own separator
   blocks.push({ kind: 'heading', level: 1, text: title, sub, id: selected.id });
 
-  // 2) Back-to-parent navigator row (the old Guide's "↑ parent" button).
-  if (!bary) {
+  // 2) Back-to-parent navigator row (the old Guide's "↑ parent" button). Not in the side panel — the
+  // live 2D/3D map is the navigator there.
+  if (!bary && !panel) {
     const pid = (selected as any).ui_parentId || selected.parentId || (selected as any).orbit?.hostId;
     const parent = pid ? nodeById(system, pid) : null;
     if (parent) blocks.push({ kind: 'list', items: [{ id: parent.id, text: `↑ ${displayLabel(system, parent)}` }] });
@@ -116,7 +122,9 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     blocks.push({ kind: 'tags', tags, style: opts.tagStyle });
   }
 
-  // 5) Drill-in navigator lists: companion members (for a barycentre), moons, constructs.
+  // 5) Drill-in navigator lists: companion members (for a barycentre), moons, constructs. Not in the
+  // side panel — tapping the live map does the drilling there.
+  if (panel) { blocks.push({ kind: 'spacer', h: 12 }); return blocks; }
   const drillItems = (nodes: Node[]) => nodes.map((n) => ({ id: n.id, text: `${bodyGlyph(n as any)} ${displayLabel(system, n)}` }));
 
   const companions = bary ? membersOf(system, selected).filter((m) => m.id !== subject?.id) : [];

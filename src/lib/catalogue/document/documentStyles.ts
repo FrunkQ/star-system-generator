@@ -61,6 +61,28 @@ export function documentStyleBase(style: DocumentStyle | undefined): DocStyleBas
   }
 }
 
+// THE one place a preset's appearance fields become a DocTheme — used by the Document view, the 2D/3D
+// info panel and the editor preview alike, so every info block resolves its look identically (change it
+// here, they all move together).
+export function makeDocTheme(o: {
+  font: string; headingFont?: string; fontScale?: number; mono: boolean; accent: string;
+  documentStyle?: DocumentStyle; themeColors?: Partial<DocColors> | null; listStyle?: ListStyle | null;
+  navStyle?: import('./blocks').NavStyle | null;
+}): import('./blocks').DocTheme {
+  const base = documentStyleBase(o.documentStyle);
+  return {
+    font: o.font,
+    headingFont: o.headingFont || o.font,
+    fontScale: o.fontScale ?? 1,
+    mono: o.mono,
+    accent: o.accent && o.accent !== 'rainbow' ? o.accent : base.colors.accent,
+    colors: { ...base.colors, ...(o.themeColors ?? {}) },
+    listStyle: o.listStyle ?? base.listStyle,
+    documentStyle: o.documentStyle,
+    navStyle: o.navStyle ?? undefined
+  };
+}
+
 export const DOCUMENT_STYLES: { value: DocumentStyle; label: string }[] = [
   { value: 'guide', label: 'The Guide (illustrated)' },
   { value: 'report', label: 'Company report (mono)' },

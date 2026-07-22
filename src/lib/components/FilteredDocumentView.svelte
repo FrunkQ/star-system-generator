@@ -13,7 +13,7 @@
   import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
   import { renderDocument, type DocRegion } from '$lib/catalogue/document/renderDocument';
   import { resolveDocColors, type DocTheme, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
-  import { documentStyleBase } from '$lib/catalogue/document/documentStyles';
+  import { makeDocTheme } from '$lib/catalogue/document/documentStyles';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { analyzeImageFocus } from '$lib/catalogue/document/imageFocus';
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
@@ -106,20 +106,9 @@
   let bodyImgAspect = 1.6;
   let bodyImgFocus: import('$lib/catalogue/document/blocks').ImageFocus | null = null;
   let imgForId: string | null = null;
-  // The documentStyle drives the whole look (font + colour set + list glyphs); the preset's explicit
-  // themeColors / listStyle / mono override it. A rainbow accent lights the schematic (colorful), while
-  // the text keeps the style's own readable accent.
-  $: styleBase = documentStyleBase(documentStyle);
-  $: theme = {
-    font,                                  // respect the preset's chosen body font
-    headingFont: headingFont || font,      // and its heading font (defaults to body)
-    fontScale, mono,
-    accent: accent && accent !== 'rainbow' ? accent : styleBase.colors.accent,
-    // The documentStyle SEEDS the colours; the preset's themeColors override any slot the user tweaked.
-    colors: { ...styleBase.colors, ...(themeColors ?? {}) },
-    listStyle: listStyle ?? styleBase.listStyle,
-    documentStyle, navStyle
-  } as DocTheme;
+  // ONE shared theme resolver (makeDocTheme) — the same call the 2D/3D info panel makes, so the
+  // document and every info block resolve the preset's appearance identically.
+  $: theme = makeDocTheme({ font, headingFont, fontScale, mono, accent, documentStyle, themeColors, listStyle, navStyle }) as DocTheme;
 
   $: if (imagery === 'photo' && selectedId && selectedId !== imgForId) loadBodyImage(selectedId);
   $: if (imagery !== 'photo' || !selectedId) { bodyImg = null; imgForId = selectedId; }
