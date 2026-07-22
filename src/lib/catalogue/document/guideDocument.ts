@@ -27,6 +27,7 @@ export interface GuideDocOpts {
   panel?: boolean;                       // INFO-BLOCK-ONLY: heading + facts + tags + description. Drops the
   // schematic, body graphic, parent-nav and drill-in lists — for the 2D/3D side panel, where the live
   // map already IS the schematic/body/navigator. One builder → the document AND the 2D/3D info block.
+  noHeading?: boolean;                   // panel hosted in a DOM aside that already shows the title bar
 }
 
 // Resolve a body's tags to display items (label + type colour + group), de-duplicated by label.
@@ -78,7 +79,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     + ((subject as any)?.class ? ' · ' + (subject as any).class : '');
 
   if (!panel) blocks.push({ kind: 'rule' }); // the panel's frame is its own separator
-  blocks.push({ kind: 'heading', level: 1, text: title, sub, id: selected.id });
+  if (!opts.noHeading) blocks.push({ kind: 'heading', level: 1, text: title, sub, id: selected.id });
 
   // 2) Back-to-parent navigator row (the old Guide's "↑ parent" button). Not in the side panel — the
   // live 2D/3D map is the navigator there.

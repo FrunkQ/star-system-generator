@@ -15,7 +15,7 @@
   import { resolveDocColors, type DocTheme, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
   import { makeDocTheme } from '$lib/catalogue/document/documentStyles';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
-  import { analyzeImageFocus } from '$lib/catalogue/document/imageFocus';
+  import { loadBodyImage as loadBodyImageShared } from '$lib/catalogue/document/bodyImage';
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
   import { drawTipBanner, tipBannerHeight, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
   import BodyGraphic from './BodyGraphic.svelte';
@@ -115,22 +115,12 @@
 
   function loadBodyImage(id: string) {
     imgForId = id; bodyImg = null; bodyImgFocus = null;
-    const n: any = (system?.nodes ?? []).find((x) => x.id === id);
-    const url: string | undefined = n?.image?.url;
-    // Same-origin images only (data: URLs, app-relative paths like /images/…, or this origin) — a
-    // cross-origin image would taint the WebGL surface the filter reads from.
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const sameOrigin = !!url && (url.startsWith('data:') || url.startsWith('/') || (!!origin && url.startsWith(origin)));
-    if (!sameOrigin) return;
-    const im = new Image();
-    im.onload = () => {
-      if (imgForId !== id) return;
-      bodyImg = im;
-      bodyImgAspect = (im.naturalWidth || 1) / (im.naturalHeight || 1);
-      bodyImgFocus = analyzeImageFocus(im); // auto-centre: frame to the body's edge, not the picture's
+    // Shared loader (same-origin rule + auto-centre focus live in ONE place — bodyImage.ts).
+    loadBodyImageShared(system, id, (l) => {
+      if (imgForId !== id || !l) return;
+      bodyImg = l.img; bodyImgAspect = l.aspect; bodyImgFocus = l.focus;
       render();
-    };
-    im.src = url!;
+    });
   }
 
   function render() {

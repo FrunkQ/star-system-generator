@@ -29,6 +29,10 @@ export interface HudCard {
   font: string;
   fontScale: number;
   mono: boolean;      // white scheme: draw everything white/grey so a filter colours it
+  // D6 unify: when present, the card body is these pre-built document blocks + theme (the SAME
+  // panel-mode builder/theme the 2D aside and the Document use) instead of the legacy title/facts flow.
+  blocks?: import('./document/blocks').DocBlock[];
+  theme?: import('./document/blocks').DocTheme;
 }
 export interface HudOpts { viewW: number; viewH: number; overlay?: HudOverlay | null; card?: HudCard | null; tips?: HudTips | null; }
 
@@ -168,10 +172,11 @@ function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, view
   ctx.moveTo(xcx + hs, xcy - hs); ctx.lineTo(xcx - hs, xcy + hs);
   ctx.stroke();
 
-  // Content (title strap + fact rows + description) is drawn by the SHARED document engine — the same
-  // renderDocument that draws the Document system-view — so the 3D HUD card and the document stay one
-  // code path (D6 unify). The panel chrome (rounded bg, clip, close glyph) stays bespoke here.
-  renderDocument(ctx, hudCardToBlocks(c), hudCardTheme(c), {
+  // Content is drawn by the SHARED document engine — the same renderDocument that draws the Document
+  // system-view (D6 unify). Preferred: the caller's panel-mode blocks + full preset theme (facts, TAGS,
+  // description, styled exactly like every other info block); fallback: the legacy card bridge. The
+  // panel chrome (rounded bg, clip, close glyph) stays bespoke here.
+  renderDocument(ctx, c.blocks ?? hudCardToBlocks(c), c.theme ?? hudCardTheme(c), {
     x: cx, y: pTop + pad + 6 * s, w: panelW - pad * 2, maxY: pBot - pad, scrollY: 0
   });
   ctx.restore();

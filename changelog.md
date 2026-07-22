@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.238-beta - 22nd Jul 2026
+
+* D6 unify: the 2D map and 3D holo info panels now render through the SAME document engine as the Document view (one builder, one theme resolver, one renderer — DocPanel). The panel shows the preset's full appearance: colouration, tags style, description, and the body graphic (3D sphere / gallery disc / simple disc / photo) with hand-spin. The filtered 3D HUD card renders the same panel blocks. Legacy Field Guide skins keep their original panel.
+* "Body graphics" is back for the 3D view — now driving the info block's picture (the orrery itself stays true 3D spheres). Tags style and Photo framing apply to every view.
+* Editor: the System tab for 2D/3D is split into a "3D display"/"2D map display" fieldset and an "Info Block Appearance" fieldset — and the info-block preview APPEARS docked over the scene while you tweak info-block controls, then hides when you move to display controls, so each edit shows the thing it changes.
+
 ## v2.1.237-beta - 22nd Jul 2026
 
 * Player-view hold screens are now a quote INTERSTITIAL: a random planet/star backdrop with a dimmed stripe carrying a random space quote (italic serif, attribution beneath), a double-line frame, and a QR code so new players can scan straight in. Shown both when a player connects before any broadcast and when the GM stops the view. Quotes live in static/space-quotes.txt (editable without a rebuild); quote + image re-roll each time.

@@ -11,6 +11,8 @@
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
+  import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
+  import { makeDocTheme } from '$lib/catalogue/document/documentStyles';
   import { drawHud } from '$lib/catalogue/infoCard';
   import { drawCover } from '$lib/catalogue/coverCard';
   import FilteredCanvas from '$lib/components/FilteredCanvas.svelte';
@@ -77,6 +79,7 @@
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredListView from '$lib/components/FilteredListView.svelte';
   import QuoteInterstitial from '$lib/catalogue/QuoteInterstitial.svelte';
+  import DocPanel from '$lib/components/DocPanel.svelte';
   import FilteredDocumentView from '$lib/components/FilteredDocumentView.svelte';
   import { starsOf, dominantOf } from '$lib/catalogue/document/systemTopology';
   import { systemVisualStars } from '$lib/starmap/systemStars';
@@ -544,7 +547,19 @@
           facts: bodyFacts(selectedBody, units, tempUnit),
           description: selectedBody.description || '',
           accent: presetAccent, font: presetFont, fontScale: infoFontScale,
-          mono: activePreset?.bodyStyle === 'white'
+          mono: activePreset?.bodyStyle === 'white',
+          // D6 unify: the card body renders THESE (the shared panel-mode builder + theme). The body
+          // graphic is omitted in the HUD (imagery 'none') — a live renderer can't sit inside the
+          // filter-composited quad; the unfiltered aside shows it.
+          blocks: displaySystem ? buildGuideDocument(displaySystem, docSelectedId ?? selectedBody.id, {
+            panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle
+          }) : undefined,
+          theme: activePreset ? makeDocTheme({
+            font: presetFont, headingFont: activePreset.headingFont, fontScale: infoFontScale,
+            mono: activePreset.bodyStyle === 'white', accent: presetAccent,
+            documentStyle: activePreset.documentStyle, themeColors: activePreset.themeColors,
+            listStyle: activePreset.listStyle
+          }) : undefined
         } : null,
         tips: hudTipsOn ? { top: tipTop, bottom: tipBottom, accent: presetAccent, font: presetFont, mono: tipMono } : null
       })
@@ -781,16 +796,29 @@
       </div>
       <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
       <div class="insp-detail">
-        {#if selectedBody.image?.url}
-          <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
-        {/if}
-        <dl class="insp-grid">
-          {#each bodyFacts(selectedBody, units, tempUnit) as f}
-            <dt>{f.label}</dt><dd>{f.value}</dd>
-          {/each}
-        </dl>
-        {#if selectedBody.description}
-          <p class="insp-desc">{selectedBody.description}</p>
+        {#if activePreset && displaySystem}
+          <!-- D6 unify: the SAME document engine renders the info block (facts + tags + description +
+               body graphic) with the preset's full appearance. The aside stays as chrome (title, close,
+               resize); the legacy skins below keep their original markup. -->
+          <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg
+            font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+            fontScale={infoFontScale} listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle}
+            tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
+            imagery={activePreset.bodyGfx} photoFrame={activePreset.photoFrame}
+            bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
+            interactive={presetInteractive} {units} {tempUnit} />
+        {:else}
+          {#if selectedBody.image?.url}
+            <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
+          {/if}
+          <dl class="insp-grid">
+            {#each bodyFacts(selectedBody, units, tempUnit) as f}
+              <dt>{f.label}</dt><dd>{f.value}</dd>
+            {/each}
+          </dl>
+          {#if selectedBody.description}
+            <p class="insp-desc">{selectedBody.description}</p>
+          {/if}
         {/if}
       </div>
     </aside>
