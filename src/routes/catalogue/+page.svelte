@@ -76,6 +76,7 @@
   import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredListView from '$lib/components/FilteredListView.svelte';
+  import QuoteInterstitial from '$lib/catalogue/QuoteInterstitial.svelte';
   import FilteredDocumentView from '$lib/components/FilteredDocumentView.svelte';
   import { starsOf, dominantOf } from '$lib/catalogue/document/systemTopology';
   import { systemVisualStars } from '$lib/starmap/systemStars';
@@ -798,12 +799,9 @@
 
 <main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
   {#if presetHold}
-    <!-- GM closed the live view: a calm hold screen until they open one again. -->
-    <div class="hold-screen">
-      <div class="hold-badge">{branding.name || 'STANDBY'}</div>
-      <h1>Please stand by</h1>
-      <p>The GM has paused the display.</p>
-    </div>
+    <!-- GM closed the live view: the quote interstitial holds the screen until they open one again. -->
+    <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
+      statusText="The GM has paused the display." />
   {/if}
   {#if showPresetCover && activePreset}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -851,18 +849,14 @@
   {/if}
 
   {#if !starmap}
-    <!-- Waiting / offline -->
-    <div class="waiting">
-      <div class="waiting-inner">
-        <h1>Reaching the host…</h1>
-        <p>Connecting to the game session. Make sure the host has the Field Guide open, then this
-          will fill in automatically.</p>
-        {#if sessionId}<p class="sid">session {sessionId}</p>{/if}
-        <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId })}>
-          Retry
-        </button>
-      </div>
-    </div>
+    <!-- Waiting / offline: the quote interstitial (connected, nothing broadcast yet). -->
+    <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
+      statusText="Reaching the host — this will fill in automatically once the GM is broadcasting."
+      sessionId={sessionId ?? ''}>
+      <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId })}>
+        Retry
+      </button>
+    </QuoteInterstitial>
   {:else if !selectedSystemId && activePreset && activePreset.starmapEnabled}
     <!-- Starmap level, PRESET-DRIVEN: the chosen module (text list / 2D / 3D), tap a system to enter. -->
     <div class="preset-stage" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
@@ -1048,16 +1042,6 @@
     flex-direction: column;
   }
 
-  .hold-screen {
-    position: absolute; inset: 0; z-index: 500;
-    background: radial-gradient(ellipse at center, #0b1119 0%, #05070c 75%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem;
-    text-align: center; color: #cfd6e4;
-  }
-  .hold-screen h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 3rem); letter-spacing: 0.06em; }
-  .hold-screen p { margin: 0; opacity: 0.6; }
-  .hold-badge { font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.4rem; }
-
   /* --- status bar (device chrome) --- */
   .statusbar {
     flex: 0 0 auto;
@@ -1106,22 +1090,6 @@
   .status { margin-left: auto; opacity: 0.85; }
   .status.live { color: #6fffa0; }
   .status.offline { color: #ffb061; }
-  /* --- waiting state --- */
-  .waiting { flex: 1; display: grid; place-items: center; text-align: center; }
-  .waiting-inner h1 { font-size: 22px; margin: 0 0 8px; }
-  .waiting-inner p { opacity: 0.7; margin: 4px 0; }
-  .waiting-inner .sid { font-size: 11px; opacity: 0.4; }
-  .waiting-inner button {
-    margin-top: 14px;
-    background: rgba(255, 255, 255, 0.1);
-    color: inherit;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 4px;
-    padding: 8px 16px;
-    font: inherit;
-    cursor: pointer;
-  }
-
   /* --- diagrammatic browser tier --- */
   .doc-scroll {
     flex: 1;

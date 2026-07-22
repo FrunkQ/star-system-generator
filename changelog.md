@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.237-beta - 22nd Jul 2026
+
+* Player-view hold screens are now a quote INTERSTITIAL: a random planet/star backdrop with a dimmed stripe carrying a random space quote (italic serif, attribution beneath), a double-line frame, and a QR code so new players can scan straight in. Shown both when a player connects before any broadcast and when the GM stops the view. Quotes live in static/space-quotes.txt (editable without a rebuild); quote + image re-roll each time.
+
 ## v2.1.236-beta - 21st Jul 2026
 
 * Header/footer tip banners are now full-width bands flush to the top/bottom edge — no centred pill, no dead space; the note runs the whole page width before wrapping. Applies everywhere a tip banner is drawn (document, 2D/3D HUD, cover, list).
