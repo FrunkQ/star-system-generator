@@ -24,7 +24,6 @@
   import FilterFrame from './FilterFrame.svelte';
   import GraphicLayer from './GraphicLayer.svelte';
   import GraphicPlacementControls from './GraphicPlacementControls.svelte';
-  import StarmapListView from '$lib/starmap/StarmapListView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredDocumentView from './FilteredDocumentView.svelte';
   import { DOCUMENT_STYLES, documentStyleBase } from '$lib/catalogue/document/documentStyles';
@@ -281,7 +280,7 @@
             {#if draft.starmapEnabled}
               <label>View
                 <select bind:value={draft.starmapView}>
-                  <option value="list">Text list</option>
+                  <option value="list">Document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D map</option>
                 </select>
@@ -587,9 +586,14 @@
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
                 background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
-              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
-                <StarmapListView starmap={$starmapStore} accentColor={accentCss} font={draft.font} />
-              </FilterFrame>
+              <!-- D9: the starmap DOCUMENT — same engine + theme as the system document, real filter. -->
+              <FilteredDocumentView stage="starmap" starmap={$starmapStore}
+                font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
+                listStyle={draft.listStyle} documentStyle={draft.documentStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
+                fontScale={draft.infoFontScale}
+                filterId={draft.filter} filterParams={draft.filterParams}
+                companyName={draft.companyName} footerText={draft.footerText}
+                selectable={false} />
             {/if}
           {:else if previewLayer === 'system'}
             {#if !draft.systemEnabled}

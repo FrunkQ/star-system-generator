@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.239-beta - 24th Jul 2026
+
+* D9: the starmap "Text List" player view is now a DOCUMENT — the systems index rendered through the same block-model engine as the system Guide document (renamed "Document" in the editor). It takes the preset's full appearance (colouration, fonts, nav style, genuine headers/footers, company/footer stamps) and the real GPU filter; tap a system to enter. One engine across starmap + system + info panels, so appearance changes stay aligned everywhere. Unit tests cover the new builder.
+
 ## v2.1.238-beta - 22nd Jul 2026
 
 * D6 unify: the 2D map and 3D holo info panels now render through the SAME document engine as the Document view (one builder, one theme resolver, one renderer — DocPanel). The panel shows the preset's full appearance: colouration, tags style, description, and the body graphic (3D sphere / gallery disc / simple disc / photo) with hand-spin. The filtered 3D HUD card renders the same panel blocks. Legacy Field Guide skins keep their original panel.

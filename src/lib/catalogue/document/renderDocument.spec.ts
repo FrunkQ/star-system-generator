@@ -23,7 +23,7 @@ function mockCtx() {
     fillRect() {}, strokeRect() { strokes.push('rect'); }, fill() {},
     beginPath() {}, moveTo() {}, lineTo() {}, stroke() { strokes.push('line'); }, arc() {},
     drawImage() {}, save() {}, restore() {}, clip() {}, closePath() {}, arcTo() {},
-    scale() {}, translate() {}
+    scale() {}, translate() {}, rotate() {}
   };
   return ctx;
 }

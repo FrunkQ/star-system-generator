@@ -82,7 +82,6 @@
   import DocPanel from '$lib/components/DocPanel.svelte';
   import FilteredDocumentView from '$lib/components/FilteredDocumentView.svelte';
   import { starsOf, dominantOf } from '$lib/catalogue/document/systemTopology';
-  import { systemVisualStars } from '$lib/starmap/systemStars';
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
   import { RATE_STEPS, DEFAULT_RATE_INDEX } from '$lib/player/timeRates';
@@ -453,17 +452,7 @@
   $: tipBottom = guideTipsMode === 'bottom' || guideTipsMode === 'both' ? bottomNote : '';
   $: tipsOn = !!(tipTop || tipBottom);
   $: tipMono = activePreset?.bodyStyle === 'white';
-  // Starmap "list" module, rendered to canvas through the real filter (FilteredListView).
-  $: starmapListModel = {
-    heading: starmap?.name || 'Known Space',
-    rows: (starmap?.systems ?? []).map((node) => ({
-      id: node.id,
-      title: node.name,
-      sub: systemSummary(node),
-      dots: systemVisualStars(node.system).map((s) => s.color),
-      selectable: true
-    }))
-  } as ListModel;
+  // (The starmap "list" module is now the starmap DOCUMENT — built in starmapDocument.ts, D9.)
   // System "list" module → a canvas body list (real filter). Bodies + constructs, a coloured dot each.
   $: systemListModel = {
     heading: displaySystem?.name || 'System',
@@ -900,10 +889,16 @@
           lockRotation={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}
           selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
-        <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->
-        <FilteredListView model={starmapListModel} accent={presetAccent} font={presetFont} mono={tipMono}
+        <!-- D9: the starmap DOCUMENT — the systems index through the SAME block-model engine as the
+             system Guide document, taking the preset's full appearance (colouration, fonts, nav style,
+             headers/footers) and the real GPU filter. Tap a system to enter. -->
+        <FilteredDocumentView stage="starmap" {starmap}
+          font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+          listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
+          fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}
+          companyName={activePreset.companyName} footerText={activePreset.footerText}
           selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {/if}
     </div>

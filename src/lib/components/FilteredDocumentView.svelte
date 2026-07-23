@@ -15,12 +15,17 @@
   import { resolveDocColors, type DocTheme, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
   import { makeDocTheme } from '$lib/catalogue/document/documentStyles';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
+  import { buildStarmapDocument } from '$lib/catalogue/document/starmapDocument';
   import { loadBodyImage as loadBodyImageShared } from '$lib/catalogue/document/bodyImage';
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
   import { drawTipBanner, tipBannerHeight, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
   import BodyGraphic from './BodyGraphic.svelte';
 
-  export let system: System;
+  // D9: the same component renders the SYSTEM Guide document or the STARMAP document (the systems
+  // index) — one engine, one theme, one filter/scroll/tap pipeline for both stages.
+  export let stage: 'system' | 'starmap' = 'system';
+  export let starmap: import('$lib/types').Starmap | null = null;
+  export let system: System | null = null;
   export let selectedId: string | null = null;
   export let font = 'system-ui';
   export let headingFont: string | undefined = undefined; // falls back to `font`
@@ -142,10 +147,13 @@
     if (scrollY > maxScroll) scrollY = maxScroll;
     if (scrollY < 0) scrollY = 0;
 
-    const blocks = buildGuideDocument(system, selectedId, {
-      units, tempUnit, colorful, imagery,
-      image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
-    });
+    // One engine, two stages: the starmap document (systems index) or the system Guide document.
+    const blocks = stage === 'starmap'
+      ? buildStarmapDocument(starmap, { selectedId })
+      : (system ? buildGuideDocument(system, selectedId, {
+          units, tempUnit, colorful, imagery,
+          image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
+        }) : []);
     // GENUINE header/footer: reserve a band for the tip banners (and the company/footer stamps) so the
     // body flows BETWEEN them instead of running underneath — and clip the body to that band so scrolled
     // content can't spill into the header/footer either. They still live in this canvas, so the filter
@@ -209,7 +217,7 @@
 
   // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
   // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
-  $: if (ctrl) { system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
+  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
   $: if (ctrl) handleSelection(selectedId);
   $: ctrl?.setFilter(filterId, filterParams);
 
