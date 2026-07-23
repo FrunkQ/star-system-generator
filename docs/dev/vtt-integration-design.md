@@ -705,3 +705,81 @@ as the marketing surface.
   contract in real sessions.
 - **Q9 — Snapshot export: SKIPPED.** No static export path; live StarMap only
   (§4.6 kept as a banked record).
+
+
+## 11. Network reality — WAN, NAT and relays (supplementary, analysed 2026-07-22)
+
+Prompted by the question "these apps have only ever been used on a local
+network — are we really set up for internet P2P?" Short answer: yes by
+construction, unproven by testing. This section replaces an earlier pasted
+draft of the same topic with the verified facts.
+
+### 11.1 Architectural reality
+
+- Neither VTT relays third-party view data. Foundry sockets and Owlbear
+  broadcast/metadata are small control planes (Owlbear caps at 16 KB);
+  precedent extensions (dddice) bring their own transport exactly as this
+  design does. The PeerJS pipe is and remains the data plane for remote
+  players.
+- **Nothing streams.** The player's device renders the 3D view locally; the
+  wire carries one redacted snapshot at join (a few hundred KB, chunked) plus
+  small incremental updates and heartbeats. A fully TURN-relayed player costs
+  kilobytes per second — this workload is nothing like video, so relay
+  bandwidth economics are a non-issue at table scale.
+- WebRTC data channels over the public internet are the standard mechanism
+  (videoconferencing, dddice); a LAN is merely the easy case of the same
+  machinery. The design gap is evidence, not architecture: no real WAN test
+  has ever been run.
+
+### 11.2 What the stack already does (verified in node_modules, both repos)
+
+Both apps use `peerjs@1.5.5` constructed with no config, which ships defaults
+of Google STUN (`stun:stun.l.google.com:19302`) **plus free TURN relays**
+(`turn:eu-0.turn.peerjs.com:3478`, `turn:us-0.turn.peerjs.com:3478`, the
+PeerJS project's community relay). So today, without any change:
+
+- Standard consumer NATs negotiate a direct P2P link via STUN (the large
+  majority of home networks).
+- Symmetric NAT / CGNAT / strict-firewall players fall back to the community
+  TURN relay rather than hard-failing.
+
+The correction to the earlier draft: the default is NOT STUN-only; a relay
+fallback already exists. The true weakness is that both the `0.peerjs.com`
+broker and the community TURN are best-effort infrastructure with no SLA.
+
+### 11.3 Plan
+
+- **Phase 0 (do before any Phase 1 code): a real WAN test.** One device on
+  cellular data, one on home broadband; GM opens SSE2, player opens the share
+  URL. Pass = live view + focus/time following. Repeat with the Mappadux
+  player URL. ~30 minutes, converts "I think" into data, and decides how much
+  of the rest is needed.
+- **Explicit ICE config surface (Phase 1 hardening, SSE2 + Mappadux alike):**
+  make `iceServers` a configurable override rather than a bundled default —
+  GM settings accept a custom STUN/TURN list (URL, username, credential).
+  Keeps the zero-infrastructure default; tables needing guaranteed traversal
+  bring their own relay (self-hosted coturn or a free-tier managed TURN).
+- **Delivery must be pre-connection** (correction to the earlier draft, which
+  proposed the discovery payload — a chicken-and-egg: remote players need ICE
+  config BEFORE they can join the channel that would carry it). Custom ICE
+  config travels in: the share URL/QR (compact-encoded param), the Mappadux
+  `StarMapConfig`, and the Foundry/Owlbear module settings. Absent = PeerJS
+  defaults.
+- **Failure detection + honest UI:** monitor the peer connection state
+  (PeerJS surfaces ICE failure on the underlying RTCPeerConnection;
+  `failed` typically lands within ~15 s). On failure, the catalogue replaces
+  the waiting overlay with a hard in-fiction error ("SENSOR LINK BLOCKED —
+  NETWORK RELAY REQUIRED") plus a plain-language line that the local network
+  blocks direct connections and a relay must be configured. This folds into
+  the Phase 1D disconnect work (§9.1) — same state machine, one more state.
+- **Escape hatch (banked, not scheduled):** if the community broker/TURN ever
+  degrades, one small VPS running PeerServer + coturn replaces both;
+  config-only for clients that already accept custom ICE + broker host. No
+  architectural change.
+
+### 11.4 Verdict
+
+Do not give up the VTT idea. The transport was internet-grade from day one;
+the workload is state-sync, not streaming; a relay fallback already exists by
+default. Remaining work is one afternoon of hardening (config surface +
+failure UI) plus a half-hour test that should have happened years ago.
