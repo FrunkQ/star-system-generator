@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.240-beta - 24th Jul 2026
+
+* New "Typewriter" transition: the new page is typed on character-cell by character-cell behind a blinking block caret, with an irregular per-keystroke rhythm and a beat on each carriage return. Made for the Terminal style. (Confirmed at parity with Mappadux first: all ten of its transitions were already ported identically.)
+* D8: stepping between stages in the live player view (starmap ↔ system, any view — document, 2D map, 3D holo) now plays the preset's transition over the whole stage: the outgoing screen is snapshotted just before the swap and animated away over the incoming view. The document's own per-page transition is unchanged.
+
 ## v2.1.239-beta - 24th Jul 2026
 
 * D9: the starmap "Text List" player view is now a DOCUMENT — the systems index rendered through the same block-model engine as the system Guide document (renamed "Document" in the editor). It takes the preset's full appearance (colouration, fonts, nav style, genuine headers/footers, company/footer stamps) and the real GPU filter; tap a system to enter. One engine across starmap + system + info panels, so appearance changes stay aligned everywhere. Unit tests cover the new builder.

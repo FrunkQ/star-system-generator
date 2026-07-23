@@ -5,7 +5,8 @@
   //   - lo-fi terminal (green / amber): the printed-report document under a phosphor CRT skin.
   //   - hi-tech console: the live projector orbital map, tap a body for player-safe data.
   // v1 is local-only: same-machine BroadcastChannel, zero network (spec COMPANION-APP-SPEC.md §3).
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, beforeUpdate, afterUpdate } from 'svelte';
+  import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
@@ -444,6 +445,72 @@
   // "Players can click / focus / scrub" — false locks the surface: no picking, no camera, no clock,
   // no body picker, list rows not tappable. The view is a display driven by the GM (or its presets).
   $: presetInteractive = activePreset?.interactive !== false;
+
+  // ── D8: VIEW-ENTRY transitions. Stepping between stages (starmap ↔ system, any view — document, 2D
+  // map, 3D holo) plays the preset's transition over the whole stage: the outgoing screen is composited
+  // from the stage's canvases just BEFORE Svelte swaps the DOM (beforeUpdate), then animated away over
+  // the new view. WebGL canvases without preserveDrawingBuffer may snapshot blank — those regions fall
+  // back to the dark ground, which still reads as a clean entry effect. The document's own per-PAGE
+  // transition (inside FilteredDocumentView) is unchanged; this covers the page-level hops.
+  let stageMain: HTMLElement;
+  let entryOverlay: HTMLCanvasElement;
+  let entryEngine: import('$lib/transitions/TransitionEngine').TransitionEngine | null = null;
+  let renderedStageKey: string | null = null;
+  let pendingEntrySnap: HTMLCanvasElement | null = null;
+  $: stageKey = (!starmap || presetHold || !activePreset) ? ''
+    : (selectedSystemId ? 'sys:' + activePreset.systemView : 'map:' + activePreset.starmapView);
+  $: entryWanted = !!activePreset?.transition && activePreset.transition !== 'none';
+
+  function captureStage(): HTMLCanvasElement | null {
+    try {
+      const r = stageMain.getBoundingClientRect();
+      const c = document.createElement('canvas');
+      c.width = Math.max(2, Math.round(r.width));
+      c.height = Math.max(2, Math.round(r.height));
+      const ctx = c.getContext('2d');
+      if (!ctx) return null;
+      ctx.fillStyle = '#05070c';
+      ctx.fillRect(0, 0, c.width, c.height);
+      for (const cv of Array.from(stageMain.querySelectorAll('canvas'))) {
+        if (cv === entryOverlay) continue;
+        const b = cv.getBoundingClientRect();
+        if (b.width < 2 || b.height < 2) continue;
+        try { ctx.drawImage(cv, b.left - r.left, b.top - r.top, b.width, b.height); } catch { /* tainted / non-preserved WebGL */ }
+      }
+      return c;
+    } catch { return null; }
+  }
+
+  async function runEntryTransition(snap: HTMLCanvasElement) {
+    if (!activePreset || !entryOverlay) return;
+    const def = transitionRegistry.getOrFallback(activePreset.transition ?? 'none');
+    if (def.id === 'none') return;
+    if (!entryEngine) {
+      const { TransitionEngine } = await import('$lib/transitions/TransitionEngine');
+      entryEngine = new TransitionEngine(entryOverlay);
+    }
+    try {
+      const bmp = await createImageBitmap(snap);
+      const params = Object.keys(activePreset.transitionParams ?? {}).length
+        ? activePreset.transitionParams! : transitionRegistry.defaultParams(def.id);
+      await entryEngine.run(def, params, entryOverlay, async () => {}, bmp);
+    } catch { /* snapshot failed → plain cut */ }
+  }
+
+  beforeUpdate(() => {
+    if (!browser || !entryWanted || !stageMain) return;
+    // The DOM still shows the OUTGOING stage here — grab it before the swap.
+    if (renderedStageKey && stageKey && stageKey !== renderedStageKey && !pendingEntrySnap) {
+      pendingEntrySnap = captureStage();
+    }
+  });
+  afterUpdate(() => {
+    const changed = renderedStageKey !== stageKey;
+    renderedStageKey = stageKey;
+    const snap = pendingEntrySnap;
+    pendingEntrySnap = null;
+    if (snap && changed) void runEntryTransition(snap);
+  });
   $: presetAccent = activePreset ? accentSolid(activePreset.accentColor) : '#6aa0ff';
   $: presetFont = activePreset?.font || 'system-ui';
   // Guide tips: the preset picks off / top / bottom / both; the rolled notes fill the chosen edges.
@@ -814,7 +881,9 @@
   {/if}
 {/snippet}
 
-<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
+<main bind:this={stageMain} class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
+  <!-- D8: view-entry transition overlay — the outgoing stage snapshot animates away here. -->
+  <canvas class="entry-transition" bind:this={entryOverlay}></canvas>
   {#if presetHold}
     <!-- GM closed the live view: the quote interstitial holds the screen until they open one again. -->
     <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
@@ -1064,6 +1133,10 @@
     display: flex;
     flex-direction: column;
   }
+
+  /* D8: full-stage entry-transition overlay — above the stage, below the interstitial (500). Cleared
+     (transparent) whenever no transition is running, so it never blocks the view; taps pass through. */
+  .entry-transition { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 450; pointer-events: none; }
 
   /* --- status bar (device chrome) --- */
   .statusbar {
