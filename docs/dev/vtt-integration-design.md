@@ -521,10 +521,11 @@ interface AnnouncePayload {
     preset locally (same code path as a `SYNC_PRESET` arrival, without
     overrides). A later GM `SYNC_PRESET` still wins (last-write-wins), which
     is exactly decision Q3.
-  - `{ns:'sse2-embed', v:1, cmd:'focus', bodyId}` — focus/frame the given
-    body or system in the current view (same code path as a `SYNC_FOCUS`
-    arrival). Also honour a `?focus=<bodyId>` URL param at boot. This powers
-    VTT-side deep links ("clickable locations" — see §12 Tier 1).
+  Note: there is deliberately NO `focus` embed command or `?focus=` URL param
+  — pointing the view at a body is VIEW-DRIVING and stays on the GM broadcast
+  channel (the GM tab applies the focus and the existing SYNC_FOCUS /
+  SYNC_FOCUS_LEVEL / framing toolset carries it to every viewer). VTT deep
+  links request it via `REQUEST_FOCUS` on the GM channel — see §12.
   - `{ns:'sse2-embed', v:1, cmd:'ping'}` → reply `{event:'pong'}` (host-side
     liveness/handshake).
   This is what lets a host switch between StarMap maps with different presets
@@ -811,17 +812,18 @@ the module physically cannot see what the GM has hidden.
 | Tier | Feature | Mechanism | Effort | Utility |
 |---|---|---|---|---|
 | 0 | Connect + open/push player views | Sections 9.4/9.5 | — | The core |
-| 1 | Clickable star-map links in notes | Foundry text enricher: `@sse2[bodyId]{label}` in any journal/chat → click opens the player view focused on that body (uses the `focus` embed command + `?focus=` param, section 9.1/1C). Owlbear analogue: context-menu item on a marker | Small | HIGH — the moment the module stops feeling bolted-on |
-| 2 | System dossier import → journals | Module button builds/updates a Foundry journal folder: a page per body (facts table, description, image, Tier 1 link back). Re-import updates in place. Player-safe by construction | Moderate | HIGH — puts survey data where Foundry GMs live (searchable, permissioned) |
+| 1 | Clickable star-map links in notes | Foundry text enricher: `@sse2[bodyId]{label}` in any journal/chat → the GM's click sends `REQUEST_FOCUS {token, bodyId}` over the GM channel; the GM tab applies the focus to its own state, so the GM orrery AND every player view swing together via the existing SYNC_FOCUS/framing toolset (followGM/preset rules respected). Owlbear analogue: context-menu item on a marker | Small | HIGH — the whole table points at the place with one click in your notes |
+| 2 | System dossier import → journals (BANKED pending demand) | Module button builds/updates a Foundry journal folder: a page per body (facts, description, image, Tier 1 link back). Player-safe by construction | Moderate | MEDIUM — content generation, not locations; SSE2 is being used as a MAP, and the notes panel (12.3) covers the notes need without duplicating content into journals |
 | 3 | Notes/actor ↔ body back-links | Module-side mapping (flags); "open linked journal" on focus (needs a `focusChanged` event out of the embed) | Moderate | MEDIUM — the cheap half rides Tier 2 |
 | 4 | Party/location tracker | Constructs + journeys are in the snapshot: widget shows "Aboard <ship> — in transit to <body>, ETA …"; optional body→scene mapping with one-click activate on arrival | Small on top of Tier 2 | MEDIUM-HIGH — table flavour, demos brilliantly |
 | 5 | Deep canvas/actor sync (tokens as ships, PCs aboard constructs, bidirectional live data) | Fights both data models | High | LOW — recommend against |
 
-Scoping: v1 module = Tier 0 + Tier 1 (the `focus` command is already in the
-Phase 1C spec so the SSE2 build picks it up). v1.1 = Tier 2 as the headline.
-v1.2 = Tier 4. Tier 3 only where it falls out of Tier 2. Tier 5 never.
-Owlbear stays thin (Tier 0 + context-menu deep link): no journal system means
-the crossover surface genuinely is not there, and that matches its audience.
+Scoping (revised 2026-07-22 — "SSE2 is a Map; locations and landscape are
+the point"): v1 module = Tier 0 + Tier 1 (needs the GM channel + REQUEST_FOCUS,
+§12.3). v1.1 = the GM-notes panel (§12.3) + Tier 4 location tracker. Tier 2
+dossier import and Tier 3 back-links BANKED pending demand. Tier 5 never.
+Both VTTs stay aligned on the same location-shaped feature set; Foundry gets
+the text enricher, Owlbear the marker context-menu — same GM-channel calls.
 
 ### 12.3 GM Notes as a shared notepad
 
@@ -837,25 +839,27 @@ channel**:
   `broadcastId`, NEVER broadcast; surfaced to the GM in the integration
   settings UI).
 - New token-gated messages, validated by the GM tab: `REQUEST_GM_SYNC
-  {token}` → `SYNC_GM_DATA` (the gmNotes map, node id → text), and
+  {token}` → `SYNC_GM_DATA` (the gmNotes map, node id → text);
   `GM_NOTES_WRITE {token, nodeId, text, ts}` (apply + persist + re-sync;
-  last-write-wins on timestamp). Token scope is exactly notes-read +
-  notes-write, nothing else.
+  last-write-wins on timestamp); and `REQUEST_FOCUS {token, bodyId}` (GM tab
+  applies the focus to its own state — the existing reactive SYNC_FOCUS/
+  SYNC_FOCUS_LEVEL/framing broadcast then drives every viewer; powers Tier 1
+  deep links). Token scope is exactly notes-read + notes-write + focus,
+  nothing else. A guest cannot inject SYNC_* directly: the channel is
+  GM→players by construction (the host ignores SYNC_* from guests and never
+  relays guest traffic), which is why view-driving requests route through the
+  GM tab.
 - Module side: token lives in GM-LOCAL (client-scope) settings — Foundry
   world-scope settings are readable by player clients and must not hold it.
 
-**Foundry — yes, two models, build in this order:**
-
-1. **SSE2-notes panel (v1.1, recommended first):** the module's GM panel
-   shows and edits `gmNotes` for the focused/linked body live over the GM
-   channel. One source of truth (the starmap), zero sync machinery, and the
-   GM gets "one shared notepad" inside Foundry immediately.
-2. **Journal sync (v1.2+, the deluxe option):** a GM-only section per
-   dossier page synced two-way off Foundry's journal edit hooks. Costs are
-   the classic sync costs: format mismatch (gmNotes are plain text, journals
-   are rich HTML — sync a plaintext block, do not round-trip prose),
-   conflict handling (last-write-wins is acceptable for a single GM), and
-   sync-bug debugging time. Build only after the panel proves demand.
+**Foundry — DECIDED (2026-07-22): the flipped model, same as Owlbear.**
+The module's GM panel shows and edits `gmNotes` for the focused/linked body
+live over the GM channel. One source of truth (the starmap), zero sync
+machinery, identical code in both VTTs. Journal two-way sync (GM-only
+dossier-page sections synced off edit hooks) is BANKED — its costs (plain
+text vs rich HTML round-tripping, conflicts, sync debugging) buy little over
+the panel, and it drags the module away from the "SSE2 is a Map" centre of
+gravity. Revisit only on real demand.
 
 **Owlbear — no native counterpart, so the model flips:** there is no journal
 system and room metadata caps at 16 KB total, so there is nothing VTT-side to
@@ -867,5 +871,5 @@ source of truth and no sync to break.
 
 SSE2-side prerequisites introduced by this section (schedule with Phase 1 or
 as a fast follow): `gmToken` on the starmap; `REQUEST_GM_SYNC` /
-`SYNC_GM_DATA` / `GM_NOTES_WRITE` messages; a `focusChanged` outbound embed
-event (Tier 3, optional).
+`SYNC_GM_DATA` / `GM_NOTES_WRITE` / `REQUEST_FOCUS` messages. (The
+`focusChanged` outbound embed event rode Tier 3 and is banked with it.)
