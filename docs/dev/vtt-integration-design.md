@@ -813,17 +813,32 @@ the module physically cannot see what the GM has hidden.
 |---|---|---|---|---|
 | 0 | Connect + open/push player views | Sections 9.4/9.5 | — | The core |
 | 1 | Clickable star-map links in notes | Foundry text enricher: `@sse2[bodyId]{label}` in any journal/chat → the GM's click sends `REQUEST_FOCUS {token, bodyId}` over the GM channel; the GM tab applies the focus to its own state, so the GM orrery AND every player view swing together via the existing SYNC_FOCUS/framing toolset (followGM/preset rules respected). Owlbear analogue: context-menu item on a marker | Small | HIGH — the whole table points at the place with one click in your notes |
-| 2 | System dossier import → journals (BANKED pending demand) | Module button builds/updates a Foundry journal folder: a page per body (facts, description, image, Tier 1 link back). Player-safe by construction | Moderate | MEDIUM — content generation, not locations; SSE2 is being used as a MAP, and the notes panel (12.3) covers the notes need without duplicating content into journals |
-| 3 | Notes/actor ↔ body back-links | Module-side mapping (flags); "open linked journal" on focus (needs a `focusChanged` event out of the embed) | Moderate | MEDIUM — the cheap half rides Tier 2 |
+| 2 | System dossier import → journals (HOPED scope, Foundry) | Module button builds/updates a Foundry journal folder: a page per body (facts, description, image, Tier 1 link back). Player-safe by construction | Moderate | MEDIUM-HIGH — content generation rather than locations, but strong native-tool feel; post-v1 roadmap, not a commitment |
+| 3 | Notes/actor ↔ body back-links (HOPED scope, Foundry) | Module-side mapping (flags); "open linked journal" on focus (needs a `focusChanged` event out of the embed) | Moderate | MEDIUM — the cheap half rides Tier 2 |
 | 4 | Party/location tracker | Constructs + journeys are in the snapshot: widget shows "Aboard <ship> — in transit to <body>, ETA …"; optional body→scene mapping with one-click activate on arrival | Small on top of Tier 2 | MEDIUM-HIGH — table flavour, demos brilliantly |
 | 5 | Deep canvas/actor sync (tokens as ships, PCs aboard constructs, bidirectional live data) | Fights both data models | High | LOW — recommend against |
 
-Scoping (revised 2026-07-22 — "SSE2 is a Map; locations and landscape are
-the point"): v1 module = Tier 0 + Tier 1 (needs the GM channel + REQUEST_FOCUS,
-§12.3). v1.1 = the GM-notes panel (§12.3) + Tier 4 location tracker. Tier 2
-dossier import and Tier 3 back-links BANKED pending demand. Tier 5 never.
-Both VTTs stay aligned on the same location-shaped feature set; Foundry gets
-the text enricher, Owlbear the marker context-menu — same GM-channel calls.
+Scoping (final 2026-07-22):
+
+- **Foundry — hoped scope is the full Tier 0-4 ladder.** Committed v1 =
+  Tier 0 + Tier 1 deep links; v1.1 = GM-notes panel (§12.3) + Tier 4
+  location tracker; Tiers 2-3 (dossier import, back-links) are HOPED scope —
+  the post-v1 roadmap that makes the module read as a first-class Foundry
+  tool. Tier 5 never.
+- **Mappadux and Owlbear — the location-framing subset**, expressed in each
+  host's native idiom, all riding the same GM-channel calls:
+  - Tier 1 Mappadux: a "starmap link" MARKER ROLE — a marker on a deck plan
+    (e.g. the nav console) carrying a bodyId; badge tap sends
+    `REQUEST_FOCUS` via the bridge, optionally auto-activating the StarMap
+    map first. The whole table swings to the location from a tap on the
+    station map. (Hoped scope, after the Phase 3 core ships.)
+  - Tier 1 Owlbear: marker context-menu item, as specced.
+  - Tier 4 both: the location tracker widget (Mappadux GM screen pill /
+    Owlbear action popover), hoped scope.
+  - Tiers 2-3 do not apply (no journal system in either).
+- gmToken handling outside Foundry: Mappadux keeps it in LOCAL settings
+  (localStorage), never in pack exports; Owlbear in extension local storage,
+  never in room metadata.
 
 ### 12.3 GM Notes as a shared notepad
 
