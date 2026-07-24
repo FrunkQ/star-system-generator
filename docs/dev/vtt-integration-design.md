@@ -477,19 +477,28 @@ same URL and the same broadcast contract.
 - Redaction: `computePlayerStarmapSnapshot` may keep or strip `broadcastId`;
   players already know the sid from their URL. No requirement either way.
 - **Entropy + revocation (audit F2) + readable format:** `broadcastId` is a
-  long-lived bearer capability. Format: a HUMAN-READABLE code in the Mappadux
-  room-code style but SF-themed — words drawn from a deduplicated,
-  phonetically-distinct list of space/science-fiction/science terms, chosen
-  with `crypto.getRandomValues` (NOT `Math.random`), sized to >=40 bits:
-  4 words from a 1024-word list (e.g. `crimson-pulsar-relay-vector`) or
-  3 words + 2-digit suffix (`tachyon-nebula-vega-42`). Readability pays for
-  itself: codes can be spoken at the table, typed on TV browsers, and
-  recognised in VTT module settings. Mappadux's own codes stay as they are
-  (ephemeral per session — lower stakes by design). `gmToken` remains opaque
-  crypto-random 128-bit hex: no human ever types it. Add a "Regenerate
-  session id" control in the integration/share settings as the revocation
-  path for a leaked sid (old links/QRs/pack configs die; the
-  connection-aware VTT flows recover via discovery).
+  long-lived bearer capability, formatted for humans:
+  `<name-slug>-<word>-<word>-<NN>` — e.g. `my_tuesday_game-gamma-spice-42`.
+  - **Name prefix**: slug of the starmap name at mint time (lowercase,
+    keep `[a-z0-9_-]`, strip the rest, cap ~24 chars; fallback to a word if
+    empty). PeerJS ids only tolerate `[A-Za-z0-9_-]`. The prefix is FROZEN
+    at mint — renaming the starmap must NOT re-derive the id (that would
+    break every stored link); the regenerate control covers a wanted rename.
+  - **Random tail**: 2 words from a deduplicated, phonetically-distinct
+    1024-word space/science-fiction/science list + a 2-digit suffix, all
+    chosen with `crypto.getRandomValues` (NOT `Math.random`) — ~27 bits.
+    The name prefix carries ZERO secrecy (names get spoken/streamed), so the
+    tail is the security: ~100M combinations is years of scanning at PeerJS
+    broker probe rates, proportionate to the asset (read-only redacted
+    fiction + griefing) given revocation exists.
+  - Readability pays for itself: the code identifies its campaign at a
+    glance in VTT module settings, can be spoken at the table, and typed on
+    TV browsers. Mappadux's own room codes stay as they are (ephemeral,
+    lower stakes). `gmToken` remains opaque crypto-random 128-bit hex: no
+    human ever types it. Add a "Regenerate session id" control in the
+    integration/share settings as the revocation path for a leaked sid (old
+    links/QRs/pack configs die; the connection-aware VTT flows recover via
+    discovery).
 
 **1B. Discovery + remote-request messages (G2/G5)**
 
