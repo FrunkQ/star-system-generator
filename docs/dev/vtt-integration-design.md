@@ -467,6 +467,13 @@ same URL and the same broadcast contract.
   `initPeerHost`, `src/lib/broadcast.ts:101`.)
 - Redaction: `computePlayerStarmapSnapshot` may keep or strip `broadcastId`;
   players already know the sid from their URL. No requirement either way.
+- **Entropy + revocation (audit F2):** `broadcastId` (and later `gmToken`)
+  are long-lived bearer capabilities and must be generated with
+  `crypto.getRandomValues` (128-bit), NOT the existing `generateId()`
+  (`Date.now` + `Math.random`, non-cryptographic). Add a "Regenerate session
+  id" control in the integration/share settings as the revocation path for a
+  leaked sid (old links/QRs/pack configs die; the connection-aware VTT flows
+  recover via discovery).
 
 **1B. Discovery + remote-request messages (G2/G5)**
 
@@ -864,6 +871,14 @@ channel**:
   GM→players by construction (the host ignores SYNC_* from guests and never
   relays guest traffic), which is why view-driving requests route through the
   GM tab.
+- **SECURITY-CRITICAL (audit F1): GM-channel replies must be DIRECTED.**
+  `sendMessage` mirrors to the BroadcastChannel and to EVERY peer connection —
+  replying to `REQUEST_GM_SYNC` that way would broadcast `SYNC_GM_DATA`
+  (the GM notes) to every connected player. The broadcast service needs a
+  directed-reply primitive (`replyTo(conn, envelope)` — send on the single
+  requesting peer connection only, never the BroadcastChannel, never other
+  peers), and ALL GM-channel responses must use it. This is a hard
+  requirement of the GM-channel build, not a hardening option.
 - Module side: token lives in GM-LOCAL (client-scope) settings — Foundry
   world-scope settings are readable by player clients and must not hold it.
 
@@ -888,3 +903,78 @@ SSE2-side prerequisites introduced by this section (schedule with Phase 1 or
 as a fast follow): `gmToken` on the starmap; `REQUEST_GM_SYNC` /
 `SYNC_GM_DATA` / `GM_NOTES_WRITE` / `REQUEST_FOCUS` messages. (The
 `focusChanged` outbound embed event rode Tier 3 and is banked with it.)
+
+## 13. Security review (2026-07-24, design-stage audit for internet exposure)
+
+Context: the apps were built LAN-first; the VTT programme makes internet use
+routine. Audit scope = both codebases as deployed today plus everything this
+doc designs. Grounding: code scan of SSE2 (HTML-injection sites, the LLM
+proxy route, secret patterns, PII) plus the Mappadux v2.14 data/network audit
+(which remains valid: no telemetry beyond opt-in Vercel analytics, no keys in
+bundles or broadcasts, sanitised splash HTML).
+
+**Confirmed clean:** no hardcoded tokens/keys/secrets in either source tree;
+no PII anywhere (no accounts, no email addresses in src); player-facing SSE2
+surfaces (catalogue, reports, player views) contain no `{@html}` sinks — all
+campaign strings render through Svelte auto-escaping, so even a forged host
+cannot inject markup into player devices; postMessage surfaces in this design
+carry origin allowlists both directions; tokens are specced out of pack
+exports and room metadata.
+
+**Threat model in one line:** there is no money and no PII here — the assets
+are (a) GM notes (spoilers), (b) control of what players see (griefing),
+(c) the deployment's availability/cost, (d) code execution on the GM's
+browser. Findings ranked accordingly:
+
+- **F1 — GM-channel replies must be directed, not broadcast (CRITICAL,
+  design-stage — fixed in spec §12.3).** The transport mirrors every send to
+  all pipes; a naive `SYNC_GM_DATA` reply would hand the GM notes to every
+  player. Directed-reply primitive is now a hard requirement.
+- **F2 — id/token entropy + revocation (HIGH, cheap — fixed in spec §9.1/1A).**
+  `generateId()` is `Date.now` + `Math.random` (non-cryptographic). Fine for
+  ephemeral ids; NOT fine once `broadcastId`/`gmToken` become persistent
+  bearer capabilities. Use `crypto.getRandomValues`; add a regenerate/revoke
+  control.
+- **F3 — `/api/generate` is an unauthenticated open relay (MODERATE, exists
+  in production TODAY, unrelated to the VTT work).** The route forwards any
+  POST to a client-supplied `apiEndpoint` and streams the response. Abuse
+  potential: free egress proxy + Vercel function-hours burn + the deployment
+  becoming the visible origin of someone else's traffic. Data risk: none
+  (user keys pass through per-request, never stored). Fix options: allowlist
+  endpoints (openrouter.ai; localhost targets only make sense in local dev
+  anyway) or move the call client-side (OpenRouter supports CORS) and delete
+  the route. Schedule as an SSE2 fix independent of this programme.
+- **F4 — GM-side `{@html}` sinks accept unescaped content (MODERATE).**
+  `DescriptionEditor.renderMarkdown` injects description text with markdown
+  substitutions but NO HTML escaping, and `AIExpansionModal` injects raw LLM
+  output. Attack paths that matter now: a SHARED starmap file carrying a
+  malicious description executes in the GM's browser on edit; LLM prompt
+  injection can emit live HTML. Players are unaffected (escaped surfaces).
+  Fix: escape-then-format in both sites (~10 lines). Schedule with F3.
+- **F5 — request-flood amplification (LOW).** Anyone with the sid can spam
+  `REQUEST_STARMAP` and the host re-sends the full snapshot each time
+  (request path bypasses `sendIfChanged` by design, for late joiners).
+  Mitigation when convenient: per-requester rate-limit on the answer path.
+- **F6 — host impersonation via sid squatting (LOW, accepted).** With the GM
+  offline, a sid-holder can register `Peer(sid)` and serve forged (escaped)
+  campaign data to players, and `REQUEST_REMOTE` lets a sid-holder make the
+  GM host publicly. Impact is content griefing by someone already inside the
+  table's trust circle; revocation (F2) is the recovery. Documented, not
+  engineered around.
+- **F7 — clickjacking hardening (LOW, config-only).** `/catalogue` and
+  `/bridge` are intentionally embeddable; the GM route is not and should get
+  `Content-Security-Policy: frame-ancestors 'none'` via per-path headers
+  (vercel.json) at Phase 1.
+- **F8 — infrastructure privacy (accepted, documented).** The public PeerJS
+  broker and community TURN see connection metadata and IPs (WebRTC peers see
+  each other's IPs; TURN relays only DTLS ciphertext). BroadcastChannel is
+  same-browser-profile readable. All inherent to the architecture; the
+  self-host escape hatch (§11.3) covers tables that care.
+
+**Verdict:** the instinct "no real attack surface, no critical data" is
+broadly right — nothing here holds money, identities or secrets, and the
+worst realistic outcomes are spoiler leakage (F1, now designed out), session
+griefing by sid-holders (F6, accepted trust model), and platform-cost abuse
+(F3). The two pre-existing items (F3, F4) are worth fixing on the SSE2 beta
+regardless of the VTT programme; everything else is already folded into the
+build specs above.
