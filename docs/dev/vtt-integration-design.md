@@ -467,13 +467,20 @@ same URL and the same broadcast contract.
   `initPeerHost`, `src/lib/broadcast.ts:101`.)
 - Redaction: `computePlayerStarmapSnapshot` may keep or strip `broadcastId`;
   players already know the sid from their URL. No requirement either way.
-- **Entropy + revocation (audit F2):** `broadcastId` (and later `gmToken`)
-  are long-lived bearer capabilities and must be generated with
-  `crypto.getRandomValues` (128-bit), NOT the existing `generateId()`
-  (`Date.now` + `Math.random`, non-cryptographic). Add a "Regenerate session
-  id" control in the integration/share settings as the revocation path for a
-  leaked sid (old links/QRs/pack configs die; the connection-aware VTT flows
-  recover via discovery).
+- **Entropy + revocation (audit F2) + readable format:** `broadcastId` is a
+  long-lived bearer capability. Format: a HUMAN-READABLE code in the Mappadux
+  room-code style but SF-themed — words drawn from a deduplicated,
+  phonetically-distinct list of space/science-fiction/science terms, chosen
+  with `crypto.getRandomValues` (NOT `Math.random`), sized to >=40 bits:
+  4 words from a 1024-word list (e.g. `crimson-pulsar-relay-vector`) or
+  3 words + 2-digit suffix (`tachyon-nebula-vega-42`). Readability pays for
+  itself: codes can be spoken at the table, typed on TV browsers, and
+  recognised in VTT module settings. Mappadux's own codes stay as they are
+  (ephemeral per session — lower stakes by design). `gmToken` remains opaque
+  crypto-random 128-bit hex: no human ever types it. Add a "Regenerate
+  session id" control in the integration/share settings as the revocation
+  path for a leaked sid (old links/QRs/pack configs die; the
+  connection-aware VTT flows recover via discovery).
 
 **1B. Discovery + remote-request messages (G2/G5)**
 
