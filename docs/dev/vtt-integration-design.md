@@ -460,11 +460,20 @@ same URL and the same broadcast contract.
   `PlayerViewModal`/`CompanionModal`/`SystemView` props are already reactive.
 - Fallback: before any starmap is loaded, keep an ephemeral `generateId()` so
   the broadcast service is never idless.
-- **Collision handling**: a starmap file copied to another GM duplicates the
-  id. The PeerJS host emits an `unavailable-id` error when a second host
-  claims the same peer id — on that error, generate a fresh `broadcastId`,
-  persist it, and re-init the host. (Hook: the `peer.on('error')` handler in
-  `initPeerHost`, `src/lib/broadcast.ts:101`.)
+- **Portability is the point**: the id lives IN the starmap data, so saving
+  the file and loading it on another PC re-hosts the same channel — all
+  stored player URLs/QRs/pack configs/module settings reconnect unchanged.
+- **Collision handling — PROMPT, never silently regenerate**: PeerJS ids are
+  claim-by-first, so `unavailable-id` (hook: `peer.on('error')` in
+  `initPeerHost`, `src/lib/broadcast.ts:101`) has two innocent causes — the
+  GM's own stale tab on another machine, or a copied file at another table.
+  Show: "Another session is already hosting this starmap's channel (an old
+  tab on another PC?). Close it and Retry, or Regenerate a new id." Silent
+  regeneration would break every stored link in the move-to-a-new-PC case.
+- **Share-safe export**: because `broadcastId` (and `gmToken`, §12.3) travel
+  in the starmap data, a "Save a copy for sharing" export strips both; the
+  recipient's app mints fresh ones on first load. Normal saves/backups keep
+  them — only the deliberate share-copy sheds session identity.
 - Redaction: `computePlayerStarmapSnapshot` may keep or strip `broadcastId`;
   players already know the sid from their URL. No requirement either way.
 - **Entropy + revocation (audit F2) + readable format:** `broadcastId` is a
