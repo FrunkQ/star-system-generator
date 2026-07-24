@@ -521,6 +521,10 @@ interface AnnouncePayload {
     preset locally (same code path as a `SYNC_PRESET` arrival, without
     overrides). A later GM `SYNC_PRESET` still wins (last-write-wins), which
     is exactly decision Q3.
+  - `{ns:'sse2-embed', v:1, cmd:'focus', bodyId}` — focus/frame the given
+    body or system in the current view (same code path as a `SYNC_FOCUS`
+    arrival). Also honour a `?focus=<bodyId>` URL param at boot. This powers
+    VTT-side deep links ("clickable locations" — see §12 Tier 1).
   - `{ns:'sse2-embed', v:1, cmd:'ping'}` → reply `{event:'pong'}` (host-side
     liveness/handshake).
   This is what lets a host switch between StarMap maps with different presets
@@ -783,3 +787,85 @@ Do not give up the VTT idea. The transport was internet-grade from day one;
 the workload is state-sync, not streaming; a relay fallback already exists by
 default. Remaining work is one afternoon of hardening (config surface +
 failure UI) plus a half-hour test that should have happened years ago.
+
+## 12. VTT data crossover — beyond the embedded view (analysed 2026-07-22)
+
+Question: the v1 modules are thin (connect, pick a Player View, open it on
+players). Could real data crossover with the host VTT make SSE2 read as a
+proper tool of the VTT rather than a window beside it? Analysis and scoping;
+none of this is required for the modules to be viable.
+
+### 12.1 The enabling primitive: the data bridge
+
+The module can obtain SSE2's entire REDACTED dataset already — the player
+snapshot on the wire carries systems, body fact sheets, classifications,
+player-safe descriptions, constructs and flight plans. Mechanism: a bridge
+variant that dials PeerJS with the sid (`/bridge?sid=…`) and posts the
+snapshot to its parent — needed anyway in Foundry, whose Electron client
+cannot share a BroadcastChannel with a separate browser. Everything in the
+tier table builds on this one primitive, and it is inherently spoiler-safe:
+the module physically cannot see what the GM has hidden.
+
+### 12.2 Tier table (utility vs effort)
+
+| Tier | Feature | Mechanism | Effort | Utility |
+|---|---|---|---|---|
+| 0 | Connect + open/push player views | Sections 9.4/9.5 | — | The core |
+| 1 | Clickable star-map links in notes | Foundry text enricher: `@sse2[bodyId]{label}` in any journal/chat → click opens the player view focused on that body (uses the `focus` embed command + `?focus=` param, section 9.1/1C). Owlbear analogue: context-menu item on a marker | Small | HIGH — the moment the module stops feeling bolted-on |
+| 2 | System dossier import → journals | Module button builds/updates a Foundry journal folder: a page per body (facts table, description, image, Tier 1 link back). Re-import updates in place. Player-safe by construction | Moderate | HIGH — puts survey data where Foundry GMs live (searchable, permissioned) |
+| 3 | Notes/actor ↔ body back-links | Module-side mapping (flags); "open linked journal" on focus (needs a `focusChanged` event out of the embed) | Moderate | MEDIUM — the cheap half rides Tier 2 |
+| 4 | Party/location tracker | Constructs + journeys are in the snapshot: widget shows "Aboard <ship> — in transit to <body>, ETA …"; optional body→scene mapping with one-click activate on arrival | Small on top of Tier 2 | MEDIUM-HIGH — table flavour, demos brilliantly |
+| 5 | Deep canvas/actor sync (tokens as ships, PCs aboard constructs, bidirectional live data) | Fights both data models | High | LOW — recommend against |
+
+Scoping: v1 module = Tier 0 + Tier 1 (the `focus` command is already in the
+Phase 1C spec so the SSE2 build picks it up). v1.1 = Tier 2 as the headline.
+v1.2 = Tier 4. Tier 3 only where it falls out of Tier 2. Tier 5 never.
+Owlbear stays thin (Tier 0 + context-menu deep link): no journal system means
+the crossover surface genuinely is not there, and that matches its audience.
+
+### 12.3 GM Notes as a shared notepad
+
+SSE2 carries `gmNotes` on every body, construct, system and the starmap.
+Can they be a shared notepad with the VTT?
+
+**The constraint:** redaction strips `gmNotes` from the player snapshot, and
+the sid-based channel is joinable by anyone holding the sid — GM notes must
+never travel on it. A notes integration therefore needs a narrow **GM
+channel**:
+
+- SSE2 mints a per-starmap `gmToken` (generated once, persisted beside
+  `broadcastId`, NEVER broadcast; surfaced to the GM in the integration
+  settings UI).
+- New token-gated messages, validated by the GM tab: `REQUEST_GM_SYNC
+  {token}` → `SYNC_GM_DATA` (the gmNotes map, node id → text), and
+  `GM_NOTES_WRITE {token, nodeId, text, ts}` (apply + persist + re-sync;
+  last-write-wins on timestamp). Token scope is exactly notes-read +
+  notes-write, nothing else.
+- Module side: token lives in GM-LOCAL (client-scope) settings — Foundry
+  world-scope settings are readable by player clients and must not hold it.
+
+**Foundry — yes, two models, build in this order:**
+
+1. **SSE2-notes panel (v1.1, recommended first):** the module's GM panel
+   shows and edits `gmNotes` for the focused/linked body live over the GM
+   channel. One source of truth (the starmap), zero sync machinery, and the
+   GM gets "one shared notepad" inside Foundry immediately.
+2. **Journal sync (v1.2+, the deluxe option):** a GM-only section per
+   dossier page synced two-way off Foundry's journal edit hooks. Costs are
+   the classic sync costs: format mismatch (gmNotes are plain text, journals
+   are rich HTML — sync a plaintext block, do not round-trip prose),
+   conflict handling (last-write-wins is acceptable for a single GM), and
+   sync-bug debugging time. Build only after the panel proves demand.
+
+**Owlbear — no native counterpart, so the model flips:** there is no journal
+system and room metadata caps at 16 KB total, so there is nothing VTT-side to
+share notes WITH. Instead, SSE2 IS the notepad: the extension's GM panel
+(action popover, GM role only) embeds the same notes editor over the GM
+channel. Same code as Foundry model 1 — one implementation serves both VTTs.
+This is not a lesser outcome; it is the same shared notepad with a single
+source of truth and no sync to break.
+
+SSE2-side prerequisites introduced by this section (schedule with Phase 1 or
+as a fast follow): `gmToken` on the starmap; `REQUEST_GM_SYNC` /
+`SYNC_GM_DATA` / `GM_NOTES_WRITE` messages; a `focusChanged` outbound embed
+event (Tier 3, optional).
