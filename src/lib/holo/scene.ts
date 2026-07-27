@@ -32,6 +32,7 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
 import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep } from '$lib/viewport/camera';
+import { contextPeerIds } from '$lib/system/barycentres';
 import { perfCount, perfFrame } from '$lib/perfTrace';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
@@ -914,12 +915,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   // Which of the ladder's levels exist for a body, by the SHARED rule (no parent → no 1; no satellites → no 2).
+  // The holo draws no mesh for a barycentre, so a member's parent is only reachable through the shared
+  // pair rule — without it every binary star read as the system ROOT here and lost its context level,
+  // giving the 3D view a different ladder from the orrery for the same click.
   function levelsForBody(id: string | null): number[] {
     const b = id ? bodyById.get(id) : undefined;
     if (!b) return [3];
-    const pid = b.framingParentId;
+    const pid = b.framingParentId ?? null;
     return frameLevelsFrom({
-      hasParent: !!(pid && bodyById.has(pid)),
+      hasParent: contextPeerIds(currentSystem, b.id, pid).some((pid2) => bodyById.has(pid2)),
       hasSatellites: bodies.some((x) => x.framingParentId === id),
       hasRadius: !b.isConstruct && (b.radiusScene ?? 0) > 0 // a radius-less root keeps whole-system-first
     });
@@ -932,8 +936,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // identical framing from the same click.
   function frameDistance(b: BodyVisual): number {
     const radius = b.isConstruct ? 0 : (b.radiusScene ?? 0);
-    const pv = b.framingParentId ? bodyById.get(b.framingParentId) : undefined;
-    const parentDist = pv ? b.mesh.position.distanceTo(pv.mesh.position) : 0;
+    // Reach the FURTHEST context peer — for a barycentre member that is the partner star, so the pair
+    // frames as a pair from either half (the barycentre point itself has no mesh here).
+    let parentDist = 0;
+    for (const peerId of contextPeerIds(currentSystem, b.id, b.framingParentId ?? null)) {
+      const pv = bodyById.get(peerId);
+      if (pv) parentDist = Math.max(parentDist, b.mesh.position.distanceTo(pv.mesh.position));
+    }
     let maxSatelliteDist = 0;
     for (const x of bodies) {
       if (x.framingParentId !== b.id) continue;

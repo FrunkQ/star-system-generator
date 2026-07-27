@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.242-beta - 27th Jul 2026
+
+* Fixed getting between the two stars of a binary. A pair's members sit on opposite sides of their barycentre at different distances, and the context view only reached as far as that empty centre point — so from the OUTER star the partner was off-screen and unclickable, and you could step from Alpha Centauri A to B and then never back. A pair now always frames as a pair, identically from either half, in both the orrery and the 3D view (which had been treating every binary star as the system root and giving it no context view at all).
+* A barycentre no longer has a "fill the screen" step — it is a point between two bodies, so that step landed on a few thousandths of an AU of empty space.
+
 ## v2.1.241-beta - 27th Jul 2026
 
 * Clicking an object now OPENS IT UP first: the first click frames it with everything orbiting it (or goes straight to the object itself when it has none), then closes in, and only then steps out to the wider parent context before cycling. Leading with the parent view spent a click on the shot you least often want. The central star is unchanged (close-up first, whole system next).
