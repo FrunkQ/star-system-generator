@@ -1,6 +1,12 @@
-﻿# Changelog
+# Changelog
 
 All notable changes are listed here:
+
+## v2.1.244-beta - 27th Jul 2026
+
+* Fixed the Reset View button showing garbled text instead of its arrow. The System View source had been saved through the wrong text encoding at some point, mangling every non-ASCII character in the file — the arrow, and also the dashes in messages like the delete-system warning and the autopilot "could not start" reasons.
+* Sizing a world now changes its MASS. With nothing pinned the composition is the anchor, so dragging the radius moves the mass along that mix's mass–radius curve (and mass still moves the radius) — previously the mass sat still no matter how far you dragged, because the drag was being spent on porosity instead. Porosity and gas-giant inflation are still directly editable: at a fixed mass that is what the DENSITY slider does, which is where the envelope markers now live.
+* Player Views is hidden behind a single release flag while the V2.2 line is still in flight; the Field Guide and the Projector are the players' launchers. Nothing is removed — flipping `PLAYER_VIEWS_ENABLED` in `src/lib/config/releaseFlags.ts` brings the whole feature back.
 
 ## v2.1.243-beta - 27th Jul 2026
 

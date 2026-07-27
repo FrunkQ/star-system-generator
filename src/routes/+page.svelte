@@ -17,6 +17,7 @@
   import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
   import CompanionModal from '$lib/components/CompanionModal.svelte';
   import PlayerViewModal from '$lib/components/PlayerViewModal.svelte';
+  import { PLAYER_VIEWS_ENABLED } from '$lib/config/releaseFlags';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
   import { brandingStore } from '$lib/catalogue/branding';
   import { guideConfigStore } from '$lib/catalogue/guideConfig';
@@ -1452,7 +1453,9 @@
     <ReportConfigModal on:generate={handleStarmapReport} on:close={() => showReportConfigModal = false} />
   {/if}
 
-  {#if showPlayerPresets}
+  <!-- Player Views (V2.2 line): masked by the same single flag as its rail entry, so no stray dispatch
+       can open it while it is hidden. Flip $lib/config/releaseFlags to bring the whole feature back. -->
+  {#if showPlayerPresets && PLAYER_VIEWS_ENABLED}
     <PlayerViewModal sessionId={broadcastSessionId} on:close={() => showPlayerPresets = false} />
   {/if}
 
