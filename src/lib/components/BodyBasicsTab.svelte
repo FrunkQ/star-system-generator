@@ -259,12 +259,9 @@
   }
   function applyRadius(v: number) {
       if (!Number.isFinite(v)) return;
-      if (lock === null) {
-          const out = editRadiusAnchored(pState(), v);
-          if (out.outOfBand) pendingFlowThrough = true;
-          commit(out);
-          return;
-      }
+      // Unlocked: the composition is the anchor, so sizing a world moves its MASS along the mix's curve
+      // (never morphs the composition — hence no flow-through here, exactly as for a mass drag).
+      if (lock === null) { commit(editRadiusAnchored(pState(), v)); return; }
       commit(editRadius(pState(), v, lock, heldDensity()));
   }
   function applyDensity(v: number) {
@@ -334,7 +331,7 @@
       if (r <= 0 || l >= 1 || r <= l) return null;
       return { left: l * 100, width: Math.max(0.8, (r - l) * 100) };
   }
-  $: radTrimBand = pEnv ? clipBand(pEnv.radLo, pEnv.radHi, radSpan) : null;
+  // Only DENSITY carries the trim band now — see the radius slider's markup.
   $: denTrimBand = pEnv ? clipBand(pEnv.denLo, pEnv.denHi, denSpan) : null;
 
   // The advisory line for a pinned type ("physics reads" only shown when it disagrees).
@@ -669,7 +666,9 @@
         </div>
         <div class="sc-slider-wrap">
             {#if radTypeBand}<div class="sc-typeband" style="left: {radTypeBand.left}%; width: {radTypeBand.width}%;" title="{liveType}: radius range for this type"></div>{/if}
-            {#if radTrimBand && lock === null}<div class="sc-band" style="left: {radTrimBand.left}%; width: {radTrimBand.width}%;" title="This mix's physical envelope — inside it only the {pEnv?.kind} varies; past the edge the composition morphs."></div>{/if}
+            <!-- No trim band here: with the composition anchored a radius drag moves the MASS along the
+                 mix's curve, so there is no in-band "porosity only" region on this slider. The band still
+                 belongs on density, which IS the trim control at fixed mass. -->
             <input class="sc-slider" type="range" min="0" max="1" step="0.001" value={pRadPos} on:input={onRadSlider} on:change={finalizeEdit} disabled={lock === 'radius'} />
             <div class="sc-ends"><span>{fmtEnd(radSpan[0])}</span><span>{fmtEnd(radSpan[1])} R⊕</span></div>
             {#if radOverview}
@@ -681,7 +680,7 @@
                 </svg>
             {/if}
         </div>
-        <div class="sub-label">{$fmt.km(body.radiusKm || 0)}</div>
+        <div class="sub-label">{$fmt.km(body.radiusKm || 0)}{#if lock === null && isPlanetMoon} · mass follows the composition{/if}</div>
     </div>
 
     <!-- DENSITY (lock = hold composition) -->

@@ -116,18 +116,35 @@ describe('trimEnvelope + anchored edits — composition is the anchor', () => {
     expect(env.radHi / env.radLo).toBeCloseTo(1.7 / 0.85, 1);
   });
 
-  it('in-band radius drag: composition and type inputs hold', () => {
-    const env = trimEnvelope(1, earth.makeup);
-    const out = editRadiusAnchored(earth, (env.radLo + env.radHi) / 2);
-    expect(out.outOfBand).toBe(false);
-    expect(out.makeup).toEqual(earth.makeup);
-    expect(out.massMe).toBe(1);
+  it('radius drag moves the MASS along the mix, holding the composition', () => {
+    // The pairing this pins: sizing a world up must make it heavier. It used to hold the mass fixed and
+    // spend the drag on porosity, so the mass never moved at all.
+    const bigger = editRadiusAnchored(earth, 1.5);
+    expect(bigger.outOfBand).toBe(false);
+    expect(bigger.makeup).toEqual(earth.makeup);         // composition is the anchor — never morphed
+    expect(bigger.radiusRe).toBeCloseTo(1.5, 6);
+    expect(bigger.massMe).toBeGreaterThan(1);
+
+    const smaller = editRadiusAnchored(earth, 0.6);
+    expect(smaller.makeup).toEqual(earth.makeup);
+    expect(smaller.massMe).toBeLessThan(1);
   });
 
-  it('out-of-band radius drag flows through: makeup re-inferred, flagged', () => {
-    const out = editRadiusAnchored(earth, 1.5);
-    expect(out.outOfBand).toBe(true);
-    expect(out.makeup).not.toEqual(earth.makeup);        // morphing toward an icier mix
+  it('radius and mass are inverses of each other at a fixed composition', () => {
+    const grown = editMassAnchored(earth, 4);
+    const backByRadius = editRadiusAnchored(earth, grown.radiusRe);
+    expect(backByRadius.massMe).toBeCloseTo(4, 3);       // round-trips through the same curve
+    expect(backByRadius.makeup).toEqual(earth.makeup);
+  });
+
+  it('radius drag carries the existing trim, so a rubble pile stays porous', () => {
+    const makeup = normalizeMakeup({ rock: 0.75, carbon: 0.15, metal: 0.1 });
+    const envSmall = trimEnvelope(1e-9, makeup);
+    const porous: BodyEditState = { massMe: 1e-9, radiusRe: envSmall.radHi, makeup };
+    const out = editRadiusAnchored(porous, envSmall.radHi * 2);
+    const envNew = trimEnvelope(out.massMe, makeup);
+    expect(out.radiusRe / envNew.r0).toBeGreaterThan(1.0); // still sitting above the zero-trim radius
+    expect(out.makeup).toEqual(makeup);
   });
 
   it('in-band density drag: mass and composition held, radius absorbs it', () => {
