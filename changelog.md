@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.243-beta - 27th Jul 2026
+
+* A binary pair's orbit is now properly explained in the editor. Editing either star shows the same two controls — how far the pair sits from its host, and how far apart the two bodies are — and a line beneath spells out each star's own distance from the centre, so the editor and the read-only data panel no longer appear to disagree (they were quoting the separation and the member's share of it under near-identical labels). The pair-distance control is now the same logarithmic slider used everywhere else; the old linear one was capped at 1.5x the current value, so a pair could never be widened.
+* Barycentres are named by what they hold — "Pluto-Charon Barycentre (Pluto + Charon)" — everywhere they are referenced, with nested pairs flattened to the real bodies. A nested pair previously read "Alpha Centauri System Barycentre (Alpha Centauri Barycentre)", naming nothing you can see, and the Field Guide picked the wrong dominant star for such a system (a nested pair's combined mass scored zero, handing it to the lighter outlying star).
+* Newly generated and imported barycentres use UK spelling ("Barycentre"), matching the rest of the interface.
+
 ## v2.1.242-beta - 27th Jul 2026
 
 * Fixed getting between the two stars of a binary. A pair's members sit on opposite sides of their barycentre at different distances, and the context view only reached as far as that empty centre point — so from the OUTER star the partner was off-screen and unclickable, and you could step from Alpha Centauri A to B and then never back. A pair now always frames as a pair, identically from either half, in both the orrery and the 3D view (which had been treating every binary star as the system root and giving it no context view at all).

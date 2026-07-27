@@ -192,7 +192,7 @@ export class TravellerImporter {
             const barycenter: Barycenter = {
                 id: generateId(),
                 parentId: null,
-                name: `${data.name} Barycenter`,
+                name: `${data.name} Barycentre`,
                 kind: "barycenter",
                 memberIds: [],
                 tags: []
