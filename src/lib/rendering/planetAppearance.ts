@@ -298,7 +298,17 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// organics (Titan's orange). Strength from the accumulated IRRADIATION DOSE; colour runs dark-red
 	// at low pressure to pale yellow-brown when a thick haze scatters it.
 	const atmComp = (body.atmosphere?.composition ?? {}) as Record<string, number>;
-	const atmOrganics = ((atmComp.CH4 ?? 0) + (atmComp.N2 ?? 0)) > 0.3 && atmPressureBar > 0.1;
+	// Titan's haze needs a CARBON source photolysed in a nitrogen bath: methane is the precursor, N2 is
+	// only the medium. Counting N2 alone gave every nitrogen world an organic haze — Earth (78% N2) came
+	// out washed in tan over its ocean. Two further physical gates: an OXIDISING atmosphere destroys
+	// organic haze faster than it forms (Earth's 21% O2), and it takes a real methane fraction, not a
+	// trace (Titan ~5%, Earth ~2 ppm).
+	const ch4 = atmComp.CH4 ?? 0;
+	const o2 = atmComp.O2 ?? 0;
+	const atmOrganics = ch4 > 0.001
+		&& (ch4 + (atmComp.N2 ?? 0)) > 0.3
+		&& o2 < 0.01
+		&& atmPressureBar > 0.1;
 	const surfOrganics = retained.includes('methane') || retained.includes('nitrogen');
 	const tholinStrength = solid && (surfOrganics || atmOrganics)
 		? clamp01(dose * 2 + (atmOrganics ? 0.3 : 0)) : 0;

@@ -54,6 +54,36 @@
     { name: 'G / Sun · 5800 K', t: 5800 },
     { name: 'A star · 9000 K', t: 9000 },
   ];
+  // The G-star Earth on its own, for the layer-by-layer test row above the comparison.
+  const earthDiagnostic = (() => {
+    const ap = deriveApparentColorParts(earthLike as any, undefined, { starTempK: 5800 });
+    return { ...JSON.parse(JSON.stringify(earthLike)), name: 'Earth · G / Sun', apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
+  })();
+
+  // The known-good control: the water world from the oceans row. Same coverage, same derived palette
+  // (surface #8c7157 at 1.0 + ocean #4579aa at 0.71) — so any difference is NOT the colour model.
+  const waterControl = (() => {
+    const base = {
+      id: 'ocean-water', roleHint: 'planet', makeup: { rock: 0.68, metal: 0.32, ice: 0 },
+      hydrosphere: { coverage: 0.71, composition: 'water', layers: [{ location: 'surface', liquid: 'water' }] },
+      atmosphere: { pressure_bar: 2, composition: {} }, equilibriumTempK: 288, temperatureK: 288, tags: [],
+    };
+    const ap = deriveApparentColorParts(base as any, undefined, { starTempK: 5800 });
+    return { ...JSON.parse(JSON.stringify(base)), name: 'Water control', apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
+  })();
+
+  // Data bisection: the two things the Earth example carries that the control does not.
+  const earthVariant = (id: string, mutate: (b: any) => void) => {
+    const b: any = JSON.parse(JSON.stringify(earthLike));
+    mutate(b);
+    b.id = id;
+    const ap = deriveApparentColorParts(b, undefined, { starTempK: 5800 });
+    return { ...b, name: id, apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
+  };
+  const earthNoCloudLayer = earthVariant('earth-no-cloud-layer',
+    (b) => { b.hydrosphere.layers = b.hydrosphere.layers.filter((l: any) => l.location !== 'cloud'); });
+  const earthNoPolarIce = earthVariant('earth-no-polar-ice', (b) => { b.tags = []; });
+
   const earthUnderStars = starClasses.map((s) => {
     const ap = deriveApparentColorParts(earthLike as any, undefined, { starTempK: s.t });
     return { ...JSON.parse(JSON.stringify(earthLike)), name: `Earth · ${s.name}`, apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
@@ -213,6 +243,25 @@
     {#each atmospheres as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
+  </div>
+
+  <!-- Bisection aid: the SAME body drawn with individual derived features dropped, so a wrong-looking
+       world can be attributed to one layer instead of guessed at. Drawn large, since the complaint is
+       about what the haze and the cloud deck do at close zoom. -->
+  <h2>Test render — Earth under a G star, one layer at a time</h2>
+  <p class="note">
+    The same Earth-like world as the row below, drawn at full size with individual layers suppressed.
+    Whichever pair differs is the layer responsible.
+  </p>
+  <div class="gallery">
+    <figure><PlanetDisc body={earthDiagnostic} size={260} /><figcaption>As shipped (all layers)</figcaption></figure>
+    <figure><PlanetDisc body={earthDiagnostic} size={260} suppress={{ clouds: true }} /><figcaption>No cloud deck</figcaption></figure>
+    <figure><PlanetDisc body={earthDiagnostic} size={260} suppress={{ atmGlow: true }} /><figcaption>No atmosphere glow</figcaption></figure>
+    <figure><PlanetDisc body={earthDiagnostic} size={260} suppress={{ clouds: true, atmGlow: true, aurora: true }} /><figcaption>Bare surface (nothing over it)</figcaption></figure>
+    <figure><PlanetDisc body={waterControl} size={260} /><figcaption>Water-ocean control (renders correctly)</figcaption></figure>
+    <figure><PlanetDisc body={waterControl} size={260} suppress={{ clouds: true, atmGlow: true, aurora: true }} /><figcaption>Control, bare surface</figcaption></figure>
+    <figure><PlanetDisc body={earthNoCloudLayer} size={260} /><figcaption>Earth minus its hydrosphere CLOUD layer</figcaption></figure>
+    <figure><PlanetDisc body={earthNoPolarIce} size={260} /><figcaption>Earth minus its polar-ice tag</figcaption></figure>
   </div>
 
   <h2>Same Earth under different stars — starlight tints ocean, cloud &amp; surface</h2>

@@ -16,10 +16,25 @@
   export let ringDensity = 0.6;   // 0..1 (debris density of the ring); scales its drawn size/opacity
   export let size = 132;
 
+  // Diagnostic hook for the reference gallery: drop individual DERIVED features so a render can be
+  // bisected — "is it the cloud deck or the limb glow?" — without inventing a physically odd body to
+  // approximate the same thing (pressure gates both at once, so data alone cannot separate them).
+  // Null in the app; only the gallery's test row passes it.
+  export let suppress: { clouds?: boolean; atmGlow?: boolean; aurora?: boolean } | null = null;
+
   // Everything tag/property-driven about this body's look, resolved once (WS1). The SVG below just
   // draws what the model decides; seeded geometry (crater/magma/rock positions, aurora paths) is still
   // generated here from the model's flags/counts, so the disc renders identically to before.
-  $: a = deriveAppearance(body);
+  $: a = (() => {
+      const m = deriveAppearance(body);
+      if (!suppress) return m;
+      return {
+          ...m,
+          clouds: suppress.clouds ? null : m.clouds,
+          atmGlow: suppress.atmGlow ? null : m.atmGlow,
+          aurora: suppress.aurora ? null : m.aurora
+      };
+  })();
 
   // Oblate flattening (E4): squash the disc body vertically about the centre (y=50) so a fast rotator
   // reads as flattened. Rings keep their own plane, so only the body group is transformed.

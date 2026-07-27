@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.3-rc.3 - 28th Jul 2026
+
+* **Fixed: Earth-like worlds were washed in a sludgy tan haze that hid the ocean.** A tholin haze — the orange organic smog that makes Titan look like Titan — was being granted to any world with a nitrogen-rich atmosphere. Nitrogen has no carbon in it: tholins need METHANE photolysed in that nitrogen, and an oxygen-rich atmosphere destroys organic haze faster than it can form. Earth, at 78% nitrogen and 21% oxygen, was getting Titan's smog painted over its blue sea. The haze now requires a real methane fraction (Titan has ~5%; Earth has about two parts per million) and an atmosphere that is not oxidising. Titan, Pluto and Triton are unaffected — Pluto and Triton get theirs from surface ices, which is a separate path.
+* The reference gallery gains a "Test render" row: the same Earth-like world drawn with individual layers suppressed (cloud deck, atmosphere glow, aurora) beside a known-good control, so a wrong-looking world can be attributed to one layer instead of guessed at.
+
 ## v2.1.3-rc.2 - 28th Jul 2026
 
 * Fixed a regression in rc.1: the binary pair-distance control could run away. Its slider maximum was derived from its own current value, so dragging to the right-hand end re-scaled the range around the new value and the next drag multiplied it again — two drags took Alpha Centauri's inner pair from 874 AU to 3e49 AU, and the physics then propagated that through the whole system. The range is now fixed (0.01 AU to 1,000,000 AU) and every distance this panel writes is clamped, so neither a drag nor a typed value can put a body somewhere unphysical.
