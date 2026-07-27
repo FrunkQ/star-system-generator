@@ -944,7 +944,13 @@
     'Negotiating with the second law of thermodynamics…', 'Convincing the moons to stay tidally locked…',
     'Balancing the barycentres…', 'Letting the comets finish their laps…', 'Warming up the habitable zones…',
     'Counting the rings (twice)…', 'Apologising to Pluto…', 'Checking nobody fell into a black hole…',
-    'Carrying the one — it is a big one…', 'Spinning up the dynamos…', 'Measuring twice, cutting the snow line once…'
+    'Carrying the one — it is a big one…', 'Spinning up the dynamos…', 'Measuring twice, cutting the snow line once…',
+    // v2.1.3
+    'Teaching the binaries to share a centre…', 'Filing the asteroids under "lumpy"…',
+    'Asking the tidally locked moons to face the front…', 'Dusting the accretion discs…',
+    'Reticulating the snow lines…', 'Checking the auroras are the right colour…',
+    'Sorting the ices by how well they stay put…', 'Weighing the worlds against their own composition…',
+    'Waiting for the cryovolcanoes to stop showing off…', 'Politely ignoring the second sun…'
   ];
   async function recalcAllSystems(starmap: StarmapType): Promise<StarmapType> {
     const systems = starmap.systems ?? [];

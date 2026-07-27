@@ -2,6 +2,58 @@
 
 All notable changes are listed here:
 
+## v2.1.3-rc.1 - 27th Jul 2026
+
+**A worlds-and-skies update.** Since v2.1.2 the physics that derives a world now also drives how it LOOKS — one appearance model feeding both the orrery and the 3D view — with four new geological foundations sitting behind it, real gravitational lensing on black holes, and editors for the liquid and atmosphere data the whole model runs on. (The unified player-view system is still in testing and is not part of this release; the Field Guide and the Projector remain the players' views.)
+
+Worlds you can recognise:
+
+* **One appearance model drives every view.** Which features a world shows — craters, volcanism, auroras, polar ice, atmosphere glow, self-luminous heat — and how strongly, is derived once and rendered the same way by the 2D disc and the 3D globe, so a world looks like itself wherever you meet it.
+* **Volcanic worlds glow and icy ones vent.** A tidally heated world like Io gets flickering emissive vents that turn with the surface (a full lava world glows white-hot all over); an Enceladus or Triton vents icy plumes from its southern polar region, thrown further out on low-gravity moons.
+* **Auroras come in more than one colour, stacked by altitude.** A sky with several auroral gases glows in several colours at once — atomic oxygen green, nitrogen purple, CO2 violet, methane blue — layered the way the real thing is, with the purple fringe below the green band and a tenuous deep-red crown high above an Earth-like sky. Each layer fades on its own slow phase, so a mixed sky never merges to white.
+* **Clouds got a physics pass.** Weather organises into east-west latitude bands that follow the planet's axial tilt, with a clear equatorial lane and two independently drifting layers for parallax. Only water condenses white: a hydrocarbon or sulphur haze takes the atmosphere's own colour, so Titan reads orange and Venus yellow. Clouds now draw on the 2D icons too, and an Earth-like reads as scattered cloud over open ocean rather than heavy overcast.
+* **Atmospheres hug the surface.** The limb-glow is a tight halo in the world's own air colour instead of a generic blue bubble, so a hazy Venus no longer wears a clear blue rim.
+* **Craters land where they belong.** On a tidally locked world the parent body OCCULTS incoming impactors, so the shielded near side takes fewer hits and the FAR side is the battered one — it was the wrong way round. Crater density on the sphere is roughly doubled (a globe spreads impacts over far more visible surface than a flat disc), and the smearing at the poles is gone.
+* **Polar vortices.** A gas giant's standing polar jet can lock into a geometric polygon — Saturn's hexagon, and Jupiter's five-to-eight-sided poles — spawned at generation with its own side count, rendered in 2D and 3D and documented on the physics reference.
+* **Rotation makes sense.** Tidally locked moons keep one face to their parent, planets spin the way they orbit, and a retrograde rotation period actually turns the world backwards instead of being ignored.
+* **Molten liquids glow.** Magma, molten iron and molten glass carry a temperature-scaled thermal glow that ramps from dull red through orange to gold — and it fires on internal or tidal heat alone, so a molten ocean lights up even under a dim star.
+
+Black holes:
+
+* **They gravitationally lens.** A screen-space shader bends the background starlight into an Einstein ring and wraps a feeding hole's accretion disc up and over a genuinely black event-horizon shadow, with the disc's near side crossing in front, un-bent, and the far side doming asymmetrically over one side as it does in the reference imagery.
+* **The disc is temperature-graded** — white-hot at the inner edge through yellow and orange to deep red at the rim — while a quiescent hole is pure black inside a slim bright ring of refracted starlight.
+* **They are visible on the starmap at last.** A black hole's colour is #000000, so its glyph was drawn black-on-black. Holes are now drawn procedurally in the same style as the generated stars, on both the 2D and 3D maps, with a feeding hole clearly distinguished from a quiescent one.
+
+The physics underneath:
+
+* **A graded activity ladder.** The dry radiogenic path adds two regimes derived from the same interior-vigour number: plutonic (enough heat to melt at depth but never erupt) and episodic (a vigorous dry lid that traps heat until it overturns in catastrophic global resurfacing — Venus).
+* **Volatile-ice retention.** A body now derives which ices it can actually hold on its surface: the species must be available, cold enough to stay solid at that pressure, and heavy enough that the vapour cannot escape to space. It reproduces the solar system — Io keeps its SO2 frost, the icy Galileans keep CO2 and water, Pluto and Triton keep nitrogen and methane too.
+* **Surface age.** Every solid world derives how long its visible surface has been exposed: an active world from its regime's resurfacing pace (Io repaves in ~2 Myr, Venus ~0.7 Gyr), a dead one by inverting the radiogenic decay to recover when it froze (Mars ~3.8 Gyr, the Moon ~4.6 Gyr).
+* **Irradiation dose.** Stellar UV plus a cosmic-ray floor, cut by any magnetosphere and multiplied by how long the surface has been exposed. A neat result falls out: ancient Pluto reads a real dose and reddens, while Triton — same ices, but a young cryovolcanically resurfaced crust — reads almost none and stays fresh, exactly as the two look in reality.
+* **Fixed: tiny moons and gas giants read as cryovolcanic.** Phobos, Deimos and Saturn were being given subsurface oceans. A body must now be large enough to be round (~200 km) before it can hold one, an icy shell or cryovolcanism — a small tidally stressed lump is shredded, not warmed to erupt.
+
+Data you can edit:
+
+* **A new Liquid editor** (Settings, Planets, Liquids) mirrors the atmosphere editor: every field of every solvent — melting and boiling points, triple and critical points, colour, density, conductivity, biosolvent quality — plus custom liquids and a revert for the built-ins, saved as a per-starmap override that reaches the simulation.
+* **The atmosphere editor caught up to its data.** The Gases tab now exposes melting point, specific heat, radiative cooling, gas colour and a full aurora emission-band editor; previously only four of the gas fields could be edited at all.
+* **Generation places any viable solvent as an ocean.** Ammonia, nitrogen, ethane, sulphuric acid, sulphur, magma — wherever the orbit's temperature and pressure leave it liquid — instead of defaulting every unpinned hydrosphere to water. Designed water worlds are unchanged.
+* Liquid names carry their chemical formula and British spelling, and the built-in defaults now come from the same file the rule pack serves at runtime, so the two can never drift apart.
+
+Reference galleries:
+
+* **A new 3D gallery** at /discgallery3d lays out every example body in one scene, so all the 3D rendering is reviewable at a glance: textured surfaces, atmosphere glows, rings, auroras, self-luminous brown dwarfs, volcanic vents, cryovolcanic plumes, star types across the temperature range, and black holes at several accretion levels. The 2D gallery gains a star-types row, and the two cross-link.
+
+Navigating and editing:
+
+* **Clicking an object opens it up.** The first click frames it with everything orbiting it — or the object itself when it has none — then closes in, then steps out to the wider context. Leading with the parent view spent a click on the shot you least often want. Clicking the central star still frames a close-up first, so it never shrinks to an unclickable speck.
+* **You can get from one star of a binary to the other.** A pair's members sit on opposite sides of their barycentre at different distances, and the context view only reached as far as that empty centre point — so from the outer star the partner was off-screen and unclickable, and you could step from Alpha Centauri A to B and then never back. A pair now always frames as a pair, identically from either half, in the orrery and the 3D view alike.
+* **A binary pair's orbit is explained in the editor.** Editing either star shows the same two controls — how far the pair sits from its host, and how far apart the two bodies are — with each star's own distance from the centre spelled out beneath, so the editor and the data panel no longer appear to disagree. The pair-distance control is now logarithmic like every other distance slider; the old one could not widen a pair at all. Barycentres are named by what they hold, as "Pluto-Charon Barycentre (Pluto + Charon)".
+* **Sizing a world changes its mass.** With nothing pinned the composition is the anchor, so dragging the radius moves the mass along that mix's mass-radius curve, and mass still moves the radius. Previously the mass sat still however far you dragged. Porosity and gas-giant inflation stay directly editable through the density slider, which is what that control now does.
+* **Clicks land where you aim them under the CRT filter.** Pointer hit-testing now inverts the ancestor CSS warp, fixing the "click on the left, select something on the right" drift — it was off by up to 300 pixels.
+* **A system's name is its own value.** A system defaults to its primary star's name but can be renamed independently, and that name now survives a save and reload instead of being overwritten by the star's.
+* **Deleting a system asks first**, naming it — it was wiping the system, its routes and its notes without warning.
+* **Fixed: the Reset View button showed garbled text** instead of its arrow. The System View source had been saved through the wrong text encoding, mangling every non-ASCII character in the file — including the dashes in the delete-system warning and the autopilot "could not start" messages.
+
 ## v2.1.244-beta - 27th Jul 2026
 
 * Fixed the Reset View button showing garbled text instead of its arrow. The System View source had been saved through the wrong text encoding at some point, mangling every non-ASCII character in the file — the arrow, and also the dashes in messages like the delete-system warning and the autopilot "could not start" reasons.
