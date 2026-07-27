@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.3-rc.2 - 28th Jul 2026
+
+* Fixed a regression in rc.1: the binary pair-distance control could run away. Its slider maximum was derived from its own current value, so dragging to the right-hand end re-scaled the range around the new value and the next drag multiplied it again — two drags took Alpha Centauri's inner pair from 874 AU to 3e49 AU, and the physics then propagated that through the whole system. The range is now fixed (0.01 AU to 1,000,000 AU) and every distance this panel writes is clamped, so neither a drag nor a typed value can put a body somewhere unphysical.
+
 ## v2.1.3-rc.1 - 27th Jul 2026
 
 **A worlds-and-skies update.** Since v2.1.2 the physics that derives a world now also drives how it LOOKS — one appearance model feeding both the orrery and the 3D view — with four new geological foundations sitting behind it, real gravitational lensing on black holes, and editors for the liquid and atmosphere data the whole model runs on. (The unified player-view system is still in testing and is not part of this release; the Field Guide and the Projector remain the players' views.)

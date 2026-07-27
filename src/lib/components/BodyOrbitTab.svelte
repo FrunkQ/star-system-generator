@@ -14,6 +14,11 @@
 
   const dispatch = createEventDispatcher();
 
+  // Shared guard for every distance this panel writes — an unphysical semi-major axis silently wrecks
+  // the whole system's geometry, and NaN propagates into the orrery as a frozen or invisible orbit.
+  const clampAU = (v: number, lo: number, hi: number) =>
+      !Number.isFinite(v) ? lo : Math.min(hi, Math.max(lo, v));
+
   let a_AU = 0;
   // What the distance field DISPLAYS: for a binary member this is the pair SEPARATION
   // (a_self + a_partner, matching the "Separation from X" label); otherwise it is a_AU itself.
@@ -161,9 +166,13 @@
 function updateOrbit() {
     if (!body.orbit) return;
     // A negative/zero/NaN semi-major axis is unphysical and throws in ctx.ellipse
-    // (it froze the orrery in a user file). Clamp to a tiny positive floor.
+    // (it froze the orrery in a user file). Clamp to a tiny positive floor — and to a generous
+    // absolute ceiling, so a runaway or a fat-fingered exponent can't put a body 1e49 AU out and
+    // wreck the whole system's geometry. Typed values stay free within those bounds.
     if (!Number.isFinite(dist_AU) || dist_AU <= 0) {
         dist_AU = Math.max(minA, 1e-6);
+    } else if (dist_AU > PAIR_MAX_AU) {
+        dist_AU = PAIR_MAX_AU;
     }
     applyDistance();
     const boundedE = Math.max(0, Math.min(e, safeMaxE));
@@ -244,15 +253,22 @@ function updateOrbit() {
   $: if (isBinaryMember && (parentBody as any).orbit && !editing) {
       pairA_AU = parseFloat((((parentBody as any).orbit.elements.a_AU ?? 0)).toFixed(4));
   }
-  // Log scale (the same OrbitalSlider the separation uses), so a 0.05 AU pair and an 874 AU one are both
-  // draggable. The old linear range topped out at 1.5x the current value — you could never widen a pair.
-  $: pairMinA = 0.01;
-  $: pairMaxA = Math.max(100, (pairA_AU || 0) * 10);
+  // FIXED log range — deliberately NOT derived from the current value. A slider whose maximum is a
+  // multiple of its own value is a runaway: drag to the end, the range re-scales around the new value,
+  // and the next drag multiplies again. Two drags took Alpha Centauri's inner pair from 874 AU to
+  // 3e49 AU and destroyed the system's geometry. 1e6 AU is ~16 light years — past any bound pair — and
+  // a log slider spans the eight decades comfortably.
+  const PAIR_MIN_AU = 0.01;
+  const PAIR_MAX_AU = 1e6;
 
   function handlePairDistance() {
       const bary: any = parentBody;
       if (!isBinaryMember || isRootPair || !bary?.orbit) return;
-      bary.orbit.elements.a_AU = Math.max(0.001, Number(pairA_AU) || 0);
+      // Clamp on WRITE too, so a typed value can't do what the slider no longer can.
+      const v = Number(pairA_AU);
+      const safe = Number.isFinite(v) ? clampAU(v, PAIR_MIN_AU, PAIR_MAX_AU) : PAIR_MIN_AU;
+      if (safe !== v) pairA_AU = safe;
+      bary.orbit.elements.a_AU = safe;
       bary.orbit.lastEditedT0 = Date.now();
       dispatch('update');
   }
@@ -287,11 +303,11 @@ function updateOrbit() {
         <div class="form-group pair-group" class:rooted={isRootPair}>
             <div class="label-row">
                 <label title="Moves the whole binary pair through the system. The control below only sets how far apart the two bodies sit.">Distance from {pairHostName} (AU)</label>
-                <input type="number" step="any" min="0.001" bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
+                <input type="number" step="any" min={PAIR_MIN_AU} max={PAIR_MAX_AU} bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
             </div>
             {#if !isRootPair}
             <div class="full-width-slider">
-                <OrbitalSlider value={pairA_AU} min={pairMinA} max={pairMaxA} on:input={handlePairSlider} />
+                <OrbitalSlider value={pairA_AU} min={PAIR_MIN_AU} max={PAIR_MAX_AU} on:input={handlePairSlider} />
             </div>
             {/if}
             <div class="info-row" style="font-size: 0.78em; color: var(--text-faint);">
