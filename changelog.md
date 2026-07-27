@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.241-beta - 27th Jul 2026
+
+* Clicking an object now OPENS IT UP first: the first click frames it with everything orbiting it (or goes straight to the object itself when it has none), then closes in, and only then steps out to the wider parent context before cycling. Leading with the parent view spent a click on the shot you least often want. The central star is unchanged (close-up first, whole system next).
+
 ## v2.1.240-beta - 24th Jul 2026
 
 * New "Typewriter" transition: the new page is typed on character-cell by character-cell behind a blinking block caret, with an irregular per-keystroke rhythm and a beat on each carriage return. Made for the Terminal style. (Confirmed at parity with Mappadux first: all ten of its transitions were already ported identically.)

@@ -7,6 +7,7 @@ import type { System } from '../types';
 import type { PanState } from './stores';
 import { AU_KM } from '../constants';
 import { scaleBoxCox } from '../physics/scaling';
+import { contextPeerIds, isBarycentre } from '../system/barycentres';
 
 type WorldPositions = Map<string, { x: number; y: number }>;
 
@@ -78,41 +79,54 @@ export const FRAME_LEVELS = {
 export type FrameLevelConfig = typeof FRAME_LEVELS;
 
 // ── THE click-ladder ruleset (one definition, every renderer) ─────────────────────────────────────
-// Selecting an object frames its first EXISTING level; each re-click steps one level deeper:
+// Selecting an object frames its first EXISTING level; each re-click steps one level round:
 //   1 object + its parent · 2 object + its satellites · 3 object fills the view
-// Levels that don't apply are skipped (no parent → no 1; no satellites → no 2), and the ladder WRAPS at
-// the deepest level. The ROOT star is the one exception (see frameLevelsFrom): it LEADS with its close-up
-// and steps out to the whole system, so the tiny-target trap of framing everything first never happens. The maths below is UNIT-AGNOSTIC: a caller measures distances in whatever space it
+// The FIRST click lands on the object and its children (2), or straight on the object itself (3) when it
+// has none — the wider parent context (1) comes last, before the ladder wraps. Levels that don't apply
+// are skipped (no parent → no 1; no satellites → no 2). The ROOT star is the one exception (see
+// frameLevelsFrom): it LEADS with its close-up and steps out to the whole system, so the tiny-target trap
+// of framing everything first never happens. The maths below is UNIT-AGNOSTIC: a caller measures distances in whatever space it
 // renders — AU for the 2D orrery, scene units for the holo — and gets a half-extent back in that space.
 // Pair it with getVisibleNodeIds (system/visibleNodes), which is the one rule for BOTH what gets a name
 // and what can be clicked.
 
 /**
- * Which levels exist, in click order, from the predicates that decide it. Normally zoom-IN order
- * (1 → 2 → 3). Exception: the ROOT of the tree — a real body (has radius) with children but no parent,
- * i.e. the central star — leads with its CLOSE-UP (3) and steps OUT to the whole system (2) on the next
- * click. Framing the whole system first shrinks the star to a pinprick that's near-impossible to click a
- * second time; the close-up gives a big, easy target, and the next click opens out to all its children.
- * A radius-less root (a barycentre point) has nothing to zoom into, so it keeps whole-system-first.
+ * Which levels exist, in CLICK order, from the predicates that decide it.
+ *
+ * Selecting an object opens it up: the first click frames it WITH ITS CHILDREN (2) — the view you almost
+ * always want, since it shows what the thing owns — or goes straight to the object itself (3) when it has
+ * none. A further click closes in on the object (3), and only then does the ladder step out to the parent
+ * context (1) before wrapping. Leading with the parent context made the common case a wasted click.
+ *
+ * Exception: the ROOT of the tree — a real body (has radius) with children but no parent, i.e. the central
+ * star — leads with its CLOSE-UP (3) and steps OUT to the whole system (2) on the next click. Framing the
+ * whole system first shrinks the star to a pinprick that's near-impossible to click a second time; the
+ * close-up gives a big, easy target, and the next click opens out to all its children. A radius-less root
+ * (a barycentre point) has nothing to zoom into, so it keeps whole-system-first.
  * `hasRadius` defaults true (the common case is a body); only radius-less roots pass false.
+ *
+ * `isPoint` marks a BARYCENTRE — a bare point between two bodies. It has no close-up worth framing (the
+ * level-3 rung landed on a few thousandths of an AU of empty space), so it never gets one.
  */
-export function frameLevelsFrom(has: { hasParent: boolean; hasSatellites: boolean; hasRadius?: boolean }): number[] {
+export function frameLevelsFrom(has: {
+	hasParent: boolean; hasSatellites: boolean; hasRadius?: boolean; isPoint?: boolean;
+}): number[] {
 	const isRootBody = !has.hasParent && has.hasSatellites && (has.hasRadius ?? true);
 	if (isRootBody) return [3, 2]; // close-up first, whole system on the next click (then it cycles)
 	const levels: number[] = [];
-	if (has.hasParent) levels.push(1);
-	if (has.hasSatellites) levels.push(2);
-	levels.push(3);
-	return levels;
+	if (has.hasSatellites) levels.push(2); // 1st click: the object and everything orbiting it
+	if (!has.isPoint) levels.push(3);      // then close in on the object itself — a barycentre has none
+	if (has.hasParent) levels.push(1);     // the wider context comes last, before the wrap
+	return levels.length ? levels : [3];
 }
 /** A NEW selection starts at the object's first existing level. */
 export function firstFrameLevel(levels: number[]): number {
 	return levels[0] ?? 3;
 }
 /**
- * A re-click on the focused object steps to the next existing level — and WRAPS: at the deepest level a
- * further click cycles back out to the object's first (a star's close-up clicks back out to the full
- * system, like Reset view; a planet's close-up back out to planet + parent).
+ * A re-click on the focused object steps to the next existing level — and WRAPS: at the last rung a
+ * further click cycles back to the object's first (a star's close-up clicks back out to the full system,
+ * like Reset view; a planet's parent context back to planet + moons).
  */
 export function nextFrameLevel(levels: number[], current: number): number {
 	const idx = levels.indexOf(current);
@@ -120,8 +134,9 @@ export function nextFrameLevel(levels: number[], current: number): number {
 	return levels[(idx + 1) % levels.length] ?? current;
 }
 /**
- * The inverse — step back OUT one level (browser Back). Returns the same level when already at the
- * object's first, so the caller knows to keep going up the view hierarchy (unfocus → starmap) instead.
+ * The inverse — step back one rung in the click order (browser Back), without wrapping. Returns the same
+ * level when already at the object's first, so the caller knows to keep going up the view hierarchy
+ * (unfocus → starmap) instead.
  */
 export function prevFrameLevel(levels: number[], current: number): number {
 	const idx = levels.indexOf(current);
@@ -178,9 +193,12 @@ export function availableFrameLevels(args: {
 	const positions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
 	const parentId = framingParentId(node);
 	return frameLevelsFrom({
-		hasParent: !!(parentId && positions.get(parentId)),
+		// A barycentre parent counts as context even where the renderer places no object for it — the
+		// frame is measured to the pair's MEMBERS (see contextPeerIds).
+		hasParent: contextPeerIds(system, nodeId, parentId).some((id) => !!positions.get(id)),
 		hasSatellites: system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id)),
-		hasRadius: node.kind === 'body' && !!node.radiusKm // a radius-less root (barycentre) keeps whole-system-first
+		hasRadius: node.kind === 'body' && !!node.radiusKm, // a radius-less root (barycentre) keeps whole-system-first
+		isPoint: isBarycentre(node)
 	});
 }
 
@@ -357,10 +375,14 @@ export function frameForLevel(args: {
 		return { pan: pos, zoom: clampZoom((minDimension / 2) / Math.max(half, 1e-9)) };
 	}
 
-	// Measure this renderer's own distances (AU), then let the shared ladder decide the extent.
+	// Measure this renderer's own distances (AU), then let the shared ladder decide the extent. The
+	// context distance reaches the FURTHEST peer, so a barycentre pair frames as a pair from either half.
 	const parentId = framingParentId(node);
-	const ppos = parentId ? positions.get(parentId) : undefined;
-	const parentDist = ppos ? Math.hypot(pos.x - ppos.x, pos.y - ppos.y) : 0;
+	let parentDist = 0;
+	for (const peerId of contextPeerIds(system, nodeId, parentId)) {
+		const ppos = positions.get(peerId);
+		if (ppos) parentDist = Math.max(parentDist, Math.hypot(pos.x - ppos.x, pos.y - ppos.y));
+	}
 	let maxSatelliteDist = 0;
 	for (const c of system.nodes) {
 		if (c.parentId !== nodeId) continue;
