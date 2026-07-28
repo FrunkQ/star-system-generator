@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.245-beta - 28th Jul 2026
+
+* Beta resumes the V2.2 line after the v2.1.3 production cut: Player Views is back on the rail alongside the Field Guide (`PLAYER_VIEWS_ENABLED` flipped back on). Production ships with it masked.
+
 ## v2.1.3-rc.3 - 28th Jul 2026
 
 * **Fixed: Earth-like worlds were washed in a sludgy tan haze that hid the ocean.** A tholin haze — the orange organic smog that makes Titan look like Titan — was being granted to any world with a nitrogen-rich atmosphere. Nitrogen has no carbon in it: tholins need METHANE photolysed in that nitrogen, and an oxygen-rich atmosphere destroys organic haze faster than it can form. Earth, at 78% nitrogen and 21% oxygen, was getting Titan's smog painted over its blue sea. The haze now requires a real methane fraction (Titan has ~5%; Earth has about two parts per million) and an atmosphere that is not oxidising. Titan, Pluto and Triton are unaffected — Pluto and Triton get theirs from surface ices, which is a separate path.
