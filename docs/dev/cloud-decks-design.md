@@ -27,9 +27,11 @@ alone); HCN ← N2 + CH4 y0.002 (Titan's polar HCN ice, a genuine ppm trace).
 
 **Editor**: reactions get their OWN TAB in the Atmospheres modal (Gas Physics | Atmosphere Mixes |
 Reactions) — a reaction is conceptually "A + B → C" and users think of the table of reactions, not
-of C's config. The tab lists each recipe as a row (constituent pickers → product picker, yield
-slider); the DATA still lives on the product gas, the tab is just the view. The per-gas cloud
-fieldset stays on the Gas Physics tab beside aurora bands.
+of C's config. The tab lists each recipe as a row: three DROPDOWNS (gas A, gas B, product) + a
+yield slider. ALL THREE must already be fully defined on the Gas Physics tab — the tab creates
+reactions, never gases ("simplify and reuse": if the product isn't in the dropdown, define it
+under Gas Physics first). The DATA still lives on the product gas; the tab is just the view. The
+per-gas cloud fieldset stays on the Gas Physics tab beside aurora bands.
 
 **Liquid** (`liquids`): existing `colorHex` is the cloud colour; new `cloudOpacity` (0..1 veil
 strength). Ice-crystal vs droplet look derives from existing `meltK` vs deck temperature.
@@ -86,6 +88,18 @@ phase 2 — `gasGiantCloudColor`'s hardcoded ramp.
   self-heal on reprocess, manual tags parse leniently (unknown species ⇒ re-emit).
 - **E10 display blind spot:** the atmosphere summary hides gases <0.5%, which hid Mars's
   0.1% deck-driving water — always show a gas currently driving a deck.
+
+## Known limitation — coverage is read from VAPOUR
+
+Deck coverage derives from the species' partial pressure, i.e. how much of it is still gaseous. That
+under-counts a deck whose substance is almost entirely CONDENSED: Venus's sulphuric acid is a few
+ppm of vapour but wraps the planet completely, and reads "broken" rather than "veil". Getting this
+right needs the total inventory (vapour + condensed), which the atmosphere model does not track.
+Banked with the phase-2 adiabat, which needs the same quantity.
+
+Related trap, learned the hard way: inflating a trace gas in the example data to force a deck also
+inflates its GREENHOUSE. Adding H2SO4 at 0.2% (100x its real ppm) to make Venus cloudy quietly put
++110 K on its surface temperature. Fix the model, not the data.
 
 ## Weather flavour tags (IN SCOPE for the v2.1.4 cut — Alex 2026-07-28)
 

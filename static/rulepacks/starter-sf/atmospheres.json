@@ -659,7 +659,7 @@
       ],
       "cloud": {
         "condensesTo": "sulfuric-acid",
-        "minFraction": 0.0002
+        "minFraction": 0.00001
       },
       "reaction": {
         "from": [

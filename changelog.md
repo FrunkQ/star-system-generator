@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.250-beta - 28th Jul 2026
+
+* **Fixed: surface temperature ranges were wildly too wide.** The extremes were built by ADDING every swing together, so "coldest" meant the pole and midwinter and midnight all at full strength at once — which over-counts badly, and isn't even self-consistent (at a winter pole there is no day/night cycle to add). Mars came out at -205 °C to +93 °C against a real -143 °C to +35 °C. The swings now combine in quadrature, the standard way to add independent spreads, and Mars lands on -144 °C to +32 °C.
+* Venus's sulphuric acid is no longer written into its atmosphere by hand — it DERIVES from the sulphur dioxide and water already there, through the shipped reaction. It had been listed at a hundred times its real concentration to make the clouds appear, which quietly added 110 °C of greenhouse warming to the planet.
+
 ## v2.1.249-beta - 28th Jul 2026
 
 * **Weather.** Worlds now derive lightning, dust storms and monsoons from their own physics, alongside the precipitation tags. Lightning wants a deep convecting cloud deck — a warm thick atmosphere, volcanic ash, or a giant's own heat leaking out from below, which is why Jupiter crackles despite cloud tops at 125 K. Dust storms want a dry wind-scoured surface with air enough to lift it and no ocean to pin it down. A monsoon wants rain that reaches the ground, an ocean to supply it, and a real axial tilt to give the year seasons. Across our own system that lands as constant lightning on Venus, rain and monsoons on Earth, seasonal dust storms on Mars, and storms on all four giants — none of it authored, all of it derived. A GM's hand-set weather always wins over the physics.

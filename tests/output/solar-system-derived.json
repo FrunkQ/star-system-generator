@@ -158,8 +158,8 @@
       "temperatureK": 425.4125932115374,
       "temperatureProfile": {
         "meanK": 425,
-        "totalMinK": 3,
-        "totalMaxK": 796,
+        "totalMinK": 133,
+        "totalMaxK": 647,
         "components": [
           {
             "source": "latitude",
@@ -190,8 +190,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 796
+        "min": 133,
+        "max": 647
       },
       "hydrosphere": {
         "layers": []
@@ -500,11 +500,8 @@
           "key": "inert"
         },
         {
-          "key": "highly-corrosive"
-        },
-        {
           "key": "structure/cloud-deck",
-          "value": "sulfuric-acid veil"
+          "value": "sulfuric-acid broken"
         },
         {
           "key": "weather/precipitation",
@@ -512,7 +509,7 @@
         },
         {
           "key": "weather/lightning",
-          "value": "constant"
+          "value": "frequent"
         },
         {
           "key": "magnetic/unshielded"
@@ -534,10 +531,6 @@
         {
           "key": "resource/volatiles",
           "source": "rule:d16"
-        },
-        {
-          "key": "science/exotic-chemistry",
-          "source": "rule:d25"
         }
       ],
       "areas": [],
@@ -547,13 +540,12 @@
           "CO2": 0.965,
           "N2": 0.035,
           "SO2": 0.00015,
-          "H2O": 0.00002,
-          "H2SO4": 0.002
+          "H2O": 0.00002
         },
         "main": "CO2",
         "pressure_bar": 92,
-        "scaleHeightKm": 5.254442514641633,
-        "molarMassKg": 0.04364596
+        "scaleHeightKm": 5.278144969899815,
+        "molarMassKg": 0.043449959999999996
       },
       "axial_tilt_deg": 177.36,
       "rotation_period_hours": -5832.5,
@@ -565,8 +557,8 @@
       "stellarRadiation": 1.9607823913016813,
       "radiationShieldingAtmo": 1,
       "radiationShieldingMag": 0,
-      "photonRadiation": 2.685247e-317,
-      "particleRadiation": 3.7549e-318,
+      "photonRadiation": 2.44337695e-316,
+      "particleRadiation": 3.417452e-317,
       "stellarRadiationMin": 1.885655645288871,
       "stellarRadiationMax": 1.9374331859013274,
       "surfaceRadiationMin": 2,
@@ -592,30 +584,30 @@
       "tidalHeatK": 0,
       "starTidallyLocked": false,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 612.6540632377721,
-      "temperatureK": 857.2980711124246,
+      "greenhouseTempK": 523.6099227125275,
+      "temperatureK": 768.25393058718,
       "temperatureProfile": {
-        "meanK": 857,
-        "totalMinK": 831,
-        "totalMaxK": 883,
+        "meanK": 768,
+        "totalMinK": 749,
+        "totalMaxK": 787,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 841,
-            "highK": 874
+            "lowK": 752,
+            "highK": 785
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 848,
-            "highK": 867
+            "lowK": 759,
+            "highK": 778
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 831,
-        "max": 883
+        "min": 749,
+        "max": 787
       },
       "hydrosphere": {
         "layers": [
@@ -685,7 +677,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#d8c9a7",
+        "hex": "#b39b7c",
         "palette": [
           {
             "hex": "#937559",
@@ -696,13 +688,13 @@
           {
             "hex": "#f0e7c3",
             "role": "cloud",
-            "weight": 0.7360000000000001,
+            "weight": 0.336,
             "label": "sulfuric-acid clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d8c9a7",
+      "apparentColorHex": "#b39b7c",
       "classification": {
         "base": "planet/silicate",
         "baseScore": 1.23,
@@ -809,10 +801,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "857 K (584 °C)",
+            "value": "768 K (495 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 857,
+              "value": 768,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -884,7 +876,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 464.8107799337944,
+        "minLeoKm": 418.41168573397215,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
         "heoUpperBoundaryKm": 1004980.1034093457,
@@ -1088,8 +1080,8 @@
       "temperatureK": 288.2952266924585,
       "temperatureProfile": {
         "meanK": 288,
-        "totalMinK": 243,
-        "totalMaxK": 334,
+        "totalMinK": 261,
+        "totalMaxK": 316,
         "components": [
           {
             "source": "latitude",
@@ -1112,8 +1104,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 243,
-        "max": 334
+        "min": 261,
+        "max": 316
       },
       "magnetism": {
         "source": "iron-core",
@@ -1579,8 +1571,8 @@
       "temperatureK": 267.19206115251916,
       "temperatureProfile": {
         "meanK": 267,
-        "totalMinK": 3,
-        "totalMaxK": 569,
+        "totalMinK": 54,
+        "totalMaxK": 480,
         "components": [
           {
             "source": "latitude",
@@ -1603,8 +1595,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 569
+        "min": 54,
+        "max": 480
       },
       "hydrosphere": {
         "layers": []
@@ -2003,8 +1995,8 @@
       "temperatureK": 217.08497973615803,
       "temperatureProfile": {
         "meanK": 217,
-        "totalMinK": 68,
-        "totalMaxK": 366,
+        "totalMinK": 129,
+        "totalMaxK": 305,
         "components": [
           {
             "source": "latitude",
@@ -2027,8 +2019,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 68,
-        "max": 366
+        "min": 129,
+        "max": 305
       },
       "hydrosphere": {
         "layers": []
@@ -2389,8 +2381,8 @@
       "temperatureK": 206.3342426978193,
       "temperatureProfile": {
         "meanK": 206,
-        "totalMinK": 102,
-        "totalMaxK": 311,
+        "totalMinK": 145,
+        "totalMaxK": 268,
         "components": [
           {
             "source": "latitude",
@@ -2420,8 +2412,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 102,
-        "max": 311
+        "min": 145,
+        "max": 268
       },
       "hydrosphere": {
         "layers": []
@@ -2787,8 +2779,8 @@
       "temperatureK": 200.01352688297754,
       "temperatureProfile": {
         "meanK": 200,
-        "totalMinK": 55,
-        "totalMaxK": 345,
+        "totalMinK": 109,
+        "totalMaxK": 291,
         "components": [
           {
             "source": "latitude",
@@ -2811,8 +2803,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 55,
-        "max": 345
+        "min": 109,
+        "max": 291
       },
       "hydrosphere": {
         "layers": []
@@ -3163,8 +3155,8 @@
       "temperatureK": 161.89530157466643,
       "temperatureProfile": {
         "meanK": 162,
-        "totalMinK": 50,
-        "totalMaxK": 273,
+        "totalMinK": 96,
+        "totalMaxK": 228,
         "components": [
           {
             "source": "latitude",
@@ -3187,8 +3179,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 50,
-        "max": 273
+        "min": 96,
+        "max": 228
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -3344,8 +3336,8 @@
       "temperatureK": 124.75326848438328,
       "temperatureProfile": {
         "meanK": 125,
-        "totalMinK": 97,
-        "totalMaxK": 152,
+        "totalMinK": 108,
+        "totalMaxK": 142,
         "components": [
           {
             "source": "latitude",
@@ -3368,8 +3360,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 97,
-        "max": 152
+        "min": 108,
+        "max": 142
       },
       "hydrosphere": {
         "layers": [
@@ -3658,8 +3650,8 @@
       "temperatureK": 116.56004482844226,
       "temperatureProfile": {
         "meanK": 117,
-        "totalMinK": 41,
-        "totalMaxK": 192,
+        "totalMinK": 71,
+        "totalMaxK": 162,
         "components": [
           {
             "source": "latitude",
@@ -3682,8 +3674,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 41,
-        "max": 192
+        "min": 71,
+        "max": 162
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -3820,7 +3812,7 @@
       "temperatureK": 119.17948275766433,
       "temperatureProfile": {
         "meanK": 119,
-        "totalMinK": 18,
+        "totalMinK": 51,
         "totalMaxK": 1240,
         "components": [
           {
@@ -3851,7 +3843,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 18,
+        "min": 51,
         "max": 1240
       },
       "hydrosphere": {
@@ -4305,7 +4297,7 @@
       "temperatureK": 99.46841494675006,
       "temperatureProfile": {
         "meanK": 99,
-        "totalMinK": 3,
+        "totalMinK": 23,
         "totalMaxK": 674,
         "components": [
           {
@@ -4336,7 +4328,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
+        "min": 23,
         "max": 674
       },
       "magnetism": {
@@ -4767,8 +4759,8 @@
       "temperatureK": 95.85237968671684,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 3,
-        "totalMaxK": 201,
+        "totalMinK": 20,
+        "totalMaxK": 172,
         "components": [
           {
             "source": "latitude",
@@ -4791,8 +4783,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 201
+        "min": 20,
+        "max": 172
       },
       "magnetism": {
         "source": "none",
@@ -5171,8 +5163,8 @@
       "temperatureK": 95.80244283934795,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 3,
-        "totalMaxK": 201,
+        "totalMinK": 20,
+        "totalMaxK": 172,
         "components": [
           {
             "source": "latitude",
@@ -5195,8 +5187,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 201
+        "min": 20,
+        "max": 172
       },
       "magnetism": {
         "source": "none",
@@ -5623,8 +5615,8 @@
       "temperatureK": 87.46759578601473,
       "temperatureProfile": {
         "meanK": 87,
-        "totalMinK": 67,
-        "totalMaxK": 108,
+        "totalMinK": 75,
+        "totalMaxK": 100,
         "components": [
           {
             "source": "latitude",
@@ -5647,8 +5639,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 67,
-        "max": 108
+        "min": 75,
+        "max": 100
       },
       "hydrosphere": {
         "layers": [
@@ -5955,8 +5947,8 @@
       "temperatureK": 85.9661103740463,
       "temperatureProfile": {
         "meanK": 86,
-        "totalMinK": 30,
-        "totalMaxK": 142,
+        "totalMinK": 52,
+        "totalMaxK": 120,
         "components": [
           {
             "source": "latitude",
@@ -5979,8 +5971,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 30,
-        "max": 142
+        "min": 52,
+        "max": 120
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -6158,8 +6150,8 @@
       "temperatureK": 96.23111764709618,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 66,
-        "totalMaxK": 126,
+        "totalMinK": 77,
+        "totalMaxK": 115,
         "components": [
           {
             "source": "latitude",
@@ -6182,8 +6174,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 66,
-        "max": 126
+        "min": 77,
+        "max": 115
       },
       "magnetism": {
         "source": "none",
@@ -6456,9 +6448,6 @@
           "value": "water"
         },
         {
-          "key": "activity/sublimating"
-        },
-        {
           "key": "activity/cryovolcanism"
         },
         {
@@ -6576,8 +6565,8 @@
       "temperatureK": 74.54399032061438,
       "temperatureProfile": {
         "meanK": 75,
-        "totalMinK": 20,
-        "totalMaxK": 129,
+        "totalMinK": 40,
+        "totalMaxK": 109,
         "components": [
           {
             "source": "latitude",
@@ -6600,8 +6589,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 20,
-        "max": 129
+        "min": 40,
+        "max": 109
       },
       "magnetism": {
         "source": "salty-ocean-induced",
@@ -6927,9 +6916,6 @@
           "value": "water"
         },
         {
-          "key": "activity/sublimating"
-        },
-        {
           "key": "magnetic/unshielded"
         },
         {
@@ -6997,8 +6983,8 @@
       "temperatureK": 71.73387579592591,
       "temperatureProfile": {
         "meanK": 72,
-        "totalMinK": 6,
-        "totalMaxK": 137,
+        "totalMinK": 27,
+        "totalMaxK": 116,
         "components": [
           {
             "source": "latitude",
@@ -7021,8 +7007,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 6,
-        "max": 137
+        "min": 27,
+        "max": 116
       },
       "hydrosphere": {
         "layers": []
@@ -7425,8 +7411,8 @@
       "temperatureK": 79.75917635626027,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 3,
-        "totalMaxK": 167,
+        "totalMinK": 17,
+        "totalMaxK": 143,
         "components": [
           {
             "source": "latitude",
@@ -7449,8 +7435,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 167
+        "min": 17,
+        "max": 143
       },
       "hydrosphere": {
         "layers": []
@@ -7833,7 +7819,7 @@
       "temperatureK": 79.55685729853637,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 31,
+        "totalMinK": 51,
         "totalMaxK": 320,
         "components": [
           {
@@ -7864,7 +7850,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 31,
+        "min": 51,
         "max": 320
       },
       "hydrosphere": {
@@ -8257,8 +8243,8 @@
       "temperatureK": 76.84869268124385,
       "temperatureProfile": {
         "meanK": 77,
-        "totalMinK": 3,
-        "totalMaxK": 161,
+        "totalMinK": 16,
+        "totalMaxK": 138,
         "components": [
           {
             "source": "latitude",
@@ -8281,8 +8267,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 161
+        "min": 16,
+        "max": 138
       },
       "hydrosphere": {
         "layers": []
@@ -8638,8 +8624,8 @@
       "temperatureK": 74.14197330317803,
       "temperatureProfile": {
         "meanK": 74,
-        "totalMinK": 3,
-        "totalMaxK": 157,
+        "totalMinK": 15,
+        "totalMaxK": 133,
         "components": [
           {
             "source": "latitude",
@@ -8662,8 +8648,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 157
+        "min": 15,
+        "max": 133
       },
       "hydrosphere": {
         "layers": []
@@ -9055,8 +9041,8 @@
       "temperatureK": 62.80309369058618,
       "temperatureProfile": {
         "meanK": 63,
-        "totalMinK": 48,
-        "totalMaxK": 77,
+        "totalMinK": 54,
+        "totalMaxK": 72,
         "components": [
           {
             "source": "latitude",
@@ -9079,8 +9065,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 48,
-        "max": 77
+        "min": 54,
+        "max": 72
       },
       "hydrosphere": {
         "layers": [
@@ -9358,8 +9344,8 @@
       "temperatureK": 60.66002987010062,
       "temperatureProfile": {
         "meanK": 61,
-        "totalMinK": 21,
-        "totalMaxK": 100,
+        "totalMinK": 37,
+        "totalMaxK": 85,
         "components": [
           {
             "source": "latitude",
@@ -9382,8 +9368,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 21,
-        "max": 100
+        "min": 37,
+        "max": 85
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -9488,8 +9474,8 @@
       "temperatureK": 57.317413140429025,
       "temperatureProfile": {
         "meanK": 57,
-        "totalMinK": 3,
-        "totalMaxK": 120,
+        "totalMinK": 12,
+        "totalMaxK": 103,
         "components": [
           {
             "source": "latitude",
@@ -9512,8 +9498,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 120
+        "min": 12,
+        "max": 103
       },
       "hydrosphere": {
         "layers": []
@@ -9872,8 +9858,8 @@
       "temperatureK": 57.141721023777,
       "temperatureProfile": {
         "meanK": 57,
-        "totalMinK": 3,
-        "totalMaxK": 120,
+        "totalMinK": 12,
+        "totalMaxK": 102,
         "components": [
           {
             "source": "latitude",
@@ -9896,8 +9882,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 120
+        "min": 12,
+        "max": 102
       },
       "hydrosphere": {
         "layers": []
@@ -10260,8 +10246,8 @@
       "temperatureK": 56.96979976867991,
       "temperatureProfile": {
         "meanK": 57,
-        "totalMinK": 3,
-        "totalMaxK": 119,
+        "totalMinK": 12,
+        "totalMaxK": 102,
         "components": [
           {
             "source": "latitude",
@@ -10284,8 +10270,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 119
+        "min": 12,
+        "max": 102
       },
       "hydrosphere": {
         "layers": []
@@ -10680,8 +10666,8 @@
       "temperatureK": 50.487094226610395,
       "temperatureProfile": {
         "meanK": 50,
-        "totalMinK": 39,
-        "totalMaxK": 62,
+        "totalMinK": 43,
+        "totalMaxK": 58,
         "components": [
           {
             "source": "latitude",
@@ -10704,8 +10690,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 39,
-        "max": 62
+        "min": 43,
+        "max": 58
       },
       "hydrosphere": {
         "layers": [
@@ -10998,8 +10984,8 @@
       "temperatureK": 48.45052591890719,
       "temperatureProfile": {
         "meanK": 48,
-        "totalMinK": 17,
-        "totalMaxK": 80,
+        "totalMinK": 29,
+        "totalMaxK": 67,
         "components": [
           {
             "source": "latitude",
@@ -11022,8 +11008,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 17,
-        "max": 80
+        "min": 29,
+        "max": 67
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -11184,8 +11170,8 @@
       "temperatureK": 39.86496792560042,
       "temperatureProfile": {
         "meanK": 40,
-        "totalMinK": 3,
-        "totalMaxK": 84,
+        "totalMinK": 8,
+        "totalMaxK": 71,
         "components": [
           {
             "source": "latitude",
@@ -11208,8 +11194,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 84
+        "min": 8,
+        "max": 71
       },
       "magnetism": {
         "source": "none",
@@ -11545,8 +11531,8 @@
       "temperatureK": 42.0886574693289,
       "temperatureProfile": {
         "meanK": 42,
-        "totalMinK": 12,
-        "totalMaxK": 72,
+        "totalMinK": 25,
+        "totalMaxK": 60,
         "components": [
           {
             "source": "latitude",
@@ -11569,8 +11555,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 12,
-        "max": 72
+        "min": 25,
+        "max": 60
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -11730,8 +11716,8 @@
       "temperatureK": 40.89980323292139,
       "temperatureProfile": {
         "meanK": 41,
-        "totalMinK": 3,
-        "totalMaxK": 92,
+        "totalMinK": 7,
+        "totalMaxK": 75,
         "components": [
           {
             "source": "latitude",
@@ -11754,8 +11740,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 92
+        "min": 7,
+        "max": 75
       },
       "hydrosphere": {
         "layers": []
@@ -12145,8 +12131,8 @@
       "temperatureK": 40.439825009162014,
       "temperatureProfile": {
         "meanK": 40,
-        "totalMinK": 3,
-        "totalMaxK": 91,
+        "totalMinK": 7,
+        "totalMaxK": 74,
         "components": [
           {
             "source": "latitude",
@@ -12169,8 +12155,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 91
+        "min": 7,
+        "max": 74
       },
       "hydrosphere": {
         "layers": []
