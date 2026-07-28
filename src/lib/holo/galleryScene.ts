@@ -328,10 +328,14 @@ export function createGalleryScene(
 		// flare star (an M dwarf) visibly throbs while a calm one barely moves — like the discs animate.
 		for (const s of starVisuals) {
 			const t = clock.t;
-			const flick = 0.5 + 0.5 * (0.6 * Math.sin(t * (2 + s.activity * 5) + s.seed * 6.283) + 0.4 * Math.sin(t * (5 + s.activity * 9) + s.seed * 12.57));
+			// A corona BREATHES, it does not wobble. Halved the rates and the amplitudes: the old pair of
+			// fast sines made even a calm star jitter, which read as a rendering fault rather than as
+			// stellar activity. Discrete flares carry the drama now (buildStellarFlares).
+			const flick = 0.5 + 0.5 * (0.7 * Math.sin(t * (0.9 + s.activity * 1.8) + s.seed * 6.283)
+				+ 0.3 * Math.sin(t * (2.1 + s.activity * 3) + s.seed * 12.57));
 			const a = s.activity;
-			s.corona.scale.setScalar(s.baseScale * (1 + a * 0.45 * flick));
-			(s.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.9 * (1 - a * 0.35 + a * 0.6 * flick));
+			s.corona.scale.setScalar(s.baseScale * (1 + a * 0.18 * flick));
+			(s.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.9 * (1 - a * 0.14 + a * 0.24 * flick));
 		}
 		updateMagma(magmaVisuals, clock.t);
 		updatePlumes(plumeVisuals, clock.t);

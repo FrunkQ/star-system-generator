@@ -204,8 +204,10 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 		const spanX = (thick ? 70 : 48) + rnd() * (thick ? 70 : 80); // wide  E-W
 		const spanY = (thick ? 16 : 7) + rnd() * (thick ? 14 : 8);   // narrow N-S
 		const puffs = thick ? 7 : 4 + Math.floor(rnd() * 5);
-		// Thin decks also fade with coverage — wisps are faint as well as sparse.
-		const core = thick ? 0.18 + rnd() * 0.2 : (0.2 + coverage * 0.55) * (0.65 + rnd() * 0.5);
+		// Thin decks fade with coverage — wisps are faint as well as sparse — but the curve must not
+		// drag a genuinely cloudy world down with them. Earth (0.67) sits near the top of this range
+		// and should read as bright white cloud over its ocean; Mars (0.08) as barely-there wisps.
+		const core = thick ? 0.18 + rnd() * 0.2 : (0.26 + coverage * 0.62) * (0.7 + rnd() * 0.45);
 		for (let j = 0; j < puffs; j++) {
 			const px = cx + (rnd() - 0.5) * spanX, py = cy + (rnd() - 0.5) * spanY;
 			const radY = (thick ? 9 : 5) + rnd() * (thick ? 16 : 11);
