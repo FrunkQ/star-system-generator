@@ -7,8 +7,9 @@
 // tags plus the liquid's look-data — never this module, never the raw atmosphere. Which gases can
 // condense, and what the condensate looks like, is rule-pack DATA: a gas's `cloud` block says it
 // condenses and into what; the liquid it condenses to carries colour, opacity and melt point.
-import type { CelestialBody, RulePack, Tag, GasCloud } from '$lib/types';
-import { liquidDef, phaseAtP } from './liquids';
+import type { CelestialBody, RulePack, Tag, GasCloud, LiquidDef } from '$lib/types';
+import { liquidDef, phaseAtP, saturationPressureBar } from './liquids';
+import { atmosphereProfile, MIN_ATM_BAR, type AtmosphereProfile } from './atmosphereProfile';
 import { makeupFractions } from './makeup';
 
 // ── The published vocabulary ─────────────────────────────────────────────────────────────────────
@@ -36,33 +37,69 @@ export interface CloudDeck {
   coverage: number;     // the emitter's exact 0..1 (internal — the tag carries only the bucket)
   condenseK: number;    // condensation temperature — SORT KEY for the stack (higher condenses deeper)
   precip: PrecipKind;   // what this deck drops at the surface (rain / snow / virga)
+  baseBar?: number;     // pressure level of the deck BASE, where the column first saturates
+  baseK?: number;       // temperature there — droplets or ice crystals is read from this
+  opticalDepth?: number;// the deck's own optical depth, before persistence
 }
 
-// A body with no real atmosphere holds no clouds: a sputtered exosphere (Mercury, ~1e-11 bar) is
-// collisionless however condensable its composition reads. 1 µbar admits Triton/Pluto-thin air.
-const MIN_ATM_BAR = 1e-6;
 const DEFAULT_MIN_FRACTION = 0.001;
 
-// ── Deck temperature (edge E1) ───────────────────────────────────────────────────────────────────
-// Decks form ALOFT, colder than the surface — Venus's sulphuric-acid deck sits at ~50 km and
-// ~300 K over a 737 K surface. Until a real adiabatic T(P) profile exists (phase 2), ONE lapse
-// approximation lives here: the deck level is cooler than the ground by a factor that grows with
-// how much atmosphere there is to climb through. Tuned against the fixtures in cloudDecks.spec.ts
-// (Venus keeps its deck, Earth keeps water, airless stays clear); replace this function — nothing
-// else — when the adiabat lands.
-export function deckTemperatureK(surfaceK: number, pressureBar: number): number {
-  const p = Math.max(1e-6, pressureBar);
-  // 0 bar → ~0.93·T_surf (thin air: deck level barely cooler); 1 bar → ~0.72; 90 bar → ~0.45.
-  const drop = 0.28 + 0.10 * Math.log10(1 + p) * 2.2;
-  return surfaceK * Math.max(0.35, 1 - Math.min(0.65, drop * (0.25 + 0.75 * Math.min(1, Math.log10(1 + p)))));
+// ── Turning a condensate column into something you can see ───────────────────────────────────────
+// A deck's OPACITY is its optical depth, and for a cloud of droplets that is geometric: cross-section
+// per unit mass, which for a suspension of radius r and density rho comes to 3/(2 rho r). Take the
+// droplet radius as 10 µm — real cloud droplets across water, ammonia and sulphuric acid sit within a
+// factor of two or so of that, and nothing in the rule pack pretends to know better.
+const DROPLET_RADIUS_M = 1e-5;
+// Where a cloud stops looking thicker. Past tau ~5 a deck is visually solid; there is no more to see.
+const TAU_OPAQUE = 5;
+// What stays UP. The column integral below counts everything a rising parcel condenses on its way
+// through the deck — but on a world where the condensate reaches the ground, almost all of it is
+// already falling: Earth's air holds some 20 kg/m² of condensable water and its clouds carry about
+// a hundredth of that at any moment. On a world where the drops evaporate before they land there is
+// nowhere for it to go, so the deck keeps the lot — which is the physical reason Venus stays wrapped
+// on a few parts per million while Earth, holding far more water, has gaps in its sky.
+const SUSPENDED_WHEN_RAINING = 0.01;
+
+// ── Where a species condenses ────────────────────────────────────────────────────────────────────
+// A well-mixed gas keeps its mole fraction with height, so its partial pressure falls in step with
+// the total. Saturation pressure falls much faster as the profile cools — so the two curves cross,
+// and that crossing is the CLOUD BASE. Below it the species is dry; above it, everything past
+// saturation has condensed out. This is the lifting condensation level, and it is why Earth's
+// clouds start at 900 m, Venus's at 1.5 bar and Saturn's methane never starts at all.
+interface Condensation {
+  baseBar: number;
+  baseK: number;
+  columnKgM2: number;   // condensate suspended above the base
 }
 
-// Where on the melt curve a species starts condensing, approximated from its liquid's phase data:
-// use the boil point at the deck's pressure regime — phaseAtP owns that curve. For SORTING we just
-// need a comparable temperature per species; the 1-atm boil point serves (higher boil → condenses
-// at higher T → sits DEEPER in the stack).
-function condenseTempK(species: string, pack?: RulePack | null): number {
-  return liquidDef(species, pack)?.boilK ?? 273;
+function condensationOf(
+  frac: number,
+  def: LiquidDef,
+  gasMolarMass: number,
+  profile: AtmosphereProfile
+): Condensation | null {
+  const levels = profile.levels;                       // surface first
+  let baseIdx = -1;
+  for (let i = 0; i < levels.length; i++) {
+    const { pBar, tempK } = levels[i];
+    if (def.criticalK !== undefined && tempK >= def.criticalK) continue;   // no distinct condensate
+    if (frac * pBar >= saturationPressureBar(def, tempK)) { baseIdx = i; break; }
+  }
+  if (baseIdx < 0) return null;
+  const base = levels[baseIdx];
+
+  // Condensate column: integrate the SUPERSATURATION — the share of the column the parcel can no
+  // longer hold — from the base upwards. In partial-pressure terms that is (f - P_sat/P) dP, and
+  // dividing by g and scaling to the species' own molar mass turns it into kg/m².
+  let integralPa = 0;
+  for (let i = baseIdx; i < levels.length - 1; i++) {
+    const a = levels[i], b = levels[i + 1];
+    const ea = Math.max(0, frac - saturationPressureBar(def, a.tempK) / a.pBar);
+    const eb = Math.max(0, frac - saturationPressureBar(def, b.tempK) / b.pBar);
+    integralPa += ((ea + eb) / 2) * (a.pBar - b.pBar) * 1e5;
+  }
+  const massRatio = gasMolarMass / Math.max(1e-6, profile.molarMass);
+  return { baseBar: base.pBar, baseK: base.tempK, columnKgM2: (integralPa * massRatio) / profile.gravity };
 }
 
 // ── Effective composition (reactions + evaporation) ──────────────────────────────────────────────
@@ -92,8 +129,10 @@ export function effectiveComposition(
 
 // Evaporation source (edge E2): real bodies' compositions list N2/O2 — the water is in the
 // hydrosphere. A LIQUID surface solvent feeds its own vapour into the effective composition via
-// the reverse condensesTo mapping, scaled by how close the surface sits to the solvent's boil
-// point (warm sea → humid air; near-freezing sea → a trace). Titan's methane sea and its
+// the reverse condensesTo mapping. How MUCH is not a guess: air over a sea tends toward saturation,
+// so the vapour fraction is the solvent's own saturation pressure at the surface temperature over
+// the total pressure, discounted by a relative humidity that a bigger sea pushes closer to 1. Earth
+// lands on ~1% water vapour at ~75% RH, which is what Earth has. Titan's methane sea and its
 // atmospheric CH4 then DEDUPE to one deck (by species, larger coverage wins) below.
 function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas: string; frac: number } | null {
   const solvent = body.hydrosphere?.composition;
@@ -109,10 +148,11 @@ function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas
   const gasDefs = pack?.gasPhysics ?? {};
   const gas = Object.entries(gasDefs).find(([, d]) => d.cloud?.condensesTo === solvent)?.[0];
   if (!gas) return null;
-  // Humidity: how far up the melt→boil span the surface sits, damped by ocean coverage.
-  const span = Math.max(1, def.boilK - def.meltK);
-  const humidity = Math.max(0, Math.min(1, (surfT - def.meltK) / span));
-  return { gas, frac: 0.04 * humidity * Math.min(1, coverage / 0.5) };
+  // Relative humidity: a world under a global ocean sits near saturation, a small sea leaves the
+  // air dry. Bounded well short of 1 — a saturated surface is fog, not weather.
+  const humidity = 0.35 + 0.5 * Math.min(1, coverage);
+  const satFrac = saturationPressureBar(def, surfT) / pBar;
+  return { gas, frac: Math.max(0, Math.min(0.95, humidity * satFrac)) };
 }
 
 // ── Condensate colour ────────────────────────────────────────────────────────────────────────────
@@ -161,60 +201,80 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
   const pBar = body.atmosphere?.pressure_bar ?? 0;
   if (pBar < MIN_ATM_BAR) return [];
   const surfT = body.temperatureK ?? body.equilibriumTempK ?? 0;
-  const deckT = deckTemperatureK(surfT, pBar);
   const gasDefs = pack?.gasPhysics ?? {};
 
-  let comp = effectiveComposition({ ...(body.atmosphere?.composition ?? {}) }, pack);
+  const comp = effectiveComposition({ ...(body.atmosphere?.composition ?? {}) }, pack);
   const evap = evaporationFraction(body, pack);
   if (evap) comp[evap.gas] = Math.max(comp[evap.gas] ?? 0, evap.frac);
 
+  const profile = atmosphereProfile(body, comp, pack);
+  if (!profile) return [];
+  // A body with a SURFACE cannot hold more of a substance in its air than the ground-level
+  // temperature allows: the excess frosts out and stays there. So a well-mixed fraction is capped by
+  // saturation at the surface. Without this, a hundred parts per million of hydrogen cyanide — which
+  // on Titan is solid everywhere, ground included — read as an overcast sky rather than the trace
+  // frost it is. A giant has no such floor; its reservoir is the hot interior, so it is exempt.
+  const hasSurface = makeupFractions(body).gas <= 0.5;
+
   const decks = new Map<string, CloudDeck>();
   for (const [gas, fracRaw] of Object.entries(comp)) {
-    const frac = fracRaw ?? 0;
     const cloud: GasCloud | undefined = gasDefs[gas]?.cloud;
     if (!cloud) continue;                                        // not cloud-forming — data says so
-    if (frac < (cloud.minFraction ?? DEFAULT_MIN_FRACTION)) continue;
     const species = cloud.condensesTo;
     const def = liquidDef(species, pack);
-    const partialBar = frac * pBar;
-    // Supercritical ceiling (edge E4): past the critical point there is no distinct condensate.
-    if (def?.criticalK !== undefined && deckT > def.criticalK) continue;
-    // Condensation aloft: at deck temperature the species must NOT be gas (liquid droplets or ice
-    // crystals both read as cloud). phaseAtP owns the sublimation/boil curves.
-    const aloft = phaseAtP(species, deckT, Math.max(partialBar, 1e-9), pack);
-    if (aloft === 'gas') continue;
-    // Ground phase drives PRECIPITATION, not deck suppression. (Design note: the original E3 rule
-    // killed a deck whose species was condensable at the surface — which would have deleted
-    // Mars's real water-ice clouds over its frozen ground, the very bug this replaces. A deck
-    // that is condensable aloft persists; what happens on the way down is the flavour.)
-    // Rain/snow read from the species' own 1-atm melt/boil span vs the SURFACE temperature —
-    // liquid there lands as rain (Earth water, Titan methane, a hot Jupiter's iron), solid lands
-    // as snow (Mars water), still-gas evaporates aloft as virga (Venus sulphuric acid).
-    const ldef = liquidDef(species, pack);
-    const precip: PrecipKind = !ldef ? 'virga'
-      : surfT < ldef.meltK ? 'snow'
-      : surfT <= ldef.boilK ? 'rain'
-      : 'virga';
-    // Coverage from the deck's COLUMN AMOUNT — its partial pressure — not its fraction. A deck's
-    // opacity is how much condensate is overhead, and fraction alone gets it badly wrong: Venus's
-    // sulphuric acid is a mere 0.2% of the atmosphere but that is 0.18 bar of it, an opaque veil,
-    // while Earth's 0.4% water in 1 bar is broken cloud. Log scale, anchored on the real solar
-    // system: Mars ~1e-6 bar → wisps, Earth 4e-3 → overcast, Venus 0.18 → veil.
-    let coverage = Math.max(0, Math.min(1, 0.16 * (Math.log10(Math.max(1e-12, partialBar)) + 6.4)));
-    // A deck that never RAINS OUT cannot clear. Venus's acid droplets evaporate on the way down and
-    // recycle straight back into the deck (virga), so the cover is permanent and global; Earth's
-    // water reaches the ground and leaves gaps behind it. This is why Venus is wrapped completely
-    // in a few parts per million of vapour while Earth, with more water than that, is 67% cloud —
-    // and it is the honest way to get there, since coverage read from vapour alone under-counts a
-    // substance that is almost entirely condensed.
-    if (precip === 'virga') coverage = Math.min(1, coverage * 1.5 + 0.15);
-    const deck: CloudDeck = { species, bucket: bucketFor(coverage), coverage, condenseK: condenseTempK(species, pack), precip };
+    if (!def) continue;
+    const frac = hasSurface
+      ? Math.min(fracRaw ?? 0, saturationPressureBar(def, surfT) / profile.pSurfBar)
+      : (fracRaw ?? 0);
+    if (frac < (cloud.minFraction ?? DEFAULT_MIN_FRACTION)) continue;
+    // Does this species saturate anywhere in the column, and how much condensate does that put up
+    // there? Everything about the deck — that it exists at all, how high it sits, how thick it is —
+    // comes out of this one crossing. (Edge E4's supercritical ceiling is inside it: a level hotter
+    // than the critical point can never saturate.)
+    const cond = condensationOf(frac, def, gasDefs[gas]?.molarMass ?? profile.molarMass, profile);
+    if (!cond) continue;
+
+    // PRECIPITATION, and with it how much of the sky stays covered. Both come from ONE question the
+    // profile can now answer honestly: is the air at the SURFACE saturated in this species? If it is
+    // close, what falls lands — Earth's rain, Titan's methane drizzle — and the sky clears behind it.
+    // If the ground air is far from saturated, the drops evaporate on the way down (virga) and go
+    // straight back into the deck, so the cover never breaks. That is the whole reason Venus is
+    // total overcast on a few parts per million of vapour, and it is no longer a special case: it
+    // falls out of the same saturation test used to place the deck.
+    const satSurf = saturationPressureBar(def, surfT);
+    const surfaceRatio = satSurf > 0 ? (frac * profile.pSurfBar) / satSurf : 1;
+    const landsIntact = surfaceRatio >= 0.5;
+    const precip: PrecipKind = !landsIntact ? 'virga' : surfT < def.meltK ? 'snow' : 'rain';
+    const rainOut = Math.min(1, Math.sqrt(Math.max(0, Math.min(1, surfaceRatio))));
+
+    // Optical depth of what is actually SUSPENDED, then the fraction of sky it holds. Precipitation
+    // does both jobs: it drains the deck, and what does land leaves clear gaps behind it.
+    const suspended = cond.columnKgM2 * Math.pow(SUSPENDED_WHEN_RAINING, rainOut);
+    const rho = Math.max(100, (def.density_gcc ?? 1) * 1000);
+    const tau = (3 * suspended) / (2 * rho * DROPLET_RADIUS_M);
+    const opacity = 1 - Math.exp(-tau / TAU_OPAQUE);
+    const coverage = Math.max(0, Math.min(1, opacity * (1 - 0.4 * rainOut)));
+    // Faint is not absent. Mars's real water-ice cloud, at its real 210 ppm, computes to barely a
+    // percent of sky — and it is genuinely there, and losing it is the bug this whole model was
+    // built to fix. The floor is only here to stop a deck existing on paper that nothing could
+    // resolve, so it sits well below anything you would call a wisp.
+    if (coverage < 0.004) continue;
+
+    const deck: CloudDeck = {
+      species, bucket: bucketFor(coverage), coverage,
+      condenseK: cond.baseK, precip,
+      baseBar: cond.baseBar, baseK: cond.baseK, opticalDepth: tau
+    };
     const prior = decks.get(species);
     if (!prior || deck.coverage > prior.coverage) decks.set(species, deck);  // dedupe by species
   }
-  // Stack order: HIGHER condensation temperature condenses first on the way up = sits DEEPER.
-  // Sorted deepest-first, so renderers paint in array order and the last entry is the top deck.
-  return [...decks.values()].sort((a, b) => b.condenseK - a.condenseK);
+  // Stack order is now literal: the deck with the DEEPEST base sits at the bottom. Sorted
+  // deepest-first, so renderers paint in array order and the last entry is the top deck. Two decks
+  // can both bottom out at the very base of the profile — an enriched giant saturates in both
+  // ammonia and its hydrosulphide before the air we model even begins — and there the substance
+  // that condenses at the higher temperature is the one that started deeper.
+  return [...decks.values()].sort((a, b) =>
+    (b.baseBar ?? 0) - (a.baseBar ?? 0) || condenseTempK(b.species, pack) - condenseTempK(a.species, pack));
 }
 
 // ── Surface oxidation ────────────────────────────────────────────────────────────────────────────
@@ -322,6 +382,13 @@ export function parseCloudDeckValue(value: string | undefined): { species: strin
 // The decks a RENDERER should draw for a body: parsed from tags (auto + manual alike — a manual
 // tag is a GM instruction), deduped by species with manual implicitly winning because the
 // processor never emits an auto duplicate of a manual species (see applyCloudDeckTags).
+// Stack order from TAGS alone. A tag carries species + bucket, not the pressure level the emitter
+// computed, so renderers re-derive the ordering from the one thing the species itself implies: a
+// substance that condenses at a higher temperature condensed lower down, and so sits deeper.
+function condenseTempK(species: string, pack?: RulePack | null): number {
+  return liquidDef(species, pack)?.boilK ?? 273;
+}
+
 export function decksFromTags(tags: Tag[] | undefined, pack?: RulePack | null): { species: string; bucket: string; coverage: number; condenseK: number }[] {
   const seen = new Map<string, { species: string; bucket: string; coverage: number; condenseK: number }>();
   for (const t of tags ?? []) {

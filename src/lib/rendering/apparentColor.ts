@@ -288,15 +288,20 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     // near-featureless. Only emit band colours for the ammonia case → the renderer skips spots/stripes
     // on Uranus/Neptune.
     if (!iceGiant) {
-      // Band colours from the giant's OWN condensates — now its cloud-deck tags rather than the
-      // retired cloud fluid-layers. This is where NH4SH earns its keep: a giant with ammonia and
-      // hydrogen sulphide derives the tan-brown chromophore and it lands here as a band stop.
-      for (const d of decksFromTags(body.tags, rulePack)) {
+      // Band colours from the giant's OWN condensates. A chromophore band is a DEEPER deck showing
+      // through gaps in the one above it, so only the decks below the top contribute — and a giant
+      // whose stack is a single species has nothing to show through, so it bands smoothly in its own
+      // colour. This is where NH4SH earns its keep: Jupiter's ammonia parts over the brown
+      // hydrosulphide beneath and the belts are that brown.
+      //
+      // There used to be one more push here: a hardcoded brown keyed off temperature, which meant
+      // ANY warm giant got Jovian belts whether or not it had the chemistry for them. It painted
+      // brown bands and a red spot onto a giant made of nothing but hydrogen and methane. Deleted —
+      // if a world has no coloured condensate, it has no chromophore.
+      for (const d of giantDecks.slice(0, -1)) {
         const hex = liquidDef(d.species, rulePack)?.colorHex;
-        if (hex) push(hex, 'cloud', 0.4, `${d.species} band`);
+        if (hex) push(hex, 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), `${d.species} band`);
       }
-      const chromo = teq < 200 ? '#a8642e' : teq < 400 ? '#c98a3e' : '#9a8478';
-      push(rgbToHex(mix(cloud, hexToRgb(chromo), 0.55)), 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), 'chromophore band');
     }
   }
 

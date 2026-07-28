@@ -75,21 +75,20 @@ phase 2 — `gasGiantCloudColor`'s hardcoded ramp.
 
 ## Edge cases (agreed resolutions)
 
-- **E1 deck temperature:** decks form aloft, colder than the surface (Venus: 737 K ground,
-  ~300 K deck). Until a real adiabat exists, ONE lapse approximation in the emitter, tuned so
-  Venus/Earth/Mars/Titan land correctly, pinned by fixtures. This is the seam the phase-2 T(P)
-  profile later replaces.
+- **E1 deck temperature — RESOLVED, the fudge is deleted.** Decks form aloft, colder than the
+  surface. This was a tuned lapse approximation; it is now `atmosphereProfile.ts`, a real
+  temperature profile (see "The profile" below), and every deck is placed at a computed pressure
+  level rather than tested at one notional temperature.
 - **E5 no feedback:** decks are visual/descriptive only; they do not enter temperature/albedo.
   Idempotence test: two passes ⇒ identical tags.
-- **E6 giants — DONE for Jupiter/Uranus/Neptune, SATURN STILL WRONG.** Giants now take their colour
-  from their deck stack, weighted deepest-heaviest (a warm-condensing deck forms far down where the
-  atmosphere is dense and holds vastly more material; a cold-condensing species on top is a thin
-  haze). Measured against reality: Jupiter dist 24, Neptune 47, Uranus 81 (right hue, too saturated
-  — the real planet has a pale haze layer we do not model), Saturn 74 and GREY rather than gold.
-  Saturn's fault is upstream: our condensation model gives it a methane deck that the real planet
-  does not visibly have, because we test condensation at one notional "deck temperature" rather than
-  at a real pressure level. That is precisely what the phase-2 adiabat fixes; do not paper over it
-  in the renderer.
+- **E6 giants — RESOLVED.** Giants take their colour from their deck stack, weighted
+  deepest-heaviest (a warm-condensing deck forms far down where the atmosphere is dense and holds
+  vastly more material; a cold-condensing species on top is a thin haze). Saturn was the holdout:
+  grey rather than gold, because our model gave it a methane deck the real planet does not visibly
+  have. The profile fixes it upstream, exactly as predicted — Saturn's air reaches its skin
+  temperature before its methane ever reaches saturation, so there is no methane deck, and the
+  ammonium hydrosulphide beneath makes it gold. Pinned by a test whose subject is an ABSENCE.
+  Uranus's over-saturation went with the same change: coverage no longer reads from vapour.
 - **E6 original note, giants sequenced separately:** terrestrials first (giants keep the legacy ramp), then
   giants swap onto the deck stack in their own commit with Jupiter/Saturn/Uranus/Neptune
   fixtures (NH3 over NH4SH over H2O; same-but-deeper for Saturn; CH4-topped ice giants).
@@ -98,13 +97,49 @@ phase 2 — `gasGiantCloudColor`'s hardcoded ramp.
 - **E10 display blind spot:** the atmosphere summary hides gases <0.5%, which hid Mars's
   0.1% deck-driving water — always show a gas currently driving a deck.
 
-## Known limitation — coverage is read from VAPOUR
+## The profile (was phase 2, now shipped) — `src/lib/physics/atmosphereProfile.ts`
 
-Deck coverage derives from the species' partial pressure, i.e. how much of it is still gaseous. That
-under-counts a deck whose substance is almost entirely CONDENSED: Venus's sulphuric acid is a few
-ppm of vapour but wraps the planet completely, and reads "broken" rather than "veil". Getting this
-right needs the total inventory (vapour + condensed), which the atmosphere model does not track.
-Banked with the phase-2 adiabat, which needs the same quantity.
+Two pieces of textbook physics and NO new rule-pack data:
+
+1. A convecting atmosphere follows its dry adiabat, `T = T_surf (P/P_surf)^K`, with `K = R/c_p`
+   computed from the gases present (the per-gas `specificHeat` and `molarMass` the greenhouse model
+   already carries). It comes out at 0.29 for air, 0.22 for CO2, 0.29 for a hydrogen giant.
+2. Convection stops. Above the tropopause the air settles at the SKIN TEMPERATURE, `T_eq / 2^(1/4)`
+   — the grey-atmosphere result, and a good one: Earth 214 K (real ~210), Jupiter 104 K (real ~110),
+   Venus 195 K (real ~190).
+
+Condensation is then the crossing of two curves: a well-mixed gas keeps its mole fraction with
+height so its partial pressure falls with the total, while saturation pressure falls far faster as
+the profile cools. Where they cross is the deck BASE. Saturation pressure is the exact INVERSE of
+the existing `boilKAt` above the triple point, continued by Clausius-Clapeyron below it — one curve
+read both ways, so a substance can never be boiling and condensing at once. The latent heat that
+needs is not new data either: the triple point and the boiling point are two points already on the
+curve and determine it exactly (water 43.3 kJ/mol, methane 8.17 against a real 8.19, ammonia 24.2
+against 23.3).
+
+Coverage comes from the condensate column integrated above the base, turned into an optical depth.
+Two further consequences, both of which used to be special cases:
+
+- **Precipitation** is now one question the profile can answer: is the air at the SURFACE saturated
+  in this species? Close to it and what falls lands (rain, or snow below the melt point); far from
+  it and the drops evaporate on the way down (virga). Mars's water-ice turns out to be virga, not
+  snow — which is right.
+- **Coverage is no longer read from vapour**, the old known limitation. A deck that rains out is
+  drained and leaves gaps; one that recycles keeps everything. Venus is a total veil on a few ppm
+  and Earth is broken cloud on far more water, from the same rule rather than a bonus term.
+- A body WITH A SURFACE cannot hold more of a substance in its air than the ground temperature
+  allows — the excess frosts out and stays there. Without that, 100 ppm of hydrogen cyanide, solid
+  everywhere on Titan including the ground, read as an overcast sky. Giants are exempt: their
+  reservoir is the hot interior below.
+
+Measured against the real solar system after the change: Earth's cloud base 0.75 bar (real ~0.9),
+Venus's 4 bar (real ~1.5), Mars's 0.004 bar, Titan's 0.82 bar (real ~0.8), Jupiter's ammonia 0.41
+bar (real ~0.7), and Saturn correctly has no methane deck at all.
+
+Still not modelled, deliberately: anything below the anchor pressure. We only need to see as far as
+we can see.
+
+## Known trap
 
 Related trap, learned the hard way: inflating a trace gas in the example data to force a deck also
 inflates its GREENHOUSE. Adding H2SO4 at 0.2% (100x its real ppm) to make Venus cloudy quietly put
@@ -118,11 +153,18 @@ inflates its GREENHOUSE. Adding H2SO4 at 0.2% (100x its real ppm) to make Venus 
 - `weather/dust-storms` — dry surface + thin-but-real atmosphere + no ocean (Mars).
 - `climate/monsoon` — strong axial tilt + ocean + rain-bearing deck (seasonal precipitation swing).
 
-## Phase 2 (banked)
+## Banked
 
-Adiabatic T(P) profile + per-species saturation crossing → decks at computed depths; giants'
-whole look from their stack (Saturn pale because its decks sit deeper — derived, not authored).
-Miscibility beyond reactions (water–ammonia solution) only if demanded; helium rain out of scope.
+Miscibility beyond reactions (water-ammonia solution) only if demanded; helium rain out of scope.
+Photochemical hazes (Uranus's pale upper veil, Titan's tholins above the methane) are made ALOFT
+rather than mixed up from below, so they need a source model this does not have.
+
+## The giant lab
+
+`buildGiantLab()` in `galleryExamples.ts`, rendered by both galleries under the live-Sol row. Every
+body in it is nothing but a composition, a pressure and a temperature; each row sweeps ONE variable
+and shows the model's own answer. Label the rows by their INPUTS — on its first run the lab
+contradicted three of the labels it had been given, which is the entire point of it.
 
 ## Handoff notes for the retagging workstream
 

@@ -22,7 +22,13 @@
       const processed = systemProcessor.process(JSON.parse(JSON.stringify(raw.system ?? raw)), pack);
       const wanted = ['Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Titan', 'Uranus', 'Neptune', 'Triton', 'Pluto'];
       const bodies = wanted.map((n) => processed.nodes.find((x: any) => x.name === n)).filter(Boolean);
-      return bodies.length ? [{ title: 'Our solar system — live from the data', bodies }] : [];
+      // …and the giant lab beneath it: synthetic giants defined by nothing but composition, pressure
+      // and temperature, with every deck and every colour derived. Sol is the reality check; the lab
+      // is where you sweep one variable and watch the model answer.
+      const { buildGiantLab } = await import('$lib/catalogue/galleryExamples');
+      const lab = buildGiantLab(pack).map((r) => ({ title: r.title, bodies: r.bodies as any[] }));
+      const sol = bodies.length ? [{ title: 'Our solar system — live from the data', bodies }] : [];
+      return [...sol, ...lab];
     } catch {
       return [];   // the gallery is still worth showing without it
     }

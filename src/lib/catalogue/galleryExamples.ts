@@ -3,7 +3,8 @@
 // gallery (/discgallery) and the 3D holo gallery (/discgallery3d) — so they show the same worlds and
 // stay in step. Grouped into labelled rows. New 3D-only rows (plumes, black holes) render as best the
 // 2D disc can (a plain disc) but come alive in 3D.
-import type { CelestialBody } from '$lib/types';
+import type { CelestialBody, RulePack } from '$lib/types';
+import { deriveCloudDecks, applyCloudDeckTags, deriveWeather } from '$lib/physics/cloudDecks';
 import { deriveApparentColorParts, starColorFromTempK } from '$lib/rendering/apparentColor';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '$lib/physics/stellarActivity';
 
@@ -284,3 +285,117 @@ export const GALLERY_ROWS: GalleryRow[] = [
 
 // Black holes are handled specially (event horizon + accretion disc), kept separate from the sphere rows.
 export const GALLERY_BLACK_HOLES = blackHoles;
+
+// ── The giant lab ────────────────────────────────────────────────────────────────────────────────
+// Every row above hands the renderer a palette somebody chose. These do the opposite: each body is
+// nothing but a composition, a pressure and a temperature, and EVERYTHING you see — which species
+// condense, how high their decks sit, how much sky they cover, what colour the planet ends up — is
+// derived by running the real physics over it, exactly as the processor would.
+//
+// So it is a test rig as much as a gallery. Sweep one variable along a row and the row shows you the
+// model's own answer: cool an ammonia giant and watch its decks appear, deepen and finally freeze
+// out; raise the methane and watch a pale ice giant turn Neptune-blue; heat a world past every
+// condensation point and watch the sky go clear. If a row looks wrong, the physics IS wrong.
+//
+// Needs the rule pack (the gas and liquid data drives all of it), so it is a function rather than a
+// constant — both galleries build it once their pack has loaded.
+
+const HYDROGEN = (over: Record<string, number>) => {
+	const trace = Object.values(over).reduce((s, v) => s + v, 0);
+	return { H2: (1 - trace) * 0.86, He: (1 - trace) * 0.14, ...over };
+};
+
+/** One derived giant: composition in, a fully-rendered body out. */
+function giantBody(
+	name: string,
+	temperatureK: number,
+	equilibriumTempK: number,
+	pressureBar: number,
+	composition: Record<string, number>,
+	pack: RulePack | null,
+	over: Partial<CelestialBody> = {}
+): CelestialBody {
+	const body = {
+		id: `lab-${name}`, roleHint: 'planet', name,
+		makeup: { gas: 0.95, ice: 0.04, rock: 0.01 },
+		radiusKm: 60000, massKg: 1.5e27,
+		temperatureK, equilibriumTempK,
+		rotationPeriodHours: 10,
+		atmosphere: { pressure_bar: pressureBar, composition },
+		tags: [] as any[],
+		...over
+	} as unknown as CelestialBody;
+	const decks = deriveCloudDecks(body, pack);
+	body.tags = applyCloudDeckTags(body.tags ?? [], decks, deriveWeather(body, decks, pack));
+	const ap = deriveApparentColorParts(body, pack ?? undefined);
+	(body as any).apparentColor = ap;
+	(body as any).apparentColorHex = ap.hex;
+	return body;
+}
+
+export function buildGiantLab(pack: RulePack | null): GalleryRow[] {
+	// A Jupiter's trace chemistry, held FIXED and simply cooled. Ammonium hydrosulphide condenses
+	// warmest and so appears first and deepest; ammonia follows it down as the planet cools; and by
+	// the bottom of the range the methane that was inert all the way along finally joins in.
+	const jovianTrace = { CH4: 0.003, NH3: 0.00026, H2S: 0.00008 };
+	// Labelled by INPUT, not by the deck I expected: the row is only a test if the model is allowed to
+	// disagree with me, and on the first run it did — the 220 K world condenses ammonia high up where
+	// its air reaches the skin temperature, which is not what the label used to claim.
+	const cooling = [
+		['220 K · 1 bar', 220, 150],
+		['190 K · 1 bar', 190, 130],
+		['165 K · Jupiter-like', 165, 110],
+		['134 K · Saturn-like', 134, 95],
+		['110 K · 1 bar', 110, 78],
+		['80 K · 1 bar', 80, 60]
+	] as const;
+
+	// The SAME methane fraction at falling temperature. This is the row that pins the Saturn fix:
+	// Saturn holds half again as much methane as Jupiter and is colder, yet has no methane deck,
+	// because its profile bottoms out before the methane ever reaches saturation. Somewhere along
+	// this row it does.
+	const methaneThreshold = [140, 110, 90, 76, 60].map((t) =>
+		giantBody(`${t} K · 2.3% CH₄`, t, Math.round(t * 0.78), 1, HYDROGEN({ CH4: 0.023 }), pack));
+
+	// Ice giants differing ONLY in how much methane they carry — Uranus and Neptune as a data point
+	// rather than two hand-picked blues.
+	const methaneAbundance = [0.005, 0.015, 0.023, 0.04, 0.08].map((f) =>
+		giantBody(`${(f * 100).toFixed(1)}% CH₄ · 76 K`, 76, 59, 1, HYDROGEN({ CH4: f }), pack));
+
+	// Chemistry the solar system does not show you. Sulphur gives a giant a genuinely yellow sky;
+	// water condenses on a warm sub-Neptune the way it does on Earth; and past every condensation
+	// point there is simply nothing left to form a cloud out of, so the atmosphere goes clear.
+	const exotic = [
+		giantBody('Sulphurous · 240 K', 240, 190, 1, HYDROGEN({ SO2: 0.004, H2S: 0.002 }), pack),
+		giantBody('Steam giant · 320 K', 320, 260, 1, HYDROGEN({ H2O: 0.02, CH4: 0.001 }), pack),
+		giantBody('Ammonia-rich · 150 K', 150, 105, 1, HYDROGEN({ NH3: 0.004, H2S: 0.0008 }), pack),
+		giantBody('Acid giant · 290 K', 290, 230, 1, HYDROGEN({ SO2: 0.003, H2O: 0.004 }), pack),
+		giantBody('Nitrogen & methane · 100 K', 100, 75, 1, HYDROGEN({ N2: 0.1, CH4: 0.02 }), pack)
+	];
+
+	// Hot Jupiters, where the condensates are things you would normally call rock. Alkali metals go
+	// first, then silicates, then iron — the same saturation test, run on a molten vocabulary.
+	const hotJupiters = [
+		giantBody('700 K · Na + K', 700, 700, 1, HYDROGEN({ Na: 0.002, K: 0.0015 }), pack),
+		giantBody('1100 K · Na + K + SiO', 1100, 1100, 1, HYDROGEN({ Na: 0.002, K: 0.0015, SiO: 0.001 }), pack),
+		giantBody('1400 K · SiO + Fe', 1400, 1400, 1, HYDROGEN({ SiO: 0.0015, Fe: 0.001 }), pack),
+		giantBody('1800 K · SiO + Fe', 1800, 1800, 1, HYDROGEN({ Fe: 0.0015, SiO: 0.001 }), pack),
+		giantBody('2400 K · SiO + Fe', 2400, 2400, 1, HYDROGEN({ Fe: 0.0015, SiO: 0.001 }), pack)
+	];
+
+	// Pressure alone. The same air, anchored deeper, saturates sooner and holds more overhead.
+	const pressures = [0.1, 0.5, 1, 5, 20].map((p) =>
+		giantBody(`${p} bar anchor · 150 K`, 150, 105, p, HYDROGEN(jovianTrace), pack));
+
+	return [
+		{ title: 'Giant lab — one Jovian chemistry, cooled', blurb: 'The same trace gases throughout — only the temperature changes. Every deck below is the model’s answer, not a label.',
+			bodies: cooling.map(([label, t, eq]) => giantBody(label, t, eq, 1, HYDROGEN(jovianTrace), pack)) },
+		{ title: 'Giant lab — where methane switches on', blurb: '2.3% methane throughout. Saturn sits above this threshold and has no methane deck; Uranus sits below it and does.',
+			bodies: methaneThreshold },
+		{ title: 'Giant lab — ice giants by methane abundance', blurb: 'Identical worlds at 76 K, differing only in methane. Uranus and Neptune fall out of the same rule.',
+			bodies: methaneAbundance },
+		{ title: 'Giant lab — other chemistries', blurb: 'Sulphur, steam, ammonia and acid skies — all derived, none authored.', bodies: exotic },
+		{ title: 'Giant lab — hot Jupiters (rock as a condensate)', blurb: 'Sodium, potassium, silicate and iron vapour. Which of them is a cloud at each temperature is derived, not assigned.', bodies: hotJupiters },
+		{ title: 'Giant lab — the same air at different depths', blurb: 'One composition, anchored from 0.1 to 20 bar.', bodies: pressures }
+	];
+}

@@ -10,7 +10,7 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { decksFromTags, PRECIPITATION_TAG } from '$lib/physics/cloudDecks';
   import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST,
-    GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL } from '$lib/catalogue/galleryExamples';
+    GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL, buildGiantLab } from '$lib/catalogue/galleryExamples';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
     id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
@@ -154,6 +154,7 @@
   // and rule pack the app uses. If the data or the physics changes, this row changes with it — so
   // it doubles as the honesty check that what we generate still resembles the place we live.
   let solBodies: CelestialBody[] = [];
+  let giantLab: { title: string; blurb?: string; bodies: CelestialBody[] }[] = [];
   let solError = '';
   // What the physics decided, shown beside each world so the tags are checkable at a glance.
   const weatherOf = (b: CelestialBody, pack: RulePack | null) => {
@@ -173,6 +174,7 @@
       const processed = systemProcessor.process(JSON.parse(JSON.stringify(system)), solPack);
       // The worlds worth showing: everything with a real atmosphere or a familiar face, in orbit order.
       const wanted = ['Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Titan', 'Uranus', 'Neptune', 'Triton', 'Pluto', 'Moon', 'Io', 'Europa'];
+      giantLab = buildGiantLab(solPack);
       solBodies = wanted
         .map((n) => processed.nodes.find((x: any) => x.name === n))
         .filter(Boolean) as CelestialBody[];
@@ -444,6 +446,31 @@
       {/each}
     </div>
   {/if}
+
+  <!-- THE GIANT LAB. Sol above is the reality check; these are the controlled experiments. Each body
+       is nothing but a composition, a pressure and a temperature — every deck, every colour derived
+       by the same code that runs in the app. Sweep one variable along a row and the row IS the
+       model's answer. -->
+  {#each giantLab as row}
+    <h2>{row.title}</h2>
+    {#if row.blurb}<p class="lead">{row.blurb}</p>{/if}
+    <div class="gallery">
+      {#each row.bodies as b}
+        {@const w = weatherOf(b, solPack)}
+        <figure>
+          <PlanetDisc body={b} size={168} />
+          <figcaption>
+            {b.name}
+            {#if w.decks.length}
+              <span class="weather">{w.decks.join(' · ')}</span>
+            {:else}
+              <span class="weather dim">clear</span>
+            {/if}
+          </figcaption>
+        </figure>
+      {/each}
+    </div>
+  {/each}
 </div>
 
 <style>

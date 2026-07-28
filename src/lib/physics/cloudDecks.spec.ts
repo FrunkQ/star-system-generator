@@ -18,21 +18,24 @@ const world = (over: Partial<CelestialBody>) => ({
 const species = (decks: ReturnType<typeof deriveCloudDecks>) => decks.map((d) => d.species);
 
 // ── Archetypes ───────────────────────────────────────────────────────────────────────────────────
+// Mass, radius and equilibrium temperature are part of the fixture now, not decoration: the profile
+// needs gravity to weigh a column and the equilibrium temperature to set the skin temperature aloft.
 const earth = () => world({
-  temperatureK: 288,
+  temperatureK: 288, equilibriumTempK: 255, radiusKm: 6371, massKg: 5.97e24,
   atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any,   // NO explicit H2O
   hydrosphere: { coverage: 0.71, composition: 'water' } as any
 });
 const venus = () => world({
-  temperatureK: 737,
-  atmosphere: { pressure_bar: 92, composition: { CO2: 0.965, N2: 0.034, H2SO4: 0.001 } } as any
+  temperatureK: 737, equilibriumTempK: 232, radiusKm: 6052, massKg: 4.87e24,
+  // Real trace abundances — the acid deck DERIVES from SO2 + H2O rather than being authored.
+  atmosphere: { pressure_bar: 92, composition: { CO2: 0.965, N2: 0.034, SO2: 0.00015, H2O: 0.00002 } } as any
 });
 const mars = () => world({
-  temperatureK: 215,
+  temperatureK: 215, equilibriumTempK: 210, radiusKm: 3390, massKg: 6.42e23,
   atmosphere: { pressure_bar: 0.006, composition: { CO2: 0.95, N2: 0.027, Ar: 0.016, H2O: 0.0013 } } as any
 });
 const titan = () => world({
-  temperatureK: 94,
+  temperatureK: 94, equilibriumTempK: 82, radiusKm: 2575, massKg: 1.35e23,
   atmosphere: { pressure_bar: 1.5, composition: { N2: 0.95, CH4: 0.05 } } as any,
   hydrosphere: { coverage: 0.3, composition: 'methane' } as any                   // seas AND air CH4
 });
@@ -67,7 +70,9 @@ describe('cloud decks — the single evaluation', () => {
     const decks = deriveCloudDecks(mars(), pack);
     const water = decks.find((d) => d.species === 'water');
     expect(water).toBeTruthy();
-    expect(water!.precip).toBe('snow');
+    // VIRGA, not snow: the air at the Martian surface is nowhere near saturated, so the ice
+    // sublimes on the way down and never lands. The profile is what makes that answerable.
+    expect(water!.precip).toBe('virga');
     // CO2 has NO cloud block by default (Alex: not cloud-forming, yet — a GM can add it in data).
     expect(species(decks)).not.toContain('carbon-dioxide');
   });
@@ -117,7 +122,8 @@ describe('reaction products (one generation)', () => {
 
   it('a Jupiter-ish mix yields the NH3-over-NH4SH pair — the belts as data, not code', () => {
     const jovian = world({
-      temperatureK: 165,
+      temperatureK: 165, equilibriumTempK: 110, radiusKm: 69911, massKg: 1.898e27,
+      makeup: { gas: 0.95, ice: 0.03, rock: 0.02 } as any,     // a GIANT: no surface to frost onto
       atmosphere: { pressure_bar: 10, composition: { H2: 0.86, He: 0.13, NH3: 0.004, H2S: 0.0008 } } as any
     });
     const s = species(deriveCloudDecks(jovian, pack));
@@ -143,7 +149,7 @@ describe('reaction products (one generation)', () => {
   it('VENUS example: SO2 + H2O derive the sulphuric acid that IS the Venus deck', () => {
     // A Venus authored WITHOUT explicit H2SO4 still grows its acid clouds from the precursors.
     const primordialVenus = world({
-      temperatureK: 737,
+      temperatureK: 737, equilibriumTempK: 232, radiusKm: 6052, massKg: 4.87e24,
       atmosphere: { pressure_bar: 92, composition: { CO2: 0.96, N2: 0.034, SO2: 0.003, H2O: 0.002 } } as any
     });
     const s = species(deriveCloudDecks(primordialVenus, pack));
@@ -158,8 +164,9 @@ describe('visibility floors vs reactions', () => {
     // vanish and the giant silently loses its whole belt chemistry. That is what happened when the
     // floors were first set from bulk-abundance intuition rather than visibility.
     const jupiter = world({
-      temperatureK: 166,
-      atmosphere: { pressure_bar: 200000, composition: { H2: 0.86, He: 0.13, CH4: 0.003, NH3: 0.00026, H2S: 0.00008 } } as any
+      temperatureK: 166, equilibriumTempK: 110, radiusKm: 69911, massKg: 1.898e27,
+      makeup: { gas: 0.95, ice: 0.03, rock: 0.02 } as any,
+      atmosphere: { pressure_bar: 1, composition: { H2: 0.86, He: 0.13, CH4: 0.003, NH3: 0.00026, H2S: 0.00008 } } as any
     });
     const s = species(deriveCloudDecks(jupiter, pack));
     expect(s).toContain('ammonia');
@@ -172,7 +179,7 @@ describe('visibility floors vs reactions', () => {
     // The floors are a visibility threshold, not a bulk-abundance one — Mars genuinely has
     // water-ice cloud. This is the original reported bug, at the real number.
     const realMars = world({
-      temperatureK: 217,
+      temperatureK: 217, equilibriumTempK: 210, radiusKm: 3390, massKg: 6.42e23,
       atmosphere: { pressure_bar: 0.006, composition: { CO2: 0.95, N2: 0.027, H2O: 0.00021 } } as any
     });
     const decks = deriveCloudDecks(realMars, pack);
@@ -259,5 +266,72 @@ describe('tags — the published interface', () => {
   it('legacy values (old saves held a colour word) parse leniently instead of throwing', () => {
     expect(parseCloudDeckValue('white')).toEqual({ species: 'white', bucket: 'scattered' });
     expect(parseCloudDeckValue(undefined).bucket).toBe('scattered');
+  });
+});
+
+// ── The adiabat ──────────────────────────────────────────────────────────────────────────────────
+// These pin the thing the profile was built for. Before it existed, condensation was tested at one
+// notional "deck temperature" fudged from the surface, and the giants paid for it: Saturn grew a
+// methane deck the real planet does not have and read grey instead of gold. The test that matters
+// most here is an ABSENCE.
+describe('the temperature profile places decks at real pressure levels', () => {
+  const giant = (over: Partial<CelestialBody>) => world({
+    makeup: { gas: 0.95, ice: 0.03, rock: 0.02 } as any, ...over
+  });
+  const jupiter = () => giant({
+    temperatureK: 165, equilibriumTempK: 110, radiusKm: 69911, massKg: 1.898e27,
+    atmosphere: { pressure_bar: 1, composition: { H2: 0.898, He: 0.1, CH4: 0.003, NH3: 0.00026, H2S: 0.00008 } } as any
+  });
+  const saturn = () => giant({
+    temperatureK: 134, equilibriumTempK: 95, radiusKm: 58232, massKg: 5.68e26,
+    atmosphere: { pressure_bar: 1, composition: { H2: 0.963, He: 0.032, CH4: 0.0045, NH3: 0.000125, H2S: 0.00004 } } as any
+  });
+  const uranus = () => giant({
+    temperatureK: 76, equilibriumTempK: 59, radiusKm: 25362, massKg: 8.68e25,
+    atmosphere: { pressure_bar: 1, composition: { H2: 0.83, He: 0.15, CH4: 0.023 } } as any
+  });
+
+  it('SATURN has NO methane deck — the bug this whole model exists to fix', () => {
+    // Saturn carries HALF AGAIN as much methane as Jupiter and is colder, so any model testing
+    // condensation at a single notional temperature gives it a methane deck, and Saturn comes out
+    // grey. It does not have one: its profile bottoms out at the skin temperature well before the
+    // methane partial pressure ever reaches saturation. The deck it does get is the ammonium
+    // hydrosulphide that makes the real planet gold.
+    const s = species(deriveCloudDecks(saturn(), pack));
+    expect(s).not.toContain('methane');
+    expect(s).toContain('ammonium-hydrosulfide');
+  });
+
+  it('URANUS, colder and far richer in methane, does get one', () => {
+    // The discriminator is the profile, not the abundance: same species, same physics, and the two
+    // planets diverge because their temperatures do.
+    expect(species(deriveCloudDecks(uranus(), pack))).toContain('methane');
+  });
+
+  it('JUPITER stacks ammonia over ammonium hydrosulphide, and no methane either', () => {
+    const decks = deriveCloudDecks(jupiter(), pack);
+    const s = species(decks);
+    expect(s).not.toContain('methane');
+    expect(s.indexOf('ammonium-hydrosulfide')).toBeLessThan(s.indexOf('ammonia'));
+    // Deepest-first, and the bases are real pressures: the hydrosulphide condenses lower down.
+    expect(decks[0].baseBar!).toBeGreaterThan(decks[decks.length - 1].baseBar!);
+  });
+
+  it('places EARTH cloud base near 1 bar and MARS ice near a millibar', () => {
+    const w = deriveCloudDecks(earth(), pack).find((d) => d.species === 'water')!;
+    expect(w.baseBar!).toBeGreaterThan(0.5);
+    expect(w.baseBar!).toBeLessThan(1);
+    const m = deriveCloudDecks(mars(), pack).find((d) => d.species === 'water')!;
+    expect(m.baseBar!).toBeLessThan(0.006);        // aloft, not at the ground
+    expect(m.baseK!).toBeLessThan(mars().temperatureK!);
+  });
+
+  it('EARTH is broken-to-overcast and VENUS is a total veil, from the same rule', () => {
+    // Not a special case any more: Earth's water reaches the ground, drains the deck and leaves
+    // gaps; Venus's acid evaporates on the way down and goes straight back up.
+    expect(deriveCloudDecks(earth(), pack).find((d) => d.species === 'water')!.coverage)
+      .toBeLessThan(0.8);
+    expect(deriveCloudDecks(venus(), pack).find((d) => d.species === 'sulfuric-acid')!.bucket)
+      .toBe('veil');
   });
 });

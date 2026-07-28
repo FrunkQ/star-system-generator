@@ -2,6 +2,47 @@
 
 All notable changes are listed here:
 
+## v2.1.255-beta - 28th Jul 2026
+
+* **Clouds now form where the air is actually cold enough.** Until now a world had ONE notional
+  "cloud temperature" guessed from its surface, and every remaining cloud misjudgement traced back
+  to it. There is now a real temperature profile through the atmosphere — the air cools as it rises
+  at a rate set by the gases in it, until convection stops and it settles at the temperature a body
+  radiating into space must reach. A substance condenses where its own pressure crosses the point
+  it can no longer stay a gas, and that crossing is the cloud base, at a real height.
+* **Saturn is gold again.** It carries half again as much methane as Jupiter and is colder, so the
+  old model gave it a methane deck and Saturn came out grey. The real planet does not have one: its
+  air reaches the coldest it will get before its methane ever reaches saturation. Nothing was told
+  to skip it — the deck simply never forms, and the ammonium hydrosulphide beneath it is what makes
+  Saturn the colour it is.
+* **Rain, snow and virga are now the same question asked at ground level.** Is the air at the
+  surface saturated in what is falling? Near enough and it lands; far from it and it evaporates on
+  the way down. Mars's ice turns out never to reach the ground, and Venus's acid recycles straight
+  back into the deck — which is why Venus is total overcast on a few parts per million of vapour
+  while Earth, holding far more water, has gaps in its sky. That used to be a special case written
+  for Venus; it is now just what the rule says.
+* **Cloud cover is worked out from how much is actually up there** — the condensate column,
+  turned into an optical depth — rather than from how much of the gas remains unfrozen. Earth lands
+  at two-thirds cover, Venus at total, Mars at a wisp, all from the one calculation.
+* **A giant only gets belts if it has the chemistry for belts.** A hardcoded brown keyed off
+  temperature was painting Jovian bands and a red spot onto any warm giant, including one made of
+  nothing but hydrogen and a trace of methane. Bands are now the deck below showing through the one
+  above, so a single-deck world bands smoothly in its own colour.
+* **New: the giant lab in both reference galleries.** Six rows of giants defined by nothing but a
+  composition, a pressure and a temperature, with every cloud and every colour derived by the same
+  code the app runs. Each row sweeps one variable — cool a Jovian and watch its decks appear, raise
+  the methane, change the depth, heat a world until sodium, then silicate, then iron are the things
+  condensing out of its sky. It is a test rig you can look at: on its first run it disagreed with
+  three of the labels it had been given, and the labels were what was wrong.
+* Titan no longer grows an overcast cyanide sky from a hundred parts per million of it: a world with
+  a surface cannot hold more of a substance in its air than the ground temperature allows.
+* Mars keeps its water-ice cloud at its real, very thin abundance — the original report that started
+  all of this.
+
+## v2.1.254-beta - 28th Jul 2026
+
+* **Every cloud deck a world has is now drawn, not just its thickest.** Worlds that condense more than one substance — Titan's methane over ethane, a cold giant's stack — show each layer, deepest first, so the upper decks genuinely part over the lower ones. In 3D they are separate drifting shells at their own altitudes, the top one turbulent and counter-drifting, ice decks scattering brighter.
+
 ## v2.1.253-beta - 28th Jul 2026
 
 * **Gas giants take their colour from their own cloud chemistry.** Instead of a temperature lookup, a giant is now painted by the decks it actually derives — Jupiter's white ammonia over the brown ammonium hydrosulphide that makes its belts, an ice giant's methane on top — weighted so the deep, dense deck dominates and the thin high haze above it only tints. Jupiter and Neptune now land close to the real planets and Uranus reads properly cyan. Saturn is still too grey: our model gives it a methane deck the real planet does not visibly have, and fixing that honestly needs the deeper atmospheric work rather than a nudge to the paint.
