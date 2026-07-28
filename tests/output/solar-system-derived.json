@@ -506,7 +506,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "sulfuric-acid broken"
+          "value": "sulfuric-acid veil"
         },
         {
           "key": "weather/precipitation",
@@ -514,7 +514,7 @@
         },
         {
           "key": "weather/lightning",
-          "value": "frequent"
+          "value": "constant"
         },
         {
           "key": "magnetic/unshielded"
@@ -529,6 +529,10 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "surface/oxidised",
+          "value": "light"
         },
         {
           "key": "habitability/none"
@@ -682,24 +686,24 @@
         }
       },
       "apparentColor": {
-        "hex": "#b39b7c",
+        "hex": "#d9c7a4",
         "palette": [
           {
-            "hex": "#937559",
+            "hex": "#986c4e",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "oxidised rock surface"
           },
           {
             "hex": "#f0e7c3",
             "role": "cloud",
-            "weight": 0.336,
+            "weight": 0.7360000000000001,
             "label": "sulfuric-acid clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#b39b7c",
+      "apparentColorHex": "#d9c7a4",
       "classification": {
         "base": "planet/silicate",
         "baseScore": 1.23,
@@ -1935,6 +1939,10 @@
           "value": "high"
         },
         {
+          "key": "surface/oxidised",
+          "value": "moderate"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -2086,13 +2094,13 @@
         }
       },
       "apparentColor": {
-        "hex": "#96795e",
+        "hex": "#9e684a",
         "palette": [
           {
-            "hex": "#957659",
+            "hex": "#9c6444",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "oxidised rock surface"
           },
           {
             "hex": "#c3d5e9",
@@ -2103,7 +2111,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#96795e",
+      "apparentColorHex": "#9e684a",
       "classification": {
         "base": "planet/sub-earth",
         "baseScore": 1.3,

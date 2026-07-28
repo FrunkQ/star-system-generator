@@ -387,10 +387,10 @@
              through the photosphere and see only its cooler upper layers. It is the cue that makes a
              star read as a sphere rather than a flat disc — the 2D counterpart of the 3D shader. -->
         <radialGradient id="limb-{uid}" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color={shade(base, 0.30)} />
-          <stop offset="55%" stop-color={base} />
-          <stop offset="88%" stop-color={shade(base, -0.26)} />
-          <stop offset="100%" stop-color={shade(base, -0.45)} />
+          <stop offset="0%" stop-color={shade(base, 0.34)} />
+          <stop offset="60%" stop-color={shade(base, 0.06)} />
+          <stop offset="90%" stop-color={shade(base, -0.12)} />
+          <stop offset="100%" stop-color={shade(base, -0.24)} />
         </radialGradient>
       {/if}
       <!-- Eyeball: a tidally-STAR-locked world's day/night split, substellar face toward us — a hot

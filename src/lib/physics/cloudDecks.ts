@@ -200,7 +200,14 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
     // sulphuric acid is a mere 0.2% of the atmosphere but that is 0.18 bar of it, an opaque veil,
     // while Earth's 0.4% water in 1 bar is broken cloud. Log scale, anchored on the real solar
     // system: Mars ~1e-6 bar → wisps, Earth 4e-3 → overcast, Venus 0.18 → veil.
-    const coverage = Math.max(0, Math.min(1, 0.16 * (Math.log10(Math.max(1e-12, partialBar)) + 6.4)));
+    let coverage = Math.max(0, Math.min(1, 0.16 * (Math.log10(Math.max(1e-12, partialBar)) + 6.4)));
+    // A deck that never RAINS OUT cannot clear. Venus's acid droplets evaporate on the way down and
+    // recycle straight back into the deck (virga), so the cover is permanent and global; Earth's
+    // water reaches the ground and leaves gaps behind it. This is why Venus is wrapped completely
+    // in a few parts per million of vapour while Earth, with more water than that, is 67% cloud —
+    // and it is the honest way to get there, since coverage read from vapour alone under-counts a
+    // substance that is almost entirely condensed.
+    if (precip === 'virga') coverage = Math.min(1, coverage * 1.5 + 0.15);
     const deck: CloudDeck = { species, bucket: bucketFor(coverage), coverage, condenseK: condenseTempK(species, pack), precip };
     const prior = decks.get(species);
     if (!prior || deck.coverage > prior.coverage) decks.set(species, deck);  // dedupe by species
@@ -208,6 +215,39 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
   // Stack order: HIGHER condensation temperature condenses first on the way up = sits DEEPER.
   // Sorted deepest-first, so renderers paint in array order and the last entry is the top deck.
   return [...decks.values()].sort((a, b) => b.condenseK - a.condenseK);
+}
+
+// ── Surface oxidation ────────────────────────────────────────────────────────────────────────────
+// Mars is red because its iron RUSTED. That is surface chemistry, not bulk composition, which is why
+// deriving surface colour from makeup alone made every rocky world the same brown — Mars included.
+// Rusting needs three things: iron at the surface, an oxidiser to react with (free oxygen, or the
+// CO2/water that did the job on early Mars), and time exposed. The Moon has iron and age but no
+// oxidiser and stays grey; a freshly resurfaced world has not had the time.
+export const OXIDISED_TAG = 'surface/oxidised';
+
+export function deriveOxidation(body: CelestialBody): string | null {
+  const mk = makeupFractions(body);
+  if (mk.gas > 0.5) return null;                       // no surface to rust
+  const iron = mk.metal;
+  if (iron < 0.05) return null;
+  const comp = (body.atmosphere?.composition ?? {}) as Record<string, number>;
+  const pBar = body.atmosphere?.pressure_bar ?? 0;
+  // Oxidising potential: free O2 is the strong case; CO2 and water vapour oxidise iron slowly, which
+  // is what actually rusted Mars over billions of years. Needs a real atmosphere to do it at all.
+  const oxidiser = pBar < 1e-5 ? 0
+    : (comp.O2 ?? 0) * 3 + (comp.CO2 ?? 0) * 0.9 + (comp.H2O ?? 0) * 0.6;
+  if (oxidiser < 0.1) return null;                     // airless or reducing → stays grey
+  const ageGyr = (body as any).geoActivity?.surfaceAgeGyr ?? 0;
+  if (ageGyr < 0.3) return null;                       // resurfaced too recently to have rusted
+  const score = Math.min(1, iron * 2.2) * Math.min(1, oxidiser) * Math.min(1, ageGyr / 2.5);
+  if (score < 0.08) return null;
+  return score > 0.45 ? 'heavy' : score > 0.2 ? 'moderate' : 'light';
+}
+
+/** Renderer view: 0..1 rust strength from the tag. */
+export function oxidationStrength(tags: Tag[] | undefined): number {
+  const v = (tags ?? []).find((t) => t.key === OXIDISED_TAG)?.value;
+  return v === 'heavy' ? 0.62 : v === 'moderate' ? 0.4 : v === 'light' ? 0.2 : 0;
 }
 
 // ── Weather (derived from the decks + the body's own physics) ────────────────────────────────────

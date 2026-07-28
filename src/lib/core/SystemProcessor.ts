@@ -8,8 +8,8 @@ import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers } from '../physics/fluidLayers';
-import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, CLOUD_DECK_TAG, PRECIPITATION_TAG,
-  LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG } from '../physics/cloudDecks';
+import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, deriveOxidation, CLOUD_DECK_TAG, PRECIPITATION_TAG,
+  LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG, OXIDISED_TAG } from '../physics/cloudDecks';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
 import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
@@ -856,6 +856,14 @@ export class SystemProcessor implements ISystemProcessor {
                     .sort((a: any, b: any) => (b.massKg || 0) - (a.massKg || 0))[0] as any;
                 hostStarTempK = brightest?.temperatureK;
             }
+        }
+        // SURFACE OXIDATION — why Mars is red and the Moon, with the same iron and age but no
+        // oxidiser, is grey. Must run AFTER geoActivity (it needs the surface AGE) and before the
+        // apparent colour below, which reads the tag.
+        body.tags = (body.tags || []).filter((t) => t.key !== OXIDISED_TAG || t.manual);
+        if (!body.tags.some((t) => t.key === OXIDISED_TAG)) {
+            const rust = deriveOxidation(body);
+            if (rust) body.tags.push({ key: OXIDISED_TAG, value: rust });
         }
         const apparent = deriveApparentColorParts(body, pack, { starTempK: hostStarTempK });
         body.apparentColor = apparent;

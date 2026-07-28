@@ -323,7 +323,7 @@ export function createGalleryScene(
 		// Spin in-plane about the disc's local Y (its plane normal after the X-tilt). NB not rotation.z —
 		// with XYZ euler order that would wobble the plane, not spin it, and break the lens's ellipse feed.
 		for (const d of discs) d.points.rotation.y += 0.016 * d.rate;
-		updateStellarFlares(galleryFlares, t);
+		updateStellarFlares(galleryFlares, clock.t);
 		// Star flares: pulse each corona's size + brightness, amplitude ∝ flare activity, so an active
 		// flare star (an M dwarf) visibly throbs while a calm one barely moves — like the discs animate.
 		for (const s of starVisuals) {

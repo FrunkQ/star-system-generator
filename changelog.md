@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.252-beta - 28th Jul 2026
+
+* **Mars is red again — because its iron rusted.** Surface colour was derived from bulk composition alone, so every rocky world came out the same brown. Rust is surface chemistry, not bulk make-up: it needs iron, an oxidiser to react with (free oxygen, or the carbon dioxide and water that did the job on early Mars) and long exposure. The Moon and Mercury have the iron and the age but no atmosphere, so they stay grey; a freshly resurfaced world like Io has not had the time.
+* **Venus is wrapped completely again.** Its acid droplets evaporate before they land and recycle straight back into the deck, so unlike rain the cover never clears — which is how Venus is total overcast on a few parts per million of vapour while Earth, carrying more water than that, is broken cloud.
+* Star limbs are brighter — the darkening was overdone and the edges read as dirty rather than curved.
+* Fixed a crash on the 3D reference gallery.
+* The About window opens wider.
+
 ## v2.1.251-beta - 28th Jul 2026
 
 * **Stars have surfaces again.** Every star now derives a magnetic-activity level from its class and age, and that one figure drives everything its surface shows: granulation, spot GROUPS clustered into the active latitude bands either side of the equator rather than scattered anywhere, and the bright faculae that surround them — the froth that actually makes the Sun slightly brighter at solar maximum despite having more spots. A quiet sun shows a few small groups; a flare star is blotched with dark ones.

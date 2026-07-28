@@ -10,7 +10,7 @@
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
 import { phaseAtP, liquidDef } from '$lib/physics/liquids';
-import { decksFromTags, condensateTint } from '$lib/physics/cloudDecks';
+import { decksFromTags, condensateTint, oxidationStrength } from '$lib/physics/cloudDecks';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 
 type RGB = [number, number, number];
@@ -133,7 +133,16 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     col = mix(col, SURF.ice, shell);
     if (shell > 0.5) surfDom = 'ice';
   }
-  push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
+  // OXIDISED IRON — the reason Mars is red and the Moon, with the same iron and age but no oxidiser,
+  // is grey. Bulk makeup alone made every rocky world the same brown; rust is surface chemistry, so
+  // it arrives as a tag (see deriveOxidation) and tints the surface here.
+  const rust = oxidationStrength(body.tags);
+  if (rust > 0) {
+    col = mix(col, [168, 74, 38], rust);   // hematite red-ochre
+    push(rgbToHex(col), 'surface', 1, `oxidised ${surfDom} surface`);
+  } else {
+    push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
+  }
 
   // 2. Surface liquid — ANY liquid, proportional to coverage (#9): the disc is land×(1−cover) +
   //    liquid×cover, with the liquid's shade derived from starlight × refractive index (#8).

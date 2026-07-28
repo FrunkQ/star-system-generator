@@ -52,6 +52,15 @@ describe('cloud decks — the single evaluation', () => {
     expect(acid!.precip).toBe('virga');   // gas again long before the 737 K ground
   });
 
+  it('VENUS is wrapped COMPLETELY: a deck that never rains out cannot clear', () => {
+    // A few ppm of vapour, but the droplets evaporate on the way down and recycle (virga), so the
+    // cover is permanent — which is how Venus is total overcast on less water than Earth carries.
+    const acid = deriveCloudDecks(venus(), pack).find((d) => d.species === 'sulfuric-acid')!;
+    expect(acid.bucket).toBe('veil');
+    // Earth's water DOES reach the ground and leaves gaps, so it stays short of a total veil.
+    expect(deriveCloudDecks(earth(), pack).find((d) => d.species === 'water')!.bucket).not.toBe('veil');
+  });
+
   it('MARS: 0.13% water still forms an ice-crystal deck over frozen ground — snow, not deletion', () => {
     // Pins BOTH halves of the original bug: the borderline trace fraction forms a deck, and the
     // frozen surface must NOT suppress it (the first-draft snow-out rule would have).
