@@ -594,9 +594,12 @@ export class SystemProcessor implements ISystemProcessor {
         // Fluid layers (surface/subsurface oceans, cloud decks, interior conductive) — feed
         // classification (subsurface-ocean), apparent colour (clouds) and §2d magnetism.
         const fluidLayers = deriveFluidLayers(body, pack);
-        if (fluidLayers.length) {
-            body.hydrosphere = { ...(body.hydrosphere || {}), layers: fluidLayers };
-        }
+        // Write the derived layers ALWAYS, including an empty set. Guarding on `.length` meant that when
+        // a body stopped having any fluid layer, the previous pass's layers were left on it — so the
+        // TAGS (re-derived from this array every pass) said "no cloud deck" while the saved layers still
+        // said there was one. Apparent colour reads the layers, the disc renderer reads the tag, and the
+        // two then disagree: a cloud deck that tints the world but is never drawn.
+        body.hydrosphere = { ...(body.hydrosphere || {}), layers: fluidLayers };
         features['hasSubsurfaceOcean'] = fluidLayers.some((l) => l.location === 'subsurface') ? 1 : 0;
 
         // Structural tags (surfaced for GMs): a frozen icy shell, polar ice, a subsurface ocean, a

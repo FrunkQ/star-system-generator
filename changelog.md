@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.246-beta - 28th Jul 2026
+
+* Atmosphere Mixes editor fixed and tidied. "+ Add Gas" always added the FIRST gas in the list whether or not the mix already contained it — so it silently overwrote that row instead of adding one, and once you deleted a compound you could never get it back. It now adds the first gas not already in the mix, and says which. The rows also overflowed the modal (a range row is wider than the column it sat in), which put the third compound off the edge of the screen entirely; rows are now bounded and wrap properly. Changing a row's gas no longer jumps it to the bottom of the list, and each mix shows a running total so one that doesn't add up to 1.00 is visible while you edit it.
+* Fixed derived fluid layers going stale: when a body stopped having any (an ocean boiled off, a cloud deck thinned out), the previous pass's layers were left on it. The tags said "no cloud deck" while the saved layers still claimed one — so a world could be tinted by a deck that was never drawn.
+
 ## v2.1.245-beta - 28th Jul 2026
 
 * Beta resumes the V2.2 line after the v2.1.3 production cut: Player Views is back on the rail alongside the Field Guide (`PLAYER_VIEWS_ENABLED` flipped back on). Production ships with it masked.

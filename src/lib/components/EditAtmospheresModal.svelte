@@ -138,20 +138,42 @@
       compositions = compositions.filter((_, i) => i !== index);
   }
 
+  // Swap a row's gas IN PLACE. Deleting the old key and re-adding moved the row to the END of the mix,
+  // so changing the first gas made the row jump down the list under the cursor. Rebuilding the object in
+  // order keeps every row where the user left it.
   function updateGasInComp(compIndex: number, oldGas: string, newGas: string) {
       const comp = compositions[compIndex].value;
-      const amount = comp.composition[oldGas];
-      delete comp.composition[oldGas];
-      comp.composition[newGas] = amount;
+      if (oldGas === newGas) return;
+      const rebuilt: Record<string, any> = {};
+      for (const [k, v] of Object.entries(comp.composition)) {
+          if (k === oldGas) rebuilt[newGas] = v;          // same slot, new gas
+          else if (k !== newGas) rebuilt[k] = v;          // drop a duplicate of the incoming gas
+      }
+      comp.composition = rebuilt;
       compositions = [...compositions];
   }
 
+  // The gases not yet in this mix — what "+ Add Gas" can actually offer.
+  function unusedGasesFor(index: number): string[] {
+      const used = new Set(Object.keys(compositions[index]?.value?.composition ?? {}));
+      return Object.keys(gases).filter((g) => !used.has(g));
+  }
+
+  // Add the first gas NOT already in the mix. This used to add Object.keys(gases)[0] unconditionally —
+  // which, when that gas was already present (it usually is: N2/CO2 lead the list), silently overwrote
+  // that row's fraction instead of adding a row. Delete a gas and you could never get one back.
   function addGasToComp(index: number) {
-      const gas = Object.keys(gases)[0];
-      if (gas) {
-          compositions[index].value.composition[gas] = 0.1;
-          compositions = [...compositions];
-      }
+      const gas = unusedGasesFor(index)[0];
+      if (!gas) return;
+      compositions[index].value.composition[gas] = 0.1;
+      compositions = [...compositions];
+  }
+
+  // Fractions should sum to 1. Ranges count by their midpoint. Surfaced so a mix that silently doesn't
+  // add up is visible while editing rather than a mystery later.
+  function mixTotal(comp: any): number {
+      return Object.values(comp.composition ?? {}).reduce((sum: number, v: any) =>
+          sum + (Array.isArray(v) ? ((v[0] ?? 0) + (v[1] ?? 0)) / 2 : (Number(v) || 0)), 0) as number;
   }
 
   function getCompositionSummary(comp: any): string {
@@ -302,31 +324,46 @@
                                 </select>
                             </div>
                             <div class="composition-editor field full">
-                                <label>Gas Mix (Fraction 0-1)</label>
+                                <div class="mix-head">
+                                    <label>Gas Mix (fraction of 1)</label>
+                                    {#key compositions}
+                                        {@const total = mixTotal(entry.value)}
+                                        <span class="mix-total" class:off={Math.abs(total - 1) > 0.005}
+                                              title="Fractions should add up to 1. Ranges are counted by their midpoint.">
+                                            total {total.toFixed(2)}{#if Math.abs(total - 1) > 0.005}{' '}— should be 1.00{/if}
+                                        </span>
+                                    {/key}
+                                </div>
                                 <div class="mix-grid">
                                     {#each Object.entries(entry.value.composition) as [gas, amount]}
-                                        <div class="mix-row">
-                                            <select value={gas} on:change={(e) => updateGasInComp(idx, gas, e.currentTarget.value)}>
+                                        <div class="mix-row" class:range={Array.isArray(amount)}>
+                                            <select class="mix-gas" value={gas} on:change={(e) => updateGasInComp(idx, gas, e.currentTarget.value)}>
                                                 {#each Object.keys(gases) as g}
                                                     <option value={g}>{g}</option>
                                                 {/each}
                                             </select>
-                                            
+
                                             {#if Array.isArray(entry.value.composition[gas])}
-                                                <input type="number" step="0.01" min="0" max="1" bind:value={entry.value.composition[gas][0]} placeholder="Min" title="Min" />
-                                                <span class="sep">-</span>
-                                                <input type="number" step="0.01" min="0" max="1" bind:value={entry.value.composition[gas][1]} placeholder="Max" title="Max" />
-                                                <button class="small-btn" title="Convert to Fixed" on:click={() => { entry.value.composition[gas] = (entry.value.composition[gas][0] + entry.value.composition[gas][1]) / 2; compositions = [...compositions]; }}>=</button>
+                                                <input class="mix-num" type="number" step="0.01" min="0" max="1" bind:value={entry.value.composition[gas][0]} placeholder="Min" title="Minimum fraction" />
+                                                <span class="sep">–</span>
+                                                <input class="mix-num" type="number" step="0.01" min="0" max="1" bind:value={entry.value.composition[gas][1]} placeholder="Max" title="Maximum fraction" />
+                                                <button class="small-btn" title="Use a single fixed fraction instead of a range" on:click={() => { entry.value.composition[gas] = (entry.value.composition[gas][0] + entry.value.composition[gas][1]) / 2; compositions = [...compositions]; }}>=</button>
                                             {:else}
-                                                <input type="number" step="0.01" min="0" max="1" bind:value={entry.value.composition[gas]} placeholder="Val" />
-                                                <button class="small-btn" title="Convert to Range" on:click={() => { entry.value.composition[gas] = [entry.value.composition[gas], entry.value.composition[gas]]; compositions = [...compositions]; }}>↔</button>
+                                                <input class="mix-num wide" type="number" step="0.01" min="0" max="1" bind:value={entry.value.composition[gas]} placeholder="Val" title="Fraction of the atmosphere" />
+                                                <button class="small-btn" title="Vary this gas over a range instead of a fixed fraction" on:click={() => { entry.value.composition[gas] = [entry.value.composition[gas], entry.value.composition[gas]]; compositions = [...compositions]; }}>↔</button>
                                             {/if}
 
-                                            <button class="small-del" on:click={() => { delete entry.value.composition[gas]; compositions = [...compositions]; }}>✕</button>
+                                            <button class="small-del" title="Remove {gas} from this mix" on:click={() => { delete entry.value.composition[gas]; compositions = [...compositions]; }}>✕</button>
                                         </div>
                                     {/each}
-                                    <button class="small-add" on:click={() => addGasToComp(idx)}>+ Add Gas</button>
                                 </div>
+                                {#key compositions}
+                                    {@const spare = unusedGasesFor(idx)}
+                                    <button class="small-add" disabled={spare.length === 0} on:click={() => addGasToComp(idx)}
+                                            title={spare.length ? `Add ${spare[0]} to this mix` : 'Every defined gas is already in this mix'}>
+                                        + Add Gas{#if spare.length} ({spare[0]}){/if}
+                                    </button>
+                                {/key}
                             </div>
                         </div>
                     </div>
@@ -354,7 +391,7 @@
   }
   .modal {
     background: var(--bg-panel);
-    width: 900px;
+    width: min(900px, 96vw);   /* fixed 900px overflowed the viewport on a laptop/tablet */
     height: 85%;
     border-radius: 8px;
     display: flex; flex-direction: column;
@@ -441,12 +478,25 @@
   .mini-add { margin-top: 5px; }
   .mini-del:hover { color: var(--status-bad); }
 
+  /* A mix row must never be wider than its column, or the later gases sit off the edge of the modal —
+     which is what hid the third compound entirely. The column min is sized for the WIDEST row (a range:
+     gas + min + max + two buttons), and every control inside may shrink (min-width: 0 defeats the
+     default min-content floor on selects and number inputs). */
   .mix-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 5px; margin-top: 5px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 6px; margin-top: 5px; min-width: 0;
   }
-  .mix-row { display: flex; gap: 5px; align-items: center; }
-  .mix-row select { flex: 1; }
-  .mix-row input { width: 60px; }
+  .mix-row {
+      display: flex; gap: 4px; align-items: center; min-width: 0;
+      background: var(--bg-control); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px;
+  }
+  .mix-row .mix-gas { flex: 1 1 auto; min-width: 0; }
+  .mix-row .mix-num { flex: 0 0 62px; width: 62px; min-width: 0; }
+  .mix-row .mix-num.wide { flex-basis: 78px; width: 78px; }
+  .mix-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .mix-total { font-size: 0.78em; color: var(--text-faint); }
+  .mix-total.off { color: var(--accent, #ff5a1f); }
+  .small-add[disabled] { opacity: 0.45; cursor: not-allowed; }
   
   .header-main {
       flex: 1; display: flex; flex-direction: column;
