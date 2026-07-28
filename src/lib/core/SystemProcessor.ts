@@ -8,7 +8,8 @@ import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers } from '../physics/fluidLayers';
-import { deriveCloudDecks, applyCloudDeckTags, CLOUD_DECK_TAG, PRECIPITATION_TAG } from '../physics/cloudDecks';
+import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, CLOUD_DECK_TAG, PRECIPITATION_TAG,
+  LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG } from '../physics/cloudDecks';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
 import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
@@ -621,7 +622,8 @@ export class SystemProcessor implements ISystemProcessor {
         // auto tags and keeps manual ones) — exempt them from this blanket strip or a GM's manual
         // deck would be deleted every pass.
         body.tags = (body.tags || []).filter((t) =>
-            (t.key === CLOUD_DECK_TAG || t.key === PRECIPITATION_TAG)
+            (t.key === CLOUD_DECK_TAG || t.key === PRECIPITATION_TAG
+             || t.key === LIGHTNING_TAG || t.key === DUST_STORM_TAG || t.key === MONSOON_TAG)
             || (!t.key.startsWith('structure/') && t.key !== 'climate/polar-ice'
                 && !t.key.startsWith('hydrosphere/') && t.key !== 'climate/steam-world'
                 && t.key !== 'activity/sublimating' && t.key !== 'activity/cryovolcanism'));
@@ -673,7 +675,8 @@ export class SystemProcessor implements ISystemProcessor {
         // reacts to form what is all rule-pack DATA. Renderers read only the tags emitted here.
         // Gas giants keep their legacy look for now (E6 — they join the deck stack in their own
         // change), but their tags are still emitted so the data is ready.
-        body.tags = applyCloudDeckTags(body.tags, deriveCloudDecks(body, pack));
+        const cloudDecks = deriveCloudDecks(body, pack);
+        body.tags = applyCloudDeckTags(body.tags, cloudDecks, deriveWeather(body, cloudDecks, pack));
 
         // POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Too emergent to
         // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8

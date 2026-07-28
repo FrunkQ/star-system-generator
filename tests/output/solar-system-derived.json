@@ -511,6 +511,10 @@
           "value": "sulfuric-acid virga"
         },
         {
+          "key": "weather/lightning",
+          "value": "constant"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -942,6 +946,14 @@
         {
           "key": "weather/precipitation",
           "value": "water rain"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
+        },
+        {
+          "key": "weather/monsoon",
+          "value": "water"
         },
         {
           "key": "magnetic/dynamo"
@@ -1906,6 +1918,10 @@
         {
           "key": "weather/precipitation",
           "value": "water snow"
+        },
+        {
+          "key": "weather/dust-storms",
+          "value": "seasonal"
         },
         {
           "key": "magnetic/unshielded"
@@ -3229,6 +3245,10 @@
         {
           "key": "weather/precipitation",
           "value": "ammonia snow"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
         },
         {
           "key": "ring/system"
@@ -5492,6 +5512,10 @@
         {
           "key": "weather/precipitation",
           "value": "methane snow"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
         },
         {
           "key": "feature/polar-vortex",
@@ -8934,6 +8958,10 @@
           "value": "methane snow"
         },
         {
+          "key": "weather/lightning",
+          "value": "frequent"
+        },
+        {
           "key": "feature/polar-vortex",
           "value": "6"
         },
@@ -10559,6 +10587,10 @@
         {
           "key": "weather/precipitation",
           "value": "methane snow"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
         },
         {
           "key": "ring/system"

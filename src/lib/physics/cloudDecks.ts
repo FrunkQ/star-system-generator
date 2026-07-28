@@ -9,6 +9,7 @@
 // condenses and into what; the liquid it condenses to carries colour, opacity and melt point.
 import type { CelestialBody, RulePack, Tag, GasCloud } from '$lib/types';
 import { liquidDef, phaseAtP } from './liquids';
+import { makeupFractions } from './makeup';
 
 // ── The published vocabulary ─────────────────────────────────────────────────────────────────────
 export const CLOUD_DECK_TAG = 'structure/cloud-deck';
@@ -18,6 +19,11 @@ export const CLOUD_DECK_TAG = 'structure/cloud-deck';
 // (reasons-to-visit, weather) to build on. Value: "<species> rain|snow|virga".
 export const PRECIPITATION_TAG = 'weather/precipitation';
 export type PrecipKind = 'rain' | 'snow' | 'virga';
+// Further weather, derived from the decks + the body's own physics. Flavour first — surfaced as tags
+// so scenarios, reasons-to-visit and the renderers can all build on them without re-deriving.
+export const LIGHTNING_TAG = 'weather/lightning';       // value: bucket (occasional|frequent|constant)
+export const DUST_STORM_TAG = 'weather/dust-storms';    // value: bucket (seasonal|frequent|planet-wide)
+export const MONSOON_TAG = 'weather/monsoon';           // value: the raining species
 // Coverage buckets, thinnest → thickest. Buckets, not floats: they read better in the tag list,
 // survive hand-editing, and make GM authoring a dropdown (the codebase idiom — surface/age,
 // surface/irradiation). The emitter computes precisely and publishes the band.
@@ -204,6 +210,56 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
   return [...decks.values()].sort((a, b) => b.condenseK - a.condenseK);
 }
 
+// ── Weather (derived from the decks + the body's own physics) ────────────────────────────────────
+// Flavour tags, but derived not sprinkled: each needs a real reason to exist, so a world only gets
+// them when its physics earns them. Kept OUT of the appearance model deliberately — they describe
+// the world, and the renderers may read them, but nothing here feeds back into temperature.
+export interface WeatherTags { lightning?: string; dustStorms?: string; monsoon?: string }
+
+export function deriveWeather(body: CelestialBody, decks: CloudDeck[], pack?: RulePack | null): WeatherTags {
+  const out: WeatherTags = {};
+  const pBar = body.atmosphere?.pressure_bar ?? 0;
+  const surfT = body.temperatureK ?? body.equilibriumTempK ?? 0;
+  if (pBar < 1e-4) return out;                       // no air, no weather
+
+  // LIGHTNING — charge separation needs a deep convecting cloud with heavy particles moving through
+  // it. So: a substantial deck, plus something driving the convection (a warm thick atmosphere, or
+  // volcanic ash on a thinner one — Io's plumes and volcanic lightning on Earth do the same job).
+  const thickest = decks.reduce<CloudDeck | null>((b, d) => (!b || d.coverage > b.coverage ? d : b), null);
+  if (thickest && thickest.coverage > 0.3) {
+    const volcanic = (body.tags ?? []).some((t) => t.key === 'tidal/volcanism' || t.key === 'tidal/lava-flows'
+      || t.key === 'geology/plate-tectonics' || t.key === 'activity/cryovolcanism');
+    // Convective vigour: warmth drives the updraughts, pressure gives them something to lift. A GIANT
+    // is a deep convecting atmosphere by nature — its weather is driven from BELOW, by the heat still
+    // leaking out of it, not by the sunlight on its cloud tops. Judging Jupiter on its 125 K cloud-top
+    // temperature said "too cold for storms" about the most electrically violent place in the system.
+    const giant = makeupFractions(body).gas > 0.5;
+    const vigour = giant ? 0.85 : Math.min(1, (surfT / 320) * Math.min(1, Math.log10(1 + pBar) + 0.35));
+    const score = vigour + (volcanic ? 0.35 : 0) + (thickest.coverage - 0.3) * 0.6;
+    if (score > 0.55) out.lightning = score > 1.15 ? 'constant' : score > 0.8 ? 'frequent' : 'occasional';
+  }
+
+  // DUST STORMS — a dry, loose, wind-scoured surface. Needs air to lift the dust but NO ocean to
+  // pin it down and no thick cloud to damp the surface heating that drives the wind (Mars).
+  const oceanCover = body.hydrosphere?.coverage ?? 0;
+  const surfaceLiquid = oceanCover > 0.05
+    && !!body.hydrosphere?.composition && body.hydrosphere.composition !== 'none'
+    && phaseAtP(body.hydrosphere.composition, surfT, pBar, pack) === 'liquid';
+  const solid = !((body as any).makeup?.gas > 0.5);
+  if (solid && !surfaceLiquid && pBar >= 1e-4 && pBar < 5 && (!thickest || thickest.coverage < 0.4)) {
+    out.dustStorms = pBar > 0.5 ? 'planet-wide' : pBar > 0.02 ? 'frequent' : 'seasonal';
+  }
+
+  // MONSOON — a seasonal swing in rainfall: you need rain reaching the ground, an ocean to supply
+  // it, and a real axial tilt to give the year seasons at all.
+  const tilt = Math.abs(body.axial_tilt_deg ?? 0) % 180;
+  const seasonal = Math.min(tilt, 180 - tilt) > 12;
+  const raining = decks.find((d) => d.precip === 'rain' && d.coverage > 0.2);
+  if (seasonal && surfaceLiquid && raining) out.monsoon = raining.species;
+
+  return out;
+}
+
 // ── Tags (the published interface) ───────────────────────────────────────────────────────────────
 export function cloudDeckTags(decks: CloudDeck[]): Tag[] {
   const tags: Tag[] = decks.map((d) => ({ key: CLOUD_DECK_TAG, value: `${d.species} ${d.bucket}` }));
@@ -238,12 +294,19 @@ export function decksFromTags(tags: Tag[] | undefined, pack?: RulePack | null): 
   return [...seen.values()].sort((a, b) => b.condenseK - a.condenseK);
 }
 
-// Processor hook: strip the previous pass's AUTO deck + precipitation tags, keep manual ones, and
-// emit fresh auto tags for species the manual set doesn't already cover (manual wins a collision).
-export function applyCloudDeckTags(tags: Tag[], decks: CloudDeck[]): Tag[] {
-  const kept = tags.filter((t) => (t.key !== CLOUD_DECK_TAG && t.key !== PRECIPITATION_TAG) || t.manual);
+const WEATHER_KEYS = [CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG];
+
+// Processor hook: strip the previous pass's AUTO deck/weather tags, keep manual ones, and emit
+// fresh auto tags for species the manual set doesn't already cover (manual wins a collision).
+export function applyCloudDeckTags(tags: Tag[], decks: CloudDeck[], weather: WeatherTags = {}): Tag[] {
+  const kept = tags.filter((t) => !WEATHER_KEYS.includes(t.key) || t.manual);
+  const manualKeys = new Set(kept.map((t) => t.key));
   const manualSpecies = new Set(
     kept.filter((t) => t.key === CLOUD_DECK_TAG).map((t) => parseCloudDeckValue(t.value).species));
   const fresh = cloudDeckTags(decks.filter((d) => !manualSpecies.has(d.species)));
+  // A GM's hand-set weather wins outright — if they've said "constant lightning", don't argue.
+  if (weather.lightning && !manualKeys.has(LIGHTNING_TAG)) fresh.push({ key: LIGHTNING_TAG, value: weather.lightning });
+  if (weather.dustStorms && !manualKeys.has(DUST_STORM_TAG)) fresh.push({ key: DUST_STORM_TAG, value: weather.dustStorms });
+  if (weather.monsoon && !manualKeys.has(MONSOON_TAG)) fresh.push({ key: MONSOON_TAG, value: weather.monsoon });
   return [...kept, ...fresh];
 }

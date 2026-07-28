@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.249-beta - 28th Jul 2026
+
+* **Weather.** Worlds now derive lightning, dust storms and monsoons from their own physics, alongside the precipitation tags. Lightning wants a deep convecting cloud deck — a warm thick atmosphere, volcanic ash, or a giant's own heat leaking out from below, which is why Jupiter crackles despite cloud tops at 125 K. Dust storms want a dry wind-scoured surface with air enough to lift it and no ocean to pin it down. A monsoon wants rain that reaches the ground, an ocean to supply it, and a real axial tilt to give the year seasons. Across our own system that lands as constant lightning on Venus, rain and monsoons on Earth, seasonal dust storms on Mars, and storms on all four giants — none of it authored, all of it derived. A GM's hand-set weather always wins over the physics.
+
 ## v2.1.248-beta - 28th Jul 2026
 
 * The cloud and reaction data is now EDITABLE. A new **Reactions** tab in the atmosphere editor defines gases that combine to make another gas — pick the two ingredients, pick what they produce, set how much of the scarcer one converts. All three must already exist as gases, so the tab makes reactions, never gases. There is no chemistry database: only the reactions you care about exist, which means "Krypton + Unobtanium = pink bubblegum" is a perfectly good rule.

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  deriveCloudDecks, effectiveComposition, applyCloudDeckTags, decksFromTags,
-  parseCloudDeckValue, CLOUD_DECK_TAG, PRECIPITATION_TAG
+  deriveCloudDecks, effectiveComposition, applyCloudDeckTags, decksFromTags, deriveWeather,
+  parseCloudDeckValue, CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG
 } from './cloudDecks';
 import type { CelestialBody, RulePack, Tag } from '$lib/types';
 
@@ -169,6 +169,53 @@ describe('visibility floors vs reactions', () => {
     const decks = deriveCloudDecks(realMars, pack);
     expect(species(decks)).toContain('water');
     expect(decks.find((d) => d.species === 'water')!.bucket).toBe('wisps');  // thin, but there
+  });
+});
+
+describe('weather — derived, not sprinkled', () => {
+  it('EARTH: a warm thick convecting deck over an ocean gets lightning and a monsoon', () => {
+    const e = earth(); (e as any).axial_tilt_deg = 23.4;
+    const w = deriveWeather(e, deriveCloudDecks(e, pack), pack);
+    expect(w.lightning).toBeTruthy();
+    expect(w.monsoon).toBe('water');       // rain that lands + an ocean + a real tilt
+    expect(w.dustStorms).toBeUndefined();  // an ocean pins the dust down
+  });
+
+  it('MARS: dry, thin-aired and cloudless enough for dust storms — and no monsoon', () => {
+    const m = mars(); (m as any).axial_tilt_deg = 25;
+    const w = deriveWeather(m, deriveCloudDecks(m, pack), pack);
+    expect(w.dustStorms).toBeTruthy();
+    expect(w.monsoon).toBeUndefined();     // no ocean to supply it
+  });
+
+  it('a tilt-less ocean world rains but has no monsoon (no seasons to swing)', () => {
+    const flat = earth(); (flat as any).axial_tilt_deg = 0;
+    expect(deriveWeather(flat, deriveCloudDecks(flat, pack), pack).monsoon).toBeUndefined();
+  });
+
+  it('an airless body gets no weather at all', () => {
+    const rock = world({ temperatureK: 300, atmosphere: { pressure_bar: 0, composition: {} } as any });
+    expect(deriveWeather(rock, [], pack)).toEqual({});
+  });
+
+  it('a GIANT gets lightning from its own internal convection, not its cold cloud tops', () => {
+    // Jupiter's cloud tops are ~125 K. Judged on that alone it reads "too cold for storms" — about
+    // the most electrically violent place in the solar system.
+    const jovian = world({
+      temperatureK: 125,
+      makeup: { gas: 0.9, ice: 0.1 } as any,
+      atmosphere: { pressure_bar: 1, composition: { H2: 0.86, He: 0.13, NH3: 0.004, H2S: 0.0008 } } as any
+    });
+    expect(deriveWeather(jovian, deriveCloudDecks(jovian, pack), pack).lightning).toBeTruthy();
+  });
+
+  it('volcanism drives lightning even through a thinner atmosphere', () => {
+    const ashy = world({
+      temperatureK: 300,
+      atmosphere: { pressure_bar: 0.8, composition: { N2: 0.6, H2O: 0.2, SO2: 0.2 } } as any,
+      tags: [{ key: 'tidal/volcanism' }]
+    });
+    expect(deriveWeather(ashy, deriveCloudDecks(ashy, pack), pack).lightning).toBeTruthy();
   });
 });
 
