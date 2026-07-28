@@ -130,17 +130,30 @@ function render(body: CelestialBody): HTMLCanvasElement {
       ctx.fillStyle = land; ctx.fillRect(0, 0, SIZE, SIZE);
       if (ocean && cover > 0.02) drawPatches(ctx, rnd, ocean.hex, cover);
     }
-    // cloud streaks on top — elongated, weight-driven opacity
+    // Cloud deck on top. Its palette weight is the deck's VEIL — how much of the ground it hides —
+    // so it must drive how much of the disc is covered, not just the alpha of a fixed handful of
+    // streaks. A total veil (Venus: 0.2% sulphuric acid, but 0.18 bar of it) was drawing as a few
+    // white streaks over bare brown ground, which is the one thing Venus never looks like. Past
+    // ~0.75 the deck simply becomes the surface, with a little mottling for texture.
     const deck = clouds[0];
     if (deck) {
-      ctx.globalAlpha = Math.min(0.85, 0.35 + deck.weight * 0.5);
+      const veil = Math.max(0, Math.min(1, deck.weight));
       ctx.fillStyle = deck.hex;
-      const streaks = 5 + Math.floor(rnd() * 4);
-      for (let i = 0; i < streaks; i++) {
-        const y = SIZE * rnd();
-        ctx.beginPath();
-        ctx.ellipse(SIZE * rnd(), y, SIZE * (0.16 + rnd() * 0.2), SIZE * 0.045, 0, 0, 2 * Math.PI);
-        ctx.fill();
+      if (veil > 0.55) {
+        ctx.globalAlpha = Math.min(1, 0.72 + (veil - 0.55) * 0.6);
+        ctx.fillRect(0, 0, SIZE, SIZE);                       // full overcast: the deck IS the view
+        ctx.globalAlpha = 0.25;
+        drawPatches(ctx, rnd, shade(deck.hex, 0.9), 0.35);    // faint mottling so it isn't flat
+      } else {
+        // Partial cover: elongated streaks, count and opacity both following the veil.
+        ctx.globalAlpha = Math.min(0.85, 0.3 + veil * 0.7);
+        const streaks = 3 + Math.round(veil * 14);
+        for (let i = 0; i < streaks; i++) {
+          const y = SIZE * rnd();
+          ctx.beginPath();
+          ctx.ellipse(SIZE * rnd(), y, SIZE * (0.16 + rnd() * 0.2), SIZE * 0.045, 0, 0, 2 * Math.PI);
+          ctx.fill();
+        }
       }
       ctx.globalAlpha = 1;
     }

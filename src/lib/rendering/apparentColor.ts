@@ -10,7 +10,7 @@
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
 import { phaseAtP, liquidDef } from '$lib/physics/liquids';
-import { decksFromTags } from '$lib/physics/cloudDecks';
+import { decksFromTags, condensateTint } from '$lib/physics/cloudDecks';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 
 type RGB = [number, number, number];
@@ -200,12 +200,8 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
       })
       .sort((a, b) => b.veil - a.veil)[0];
     if (top && top.veil > 0.02) {
-      // A cloud is SCATTERING DROPLETS, not bulk liquid: water is deep blue in a sea (absorption
-      // over a long path) and white as cloud (Mie scattering off droplets). So a deck reads as a
-      // pale tint of its substance, never its bulk colour — sulphuric acid stays creamy, ammonia
-      // keeps a tan hint, water goes white.
-      const base = hexToRgb(top.def?.colorHex ?? '#c8d2dc');
-      const condensate = mix(base, [244, 248, 252], 0.8);
+      // Droplets, not bulk liquid — condensateTint owns that rule (see cloudDecks).
+      const condensate = hexToRgb(condensateTint(top.def?.colorHex ?? '#c8d2dc'));
       col = mix(col, condensate, Math.min(0.85, top.veil));
       push(rgbToHex(condensate), 'cloud', top.veil, `${top.d.species} clouds`);
     }
@@ -223,10 +219,17 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     const comp = atm?.composition ?? {};
     const ch4 = comp['CH4'] ?? comp['methane'] ?? 0;
     let cloud = gasGiantCloudColor(teq); // warm thermal base (ammonia / water / alkali / silicate)
-    // Methane absorption: stronger with abundance and with cold (we see deeper, more absorbing air).
-    const methaneStrength = Math.min(0.9, ch4 * 6 + (teq < 90 ? 0.22 : teq < 160 ? 0.08 : 0));
+    // Methane absorption follows BEER-LAMBERT, not a linear ramp: it SATURATES, so a couple of
+    // percent over a deep atmosphere swallows essentially all the red light. Modelling it linearly
+    // (ch4 × 6) gave Uranus's real 2.3% a mere 0.14 of tint, which left the ice giants grey — they
+    // are cyan in life precisely because of that methane. Cold matters too: on a warm giant the
+    // methane sits below a thick ammonia haze we never see through, which is why Jupiter and Saturn
+    // stay gold at similar abundances.
+    const coldFactor = teq < 80 ? 1 : teq < 110 ? 0.6 : 0.35;
+    const methaneStrength = Math.min(0.92, (1 - Math.exp(-60 * ch4)) * coldFactor);
     if (methaneStrength > 0.06 && teq < 420) {
-      const methaneHue = teq < 60 ? [47, 107, 214] as RGB : [70, 176, 216] as RGB; // Neptune deep blue ↔ Uranus cyan
+      // Colder → deeper blue: Neptune (≈46 K) sits below the threshold, Uranus (≈58 K) reads cyan.
+      const methaneHue = teq < 52 ? [47, 107, 214] as RGB : [70, 176, 216] as RGB;
       cloud = mix(cloud, methaneHue, methaneStrength);
     }
     // An ice-dominated giant is an ICE GIANT even when the atmosphere carries no explicit methane readout

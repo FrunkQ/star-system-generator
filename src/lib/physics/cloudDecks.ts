@@ -109,6 +109,26 @@ function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas
   return { gas, frac: 0.04 * humidity * Math.min(1, coverage / 0.5) };
 }
 
+// ── Condensate colour ────────────────────────────────────────────────────────────────────────────
+// A cloud is SCATTERING DROPLETS, not bulk liquid. Water is deep blue in a sea (weak absorption over
+// metres of path) yet white as cloud; sulphuric acid is genuinely yellow-tinted and its cloud stays
+// creamy. So the rule is not "mix toward white by a fixed amount" — that whitens out substances that
+// are already pale, which cost Venus its yellow haze. Instead normalise the colour's DISTANCE from
+// white to a fixed small amount: a dark liquid lightens a lot, an already-pale one barely moves, and
+// the hue survives either way.
+const CONDENSATE_DISTANCE = 60;   // how far from white a deck sits, in 0..255 channel terms
+export function condensateTint(hex: string): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return '#eef2f8';
+  const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const d = c.map((v) => 255 - v);
+  const max = Math.max(...d);
+  if (max <= 0) return hex;
+  const f = Math.min(1, CONDENSATE_DISTANCE / max);
+  const out = d.map((v) => Math.round(255 - v * f));
+  return '#' + out.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+}
+
 // ── Coverage → bucket ────────────────────────────────────────────────────────────────────────────
 export function bucketFor(coverage: number): CloudBucket {
   if (coverage < 0.12) return 'wisps';

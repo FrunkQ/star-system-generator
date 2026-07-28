@@ -192,7 +192,10 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 	const thick = coverage > 0.72;
 	if (thick) { ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(0.95, 0.45 + (coverage - 0.72) * 2)})`; ctx.fillRect(0, 0, W, H); }
 	const bands = thick ? 6 : 4;                                     // even → a clear equatorial lane
-	const systems = thick ? Math.round(30 + coverage * 44) : Math.round(16 + coverage * 24);
+	// Cloud-system COUNT must scale from near-zero with coverage. A flat floor of 16 meant a wisp
+	// deck (Mars, 0.08) drew almost as much cloud as an overcast one (Earth, 0.64) — the deck's
+	// coverage was barely visible in the result.
+	const systems = thick ? Math.round(30 + coverage * 44) : Math.max(2, Math.round(coverage * 42));
 	for (let i = 0; i < systems; i++) {
 		const bandY = ((Math.floor(rnd() * bands) + 0.5) / bands) * H;
 		const cy = bandY + (rnd() - 0.5) * (H / bands) * 0.55;       // jitter within the band; lanes stay clear
@@ -201,7 +204,8 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 		const spanX = (thick ? 70 : 48) + rnd() * (thick ? 70 : 80); // wide  E-W
 		const spanY = (thick ? 16 : 7) + rnd() * (thick ? 14 : 8);   // narrow N-S
 		const puffs = thick ? 7 : 4 + Math.floor(rnd() * 5);
-		const core = thick ? 0.18 + rnd() * 0.2 : 0.5 + rnd() * 0.35;
+		// Thin decks also fade with coverage — wisps are faint as well as sparse.
+		const core = thick ? 0.18 + rnd() * 0.2 : (0.2 + coverage * 0.55) * (0.65 + rnd() * 0.5);
 		for (let j = 0; j < puffs; j++) {
 			const px = cx + (rnd() - 0.5) * spanX, py = cy + (rnd() - 0.5) * spanY;
 			const radY = (thick ? 9 : 5) + rnd() * (thick ? 16 : 11);

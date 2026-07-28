@@ -21,7 +21,7 @@ import { oblatePolarFactor } from './bodyShape';
 import { auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { isSmallBodyShape } from '$lib/catalogue/smallBodyShape';
-import { decksFromTags } from '$lib/physics/cloudDecks';
+import { decksFromTags, condensateTint } from '$lib/physics/cloudDecks';
 import { liquidDef } from '$lib/physics/liquids';
 
 // ── colour helpers (shared; were inline in PlanetDisc) ──────────────────────────────────────────
@@ -445,9 +445,8 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 			return {
 				species: d.species,
 				coverage: d.coverage,
-				// Scattering droplets, not bulk liquid — a deck is a PALE TINT of its substance
-				// (water white, sulphuric acid creamy, ammonia faintly tan), never the sea colour.
-				colorHex: mixHex(base, '#f4f8fc', 0.8),
+				// Scattering droplets, not bulk liquid — condensateTint owns that rule.
+				colorHex: condensateTint(base),
 				opacity: def?.cloudOpacity ?? 0.5,
 				ice: (def?.meltK ?? 273) > (body.temperatureK ?? body.equilibriumTempK ?? 288)
 			};
