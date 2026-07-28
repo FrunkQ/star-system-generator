@@ -24,7 +24,7 @@ import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from 
 import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, updateMagma, updatePlumes, accretionColor,
+  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, updateMagma, updatePlumes, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
@@ -1512,6 +1512,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
               sphere.add(cl.group);
               cloudVisuals.push(...cl.layers);
+            }
+            // Titan's smog is a HIGH haze — outside the cloud shells, not baked into the surface.
+            if (appear.tholin?.atmospheric) {
+              sphere.add(buildTholinHaze(radius, appear.tholin.colorHex, appear.tholin.strength));
             }
           }
         }

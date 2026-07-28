@@ -235,6 +235,24 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 	return tex;
 }
 
+// ATMOSPHERIC THOLIN HAZE — Titan's orange smog. Unlike surface tholin staining (Pluto), this is a
+// high photochemical layer ABOVE the cloud decks, so it gets its own outermost shell rather than
+// being baked into the surface texture: baked below the clouds, Titan's pale methane deck hid it
+// completely. Uniform (a smog has no structure at this scale) and lightly emissive so the limb keeps
+// its glow.
+export function buildTholinHaze(radius: number, colorHex: string, strength: number): THREE.Mesh {
+	const mat = new THREE.MeshStandardMaterial({
+		color: new THREE.Color(colorHex),
+		transparent: true,
+		opacity: Math.min(0.8, 0.3 + strength * 0.5),
+		roughness: 1, metalness: 0, depthWrite: false,
+		emissive: new THREE.Color(colorHex), emissiveIntensity: 0.14
+	});
+	const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.075, 40, 28), mat);
+	mesh.renderOrder = 2;   // outside the cloud shells (renderOrder 1)
+	return mesh;
+}
+
 // CLOUD DECK — TWO cloud shells just above the surface, each on its own sphere and drifting INDEPENDENTLY
 // (of the planet's spin and of each other), so the deck has parallax depth: a lower main deck plus a high,
 // wispier deck that slides the other way a bit faster. Normal-blended (a real veil, not a glow); the

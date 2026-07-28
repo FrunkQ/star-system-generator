@@ -15,7 +15,7 @@ import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { buildAuroraShell } from './scene';
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, updateMagma, updatePlumes, accretionColor,
+	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, updateMagma, updatePlumes, accretionColor,
 	type EmissiveVisual
 } from './bodyFeatures';
 import { GALLERY_ROWS, GALLERY_BLACK_HOLES } from '$lib/catalogue/galleryExamples';
@@ -139,6 +139,8 @@ export function createGalleryScene(
 				sphere.add(cl.group);           // tracks the sphere's spin; the gallery drifts each layer separately
 				for (const l of cl.layers) cloudSpinners.push({ obj: l.mesh, drift: l.drift });
 			}
+			// Titan's smog goes OUTSIDE the cloud shells (see buildTholinHaze).
+			if (appear.tholin?.atmospheric) g.add(buildTholinHaze(R, appear.tholin.colorHex, appear.tholin.strength));
 			// Auroras from the shared appearance MODEL (the aurora/* tag) — consistent with the 2D disc.
 			// (The live holo currently derives them from physics; the model tag is what the gallery shows.)
 			if (appear.aurora) {

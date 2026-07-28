@@ -293,13 +293,13 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     }
   }
 
-  if (a.tholin) {
-    if (a.tholin.atmospheric) {
-      ctx.globalAlpha = 0.22 + a.tholin.strength * 0.35; ctx.fillStyle = a.tholin.colorHex;
-      ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
-    } else {
-      drawPatchesEquirect(ctx, rnd, a.tholin.colorHex, 0.22 + a.tholin.strength * 0.4, 0.5);
-    }
+  // SURFACE tholin staining only (Pluto's dark-red patches). An ATMOSPHERIC tholin haze (Titan) is
+  // not part of the surface: it is a high photochemical layer that sits ABOVE the cloud decks, so
+  // the 3D path draws it as its own outer shell (buildTholinHaze). Baking it into the surface here
+  // put it UNDER the cloud shell, and Titan's pale methane deck then hid its orange haze entirely —
+  // 3D read blue-white while the 2D disc, which draws tholin as a top overlay, read yellow-white.
+  if (a.tholin && !a.tholin.atmospheric) {
+    drawPatchesEquirect(ctx, rnd, a.tholin.colorHex, 0.22 + a.tholin.strength * 0.4, 0.5);
   }
   if (a.frost) drawPatchesEquirect(ctx, rnd, a.frost.colorHex, 0.18 + a.frost.coverage * 0.32, 0.45);
 
