@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.247-beta - 28th Jul 2026
+
+* Fixed the stutter when zooming back out from a space station, a close moon or anything else you were right up against. Bodies off the edge of the screen were still being drawn: at that zoom a neighbouring planet is millions of pixels across, and the orrery built a clip path that size and set up a scaled image blit into it before any of it got clipped away. They are now skipped outright (allowing for a star's halo), which changes nothing visible — any on-screen world that big is drawn by a different path.
+
 ## v2.1.246-beta - 28th Jul 2026
 
 * Atmosphere Mixes editor fixed and tidied. "+ Add Gas" always added the FIRST gas in the list whether or not the mix already contained it — so it silently overwrote that row instead of adding one, and once you deleted a compound you could never get it back. It now adds the first gas not already in the mix, and says which. The rows also overflowed the modal (a range row is wider than the column it sat in), which put the third compound off the edge of the screen entirely; rows are now bounded and wrap properly. Changing a row's gas no longer jumps it to the bottom of the list, and each mix shows a running total so one that doesn't add up to 1.00 is visible while you edit it.
