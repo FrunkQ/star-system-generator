@@ -11,9 +11,25 @@ scattered over three files, and is the root fix for the Mars borderline-clouds b
 ```json
 "H2O":   { "cloud": { "condensesTo": "water", "minFraction": 0.001 } },
 "NH4SH": { "colorHex": "#b8845a",
-           "reaction": { "from": ["NH3", "H2S"] },
+           "reaction": { "from": ["NH3", "H2S"], "yield": 1 },
            "cloud": { "condensesTo": "ammonium-hydrosulfide", "minFraction": 0.0001 } }
 ```
+
+`reaction.yield` (0..1, default 1) scales the conversion of the limiting constituent — bulk
+thermochemistry (NH4SH, yield 1) vs photochemical trace (Titan's HCN from N2 + CH4, yield 0.002;
+without it min(0.95, 0.05) would put HCN at 5% of the sky). NOT a chemistry database: only
+reactions someone cares about are defined, and users add their own ("Krypton + Unobtanium =
+pink bubblegum" is a legitimate rule-pack entry).
+
+**Pre-populated examples** (chosen to show the mechanism's range): NH4SH ← NH3 + H2S y1 (the
+Jupiter belt chromophore); H2SO4 ← SO2 + H2O y0.5 (Venus — an acid deck derived from precursors
+alone); HCN ← N2 + CH4 y0.002 (Titan's polar HCN ice, a genuine ppm trace).
+
+**Editor**: reactions get their OWN TAB in the Atmospheres modal (Gas Physics | Atmosphere Mixes |
+Reactions) — a reaction is conceptually "A + B → C" and users think of the table of reactions, not
+of C's config. The tab lists each recipe as a row (constituent pickers → product picker, yield
+slider); the DATA still lives on the product gas, the tab is just the view. The per-gas cloud
+fieldset stays on the Gas Physics tab beside aurora bands.
 
 **Liquid** (`liquids`): existing `colorHex` is the cloud colour; new `cloudOpacity` (0..1 veil
 strength). Ice-crystal vs droplet look derives from existing `meltK` vs deck temperature.
@@ -71,11 +87,13 @@ phase 2 — `gasGiantCloudColor`'s hardcoded ramp.
 - **E10 display blind spot:** the atmosphere summary hides gases <0.5%, which hid Mars's
   0.1% deck-driving water — always show a gas currently driving a deck.
 
-## Banked flavour tags (future, cheap once decks exist)
+## Weather flavour tags (IN SCOPE for the v2.1.4 cut — Alex 2026-07-28)
 
-- `weather/lightning` — deck + volcanism or vigorous convection (thick warm deck).
+- `weather/lightning` — thick warm deck + vigorous convection or volcanism. RENDERED in 3D as
+  brief flashes lighting the deck shell from within (strongest on the night side); a subtle
+  flicker on the 2D disc.
 - `weather/dust-storms` — dry surface + thin-but-real atmosphere + no ocean (Mars).
-- `climate/monsoon` — strong axial tilt + ocean + landmass (seasonal precipitation swing).
+- `climate/monsoon` — strong axial tilt + ocean + rain-bearing deck (seasonal precipitation swing).
 
 ## Phase 2 (banked)
 

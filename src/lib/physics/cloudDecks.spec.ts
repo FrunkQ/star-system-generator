@@ -123,6 +123,23 @@ describe('reaction products (one generation)', () => {
     expect(explicit.NH4SH).toBe(0.002);          // declared wins — nothing derived on top
     expect(explicit.NH3).toBe(0.004);
   });
+
+  it('YIELD scales photochemical traces: Titan makes ppm-level HCN, not min(N2, CH4)', () => {
+    // Without yield, N2 0.95 + CH4 0.05 would put HCN at 5% of the sky. Real conversion is a sliver.
+    const comp = effectiveComposition({ N2: 0.95, CH4: 0.05 }, pack);
+    expect(comp.HCN).toBeCloseTo(0.05 * 0.002, 9);
+    expect(comp.CH4).toBeCloseTo(0.05 - 0.05 * 0.002, 9);   // only the converted amount depletes
+  });
+
+  it('VENUS example: SO2 + H2O derive the sulphuric acid that IS the Venus deck', () => {
+    // A Venus authored WITHOUT explicit H2SO4 still grows its acid clouds from the precursors.
+    const primordialVenus = world({
+      temperatureK: 737,
+      atmosphere: { pressure_bar: 92, composition: { CO2: 0.96, N2: 0.034, SO2: 0.003, H2O: 0.002 } } as any
+    });
+    const s = species(deriveCloudDecks(primordialVenus, pack));
+    expect(s).toContain('sulfuric-acid');
+  });
 });
 
 describe('tags — the published interface', () => {

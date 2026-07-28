@@ -461,7 +461,18 @@
           "name": "prebiotic-precursor",
           "trigger": "always"
         }
-      ]
+      ],
+      "reaction": {
+        "from": [
+          "N2",
+          "CH4"
+        ],
+        "yield": 0.002
+      },
+      "cloud": {
+        "condensesTo": "hydrogen-cyanide",
+        "minFraction": 0.00008
+      }
     },
     "C2H6": {
       "molarMass": 0.03,
@@ -649,6 +660,13 @@
       "cloud": {
         "condensesTo": "sulfuric-acid",
         "minFraction": 0.0005
+      },
+      "reaction": {
+        "from": [
+          "SO2",
+          "H2O"
+        ],
+        "yield": 0.5
       }
     },
     "CH2O2": {
@@ -731,7 +749,8 @@
         "from": [
           "NH3",
           "H2S"
-        ]
+        ],
+        "yield": 1
       },
       "cloud": {
         "condensesTo": "ammonium-hydrosulfide",

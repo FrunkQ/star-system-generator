@@ -480,9 +480,12 @@ export interface AuroraEmitter { gas: string; colour: string; hex: string; weigh
 // the partial-fraction floor below which no deck forms. See docs/dev/cloud-decks-design.md.
 export interface GasCloud { condensesTo: string; minFraction?: number; }
 // A reaction PRODUCT declares its recipe (NH4SH from NH3 + H2S). The product's effective fraction
-// derives from its constituents (min, 1:1) at process time; constituents are depleted. One
-// generation only — a product cannot itself react further.
-export interface GasReaction { from: string[]; }
+// derives from its constituents at process time: min(constituents) × yield, constituents depleted
+// by the amount converted. `yield` (0..1, default 1) models photochemical traces — Titan's HCN is
+// made from N2 + CH4 but converts only a sliver, not min(0.95, 0.05). One generation only — a
+// product cannot itself react further. This is NOT a chemistry database: only reactions someone
+// cares about are defined, and users add their own ("Krypton + Unobtanium = pink bubblegum").
+export interface GasReaction { from: string[]; yield?: number; }
 
 export interface GasPhysics {
   molarMass: number;

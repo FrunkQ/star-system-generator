@@ -62,8 +62,9 @@ function condenseTempK(species: string, pack?: RulePack | null): number {
 // ── Effective composition (reactions + evaporation) ──────────────────────────────────────────────
 
 // Reaction products (edge E7): a product gas declares its recipe (`reaction.from`). Effective
-// product fraction = min of the constituents (1:1), constituents depleted by that amount. ONE
-// generation: products cannot themselves react (no chains, no cycles) — NH4SH needs nothing more.
+// product fraction = min of the constituents × the recipe's yield (default 1 — NH4SH converts
+// what it can; Titan's photochemical HCN converts a sliver), constituents depleted by the amount
+// converted. ONE generation: products cannot themselves react (no chains, no cycles).
 export function effectiveComposition(
   declared: Record<string, number>,
   pack?: RulePack | null
@@ -75,7 +76,7 @@ export function effectiveComposition(
     if (!from || from.length < 2) continue;
     if (out[product]) continue;                       // explicitly present already — leave it
     const available = from.map((g) => out[g] ?? 0);
-    const yielded = Math.min(...available);
+    const yielded = Math.min(...available) * Math.max(0, Math.min(1, def.reaction?.yield ?? 1));
     if (yielded <= 0) continue;
     out[product] = yielded;
     for (const g of from) out[g] = (out[g] ?? 0) - yielded;
