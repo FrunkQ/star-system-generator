@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.260-beta - 29th Jul 2026
+
+* Beta resumes the V2.2 line after the **v2.1.4** production cut: Player Views is back on the rail
+  alongside the Field Guide. Production ships with it masked.
+* Carries the ten new loading messages written for the v2.1.4 cut, so the next one starts from a
+  clean slate rather than re-using them.
+
 ## v2.1.259-beta - 29th Jul 2026
 
 * **Storms flash inside the clouds in 3D.** A world that derives lightning now fires it: brief
