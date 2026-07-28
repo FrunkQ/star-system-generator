@@ -11,11 +11,13 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import { getPlanetTextureEquirect, getEmissiveEquirect } from '$lib/rendering/planetTexture';
+import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { buildAuroraShell } from './scene';
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, updateMagma, updatePlumes, accretionColor,
+	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze,
+	applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, accretionColor,
 	type EmissiveVisual
 } from './bodyFeatures';
 import { GALLERY_ROWS, GALLERY_BLACK_HOLES } from '$lib/catalogue/galleryExamples';
@@ -82,6 +84,7 @@ export function createGalleryScene(
 	const auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
 	const discs: { points: THREE.Points; rate: number }[] = [];
 	const starVisuals: { corona: THREE.Sprite; baseScale: number; activity: number; seed: number }[] = [];
+	const galleryFlares: FlareVisual[] = [];
 	// Black-hole lensing centres: world pos + horizon radius, and (when feeding) the accretion disc's
 	// object + radii so the lens can exempt its projected band (the front-of-hole fix).
 	const lensBHs: { pos: THREE.Vector3; r: number; disc?: { obj: THREE.Object3D; inner: number; outer: number } }[] = [];
@@ -95,17 +98,32 @@ export function createGalleryScene(
 
 		if (isStar) {
 			const col = new THREE.Color(node.apparentColorHex || '#ffddaa');
-			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), new THREE.MeshBasicMaterial({ color: col }));
+			// The gallery star used to be a FLAT coloured sphere — no surface at all, which is why the
+			// star row read as smooth balls. It now uses the same photosphere as the live holo:
+			// granulation, spot groups and faculae from the magnetic-activity tag, plus limb darkening.
+			const activity = activityStrength(node.tags);
+			const starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+			const st = new THREE.CanvasTexture(makeStarSurfaceTexture(col.getHex(), activity, String(node.id)));
+			st.colorSpace = THREE.SRGBColorSpace;
+			starMat.map = st;
+			applyLimbDarkening(starMat, 0.55);
+			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), starMat);
 			g.add(sphere);
+			disposables.push(starMat, st);
 			const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 });
 			const corona = new THREE.Sprite(coronaMat);
-			const activity = node.flareActivity ?? 0.2;
 			const baseScale = R * (3.2 + activity * 3);
 			corona.scale.setScalar(baseScale);
 			g.add(corona);
 			spinners.push({ obj: sphere, rate: 0.25 });
 			let ss = 0; for (const ch of String(node.id)) ss = (ss + ch.charCodeAt(0)) % 997;
 			starVisuals.push({ corona, baseScale, activity, seed: ss / 997 });
+			// Flares for the stars that earn them — the gallery's flare-star row shows them firing.
+			if (flaresVisibly(node.tags)) {
+				const fl = buildStellarFlares(R, `#${col.getHexString()}`, activity, (ss || 1) + 7, glowTexture);
+				sphere.add(fl.group);
+				galleryFlares.push(...fl.flares);
+			}
 		} else {
 			const texCanvas = getPlanetTextureEquirect(node);
 			const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
@@ -305,6 +323,7 @@ export function createGalleryScene(
 		// Spin in-plane about the disc's local Y (its plane normal after the X-tilt). NB not rotation.z —
 		// with XYZ euler order that would wobble the plane, not spin it, and break the lens's ellipse feed.
 		for (const d of discs) d.points.rotation.y += 0.016 * d.rate;
+		updateStellarFlares(galleryFlares, t);
 		// Star flares: pulse each corona's size + brightness, amplitude ∝ flare activity, so an active
 		// flare star (an M dwarf) visibly throbs while a calm one barely moves — like the discs animate.
 		for (const s of starVisuals) {

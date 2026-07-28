@@ -5,6 +5,7 @@
 // 2D disc can (a plain disc) but come alive in 3D.
 import type { CelestialBody } from '$lib/types';
 import { deriveApparentColorParts, starColorFromTempK } from '$lib/rendering/apparentColor';
+import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '$lib/physics/stellarActivity';
 
 export interface GalleryRow {
 	title: string;
@@ -225,9 +226,12 @@ export const GALLERY_HOT_EYEBALL: CelestialBody[] = [
 ].map(withAp);
 
 // Star types by temperature (roleHint 'star').
+// Example stars carry the stellar/activity TAG the processor would give them, so the gallery shows
+// the same surfaces the live view does — spot groups, faculae and flares all read from that tag.
 const star = (name: string, t: number, radiusKm: number, flare = 0.2) =>
 	({ id: name, name, roleHint: 'star', temperatureK: t, radiusKm, flareActivity: flare,
-		apparentColorHex: rgbHex(starColorFromTempK(t)), tags: [] }) as unknown as CelestialBody;
+		apparentColorHex: rgbHex(starColorFromTempK(t)),
+		tags: [{ key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(flare) }] }) as unknown as CelestialBody;
 function rgbHex(rgb: [number, number, number]): string {
 	const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
 	return `#${c(rgb[0])}${c(rgb[1])}${c(rgb[2])}`;

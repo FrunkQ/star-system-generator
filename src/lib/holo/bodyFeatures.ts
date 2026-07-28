@@ -235,6 +235,151 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 	return tex;
 }
 
+// A star photosphere: base colour + granulation + SPOT GROUPS with bright faculae around them, all
+// scaled by the star's magnetic activity (the stellar/activity tag). Seeded from the star id so it
+// is stable frame-to-frame. Limb darkening is NOT baked here — it is a view-dependent effect and
+// belongs on the sphere (see the limb-darkening material), not in the surface map.
+export function makeStarSurfaceTexture(colorHex: number, activity: number, seedStr: string): HTMLCanvasElement {
+  const W = 512;   // was 256: spot groups and faculae need the room to read as structure, not specks
+  const H = 256;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext('2d')!;
+  let s = 2166136261;
+  for (let i = 0; i < seedStr.length; i++) { s ^= seedStr.charCodeAt(i); s = Math.imul(s, 16777619); }
+  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  const base = new THREE.Color(colorHex);
+  const css = (f: number) => `rgb(${Math.round(Math.min(255, base.r * 255 * f))},${Math.round(Math.min(255, base.g * 255 * f))},${Math.round(Math.min(255, base.b * 255 * f))})`;
+
+  ctx.fillStyle = css(1);
+  ctx.fillRect(0, 0, W, H);
+  // Granulation: convection cells. Denser and finer than before so the surface reads as boiling
+  // rather than dusty.
+  for (let i = 0; i < 1400; i++) {
+    ctx.globalAlpha = 0.09;
+    ctx.fillStyle = css(0.82 + rnd() * 0.36);
+    ctx.beginPath();
+    ctx.arc(rnd() * W, rnd() * H, 2 + rnd() * 5, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  // SPOT GROUPS. Real starspots come in groups along two ACTIVE LATITUDE BANDS either side of the
+  // equator (the Sun's butterfly diagram), not scattered anywhere — and each group is several spots
+  // of varying size, not one dot. Count, size and darkness all climb with magnetic activity, so a
+  // quiet sun shows a few small grey-ish groups and a flare star is blotched with near-black ones.
+  const groups = Math.round(2 + activity * 9);
+  const bandCentre = 0.30 + 0.06 * (1 - activity);   // very active stars spot closer to their poles
+  for (let g = 0; g < groups; g++) {
+    const north = rnd() < 0.5;
+    const gx = rnd() * W;
+    const gy = H * (north ? bandCentre : 1 - bandCentre) + (rnd() - 0.5) * H * 0.16;
+    const gr = (4 + rnd() * 7) * (0.7 + activity * 0.9);
+    const members = 1 + Math.floor(rnd() * (2 + activity * 4));
+
+    // Faculae: the bright magnetic froth that surrounds a spot group. On a quiet star these are the
+    // most visible magnetic feature of all — the Sun is slightly BRIGHTER at solar maximum because
+    // of them, despite having more spots.
+    ctx.globalAlpha = 0.16 + activity * 0.12;
+    ctx.fillStyle = css(1.28);
+    for (let f = 0; f < members * 3; f++) {
+      ctx.beginPath();
+      ctx.ellipse(gx + (rnd() - 0.5) * gr * 5, gy + (rnd() - 0.5) * gr * 3,
+        gr * (0.5 + rnd()), gr * (0.3 + rnd() * 0.5), rnd() * Math.PI, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    for (let m = 0; m < members; m++) {
+      const x = gx + (rnd() - 0.5) * gr * 3.4;
+      const y = gy + (rnd() - 0.5) * gr * 1.8;
+      const r = gr * (0.35 + rnd() * 0.75);
+      // Penumbra — the filamentary grey skirt.
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = css(0.5);
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 1.7, r * 1.05, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      // Umbra — the cold dark core. Darker on an active star (stronger fields, cooler spots).
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = css(0.3 - activity * 0.14);
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 0.9, r * 0.55, 0, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  return c;
+}
+
+// LIMB DARKENING — a star is dimmer and redder at its edge than at its centre, because at the limb
+// you are looking along a shallow slant through the photosphere and see only its cooler upper layers.
+// It is the single strongest cue that a star is a SPHERE rather than a flat glowing disc, and it is
+// view-dependent, so it belongs on the material and not in the surface map. Applied as a cheap patch
+// on the standard emissive material: one dot product, no extra pass, no extra draw.
+export function applyLimbDarkening(mat: THREE.Material, strength = 0.55): void {
+	mat.onBeforeCompile = (shader) => {
+		shader.uniforms.uLimb = { value: strength };
+		shader.vertexShader = shader.vertexShader
+			.replace('#include <common>', '#include <common>\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
+			.replace('#include <begin_vertex>',
+				'#include <begin_vertex>\nvLimbN = normalize(normalMatrix * normal);\nvLimbP = (modelViewMatrix * vec4(position,1.0)).xyz;');
+		shader.fragmentShader = shader.fragmentShader
+			.replace('#include <common>', '#include <common>\nuniform float uLimb;\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
+			.replace('#include <dithering_fragment>',
+				`#include <dithering_fragment>
+				 // mu = cos(angle between the surface normal and the line of sight). 1 at the disc
+				 // centre, 0 at the limb. The classic linear law: I(mu) = 1 - u(1 - mu).
+				 float mu = clamp(dot(normalize(vLimbN), normalize(-vLimbP)), 0.0, 1.0);
+				 float darken = 1.0 - uLimb * (1.0 - mu);
+				 // Redden as it darkens — the limb shows cooler gas, so the blue falls off fastest.
+				 gl_FragColor.rgb *= vec3(darken, darken * (0.94 + 0.06 * mu), darken * (0.86 + 0.14 * mu));`);
+	};
+	mat.needsUpdate = true;
+}
+
+// STELLAR FLARES — brief brilliant arcs at the limb of a magnetically active star. Additive sprites
+// on a timer, only built for stars that actually flare, so a quiet sun costs nothing at all. Kept to
+// a handful of quads: this is the one "moderate" effect in the stellar pass and it must stay
+// mobile-safe. Returns the group plus the per-flare state the animator drives.
+export interface FlareVisual { mesh: THREE.Mesh; mat: THREE.Material & { opacity: number }; phase: number; period: number }
+export function buildStellarFlares(radius: number, colorHex: string, activity: number, seed: number, tex: THREE.Texture)
+		: { group: THREE.Group; flares: FlareVisual[] } {
+	const group = new THREE.Group();
+	const flares: FlareVisual[] = [];
+	let s = (seed || 1) >>> 0;
+	const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+	const n = Math.round(2 + activity * 3);
+	const col = new THREE.Color(colorHex).lerp(new THREE.Color('#ffffff'), 0.55);
+	for (let i = 0; i < n; i++) {
+		const mat = new THREE.SpriteMaterial({
+			map: tex, color: col, transparent: true, opacity: 0,
+			blending: THREE.AdditiveBlending, depthWrite: false
+		});
+		const sp = new THREE.Sprite(mat);
+		// Sit them ON the limb, in the active latitude bands where the field emerges.
+		const lat = (rnd() < 0.5 ? 1 : -1) * (0.25 + rnd() * 0.35);
+		const lon = rnd() * Math.PI * 2;
+		const rr = radius * 1.02;
+		sp.position.set(Math.cos(lat) * Math.cos(lon) * rr, Math.sin(lat) * rr, Math.cos(lat) * Math.sin(lon) * rr);
+		const size = radius * (0.35 + rnd() * 0.4) * (0.6 + activity * 0.8);
+		sp.scale.set(size, size, 1);
+		sp.renderOrder = 3;
+		group.add(sp);
+		flares.push({ mesh: sp as unknown as THREE.Mesh, mat: mat as any, phase: rnd() * 20, period: 6 + rnd() * 14 });
+	}
+	return { group, flares };
+}
+
+/** Flares: a sharp rise and a slower decay, mostly dark between events. */
+export function updateStellarFlares(flares: FlareVisual[], nowSec: number): void {
+	for (const f of flares) {
+		const t = ((nowSec + f.phase) % f.period) / f.period;
+		// A short burst occupying ~18% of the cycle: fast rise, exponential-ish fall.
+		const burst = t < 0.18 ? (t < 0.04 ? t / 0.04 : Math.exp(-(t - 0.04) * 14)) : 0;
+		f.mat.opacity = burst * 0.85;
+	}
+}
+
 // ATMOSPHERIC THOLIN HAZE — Titan's orange smog. Unlike surface tholin staining (Pluto), this is a
 // high photochemical layer ABOVE the cloud decks, so it gets its own outermost shell rather than
 // being baked into the surface texture: baked below the clouds, Titan's pale methane deck hid it

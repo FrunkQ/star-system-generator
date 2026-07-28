@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.251-beta - 28th Jul 2026
+
+* **Stars have surfaces again.** Every star now derives a magnetic-activity level from its class and age, and that one figure drives everything its surface shows: granulation, spot GROUPS clustered into the active latitude bands either side of the equator rather than scattered anywhere, and the bright faculae that surround them — the froth that actually makes the Sun slightly brighter at solar maximum despite having more spots. A quiet sun shows a few small groups; a flare star is blotched with dark ones.
+* **Limb darkening**, in both 2D and 3D: a star is dimmer and redder at its edge, where you look along a slant through its cooler upper layers. It is the single strongest cue that a star is a sphere and not a flat glowing disc.
+* **Flares** fire from the limb of magnetically active stars — brief, bright, and only on the stars that earn them, so a quiet sun costs nothing.
+* The 2D disc gallery's stars were flat colour gradients and the 3D gallery's were untextured spheres; both now show the same photosphere the live views do.
+
 ## v2.1.250-beta - 28th Jul 2026
 
 * **Fixed: surface temperature ranges were wildly too wide.** The extremes were built by ADDING every swing together, so "coldest" meant the pole and midwinter and midnight all at full strength at once — which over-counts badly, and isn't even self-consistent (at a winter pole there is no day/night cycle to add). Mars came out at -205 °C to +93 °C against a real -143 °C to +35 °C. The swings now combine in quadrature, the standard way to add independent spreads, and Mars lands on -144 °C to +32 °C.

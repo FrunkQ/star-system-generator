@@ -24,7 +24,12 @@
       "image": {
         "url": "/images/star_types/G.webp"
       },
-      "tags": [],
+      "tags": [
+        {
+          "key": "stellar/activity",
+          "value": "quiet"
+        }
+      ],
       "areas": [],
       "description": "The heart of our Solar System, Sol is a G-type main-sequence star (a yellow dwarf). It accounts for 99.8% of the system's total mass. Its energy, produced by nuclear fusion in its core, radiates outward, making life on Earth possible.",
       "isNameUserDefined": true,

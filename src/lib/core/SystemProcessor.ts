@@ -20,6 +20,7 @@ import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity } from '../physics/stellar-evolution';
+import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
 import { predictTidalLock } from '../physics/tidalLock';
 import { brownDwarfThermal } from '../physics/substellar';
 
@@ -77,8 +78,12 @@ export class SystemProcessor implements ISystemProcessor {
             const s = node as CelestialBody;
             if (s.kind !== 'body' || s.roleHint !== 'star') continue;
             s.flareActivity = flareActivity(s.classes?.[0], this.systemAgeGyr);
-            s.tags = (s.tags || []).filter((t) => t.key !== 'hazard/flaring');
+            s.tags = (s.tags || []).filter((t) => t.key !== 'hazard/flaring' && t.key !== STELLAR_ACTIVITY_TAG);
             if (s.flareActivity > 0.4) s.tags.push({ key: 'hazard/flaring' });
+            // MAGNETIC ACTIVITY, bucketed — the one judgement behind everything a star's surface
+            // shows: spot count and darkness, facular brightening, and how often it flares. Both
+            // renderers read this tag rather than re-deriving from the raw number.
+            s.tags.push({ key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
         }
 
         // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
