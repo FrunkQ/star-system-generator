@@ -9,4 +9,4 @@
 //
 // Nothing is deleted or unreachable at build time — PlayerViewModal and the preset editor still compile
 // and are still covered by their tests; only the ways IN are hidden.
-export const PLAYER_VIEWS_ENABLED = true;
+export const PLAYER_VIEWS_ENABLED = false;
