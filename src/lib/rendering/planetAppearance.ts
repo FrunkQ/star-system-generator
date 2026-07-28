@@ -445,7 +445,9 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 			return {
 				species: d.species,
 				coverage: d.coverage,
-				colorHex: mixHex(base, '#f4f8fc', 0.65),
+				// Scattering droplets, not bulk liquid — a deck is a PALE TINT of its substance
+				// (water white, sulphuric acid creamy, ammonia faintly tan), never the sea colour.
+				colorHex: mixHex(base, '#f4f8fc', 0.8),
 				opacity: def?.cloudOpacity ?? 0.5,
 				ice: (def?.meltK ?? 273) > (body.temperatureK ?? body.equilibriumTempK ?? 288)
 			};

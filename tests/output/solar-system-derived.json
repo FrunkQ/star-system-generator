@@ -504,7 +504,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "sulfuric-acid scattered"
+          "value": "sulfuric-acid veil"
         },
         {
           "key": "weather/precipitation",
@@ -681,7 +681,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#a3896f",
+        "hex": "#dad3c8",
         "palette": [
           {
             "hex": "#937559",
@@ -690,15 +690,15 @@
             "label": "rock surface"
           },
           {
-            "hex": "#f2f2e7",
+            "hex": "#f3f4f0",
             "role": "cloud",
-            "weight": 0.16000000000000003,
+            "weight": 0.7360000000000001,
             "label": "sulfuric-acid clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#a3896f",
+      "apparentColorHex": "#dad3c8",
       "classification": {
         "base": "planet/silicate",
         "baseScore": 1.23,
@@ -937,7 +937,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "water scattered"
+          "value": "water overcast"
         },
         {
           "key": "weather/precipitation",
@@ -1166,7 +1166,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#637e9a",
+        "hex": "#7e96ae",
         "palette": [
           {
             "hex": "#927458",
@@ -1181,15 +1181,15 @@
             "label": "water ocean"
           },
           {
-            "hex": "#aec7e1",
+            "hex": "#ccdced",
             "role": "cloud",
-            "weight": 0.09000000000000001,
+            "weight": 0.30600000000000005,
             "label": "water clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#637e9a",
+      "apparentColorHex": "#7e96ae",
       "classification": {
         "base": "planet/swamp",
         "baseScore": 1.82,
@@ -2073,7 +2073,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#96795e",
+        "hex": "#97795e",
         "palette": [
           {
             "hex": "#957659",
@@ -2082,7 +2082,7 @@
             "label": "rock surface"
           },
           {
-            "hex": "#aec7e1",
+            "hex": "#ccdced",
             "role": "cloud",
             "weight": 0.036000000000000004,
             "label": "water clouds"
@@ -2090,7 +2090,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#96795e",
+      "apparentColorHex": "#97795e",
       "classification": {
         "base": "planet/sub-earth",
         "baseScore": 1.3,
@@ -3216,11 +3216,11 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "ammonium-hydrosulfide wisps"
+          "value": "ammonium-hydrosulfide broken"
         },
         {
           "key": "structure/cloud-deck",
-          "value": "ammonia wisps"
+          "value": "ammonia broken"
         },
         {
           "key": "weather/precipitation",
@@ -5479,11 +5479,11 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "ammonium-hydrosulfide wisps"
+          "value": "ammonium-hydrosulfide broken"
         },
         {
           "key": "structure/cloud-deck",
-          "value": "methane wisps"
+          "value": "methane overcast"
         },
         {
           "key": "weather/precipitation",
@@ -6017,7 +6017,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "methane broken"
+          "value": "methane veil"
         },
         {
           "key": "weather/precipitation",
@@ -6220,7 +6220,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#d5e8fb",
+        "hex": "#d8e9f9",
         "palette": [
           {
             "hex": "#d8ecff",
@@ -6229,15 +6229,15 @@
             "label": "ice surface"
           },
           {
-            "hex": "#c4d2e1",
+            "hex": "#d8e2ed",
             "role": "cloud",
-            "weight": 0.147,
+            "weight": 0.322,
             "label": "methane clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d5e8fb",
+      "apparentColorHex": "#d8e9f9",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.16,
@@ -8927,7 +8927,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "methane scattered"
+          "value": "methane overcast"
         },
         {
           "key": "weather/precipitation",
@@ -10554,7 +10554,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "methane scattered"
+          "value": "methane overcast"
         },
         {
           "key": "weather/precipitation",
@@ -11248,7 +11248,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#c3d6ea",
+        "hex": "#c4d7ea",
         "palette": [
           {
             "hex": "#d2e0ed",
@@ -11263,7 +11263,7 @@
             "label": "water ice sheet"
           },
           {
-            "hex": "#c4d2e1",
+            "hex": "#d8e2ed",
             "role": "cloud",
             "weight": 0.027999999999999997,
             "label": "methane clouds"
@@ -11271,7 +11271,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#c3d6ea",
+      "apparentColorHex": "#c4d7ea",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -11797,7 +11797,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#d7ebfe",
+        "hex": "#d8ecfe",
         "palette": [
           {
             "hex": "#d8ecff",
@@ -11806,7 +11806,7 @@
             "label": "ice surface"
           },
           {
-            "hex": "#c4d2e1",
+            "hex": "#d8e2ed",
             "role": "cloud",
             "weight": 0.027999999999999997,
             "label": "methane clouds"
@@ -11814,7 +11814,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d7ebfe",
+      "apparentColorHex": "#d8ecfe",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,

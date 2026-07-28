@@ -41,7 +41,13 @@ function makeLabel(text: string, colour = '#dfe6f0', px = 34): THREE.Sprite {
 	return spr;
 }
 
-export function createGalleryScene(canvas: HTMLCanvasElement) {
+// `extraRows` lets the page append rows built from LIVE data (the real solar system, processed at
+// runtime) after the hand-authored examples — the honesty check that the physics still produces a
+// recognisable Sol. Passed in rather than imported so this module keeps no data dependencies.
+export function createGalleryScene(
+	canvas: HTMLCanvasElement,
+	extraRows: { title: string; bodies: any[] }[] = []
+) {
 	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 	renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 	const scene = new THREE.Scene();
@@ -232,6 +238,9 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	placeRow('Black holes — by accretion level', GALLERY_BLACK_HOLES.length, (i, x, y) => buildBlackHole(GALLERY_BLACK_HOLES[i], x, y));
 	// Backdrop stars behind the black-hole row so the lensing has something to bend.
 	addStarBackdrop(bhRowY, (GALLERY_BLACK_HOLES.length / 2) * COL_GAP + COL_GAP, ROW_GAP * 0.75);
+
+	// Live-data rows last (the real solar system) — see the extraRows note above.
+	for (const r of extraRows) placeRow(r.title, r.bodies.length, (i, x, y) => buildBody(r.bodies[i], x, y));
 
 	// Post-processing: the black-hole lensing pass (same shader as the live holo). The front-of-hole
 	// disc is handled ANALYTICALLY in the shader (the projected disc-ellipse band passes through

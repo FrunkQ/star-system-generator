@@ -200,8 +200,12 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
       })
       .sort((a, b) => b.veil - a.veil)[0];
     if (top && top.veil > 0.02) {
+      // A cloud is SCATTERING DROPLETS, not bulk liquid: water is deep blue in a sea (absorption
+      // over a long path) and white as cloud (Mie scattering off droplets). So a deck reads as a
+      // pale tint of its substance, never its bulk colour — sulphuric acid stays creamy, ammonia
+      // keeps a tan hint, water goes white.
       const base = hexToRgb(top.def?.colorHex ?? '#c8d2dc');
-      const condensate = mix(base, [244, 248, 252], 0.65);   // lightened: droplets scatter white
+      const condensate = mix(base, [244, 248, 252], 0.8);
       col = mix(col, condensate, Math.min(0.85, top.veil));
       push(rgbToHex(condensate), 'cloud', top.veil, `${top.d.species} clouds`);
     }

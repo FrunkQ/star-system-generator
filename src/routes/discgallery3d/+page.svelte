@@ -6,13 +6,36 @@
 
   let canvas: HTMLCanvasElement;
 
+  // The real solar system, fetched and run through the same processor and rule pack the app uses,
+  // appended as a final row. Not hand-authored: if the data or the physics changes, this row moves
+  // with it — the 3D counterpart of the same reality check on /discgallery.
+  async function liveSolarSystemRow(): Promise<{ title: string; bodies: any[] }[]> {
+    try {
+      const { fetchAndLoadRulePack } = await import('$lib/rulepack-loader');
+      const { systemProcessor } = await import('$lib/core/SystemProcessor');
+      const [pack, res] = await Promise.all([
+        fetchAndLoadRulePack('/rulepacks/starter-sf/main.json'),
+        fetch('/examples/Sol_2030-System.json')
+      ]);
+      if (!res.ok) return [];
+      const raw = await res.json();
+      const processed = systemProcessor.process(JSON.parse(JSON.stringify(raw.system ?? raw)), pack);
+      const wanted = ['Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Titan', 'Uranus', 'Neptune', 'Triton', 'Pluto'];
+      const bodies = wanted.map((n) => processed.nodes.find((x: any) => x.name === n)).filter(Boolean);
+      return bodies.length ? [{ title: 'Our solar system — live from the data', bodies }] : [];
+    } catch {
+      return [];   // the gallery is still worth showing without it
+    }
+  }
+
   onMount(() => {
     let handle: { dispose(): void } | null = null;
     let cancelled = false;
     (async () => {
       const { createGalleryScene } = await import('$lib/holo/galleryScene');
+      const extraRows = await liveSolarSystemRow();
       if (cancelled || !canvas) return;
-      handle = createGalleryScene(canvas);
+      handle = createGalleryScene(canvas, extraRows);
     })();
     return () => { cancelled = true; handle?.dispose(); };
   });

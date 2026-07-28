@@ -169,10 +169,12 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
       : surfT < ldef.meltK ? 'snow'
       : surfT <= ldef.boilK ? 'rain'
       : 'virga';
-    // Coverage: grows with abundance and with pressure to suspend it. log-ish so trace decks read
-    // as wisps and a dominant condensable reads as a veil.
-    const coverage = Math.max(0, Math.min(1,
-      (0.25 + 0.35 * Math.log10(1 + pBar)) * Math.min(1, Math.pow(frac / 0.05, 0.5))));
+    // Coverage from the deck's COLUMN AMOUNT — its partial pressure — not its fraction. A deck's
+    // opacity is how much condensate is overhead, and fraction alone gets it badly wrong: Venus's
+    // sulphuric acid is a mere 0.2% of the atmosphere but that is 0.18 bar of it, an opaque veil,
+    // while Earth's 0.4% water in 1 bar is broken cloud. Log scale, anchored on the real solar
+    // system: Mars ~1e-6 bar → wisps, Earth 4e-3 → overcast, Venus 0.18 → veil.
+    const coverage = Math.max(0, Math.min(1, 0.16 * (Math.log10(Math.max(1e-12, partialBar)) + 6.4)));
     const deck: CloudDeck = { species, bucket: bucketFor(coverage), coverage, condenseK: condenseTempK(species, pack), precip };
     const prior = decks.get(species);
     if (!prior || deck.coverage > prior.coverage) decks.set(species, deck);  // dedupe by species
