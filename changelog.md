@@ -2,6 +2,20 @@
 
 All notable changes are listed here:
 
+## v2.1.257-beta - 29th Jul 2026
+
+* **Tags explain themselves properly now.** A reported example: the "Episodic" geology tag described
+  itself as "the body's tectonic and volcanic regime, set by its interior heat" — true of every
+  geology tag and useful for none of them. Two of the seven geological regimes had no write-up at
+  all, and "Stagnant lid" was carrying the description of a different regime entirely, Venus and its
+  catastrophic overturn included. All seven now say what they specifically mean, matching the
+  physics reference.
+* Surface age and irradiation had no description whatsoever, and weather tags were rendering
+  ungrouped and grey because their category had never been registered. Both fixed.
+* The gap was structural rather than a typo — a tag with no write-up quietly falls back to a blurb
+  for its whole category, which reads like an explanation instead of like something missing. A test
+  now walks the source for every tag the code emits and fails if any of them is relying on that.
+
 ## v2.1.256-beta - 28th Jul 2026
 
 * **Generated gas giants finally have something in their air.** Every auto-generated giant was pure
