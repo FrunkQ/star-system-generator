@@ -34,8 +34,13 @@ by condensation temperature.
 3. Per cloud-capable gas: partial pressure = fraction × surface pressure; condensation tested
    with `phaseAtP` at DECK temperature (lapse approximation — see E1), gated on the exosphere
    floor (>=1e-6 bar) and below the liquid's critical point.
-4. Snow-out: condensable at the SURFACE too ⇒ precipitates, no deck (hands off to volatile
-   retention/frost). Deck requires condensable-aloft but not at ground.
+4. PRECIPITATION (revised E3): the ground-level phase does not suppress a deck — the original
+   "snow-out kills the deck" rule would have deleted Mars's real water-ice clouds over frozen
+   ground. Instead it drives a flavour tag, `weather/precipitation` value "<species> rain|snow|
+   virga": liquid in the surface melt–boil span lands as rain (Earth water, Titan methane, a hot
+   Jupiter's iron), below melt lands as snow (Mars water), above boil evaporates aloft as virga
+   (Venus's sulphuric-acid rain famously never reaches the ground). Surfaced for future systems
+   (reasons-to-visit, weather) to build on.
 5. Coverage from fraction+pressure → bucket; emit auto tags, preserve manual, dedupe by species
    (manual wins).
 
@@ -65,6 +70,12 @@ phase 2 — `gasGiantCloudColor`'s hardcoded ramp.
   self-heal on reprocess, manual tags parse leniently (unknown species ⇒ re-emit).
 - **E10 display blind spot:** the atmosphere summary hides gases <0.5%, which hid Mars's
   0.1% deck-driving water — always show a gas currently driving a deck.
+
+## Banked flavour tags (future, cheap once decks exist)
+
+- `weather/lightning` — deck + volcanism or vigorous convection (thick warm deck).
+- `weather/dust-storms` — dry surface + thin-but-real atmosphere + no ocean (Mars).
+- `climate/monsoon` — strong axial tilt + ocean + landmass (seasonal precipitation swing).
 
 ## Phase 2 (banked)
 

@@ -12,7 +12,8 @@
     "conductive": false,
     "biosolvent": "ideal",
     "family": "water",
-    "refractiveIndex": 1.333
+    "refractiveIndex": 1.333,
+    "cloudOpacity": 0.45
   },
   {
     "name": "salty-water",
@@ -27,7 +28,8 @@
     "conductive": true,
     "biosolvent": "ideal",
     "family": "water",
-    "refractiveIndex": 1.34
+    "refractiveIndex": 1.34,
+    "cloudOpacity": 0.45
   },
   {
     "name": "water-ammonia",
@@ -42,7 +44,8 @@
     "conductive": true,
     "biosolvent": "alternative",
     "family": "cryo",
-    "refractiveIndex": 1.33
+    "refractiveIndex": 1.33,
+    "cloudOpacity": 0.5
   },
   {
     "name": "ammonia",
@@ -57,7 +60,8 @@
     "conductive": false,
     "biosolvent": "alternative",
     "family": "cryo",
-    "refractiveIndex": 1.325
+    "refractiveIndex": 1.325,
+    "cloudOpacity": 0.55
   },
   {
     "name": "methane",
@@ -72,7 +76,8 @@
     "conductive": false,
     "biosolvent": "alternative",
     "family": "hydrocarbon",
-    "refractiveIndex": 1.286
+    "refractiveIndex": 1.286,
+    "cloudOpacity": 0.35
   },
   {
     "name": "ethane",
@@ -87,7 +92,8 @@
     "conductive": false,
     "biosolvent": "alternative",
     "family": "hydrocarbon",
-    "refractiveIndex": 1.347
+    "refractiveIndex": 1.347,
+    "cloudOpacity": 0.35
   },
   {
     "name": "nitrogen",
@@ -102,7 +108,8 @@
     "conductive": false,
     "biosolvent": "none",
     "family": "cryo",
-    "refractiveIndex": 1.205
+    "refractiveIndex": 1.205,
+    "cloudOpacity": 0.3
   },
   {
     "name": "sulfuric-acid",
@@ -117,7 +124,8 @@
     "conductive": true,
     "biosolvent": "none",
     "family": "acid",
-    "refractiveIndex": 1.437
+    "refractiveIndex": 1.437,
+    "cloudOpacity": 0.8
   },
   {
     "name": "carbon-dioxide",
@@ -132,7 +140,8 @@
     "conductive": false,
     "biosolvent": "none",
     "family": "exotic",
-    "refractiveIndex": 1.195
+    "refractiveIndex": 1.195,
+    "cloudOpacity": 0.4
   },
   {
     "name": "hydrogen-sulfide",
@@ -147,7 +156,8 @@
     "conductive": false,
     "biosolvent": "none",
     "family": "exotic",
-    "refractiveIndex": 1.38
+    "refractiveIndex": 1.38,
+    "cloudOpacity": 0.5
   },
   {
     "name": "hydrogen-cyanide",
@@ -162,7 +172,8 @@
     "conductive": false,
     "biosolvent": "alternative",
     "family": "exotic",
-    "refractiveIndex": 1.268
+    "refractiveIndex": 1.268,
+    "cloudOpacity": 0.45
   },
   {
     "name": "sulfur",
@@ -177,7 +188,8 @@
     "conductive": false,
     "biosolvent": "none",
     "family": "molten",
-    "refractiveIndex": 1.9
+    "refractiveIndex": 1.9,
+    "cloudOpacity": 0.75
   },
   {
     "name": "magma",
@@ -203,7 +215,8 @@
     "biosolvent": "none",
     "family": "molten",
     "refractiveIndex": 2.9,
-    "incandescent": true
+    "incandescent": true,
+    "cloudOpacity": 0.75
   },
   {
     "name": "sulfur-dioxide",
@@ -217,7 +230,8 @@
     "density_gcc": 1.46,
     "conductive": false,
     "biosolvent": "none",
-    "family": "internal"
+    "family": "internal",
+    "cloudOpacity": 0.6
   },
   {
     "name": "sodium",
@@ -228,7 +242,8 @@
     "density_gcc": 0.93,
     "conductive": true,
     "biosolvent": "none",
-    "family": "internal"
+    "family": "internal",
+    "cloudOpacity": 0.7
   },
   {
     "name": "potassium",
@@ -239,7 +254,8 @@
     "density_gcc": 0.86,
     "conductive": true,
     "biosolvent": "none",
-    "family": "internal"
+    "family": "internal",
+    "cloudOpacity": 0.7
   },
   {
     "name": "molten-glass",
@@ -251,7 +267,8 @@
     "conductive": false,
     "biosolvent": "none",
     "family": "internal",
-    "incandescent": true
+    "incandescent": true,
+    "cloudOpacity": 0.7
   },
   {
     "name": "metallic-hydrogen",
@@ -274,5 +291,17 @@
     "conductive": true,
     "biosolvent": "none",
     "family": "internal"
+  },
+  {
+    "name": "ammonium-hydrosulfide",
+    "label": "Ammonium Hydrosulfide (NH₄SH)",
+    "meltK": 190,
+    "boilK": 300,
+    "colorHex": "#b8845a",
+    "density_gcc": 1.17,
+    "conductive": false,
+    "biosolvent": "none",
+    "family": "internal",
+    "cloudOpacity": 0.65
   }
 ]
