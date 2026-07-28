@@ -212,7 +212,7 @@
       ],
       "cloud": {
         "condensesTo": "water",
-        "minFraction": 0.001
+        "minFraction": 0.0001
       }
     },
     "CH4": {
@@ -248,7 +248,7 @@
       ],
       "cloud": {
         "condensesTo": "methane",
-        "minFraction": 0.001
+        "minFraction": 0.0005
       }
     },
     "SO2": {
@@ -276,7 +276,7 @@
       ],
       "cloud": {
         "condensesTo": "sulfur-dioxide",
-        "minFraction": 0.001
+        "minFraction": 0.0005
       }
     },
     "H2S": {
@@ -324,7 +324,7 @@
       ],
       "cloud": {
         "condensesTo": "ammonia",
-        "minFraction": 0.001
+        "minFraction": 0.0001
       }
     },
     "Cl2": {
@@ -659,7 +659,7 @@
       ],
       "cloud": {
         "condensesTo": "sulfuric-acid",
-        "minFraction": 0.0005
+        "minFraction": 0.0002
       },
       "reaction": {
         "from": [
@@ -754,7 +754,7 @@
       },
       "cloud": {
         "condensesTo": "ammonium-hydrosulfide",
-        "minFraction": 0.0001
+        "minFraction": 0.00003
       }
     }
   },

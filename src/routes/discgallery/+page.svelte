@@ -3,8 +3,12 @@
   // their physics + tags (polar ice, gas-giant banding + spin-axis tilt, atmosphere glow, auroras,
   // rotational shape). Linked from Settings → System → Appearance. Uses synthetic example bodies.
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
-  import type { CelestialBody } from '$lib/types';
+  import type { CelestialBody, RulePack, System } from '$lib/types';
   import { deriveApparentColorParts } from '$lib/rendering/apparentColor';
+  import { onMount } from 'svelte';
+  import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
+  import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { decksFromTags, PRECIPITATION_TAG } from '$lib/physics/cloudDecks';
   import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST,
     GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL } from '$lib/catalogue/galleryExamples';
 
@@ -144,6 +148,38 @@
         apparentColor: { hex: '#c9a878', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any,
         tags: [{ key: 'aurora/brilliant', value: '0.75' }] }),
   ];
+
+  // ── OUR SOLAR SYSTEM, LIVE ────────────────────────────────────────────────────────────────────
+  // Not hand-authored examples: the real Sol data file, fetched and run through the SAME processor
+  // and rule pack the app uses. If the data or the physics changes, this row changes with it — so
+  // it doubles as the honesty check that what we generate still resembles the place we live.
+  let solBodies: CelestialBody[] = [];
+  let solError = '';
+  // What the physics decided, shown beside each world so the tags are checkable at a glance.
+  const weatherOf = (b: CelestialBody, pack: RulePack | null) => {
+    const decks = decksFromTags(b.tags, pack).map((d) => `${d.species} ${d.bucket}`);
+    const precip = (b.tags ?? []).filter((t) => t.key === PRECIPITATION_TAG).map((t) => t.value);
+    return { decks, precip };
+  };
+  let solPack: RulePack | null = null;
+
+  onMount(async () => {
+    try {
+      solPack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
+      const res = await fetch('/examples/Sol_2030-System.json');
+      if (!res.ok) throw new Error(`Sol example ${res.status}`);
+      const raw = await res.json();
+      const system: System = raw.system ?? raw;
+      const processed = systemProcessor.process(JSON.parse(JSON.stringify(system)), solPack);
+      // The worlds worth showing: everything with a real atmosphere or a familiar face, in orbit order.
+      const wanted = ['Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Titan', 'Uranus', 'Neptune', 'Triton', 'Pluto', 'Moon', 'Io', 'Europa'];
+      solBodies = wanted
+        .map((n) => processed.nodes.find((x: any) => x.name === n))
+        .filter(Boolean) as CelestialBody[];
+    } catch (e: any) {
+      solError = e?.message ?? String(e);
+    }
+  });
 
   const giants = [
     mk({ name: 'Jupiter-like · fast spin · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3, makeup: { gas: 0.9, ice: 0.1 } as any,
@@ -376,6 +412,38 @@
     <figure><PlanetDisc body={giants[3]} size={168} ringed={true} ringDensity={0.6} /><figcaption>Ringed giant · 98° tilt (on its side)</figcaption></figure>
     <figure><PlanetDisc body={mk({ name: 'Oblate + 45° tilt', apparentColorHex: '#c89868', oblateness: 0.4, axial_tilt_deg: 45, apparentColor: { hex: '#c89868', banding: 6, palette: ammonia('#e6dcb8', '#c8b888', '#a89860') } as any })} size={168} ringed={true} ringDensity={0.6} /><figcaption>Oblate + ring · 45° tilt</figcaption></figure>
   </div>
+
+  <!-- THE REALITY CHECK. Everything above is a hand-authored example; this row is the real Sol
+       data file put through the real processor. If our physics stops producing a recognisable
+       solar system, it shows up here first. -->
+  <h2>This is how OUR solar system looks — live from the data</h2>
+  <p class="lead">
+    Not hand-authored: <code>/examples/Sol_2030-System.json</code> fetched and run through the same
+    processor and rule pack the app uses. Edit the data or the physics and this row moves with it.
+  </p>
+  {#if solError}
+    <p class="lead err">Could not load the solar system: {solError}</p>
+  {:else if !solBodies.length}
+    <p class="lead">Processing the solar system…</p>
+  {:else}
+    <div class="gallery">
+      {#each solBodies as b}
+        {@const w = weatherOf(b, solPack)}
+        <figure>
+          <PlanetDisc body={b} size={168} />
+          <figcaption>
+            {b.name}
+            {#if w.decks.length}
+              <span class="weather">{w.decks.join(' · ')}</span>
+              <span class="weather dim">{w.precip.map((p) => p.split(' ').slice(-1)[0]).join(' · ')}</span>
+            {:else}
+              <span class="weather dim">no cloud</span>
+            {/if}
+          </figcaption>
+        </figure>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -387,4 +455,9 @@
   .gallery { display: flex; flex-wrap: wrap; gap: 28px; padding: 12px 0; }
   figure { margin: 0; text-align: center; font-size: 0.78rem; width: 168px; }
   figcaption { margin-top: 8px; color: #b8c2cc; }
+  .err { color: #e08a6a; }
+  code { color: #9fb6c8; font-size: 0.92em; }
+  /* The derived weather beside each real world — the check is "does this read as that planet?" */
+  .weather { display: block; margin-top: 2px; font-size: 0.72rem; color: #8aa8bc; line-height: 1.35; }
+  .weather.dim { color: #6b7787; }
 </style>

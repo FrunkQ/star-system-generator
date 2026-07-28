@@ -6,29 +6,9 @@ import { EARTH_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '$lib/constants';
 import { makeupFractions } from './makeup';
 import { isLiquidAtP, liquidDef } from './liquids';
 
-// Which liquid a condensable gas forms as a cloud, and its representative colour.
-const GAS_CLOUD: Record<string, { liquid: string; colorHex: string }> = {
-  H2O: { liquid: 'water', colorHex: '#eef2f8' },
-  H2SO4: { liquid: 'sulfuric-acid', colorHex: '#efe6c0' },
-  NH3: { liquid: 'ammonia', colorHex: '#d8b48a' },
-  CH4: { liquid: 'methane', colorHex: '#9fb6c8' },
-  SO2: { liquid: 'sulfur-dioxide', colorHex: '#ffffe0' },
-  Na: { liquid: 'sodium', colorHex: '#ffd700' },
-  K: { liquid: 'potassium', colorHex: '#ee82ee' },
-  Fe: { liquid: 'molten-iron', colorHex: '#808080' },
-  SiO: { liquid: 'molten-glass', colorHex: '#a9a9a9' }
-};
-
-// Friendly visible colour of a cloud deck by its condensed liquid — for the "what colour is the
-// sky?" cloud-deck tag. Unknown liquids fall back to the liquid name.
-const CLOUD_COLOUR: Record<string, string> = {
-  water: 'white', 'sulfuric-acid': 'pale yellow', ammonia: 'tan', methane: 'blue',
-  'sulfur-dioxide': 'yellow', sodium: 'orange', potassium: 'violet', 'molten-iron': 'grey',
-  'molten-glass': 'grey'
-};
-export function cloudColourName(liquid: string): string {
-  return CLOUD_COLOUR[liquid] ?? liquid.replace(/-/g, ' ');
-}
+// NOTE: cloud decks moved OUT of this module — `physics/cloudDecks.ts` is the single evaluation,
+// driven by rule-pack data (a gas's `cloud` block names its condensate; the liquid carries the
+// look). The old GAS_CLOUD / CLOUD_COLOUR tables that lived here are that data now.
 
 export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLayer[] {
   const layers: FluidLayer[] = [];
@@ -69,27 +49,9 @@ export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLa
     layers.push({ liquid: 'salty-water', location: 'subsurface', conductive: true, colorHex: '#3a6ea5' });
   }
 
-  // --- Cloud decks: condensable cloud-forming gases present in the atmosphere. The set of
-  //     cloud-forming species (and their liquid + colour) is owned HERE by GAS_CLOUD — this model
-  //     supersedes the old rulepack "cloud-former" gas tag. ---
-  const comp = body.atmosphere?.composition;
-  // Clouds need a real atmosphere to suspend them. A tenuous EXOSPHERE — Mercury's sputtered Na/K
-  // halo (~1e-11 bar), a lunar sputter atmosphere — is collisionless: condensable species dominate the
-  // composition but there's essentially nothing there, so it forms NO cloud deck. Gate on absolute
-  // pressure, not just the composition fraction. (1 µbar admits Triton/Pluto-thin real atmospheres.)
-  const atmPressureBar = body.atmosphere?.pressure_bar ?? 0;
-  if (comp && atmPressureBar >= 1e-6) {
-    for (const [gas, frac] of Object.entries(comp)) {
-      if ((frac as number) < 0.001) continue;
-      const m = GAS_CLOUD[gas];
-      if (!m) continue;
-      const phys = pack?.gasPhysics?.[gas];
-      // condenses if the surface (or upper atmosphere) is below ~1.6× its boiling point
-      if (surfT < (phys?.boilK ?? 999) * 1.6) {
-        layers.push({ liquid: m.liquid, location: 'cloud', colorHex: m.colorHex });
-      }
-    }
-  }
+  // (Cloud decks are no longer derived here — physics/cloudDecks.ts owns them, publishing tags
+  // rather than layers. This module keeps the layers that feed PHYSICS: surface/subsurface oceans
+  // for classification & habitability, interior conductive fluids for the dynamo.)
 
   // --- Deep interior conductive fluid (the dynamo source for §2d) ---
   if (mk.gas > 0.5) {

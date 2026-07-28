@@ -9,7 +9,8 @@
 // ocean/land/cloud mix or Jupiter's bands without re-deriving anything.
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
-import { phaseAtP } from '$lib/physics/liquids';
+import { phaseAtP, liquidDef } from '$lib/physics/liquids';
+import { decksFromTags } from '$lib/physics/cloudDecks';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 
 type RGB = [number, number, number];
@@ -70,12 +71,8 @@ export function liquidApparentColor(liquidName: string, star: RGB): RGB {
   return mix(diffuse, star, spec);
 }
 
-// How heavily a condensed cloud deck of each liquid veils the surface below it. Water clouds are
-// patchy (Earth stays blue); sulfuric/sulfur/alkali/silicate decks are opaque and dominate.
-const CLOUD_VEIL: Record<string, number> = {
-  'sulfuric-acid': 0.6, 'sulfur-dioxide': 0.5, 'sodium': 0.45, 'potassium': 0.45,
-  'molten-iron': 0.4, 'molten-glass': 0.4, 'ammonia': 0.4, 'methane': 0.25, 'water': 0.15
-};
+// (The old CLOUD_VEIL table is gone: how heavily a deck veils the surface is the LIQUID's own
+// `cloudOpacity` in the rule pack, read via the cloud-deck TAGS — physics→tags→visuals.)
 
 // Blackbody-ish incandescence for very hot worlds (lava / hot giants).
 function incandescent(teqK: number): RGB {
@@ -189,17 +186,24 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     }
   }
 
-  // 3b. Condensed cloud DECKS (hydrosphere.layers, location 'cloud'). For rocky worlds a strong
-  //     chromophore deck (sulfuric/sulfur/alkali) opaquely veils the surface; water is patchy.
-  const cloudLayers = (body.hydrosphere?.layers ?? []).filter((l) => l.location === 'cloud');
-  if (cloudLayers.length && mk.gas <= 0.5) {
-    // strongest-veiling deck wins the surface look
-    const top = cloudLayers
-      .map((l) => ({ l, veil: CLOUD_VEIL[l.liquid] ?? 0.3 }))
+  // 3b. Condensed cloud DECKS — from the body's cloud-deck TAGS (the processor's single
+  //     evaluation; a GM's manual tag works identically). Veil strength = the liquid's own
+  //     cloudOpacity scaled by the deck's coverage bucket; colour = the liquid's colour lightened
+  //     toward condensate white (a deck is droplets/crystals, not a sea — water reads white-ish,
+  //     a sulphuric deck keeps its yellow cast). Strongest-veiling deck wins the flattened look.
+  const deckTags = decksFromTags(body.tags, rulePack);
+  if (deckTags.length && mk.gas <= 0.5) {
+    const top = deckTags
+      .map((d) => {
+        const def = liquidDef(d.species, rulePack);
+        return { d, def, veil: (def?.cloudOpacity ?? 0.5) * d.coverage };
+      })
       .sort((a, b) => b.veil - a.veil)[0];
-    if (top?.l.colorHex) {
-      col = mix(col, hexToRgb(top.l.colorHex), top.veil);
-      push(top.l.colorHex, 'cloud', top.veil, `${top.l.liquid} clouds`);
+    if (top && top.veil > 0.02) {
+      const base = hexToRgb(top.def?.colorHex ?? '#c8d2dc');
+      const condensate = mix(base, [244, 248, 252], 0.65);   // lightened: droplets scatter white
+      col = mix(col, condensate, Math.min(0.85, top.veil));
+      push(rgbToHex(condensate), 'cloud', top.veil, `${top.d.species} clouds`);
     }
   }
 
@@ -239,7 +243,13 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     // near-featureless. Only emit band colours for the ammonia case → the renderer skips spots/stripes
     // on Uranus/Neptune.
     if (!iceGiant) {
-      for (const l of cloudLayers) if (l.colorHex) push(l.colorHex, 'cloud', 0.4, `${l.liquid} band`);
+      // Band colours from the giant's OWN condensates — now its cloud-deck tags rather than the
+      // retired cloud fluid-layers. This is where NH4SH earns its keep: a giant with ammonia and
+      // hydrogen sulphide derives the tan-brown chromophore and it lands here as a band stop.
+      for (const d of decksFromTags(body.tags, rulePack)) {
+        const hex = liquidDef(d.species, rulePack)?.colorHex;
+        if (hex) push(hex, 'cloud', 0.4, `${d.species} band`);
+      }
       const chromo = teq < 200 ? '#a8642e' : teq < 400 ? '#c98a3e' : '#9a8478';
       push(rgbToHex(mix(cloud, hexToRgb(chromo), 0.55)), 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), 'chromophore band');
     }

@@ -12,11 +12,13 @@ PHYSICS  ──emits──▶  TAGS (+ the body's stored physical properties)  �
 1. **Physics decides; tags record the decision.** Every judgement — "this body has a water cloud
    deck", "this surface is ancient", "this world reddens with tholins" — is made ONCE, in the
    processor, and published as a tag. The amount/outcome travels in the tag value.
-2. **Renderers read tags and look-data only.** A renderer (2D disc, 3D holo, apparent colour,
-   guide document, starmap glyphs, reports) may read: the body's tags, its stored physical
-   properties (radius, temperature, colours), and the rule pack's *appearance* data (a liquid's
-   colour, a gas's tint). A renderer must NEVER re-derive a physics judgement from raw inputs
-   (atmosphere composition, hydrosphere state, orbital elements).
+2. **This is a LOGIC abstraction, not a data abstraction.** Renderers may read whatever data they
+   need for LOOKUPS — a liquid's colour, a gas's tint, the body's radius and temperature. What
+   they must not do is make a physics JUDGEMENT. The dividing line: *"is there a cloud deck, and
+   how thick?"* is physics and must arrive as a tag; *"what colour is sulphuric acid?"* is a
+   lookup and the renderer can just read it.
+   So: `decksFromTags(body.tags)` then `liquidDef(species).colorHex` is correct. Scanning
+   `body.atmosphere.composition` to decide a deck exists is not.
 3. **Why this is a hard rule:** two independent evaluations of one question WILL disagree at the
    margins. The v2.1.246 Mars-clouds bug was exactly this — the tag said "no cloud deck" while a
    stale derived layer still tinted the world. Any time a renderer contains an `if` about raw

@@ -7,7 +7,8 @@ import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradi
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
-import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
+import { deriveFluidLayers } from '../physics/fluidLayers';
+import { deriveCloudDecks, applyCloudDeckTags, CLOUD_DECK_TAG, PRECIPITATION_TAG } from '../physics/cloudDecks';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
 import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
@@ -616,9 +617,14 @@ export class SystemProcessor implements ISystemProcessor {
         // A frozen surface is named for its volatile; an icy shell from makeup-ice is water ice.
         const icyShell = mk.ice > 0.3 || (surfacePhase === 'solid' && hydroCov > 0.05);
         const iceLabel = surfacePhase === 'solid' ? (hydroComp as string) : 'water';
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('structure/') && t.key !== 'climate/polar-ice'
-            && !t.key.startsWith('hydrosphere/') && t.key !== 'climate/steam-world'
-            && t.key !== 'activity/sublimating' && t.key !== 'activity/cryovolcanism');
+        // Cloud-deck + precipitation tags are OWNED by applyCloudDeckTags below (it strips its own
+        // auto tags and keeps manual ones) — exempt them from this blanket strip or a GM's manual
+        // deck would be deleted every pass.
+        body.tags = (body.tags || []).filter((t) =>
+            (t.key === CLOUD_DECK_TAG || t.key === PRECIPITATION_TAG)
+            || (!t.key.startsWith('structure/') && t.key !== 'climate/polar-ice'
+                && !t.key.startsWith('hydrosphere/') && t.key !== 'climate/steam-world'
+                && t.key !== 'activity/sublimating' && t.key !== 'activity/cryovolcanism'));
         if (icyShell) body.tags.push({ key: 'structure/icy-shell', value: iceLabel });
         if (fluidLayers.some((l) => l.location === 'subsurface')) body.tags.push({ key: 'structure/subsurface-ocean' });
 
@@ -662,8 +668,12 @@ export class SystemProcessor implements ISystemProcessor {
         if (surfacePhase === 'liquid' && hydroCov > 0.1 && (body.temperatureRangeK?.min ?? surfTForStruct) < meltK) {
             body.tags.push({ key: 'climate/polar-ice', value: hydroComp as string }); // the surface liquid, frozen at the poles
         }
-        const cloudLayer = mk.gas <= 0.5 ? fluidLayers.find((l) => l.location === 'cloud') : undefined;
-        if (cloudLayer) body.tags.push({ key: 'structure/cloud-deck', value: cloudColourName(cloudLayer.liquid) });
+        // CLOUD DECKS + PRECIPITATION — the single evaluation (physics→tags→visuals; see
+        // docs/dev/cloud-decks-design.md). Which gases condense, what they condense into, and what
+        // reacts to form what is all rule-pack DATA. Renderers read only the tags emitted here.
+        // Gas giants keep their legacy look for now (E6 — they join the deck stack in their own
+        // change), but their tags are still emitted so the data is ready.
+        body.tags = applyCloudDeckTags(body.tags, deriveCloudDecks(body, pack));
 
         // POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Too emergent to
         // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8

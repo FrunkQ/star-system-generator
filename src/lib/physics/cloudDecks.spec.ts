@@ -142,6 +142,36 @@ describe('reaction products (one generation)', () => {
   });
 });
 
+describe('visibility floors vs reactions', () => {
+  it('a reaction must not erase BOTH its reactant and its product', () => {
+    // Real Jupiter: NH3 0.026%, H2S 0.008%. The reaction consumes all the H2S and leaves NH3 at
+    // 0.018% — if the floors sit above those remainders, the ammonia deck AND the NH4SH deck both
+    // vanish and the giant silently loses its whole belt chemistry. That is what happened when the
+    // floors were first set from bulk-abundance intuition rather than visibility.
+    const jupiter = world({
+      temperatureK: 166,
+      atmosphere: { pressure_bar: 200000, composition: { H2: 0.86, He: 0.13, CH4: 0.003, NH3: 0.00026, H2S: 0.00008 } } as any
+    });
+    const s = species(deriveCloudDecks(jupiter, pack));
+    expect(s).toContain('ammonia');
+    expect(s).toContain('ammonium-hydrosulfide');
+    // …and stacked correctly: NH4SH condenses warmer, so it sits DEEPER than the ammonia above it.
+    expect(s.indexOf('ammonium-hydrosulfide')).toBeLessThan(s.indexOf('ammonia'));
+  });
+
+  it('trace condensables at REAL abundances still form decks (Mars ~210 ppm water)', () => {
+    // The floors are a visibility threshold, not a bulk-abundance one — Mars genuinely has
+    // water-ice cloud. This is the original reported bug, at the real number.
+    const realMars = world({
+      temperatureK: 217,
+      atmosphere: { pressure_bar: 0.006, composition: { CO2: 0.95, N2: 0.027, H2O: 0.00021 } } as any
+    });
+    const decks = deriveCloudDecks(realMars, pack);
+    expect(species(decks)).toContain('water');
+    expect(decks.find((d) => d.species === 'water')!.bucket).toBe('wisps');  // thin, but there
+  });
+});
+
 describe('tags — the published interface', () => {
   it('emits one deck tag + one precipitation tag per deck, and round-trips through the parser', () => {
     const tags = applyCloudDeckTags([], deriveCloudDecks(earth(), pack));

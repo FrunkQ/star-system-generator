@@ -21,6 +21,8 @@ import { oblatePolarFactor } from './bodyShape';
 import { auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { isSmallBodyShape } from '$lib/catalogue/smallBodyShape';
+import { decksFromTags } from '$lib/physics/cloudDecks';
+import { liquidDef } from '$lib/physics/liquids';
 
 // ── colour helpers (shared; were inline in PlanetDisc) ──────────────────────────────────────────
 export function rgbHex(rgb: [number, number, number]): string {
@@ -170,8 +172,18 @@ export interface AppearanceModel {
 	cryoPlumes: CryoPlumeSpec | null;
 	aurora: AuroraSpec | null;
 	atmGlow: AtmGlowSpec | null;
-	clouds: CloudSpec | null;
+	clouds: CloudSpec | null;   // back-compat single-deck view (top deck); giants' legacy deck
+	cloudDecks: CloudDeckSpec[]; // the FULL stack, deepest→top — multi-layer renderers use this
 	selfLumGlow: SelfLumSpec | null;
+}
+
+// One rendered cloud layer, resolved from a cloud-deck tag + its liquid's look-data.
+export interface CloudDeckSpec {
+	species: string;
+	coverage: number;   // 0..1 from the tag's bucket
+	colorHex: string;   // liquid colour lightened toward condensate white
+	opacity: number;    // the liquid's cloudOpacity
+	ice: boolean;       // condenses as ice crystals at this body's temperature (brighter, crisper)
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -418,30 +430,38 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 			}
 		: null;
 
-	// CLOUD DECK — a condensed layer that floats above the surface, rendered as its OWN drifting shell(s)
-	// in 3D so it has parallax. A rocky world needs real pressure to hold clouds (none on Mars). A GAS
-	// GIANT is all atmosphere: it gets a moderate, gas-coloured swirling deck over its banding to add life
-	// (kept partial so the bands still show through). Venus-type thick decks veil the ground.
+	// CLOUD DECKS — read from the body's cloud-deck TAGS (the processor's single evaluation, or a
+	// GM's manual tag; physics→tags→visuals). Each deck resolves its look from its LIQUID: colour
+	// lightened toward condensate white (droplets/crystals scatter — water reads white, a sulphuric
+	// deck keeps a yellow cast), opacity from the liquid's cloudOpacity, coverage from the tag's
+	// bucket. Ordered deepest→top; renderers draw in array order.
+	// A GAS GIANT keeps its legacy gas-coloured swirling deck over the banding for now (E6 — giants
+	// join the deck stack in their own change), so its bands still show through unchanged.
 	const isGiantCloud = rendersAsGiant(body);
-	const hasCloudTag = (body.tags ?? []).some((t) => t.key === 'structure/cloud-deck');
-	const cloudCoverage = isGiantCloud ? 0.6 : clamp01(0.18 + (Math.log10(Math.max(0.1, atmPressureBar)) + 0.5) * 0.3);
-	// Cloud CONDENSATE colour: only WATER condenses white. A hydrocarbon/sulphur haze (Titan's tholin,
-	// Venus's sulphuric) or a gas giant takes the atmosphere's OWN colour — so Titan reads orange, Venus
-	// yellow, not everything white. An explicit cloud-deck palette colour still wins.
-	const atmC = (body.atmosphere?.composition ?? {}) as Record<string, number>;
-	const waterClouds = body.hydrosphere?.composition === 'water' || body.hydrosphere?.composition === 'salty-water' || (atmC.H2O ?? 0) > 0.02;
-	const cloudColorHex = palette.find((p) => p.role === 'cloud')?.hex
-		?? (waterClouds && !isGiantCloud ? '#f4f8fc' : atmColorHex);
-	// A second tint for the HIGH layer, nudged toward the most abundant atmospheric gas's colour — so
-	// each world's two-layer deck reads a little differently (a hint of the air's composition + variety
-	// between planets), rather than every deck being one flat tone.
-	const GAS_TINT: Record<string, string> = { CH4: '#d99a5a', CO2: '#e6dca6', SO2: '#e8d24a', N2: '#b6c4e6', NH3: '#d8c48c', H2: '#efe3cc', He: '#efe3cc', O2: '#dfeeff', H2O: '#f4f8fc' };
-	let accentHex = '', accW = 0;
-	for (const k in GAS_TINT) { const w = atmC[k] ?? 0; if (w > accW) { accW = w; accentHex = GAS_TINT[k]; } }
-	const cloudColorHex2 = accentHex ? mixHex(cloudColorHex, accentHex, 0.4) : shade(cloudColorHex, 0.18);
-	const clouds: CloudSpec | null = (!isStar && !isBelt && !isSmallBody && (isGiantCloud || hasCloudTag || atmPressureBar > 0.3))
-		? { coverage: cloudCoverage, colorHex: cloudColorHex, colorHex2: cloudColorHex2, giant: isGiantCloud }
-		: null;
+	const deckList = (!isStar && !isBelt && !isSmallBody && !isGiantCloud)
+		? decksFromTags(body.tags).map((d) => {
+			const def = liquidDef(d.species);
+			const base = def?.colorHex ?? '#c8d2dc';
+			return {
+				species: d.species,
+				coverage: d.coverage,
+				colorHex: mixHex(base, '#f4f8fc', 0.65),
+				opacity: def?.cloudOpacity ?? 0.5,
+				ice: (def?.meltK ?? 273) > (body.temperatureK ?? body.equilibriumTempK ?? 288)
+			};
+		})
+		: [];
+	// Back-compat single-deck spec for renderers not yet on the stack: the TOP deck (last in the
+	// ordered list), with the next-deepest tinting the high layer for variety.
+	const topDeck = deckList[deckList.length - 1];
+	const underDeck = deckList[deckList.length - 2];
+	const giantCloudHex = palette.find((p) => p.role === 'cloud')?.hex ?? atmColorHex;
+	const clouds: CloudSpec | null = isGiantCloud
+		? { coverage: 0.6, colorHex: giantCloudHex, colorHex2: shade(giantCloudHex, 0.18), giant: true }
+		: topDeck
+			? { coverage: topDeck.coverage, colorHex: topDeck.colorHex,
+				colorHex2: underDeck ? underDeck.colorHex : shade(topDeck.colorHex, 0.18), giant: false }
+			: null;
 
 	// Self-luminous brown dwarf (thermal/self-luminous, value = effective temperature).
 	const selfLumTag = (body.tags ?? []).find((t) => t.key === 'thermal/self-luminous');
@@ -478,6 +498,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		aurora,
 		atmGlow,
 		clouds,
+		cloudDecks: deckList,
 		selfLumGlow
 	};
 }
