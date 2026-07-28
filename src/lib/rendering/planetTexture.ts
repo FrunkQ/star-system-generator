@@ -68,6 +68,8 @@ function drawPatches(ctx: CanvasRenderingContext2D, rnd: () => number, color: st
   ctx.globalAlpha = 1;
 }
 
+const clampVeil = (x: number) => Math.max(0, Math.min(1, x));
+
 function render(body: CelestialBody): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = SIZE; c.height = SIZE;
@@ -86,6 +88,7 @@ function render(body: CelestialBody): HTMLCanvasElement {
   const haze = stop(palette, 'atmosphere');
   const inc = stop(palette, 'incandescent');
   const banding = ap.banding || 0;
+  const appear = deriveAppearance(body);
 
   if (banding > 0) {
     // --- Gas/ice giant: latitudinal banding (count from rotation), drawn HORIZONTAL. The spin-axis
@@ -135,20 +138,30 @@ function render(body: CelestialBody): HTMLCanvasElement {
     // streaks. A total veil (Venus: 0.2% sulphuric acid, but 0.18 bar of it) was drawing as a few
     // white streaks over bare brown ground, which is the one thing Venus never looks like. Past
     // ~0.75 the deck simply becomes the surface, with a little mottling for texture.
-    const deck = clouds[0];
-    if (deck) {
-      const veil = Math.max(0, Math.min(1, deck.weight));
-      ctx.fillStyle = deck.hex;
+    //
+    //     A world can carry SEVERAL decks (Titan: methane over ethane; a cold giant's stack). They
+    //     paint deepest-first so the upper ones genuinely occlude the lower, and each deeper layer is
+    //     shaded a touch darker — seen through the air above it. The palette's single strongest-veil
+    //     stop is the fallback for bodies whose decks were not re-derived.
+    const decks = appear.cloudDecks.length
+      ? appear.cloudDecks.map((d) => ({ hex: d.colorHex, veil: clampVeil(d.opacity * d.coverage), ice: d.ice }))
+      : clouds[0] ? [{ hex: clouds[0].hex, veil: clampVeil(clouds[0].weight), ice: false }] : [];
+    decks.forEach((deck, i) => {
+      const depth = decks.length - 1 - i;                     // 0 = top deck
+      const hex = depth ? shade(deck.hex, Math.max(0.7, 1 - depth * 0.12)) : deck.hex;
+      const veil = deck.veil;
+      if (veil <= 0.02) return;
+      ctx.fillStyle = hex;
       if (veil > 0.55) {
         ctx.globalAlpha = Math.min(1, 0.72 + (veil - 0.55) * 0.6);
         ctx.fillRect(0, 0, SIZE, SIZE);                       // full overcast: the deck IS the view
         ctx.globalAlpha = 0.25;
-        drawPatches(ctx, rnd, shade(deck.hex, 0.9), 0.35);    // faint mottling so it isn't flat
+        drawPatches(ctx, rnd, shade(hex, 0.9), 0.35);         // faint mottling so it isn't flat
       } else {
         // Partial cover: elongated streaks, count and opacity both following the veil.
         ctx.globalAlpha = Math.min(0.85, 0.3 + veil * 0.7);
         const streaks = 3 + Math.round(veil * 14);
-        for (let i = 0; i < streaks; i++) {
+        for (let s = 0; s < streaks; s++) {
           const y = SIZE * rnd();
           ctx.beginPath();
           ctx.ellipse(SIZE * rnd(), y, SIZE * (0.16 + rnd() * 0.2), SIZE * 0.045, 0, 0, 2 * Math.PI);
@@ -156,7 +169,7 @@ function render(body: CelestialBody): HTMLCanvasElement {
         }
       }
       ctx.globalAlpha = 1;
-    }
+    });
   }
 
   // Space-weathering regolith greying of the BASE only (Moon/Mercury go grey). The feature OVERLAYS
@@ -164,9 +177,8 @@ function render(body: CelestialBody): HTMLCanvasElement {
   // PlanetDisc, which draws those crisply as SVG on top; baking them too would double them. (The 3D
   // equirect sibling has no such overlay, so it DOES bake the full set.)
   {
-    const a = deriveAppearance(body);
-    if (a.regolith > 0) {
-      ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = a.regolith;
+    if (appear.regolith > 0) {
+      ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = appear.regolith;
       ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, SIZE, SIZE);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
     }

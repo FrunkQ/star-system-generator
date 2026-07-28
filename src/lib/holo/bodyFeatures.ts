@@ -426,6 +426,47 @@ export function buildCloudDeck(radius: number, colorHex: string, colorHex2: stri
 	return { group, layers };
 }
 
+/**
+ * The DECK STACK — one shell per derived cloud deck, instead of the two decorative layers above.
+ * Each deck is a real condensate the physics found, so it gets its own shell at its own height, in
+ * its own substance's colour, drifting at its own rate. The character comes from where it sits in
+ * the stack, which is physical rather than an artistic choice: the TOP deck is where the weather is,
+ * so it is the turbulent one; deeper decks lie under more atmosphere and read as calm bands.
+ *
+ * Altitudes are EXAGGERATED (a real deck is a fraction of a percent of the radius and would be
+ * invisible) and the rendered count is capped — a deck under three others contributes nothing you
+ * can see, and every extra translucent shell is a full-body alpha pass on a phone.
+ */
+const MAX_RENDERED_DECKS = 3;
+export function buildDeckStack(
+	radius: number,
+	decks: { species: string; coverage: number; colorHex: string; opacity: number; ice: boolean }[],
+	seed: number
+): { group: THREE.Group; layers: { mesh: THREE.Mesh; drift: number }[] } {
+	const group = new THREE.Group();
+	const layers: { mesh: THREE.Mesh; drift: number }[] = [];
+	// decks arrive deepest→top; keep the TOP ones, which are the ones you can see.
+	const visible = decks.slice(-MAX_RENDERED_DECKS);
+	visible.forEach((d, i) => {
+		const fromTop = visible.length - 1 - i;
+		const isTop = fromTop === 0;
+		// Ice-crystal decks scatter brighter than droplet decks — cirrus against cumulus.
+		const emissive = (isTop ? 0.22 : 0.14) + (d.ice ? 0.06 : 0);
+		const tex = makeCloudTexture(d.colorHex, d.coverage * (isTop ? 1 : 0.8), (Math.imul(seed || 1, 7 + i * 13) + 29) >>> 0 || (i + 2));
+		const mat = new THREE.MeshStandardMaterial({
+			map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false,
+			emissive: new THREE.Color(d.colorHex), emissiveMap: tex, emissiveIntensity: emissive,
+			opacity: Math.max(0.25, Math.min(1, d.opacity + 0.25))
+		});
+		const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.02 + i * 0.03), 40, 28), mat);
+		mesh.renderOrder = 1 + i;
+		group.add(mesh);
+		// The top deck runs fastest and against the deeper ones, so the stack shows parallax as it turns.
+		layers.push({ mesh, drift: (isTop ? -0.035 : 0.02 + i * 0.008) * (isTop ? 1 : 1 - fromTop * 0.2) });
+	});
+	return { group, layers };
+}
+
 // --- Animation helpers ----------------------------------------------------------------------------
 
 /** Flicker volcanic vents like heat — faster + hotter than the aurora shimmer. */

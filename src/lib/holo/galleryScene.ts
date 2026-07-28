@@ -16,7 +16,7 @@ import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { buildAuroraShell } from './scene';
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze,
+	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack,
 	applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, accretionColor,
 	type EmissiveVisual
 } from './bodyFeatures';
@@ -153,7 +153,9 @@ export function createGalleryScene(
 			if (appear.atmGlow) g.add(buildAtmoGlow(R, appear.atmGlow.colorHex, appear.atmGlow.strength));
 			if (appear.clouds) {
 				let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-				const cl = buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
+				const cl = (!appear.clouds.giant && appear.cloudDecks.length > 1)
+					? buildDeckStack(R, appear.cloudDecks, cseed || 1)
+					: buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
 				sphere.add(cl.group);           // tracks the sphere's spin; the gallery drifts each layer separately
 				for (const l of cl.layers) cloudSpinners.push({ obj: l.mesh, drift: l.drift });
 			}

@@ -24,7 +24,7 @@ import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from 
 import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze,
+  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack,
   applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
@@ -1527,7 +1527,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
             if (appear.clouds) {
               let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-              const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
+              // A world with a derived deck STACK gets one shell per deck (Jupiter's ammonia over
+              // its ammonium-hydrosulphide); a giant, or anything with no stack, keeps the single
+              // baked deck — a giant's clouds ARE its surface, so floating shells read wrong on it.
+              const cl = (!appear.clouds.giant && appear.cloudDecks.length > 1)
+                ? buildDeckStack(radius, appear.cloudDecks, cseed || 1)
+                : buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
               sphere.add(cl.group);
               cloudVisuals.push(...cl.layers);
             }
