@@ -3,11 +3,13 @@
   // inputs → outputs, and the provenance of every tag, each deep-linking to /physics. Primary
   // educational + debug surface. Opened from the apple icon next to Edit.
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, StarSystem } from '$lib/types';
+  import type { CelestialBody, RulePack, StarSystem } from '$lib/types';
   import { buildPhysicsTrace } from '$lib/physics/physicsTrace';
 
   export let body: CelestialBody;
   export let system: StarSystem | null = null;
+  // The cloud layer needs the gas data to show its working (which gases can condense, and where).
+  export let rulePack: RulePack | null = null;
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -18,7 +20,7 @@
   $: partner = host?.kind === 'barycenter' && body.parentId
     ? (system?.nodes.find((nd) => nd.parentId === body.parentId && nd.id !== body.id) as any) ?? null
     : null;
-  $: trace = buildPhysicsTrace(body, { ageGyr: (system as any)?.age_Gyr, star, host, partner });
+  $: trace = buildPhysicsTrace(body, { ageGyr: (system as any)?.age_Gyr, star, host, partner, pack: rulePack });
 
   // Classification working + borderline override. body.classification is the engine's explanation
   // (recorded even for pinned bodies, so we can show "physics would say X"). body.classes[0] is the

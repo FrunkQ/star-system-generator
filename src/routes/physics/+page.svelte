@@ -16,6 +16,7 @@
     ['radiation', 'Surface radiation'],
     ['radiation-split', 'Spectral photon/particle split'],
     ['fluids', 'Fluid layers'],
+    ['clouds', 'Clouds & weather'],
     ['magnetism', 'Magnetism'],
     ['aurora', 'Auroras'],
     ['geology', 'Geological activity'],
@@ -236,10 +237,77 @@
         <li><strong>Subsurface ocean</strong> — a cold, watery body kept liquid <em>under</em> its ice by active
           tidal/radiogenic heat (Europa/Enceladus). Drives the subsurface-ocean type and the sub-ice habitability niche.</li>
         <li><strong>Cloud decks</strong> — condensed cloud-forming gases (water, sulfuric acid, ammonia, alkali
-          metals…), which feed apparent colour.</li>
+          metals…), which feed apparent colour. Worked out in full <a href="#clouds">below</a>.</li>
         <li><strong>Deep conductive interior</strong> — metallic hydrogen (gas giants), superionic water (ice
           giants) or molten iron (rocky cores) — the dynamo source for magnetism.</li>
       </ul>
+    </section>
+
+    <section id="clouds">
+      <h2>Clouds &amp; weather</h2>
+      <p>Clouds are not painted on. A world's cloud layers are worked out the way real ones form, and everything
+        you see — which substance a cloud is made of, how high it sits, how much sky it covers, whether anything
+        falls out of it — comes from that one calculation.</p>
+
+      <h3>It gets colder as you go up</h3>
+      <p>Air that rises expands and cools. <em>How fast</em> it cools depends on what the air is made of, and that
+        comes from the same per-gas data the greenhouse model uses. Earth's air loses about 10°C per kilometre;
+        a giant's hydrogen behaves differently again.</p>
+      <p>But it doesn't cool forever. Climb high enough and the air stops churning; up there it just sits and
+        radiates heat to space, settling at a temperature set by how much starlight the world receives. This gives
+        every world a <strong>coldest possible sky</strong>, and it's the single most important number in the whole
+        model. Our estimate lands on about −59°C for Earth (the real tropopause is around −63°C) and −169°C for
+        Jupiter (really about −163°C).</p>
+
+      <h3>A cloud forms where a gas runs out of room</h3>
+      <p>Any gas can only stay a gas up to a point — cool it enough and it condenses out. As you climb, there's
+        less air pressing down, so there's less of any given gas around; but the <em>temperature</em> drops faster
+        than the gas thins out. Somewhere those two lines cross, and that height is the bottom of a cloud.</p>
+      <p>That single crossing decides everything, including some things by <em>not</em> happening:</p>
+      <ul>
+        <li><strong>Earth</strong> — water clouds beginning just under a kilometre up. That's about right.</li>
+        <li><strong>Saturn has no methane clouds</strong>, even though it carries half again as much methane as
+          Jupiter and is colder. Its sky never gets cold enough to condense it. Nothing tells the model to skip
+          it — the cloud simply never forms, and what you're seeing instead is the ammonia compound below, which
+          is what makes Saturn gold. Getting this right was the whole reason for building the model.</li>
+        <li><strong>Uranus does</strong> get methane clouds, being colder still — which is why it's blue and
+          Saturn isn't. Same substance, same rule, different answer.</li>
+        <li><strong>Mars</strong> — a thin water-ice haze high above a frozen desert, from about two parts in ten
+          thousand of water vapour.</li>
+      </ul>
+
+      <h3>Rain, snow and rain that never lands</h3>
+      <p>Whether anything reaches the ground is the same question asked at the bottom instead of the top: is the
+        air down there still able to hold this stuff? If it's close, what falls lands — as rain, or as snow if
+        it's below freezing. If the air near the ground is nowhere near saturated, the drops evaporate on the way
+        down and never arrive. That last one has a name — <strong>virga</strong> — and it's what Venus's sulfuric
+        acid does, and Mars's ice.</p>
+      <p>It also explains something that looks backwards. Venus is <em>completely</em> wrapped in cloud on a few
+        parts per million of vapour, while Earth carries vastly more water and still has gaps in its sky. The
+        difference is that Earth's rain lands: it drains the cloud and leaves clear patches behind. Venus's never
+        does, so nothing ever clears. We don't special-case Venus for this; both come out of the same rule.</p>
+
+      <h3>Where we stop</h3>
+      <p>Deliberately, we only model the atmosphere <strong>from the reference level upwards</strong> — as far as
+        you could see into it. A gas giant has no surface and goes down for thousands of kilometres, getting hotter
+        and stranger the whole way; none of that is simulated, because none of it is visible. A giant's quoted
+        temperature and pressure are its readings at the 1 bar level, and that's where our sky starts.</p>
+      <p>Some real things are therefore missing. <strong>Photochemical hazes</strong> — the pale veil over Uranus,
+        the orange smog above Titan's methane — are made <em>up there</em> by sunlight breaking gases apart, rather
+        than rising from below, so this model can't produce them. Titan's haze is drawn, but from a separate rule.
+        And the amount of cloud stuff held aloft uses a fixed droplet size and one calibrated figure for how much
+        stays up rather than falling; both are listed under <a href="#fudges">known fudges</a>.</p>
+
+      <h3>Chemistry, and your own chemistry</h3>
+      <p>Gases don't only condense — some react. Ammonia and hydrogen sulfide combine into the compound that
+        colours Jupiter's belts; sulfur dioxide and water make the acid Venus is wrapped in. These aren't built in:
+        they're entries in the rule pack, and you can edit them or write your own under
+        <em>Atmospheres → Reactions</em>. Nothing here is a chemistry database — only the handful of reactions
+        worth caring about are defined, and if you want krypton and unobtanium to make pink bubblegum clouds,
+        the model will take you at your word and work out where they'd form.</p>
+      <p>There's a gallery of all this at <code>/discgallery</code>: rows of giants built from nothing but a
+        composition, a pressure and a temperature, each row changing one thing so you can see what the model
+        actually does with it.</p>
     </section>
 
     <section id="magnetism">
@@ -380,8 +448,9 @@
       <h2>Apparent colour &amp; visualisation <span class="phase">§2e</span></h2>
       <p>Instead of one swatch per class, a body's <strong>true colour</strong> is composed: a surface base from
         makeup fractions, a blue ocean overlay, a tint from the dominant coloured atmospheric gas, condensed cloud
-        decks veiling the surface (sulfuric/sulfur/alkali opaque; water patchy, so Earth stays blue), gas-giant
-        cloud colours by temperature, methane-blue ice giants, and incandescence when very hot. The result is kept
+        decks veiling the surface (sulfuric/sulfur/alkali opaque; water patchy, so Earth stays blue), a giant's colour
+        from the <a href="#clouds">cloud layers it actually derives</a> rather than a temperature lookup,
+        methane-blue ice giants, and incandescence when very hot. The result is kept
         both as a single flattened hex <em>and</em> as the un-mixed <strong>palette</strong> of contributions + a
         band count — so the disc renderer can draw Earth's ocean/land/cloud mix or Jupiter's bands from the same
         derivation.</p>
@@ -395,7 +464,9 @@
         <li><strong>Polar ice caps</strong> — frozen caps on worlds cold enough at the poles, sized by climate and
           following the axial tilt.</li>
         <li><strong>Cloud decks &amp; gas bands</strong> — condensed clouds veil the surface; gas giants get
-          latitudinal bands, tinted by chromophore (methane, ammonia) and temperature.</li>
+          latitudinal bands. A giant's coloured belts are a <em>deeper</em> cloud layer showing through gaps in the
+          one above it, so a world needs the chemistry for two layers to have them — a giant with a single cloud
+          layer bands smoothly in its own colour, and one with nothing condensing has a clear sky.</li>
         <li><strong>Polar vortices</strong> — a gas giant's standing polar jet stream can lock into a geometric
           polygon (Saturn's north pole is a famous <em>hexagon</em>; Jupiter's poles hold polygonal cyclone rings).
           Too emergent to predict from bulk parameters, so it's spawned at generation with a side count of 5–8
@@ -601,7 +672,24 @@
       <h2>Known fudges</h2>
       <ul>
         <li>Greenhouse forcing is capped to prevent runaway blow-ups on thick atmospheres (it's a forcing model, not a full radiative-convective solve).</li>
-        <li>Gas-giant "surface" temperature is reported at a ~1 bar reference level.</li>
+        <li>Gas-giant "surface" temperature and pressure are both reported at a ~1 bar reference level — and this
+          is now load-bearing rather than cosmetic, since it is where the <a href="#clouds">atmosphere model</a>
+          starts climbing from. Nothing below that level is simulated.</li>
+        <li>The coldest-sky temperature treats the atmosphere as one grey absorbing layer. It is a good
+          approximation (within a few degrees for Earth, Jupiter and Venus) but it is not a radiative transfer
+          solve, and it will be least reliable on worlds unlike those.</li>
+        <li>How much cloud is held up rather than falling out uses <strong>one calibrated figure</strong> (about a
+          hundredth of what a rising column condenses, on a world where the rain lands) and a single droplet size
+          of 10 µm for every substance. Both are grounded in real cloud measurements, but the shape of the
+          curve between them is a judgement call — it is the biggest single fudge in the cloud model, and the
+          reason Earth lands at roughly two-thirds cloud cover is that we tuned it to.</li>
+        <li>Cloud <em>colours</em> are a lookup, not a derivation. Which layers a world has and where they sit is
+          computed; what each substance looks like is a chosen swatch per liquid, and the ice-giant blue is a
+          hand-picked pair of colours with a temperature threshold between them. The structure is physics; the
+          palette is design.</li>
+        <li>Photochemical hazes — made high up by starlight rather than rising from below — are not modelled at
+          all. Titan's is drawn from a separate rule; Uranus's pale upper veil is simply absent, which is why it
+          reads a little more saturated than the real planet.</li>
         <li>The photon/particle split and per-gas shielding coefficients are calibrated, not first-principles.</li>
         <li>Roche/ring limits assume a representative density.</li>
         <li>Classification soft-edge tolerance (15%) and the diagnostic-type weights are tuned, not derived — the audit guard keeps them honest.</li>

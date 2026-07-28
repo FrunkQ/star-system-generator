@@ -3,7 +3,9 @@
 // and why). Built post-hoc from the body (no processor instrumentation), so it's risk-free and
 // always in sync with what's displayed. The Newton/Apple panel renders this; every layer deep-
 // links to the matching /physics section. Educational + the primary debug surface.
-import type { CelestialBody, Barycenter } from '$lib/types';
+import type { CelestialBody, Barycenter, RulePack } from '$lib/types';
+import { deriveCloudDecks, effectiveComposition } from './cloudDecks';
+import { atmosphereProfile } from './atmosphereProfile';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
 import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
@@ -22,13 +24,22 @@ export interface TraceLayer {
 export interface TagProvenance { key: string; label: string; description: string; layer: string; color: string; }
 export interface PhysicsTrace { layers: TraceLayer[]; tags: TagProvenance[] }
 
-export interface TraceContext { ageGyr?: number; star?: CelestialBody | null; host?: CelestialBody | Barycenter | null; partner?: CelestialBody | null }
+export interface TraceContext { ageGyr?: number; star?: CelestialBody | null; host?: CelestialBody | Barycenter | null; partner?: CelestialBody | null; pack?: RulePack | null }
 
 const AU_KM = 1.495978707e8;
 
 const n = (v: number | undefined | null, d = 2, unit = ''): string =>
   v == null || !isFinite(v) ? '—' : `${(+v).toFixed(d)}${unit ? ' ' + unit : ''}`;
 const pct = (v: number): string => `${Math.round(v * 100)}%`;
+
+// Which gases in this air COULD form a cloud at all — the data's answer, before any temperature is
+// considered. A gas with no `cloud` block simply is not cloud-forming, and saying so is half the
+// explanation when a world's sky comes out empty.
+function condensableSummary(comp: Record<string, number>, pack?: RulePack | null): string {
+  const defs = pack?.gasPhysics ?? {};
+  const able = Object.keys(comp).filter((g) => (comp[g] ?? 0) > 0 && defs[g]?.cloud);
+  return able.length ? able.join(', ') : 'none in this mix';
+}
 
 // Which physics layer a tag namespace comes from.
 const NS_LAYER: Record<string, string> = {
@@ -189,6 +200,40 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       : [{ label: 'Layers', value: 'none' }],
     notes: []
   });
+
+  // 4b. Clouds — the layer that shows WHY a world's sky looks the way it does. Rebuilt from the
+  //     body's own atmosphere rather than read off the tags, so it can show the working: how cold
+  //     the sky gets, and where each substance crosses into condensing.
+  {
+    const pack = ctx.pack ?? null;
+    const comp = effectiveComposition({ ...(body.atmosphere?.composition ?? {}) }, pack);
+    const profile = atmosphereProfile(body, comp, pack);
+    const decks = deriveCloudDecks(body, pack);
+    if (profile) {
+      const outputs: TraceField[] = decks.length
+        ? decks.map((d) => ({
+            label: d.species,
+            value: `${d.bucket} — base ${d.baseBar! >= 0.01 ? n(d.baseBar, 2, ' bar') : d.baseBar!.toExponential(1) + ' bar'} at ${n(d.baseK, 0, ' K')}, ${d.precip}`
+          }))
+        : [{ label: 'Cloud layers', value: 'none — nothing in this air condenses before the sky stops cooling' }];
+      layers.push({
+        id: 'clouds', title: 'Clouds & weather', link: '/physics#clouds',
+        inputs: [
+          { label: 'Reference level', value: n(profile.pSurfBar, 3, ' bar') + ' at ' + n(profile.tSurfK, 0, ' K') },
+          { label: 'Cooling with height', value: `${profile.kappa.toFixed(2)} (from the gases present)` },
+          { label: 'Coldest sky', value: n(profile.tSkinK, 0, ' K') + ` — reached at ${profile.tropopauseBar >= 0.01 ? n(profile.tropopauseBar, 2, ' bar') : profile.tropopauseBar.toExponential(1) + ' bar'}` },
+          { label: 'Condensable gases', value: condensableSummary(comp, pack) }
+        ],
+        outputs,
+        notes: [
+          'A gas condenses where its own pressure crosses the point it can no longer stay a gas. Rising air cools, but its gases thin out more slowly than it cools — so the two lines cross, and that crossing is the cloud base.',
+          ...(decks.some((d) => d.precip === 'virga')
+            ? ['Virga: what falls evaporates before it lands, so it recycles into the deck and the cover never clears.'] : []),
+          'Only the atmosphere from the reference level UP is modelled — as far as you could see into it.'
+        ]
+      });
+    }
+  }
 
   // 5. Magnetism
   if (body.magnetism) {

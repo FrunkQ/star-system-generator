@@ -2,6 +2,33 @@
 
 All notable changes are listed here:
 
+## v2.1.256-beta - 28th Jul 2026
+
+* **Generated gas giants finally have something in their air.** Every auto-generated giant was pure
+  hydrogen and helium, which meant not one of them had anything that could condense — none of the
+  new cloud physics could ever reach them, and they all fell back to a flat colour picked by
+  temperature. They now carry the trace gases that do all the visible work, in amounts following the
+  real trend across our own four: the smaller the giant, the more concentrated its heavier elements.
+  Big warm ones come out banded and gold, cold small ones come out blue, and the model decides which
+  by itself.
+* **A giant's atmosphere is now quoted where you can actually see it.** Generated giants said 100
+  bar, and some saved data says 200,000 — but a giant has no surface, so the number is just whichever
+  depth its author picked, while the temperature beside it has always been the reading near 1 bar.
+  Taking those two at face value put every cloud a hundred times too deep, and gave Jupiter a methane
+  deck the real planet has never had. Both the generator and the model now start from the level the
+  temperature belongs to. Existing saves are read correctly without being edited.
+* **The physics reference has a new "Clouds & weather" chapter**, in plain language: why it gets
+  colder as you go up, why that stops, how a cloud forms where a gas runs out of room, and why rain
+  that never lands is what keeps Venus completely wrapped. It says where we stop, too — we only model
+  the sky as far as you could see into it.
+* **Newton shows the cloud working for the body you're looking at**: how cold its sky gets and where,
+  which of its gases could condense at all, and where each cloud layer's base sits. When a world has
+  no clouds it now tells you which of the two reasons it was.
+* Honest about the new shortcuts: the fudge list gains the fixed droplet size, the single calibrated
+  figure for how much cloud stays airborne, and the fact that cloud *colours* are a chosen palette
+  even though the layers themselves are derived. Two stale claims went — giant colours are no longer
+  "by temperature", and belts are no longer "tinted by chromophore and temperature".
+
 ## v2.1.255-beta - 28th Jul 2026
 
 * **Clouds now form where the air is actually cold enough.** Until now a world had ONE notional

@@ -21,11 +21,14 @@
 // Everything downstream — where each species saturates, how much condensate a column holds, whether
 // what falls out survives to the ground — reads this rather than guessing.
 import type { CelestialBody, RulePack } from '$lib/types';
+import { makeupFractions } from './makeup';
 
 export const R_GAS = 8.314;              // J/mol/K
 const GRAV_CONST = 6.674e-11;
 /** Below this there is no collisional atmosphere at all, however condensable it reads. */
 export const MIN_ATM_BAR = 1e-6;
+/** Where a surfaceless giant's sky is taken to start — the level its temperature is quoted at. */
+export const GIANT_REFERENCE_BAR = 1;
 
 export interface AtmosphereLevel {
   pBar: number;
@@ -103,10 +106,19 @@ export function atmosphereProfile(
   comp: Record<string, number>,
   pack?: RulePack | null
 ): AtmosphereProfile | null {
-  const pSurfBar = body.atmosphere?.pressure_bar ?? 0;
-  if (!(pSurfBar >= MIN_ATM_BAR)) return null;
+  const quotedBar = body.atmosphere?.pressure_bar ?? 0;
+  if (!(quotedBar >= MIN_ATM_BAR)) return null;
   const tSurfK = body.temperatureK ?? body.equilibriumTempK ?? 0;
   if (!(tSurfK > 0)) return null;
+
+  // A giant has no surface, so "its pressure" is whatever depth someone chose to quote — and data in
+  // the wild quotes anything from 1 bar to 200000. The app's own convention is that a giant's
+  // temperature is its reading at the ~1 bar reference level (see /physics#fudges), so the pressure
+  // that temperature belongs to has to be that level too. Take the quoted figure as a floor-marker
+  // rather than a literal anchor: pinning a 165 K reading at 200000 bar puts the entire visible
+  // atmosphere at its coldest-sky temperature and grows Jupiter a methane deck it has never had.
+  // Nothing below the reference level is modelled anyway — it is not visible.
+  const pSurfBar = makeupFractions(body).gas > 0.5 ? Math.min(quotedBar, GIANT_REFERENCE_BAR) : quotedBar;
 
   const kappa = adiabaticIndex(comp, pack);
   // The skin sits on the EQUILIBRIUM temperature. A giant radiating its own internal heat has no

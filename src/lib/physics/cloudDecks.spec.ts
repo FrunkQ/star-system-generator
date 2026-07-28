@@ -302,6 +302,18 @@ describe('the temperature profile places decks at real pressure levels', () => {
     expect(s).toContain('ammonium-hydrosulfide');
   });
 
+  it('a giant quoted at DEPTH is still read at the reference level', () => {
+    // Real saved data quotes a giant's pressure at anything from 1 bar to 200000 — it has no surface,
+    // so the number is whatever depth its author picked, while the TEMPERATURE is by this app's
+    // convention the ~1 bar reading. Anchoring 165 K at 200000 bar puts the whole visible atmosphere
+    // at its coldest-sky temperature and grows Jupiter a methane deck it has never had.
+    const deep = () => giant({
+      temperatureK: 165, equilibriumTempK: 110, radiusKm: 69911, massKg: 1.898e27,
+      atmosphere: { pressure_bar: 200000, composition: { H2: 0.86, He: 0.13, CH4: 0.003 } } as any
+    });
+    expect(species(deriveCloudDecks(deep(), pack))).not.toContain('methane');
+  });
+
   it('URANUS, colder and far richer in methane, does get one', () => {
     // The discriminator is the profile, not the abundance: same species, same physics, and the two
     // planets diverge because their temperatures do.

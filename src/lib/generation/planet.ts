@@ -519,12 +519,35 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
         }
 
     } else if (isGasGiant || isIceGiant) {
-        // Default to Jupiter-like
+        // A giant is hydrogen and helium plus the TRACES that do all the visible work. Generated
+        // giants used to be pure H2/He, which meant none of them had anything that could condense:
+        // every one of them fell back to a flat colour by temperature, and no generated giant ever
+        // grew a cloud deck. The traces below are what make one giant gold and the next one blue.
+        //
+        // How much of them there is follows the real trend across our own four: the SMALLER the
+        // giant, the more enriched in heavy elements it is. Jupiter carries roughly four times the
+        // Sun's share of carbon, Saturn about six, and the ice giants tens of times more — a small
+        // giant could not hold as much hydrogen, so what it did keep is concentrated. Fitted to
+        // those four and left to run: enrichment ~ mass^-0.6.
+        const massEarths = Math.max(1, (planet.massKg || 0) / EARTH_MASS_KG);
+        const enrichment = Math.max(1, Math.min(120, 126 * Math.pow(massEarths, -0.6)));
+        // A little spread so two giants of the same size are not the same planet.
+        const jitter = () => 0.65 + rng.nextFloat() * 0.7;
+        const ch4 = 0.00075 * enrichment * jitter();
+        const nh3 = 0.000065 * enrichment * jitter();
+        const h2s = 0.00002 * enrichment * jitter();
+        const trace = ch4 + nh3 + h2s;
+        // Helium fraction drifts a little too; the remainder is hydrogen.
+        const he = (0.13 + rng.nextFloat() * 0.06) * (1 - trace);
         planet.atmosphere = {
             name: 'Hydrogen–Helium (Jupiter-like)',
-            composition: { H2: 0.86, He: 0.14 },
+            composition: { H2: 1 - trace - he, He: he, CH4: ch4, NH3: nh3, H2S: h2s },
             main: 'H2',
-            pressure_bar: 100,
+            // The ANCHOR level, and it has to agree with the temperature: a giant's quoted
+            // temperature is its ~1 bar reading (see /physics#fudges), so the atmosphere it belongs
+            // to must be quoted at 1 bar as well. This said 100 bar, which put every derived cloud
+            // deck a hundred times too deep and far too warm.
+            pressure_bar: 1,
         };
         planet.tags.push({ key: 'atmosphere/reducing' });
     } else {
