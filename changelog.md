@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.248-beta - 28th Jul 2026
+
+* The cloud and reaction data is now EDITABLE. A new **Reactions** tab in the atmosphere editor defines gases that combine to make another gas — pick the two ingredients, pick what they produce, set how much of the scarcer one converts. All three must already exist as gases, so the tab makes reactions, never gases. There is no chemistry database: only the reactions you care about exist, which means "Krypton + Unobtanium = pink bubblegum" is a perfectly good rule.
+* **Cloud formation** is now a per-gas setting on the Gas Physics tab, beside the aurora bands: whether the gas condenses, what liquid it condenses into, and the concentration below which the deck is too thin to see. Switch it on for CO₂ and your Mars grows dry-ice skies. The matching **Cloud Opacity** — how completely a deck of that substance hides the ground — sits on the liquid in the Liquids editor, since that is what the deck is made of.
+
 ## v2.1.247-beta - 28th Jul 2026
 
 * Fixed the stutter when zooming back out from a space station, a close moon or anything else you were right up against. Bodies off the edge of the screen were still being drawn: at that zoom a neighbouring planet is millions of pixels across, and the orrery built a clip path that size and set up a scaled image blit into it before any of it got clipped away. They are now skipped outright (allowing for a star's halo), which changes nothing visible — any on-screen world that big is drawn by a different path.

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack } from '$lib/types';
+  import { allLiquids } from '$lib/physics/liquids';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -8,7 +9,7 @@
 
   const dispatch = createEventDispatcher();
 
-  let activeTab: 'gases' | 'compositions' = 'gases';
+  let activeTab: 'gases' | 'reactions' | 'compositions' = 'gases';
   
   // Local state for editing
   let gases: Record<string, any> = {};
@@ -107,6 +108,58 @@
       gases = { ...gases };
   }
 
+  // --- Cloud formation (per gas) ---------------------------------------------------------------
+  // A gas condenses into a LIQUID, and that liquid carries the deck's look (colour, opacity) — so
+  // this side only says "does it condense, into what, and above what concentration".
+  $: liquidNames = allLiquids(rulePack).map((l) => l.name).sort();
+  function toggleGasCloud(gas: any, on: boolean) {
+      if (on) gas.cloud = gas.cloud ?? { condensesTo: liquidNames[0] ?? 'water', minFraction: 0.001 };
+      else delete gas.cloud;
+      gases = { ...gases };
+  }
+
+  // --- Reactions -------------------------------------------------------------------------------
+  // The DATA lives on the product gas (`reaction: { from: [A, B], yield }`); this tab is just a
+  // view over it as a table, because a reaction reads as "A + B → C" rather than as C's config.
+  // Every gas in the dropdowns must already exist — this tab creates reactions, never gases.
+  $: gasNames = Object.keys(gases).sort();
+  $: reactionRows = Object.entries(gases)
+      .filter(([, g]: any) => g.reaction?.from?.length >= 2)
+      .map(([product, g]: any) => ({ product, from: g.reaction.from as string[], yield: g.reaction.yield ?? 1 }))
+      .sort((a, b) => a.product.localeCompare(b.product));
+  $: canAddReaction = gasNames.some((g) => !gases[g].reaction) && gasNames.length >= 3;
+
+  function addReaction() {
+      const product = gasNames.find((g) => !gases[g].reaction);
+      if (!product) return;
+      const others = gasNames.filter((g) => g !== product);
+      gases[product].reaction = { from: [others[0], others[1] ?? others[0]], yield: 1 };
+      gases = { ...gases };
+  }
+  function removeReaction(product: string) {
+      delete gases[product]?.reaction;
+      gases = { ...gases };
+  }
+  function setReactant(product: string, idx: number, gas: string) {
+      const from = [...(gases[product].reaction.from as string[])];
+      from[idx] = gas;
+      gases[product].reaction.from = from;
+      gases = { ...gases };
+  }
+  function setYield(product: string, v: number) {
+      gases[product].reaction.yield = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
+      gases = { ...gases };
+  }
+  // Re-point a reaction at a different PRODUCT — the recipe moves to that gas, since that is where
+  // the data lives. Refuses to overwrite a product that already has one.
+  function moveReaction(oldProduct: string, newProduct: string) {
+      if (oldProduct === newProduct) return;
+      if (gases[newProduct]?.reaction) { alert(`${newProduct} already has a reaction. Remove it first.`); gases = { ...gases }; return; }
+      gases[newProduct].reaction = gases[oldProduct].reaction;
+      delete gases[oldProduct].reaction;
+      gases = { ...gases };
+  }
+
   function removeGas(key: string) {
       if (defaultGasKeys.has(key)) {
           gases[key] = JSON.parse(JSON.stringify(rulePack.gasPhysics![key]));
@@ -196,6 +249,7 @@
         <h2>Edit Atmospheres & Mixes</h2>
         <div class="tabs">
             <button class:active={activeTab === 'gases'} on:click={() => activeTab = 'gases'}>Gas Physics</button>
+            <button class:active={activeTab === 'reactions'} on:click={() => activeTab = 'reactions'}>Reactions</button>
             <button class:active={activeTab === 'compositions'} on:click={() => activeTab = 'compositions'}>Atmosphere Mixes</button>
         </div>
     </div>
@@ -284,10 +338,96 @@
                                 {/if}
                                 <button class="mini-add" on:click={() => addAuroraBand(gas)}>+ Band</button>
                             </div>
+                            <div class="field aurora-field">
+                                <label title="Whether this gas condenses into cloud, and what it condenses into.">Cloud Formation</label>
+                                <p class="aurora-help">Tick this and the gas can form a <strong>cloud deck</strong> wherever the physics says it condenses. What the deck LOOKS like — its colour and how opaquely it veils the ground — comes from the liquid it condenses into, in the Liquids editor.</p>
+                                <div class="colour-row">
+                                    <input type="checkbox" checked={!!gas.cloud} on:change={(e) => toggleGasCloud(gas, e.currentTarget.checked)} />
+                                    {#if gas.cloud}
+                                        <label class="inline-lbl" title="The liquid this gas condenses into — it carries the deck's colour and opacity.">condenses to</label>
+                                        <!-- Explicit value + on:change, NOT bind:value: a two-way binding on a
+                                             select whose options are rebuilt each render re-syncs itself, writing
+                                             the state it just read — an infinite effect loop that hung the whole
+                                             settings modal. -->
+                                        <select value={gas.cloud.condensesTo}
+                                                on:change={(e) => { gas.cloud.condensesTo = e.currentTarget.value; gases = { ...gases }; }}>
+                                            {#each liquidNames as ln}
+                                                <option value={ln}>{ln}</option>
+                                            {/each}
+                                        </select>
+                                        <label class="inline-lbl" title="Below this fraction of the atmosphere the deck is too thin to see. A visibility floor, not a bulk-abundance one — Jupiter's real ammonia is 0.026%.">min fraction</label>
+                                        <input type="number" class="band-num" step="0.0001" min="0" max="1"
+                                               value={gas.cloud.minFraction ?? 0.001}
+                                               on:input={(e) => { gas.cloud.minFraction = +e.currentTarget.value; gases = { ...gases }; }} />
+                                    {:else}
+                                        <span class="muted">does not form cloud</span>
+                                    {/if}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 {/each}
                 <button class="add-btn" on:click={addGas}>+ Add Custom Gas</button>
+            </div>
+        {:else if activeTab === 'reactions'}
+            <div class="list-container">
+                <p class="tab-help">
+                    Gases that combine to make another gas. The product is an ordinary gas — define it on
+                    the <strong>Gas Physics</strong> tab first (with its colour, and its cloud formation if it
+                    should form a deck), then create the reaction here. There is no chemistry database:
+                    only the reactions you care about exist, so <em>Krypton + Unobtanium = pink bubblegum</em>
+                    is a perfectly good rule.
+                </p>
+                {#each reactionRows as r (r.product)}
+                    <div class="item-card">
+                        <div class="item-header">
+                            <div class="header-main">
+                                <span class="header-summary">{r.from[0] ?? '?'} + {r.from[1] ?? '?'} → {r.product}</span>
+                            </div>
+                            <button class="delete-btn" title="Remove this reaction" on:click={() => removeReaction(r.product)}>✕</button>
+                        </div>
+                        <div class="item-body">
+                            <div class="field">
+                                <label>Gas A</label>
+                                <select value={r.from[0]} on:change={(e) => setReactant(r.product, 0, e.currentTarget.value)}>
+                                    {#each gasNames as g}<option value={g}>{g}</option>{/each}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label>Gas B</label>
+                                <select value={r.from[1]} on:change={(e) => setReactant(r.product, 1, e.currentTarget.value)}>
+                                    {#each gasNames as g}<option value={g}>{g}</option>{/each}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label title="Which gas the pair produces. Must already exist on the Gas Physics tab.">Produces</label>
+                                <select value={r.product} on:change={(e) => moveReaction(r.product, e.currentTarget.value)}>
+                                    {#each gasNames as g}<option value={g}>{g}</option>{/each}
+                                </select>
+                            </div>
+                            <div class="field full">
+                                <div class="label-row">
+                                    <label title="How much of the scarcer ingredient converts. 1 = all of it (bulk chemistry, like ammonium hydrosulphide); a tiny value models a photochemical trace, like Titan's hydrogen cyanide.">Yield</label>
+                                    <input type="number" class="band-num" step="0.001" min="0" max="1"
+                                           value={r.yield} on:input={(e) => setYield(r.product, +e.currentTarget.value)} />
+                                </div>
+                                <input type="range" min="0" max="1" step="0.001" class="full-width-slider"
+                                       value={r.yield} on:input={(e) => setYield(r.product, +e.currentTarget.value)} />
+                                <div class="info-row">
+                                    Converts {(r.yield * 100).toFixed(1)}% of whichever ingredient runs out first; that
+                                    much of each is used up.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {/each}
+                {#if !reactionRows.length}
+                    <p class="tab-help muted">No reactions defined.</p>
+                {/if}
+                <button class="add-btn" disabled={!canAddReaction} on:click={addReaction}
+                        title={canAddReaction ? 'Create a reaction' : 'Every gas already has a reaction — add a new gas on the Gas Physics tab first'}>
+                    + Add Reaction
+                </button>
             </div>
         {:else}
             <div class="list-container">
@@ -497,6 +637,9 @@
   .mix-total { font-size: 0.78em; color: var(--text-faint); }
   .mix-total.off { color: var(--accent, #ff5a1f); }
   .small-add[disabled] { opacity: 0.45; cursor: not-allowed; }
+  .add-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+  .tab-help { color: var(--text-faint); font-size: 0.8em; line-height: 1.5; margin: 0 0 10px; }
+  .inline-lbl { color: var(--text-muted); font-size: 0.85em; margin-left: 6px; }
   
   .header-main {
       flex: 1; display: flex; flex-direction: column;

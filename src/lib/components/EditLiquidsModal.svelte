@@ -128,6 +128,12 @@
                             </div>
                         </div>
                         <div class="field">
+                            <label title="How opaquely a CLOUD DECK of this substance veils the ground beneath it. Water clouds are patchy and let the surface through; a sulphuric-acid deck hides Venus completely. The deck's colour comes from the Colour above, paled — clouds are scattering droplets, so they read far lighter than the bulk liquid.">Cloud Opacity</label>
+                            <input type="number" step="0.05" min="0" max="1"
+                                   value={liq.cloudOpacity ?? 0.5}
+                                   on:input={(e) => { liq.cloudOpacity = Math.max(0, Math.min(1, +e.currentTarget.value)); liquids = [...liquids]; }} />
+                        </div>
+                        <div class="field">
                             <label title={biosolventHelp}>Biosolvent</label>
                             <select bind:value={liq.biosolvent}>
                                 <option value="ideal">ideal</option>
