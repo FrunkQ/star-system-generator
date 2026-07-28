@@ -209,7 +209,11 @@
           "name": "high-humidity",
           "trigger": "pp > 0.05"
         }
-      ]
+      ],
+      "cloud": {
+        "condensesTo": "water",
+        "minFraction": 0.0001
+      }
     },
     "CH4": {
       "molarMass": 0.016,
@@ -241,7 +245,11 @@
           "efficiency": 1.2,
           "altitude": 0
         }
-      ]
+      ],
+      "cloud": {
+        "condensesTo": "methane",
+        "minFraction": 0.0005
+      }
     },
     "SO2": {
       "molarMass": 0.064,
@@ -265,7 +273,11 @@
           "name": "highly-corrosive",
           "trigger": "pp > 1.0"
         }
-      ]
+      ],
+      "cloud": {
+        "condensesTo": "sulfur-dioxide",
+        "minFraction": 0.0005
+      }
     },
     "H2S": {
       "molarMass": 0.034,
@@ -309,7 +321,11 @@
           "name": "corrosive",
           "trigger": "pp > 0.1"
         }
-      ]
+      ],
+      "cloud": {
+        "condensesTo": "ammonia",
+        "minFraction": 0.0001
+      }
     },
     "Cl2": {
       "molarMass": 0.071,
@@ -445,7 +461,18 @@
           "name": "prebiotic-precursor",
           "trigger": "always"
         }
-      ]
+      ],
+      "reaction": {
+        "from": [
+          "N2",
+          "CH4"
+        ],
+        "yield": 0.002
+      },
+      "cloud": {
+        "condensesTo": "hydrogen-cyanide",
+        "minFraction": 0.00008
+      }
     },
     "C2H6": {
       "molarMass": 0.03,
@@ -504,7 +531,11 @@
       "colorHex": "#FFD700",
       "meltK": 371,
       "boilK": 1156,
-      "tags": []
+      "tags": [],
+      "cloud": {
+        "condensesTo": "sodium",
+        "minFraction": 0.001
+      }
     },
     "K": {
       "molarMass": 0.039,
@@ -515,7 +546,11 @@
       "colorHex": "#EE82EE",
       "meltK": 336,
       "boilK": 1032,
-      "tags": []
+      "tags": [],
+      "cloud": {
+        "condensesTo": "potassium",
+        "minFraction": 0.001
+      }
     },
     "Fe": {
       "molarMass": 0.056,
@@ -526,7 +561,11 @@
       "colorHex": "#808080",
       "meltK": 1811,
       "boilK": 3134,
-      "tags": []
+      "tags": [],
+      "cloud": {
+        "condensesTo": "molten-iron",
+        "minFraction": 0.001
+      }
     },
     "SiO": {
       "molarMass": 0.044,
@@ -537,7 +576,11 @@
       "colorHex": "#A9A9A9",
       "meltK": 1975,
       "boilK": 2150,
-      "tags": []
+      "tags": [],
+      "cloud": {
+        "condensesTo": "molten-glass",
+        "minFraction": 0.001
+      }
     },
     "HF": {
       "molarMass": 0.02,
@@ -613,7 +656,18 @@
           "name": "toxic-human",
           "trigger": "always"
         }
-      ]
+      ],
+      "cloud": {
+        "condensesTo": "sulfuric-acid",
+        "minFraction": 0.00001
+      },
+      "reaction": {
+        "from": [
+          "SO2",
+          "H2O"
+        ],
+        "yield": 0.5
+      }
     },
     "CH2O2": {
       "molarMass": 0.046,
@@ -680,6 +734,28 @@
       "meltK": 1,
       "boilK": 10,
       "tags": []
+    },
+    "NH4SH": {
+      "molarMass": 0.051,
+      "shielding": 3,
+      "greenhouse": 0,
+      "specificHeat": 1,
+      "radiativeCooling": 0.1,
+      "colorHex": "#b8845a",
+      "meltK": 190,
+      "boilK": 300,
+      "tags": [],
+      "reaction": {
+        "from": [
+          "NH3",
+          "H2S"
+        ],
+        "yield": 1
+      },
+      "cloud": {
+        "condensesTo": "ammonium-hydrosulfide",
+        "minFraction": 0.00003
+      }
     }
   },
   "climateModel": {

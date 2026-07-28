@@ -48,6 +48,56 @@ export function boilKAt(def: LiquidDef, pressureBar: number): number {
   return def.criticalK;
 }
 
+// ── Saturation vapour pressure ───────────────────────────────────────────────────────────────────
+// The INVERSE of boilKAt: at what partial pressure does this substance start to condense at temp T?
+// Deliberately the same curve read the other way round rather than a second formula, so a substance
+// can never be "boiling" and "condensing" at once. Above the triple point that is an exact inversion
+// of the log-linear anchors; BELOW it the anchors stop (they floor at the triple pressure) and real
+// substances keep going — a sublimation curve that carries on falling is the whole reason Mars has
+// water-ice clouds at 180 K. There we continue with Clausius-Clapeyron, whose latent heat is not new
+// data: two points already on the curve (triple point and boiling point) determine it exactly.
+
+const R_GAS = 8.314;   // J/mol/K
+
+// Latent heat (J/mol) implied by the def's own anchors. Trouton's rule (~88 J/mol/K x T_boil) is the
+// fallback for a substance too sparsely defined to fit — a refractory with no triple point.
+export function latentHeatJPerMol(def: LiquidDef): number {
+  const { meltK, boilK, tripleBar } = def;
+  if (tripleBar !== undefined && tripleBar > 0 && tripleBar < 1 && boilK > meltK && meltK > 0) {
+    return (R_GAS * Math.log(1 / tripleBar)) / (1 / meltK - 1 / boilK);
+  }
+  return 88 * Math.max(1, boilK);
+}
+
+/** Saturation vapour pressure (bar) of a substance at temperature T. */
+export function saturationPressureBar(def: LiquidDef, tempK: number): number {
+  const T = Math.max(1, tempK);
+  if (def.criticalK !== undefined && T >= def.criticalK) return def.criticalBar ?? Infinity;
+  const triple = def.tripleBar;
+  if (triple === undefined || def.criticalBar === undefined) {
+    // No pressure anchors: a single CC curve through the 1-atm boiling point is all we can say.
+    return Math.exp(-(latentHeatJPerMol(def) / R_GAS) * (1 / T - 1 / Math.max(1, def.boilK)));
+  }
+  if (T >= def.meltK) {
+    // Above the triple point: invert boilKAt's piecewise log-linear anchors.
+    const anchors: { p: number; t: number }[] =
+      triple < 1 && def.criticalBar > 1
+        ? [{ p: triple, t: def.meltK }, { p: 1, t: def.boilK }, { p: def.criticalBar, t: def.criticalK! }]
+        : [{ p: triple, t: def.meltK }, { p: def.criticalBar, t: def.criticalK! }];
+    for (let i = 1; i < anchors.length; i++) {
+      const a = anchors[i - 1], b = anchors[i];
+      if (b.t <= a.t) continue;                                  // degenerate segment (melt == boil)
+      if (T <= b.t) {
+        const f = (T - a.t) / (b.t - a.t);
+        return Math.exp(Math.log(a.p) + f * (Math.log(b.p) - Math.log(a.p)));
+      }
+    }
+    return def.criticalBar;
+  }
+  // Below the triple point — sublimation.
+  return triple * Math.exp(-(latentHeatJPerMol(def) / R_GAS) * (1 / T - 1 / Math.max(1, def.meltK)));
+}
+
 // PRESSURE-AWARE phase (docs/dev/liquids-phase-tags.md §3). pressureBar undefined — or a def
 // without pressure anchors — falls back to the legacy 1-atm behaviour, so old call sites and
 // rulepack liquids without the new fields keep working unchanged.

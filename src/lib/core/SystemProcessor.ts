@@ -7,7 +7,9 @@ import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradi
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
-import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
+import { deriveFluidLayers } from '../physics/fluidLayers';
+import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, deriveOxidation, CLOUD_DECK_TAG, PRECIPITATION_TAG,
+  LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG, OXIDISED_TAG } from '../physics/cloudDecks';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
 import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
@@ -18,6 +20,7 @@ import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity } from '../physics/stellar-evolution';
+import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
 import { predictTidalLock } from '../physics/tidalLock';
 import { brownDwarfThermal } from '../physics/substellar';
 
@@ -75,8 +78,12 @@ export class SystemProcessor implements ISystemProcessor {
             const s = node as CelestialBody;
             if (s.kind !== 'body' || s.roleHint !== 'star') continue;
             s.flareActivity = flareActivity(s.classes?.[0], this.systemAgeGyr);
-            s.tags = (s.tags || []).filter((t) => t.key !== 'hazard/flaring');
+            s.tags = (s.tags || []).filter((t) => t.key !== 'hazard/flaring' && t.key !== STELLAR_ACTIVITY_TAG);
             if (s.flareActivity > 0.4) s.tags.push({ key: 'hazard/flaring' });
+            // MAGNETIC ACTIVITY, bucketed — the one judgement behind everything a star's surface
+            // shows: spot count and darkness, facular brightening, and how often it flares. Both
+            // renderers read this tag rather than re-deriving from the raw number.
+            s.tags.push({ key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
         }
 
         // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
@@ -594,9 +601,12 @@ export class SystemProcessor implements ISystemProcessor {
         // Fluid layers (surface/subsurface oceans, cloud decks, interior conductive) — feed
         // classification (subsurface-ocean), apparent colour (clouds) and §2d magnetism.
         const fluidLayers = deriveFluidLayers(body, pack);
-        if (fluidLayers.length) {
-            body.hydrosphere = { ...(body.hydrosphere || {}), layers: fluidLayers };
-        }
+        // Write the derived layers ALWAYS, including an empty set. Guarding on `.length` meant that when
+        // a body stopped having any fluid layer, the previous pass's layers were left on it — so the
+        // TAGS (re-derived from this array every pass) said "no cloud deck" while the saved layers still
+        // said there was one. Apparent colour reads the layers, the disc renderer reads the tag, and the
+        // two then disagree: a cloud deck that tints the world but is never drawn.
+        body.hydrosphere = { ...(body.hydrosphere || {}), layers: fluidLayers };
         features['hasSubsurfaceOcean'] = fluidLayers.some((l) => l.location === 'subsurface') ? 1 : 0;
 
         // Structural tags (surfaced for GMs): a frozen icy shell, polar ice, a subsurface ocean, a
@@ -613,9 +623,15 @@ export class SystemProcessor implements ISystemProcessor {
         // A frozen surface is named for its volatile; an icy shell from makeup-ice is water ice.
         const icyShell = mk.ice > 0.3 || (surfacePhase === 'solid' && hydroCov > 0.05);
         const iceLabel = surfacePhase === 'solid' ? (hydroComp as string) : 'water';
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('structure/') && t.key !== 'climate/polar-ice'
-            && !t.key.startsWith('hydrosphere/') && t.key !== 'climate/steam-world'
-            && t.key !== 'activity/sublimating' && t.key !== 'activity/cryovolcanism');
+        // Cloud-deck + precipitation tags are OWNED by applyCloudDeckTags below (it strips its own
+        // auto tags and keeps manual ones) — exempt them from this blanket strip or a GM's manual
+        // deck would be deleted every pass.
+        body.tags = (body.tags || []).filter((t) =>
+            (t.key === CLOUD_DECK_TAG || t.key === PRECIPITATION_TAG
+             || t.key === LIGHTNING_TAG || t.key === DUST_STORM_TAG || t.key === MONSOON_TAG)
+            || (!t.key.startsWith('structure/') && t.key !== 'climate/polar-ice'
+                && !t.key.startsWith('hydrosphere/') && t.key !== 'climate/steam-world'
+                && t.key !== 'activity/sublimating' && t.key !== 'activity/cryovolcanism'));
         if (icyShell) body.tags.push({ key: 'structure/icy-shell', value: iceLabel });
         if (fluidLayers.some((l) => l.location === 'subsurface')) body.tags.push({ key: 'structure/subsurface-ocean' });
 
@@ -659,8 +675,13 @@ export class SystemProcessor implements ISystemProcessor {
         if (surfacePhase === 'liquid' && hydroCov > 0.1 && (body.temperatureRangeK?.min ?? surfTForStruct) < meltK) {
             body.tags.push({ key: 'climate/polar-ice', value: hydroComp as string }); // the surface liquid, frozen at the poles
         }
-        const cloudLayer = mk.gas <= 0.5 ? fluidLayers.find((l) => l.location === 'cloud') : undefined;
-        if (cloudLayer) body.tags.push({ key: 'structure/cloud-deck', value: cloudColourName(cloudLayer.liquid) });
+        // CLOUD DECKS + PRECIPITATION — the single evaluation (physics→tags→visuals; see
+        // docs/dev/cloud-decks-design.md). Which gases condense, what they condense into, and what
+        // reacts to form what is all rule-pack DATA. Renderers read only the tags emitted here.
+        // Gas giants keep their legacy look for now (E6 — they join the deck stack in their own
+        // change), but their tags are still emitted so the data is ready.
+        const cloudDecks = deriveCloudDecks(body, pack);
+        body.tags = applyCloudDeckTags(body.tags, cloudDecks, deriveWeather(body, cloudDecks, pack));
 
         // POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Too emergent to
         // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8
@@ -835,6 +856,14 @@ export class SystemProcessor implements ISystemProcessor {
                     .sort((a: any, b: any) => (b.massKg || 0) - (a.massKg || 0))[0] as any;
                 hostStarTempK = brightest?.temperatureK;
             }
+        }
+        // SURFACE OXIDATION — why Mars is red and the Moon, with the same iron and age but no
+        // oxidiser, is grey. Must run AFTER geoActivity (it needs the surface AGE) and before the
+        // apparent colour below, which reads the tag.
+        body.tags = (body.tags || []).filter((t) => t.key !== OXIDISED_TAG || t.manual);
+        if (!body.tags.some((t) => t.key === OXIDISED_TAG)) {
+            const rust = deriveOxidation(body);
+            if (rust) body.tags.push({ key: OXIDISED_TAG, value: rust });
         }
         const apparent = deriveApparentColorParts(body, pack, { starTempK: hostStarTempK });
         body.apparentColor = apparent;

@@ -49,6 +49,8 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   shape:        { group: 'Shape',        color: '#c9a0e0' },
   atmosphere:   { group: 'Atmosphere',   color: '#8aa0b0' },
   climate:      { group: 'Climate',      color: '#6fae8f' },
+  weather:      { group: 'Weather',      color: '#7fb6cc' },
+  surface:      { group: 'Surface',      color: '#a98a63' },
   hazard:       { group: 'Hazard',       color: '#cc5555' },
   habitability: { group: 'Habitability', color: '#5bbf6a' },
   biodiversity: { group: 'Biosphere',    color: '#4fa86a' },
@@ -77,6 +79,8 @@ const NAMESPACE_DESC: Record<string, string> = {
   magnetic:     'The body\'s magnetic field and the stellar-wind shielding it provides.',
   atmosphere:   'A property of the atmosphere\'s composition.',
   climate:      'A derived surface-climate condition.',
+  weather:      'Weather derived from the body\'s cloud decks and the energy driving them.',
+  surface:      'A property of the surface itself — its age, what the sky and the star have done to it.',
   hazard:       'An environmental or stellar hazard to visitors or the atmosphere.',
   aurora:       'A polar auroral glow from ionising particles funnelled into the atmosphere by the magnetic field.',
   habitability: 'The body\'s habitability tier under the current model.',
@@ -220,7 +224,15 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   },
   'geology/stagnant-lid': {
     label: 'Stagnant lid',
-    description: 'A vigorous but dry interior traps heat under a rigid lid → episodic catastrophic resurfacing and no CO₂ drawdown → runaway greenhouse risk (Venus).'
+    description: 'A vigorous but dry interior under a single unbroken plate, shedding its heat quietly. Nothing recycles the crust, so there is no carbonate–silicate cycle to regulate climate.'
+  },
+  'geology/episodic': {
+    label: 'Episodic resurfacing',
+    description: 'A vigorous but dry lid traps heat until the whole thing overturns at once, resurfacing the planet catastrophically and then going quiet again (Venus, on a ~700 Myr cycle). No CO₂ drawdown between overturns, so the greenhouse runs away.'
+  },
+  'geology/plutonic': {
+    label: 'Plutonic',
+    description: 'Modest interior heat melts rock at depth but cannot reach the surface or mobilise the lid: magma intrudes and freezes in place as plutons and dykes under an intact crust. A waning or mid-sized world.'
   },
   'geology/volcanic-tidal': {
     label: 'Tidal volcanism',
@@ -267,7 +279,15 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'climate/polar-ice':          { label: 'Polar ice',        description: 'Liquid at the mean temperature, but the cold poles / night side dip below the solvent\'s freezing point — partial frozen caps.' },
   'climate/runaway-greenhouse': { label: 'Runaway greenhouse', description: 'A runaway greenhouse has taken hold — trapped heat has driven surface volatiles into a thick, self-reinforcing hothouse atmosphere (Venus).' },
   'structure/subsurface-ocean': { label: 'Subsurface ocean', description: 'A liquid ocean beneath an ice crust, kept liquid by tidal and/or radiogenic interior heat.' },
-  'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere — affects albedo, apparent colour and greenhouse warming.' },
+  'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere. The value names what it is made of and how completely it covers the sky — wisps, scattered, broken, overcast or a total veil. A world can carry several decks at once, stacked by the temperature each substance condenses at.' },
+  'weather/precipitation':      { label: 'Precipitation',    description: 'What falls out of a cloud deck, and whether it survives the trip down: rain where the drops reach the ground, snow where they freeze, and virga where they evaporate on the way (Venus\'s sulphuric-acid rain never lands).' },
+  'surface/age':                { label: 'Surface age',       description: 'How long the visible surface has been sitting there exposed — young, moderate, old or ancient. A world that resurfaces itself keeps wiping the slate clean, so this is not the body\'s age: it is how much time the craters, weathering and irradiation have had to accumulate on what you can actually see.' },
+  'surface/irradiation':        { label: 'Irradiation',       description: 'How much starlight and cosmic radiation the unshielded surface has taken over its exposed lifetime — low, moderate or high. This is what darkens and reddens icy worlds, turning retained organics into tholins.' },
+  'surface/oxidised':           { label: 'Oxidised surface', description: 'Iron at the surface has RUSTED — this is why Mars is red. It takes iron, an oxidiser to react with (free oxygen, or the carbon dioxide and water that did the job on early Mars) and long exposure: the Moon has the iron and the age but no atmosphere, so it stays grey.' },
+  'stellar/activity':           { label: 'Magnetic activity', description: 'How tangled this star\'s magnetic field is — the one thing behind its starspots, its bright faculae and its flares. Young, fast-spinning and low-mass stars run active or flare constantly; an old sun-like star shows a handful of small spots.' },
+  'weather/lightning':          { label: 'Lightning',        description: 'Charge separation in a deep convecting cloud deck — driven by a warm, thick atmosphere, or by ash where the world is volcanically active. The value is how often it fires.' },
+  'weather/dust-storms':        { label: 'Dust storms',      description: 'A dry, loose, wind-scoured surface with air enough to lift it and no ocean to pin it down (Mars). The value is how far they spread — seasonal, frequent, or planet-wide.' },
+  'weather/monsoon':            { label: 'Monsoon',          description: 'A seasonal swing in rainfall: rain that reaches the ground, an ocean to supply it, and an axial tilt big enough to give the year real seasons. The value names the rain.' },
   'feature/polar-vortex':       { label: 'Polar vortex',     description: 'A standing polar jet stream on a gas giant that locks into a geometric polygon — Saturn\'s north pole is a famous hexagon (6 sides); Jupiter\'s poles hold polygonal cyclone rings (5–8). The value is the side count.' },
   'structure/supercritical-envelope': { label: 'Supercritical envelope', description: 'The dominant volatile is past its critical point (for water, 647 K / 218 bar) — a dense supercritical fluid that is neither a true sea nor a true sky.' },
 

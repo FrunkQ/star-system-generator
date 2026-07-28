@@ -9,7 +9,8 @@
 // ocean/land/cloud mix or Jupiter's bands without re-deriving anything.
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
-import { phaseAtP } from '$lib/physics/liquids';
+import { phaseAtP, liquidDef } from '$lib/physics/liquids';
+import { decksFromTags, condensateTint, oxidationStrength } from '$lib/physics/cloudDecks';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 
 type RGB = [number, number, number];
@@ -70,12 +71,8 @@ export function liquidApparentColor(liquidName: string, star: RGB): RGB {
   return mix(diffuse, star, spec);
 }
 
-// How heavily a condensed cloud deck of each liquid veils the surface below it. Water clouds are
-// patchy (Earth stays blue); sulfuric/sulfur/alkali/silicate decks are opaque and dominate.
-const CLOUD_VEIL: Record<string, number> = {
-  'sulfuric-acid': 0.6, 'sulfur-dioxide': 0.5, 'sodium': 0.45, 'potassium': 0.45,
-  'molten-iron': 0.4, 'molten-glass': 0.4, 'ammonia': 0.4, 'methane': 0.25, 'water': 0.15
-};
+// (The old CLOUD_VEIL table is gone: how heavily a deck veils the surface is the LIQUID's own
+// `cloudOpacity` in the rule pack, read via the cloud-deck TAGS — physics→tags→visuals.)
 
 // Blackbody-ish incandescence for very hot worlds (lava / hot giants).
 function incandescent(teqK: number): RGB {
@@ -136,7 +133,16 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     col = mix(col, SURF.ice, shell);
     if (shell > 0.5) surfDom = 'ice';
   }
-  push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
+  // OXIDISED IRON — the reason Mars is red and the Moon, with the same iron and age but no oxidiser,
+  // is grey. Bulk makeup alone made every rocky world the same brown; rust is surface chemistry, so
+  // it arrives as a tag (see deriveOxidation) and tints the surface here.
+  const rust = oxidationStrength(body.tags);
+  if (rust > 0) {
+    col = mix(col, [168, 74, 38], rust);   // hematite red-ochre
+    push(rgbToHex(col), 'surface', 1, `oxidised ${surfDom} surface`);
+  } else {
+    push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
+  }
 
   // 2. Surface liquid — ANY liquid, proportional to coverage (#9): the disc is land×(1−cover) +
   //    liquid×cover, with the liquid's shade derived from starlight × refractive index (#8).
@@ -189,17 +195,24 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     }
   }
 
-  // 3b. Condensed cloud DECKS (hydrosphere.layers, location 'cloud'). For rocky worlds a strong
-  //     chromophore deck (sulfuric/sulfur/alkali) opaquely veils the surface; water is patchy.
-  const cloudLayers = (body.hydrosphere?.layers ?? []).filter((l) => l.location === 'cloud');
-  if (cloudLayers.length && mk.gas <= 0.5) {
-    // strongest-veiling deck wins the surface look
-    const top = cloudLayers
-      .map((l) => ({ l, veil: CLOUD_VEIL[l.liquid] ?? 0.3 }))
+  // 3b. Condensed cloud DECKS — from the body's cloud-deck TAGS (the processor's single
+  //     evaluation; a GM's manual tag works identically). Veil strength = the liquid's own
+  //     cloudOpacity scaled by the deck's coverage bucket; colour = the liquid's colour lightened
+  //     toward condensate white (a deck is droplets/crystals, not a sea — water reads white-ish,
+  //     a sulphuric deck keeps its yellow cast). Strongest-veiling deck wins the flattened look.
+  const deckTags = decksFromTags(body.tags, rulePack);
+  if (deckTags.length && mk.gas <= 0.5) {
+    const top = deckTags
+      .map((d) => {
+        const def = liquidDef(d.species, rulePack);
+        return { d, def, veil: (def?.cloudOpacity ?? 0.5) * d.coverage };
+      })
       .sort((a, b) => b.veil - a.veil)[0];
-    if (top?.l.colorHex) {
-      col = mix(col, hexToRgb(top.l.colorHex), top.veil);
-      push(top.l.colorHex, 'cloud', top.veil, `${top.l.liquid} clouds`);
+    if (top && top.veil > 0.02) {
+      // Droplets, not bulk liquid — condensateTint owns that rule (see cloudDecks).
+      const condensate = hexToRgb(condensateTint(top.def?.colorHex ?? '#c8d2dc'));
+      col = mix(col, condensate, Math.min(0.85, top.veil));
+      push(rgbToHex(condensate), 'cloud', top.veil, `${top.d.species} clouds`);
     }
   }
 
@@ -212,13 +225,47 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
   // A giant takes its whole look from its cloud chemistry. Gate on rendersAsGiant (NOT just gas > 0.5) so
   // an ICE giant — ice-dominated, low gas — reads as a smooth cool cloud-world, not a cratered iceball.
   if (rendersAsGiant(body)) {
+    // A giant IS its cloud stack: you see the topmost deck, with the ones below showing through its
+    // gaps. That stack is derived physics arriving as tags, so the colour now comes from the decks
+    // the world actually has rather than from a temperature ramp — Jupiter's white ammonia over
+    // brown ammonium hydrosulphide, an ice giant's methane on top. A giant with NO deck at all
+    // (a hot Jupiter above every condensation point) still falls back to the thermal continuum,
+    // which is the one case where there genuinely is nothing condensed to see.
+    const giantDecks = decksFromTags(body.tags, rulePack);
     const comp = atm?.composition ?? {};
     const ch4 = comp['CH4'] ?? comp['methane'] ?? 0;
     let cloud = gasGiantCloudColor(teq); // warm thermal base (ammonia / water / alkali / silicate)
-    // Methane absorption: stronger with abundance and with cold (we see deeper, more absorbing air).
-    const methaneStrength = Math.min(0.9, ch4 * 6 + (teq < 90 ? 0.22 : teq < 160 ? 0.08 : 0));
+    if (giantDecks.length) {
+      const stops: Array<[RGB, number]> = [];
+      giantDecks.forEach((d, i) => {
+        const hex = liquidDef(d.species, rulePack)?.colorHex;
+        if (!hex) return;
+        // Weight by DEPTH IN THE STACK, deepest heaviest. A deck that condenses warm forms far down
+        // where the atmosphere is dense, so it holds enormously more material and is the optically
+        // thick layer you actually see; a cold-condensing species on top is a thin high haze. This
+        // is why Saturn is gold despite carrying more methane than ammonia — its ammonia deck is
+        // deep and substantial while the methane above it is a veneer. Weighting the top deck
+        // heaviest instead turned Saturn grey-blue.
+        // Between the two extremes. A terrestrial's deck is thin droplets you see through, so it
+        // pales to near-white (condensateTint); a giant's deck is optically thick and shows its
+        // substance's own colour — but it is also a brightly sunlit high-albedo cloud top, not a
+        // dark pool of the stuff. The liquid colours are ocean colours; used raw they made every
+        // giant too dark, and fully paled they washed Jupiter's tan away entirely.
+        stops.push([mix(hexToRgb(hex), [255, 255, 255], 0.32), Math.max(0.04, d.coverage * Math.pow(0.35, i))]);
+      });
+      if (stops.length) cloud = mixWeighted(stops);
+    }
+    // Methane absorption follows BEER-LAMBERT, not a linear ramp: it SATURATES, so a couple of
+    // percent over a deep atmosphere swallows essentially all the red light. Modelling it linearly
+    // (ch4 × 6) gave Uranus's real 2.3% a mere 0.14 of tint, which left the ice giants grey — they
+    // are cyan in life precisely because of that methane. Cold matters too: on a warm giant the
+    // methane sits below a thick ammonia haze we never see through, which is why Jupiter and Saturn
+    // stay gold at similar abundances.
+    const coldFactor = teq < 80 ? 1 : teq < 110 ? 0.6 : 0.35;
+    const methaneStrength = Math.min(0.92, (1 - Math.exp(-60 * ch4)) * coldFactor);
     if (methaneStrength > 0.06 && teq < 420) {
-      const methaneHue = teq < 60 ? [47, 107, 214] as RGB : [70, 176, 216] as RGB; // Neptune deep blue ↔ Uranus cyan
+      // Colder → deeper blue: Neptune (≈46 K) sits below the threshold, Uranus (≈58 K) reads cyan.
+      const methaneHue = teq < 52 ? [47, 107, 214] as RGB : [70, 176, 216] as RGB;
       cloud = mix(cloud, methaneHue, methaneStrength);
     }
     // An ice-dominated giant is an ICE GIANT even when the atmosphere carries no explicit methane readout
@@ -233,15 +280,28 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     } else {
       iceGiant = methaneStrength > 0.32;
     }
-    col = mix(col, cloud, 0.85);
-    push(rgbToHex(cloud), 'cloud', 0.85, iceGiant ? 'methane haze' : 'ammonia cloud deck');
+    // A giant has no surface to see, so the cloud IS the view — the old 0.85 left 15% of a rocky
+    // "surface" colour showing through and dragged every giant darker than it should be.
+    col = mix(col, cloud, 0.96);
+    push(rgbToHex(cloud), 'cloud', 0.9, iceGiant ? 'methane haze' : 'ammonia cloud deck');
     // Chromophore stripes belong to warm ammonia giants (Jupiter's browns/oranges); ice giants are
     // near-featureless. Only emit band colours for the ammonia case → the renderer skips spots/stripes
     // on Uranus/Neptune.
     if (!iceGiant) {
-      for (const l of cloudLayers) if (l.colorHex) push(l.colorHex, 'cloud', 0.4, `${l.liquid} band`);
-      const chromo = teq < 200 ? '#a8642e' : teq < 400 ? '#c98a3e' : '#9a8478';
-      push(rgbToHex(mix(cloud, hexToRgb(chromo), 0.55)), 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), 'chromophore band');
+      // Band colours from the giant's OWN condensates. A chromophore band is a DEEPER deck showing
+      // through gaps in the one above it, so only the decks below the top contribute — and a giant
+      // whose stack is a single species has nothing to show through, so it bands smoothly in its own
+      // colour. This is where NH4SH earns its keep: Jupiter's ammonia parts over the brown
+      // hydrosulphide beneath and the belts are that brown.
+      //
+      // There used to be one more push here: a hardcoded brown keyed off temperature, which meant
+      // ANY warm giant got Jovian belts whether or not it had the chemistry for them. It painted
+      // brown bands and a red spot onto a giant made of nothing but hydrogen and methane. Deleted —
+      // if a world has no coloured condensate, it has no chromophore.
+      for (const d of giantDecks.slice(0, -1)) {
+        const hex = liquidDef(d.species, rulePack)?.colorHex;
+        if (hex) push(hex, 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), `${d.species} band`);
+      }
     }
   }
 

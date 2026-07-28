@@ -192,7 +192,10 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 	const thick = coverage > 0.72;
 	if (thick) { ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(0.95, 0.45 + (coverage - 0.72) * 2)})`; ctx.fillRect(0, 0, W, H); }
 	const bands = thick ? 6 : 4;                                     // even → a clear equatorial lane
-	const systems = thick ? Math.round(30 + coverage * 44) : Math.round(16 + coverage * 24);
+	// Cloud-system COUNT must scale from near-zero with coverage. A flat floor of 16 meant a wisp
+	// deck (Mars, 0.08) drew almost as much cloud as an overcast one (Earth, 0.64) — the deck's
+	// coverage was barely visible in the result.
+	const systems = thick ? Math.round(30 + coverage * 44) : Math.max(2, Math.round(coverage * 42));
 	for (let i = 0; i < systems; i++) {
 		const bandY = ((Math.floor(rnd() * bands) + 0.5) / bands) * H;
 		const cy = bandY + (rnd() - 0.5) * (H / bands) * 0.55;       // jitter within the band; lanes stay clear
@@ -201,7 +204,10 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 		const spanX = (thick ? 70 : 48) + rnd() * (thick ? 70 : 80); // wide  E-W
 		const spanY = (thick ? 16 : 7) + rnd() * (thick ? 14 : 8);   // narrow N-S
 		const puffs = thick ? 7 : 4 + Math.floor(rnd() * 5);
-		const core = thick ? 0.18 + rnd() * 0.2 : 0.5 + rnd() * 0.35;
+		// Thin decks fade with coverage — wisps are faint as well as sparse — but the curve must not
+		// drag a genuinely cloudy world down with them. Earth (0.67) sits near the top of this range
+		// and should read as bright white cloud over its ocean; Mars (0.08) as barely-there wisps.
+		const core = thick ? 0.18 + rnd() * 0.2 : (0.26 + coverage * 0.62) * (0.7 + rnd() * 0.45);
 		for (let j = 0; j < puffs; j++) {
 			const px = cx + (rnd() - 0.5) * spanX, py = cy + (rnd() - 0.5) * spanY;
 			const radY = (thick ? 9 : 5) + rnd() * (thick ? 16 : 11);
@@ -231,6 +237,169 @@ export function makeCloudTexture(colorHex: string, coverage: number, seed: numbe
 	return tex;
 }
 
+// A star photosphere: base colour + granulation + SPOT GROUPS with bright faculae around them, all
+// scaled by the star's magnetic activity (the stellar/activity tag). Seeded from the star id so it
+// is stable frame-to-frame. Limb darkening is NOT baked here — it is a view-dependent effect and
+// belongs on the sphere (see the limb-darkening material), not in the surface map.
+export function makeStarSurfaceTexture(colorHex: number, activity: number, seedStr: string): HTMLCanvasElement {
+  const W = 512;   // was 256: spot groups and faculae need the room to read as structure, not specks
+  const H = 256;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext('2d')!;
+  let s = 2166136261;
+  for (let i = 0; i < seedStr.length; i++) { s ^= seedStr.charCodeAt(i); s = Math.imul(s, 16777619); }
+  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  const base = new THREE.Color(colorHex);
+  const css = (f: number) => `rgb(${Math.round(Math.min(255, base.r * 255 * f))},${Math.round(Math.min(255, base.g * 255 * f))},${Math.round(Math.min(255, base.b * 255 * f))})`;
+
+  ctx.fillStyle = css(1);
+  ctx.fillRect(0, 0, W, H);
+  // Granulation: convection cells. Denser and finer than before so the surface reads as boiling
+  // rather than dusty.
+  for (let i = 0; i < 1400; i++) {
+    ctx.globalAlpha = 0.09;
+    ctx.fillStyle = css(0.82 + rnd() * 0.36);
+    ctx.beginPath();
+    ctx.arc(rnd() * W, rnd() * H, 2 + rnd() * 5, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  // SPOT GROUPS. Real starspots come in groups along two ACTIVE LATITUDE BANDS either side of the
+  // equator (the Sun's butterfly diagram), not scattered anywhere — and each group is several spots
+  // of varying size, not one dot. Count, size and darkness all climb with magnetic activity, so a
+  // quiet sun shows a few small grey-ish groups and a flare star is blotched with near-black ones.
+  const groups = Math.round(2 + activity * 9);
+  const bandCentre = 0.30 + 0.06 * (1 - activity);   // very active stars spot closer to their poles
+  for (let g = 0; g < groups; g++) {
+    const north = rnd() < 0.5;
+    const gx = rnd() * W;
+    const gy = H * (north ? bandCentre : 1 - bandCentre) + (rnd() - 0.5) * H * 0.16;
+    const gr = (4 + rnd() * 7) * (0.7 + activity * 0.9);
+    const members = 1 + Math.floor(rnd() * (2 + activity * 4));
+
+    // Faculae: the bright magnetic froth that surrounds a spot group. On a quiet star these are the
+    // most visible magnetic feature of all — the Sun is slightly BRIGHTER at solar maximum because
+    // of them, despite having more spots.
+    ctx.globalAlpha = 0.16 + activity * 0.12;
+    ctx.fillStyle = css(1.28);
+    for (let f = 0; f < members * 3; f++) {
+      ctx.beginPath();
+      ctx.ellipse(gx + (rnd() - 0.5) * gr * 5, gy + (rnd() - 0.5) * gr * 3,
+        gr * (0.5 + rnd()), gr * (0.3 + rnd() * 0.5), rnd() * Math.PI, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    for (let m = 0; m < members; m++) {
+      const x = gx + (rnd() - 0.5) * gr * 3.4;
+      const y = gy + (rnd() - 0.5) * gr * 1.8;
+      const r = gr * (0.35 + rnd() * 0.75);
+      // Penumbra — the filamentary grey skirt.
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = css(0.5);
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 1.7, r * 1.05, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      // Umbra — the cold dark core. Darker on an active star (stronger fields, cooler spots).
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = css(0.3 - activity * 0.14);
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 0.9, r * 0.55, 0, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  return c;
+}
+
+// LIMB DARKENING — a star is dimmer and redder at its edge than at its centre, because at the limb
+// you are looking along a shallow slant through the photosphere and see only its cooler upper layers.
+// It is the single strongest cue that a star is a SPHERE rather than a flat glowing disc, and it is
+// view-dependent, so it belongs on the material and not in the surface map. Applied as a cheap patch
+// on the standard emissive material: one dot product, no extra pass, no extra draw.
+export function applyLimbDarkening(mat: THREE.Material, strength = 0.55): void {
+	mat.onBeforeCompile = (shader) => {
+		shader.uniforms.uLimb = { value: strength };
+		shader.vertexShader = shader.vertexShader
+			.replace('#include <common>', '#include <common>\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
+			.replace('#include <begin_vertex>',
+				'#include <begin_vertex>\nvLimbN = normalize(normalMatrix * normal);\nvLimbP = (modelViewMatrix * vec4(position,1.0)).xyz;');
+		shader.fragmentShader = shader.fragmentShader
+			.replace('#include <common>', '#include <common>\nuniform float uLimb;\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
+			.replace('#include <dithering_fragment>',
+				`#include <dithering_fragment>
+				 // mu = cos(angle between the surface normal and the line of sight). 1 at the disc
+				 // centre, 0 at the limb. The classic linear law: I(mu) = 1 - u(1 - mu).
+				 float mu = clamp(dot(normalize(vLimbN), normalize(-vLimbP)), 0.0, 1.0);
+				 float darken = 1.0 - uLimb * (1.0 - mu);
+				 // Redden as it darkens — the limb shows cooler gas, so the blue falls off fastest.
+				 gl_FragColor.rgb *= vec3(darken, darken * (0.94 + 0.06 * mu), darken * (0.86 + 0.14 * mu));`);
+	};
+	mat.needsUpdate = true;
+}
+
+// STELLAR FLARES — brief brilliant arcs at the limb of a magnetically active star. Additive sprites
+// on a timer, only built for stars that actually flare, so a quiet sun costs nothing at all. Kept to
+// a handful of quads: this is the one "moderate" effect in the stellar pass and it must stay
+// mobile-safe. Returns the group plus the per-flare state the animator drives.
+export interface FlareVisual { mesh: THREE.Mesh; mat: THREE.Material & { opacity: number }; phase: number; period: number }
+export function buildStellarFlares(radius: number, colorHex: string, activity: number, seed: number, tex: THREE.Texture)
+		: { group: THREE.Group; flares: FlareVisual[] } {
+	const group = new THREE.Group();
+	const flares: FlareVisual[] = [];
+	let s = (seed || 1) >>> 0;
+	const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+	const n = Math.round(2 + activity * 3);
+	const col = new THREE.Color(colorHex).lerp(new THREE.Color('#ffffff'), 0.55);
+	for (let i = 0; i < n; i++) {
+		const mat = new THREE.SpriteMaterial({
+			map: tex, color: col, transparent: true, opacity: 0,
+			blending: THREE.AdditiveBlending, depthWrite: false
+		});
+		const sp = new THREE.Sprite(mat);
+		// Sit them ON the limb, in the active latitude bands where the field emerges.
+		const lat = (rnd() < 0.5 ? 1 : -1) * (0.25 + rnd() * 0.35);
+		const lon = rnd() * Math.PI * 2;
+		const rr = radius * 1.02;
+		sp.position.set(Math.cos(lat) * Math.cos(lon) * rr, Math.sin(lat) * rr, Math.cos(lat) * Math.sin(lon) * rr);
+		const size = radius * (0.35 + rnd() * 0.4) * (0.6 + activity * 0.8);
+		sp.scale.set(size, size, 1);
+		sp.renderOrder = 3;
+		group.add(sp);
+		flares.push({ mesh: sp as unknown as THREE.Mesh, mat: mat as any, phase: rnd() * 20, period: 6 + rnd() * 14 });
+	}
+	return { group, flares };
+}
+
+/** Flares: a sharp rise and a slower decay, mostly dark between events. */
+export function updateStellarFlares(flares: FlareVisual[], nowSec: number): void {
+	for (const f of flares) {
+		const t = ((nowSec + f.phase) % f.period) / f.period;
+		// A short burst occupying ~18% of the cycle: fast rise, exponential-ish fall.
+		const burst = t < 0.18 ? (t < 0.04 ? t / 0.04 : Math.exp(-(t - 0.04) * 14)) : 0;
+		f.mat.opacity = burst * 0.85;
+	}
+}
+
+// ATMOSPHERIC THOLIN HAZE — Titan's orange smog. Unlike surface tholin staining (Pluto), this is a
+// high photochemical layer ABOVE the cloud decks, so it gets its own outermost shell rather than
+// being baked into the surface texture: baked below the clouds, Titan's pale methane deck hid it
+// completely. Uniform (a smog has no structure at this scale) and lightly emissive so the limb keeps
+// its glow.
+export function buildTholinHaze(radius: number, colorHex: string, strength: number): THREE.Mesh {
+	const mat = new THREE.MeshStandardMaterial({
+		color: new THREE.Color(colorHex),
+		transparent: true,
+		opacity: Math.min(0.8, 0.3 + strength * 0.5),
+		roughness: 1, metalness: 0, depthWrite: false,
+		emissive: new THREE.Color(colorHex), emissiveIntensity: 0.14
+	});
+	const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.075, 40, 28), mat);
+	mesh.renderOrder = 2;   // outside the cloud shells (renderOrder 1)
+	return mesh;
+}
+
 // CLOUD DECK — TWO cloud shells just above the surface, each on its own sphere and drifting INDEPENDENTLY
 // (of the planet's spin and of each other), so the deck has parallax depth: a lower main deck plus a high,
 // wispier deck that slides the other way a bit faster. Normal-blended (a real veil, not a glow); the
@@ -257,9 +426,117 @@ export function buildCloudDeck(radius: number, colorHex: string, colorHex2: stri
 	return { group, layers };
 }
 
+/**
+ * The DECK STACK — one shell per derived cloud deck, instead of the two decorative layers above.
+ * Each deck is a real condensate the physics found, so it gets its own shell at its own height, in
+ * its own substance's colour, drifting at its own rate. The character comes from where it sits in
+ * the stack, which is physical rather than an artistic choice: the TOP deck is where the weather is,
+ * so it is the turbulent one; deeper decks lie under more atmosphere and read as calm bands.
+ *
+ * Altitudes are EXAGGERATED (a real deck is a fraction of a percent of the radius and would be
+ * invisible) and the rendered count is capped — a deck under three others contributes nothing you
+ * can see, and every extra translucent shell is a full-body alpha pass on a phone.
+ */
+const MAX_RENDERED_DECKS = 3;
+export function buildDeckStack(
+	radius: number,
+	decks: { species: string; coverage: number; colorHex: string; opacity: number; ice: boolean }[],
+	seed: number
+): { group: THREE.Group; layers: { mesh: THREE.Mesh; drift: number }[] } {
+	const group = new THREE.Group();
+	const layers: { mesh: THREE.Mesh; drift: number }[] = [];
+	// decks arrive deepest→top; keep the TOP ones, which are the ones you can see.
+	const visible = decks.slice(-MAX_RENDERED_DECKS);
+	visible.forEach((d, i) => {
+		const fromTop = visible.length - 1 - i;
+		const isTop = fromTop === 0;
+		// Ice-crystal decks scatter brighter than droplet decks — cirrus against cumulus.
+		const emissive = (isTop ? 0.22 : 0.14) + (d.ice ? 0.06 : 0);
+		const tex = makeCloudTexture(d.colorHex, d.coverage * (isTop ? 1 : 0.8), (Math.imul(seed || 1, 7 + i * 13) + 29) >>> 0 || (i + 2));
+		const mat = new THREE.MeshStandardMaterial({
+			map: tex, transparent: true, roughness: 1, metalness: 0, depthWrite: false,
+			emissive: new THREE.Color(d.colorHex), emissiveMap: tex, emissiveIntensity: emissive,
+			opacity: Math.max(0.25, Math.min(1, d.opacity + 0.25))
+		});
+		const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.02 + i * 0.03), 40, 28), mat);
+		mesh.renderOrder = 1 + i;
+		group.add(mesh);
+		// The top deck runs fastest and against the deeper ones, so the stack shows parallax as it turns.
+		layers.push({ mesh, drift: (isTop ? -0.035 : 0.02 + i * 0.008) * (isTop ? 1 : 1 - fromTop * 0.2) });
+	});
+	return { group, layers };
+}
+
 // --- Animation helpers ----------------------------------------------------------------------------
 
 /** Flicker volcanic vents like heat — faster + hotter than the aurora shimmer. */
+
+// ── Lightning ────────────────────────────────────────────────────────────────────────────────────
+// Storms firing inside a cloud deck. Everything else that glows on a body — vents, plumes, coronae —
+// breathes on a sine, because it is always on and merely varies. Lightning is the opposite: dark
+// almost all of the time, then a hard spike that decays in a fraction of a second and flickers while
+// it does, because a real stroke is several strokes down the same channel. So it gets its own curve.
+//
+// The flashes sit just inside the cloud shells and light them from within, and they are ADDITIVE, so
+// they barely register against a sunlit cloud top and read vividly on the night side — which is
+// exactly where you see them from orbit.
+export interface LightningVisual { mat: THREE.SpriteMaterial; peak: number; period: number; offset: number }
+
+export function buildLightning(
+	radius: number,
+	deckHex: string,
+	strength: number,
+	seed: number,
+	glowTexture: THREE.Texture
+): { group: THREE.Group; visuals: LightningVisual[] } {
+	const group = new THREE.Group();
+	const visuals: LightningVisual[] = [];
+	let s = (seed | 0) || 7;
+	const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+	// A stroke is white-blue. Let the deck tint it a little — a storm inside an ammonia cloud is not
+	// lighting up the same stuff as one inside a water cloud — but keep it mostly the flash's own colour.
+	const col = new THREE.Color(0xdce8ff).lerp(new THREE.Color(deckHex), 0.25);
+	const count = 3 + Math.round(strength * 9);
+	const pos = new THREE.Vector3();
+	for (let i = 0; i < count; i++) {
+		// Storms cluster in the warm belts rather than the poles, so bias towards the equator.
+		const lat = (rnd() * 2 - 1); const phi = lat * lat * lat * 0.65 * Math.PI * 0.5;
+		const lon = rnd() * Math.PI * 2;
+		const cphi = Math.cos(phi);
+		pos.set(Math.cos(lon) * cphi, Math.sin(phi), Math.sin(lon) * cphi).multiplyScalar(radius * 1.03);
+		const mat = new THREE.SpriteMaterial({
+			map: glowTexture, color: col, blending: THREE.AdditiveBlending,
+			depthWrite: false, transparent: true, opacity: 0
+		});
+		const sprite = new THREE.Sprite(mat);
+		sprite.position.copy(pos);
+		const sz = radius * (0.22 + rnd() * 0.2);
+		sprite.scale.set(sz, sz, 1);
+		group.add(sprite);
+		visuals.push({
+			mat,
+			peak: 0.5 + strength * 0.4,
+			// Constant lightning fires roughly every second and a half per cell; occasional, every six.
+			period: 6.5 - strength * 5 + rnd() * 1.5,
+			offset: rnd() * 8
+		});
+	}
+	return { group, visuals };
+}
+
+/** The flash curve: dark, then a sharp decaying spike with a flicker inside it. */
+export function updateLightning(visuals: LightningVisual[], nowSec: number): void {
+	const FLASH = 0.07;                       // fraction of the cycle the stroke is visible at all
+	for (const f of visuals) {
+		const p = (((nowSec + f.offset) % f.period) + f.period) % f.period / f.period;
+		if (p >= FLASH) { if (f.mat.opacity !== 0) f.mat.opacity = 0; continue; }
+		const q = p / FLASH;                    // 0..1 across the stroke
+		const decay = Math.exp(-q * 4.5);
+		const flicker = 0.62 + 0.38 * Math.sin(q * 34);
+		f.mat.opacity = Math.max(0, f.peak * decay * flicker);
+	}
+}
+
 export function updateMagma(visuals: EmissiveVisual[], nowSec: number): void {
 	for (const m of visuals) {
 		const s = 0.5 + 0.5 * Math.sin(nowSec * 6 + m.seed * 6.283);

@@ -6,6 +6,7 @@ import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_K
 import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
 import { gasThermalInflationFactor } from '../physics/makeup';
+import { giantComposition, GIANT_ANCHOR_BAR } from '../physics/giantTraces';
 
 // Debris-density proxy for belts/rings: a massKg drawn so its log maps to a density fraction in
 // [fracLo, fracHi] on the 1e-5..1.0 Earth-mass scale the orrery/telemetry read (see
@@ -519,12 +520,16 @@ function _generateAtmosphere(rng: SeededRNG, pack: RulePack, planet: CelestialBo
         }
 
     } else if (isGasGiant || isIceGiant) {
-        // Default to Jupiter-like
+        // A giant is hydrogen and helium plus the TRACES that do all the visible work. Generated
+        // giants used to be pure H2/He, which meant not one of them had anything that could condense:
+        // every one fell back to a flat colour by temperature and no generated giant ever grew a
+        // cloud deck. giantComposition owns the mix (and is shared with the fix-up that repairs older
+        // saves, so the two can never disagree); the RNG gives each giant its own spread.
         planet.atmosphere = {
             name: 'Hydrogen–Helium (Jupiter-like)',
-            composition: { H2: 0.86, He: 0.14 },
+            composition: giantComposition(planet.massKg, () => rng.nextFloat()),
             main: 'H2',
-            pressure_bar: 100,
+            pressure_bar: GIANT_ANCHOR_BAR,
         };
         planet.tags.push({ key: 'atmosphere/reducing' });
     } else {

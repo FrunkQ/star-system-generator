@@ -4,7 +4,8 @@
 // continuously, but production ships the older Field Guide launcher until that line is ready. Rather
 // than commenting call sites out and back in each cut, gate them here: flip the flag, nothing else.
 //
-// TO RESUME V2.2 BETA WORK: set PLAYER_VIEWS_ENABLED = true. That is the whole undo.
+// TO MASK IT AGAIN FOR A PRODUCTION CUT: set PLAYER_VIEWS_ENABLED = false. That is the whole change —
+// it was flipped off for the v2.1.3 release and back on here for continued V2.2 work.
 //
 // Nothing is deleted or unreachable at build time — PlayerViewModal and the preset editor still compile
 // and are still covered by their tests; only the ways IN are hidden.

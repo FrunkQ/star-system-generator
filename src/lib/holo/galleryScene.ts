@@ -11,11 +11,14 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import { getPlanetTextureEquirect, getEmissiveEquirect } from '$lib/rendering/planetTexture';
+import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
+import { lightningStrength } from '$lib/physics/cloudDecks';
 import { buildAuroraShell } from './scene';
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, updateMagma, updatePlumes, accretionColor,
+	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack, buildLightning, updateLightning, type LightningVisual,
+	applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, accretionColor,
 	type EmissiveVisual
 } from './bodyFeatures';
 import { GALLERY_ROWS, GALLERY_BLACK_HOLES } from '$lib/catalogue/galleryExamples';
@@ -41,7 +44,13 @@ function makeLabel(text: string, colour = '#dfe6f0', px = 34): THREE.Sprite {
 	return spr;
 }
 
-export function createGalleryScene(canvas: HTMLCanvasElement) {
+// `extraRows` lets the page append rows built from LIVE data (the real solar system, processed at
+// runtime) after the hand-authored examples — the honesty check that the physics still produces a
+// recognisable Sol. Passed in rather than imported so this module keeps no data dependencies.
+export function createGalleryScene(
+	canvas: HTMLCanvasElement,
+	extraRows: { title: string; bodies: any[] }[] = []
+) {
 	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 	renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 	const scene = new THREE.Scene();
@@ -73,9 +82,11 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	const cloudSpinners: { obj: THREE.Object3D; drift: number }[] = [];
 	const magmaVisuals: EmissiveVisual[] = [];
 	const plumeVisuals: EmissiveVisual[] = [];
+	const lightningVisuals: LightningVisual[] = [];
 	const auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
 	const discs: { points: THREE.Points; rate: number }[] = [];
 	const starVisuals: { corona: THREE.Sprite; baseScale: number; activity: number; seed: number }[] = [];
+	const galleryFlares: FlareVisual[] = [];
 	// Black-hole lensing centres: world pos + horizon radius, and (when feeding) the accretion disc's
 	// object + radii so the lens can exempt its projected band (the front-of-hole fix).
 	const lensBHs: { pos: THREE.Vector3; r: number; disc?: { obj: THREE.Object3D; inner: number; outer: number } }[] = [];
@@ -89,17 +100,32 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 
 		if (isStar) {
 			const col = new THREE.Color(node.apparentColorHex || '#ffddaa');
-			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), new THREE.MeshBasicMaterial({ color: col }));
+			// The gallery star used to be a FLAT coloured sphere — no surface at all, which is why the
+			// star row read as smooth balls. It now uses the same photosphere as the live holo:
+			// granulation, spot groups and faculae from the magnetic-activity tag, plus limb darkening.
+			const activity = activityStrength(node.tags);
+			const starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+			const st = new THREE.CanvasTexture(makeStarSurfaceTexture(col.getHex(), activity, String(node.id)));
+			st.colorSpace = THREE.SRGBColorSpace;
+			starMat.map = st;
+			applyLimbDarkening(starMat, 0.55);
+			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), starMat);
 			g.add(sphere);
+			disposables.push(starMat, st);
 			const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 });
 			const corona = new THREE.Sprite(coronaMat);
-			const activity = node.flareActivity ?? 0.2;
 			const baseScale = R * (3.2 + activity * 3);
 			corona.scale.setScalar(baseScale);
 			g.add(corona);
 			spinners.push({ obj: sphere, rate: 0.25 });
 			let ss = 0; for (const ch of String(node.id)) ss = (ss + ch.charCodeAt(0)) % 997;
 			starVisuals.push({ corona, baseScale, activity, seed: ss / 997 });
+			// Flares for the stars that earn them — the gallery's flare-star row shows them firing.
+			if (flaresVisibly(node.tags)) {
+				const fl = buildStellarFlares(R, `#${col.getHexString()}`, activity, (ss || 1) + 7, glowTexture);
+				sphere.add(fl.group);
+				galleryFlares.push(...fl.flares);
+			}
 		} else {
 			const texCanvas = getPlanetTextureEquirect(node);
 			const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
@@ -125,14 +151,26 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 			// Emissive features — the same builders the live holo uses.
 			if (appear.magma) { const b = buildMagmaVents(R, appear.magma, node.id, hotspotTexture); sphere.add(b.group); magmaVisuals.push(...b.visuals); }
 			if (appear.cryoPlumes) { const b = buildCryoPlumes(R, appear.cryoPlumes, node.id, plumeTexture); sphere.add(b.group); plumeVisuals.push(...b.visuals); }
+			// Storms inside the deck — additive flashes, brightest against the night side.
+			const storms = lightningStrength(node.tags);
+			if (storms > 0 && (appear.clouds || appear.cloudDecks.length)) {
+				let ls = 5; for (const ch of String(node.id)) ls = (ls * 31 + ch.charCodeAt(0)) & 0xffffff;
+				const b = buildLightning(R, appear.cloudDecks.at(-1)?.colorHex ?? appear.clouds?.colorHex ?? '#e8eef8', storms, ls || 1, glowTexture);
+				sphere.add(b.group);
+				lightningVisuals.push(...b.visuals);
+			}
 			if (appear.selfLumGlow) g.add(buildSelfLumGlow(R, appear.selfLumGlow.colorHex, glowTexture));
 			if (appear.atmGlow) g.add(buildAtmoGlow(R, appear.atmGlow.colorHex, appear.atmGlow.strength));
 			if (appear.clouds) {
 				let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-				const cl = buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
+				const cl = (!appear.clouds.giant && appear.cloudDecks.length > 1)
+					? buildDeckStack(R, appear.cloudDecks, cseed || 1)
+					: buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
 				sphere.add(cl.group);           // tracks the sphere's spin; the gallery drifts each layer separately
 				for (const l of cl.layers) cloudSpinners.push({ obj: l.mesh, drift: l.drift });
 			}
+			// Titan's smog goes OUTSIDE the cloud shells (see buildTholinHaze).
+			if (appear.tholin?.atmospheric) g.add(buildTholinHaze(R, appear.tholin.colorHex, appear.tholin.strength));
 			// Auroras from the shared appearance MODEL (the aurora/* tag) — consistent with the 2D disc.
 			// (The live holo currently derives them from physics; the model tag is what the gallery shows.)
 			if (appear.aurora) {
@@ -233,6 +271,9 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 	// Backdrop stars behind the black-hole row so the lensing has something to bend.
 	addStarBackdrop(bhRowY, (GALLERY_BLACK_HOLES.length / 2) * COL_GAP + COL_GAP, ROW_GAP * 0.75);
 
+	// Live-data rows last (the real solar system) — see the extraRows note above.
+	for (const r of extraRows) placeRow(r.title, r.bodies.length, (i, x, y) => buildBody(r.bodies[i], x, y));
+
 	// Post-processing: the black-hole lensing pass (same shader as the live holo). The front-of-hole
 	// disc is handled ANALYTICALLY in the shader (the projected disc-ellipse band passes through
 	// un-lensed) — no depth buffer, no offscreen target, no twin geometry.
@@ -294,17 +335,23 @@ export function createGalleryScene(canvas: HTMLCanvasElement) {
 		// Spin in-plane about the disc's local Y (its plane normal after the X-tilt). NB not rotation.z —
 		// with XYZ euler order that would wobble the plane, not spin it, and break the lens's ellipse feed.
 		for (const d of discs) d.points.rotation.y += 0.016 * d.rate;
+		updateStellarFlares(galleryFlares, clock.t);
 		// Star flares: pulse each corona's size + brightness, amplitude ∝ flare activity, so an active
 		// flare star (an M dwarf) visibly throbs while a calm one barely moves — like the discs animate.
 		for (const s of starVisuals) {
 			const t = clock.t;
-			const flick = 0.5 + 0.5 * (0.6 * Math.sin(t * (2 + s.activity * 5) + s.seed * 6.283) + 0.4 * Math.sin(t * (5 + s.activity * 9) + s.seed * 12.57));
+			// A corona BREATHES, it does not wobble. Halved the rates and the amplitudes: the old pair of
+			// fast sines made even a calm star jitter, which read as a rendering fault rather than as
+			// stellar activity. Discrete flares carry the drama now (buildStellarFlares).
+			const flick = 0.5 + 0.5 * (0.7 * Math.sin(t * (0.9 + s.activity * 1.8) + s.seed * 6.283)
+				+ 0.3 * Math.sin(t * (2.1 + s.activity * 3) + s.seed * 12.57));
 			const a = s.activity;
-			s.corona.scale.setScalar(s.baseScale * (1 + a * 0.45 * flick));
-			(s.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.9 * (1 - a * 0.35 + a * 0.6 * flick));
+			s.corona.scale.setScalar(s.baseScale * (1 + a * 0.18 * flick));
+			(s.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.9 * (1 - a * 0.14 + a * 0.24 * flick));
 		}
 		updateMagma(magmaVisuals, clock.t);
 		updatePlumes(plumeVisuals, clock.t);
+		updateLightning(lightningVisuals, clock.t);
 		for (const a of auroraVisuals) {
 			// Slow deep swell per colour layer (independent phases → one colour or both at any moment) × shimmer.
 			const swell = 0.5 + 0.5 * Math.sin(clock.t * 0.45 + a.seed * 6.283);

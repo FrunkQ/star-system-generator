@@ -24,7 +24,12 @@
       "image": {
         "url": "/images/star_types/G.webp"
       },
-      "tags": [],
+      "tags": [
+        {
+          "key": "stellar/activity",
+          "value": "quiet"
+        }
+      ],
       "areas": [],
       "description": "The heart of our Solar System, Sol is a G-type main-sequence star (a yellow dwarf). It accounts for 99.8% of the system's total mass. Its energy, produced by nuclear fusion in its core, radiates outward, making life on Earth possible.",
       "isNameUserDefined": true,
@@ -158,8 +163,8 @@
       "temperatureK": 425.4125932115374,
       "temperatureProfile": {
         "meanK": 425,
-        "totalMinK": 3,
-        "totalMaxK": 796,
+        "totalMinK": 133,
+        "totalMaxK": 647,
         "components": [
           {
             "source": "latitude",
@@ -190,8 +195,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 796
+        "min": 133,
+        "max": 647
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "suppressed",
@@ -207,6 +215,15 @@
         ]
       },
       "oblateness": 0.000001272841752605334,
+      "auroraEmitters": [
+        {
+          "gas": "mixed gases",
+          "colour": "green",
+          "hex": "#57e39a",
+          "weight": 1,
+          "altitude": 1
+        }
+      ],
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -488,6 +505,18 @@
           "key": "inert"
         },
         {
+          "key": "structure/cloud-deck",
+          "value": "sulfuric-acid veil"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "sulfuric-acid virga"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "constant"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -502,6 +531,10 @@
           "value": "moderate"
         },
         {
+          "key": "surface/oxidised",
+          "value": "light"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -514,12 +547,14 @@
         "name": "Carbon Dioxide (Venus-like)",
         "composition": {
           "CO2": 0.965,
-          "N2": 0.035
+          "N2": 0.035,
+          "SO2": 0.00015,
+          "H2O": 0.00002
         },
         "main": "CO2",
         "pressure_bar": 92,
-        "scaleHeightKm": 5.279355152310041,
-        "molarMassKg": 0.04344
+        "scaleHeightKm": 5.278144969899815,
+        "molarMassKg": 0.043449959999999996
       },
       "axial_tilt_deg": 177.36,
       "rotation_period_hours": -5832.5,
@@ -531,8 +566,8 @@
       "stellarRadiation": 1.9607823913016813,
       "radiationShieldingAtmo": 1,
       "radiationShieldingMag": 0,
-      "photonRadiation": 2.58551963e-316,
-      "particleRadiation": 3.6160665e-317,
+      "photonRadiation": 2.44337695e-316,
+      "particleRadiation": 3.417452e-317,
       "stellarRadiationMin": 1.885655645288871,
       "stellarRadiationMax": 1.9374331859013274,
       "surfaceRadiationMin": 2,
@@ -558,35 +593,35 @@
       "tidalHeatK": 0,
       "starTidallyLocked": false,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 501.1240884959156,
-      "temperatureK": 745.7680963705681,
+      "greenhouseTempK": 523.6099227125275,
+      "temperatureK": 768.25393058718,
       "temperatureProfile": {
-        "meanK": 746,
-        "totalMinK": 720,
-        "totalMaxK": 772,
+        "meanK": 768,
+        "totalMinK": 749,
+        "totalMaxK": 787,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 729,
-            "highK": 762
+            "lowK": 752,
+            "highK": 785
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 736,
-            "highK": 755
+            "lowK": 759,
+            "highK": 778
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 720,
-        "max": 772
+        "min": 749,
+        "max": 787
       },
       "hydrosphere": {
         "layers": [
           {
-            "liquid": "liquid-iron",
+            "liquid": "molten-iron",
             "location": "interior",
             "conductive": true
           }
@@ -609,6 +644,22 @@
         "strengthGauss": 0
       },
       "oblateness": 7.637335768889923e-8,
+      "auroraEmitters": [
+        {
+          "gas": "carbon dioxide",
+          "colour": "violet",
+          "hex": "#c86ad0",
+          "weight": 0.9747474747474748,
+          "altitude": 0
+        },
+        {
+          "gas": "nitrogen",
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "weight": 0.025252525252525256,
+          "altitude": 0
+        }
+      ],
       "geoActivity": {
         "regime": "episodic",
         "volcanism": "resurfacing",
@@ -635,18 +686,24 @@
         }
       },
       "apparentColor": {
-        "hex": "#937559",
+        "hex": "#d9c7a4",
         "palette": [
           {
-            "hex": "#937559",
+            "hex": "#986c4e",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "oxidised rock surface"
+          },
+          {
+            "hex": "#f0e7c3",
+            "role": "cloud",
+            "weight": 0.7360000000000001,
+            "label": "sulfuric-acid clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#937559",
+      "apparentColorHex": "#d9c7a4",
       "classification": {
         "base": "planet/silicate",
         "baseScore": 1.23,
@@ -753,10 +810,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "746 K (473 °C)",
+            "value": "768 K (495 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 746,
+              "value": 768,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -828,7 +885,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 406.2584239231815,
+        "minLeoKm": 418.41168573397215,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
         "heoUpperBoundaryKm": 1004980.1034093457,
@@ -885,7 +942,19 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "white"
+          "value": "water overcast"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "water rain"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
+        },
+        {
+          "key": "weather/monsoon",
+          "value": "water"
         },
         {
           "key": "magnetic/dynamo"
@@ -962,12 +1031,7 @@
             "colorHex": "#2b6cb0"
           },
           {
-            "liquid": "water",
-            "location": "cloud",
-            "colorHex": "#eef2f8"
-          },
-          {
-            "liquid": "liquid-iron",
+            "liquid": "molten-iron",
             "location": "interior",
             "conductive": true
           }
@@ -1025,8 +1089,8 @@
       "temperatureK": 288.2952266924585,
       "temperatureProfile": {
         "meanK": 288,
-        "totalMinK": 243,
-        "totalMaxK": 334,
+        "totalMinK": 261,
+        "totalMaxK": 316,
         "components": [
           {
             "source": "latitude",
@@ -1049,8 +1113,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 243,
-        "max": 334
+        "min": 261,
+        "max": 316
       },
       "magnetism": {
         "source": "iron-core",
@@ -1066,6 +1130,29 @@
         ]
       },
       "oblateness": 0.004312523427243434,
+      "auroraEmitters": [
+        {
+          "gas": "atomic oxygen",
+          "colour": "green",
+          "hex": "#57e39a",
+          "weight": 0.4895104895104895,
+          "altitude": 1
+        },
+        {
+          "gas": "nitrogen",
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "weight": 0.36363636363636365,
+          "altitude": 0
+        },
+        {
+          "gas": "atomic oxygen (high)",
+          "colour": "crimson",
+          "hex": "#e14b3a",
+          "weight": 0.14685314685314682,
+          "altitude": 2
+        }
+      ],
       "geoActivity": {
         "regime": "plate-tectonics",
         "volcanism": "arc-effusive",
@@ -1092,7 +1179,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#718aa2",
+        "hex": "#7b94ad",
         "palette": [
           {
             "hex": "#927458",
@@ -1107,15 +1194,15 @@
             "label": "water ocean"
           },
           {
-            "hex": "#eef2f8",
+            "hex": "#c3d5e9",
             "role": "cloud",
-            "weight": 0.15,
+            "weight": 0.30600000000000005,
             "label": "water clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#718aa2",
+      "apparentColorHex": "#7b94ad",
       "classification": {
         "base": "planet/swamp",
         "baseScore": 1.82,
@@ -1493,8 +1580,8 @@
       "temperatureK": 267.19206115251916,
       "temperatureProfile": {
         "meanK": 267,
-        "totalMinK": 3,
-        "totalMaxK": 569,
+        "totalMinK": 54,
+        "totalMaxK": 480,
         "components": [
           {
             "source": "latitude",
@@ -1517,8 +1604,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 569
+        "min": 54,
+        "max": 480
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -1823,6 +1913,18 @@
           "key": "inert"
         },
         {
+          "key": "structure/cloud-deck",
+          "value": "water wisps"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "water snow"
+        },
+        {
+          "key": "weather/dust-storms",
+          "value": "seasonal"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
@@ -1835,6 +1937,10 @@
         {
           "key": "surface/irradiation",
           "value": "high"
+        },
+        {
+          "key": "surface/oxidised",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -1850,12 +1956,13 @@
         "composition": {
           "CO2": 0.95,
           "N2": 0.027,
-          "Noble Gases": 0.016
+          "Noble Gases": 0.016,
+          "H2O": 0.00021
         },
         "main": "CO2",
         "pressure_bar": 0.006,
-        "scaleHeightKm": 11.002790232550753,
-        "molarMassKg": 0.043003999999999994
+        "scaleHeightKm": 11.001823185493706,
+        "molarMassKg": 0.043007779999999995
       },
       "axial_tilt_deg": 25.19,
       "rotation_period_hours": 24.6,
@@ -1865,14 +1972,14 @@
       },
       "isNameUserDefined": true,
       "stellarRadiation": 0.44382306732337806,
-      "radiationShieldingAtmo": 0.04605037305859283,
+      "radiationShieldingAtmo": 0.046051150726582946,
       "radiationShieldingMag": 0,
-      "photonRadiation": 185.71758608426018,
-      "particleRadiation": 25.974838666303594,
+      "photonRadiation": 185.71743468567706,
+      "particleRadiation": 25.974817491390358,
       "stellarRadiationMin": 0.36029175763489485,
       "stellarRadiationMax": 0.5240600290449476,
-      "surfaceRadiationMin": 173.8500938929359,
-      "surfaceRadiationMax": 251.9634346011654,
+      "surfaceRadiationMin": 173.84995379925238,
+      "surfaceRadiationMax": 251.96323082881068,
       "equilibriumTempMinK": 201.81235796465518,
       "equilibriumTempMaxK": 221.6304529956026,
       "tidallyLocked": false,
@@ -1893,16 +2000,16 @@
         "note": "CO2 cloud deck over a mid-tone surface."
       },
       "equilibriumTempK": 211.2578927318618,
-      "surfaceRadiation": 213.69242475056376,
+      "surfaceRadiation": 213.69225217706742,
       "tidalHeatK": 0,
       "starTidallyLocked": false,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 5.811580890688286,
-      "temperatureK": 217.06947362255008,
+      "greenhouseTempK": 5.827087004296242,
+      "temperatureK": 217.08497973615803,
       "temperatureProfile": {
         "meanK": 217,
-        "totalMinK": 68,
-        "totalMaxK": 366,
+        "totalMinK": 129,
+        "totalMaxK": 305,
         "components": [
           {
             "source": "latitude",
@@ -1925,8 +2032,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 68,
-        "max": 366
+        "min": 129,
+        "max": 305
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -1942,6 +2052,22 @@
         ]
       },
       "oblateness": 0.005745063944604033,
+      "auroraEmitters": [
+        {
+          "gas": "carbon dioxide",
+          "colour": "violet",
+          "hex": "#c86ad0",
+          "weight": 0.9801031687546058,
+          "altitude": 0
+        },
+        {
+          "gas": "nitrogen",
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "weight": 0.019896831245394254,
+          "altitude": 0
+        }
+      ],
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -1968,18 +2094,24 @@
         }
       },
       "apparentColor": {
-        "hex": "#957659",
+        "hex": "#9e684a",
         "palette": [
           {
-            "hex": "#957659",
+            "hex": "#9c6444",
             "role": "surface",
             "weight": 1,
-            "label": "rock surface"
+            "label": "oxidised rock surface"
+          },
+          {
+            "hex": "#c3d5e9",
+            "role": "cloud",
+            "weight": 0.036000000000000004,
+            "label": "water clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#957659",
+      "apparentColorHex": "#9e684a",
       "classification": {
         "base": "planet/sub-earth",
         "baseScore": 1.3,
@@ -2141,7 +2273,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 176.43776960301562,
+        "minLeoKm": 176.43486482364864,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 16996.90684070823,
         "heoUpperBoundaryKm": 1079042.9061374362,
@@ -2262,8 +2394,8 @@
       "temperatureK": 206.3342426978193,
       "temperatureProfile": {
         "meanK": 206,
-        "totalMinK": 102,
-        "totalMaxK": 311,
+        "totalMinK": 145,
+        "totalMaxK": 268,
         "components": [
           {
             "source": "latitude",
@@ -2293,8 +2425,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 102,
-        "max": 311
+        "min": 145,
+        "max": 268
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -2657,8 +2792,8 @@
       "temperatureK": 200.01352688297754,
       "temperatureProfile": {
         "meanK": 200,
-        "totalMinK": 55,
-        "totalMaxK": 345,
+        "totalMinK": 109,
+        "totalMaxK": 291,
         "components": [
           {
             "source": "latitude",
@@ -2681,8 +2816,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 55,
-        "max": 345
+        "min": 109,
+        "max": 291
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -3030,8 +3168,8 @@
       "temperatureK": 161.89530157466643,
       "temperatureProfile": {
         "meanK": 162,
-        "totalMinK": 50,
-        "totalMaxK": 273,
+        "totalMinK": 96,
+        "totalMaxK": 228,
         "components": [
           {
             "source": "latitude",
@@ -3054,8 +3192,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 50,
-        "max": 273
+        "min": 96,
+        "max": 228
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -3098,6 +3236,26 @@
           "key": "reducing"
         },
         {
+          "key": "structure/cloud-deck",
+          "value": "ammonium-hydrosulfide broken"
+        },
+        {
+          "key": "structure/cloud-deck",
+          "value": "ammonia broken"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "ammonium-hydrosulfide snow"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "ammonia snow"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
+        },
+        {
           "key": "ring/system"
         },
         {
@@ -3110,8 +3268,8 @@
           "key": "shape/oblate"
         },
         {
-          "key": "aurora/brilliant",
-          "value": "0.61"
+          "key": "aurora/strong",
+          "value": "0.49"
         },
         {
           "key": "habitability/none"
@@ -3141,12 +3299,14 @@
         "composition": {
           "H2": 0.86,
           "He": 0.13,
-          "CH4": 0.003
+          "CH4": 0.003,
+          "NH3": 0.00026,
+          "H2S": 0.00008
         },
         "main": "H2",
-        "pressure_bar": 200000,
-        "scaleHeightKm": 15.438623517167121,
-        "molarMassKg": 0.0022879999999999997
+        "pressure_bar": 1,
+        "scaleHeightKm": 15.390595173836182,
+        "molarMassKg": 0.0022951399999999998
       },
       "axial_tilt_deg": 3.13,
       "rotation_period_hours": 9.925,
@@ -3156,18 +3316,18 @@
       },
       "isNameUserDefined": true,
       "stellarRadiation": 0.03792043640459048,
-      "radiationShieldingAtmo": 1,
+      "radiationShieldingAtmo": 0.4405314223603839,
       "radiationShieldingMag": 0.8774857640615746,
-      "photonRadiation": 0,
-      "particleRadiation": 0,
+      "photonRadiation": 9.306079180367396,
+      "particleRadiation": 0.15946050233292125,
       "stellarRadiationMin": 0.03355756907272414,
       "stellarRadiationMax": 0.04081373123532665,
-      "surfaceRadiationMin": 2,
-      "surfaceRadiationMax": 2,
+      "surfaceRadiationMin": 10.376499107862989,
+      "surfaceRadiationMax": 12.18775175699938,
       "equilibriumTempMinK": 107.48415397706725,
       "equilibriumTempMaxK": 112.875163989493,
       "tidallyLocked": false,
-      "internalHeatK": 52,
+      "internalHeatK": 0,
       "calculatedGravity_ms2": 25.918562037153677,
       "calculatedRotationPeriod_s": 35730,
       "orbital_period_days": 4336.00718171218,
@@ -3181,42 +3341,43 @@
         "note": "Cloud-topped giant."
       },
       "equilibriumTempK": 110.11372430182148,
-      "surfaceRadiation": 2,
+      "surfaceRadiation": 11.465539682700319,
       "tidalHeatK": 0,
       "starTidallyLocked": false,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 11.018301556485874,
-      "temperatureK": 165.9797756348331,
+      "greenhouseTempK": 14.639544182561803,
+      "temperatureK": 124.75326848438328,
       "temperatureProfile": {
-        "meanK": 166,
-        "totalMinK": 154,
-        "totalMaxK": 178,
+        "meanK": 125,
+        "totalMinK": 108,
+        "totalMaxK": 142,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 159,
-            "highK": 173
+            "lowK": 112,
+            "highK": 138
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 161,
-            "highK": 171
+            "lowK": 116,
+            "highK": 134
+          },
+          {
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 119,
+            "highK": 130
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 154,
-        "max": 178
+        "min": 108,
+        "max": 142
       },
       "hydrosphere": {
         "layers": [
-          {
-            "liquid": "methane",
-            "location": "cloud",
-            "colorHex": "#9fb6c8"
-          },
           {
             "liquid": "metallic-hydrogen",
             "location": "interior",
@@ -3238,8 +3399,17 @@
         ]
       },
       "oblateness": 0.10426494738447482,
+      "auroraEmitters": [
+        {
+          "gas": "hydrogen/helium",
+          "colour": "red-pink",
+          "hex": "#ff7e6a",
+          "weight": 1,
+          "altitude": 1
+        }
+      ],
       "apparentColor": {
-        "hex": "#cab696",
+        "hex": "#d1b498",
         "palette": [
           {
             "hex": "#ccc2ae",
@@ -3248,19 +3418,25 @@
             "label": "gas surface"
           },
           {
-            "hex": "#cab492",
+            "hex": "#d2b397",
             "role": "cloud",
-            "weight": 0.85,
+            "weight": 0.9,
             "label": "ammonia cloud deck"
           },
           {
-            "hex": "#9fb6c8",
+            "hex": "#b8845a",
             "role": "cloud",
             "weight": 0.4,
-            "label": "methane band"
+            "label": "ammonium-hydrosulfide band"
           },
           {
-            "hex": "#b7885b",
+            "hex": "#c9b08a",
+            "role": "cloud",
+            "weight": 0.4,
+            "label": "ammonia band"
+          },
+          {
+            "hex": "#bb885d",
             "role": "cloud",
             "weight": 0.6998268649926069,
             "label": "chromophore band"
@@ -3268,7 +3444,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#cab696",
+      "apparentColorHex": "#d1b498",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -3337,17 +3513,17 @@
         ],
         "fallback": false
       },
-      "habitabilityScore": 17,
+      "habitabilityScore": 29.50429126970473,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "166 K (-107 °C)",
+            "value": "125 K (-148 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 166,
+              "value": 125,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -3364,12 +3540,12 @@
           },
           {
             "label": "Pressure",
-            "points": 0,
+            "points": 18,
             "max": 18,
-            "value": "200000.00 bar",
+            "value": "1.00 bar",
             "ideal": "0.5–2 bar",
             "range": {
-              "value": 200000,
+              "value": 1,
               "lo": 0,
               "idealLo": 0.5,
               "idealHi": 2,
@@ -3379,12 +3555,12 @@
           },
           {
             "label": "Radiation",
-            "points": 17,
+            "points": 11.5,
             "max": 17,
-            "value": "2.00 mSv",
+            "value": "11.47 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 2,
+              "value": 11.47,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -3408,22 +3584,22 @@
             }
           }
         ],
-        "surfaceScore": 17,
+        "surfaceScore": 30,
         "modifiers": [],
-        "finalScore": 17,
+        "finalScore": 30,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 766.2690354778337,
+        "minLeoKm": 361.3267093710603,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 90094.92904786355,
         "heoUpperBoundaryKm": 53076768.64063506,
         "geoStationaryKm": 90094.92904786355,
         "isGeoFallback": false
       },
-      "loDeltaVBudget_ms": 2041949.331442323,
-      "propulsiveLandBudget_ms": 71517.79497880623,
-      "aerobrakeLandBudget_ms": 200,
+      "loDeltaVBudget_ms": 50252.63221769922,
+      "propulsiveLandBudget_ms": 48952.63221769922,
+      "aerobrakeLandBudget_ms": 806.5306597126335,
       "orbitalStability": "Marginal",
       "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
     },
@@ -3487,8 +3663,8 @@
       "temperatureK": 116.56004482844226,
       "temperatureProfile": {
         "meanK": 117,
-        "totalMinK": 41,
-        "totalMaxK": 192,
+        "totalMinK": 71,
+        "totalMaxK": 162,
         "components": [
           {
             "source": "latitude",
@@ -3511,8 +3687,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 41,
-        "max": 192
+        "min": 71,
+        "max": 162
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -3649,7 +3825,7 @@
       "temperatureK": 119.17948275766433,
       "temperatureProfile": {
         "meanK": 119,
-        "totalMinK": 18,
+        "totalMinK": 51,
         "totalMaxK": 1240,
         "components": [
           {
@@ -3680,8 +3856,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 18,
+        "min": 51,
         "max": 1240
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -3700,6 +3879,15 @@
         "strengthGauss": 0
       },
       "oblateness": 0.0021399203182074344,
+      "auroraEmitters": [
+        {
+          "gas": "mixed gases",
+          "colour": "green",
+          "hex": "#57e39a",
+          "weight": 1,
+          "altitude": 1
+        }
+      ],
       "geoActivity": {
         "regime": "tidal-volcanic",
         "volcanism": "silicate-tidal",
@@ -4122,7 +4310,7 @@
       "temperatureK": 99.46841494675006,
       "temperatureProfile": {
         "meanK": 99,
-        "totalMinK": 3,
+        "totalMinK": 23,
         "totalMaxK": 674,
         "components": [
           {
@@ -4153,7 +4341,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
+        "min": 23,
         "max": 674
       },
       "magnetism": {
@@ -4173,6 +4361,22 @@
         "strengthGauss": 0.005
       },
       "oblateness": 0.00062255878629147,
+      "auroraEmitters": [
+        {
+          "gas": "atomic oxygen",
+          "colour": "green",
+          "hex": "#57e39a",
+          "weight": 0.7692307692307693,
+          "altitude": 1
+        },
+        {
+          "gas": "atomic oxygen (high)",
+          "colour": "crimson",
+          "hex": "#e14b3a",
+          "weight": 0.23076923076923078,
+          "altitude": 2
+        }
+      ],
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -4542,7 +4746,8 @@
       "internalHeatK": 0,
       "hydrosphere": {
         "composition": "water",
-        "coverage": 1
+        "coverage": 1,
+        "layers": []
       },
       "calculatedGravity_ms2": 1.4236489835736867,
       "calculatedRotationPeriod_s": 617760,
@@ -4567,8 +4772,8 @@
       "temperatureK": 95.85237968671684,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 3,
-        "totalMaxK": 201,
+        "totalMinK": 20,
+        "totalMaxK": 172,
         "components": [
           {
             "source": "latitude",
@@ -4591,8 +4796,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 201
+        "min": 20,
+        "max": 172
       },
       "magnetism": {
         "source": "none",
@@ -4947,7 +5152,8 @@
       "internalHeatK": 0,
       "hydrosphere": {
         "composition": "water",
-        "coverage": 1
+        "coverage": 1,
+        "layers": []
       },
       "calculatedGravity_ms2": 1.2292700478429286,
       "calculatedRotationPeriod_s": 1441800,
@@ -4970,8 +5176,8 @@
       "temperatureK": 95.80244283934795,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 3,
-        "totalMaxK": 201,
+        "totalMinK": 20,
+        "totalMaxK": 172,
         "components": [
           {
             "source": "latitude",
@@ -4994,8 +5200,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 201
+        "min": 20,
+        "max": 172
       },
       "magnetism": {
         "source": "none",
@@ -5297,6 +5503,26 @@
           "key": "reducing"
         },
         {
+          "key": "structure/cloud-deck",
+          "value": "ammonium-hydrosulfide broken"
+        },
+        {
+          "key": "structure/cloud-deck",
+          "value": "methane overcast"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "ammonium-hydrosulfide snow"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane snow"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
+        },
+        {
           "key": "feature/polar-vortex",
           "value": "6"
         },
@@ -5314,7 +5540,7 @@
         },
         {
           "key": "aurora/moderate",
-          "value": "0.31"
+          "value": "0.25"
         },
         {
           "key": "habitability/none"
@@ -5352,12 +5578,14 @@
         "composition": {
           "H2": 0.96,
           "He": 0.03,
-          "CH4": 0.0045
+          "CH4": 0.0045,
+          "NH3": 0.00012,
+          "H2S": 0.00004
         },
         "main": "H2",
-        "pressure_bar": 100000,
-        "scaleHeightKm": 28.56333286143676,
-        "molarMassKg": 0.002112
+        "pressure_bar": 1,
+        "scaleHeightKm": 28.517424129410244,
+        "molarMassKg": 0.0021154000000000004
       },
       "axial_tilt_deg": 26.73,
       "rotation_period_hours": 10.656,
@@ -5367,18 +5595,18 @@
       },
       "isNameUserDefined": true,
       "stellarRadiation": 0.011189801271060016,
-      "radiationShieldingAtmo": 1,
+      "radiationShieldingAtmo": 0.4150703222086807,
       "radiationShieldingMag": 0.4474742269407354,
-      "photonRadiation": 0,
-      "particleRadiation": 0,
+      "photonRadiation": 2.871069777572149,
+      "particleRadiation": 0.22186874003066262,
       "stellarRadiationMin": 0.009756505126699731,
       "stellarRadiationMax": 0.012233464635877819,
-      "surfaceRadiationMin": 2,
-      "surfaceRadiationMax": 2,
+      "surfaceRadiationMin": 4.69676554324546,
+      "surfaceRadiationMax": 5.381414294988101,
       "equilibriumTempMinK": 78.92605367308619,
       "equilibriumTempMaxK": 83.51878868921848,
       "tidallyLocked": false,
-      "internalHeatK": 52,
+      "internalHeatK": 0,
       "calculatedGravity_ms2": 11.185617569939861,
       "calculatedRotationPeriod_s": 38361.6,
       "orbital_period_days": 10833.256613658901,
@@ -5392,42 +5620,43 @@
         "note": "Cloud-topped giant."
       },
       "equilibriumTempK": 81.15750990778466,
-      "surfaceRadiation": 2,
+      "surfaceRadiation": 5.092938517602812,
       "tidalHeatK": 0,
       "starTidallyLocked": false,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 5.258171591390225,
-      "temperatureK": 134.44983435793435,
+      "greenhouseTempK": 6.310085878230064,
+      "temperatureK": 87.46759578601473,
       "temperatureProfile": {
-        "meanK": 134,
-        "totalMinK": 125,
-        "totalMaxK": 144,
+        "meanK": 87,
+        "totalMinK": 75,
+        "totalMaxK": 100,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 129,
-            "highK": 140
+            "lowK": 78,
+            "highK": 97
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 131,
-            "highK": 138
+            "lowK": 81,
+            "highK": 94
+          },
+          {
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 83,
+            "highK": 92
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 125,
-        "max": 144
+        "min": 75,
+        "max": 100
       },
       "hydrosphere": {
         "layers": [
-          {
-            "liquid": "methane",
-            "location": "cloud",
-            "colorHex": "#9fb6c8"
-          },
           {
             "liquid": "metallic-hydrogen",
             "location": "interior",
@@ -5449,8 +5678,17 @@
         ]
       },
       "oblateness": 0.17457339743332512,
+      "auroraEmitters": [
+        {
+          "gas": "hydrogen/helium",
+          "colour": "red-pink",
+          "hex": "#ff7e6a",
+          "weight": 1,
+          "altitude": 1
+        }
+      ],
       "apparentColor": {
-        "hex": "#b8b5a0",
+        "hex": "#acafab",
         "palette": [
           {
             "hex": "#ccc2ae",
@@ -5459,19 +5697,25 @@
             "label": "gas surface"
           },
           {
-            "hex": "#b4b39d",
+            "hex": "#abaeab",
             "role": "cloud",
-            "weight": 0.85,
+            "weight": 0.9,
             "label": "ammonia cloud deck"
           },
           {
-            "hex": "#9fb6c8",
+            "hex": "#b8845a",
+            "role": "cloud",
+            "weight": 0.4,
+            "label": "ammonium-hydrosulfide band"
+          },
+          {
+            "hex": "#6a8caf",
             "role": "cloud",
             "weight": 0.4,
             "label": "methane band"
           },
           {
-            "hex": "#ad8860",
+            "hex": "#a98566",
             "role": "cloud",
             "weight": 0.4897742926108001,
             "label": "chromophore band"
@@ -5479,7 +5723,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#b8b5a0",
+      "apparentColorHex": "#acafab",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -5566,17 +5810,17 @@
         ],
         "fallback": false
       },
-      "habitabilityScore": 32,
+      "habitabilityScore": 49.92100226003761,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "134 K (-139 °C)",
+            "value": "87 K (-186 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 134,
+              "value": 87,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -5593,12 +5837,12 @@
           },
           {
             "label": "Pressure",
-            "points": 0,
+            "points": 18,
             "max": 18,
-            "value": "100000.00 bar",
+            "value": "1.00 bar",
             "ideal": "0.5–2 bar",
             "range": {
-              "value": 100000,
+              "value": 1,
               "lo": 0,
               "idealLo": 0.5,
               "idealHi": 2,
@@ -5608,12 +5852,12 @@
           },
           {
             "label": "Radiation",
-            "points": 17,
+            "points": 16.9,
             "max": 17,
-            "value": "2.00 mSv",
+            "value": "5.09 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 2,
+              "value": 5.09,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -5637,22 +5881,22 @@
             }
           }
         ],
-        "surfaceScore": 32,
+        "surfaceScore": 50,
         "modifiers": [],
-        "finalScore": 32,
+        "finalScore": 50,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 1525.317086539591,
+        "minLeoKm": 636.8878158921003,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 54005.76829774813,
         "heoUpperBoundaryKm": 65407793.930461206,
         "geoStationaryKm": 54005.76829774813,
         "isGeoFallback": false
       },
-      "loDeltaVBudget_ms": 1342110.924973822,
-      "propulsiveLandBudget_ms": 42110.92497382216,
-      "aerobrakeLandBudget_ms": 200,
+      "loDeltaVBudget_ms": 30650.038618118477,
+      "propulsiveLandBudget_ms": 29350.038618118477,
+      "aerobrakeLandBudget_ms": 806.5306597126335,
       "orbitalStability": "Marginal",
       "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
     },
@@ -5716,8 +5960,8 @@
       "temperatureK": 85.9661103740463,
       "temperatureProfile": {
         "meanK": 86,
-        "totalMinK": 30,
-        "totalMaxK": 142,
+        "totalMinK": 52,
+        "totalMaxK": 120,
         "components": [
           {
             "source": "latitude",
@@ -5740,8 +5984,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 30,
-        "max": 142
+        "min": 52,
+        "max": 120
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -5790,6 +6034,9 @@
           "key": "greenhouse"
         },
         {
+          "key": "prebiotic-precursor"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -5799,7 +6046,11 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "blue"
+          "value": "methane veil"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane rain"
         },
         {
           "key": "magnetic/unshielded"
@@ -5848,12 +6099,13 @@
         "name": "Methane Haze (Titan-like)",
         "composition": {
           "N2": 0.95,
-          "CH4": 0.05
+          "CH4": 0.05,
+          "HCN": 0.0000012
         },
         "main": "N2",
         "pressure_bar": 1.45,
-        "scaleHeightKm": 18.51648264447824,
-        "molarMassKg": 0.027399999999999997
+        "scaleHeightKm": 18.516459938162402,
+        "molarMassKg": 0.0274000336
       },
       "axial_tilt_deg": 0,
       "rotation_period_hours": 382.6,
@@ -5863,14 +6115,14 @@
       },
       "isNameUserDefined": true,
       "stellarRadiation": 0.011170753462964018,
-      "radiationShieldingAtmo": 0.9999657046231983,
+      "radiationShieldingAtmo": 0.9999657044984797,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.0001680489344155983,
-      "particleRadiation": 0.000023503665169915444,
+      "photonRadiation": 0.00016804954554273108,
+      "particleRadiation": 0.000023503750643397055,
       "stellarRadiationMin": 0.009740344708318137,
       "stellarRadiationMax": 0.012212046468452873,
-      "surfaceRadiationMin": 2.000167024395975,
-      "surfaceRadiationMax": 2.0002094083675774,
+      "surfaceRadiationMin": 2.0001670250033765,
+      "surfaceRadiationMax": 2.0002094091291127,
       "equilibriumTempMinK": 80.06245942946718,
       "equilibriumTempMaxK": 84.71931924571962,
       "internalHeatK": 0,
@@ -5886,11 +6138,6 @@
             "location": "surface",
             "coverage": 0.05,
             "colorHex": "#6a8caf"
-          },
-          {
-            "liquid": "methane",
-            "location": "cloud",
-            "colorHex": "#9fb6c8"
           }
         ]
       },
@@ -5907,28 +6154,28 @@
         "note": "CH4 cloud deck over a mid-tone surface."
       },
       "equilibriumTempK": 82.32509924564475,
-      "surfaceRadiation": 2.0001915525995857,
+      "surfaceRadiation": 2.0001915532961863,
       "tidalHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 13.82556199811241,
-      "temperatureK": 96.15066124375716,
+      "greenhouseTempK": 13.906018401451435,
+      "temperatureK": 96.23111764709618,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 66,
-        "totalMaxK": 126,
+        "totalMinK": 77,
+        "totalMaxK": 115,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 87,
+            "lowK": 88,
             "highK": 105
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 90,
+            "lowK": 91,
             "highK": 102
           },
           {
@@ -5940,8 +6187,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 66,
-        "max": 126
+        "min": 77,
+        "max": 115
       },
       "magnetism": {
         "source": "none",
@@ -5957,6 +6204,22 @@
         ]
       },
       "oblateness": 0.00004964141974468107,
+      "auroraEmitters": [
+        {
+          "gas": "nitrogen",
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "weight": 0.9405940594059405,
+          "altitude": 0
+        },
+        {
+          "gas": "methane",
+          "colour": "blue",
+          "hex": "#6ab6ff",
+          "weight": 0.0594059405940594,
+          "altitude": 0
+        }
+      ],
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -5986,7 +6249,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#cadff1",
+        "hex": "#d1e3f5",
         "palette": [
           {
             "hex": "#d8ecff",
@@ -5995,15 +6258,15 @@
             "label": "ice surface"
           },
           {
-            "hex": "#9fb6c8",
+            "hex": "#c3d1df",
             "role": "cloud",
-            "weight": 0.25,
+            "weight": 0.322,
             "label": "methane clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#cadff1",
+      "apparentColorHex": "#d1e3f5",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.16,
@@ -6045,12 +6308,12 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 46.23039491328207,
+      "habitabilityScore": 46.297441916064585,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
-            "points": 12.6,
+            "points": 12.7,
             "max": 25,
             "value": "96 K (-177 °C)",
             "ideal": "−162 °C ±30",
@@ -6131,7 +6394,7 @@
         "tier": "habitability/alien"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 456.17396354989603,
+        "minLeoKm": 456.55511834084746,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 49715.16653476396,
         "heoUpperBoundaryKm": 49715.16653476396,
@@ -6196,9 +6459,6 @@
         {
           "key": "hydrosphere/frozen",
           "value": "water"
-        },
-        {
-          "key": "activity/sublimating"
         },
         {
           "key": "activity/cryovolcanism"
@@ -6318,8 +6578,8 @@
       "temperatureK": 74.54399032061438,
       "temperatureProfile": {
         "meanK": 75,
-        "totalMinK": 20,
-        "totalMaxK": 129,
+        "totalMinK": 40,
+        "totalMaxK": 109,
         "components": [
           {
             "source": "latitude",
@@ -6342,8 +6602,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 20,
-        "max": 129
+        "min": 40,
+        "max": 109
       },
       "magnetism": {
         "source": "salty-ocean-induced",
@@ -6362,6 +6622,22 @@
         "strengthGauss": 0.005
       },
       "oblateness": 0.007828709686467344,
+      "auroraEmitters": [
+        {
+          "gas": "hydrogen/helium",
+          "colour": "red-pink",
+          "hex": "#ff7e6a",
+          "weight": 0.6818181818181819,
+          "altitude": 1
+        },
+        {
+          "gas": "carbon dioxide",
+          "colour": "violet",
+          "hex": "#c86ad0",
+          "weight": 0.3181818181818181,
+          "altitude": 0
+        }
+      ],
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -6653,9 +6929,6 @@
           "value": "water"
         },
         {
-          "key": "activity/sublimating"
-        },
-        {
           "key": "magnetic/unshielded"
         },
         {
@@ -6723,8 +6996,8 @@
       "temperatureK": 71.73387579592591,
       "temperatureProfile": {
         "meanK": 72,
-        "totalMinK": 6,
-        "totalMaxK": 137,
+        "totalMinK": 27,
+        "totalMaxK": 116,
         "components": [
           {
             "source": "latitude",
@@ -6747,8 +7020,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 6,
-        "max": 137
+        "min": 27,
+        "max": 116
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -7148,8 +7424,8 @@
       "temperatureK": 79.75917635626027,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 3,
-        "totalMaxK": 167,
+        "totalMinK": 17,
+        "totalMaxK": 143,
         "components": [
           {
             "source": "latitude",
@@ -7172,8 +7448,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 167
+        "min": 17,
+        "max": 143
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -7553,7 +7832,7 @@
       "temperatureK": 79.55685729853637,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 31,
+        "totalMinK": 51,
         "totalMaxK": 320,
         "components": [
           {
@@ -7584,8 +7863,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 31,
+        "min": 51,
         "max": 320
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -7974,8 +8256,8 @@
       "temperatureK": 76.84869268124385,
       "temperatureProfile": {
         "meanK": 77,
-        "totalMinK": 3,
-        "totalMaxK": 161,
+        "totalMinK": 16,
+        "totalMaxK": 138,
         "components": [
           {
             "source": "latitude",
@@ -7998,8 +8280,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 161
+        "min": 16,
+        "max": 138
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -8352,8 +8637,8 @@
       "temperatureK": 74.14197330317803,
       "temperatureProfile": {
         "meanK": 74,
-        "totalMinK": 3,
-        "totalMaxK": 157,
+        "totalMinK": 15,
+        "totalMaxK": 133,
         "components": [
           {
             "source": "latitude",
@@ -8376,8 +8661,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 157
+        "min": 15,
+        "max": 133
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -8661,6 +8949,18 @@
           "key": "greenhouse"
         },
         {
+          "key": "structure/cloud-deck",
+          "value": "methane overcast"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane snow"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
+        },
+        {
           "key": "feature/polar-vortex",
           "value": "6"
         },
@@ -8674,8 +8974,8 @@
           "key": "magnetic/dynamo"
         },
         {
-          "key": "aurora/strong",
-          "value": "0.32"
+          "key": "aurora/moderate",
+          "value": "0.26"
         },
         {
           "key": "habitability/none"
@@ -8706,12 +9006,13 @@
         "composition": {
           "H2": 0.83,
           "He": 0.15,
-          "CH4": 0.023
+          "CH4": 0.023,
+          "H2S": 0.0004
         },
         "main": "H2",
-        "pressure_bar": 100000,
-        "scaleHeightKm": 20.424143002686417,
-        "molarMassKg": 0.0026279999999999997
+        "pressure_bar": 1,
+        "scaleHeightKm": 20.318991448765864,
+        "molarMassKg": 0.0026415999999999996
       },
       "axial_tilt_deg": 97.77,
       "rotation_period_hours": -17.24,
@@ -8721,17 +9022,17 @@
       },
       "isNameUserDefined": true,
       "stellarRadiation": 0.00278053246256072,
-      "radiationShieldingAtmo": 1,
+      "radiationShieldingAtmo": 0.49373025999865516,
       "radiationShieldingMag": 0.46007041390386866,
-      "photonRadiation": 0,
-      "particleRadiation": 0,
+      "photonRadiation": 0.6174867700529375,
+      "particleRadiation": 0.04662991367791288,
       "stellarRadiationMin": 0.0024727821269171437,
       "stellarRadiationMax": 0.00297725307593036,
-      "surfaceRadiationMin": 2,
-      "surfaceRadiationMax": 2,
+      "surfaceRadiationMin": 2.5906120096885115,
+      "surfaceRadiationMax": 2.7111024474763408,
       "equilibriumTempMinK": 56.830543387748826,
       "equilibriumTempMaxK": 59.53046617838738,
-      "internalHeatK": 24,
+      "internalHeatK": 0,
       "calculatedGravity_ms2": 9.007587373223858,
       "calculatedRotationPeriod_s": -62063.99999999999,
       "orbital_period_days": 30768.7485731925,
@@ -8744,43 +9045,44 @@
         "note": "Cloud-topped giant."
       },
       "equilibriumTempK": 58.14918586235795,
-      "surfaceRadiation": 2,
+      "surfaceRadiation": 2.6641166837308505,
       "tidalHeatK": 0,
       "tidallyLocked": false,
       "starTidallyLocked": false,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 4.254974642156193,
-      "temperatureK": 83.78277651216443,
+      "greenhouseTempK": 4.653907828228229,
+      "temperatureK": 62.80309369058618,
       "temperatureProfile": {
-        "meanK": 84,
-        "totalMinK": 77,
-        "totalMaxK": 90,
+        "meanK": 63,
+        "totalMinK": 54,
+        "totalMaxK": 72,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 80,
-            "highK": 88
+            "lowK": 56,
+            "highK": 70
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 81,
-            "highK": 86
+            "lowK": 58,
+            "highK": 68
+          },
+          {
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 60,
+            "highK": 66
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 77,
-        "max": 90
+        "min": 54,
+        "max": 72
       },
       "hydrosphere": {
         "layers": [
-          {
-            "liquid": "methane",
-            "location": "cloud",
-            "colorHex": "#9fb6c8"
-          },
           {
             "liquid": "superionic-water",
             "location": "interior",
@@ -8802,8 +9104,24 @@
         ]
       },
       "oblateness": 0.036071586176023455,
+      "auroraEmitters": [
+        {
+          "gas": "hydrogen/helium",
+          "colour": "red-pink",
+          "hex": "#ff7e6a",
+          "weight": 0.9845947756195579,
+          "altitude": 1
+        },
+        {
+          "gas": "methane",
+          "colour": "blue",
+          "hex": "#6ab6ff",
+          "weight": 0.015405224380442062,
+          "altitude": 0
+        }
+      ],
       "apparentColor": {
-        "hex": "#a3a0a7",
+        "hex": "#60b1d3",
         "palette": [
           {
             "hex": "#ccc2ae",
@@ -8812,15 +9130,15 @@
             "label": "gas surface"
           },
           {
-            "hex": "#9b9aa5",
+            "hex": "#5bb0d4",
             "role": "cloud",
-            "weight": 0.85,
+            "weight": 0.9,
             "label": "methane haze"
           }
         ],
         "banding": 3
       },
-      "apparentColorHex": "#a3a0a7",
+      "apparentColorHex": "#60b1d3",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -8891,17 +9209,17 @@
         ],
         "fallback": false
       },
-      "habitabilityScore": 32,
+      "habitabilityScore": 50,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "84 K (-189 °C)",
+            "value": "63 K (-210 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 84,
+              "value": 63,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -8918,12 +9236,12 @@
           },
           {
             "label": "Pressure",
-            "points": 0,
+            "points": 18,
             "max": 18,
-            "value": "100000.00 bar",
+            "value": "1.00 bar",
             "ideal": "0.5–2 bar",
             "range": {
-              "value": 100000,
+              "value": 1,
               "lo": 0,
               "idealLo": 0.5,
               "idealHi": 2,
@@ -8935,10 +9253,10 @@
             "label": "Radiation",
             "points": 17,
             "max": 17,
-            "value": "2.00 mSv",
+            "value": "2.66 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 2,
+              "value": 2.66,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -8962,22 +9280,22 @@
             }
           }
         ],
-        "surfaceScore": 32,
+        "surfaceScore": 50,
         "modifiers": [],
-        "finalScore": 32,
+        "finalScore": 50,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 948.5814962811061,
+        "minLeoKm": 454.75105640218146,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 57323.95674102323,
         "heoUpperBoundaryKm": 70160108.0952793,
         "geoStationaryKm": 57323.95674102323,
         "isGeoFallback": false
       },
-      "loDeltaVBudget_ms": 1324939.0516717813,
-      "propulsiveLandBudget_ms": 24939.051671781603,
-      "aerobrakeLandBudget_ms": 200
+      "loDeltaVBudget_ms": 18681.763286393238,
+      "propulsiveLandBudget_ms": 17381.763286393238,
+      "aerobrakeLandBudget_ms": 806.5306597126335
     },
     {
       "id": "solar-system-uranus-rings",
@@ -9039,8 +9357,8 @@
       "temperatureK": 60.66002987010062,
       "temperatureProfile": {
         "meanK": 61,
-        "totalMinK": 21,
-        "totalMaxK": 100,
+        "totalMinK": 37,
+        "totalMaxK": 85,
         "components": [
           {
             "source": "latitude",
@@ -9063,8 +9381,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 21,
-        "max": 100
+        "min": 37,
+        "max": 85
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -9169,8 +9487,8 @@
       "temperatureK": 57.317413140429025,
       "temperatureProfile": {
         "meanK": 57,
-        "totalMinK": 3,
-        "totalMaxK": 120,
+        "totalMinK": 12,
+        "totalMaxK": 103,
         "components": [
           {
             "source": "latitude",
@@ -9193,8 +9511,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 120
+        "min": 12,
+        "max": 103
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -9550,8 +9871,8 @@
       "temperatureK": 57.141721023777,
       "temperatureProfile": {
         "meanK": 57,
-        "totalMinK": 3,
-        "totalMaxK": 120,
+        "totalMinK": 12,
+        "totalMaxK": 102,
         "components": [
           {
             "source": "latitude",
@@ -9574,8 +9895,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 120
+        "min": 12,
+        "max": 102
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -9935,8 +10259,8 @@
       "temperatureK": 56.96979976867991,
       "temperatureProfile": {
         "meanK": 57,
-        "totalMinK": 3,
-        "totalMaxK": 119,
+        "totalMinK": 12,
+        "totalMaxK": 102,
         "components": [
           {
             "source": "latitude",
@@ -9959,8 +10283,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 119
+        "min": 12,
+        "max": 102
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -10253,6 +10580,18 @@
           "key": "greenhouse"
         },
         {
+          "key": "structure/cloud-deck",
+          "value": "methane overcast"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane snow"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "frequent"
+        },
+        {
           "key": "ring/system"
         },
         {
@@ -10263,7 +10602,7 @@
         },
         {
           "key": "aurora/moderate",
-          "value": "0.27"
+          "value": "0.22"
         },
         {
           "key": "habitability/none"
@@ -10290,12 +10629,13 @@
         "composition": {
           "H2": 0.8,
           "He": 0.19,
-          "CH4": 0.015
+          "CH4": 0.015,
+          "H2S": 0.0003
         },
         "main": "H2",
-        "pressure_bar": 100000,
-        "scaleHeightKm": 13.174634449773025,
-        "molarMassKg": 0.0026000000000000003
+        "pressure_bar": 1,
+        "scaleHeightKm": 13.123151317680586,
+        "molarMassKg": 0.0026102000000000005
       },
       "axial_tilt_deg": 28.32,
       "rotation_period_hours": 16.11,
@@ -10305,18 +10645,18 @@
       },
       "isNameUserDefined": true,
       "stellarRadiation": 0.0011316210435023915,
-      "radiationShieldingAtmo": 1,
+      "radiationShieldingAtmo": 0.4850740727461397,
       "radiationShieldingMag": 0.3920304196852271,
-      "photonRadiation": 0,
-      "particleRadiation": 0,
+      "photonRadiation": 0.2556015550992416,
+      "particleRadiation": 0.021734275625916784,
       "stellarRadiationMin": 0.001078495840552544,
       "stellarRadiationMax": 0.0011283645168996819,
-      "surfaceRadiationMin": 2,
-      "surfaceRadiationMax": 2,
+      "surfaceRadiationMin": 2.2643159930532306,
+      "surfaceRadiationMax": 2.2765377265224953,
       "equilibriumTempMinK": 46.18383192248902,
       "equilibriumTempMaxK": 46.708691434820494,
       "tidallyLocked": false,
-      "internalHeatK": 24,
+      "internalHeatK": 0,
       "calculatedGravity_ms2": 11.27350667591506,
       "calculatedRotationPeriod_s": 57996,
       "orbital_period_days": 60339.28002582727,
@@ -10331,36 +10671,43 @@
         "note": "Cloud-topped giant."
       },
       "equilibriumTempK": 46.44477891503087,
-      "surfaceRadiation": 2,
+      "surfaceRadiation": 2.2773358307251583,
       "tidalHeatK": 0,
       "starTidallyLocked": false,
       "radiogenicHeatK": 0,
-      "greenhouseTempK": 3.6917906597062884,
-      "temperatureK": 71.60672086130536,
+      "greenhouseTempK": 4.042315311579525,
+      "temperatureK": 50.487094226610395,
       "temperatureProfile": {
-        "meanK": 72,
-        "totalMinK": 69,
-        "totalMaxK": 75,
+        "meanK": 50,
+        "totalMinK": 43,
+        "totalMaxK": 58,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 69,
-            "highK": 75
+            "lowK": 45,
+            "highK": 56
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 47,
+            "highK": 54
+          },
+          {
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 47,
+            "highK": 54
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 69,
-        "max": 75
+        "min": 43,
+        "max": 58
       },
       "hydrosphere": {
         "layers": [
-          {
-            "liquid": "methane",
-            "location": "cloud",
-            "colorHex": "#9fb6c8"
-          },
           {
             "liquid": "superionic-water",
             "location": "interior",
@@ -10382,8 +10729,17 @@
         ]
       },
       "oblateness": 0.0320433540207409,
+      "auroraEmitters": [
+        {
+          "gas": "hydrogen/helium",
+          "colour": "red-pink",
+          "hex": "#ff7e6a",
+          "weight": 1,
+          "altitude": 1
+        }
+      ],
       "apparentColor": {
-        "hex": "#aaa3a3",
+        "hex": "#5f8acf",
         "palette": [
           {
             "hex": "#ccc2ae",
@@ -10392,27 +10748,15 @@
             "label": "gas surface"
           },
           {
-            "hex": "#a49da2",
+            "hex": "#5a87d1",
             "role": "cloud",
-            "weight": 0.85,
-            "label": "ammonia cloud deck"
-          },
-          {
-            "hex": "#9fb6c8",
-            "role": "cloud",
-            "weight": 0.4,
-            "label": "methane band"
-          },
-          {
-            "hex": "#a67e62",
-            "role": "cloud",
-            "weight": 0.4161761174790532,
-            "label": "chromophore band"
+            "weight": 0.9,
+            "label": "methane haze"
           }
         ],
-        "banding": 4
+        "banding": 3
       },
-      "apparentColorHex": "#aaa3a3",
+      "apparentColorHex": "#5f8acf",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -10505,17 +10849,17 @@
         ],
         "fallback": false
       },
-      "habitabilityScore": 32,
+      "habitabilityScore": 50,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "72 K (-202 °C)",
+            "value": "50 K (-223 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 72,
+              "value": 50,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -10532,12 +10876,12 @@
           },
           {
             "label": "Pressure",
-            "points": 0,
+            "points": 18,
             "max": 18,
-            "value": "100000.00 bar",
+            "value": "1.00 bar",
             "ideal": "0.5–2 bar",
             "range": {
-              "value": 100000,
+              "value": 1,
               "lo": 0,
               "idealLo": 0.5,
               "idealHi": 2,
@@ -10549,10 +10893,10 @@
             "label": "Radiation",
             "points": 17,
             "max": 17,
-            "value": "2.00 mSv",
+            "value": "2.28 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 2,
+              "value": 2.28,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -10576,22 +10920,22 @@
             }
           }
         ],
-        "surfaceScore": 32,
+        "surfaceScore": 50,
         "modifiers": [],
-        "finalScore": 32,
+        "finalScore": 50,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 654.7494713523572,
+        "minLeoKm": 295.607727179166,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 58883.29385587132,
         "heoUpperBoundaryKm": 116160577.26195094,
         "geoStationaryKm": 58883.29385587132,
         "isGeoFallback": false
       },
-      "loDeltaVBudget_ms": 1327490.0241186097,
-      "propulsiveLandBudget_ms": 27490.02411860985,
-      "aerobrakeLandBudget_ms": 200
+      "loDeltaVBudget_ms": 20459.713779637168,
+      "propulsiveLandBudget_ms": 19159.713779637168,
+      "aerobrakeLandBudget_ms": 806.5306597126335
     },
     {
       "id": "solar-system-neptune-rings",
@@ -10653,8 +10997,8 @@
       "temperatureK": 48.45052591890719,
       "temperatureProfile": {
         "meanK": 48,
-        "totalMinK": 17,
-        "totalMaxK": 80,
+        "totalMinK": 29,
+        "totalMaxK": 67,
         "components": [
           {
             "source": "latitude",
@@ -10677,8 +11021,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 17,
-        "max": 80
+        "min": 29,
+        "max": 67
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -10730,7 +11074,11 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "blue"
+          "value": "methane wisps"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane snow"
         },
         {
           "key": "magnetic/unshielded"
@@ -10812,13 +11160,7 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 1,
-        "layers": [
-          {
-            "liquid": "methane",
-            "location": "cloud",
-            "colorHex": "#9fb6c8"
-          }
-        ]
+        "layers": []
       },
       "calculatedGravity_ms2": 0.7797711313361076,
       "calculatedRotationPeriod_s": 506880.00000000006,
@@ -10841,8 +11183,8 @@
       "temperatureK": 39.86496792560042,
       "temperatureProfile": {
         "meanK": 40,
-        "totalMinK": 3,
-        "totalMaxK": 84,
+        "totalMinK": 8,
+        "totalMaxK": 71,
         "components": [
           {
             "source": "latitude",
@@ -10865,8 +11207,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 84
+        "min": 8,
+        "max": 71
       },
       "magnetism": {
         "source": "none",
@@ -10885,6 +11227,15 @@
         "strengthGauss": 0
       },
       "oblateness": 0.00033336381537566677,
+      "auroraEmitters": [
+        {
+          "gas": "nitrogen",
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "weight": 1,
+          "altitude": 0
+        }
+      ],
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -10916,7 +11267,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#bacee2",
+        "hex": "#c3d6ea",
         "palette": [
           {
             "hex": "#d2e0ed",
@@ -10931,15 +11282,15 @@
             "label": "water ice sheet"
           },
           {
-            "hex": "#9fb6c8",
+            "hex": "#c3d1df",
             "role": "cloud",
-            "weight": 0.25,
+            "weight": 0.027999999999999997,
             "label": "methane clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#bacee2",
+      "apparentColorHex": "#c3d6ea",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -11193,8 +11544,8 @@
       "temperatureK": 42.0886574693289,
       "temperatureProfile": {
         "meanK": 42,
-        "totalMinK": 12,
-        "totalMaxK": 72,
+        "totalMinK": 25,
+        "totalMaxK": 60,
         "components": [
           {
             "source": "latitude",
@@ -11217,8 +11568,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 12,
-        "max": 72
+        "min": 25,
+        "max": 60
       },
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -11276,7 +11627,11 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "blue"
+          "value": "methane wisps"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane snow"
         },
         {
           "key": "magnetic/unshielded"
@@ -11374,8 +11729,8 @@
       "temperatureK": 40.89980323292139,
       "temperatureProfile": {
         "meanK": 41,
-        "totalMinK": 3,
-        "totalMaxK": 92,
+        "totalMinK": 7,
+        "totalMaxK": 75,
         "components": [
           {
             "source": "latitude",
@@ -11398,17 +11753,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 92
+        "min": 7,
+        "max": 75
       },
       "hydrosphere": {
-        "layers": [
-          {
-            "liquid": "methane",
-            "location": "cloud",
-            "colorHex": "#9fb6c8"
-          }
-        ]
+        "layers": []
       },
       "magnetism": {
         "source": "none",
@@ -11427,6 +11776,15 @@
         "strengthGauss": 0
       },
       "oblateness": 0.0003126141202576074,
+      "auroraEmitters": [
+        {
+          "gas": "nitrogen",
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "weight": 1,
+          "altitude": 0
+        }
+      ],
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -11458,7 +11816,7 @@
         }
       },
       "apparentColor": {
-        "hex": "#cadff1",
+        "hex": "#d7ebfe",
         "palette": [
           {
             "hex": "#d8ecff",
@@ -11467,15 +11825,15 @@
             "label": "ice surface"
           },
           {
-            "hex": "#9fb6c8",
+            "hex": "#c3d1df",
             "role": "cloud",
-            "weight": 0.25,
+            "weight": 0.027999999999999997,
             "label": "methane clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#cadff1",
+      "apparentColorHex": "#d7ebfe",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -11786,8 +12144,8 @@
       "temperatureK": 40.439825009162014,
       "temperatureProfile": {
         "meanK": 40,
-        "totalMinK": 3,
-        "totalMaxK": 91,
+        "totalMinK": 7,
+        "totalMaxK": 74,
         "components": [
           {
             "source": "latitude",
@@ -11810,8 +12168,11 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 3,
-        "max": 91
+        "min": 7,
+        "max": 74
+      },
+      "hydrosphere": {
+        "layers": []
       },
       "magnetism": {
         "source": "none",

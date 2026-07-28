@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { deriveApparentColor, deriveApparentColorParts } from './apparentColor';
+import { deriveCloudDecks, applyCloudDeckTags } from '$lib/physics/cloudDecks';
 import type { CelestialBody, RulePack } from '$lib/types';
 
 const PACK = { gasPhysics: {
@@ -78,14 +80,34 @@ describe('deriveApparentColor', () => {
     expect(hi[2] - hi[0]).toBeGreaterThan(low[2] - low[0]);
   });
 
-  it('ice giants are near-featureless (low band count) vs ammonia giants', () => {
-    const ice = deriveApparentColorParts(body({ roleHint: 'planet', makeup: { gas: 0.9 }, equilibriumTempK: 55,
-      rotation_period_hours: 10, atmosphere: { composition: { H2: 0.8, CH4: 0.06 }, pressure_bar: 5 } as any }), PACK);
-    const ammonia = deriveApparentColorParts(body({ roleHint: 'planet', makeup: { gas: 0.95 }, equilibriumTempK: 120,
-      rotation_period_hours: 10, atmosphere: { composition: { H2: 0.95, CH4: 0.0005 }, pressure_bar: 5 } as any }), PACK);
+  it('chromophore bands need the CHEMISTRY for them, not just a warm temperature', () => {
+    // Belts read from cloud-deck TAGS, so the bodies have to go through the emitter first — with the
+    // real gas data, since which species condense is entirely a question of that data.
+    const gasPhysics = JSON.parse(readFileSync('static/rulepacks/starter-sf/atmospheres.json', 'utf8')).gasPhysics;
+    const REAL = { gasPhysics } as unknown as RulePack;
+    const tagged = (b: CelestialBody) => {
+      (b as any).tags = applyCloudDeckTags((b.tags ?? []) as any, deriveCloudDecks(b, REAL));
+      return deriveApparentColorParts(b, REAL);
+    };
+    // A giant's belts are a deeper, differently-coloured deck showing through the one above it. So a
+    // world has to HAVE two decks to have belts. The warm giant here carries ammonia and hydrogen
+    // sulphide and derives its brown hydrosulphide band; the ice giant, one methane deck and
+    // nothing under it, gets none.
+    const ice = tagged(body({ roleHint: 'planet', makeup: { gas: 0.9 }, equilibriumTempK: 55,
+      temperatureK: 60, massKg: 8.7e25, radiusKm: 25000,
+      rotation_period_hours: 10, atmosphere: { composition: { H2: 0.8, He: 0.14, CH4: 0.06 }, pressure_bar: 5 } as any }));
+    const ammonia = tagged(body({ roleHint: 'planet', makeup: { gas: 0.95 }, equilibriumTempK: 120,
+      temperatureK: 165, massKg: 1.9e27, radiusKm: 69000,
+      rotation_period_hours: 10, atmosphere: { composition: { H2: 0.86, He: 0.13, CH4: 0.003, NH3: 0.0026, H2S: 0.0008 }, pressure_bar: 5 } as any }));
     expect(ice.banding).toBeLessThan(ammonia.banding);
-    expect(ammonia.palette.some((p) => p.label === 'chromophore band')).toBe(true);
-    expect(ice.palette.some((p) => p.label === 'chromophore band')).toBe(false);
+    expect(ammonia.palette.some((p) => p.label?.endsWith(' band'))).toBe(true);
+    expect(ice.palette.some((p) => p.label?.endsWith(' band'))).toBe(false);
+    // …and a warm giant with NO coloured condensate gets no belts either — the bug this replaced
+    // painted Jovian browns onto a world made of hydrogen and a trace of methane.
+    const bare = tagged(body({ roleHint: 'planet', makeup: { gas: 0.95 }, equilibriumTempK: 120,
+      temperatureK: 165, massKg: 1.9e27, radiusKm: 69000,
+      rotation_period_hours: 10, atmosphere: { composition: { H2: 0.95, He: 0.045, CH4: 0.0005 }, pressure_bar: 5 } as any }));
+    expect(bare.palette.some((p) => p.label?.endsWith(' band'))).toBe(false);
   });
 
   // An ICE-dominated giant (low gas fraction) must still render as a giant — bands, cool cloud — not a

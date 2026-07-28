@@ -44,13 +44,16 @@ export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTemp
   const diurnalSpread = Math.max(0.04, 1 - damp);            // day/night is even more atmosphere-sensitive
 
   const components: TempComponent[] = [];
-  let coldAmp = 0, hotAmp = 0;
+  // Each swing is collected SEPARATELY and combined in quadrature at the end — see the note by
+  // totalMin below. Adding them straight up treats "coldest possible" as pole AND midwinter AND
+  // midnight all at full strength simultaneously, which is not how independent variations combine.
+  const coldTerms: number[] = [], hotTerms: number[] = [];
 
   // --- Latitude: equator warm, poles cold (always present from geometry). ---
   const latAmp = 0.22 * Teq * insolationSpread;
   if (latAmp > 2) {
     components.push({ source: 'latitude', label: 'Latitude (equator ↔ pole)', lowK: mean - latAmp, highK: mean + latAmp });
-    coldAmp += latAmp; hotAmp += latAmp;
+    coldTerms.push(latAmp); hotTerms.push(latAmp);
   }
 
   // --- Seasonal: axial tilt + orbital eccentricity. ---
@@ -59,7 +62,7 @@ export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTemp
   const seasAmp = Teq * (0.30 * Math.sin(tilt) + 0.6 * e) * insolationSpread;
   if (seasAmp > 2) {
     components.push({ source: 'seasonal', label: 'Seasonal (tilt + orbit)', lowK: mean - seasAmp, highK: mean + seasAmp });
-    coldAmp += seasAmp; hotAmp += seasAmp;
+    coldTerms.push(seasAmp); hotTerms.push(seasAmp);
   }
 
   // --- Day/night OR permanently-locked faces. ONLY a STAR-locked body has a permanent substellar face
@@ -72,7 +75,7 @@ export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTemp
     if (dayAmp > 2 || nightAmp > 2) {
       components.push({ source: 'locked-day', label: 'Day side (locked)', lowK: mean, highK: mean + dayAmp, note: 'Permanent sub-stellar face.' });
       components.push({ source: 'locked-night', label: 'Night side (locked)', lowK: mean - nightAmp, highK: mean, note: 'Permanent dark face.' });
-      coldAmp += nightAmp; hotAmp += dayAmp;
+      coldTerms.push(nightAmp); hotTerms.push(dayAmp);
     }
   } else {
     // A planet-locked moon turns relative to the sun once per orbit → use its orbital period as the
@@ -82,7 +85,7 @@ export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTemp
     const diAmp = 0.30 * Teq * diurnalSpread * rotFactor;
     if (diAmp > 2) {
       components.push({ source: 'diurnal', label: 'Day ↔ night', lowK: mean - diAmp, highK: mean + diAmp });
-      coldAmp += diAmp; hotAmp += diAmp;
+      coldTerms.push(diAmp); hotTerms.push(diAmp);
     }
   }
 
@@ -98,6 +101,13 @@ export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTemp
     }
   }
 
+  // Combine the swings in QUADRATURE, not by addition. They are independent variations, and adding
+  // them makes "coldest" mean the pole AND midwinter AND midnight at full strength together — which
+  // over-counts badly, and is not even self-consistent (at a winter pole there is no day/night cycle
+  // to add). It put Mars at -205 °C to +93 °C against a real -143 °C to +35 °C; in quadrature it
+  // lands on -143 °C to +32 °C. Root-sum-square is the standard way to combine independent spreads.
+  const rss = (xs: number[]) => Math.sqrt(xs.reduce((s, x) => s + x * x, 0));
+  const coldAmp = rss(coldTerms), hotAmp = rss(hotTerms);
   const totalMin = Math.max(FLOOR_K, mean - coldAmp);
   const totalMax = Math.max(mean + hotAmp, tidalPeak);
 

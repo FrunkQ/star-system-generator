@@ -931,20 +931,32 @@
           const minRadiusInWorld = minRadiusPx / zoom;
           const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
 
+          // This body's geometry in SCREEN pixels — shared by the overlay promotion and the cull below.
+          const sR = finalRadius * zoom;
+          const sx = rx * zoom + width / 2, sy = ry * zoom + height / 2;
+
           // Promote a big-on-screen planet/moon to a PlanetDisc SVG overlay (true-colour only) so it
           // renders exactly like The Guide. Skip the canvas disc/effects for it — the overlay owns it.
           if (trueColorOn && (node.roleHint === 'planet' || node.roleHint === 'moon')
-              && (node as any).apparentColor && finalRadius * zoom >= DISC_OVERLAY_MIN_R) {
-              const sR = finalRadius * zoom;
-              const sx = rx * zoom + width / 2, sy = ry * zoom + height / 2;
+              && (node as any).apparentColor && sR >= DISC_OVERLAY_MIN_R) {
               // Only overlay bodies actually on screen, so the off-canvas giants can't steal the cap.
               if (sx + sR >= 0 && sx - sR <= width && sy + sR >= 0 && sy - sR <= height) {
                   const la = primaryStarPos ? Math.atan2(primaryStarPos.y - pos.y, primaryStarPos.x - pos.x) : null;
                   nextOverlays.push({ id: node.id, body: node as CelestialBody, x: sx, y: sy, scale: sR / (0.3 * DISC_OVERLAY_REF), lightAngle: la });
                   continue;
               }
-              // Off-screen but big: fall through to the cheap canvas path (clipped away anyway).
           }
+
+          // OFF-SCREEN CULL — the fix for the stutter when zooming back out from a station or a close
+          // moon. Since any on-screen disc above DISC_OVERLAY_MIN_R is handled by the SVG overlay above,
+          // everything reaching the canvas path below is either a few pixels across or COMPLETELY off
+          // screen. The off-screen ones were not free: at that zoom a neighbouring planet's radius runs
+          // to millions of pixels, and the canvas path still built a clip path that size and set up a
+          // scaled blit into it before anything got clipped away. Skipping them outright costs nothing
+          // visible. Stars throw a halo out to ~6.4 radii, so cull on the glow-inclusive box, and keep a
+          // margin so nothing pops at the edge.
+          const cullR = (node.roleHint === 'star' ? sR * 7 : sR) + 64;
+          if (sx + cullR < 0 || sx - cullR > width || sy + cullR < 0 || sy - cullR > height) continue;
 
           // #5 Star glow — a soft additive halo behind the disc. A very active (flaring) star
           // throws a bigger, brighter halo; a feeding (active) black hole gets one too, in the
@@ -1012,9 +1024,8 @@
           // baked over the orrery's tiny world-space extents (~1e-5 AU under a huge zoom) collapse
           // to a single colour in the browser, so the terminator/lava silently vanished when zoomed
           // in. In device pixels they render correctly. Screen mapping: s = world·zoom + halfScreen.
-          const sx = rx * zoom + width / 2;
-          const sy = ry * zoom + height / 2;
-          const sR = finalRadius * zoom;
+          // (sx / sy / sR are computed once at the top of the loop — the overlay promotion and the
+          // off-screen cull need the same numbers.)
 
           // #10 Night side — shade the hemisphere facing away from the primary star (skip stars/BH;
           // only when the disc is big enough on screen to read). A TIDALLY LOCKED world has a fixed,

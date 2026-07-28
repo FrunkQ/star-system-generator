@@ -21,10 +21,12 @@ import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
-import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
+import { deriveAppearance } from '$lib/rendering/planetAppearance';
+import { lightningStrength } from '$lib/physics/cloudDecks'; // shared feature model (WS1)
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, updateMagma, updatePlumes, accretionColor,
+  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack,
+  applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, updateLightning, buildLightning, type LightningVisual, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
@@ -33,6 +35,7 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
 import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep } from '$lib/viewport/camera';
 import { contextPeerIds } from '$lib/system/barycentres';
+import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { perfCount, perfFrame } from '$lib/perfTrace';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
@@ -616,10 +619,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Volcanic vent glows + cryovolcanic plumes (shared EmissiveVisual from ./bodyFeatures): additive
   // sprites whose opacity is flickered/glistened each frame by updateMagma / updatePlumes.
   let magmaVisuals: EmissiveVisual[] = [];
+  let lightningVisuals: LightningVisual[] = [];
   let plumeVisuals: EmissiveVisual[] = [];
   // Cloud decks: a translucent shell per cloudy body, drifted in longitude each frame so it floats over
   // the surface (its own spin, on top of the parent sphere's).
   let cloudVisuals: { mesh: THREE.Object3D; drift: number }[] = [];
+  let starFlareVisuals: FlareVisual[] = [];
   // Auto-generated black-hole accretion discs, by BH node id — the lens exempts each disc's projected
   // band so its near side shows in front of the shadow (see lensingShader).
   const bhDiscInfo = new Map<string, { pivot: THREE.Group; inner: number; outer: number }>();
@@ -1215,8 +1220,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     starVisuals = [];
     auroraVisuals = [];
     magmaVisuals = [];
+    lightningVisuals = [];
     plumeVisuals = [];
     cloudVisuals = [];
+    starFlareVisuals = [];
     bhDiscInfo.clear();
   }
 
@@ -1294,7 +1301,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       let mesh: THREE.Object3D;
       let shadow: BodyVisual['shadow'];
       if (isStar) {
-        const activity = Math.max(0, Math.min(1, (node.flareActivity ?? 0)));
+        // Magnetic activity comes from the stellar/activity TAG, not the raw number: the buckets are
+        // the published decision, and they give even a quiet sun a surface you can actually see
+        // (raw flareActivity 0.05 drew three invisible specks).
+        const activity = activityStrength(node.tags);
         const starR = starRadiusScene(node); // responds to the body-size dial like the planets
         const isBH = isBlackHoleNode(node);
         const feeding = isBH && bhFeeding(node);
@@ -1339,11 +1349,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // NB: no flatShading — a star is emissive/unlit (MeshBasicMaterial ignores normals and warns
           // about the property). The faceted look comes from the reduced segment count below.
           const starMat = new THREE.MeshBasicMaterial();
-          const st = new THREE.CanvasTexture(makeStarTexture(colorHex, activity, node.id));
+          const st = new THREE.CanvasTexture(makeStarSurfaceTexture(colorHex, activity, node.id));
           st.colorSpace = THREE.SRGBColorSpace;
           starMat.map = st;
+          // Limb darkening — the cue that makes a star read as a sphere. Skipped on the lo-poly
+          // styles, where flat facets are the whole point.
+          if (!isLopolyStar) applyLimbDarkening(starMat, 0.55);
           const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, isLopolyStar ? 16 : 32, isLopolyStar ? 10 : 24), starMat);
           mesh = sphere;
+          // Flares — only for stars whose magnetic activity actually earns them, so a quiet sun
+          // adds nothing to the frame.
+          if (!isLopolyStar && flaresVisibly(node.tags)) {
+            let fseed = 0; for (const ch of String(node.id)) fseed = (fseed + ch.charCodeAt(0) * 13) % 2147483647;
+            const fl = buildStellarFlares(starR, `#${colorHex.toString(16).padStart(6, '0')}`, activity, fseed || 1, glowTexture);
+            sphere.add(fl.group);
+            starFlareVisuals.push(...fl.flares);
+          }
           // Lo-poly LINES: glowing vector edges + vertices over the faceted star, matching the planets.
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -1493,6 +1514,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               sphere.add(built.group);
               plumeVisuals.push(...built.visuals);
             }
+            // Storms firing inside the cloud deck — additive, so they read on the night side the way
+            // they actually do from orbit. Needs a deck to fire inside: the tag says a world has the
+            // convection for lightning, the clouds are what it lights up.
+            const storms = lightningStrength((node as any).tags);
+            if (storms > 0 && (appear.clouds || appear.cloudDecks.length)) {
+              const deckHex = appear.cloudDecks.at(-1)?.colorHex ?? appear.clouds?.colorHex ?? '#e8eef8';
+              let lseed = 5; for (const ch of String(node.id)) lseed = (lseed * 31 + ch.charCodeAt(0)) & 0xffffff;
+              const built = buildLightning(radius, deckHex, storms, lseed || 1, glowTexture);
+              sphere.add(built.group);
+              lightningVisuals.push(...built.visuals);
+            }
             // Self-luminous glow (a brown dwarf / hot young sub-stellar body radiating its own heat):
             // a dim, cool corona-like halo coloured by the emission temperature (deep red → amber), like
             // a failed star. Reuses the corona glow sprite at a modest scale — a steady dim glow (not a
@@ -1509,9 +1541,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
             if (appear.clouds) {
               let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-              const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
+              // A world with a derived deck STACK gets one shell per deck (Jupiter's ammonia over
+              // its ammonium-hydrosulphide); a giant, or anything with no stack, keeps the single
+              // baked deck — a giant's clouds ARE its surface, so floating shells read wrong on it.
+              const cl = (!appear.clouds.giant && appear.cloudDecks.length > 1)
+                ? buildDeckStack(radius, appear.cloudDecks, cseed || 1)
+                : buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
               sphere.add(cl.group);
               cloudVisuals.push(...cl.layers);
+            }
+            // Titan's smog is a HIGH haze — outside the cloud shells, not baked into the surface.
+            if (appear.tholin?.atmospheric) {
+              sphere.add(buildTholinHaze(radius, appear.tholin.colorHex, appear.tholin.strength));
             }
           }
         }
@@ -1955,7 +1996,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateStarFx(nowSec);
     updateAuroras(nowSec);
     updateMagma(magmaVisuals, nowSec);
+    updateLightning(lightningVisuals, nowSec);
     updatePlumes(plumeVisuals, nowSec);
+    updateStellarFlares(starFlareVisuals, nowSec);
     for (const c of cloudVisuals) c.mesh.rotation.y = nowSec * c.drift; // clouds drift over the surface
     updateConstructs();
     updateShadows();
@@ -2500,51 +2543,8 @@ function buildStarfield(count = 1600, radius = 900): THREE.Points {
   return pts;
 }
 
-// A star photosphere: base colour + faint granulation + sunspots (dark umbra/penumbra), the spot
-// count scaling with flare activity. Seeded from the star id so it's stable frame-to-frame.
-function makeStarTexture(colorHex: number, activity: number, seedStr: string): HTMLCanvasElement {
-  const W = 256;
-  const H = 128;
-  const c = document.createElement('canvas');
-  c.width = W;
-  c.height = H;
-  const ctx = c.getContext('2d')!;
-  let s = 2166136261;
-  for (let i = 0; i < seedStr.length; i++) { s ^= seedStr.charCodeAt(i); s = Math.imul(s, 16777619); }
-  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
-  const base = new THREE.Color(colorHex);
-  const css = (f: number) => `rgb(${Math.round(Math.min(255, base.r * 255 * f))},${Math.round(Math.min(255, base.g * 255 * f))},${Math.round(Math.min(255, base.b * 255 * f))})`;
-
-  ctx.fillStyle = css(1);
-  ctx.fillRect(0, 0, W, H);
-  // Granulation: many faint brighter/darker cells.
-  for (let i = 0; i < 480; i++) {
-    ctx.globalAlpha = 0.1;
-    ctx.fillStyle = css(0.85 + rnd() * 0.3);
-    ctx.beginPath();
-    ctx.arc(rnd() * W, rnd() * H, 1.5 + rnd() * 3, 0, 2 * Math.PI);
-    ctx.fill();
-  }
-  // Sunspots: a dark umbra inside a lighter penumbra, clustered off the poles. More when active.
-  const spots = Math.round(2 + activity * 12);
-  for (let i = 0; i < spots; i++) {
-    const x = rnd() * W;
-    const y = H * (0.22 + rnd() * 0.56);
-    const r = 2 + rnd() * 5;
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = css(0.55);
-    ctx.beginPath();
-    ctx.ellipse(x, y, r * 1.6, r, 0, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = css(0.3);
-    ctx.beginPath();
-    ctx.ellipse(x, y, r * 0.85, r * 0.55, 0, 0, 2 * Math.PI);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-  return c;
-}
+// (The star photosphere texture lives in bodyFeatures as makeStarSurfaceTexture — shared with the
+// 3D reference gallery so both draw the same surface.)
 
 // A soft round dot for ring particles (icy grains), cached.
 let dotTexture: THREE.CanvasTexture | null = null;

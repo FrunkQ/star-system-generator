@@ -950,7 +950,13 @@
     'Asking the tidally locked moons to face the front…', 'Dusting the accretion discs…',
     'Reticulating the snow lines…', 'Checking the auroras are the right colour…',
     'Sorting the ices by how well they stay put…', 'Weighing the worlds against their own composition…',
-    'Waiting for the cryovolcanoes to stop showing off…', 'Politely ignoring the second sun…'
+    'Waiting for the cryovolcanoes to stop showing off…', 'Politely ignoring the second sun…',
+    // v2.1.4
+    'Condensing the clouds at the correct altitude…', 'Asking Saturn where it keeps its methane…',
+    'Waiting for the rain to reach the ground (it will not)…', 'Stacking the cloud decks in order…',
+    'Letting the ammonia settle before the hydrosulphide…', 'Charging up the lightning…',
+    'Rusting the iron on all the red planets…', 'Tilting the stars very slightly…',
+    'Counting the sunspots, losing count, starting again…', 'Reading the sky as far up as it goes…'
   ];
   async function recalcAllSystems(starmap: StarmapType): Promise<StarmapType> {
     const systems = starmap.systems ?? [];

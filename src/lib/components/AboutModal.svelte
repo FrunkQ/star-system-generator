@@ -87,7 +87,7 @@ Built with <a href="https://kit.svelte.dev/" target="_blank" rel="noopener noref
 
 <style>
   .about-card {
-    width: min(680px, 92vw);
+    width: min(980px, 94vw);
     max-height: 86vh;
     display: flex;
     flex-direction: column;

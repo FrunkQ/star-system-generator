@@ -10,6 +10,7 @@
   // THE shared appearance model — resolves every tag/property-driven surface feature (see WS1).
   // This component just draws what the model decides; the orrery + 3D holo read the same model.
   import { deriveAppearance, shade } from '$lib/rendering/planetAppearance';
+  import { activityStrength } from '$lib/physics/stellarActivity';
 
   export let body: CelestialBody;
   export let ringed = false;
@@ -134,6 +135,39 @@
     let s = salt; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
     return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
   }
+
+  // STAR SURFACE — the 2D photosphere, driven by the same magnetic-activity tag the holo reads, so a
+  // star looks like itself in both. Spot GROUPS sit in two active latitude bands either side of the
+  // equator (the Sun's butterfly pattern) rather than scattered anywhere, and each carries a bright
+  // facular surround — on a quiet star that froth is the most visible magnetic feature there is.
+  $: starActivity = activityStrength(body.tags);
+  $: starGranules = !isStar(body) ? [] : (() => {
+    const rnd = seeded(9001), out: { x: number; y: number; r: number; f: number }[] = [];
+    for (let i = 0; i < 90; i++) {
+      // Reject outside the disc so granules don't pile up in the corners of the clip box.
+      const x = rnd() * 100, y = rnd() * 100;
+      if ((x - 50) ** 2 + (y - 50) ** 2 > 28 * 28) continue;
+      out.push({ x, y, r: 1.4 + rnd() * 2.8, f: rnd() < 0.5 ? 0.22 : -0.18 });
+    }
+    return out;
+  })();
+  $: starSpots = !isStar(body) ? [] : (() => {
+    const rnd = seeded(9002), out: { x: number; y: number; r: number }[] = [];
+    const groups = Math.round(2 + starActivity * 6);
+    const band = 0.30 + 0.06 * (1 - starActivity);
+    for (let g = 0; g < groups; g++) {
+      const north = rnd() < 0.5;
+      const gx = 28 + rnd() * 44;
+      const gy = 50 + (north ? -1 : 1) * (20 - band * 20) + (rnd() - 0.5) * 8;
+      const members = 1 + Math.floor(rnd() * (1 + starActivity * 3));
+      for (let m = 0; m < members; m++) {
+        const x = gx + (rnd() - 0.5) * 9, y = gy + (rnd() - 0.5) * 5;
+        if ((x - 50) ** 2 + (y - 50) ** 2 > 26 * 26) continue;   // keep them on the visible disc
+        out.push({ x, y, r: (0.9 + rnd() * 1.5) * (0.7 + starActivity * 0.8) });
+      }
+    }
+    return out;
+  })();
 
   // Cratered surface: count scales with the model's crater DENSITY (surface age); a tidally-locked
   // world biases craters to its FAR (anti-parent) hemisphere — the parent occults impactors, so the
@@ -349,6 +383,15 @@
           <stop offset="55%" stop-color={base} stop-opacity="0.55" />
           <stop offset="100%" stop-color={base} stop-opacity="0" />
         </radialGradient>
+        <!-- LIMB DARKENING: a star is dimmer and redder at its edge, where you look along a slant
+             through the photosphere and see only its cooler upper layers. It is the cue that makes a
+             star read as a sphere rather than a flat disc — the 2D counterpart of the 3D shader. -->
+        <radialGradient id="limb-{uid}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color={shade(base, 0.34)} />
+          <stop offset="60%" stop-color={shade(base, 0.06)} />
+          <stop offset="90%" stop-color={shade(base, -0.12)} />
+          <stop offset="100%" stop-color={shade(base, -0.24)} />
+        </radialGradient>
       {/if}
       <!-- Eyeball: a tidally-STAR-locked world's day/night split, substellar face toward us — a hot
            (baked or molten) eye fading through a terminator to a frozen limb. -->
@@ -506,6 +549,24 @@
         {/if}
       {:else if isSmallBody}
         <path d={smallBodyPath} fill="url(#sph-{uid})" />
+      {:else if isStar(body)}
+        <!-- STAR SURFACE — the 2D counterpart of the holo photosphere, driven by the same
+             magnetic-activity tag: limb darkening (dimmer and redder at the edge, where you look
+             along a slant through cooler upper layers — the cue that says sphere, not disc),
+             granulation mottle, and spot groups in their active latitude bands with the bright
+             faculae that surround them. A quiet sun shows a few small groups; a flare star is
+             blotched with dark ones. -->
+        <circle cx="50" cy="50" r="30" fill="url(#limb-{uid})" />
+        <g clip-path="url(#clip-{uid})">
+          {#each starGranules as gr}
+            <circle cx={gr.x} cy={gr.y} r={gr.r} fill={shade(base, gr.f)} opacity="0.18" />
+          {/each}
+          {#each starSpots as sp}
+            <ellipse cx={sp.x} cy={sp.y} rx={sp.r * 2.2} ry={sp.r * 1.4} fill={shade(base, 0.34)} opacity={0.18 + starActivity * 0.14} />
+            <ellipse cx={sp.x} cy={sp.y} rx={sp.r * 1.4} ry={sp.r * 0.9} fill={shade(base, -0.45)} opacity="0.5" />
+            <ellipse cx={sp.x} cy={sp.y} rx={sp.r * 0.8} ry={sp.r * 0.48} fill={shade(base, -0.72 - starActivity * 0.12)} opacity="0.88" />
+          {/each}
+        </g>
       {:else}
         <circle cx="50" cy="50" r="30" fill="url(#sph-{uid})" />
         {#if bands.length}

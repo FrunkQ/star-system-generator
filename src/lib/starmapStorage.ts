@@ -126,19 +126,45 @@ export async function clearAllData(): Promise<void> {
   if (typeof window === 'undefined') return;
   try { window.localStorage.clear(); } catch { /* private mode */ }
   try { window.sessionStorage.clear(); } catch { /* private mode */ }
-  dbPromise = null;
+
+  // CLOSE the connection before deleting. Dropping the promise only lets go of our reference — the
+  // underlying IDBDatabase stays open, deleteDatabase fires `onblocked` instead of deleting, and
+  // since blocked used to resolve like success the danger button reported "done" and reloaded
+  // straight back into the map it claimed to have deleted. That was the bug: not a stale render, a
+  // delete that never happened.
+  if (dbPromise) {
+    try { (await dbPromise).close(); } catch { /* already gone */ }
+    dbPromise = null;
+  }
+
   if (hasIndexedDb()) {
-    await new Promise<void>((resolve) => {
+    const deleted = await new Promise<boolean>((resolve) => {
       let done = false;
-      const finish = () => { if (!done) { done = true; resolve(); } };
+      const finish = (ok: boolean) => { if (!done) { done = true; resolve(ok); } };
       try {
         const req = window.indexedDB.deleteDatabase(DB_NAME);
-        req.onsuccess = finish;
-        req.onerror = finish;
-        req.onblocked = finish;   // another tab holds it open; we've cleared the rest, reload will follow
-        setTimeout(finish, 1500); // never hang the danger button
-      } catch { finish(); }
+        req.onsuccess = () => finish(true);
+        req.onerror = () => finish(false);
+        req.onblocked = () => finish(false);   // another TAB still holds it — genuinely not deleted
+        setTimeout(() => finish(false), 3000); // never hang the danger button
+      } catch { finish(false); }
     });
+    // Last resort: if the database itself could not be dropped (another tab of the app is open),
+    // at least empty it, so a reload does not restore what the user asked to be rid of.
+    if (!deleted) {
+      try {
+        const db = await openDb();
+        await new Promise<void>((resolve) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).clear();
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+          tx.onabort = () => resolve();
+        });
+        db.close();
+        dbPromise = null;
+      } catch { /* nothing more we can do */ }
+    }
   }
 }
 

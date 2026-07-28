@@ -421,6 +421,8 @@ export interface LiquidDef {
     criticalBar?: number;     // pressure at the critical point (upper anchor of the boil curve)
     incandescent?: boolean;   // self-luminous when molten (magma / molten metals): drives a temperature-
                               // scaled thermal-glow emissive layer, so the ocean glows even under a dim star
+    cloudOpacity?: number;    // 0..1 veil strength when this substance condenses as a CLOUD DECK
+                              // (how opaquely it hides what is beneath). Absent → a moderate default.
 }
 
 export interface FuelDefinition {
@@ -473,6 +475,18 @@ export interface AuroraBand {
 // so every renderer draws the same colours without needing the rule pack.
 export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; altitude: number; }
 
+// Cloud formation for a gas (absent = not cloud-forming). condensesTo names the LIQUID whose data
+// gives the deck its look (colour, cloudOpacity, meltK for ice-crystal vs droplet); minFraction is
+// the partial-fraction floor below which no deck forms. See docs/dev/cloud-decks-design.md.
+export interface GasCloud { condensesTo: string; minFraction?: number; }
+// A reaction PRODUCT declares its recipe (NH4SH from NH3 + H2S). The product's effective fraction
+// derives from its constituents at process time: min(constituents) × yield, constituents depleted
+// by the amount converted. `yield` (0..1, default 1) models photochemical traces — Titan's HCN is
+// made from N2 + CH4 but converts only a sliver, not min(0.95, 0.05). One generation only — a
+// product cannot itself react further. This is NOT a chemistry database: only reactions someone
+// cares about are defined, and users add their own ("Krypton + Unobtanium = pink bubblegum").
+export interface GasReaction { from: string[]; yield?: number; }
+
 export interface GasPhysics {
   molarMass: number;
   shielding: number;
@@ -484,6 +498,8 @@ export interface GasPhysics {
   boilK: number;
   tags?: GasTag[];
   aurora?: AuroraBand[];  // auroral emission bands (empty/absent = this gas does not fluoresce)
+  cloud?: GasCloud;       // cloud formation (absent = this gas never forms a deck)
+  reaction?: GasReaction; // this gas is a reaction product of other gases (absent = primary gas)
 }
 
 export interface ClimateModelGreenhouseConfig {

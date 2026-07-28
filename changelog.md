@@ -2,6 +2,53 @@
 
 All notable changes are listed here:
 
+## v2.1.4 - 29th Jul 2026
+
+**A skies-and-weather update.** Since v2.1.3 the clouds stopped being painted on. A world's air now gets a real temperature profile, every cloud layer is placed where its substance genuinely condenses, and what falls out of it is worked out rather than assigned. Stars grew a surface to match. The test of all this is an absence: Saturn has no methane clouds, and now neither does ours. (The unified player-view system is still in testing and is not part of this release; the Field Guide and the Projector remain the players' views.)
+
+Clouds, from the top down:
+
+* **Clouds form where the air is actually cold enough.** A world had one notional "cloud temperature" guessed from its surface, and every remaining cloud misjudgement traced back to it. There is now a real profile through the atmosphere: air cools as it rises at a rate set by the gases in it, until convection stops and it settles at the temperature a body radiating into space must reach. A substance condenses where its own pressure crosses the point it can no longer stay a gas, and that crossing is the cloud base, at a real height.
+* **Saturn is gold again — because it has no methane clouds.** It carries half again as much methane as Jupiter and is colder, so the old model gave it a deck and Saturn came out grey. The real planet does not have one: its sky reaches the coldest it will get before the methane ever saturates. Nothing is told to skip it; the deck simply never forms, and the ammonia compound beneath is what makes Saturn the colour it is. Uranus, colder still, does get methane clouds — which is why it is blue and Saturn is not. Same substance, same rule, different answer.
+* **Rain, snow and rain that never lands** all come from one question asked at ground level: is the air down there still able to hold this? Near enough and it lands; far from it and the drops evaporate on the way down. That last one explains something that looks backwards — Venus is completely wrapped in cloud on a few parts per million of vapour while Earth, carrying vastly more water, has gaps in its sky. Earth's rain lands and drains the cloud; Venus's never does. That used to be a special case written for Venus, and is now simply what the rule says.
+* **Every deck a world has is drawn, not just its thickest** — deepest first, so the upper layers genuinely part over the lower. In 3D they are separate drifting shells at their own altitudes.
+* **How much sky a deck covers** is worked out from how much condensate is actually up there, turned into an optical depth, rather than from how much of the gas remains unfrozen.
+* **Mars keeps its thin water-ice cloud** at its real, very slight abundance — the original report that started all of this.
+
+Chemistry you can edit:
+
+* **A Reactions tab** in the atmosphere editor defines gases that combine to make another gas: pick the two ingredients, pick the product, set how much converts. Ammonia and hydrogen sulfide make the compound that colours Jupiter's belts; sulfur dioxide and water make the acid Venus is wrapped in.
+* **Whether a gas condenses at all** is now a per-gas setting beside its aurora bands — what it condenses into, and the concentration below which the deck is too thin to see.
+* It is **not a chemistry database**. Only the handful of reactions worth caring about are defined, and you can write your own: krypton and unobtanium making pink bubblegum clouds is a legitimate rule-pack entry, and the model will work out where they would form.
+
+Stars:
+
+* **Stars have surfaces.** Every star derives a magnetic-activity level from its class and age, and that one figure drives everything its surface shows: granulation, spot groups clustered into belts, bright faculae, and flares that fire only on the stars that earn them.
+* **Limb darkening**, in both 2D and 3D — a star is dimmer and redder at its edge, where you look along a slant through its cooler upper layers. It is the strongest single cue that a star is a sphere rather than a disc.
+* **Stars have a spin axis**, editable on their own tab. Generated stars take theirs from the dynamical-history dial rather than a die-roll: a star and its planets condense from the same disc and start aligned — our Sun is only 7 degrees out after four and a half billion years — so a badly tilted star is telling you something true about that system's past.
+
+Weather, and things to look at:
+
+* **Lightning flashes inside the clouds in 3D.** Several strokes down the same channel the way a real one goes, and because the flashes add light rather than replace it they barely register on the sunlit side and read vividly across the night side, which is where you would see them from orbit.
+* **Worlds derive lightning, dust storms and monsoons** from their own physics, alongside what their clouds precipitate.
+* **Mars is red because its iron rusted.** Surface colour came from bulk composition, so every rocky world was the same brown. Rust is surface chemistry: it needs iron, an oxidiser, and time. The Moon has the iron and the age but no atmosphere, so it stays grey; freshly resurfaced Io has not had the time.
+* **A giant lab in both reference galleries** — six rows of gas giants built from nothing but a composition, a pressure and a temperature, each row sweeping one variable so you can watch the model answer: cool a Jovian and its decks appear, raise the methane, change the depth, or heat a world until sodium, then silicate, then iron are the things condensing out of its sky.
+* **Generated giants finally have something in their air.** Every auto-generated giant was pure hydrogen and helium, so none of them could form a cloud at all. They now carry trace gases in amounts following the real trend across our own four — the smaller the giant, the more concentrated its heavier elements — so warm heavy ones come out banded and gold and cold small ones come out blue, decided by the model rather than assigned.
+
+Showing the working:
+
+* **A new "Clouds & weather" chapter** in the physics reference, in plain language: why it gets colder as you go up, why that stops, how a cloud forms where a gas runs out of room, and why rain that never lands is what keeps Venus wrapped. It says where we stop, too — only the sky as far as you could see into it is modelled.
+* **Newton shows the cloud working for the body in hand**: how cold its sky gets and where, which of its gases could condense at all, and where each deck's base sits. A world with no clouds now tells you which of the two reasons it was.
+* **Honest about the shortcuts.** The known-fudges list gains the fixed droplet size, the single calibrated figure for how much cloud stays airborne, and the admission that while the cloud *layers* are derived, their *colours* are a chosen palette.
+* **Tags explain themselves** rather than their whole category — reported by a user who found the "Episodic" geology tag describing the entire geology namespace. Two of the seven geological regimes had no write-up at all, and one was carrying another regime's description.
+
+Fixes:
+
+* **Surface temperature ranges were wildly too wide.** The extremes were built by adding every swing together, so "coldest" meant the pole and midwinter and midnight all at full strength at once.
+* **"Delete all data" now actually deletes.** It cleared everything, asked the browser to drop the saved-map database, treated "blocked" as success and reloaded — straight back into the map it had just claimed to remove. The app was still holding the database open, and a database with an open connection cannot be dropped.
+* **Older saves are repaired on load.** Gas giants written before any of this get the trace gases that were never written for them, and giants quoted at 100,000 bar are re-anchored to the level their temperature actually belongs to. A giant you authored yourself is left exactly as you wrote it.
+* The stutter when zooming back out from something you were right up against; the Atmosphere Mixes editor silently overwriting a row instead of adding one; derived fluid layers going stale when a body stopped having any; a crash on the 3D reference gallery; and the About window opens wider.
+
 ## v2.1.3 - 28th Jul 2026
 
 **A worlds-and-skies update.** Since v2.1.2 the physics that derives a world now also drives how it LOOKS — one appearance model feeding both the orrery and the 3D view — with four new geological foundations sitting behind it, real gravitational lensing on black holes, and editors for the liquid and atmosphere data the whole model runs on. (The unified player-view system is still in testing and is not part of this release; the Field Guide and the Projector remain the players' views.)

@@ -158,7 +158,9 @@
         "name": "Carbon Dioxide (Venus-like)",
         "composition": {
           "CO2": 0.965,
-          "N2": 0.035
+          "N2": 0.035,
+          "SO2": 0.00015,
+          "H2O": 0.00002
         },
         "main": "CO2",
         "pressure_bar": 92,
@@ -407,7 +409,8 @@
         "composition": {
           "CO2": 0.95,
           "N2": 0.027,
-          "Noble Gases": 0.016
+          "Noble Gases": 0.016,
+          "H2O": 0.00021
         },
         "main": "CO2",
         "pressure_bar": 0.006,
@@ -679,10 +682,12 @@
         "composition": {
           "H2": 0.86,
           "He": 0.13,
-          "CH4": 0.003
+          "CH4": 0.003,
+          "NH3": 0.00026,
+          "H2S": 0.00008
         },
         "main": "H2",
-        "pressure_bar": 200000,
+        "pressure_bar": 1,
         "molarMassKg": 0.0022879999999999997,
         "scaleHeightKm": 23.266113202618353
       },
@@ -1121,10 +1126,12 @@
         "composition": {
           "H2": 0.96,
           "He": 0.03,
-          "CH4": 0.0045
+          "CH4": 0.0045,
+          "NH3": 0.00012,
+          "H2S": 0.00004
         },
         "main": "H2",
-        "pressure_bar": 100000,
+        "pressure_bar": 1,
         "molarMassKg": 0.002112,
         "scaleHeightKm": 47.30734287436708
       },
@@ -1254,7 +1261,8 @@
         "name": "Methane Haze (Titan-like)",
         "composition": {
           "N2": 0.95,
-          "CH4": 0.05
+          "CH4": 0.05,
+          "HCN": 0.0000012
         },
         "main": "N2",
         "pressure_bar": 1.45,
@@ -1698,10 +1706,11 @@
         "composition": {
           "H2": 0.83,
           "He": 0.15,
-          "CH4": 0.023
+          "CH4": 0.023,
+          "H2S": 0.0004
         },
         "main": "H2",
-        "pressure_bar": 100000,
+        "pressure_bar": 1,
         "molarMassKg": 0.0026279999999999997,
         "scaleHeightKm": 29.421991742327467
       },
@@ -2030,10 +2039,11 @@
         "composition": {
           "H2": 0.8,
           "He": 0.19,
-          "CH4": 0.015
+          "CH4": 0.015,
+          "H2S": 0.0003
         },
         "main": "H2",
-        "pressure_bar": 100000,
+        "pressure_bar": 1,
         "molarMassKg": 0.0026000000000000003,
         "scaleHeightKm": 20.35976711880303
       },
