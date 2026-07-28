@@ -8,6 +8,8 @@
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
 import type { System, CelestialBody, Tag, RulePack } from '$lib/types';
+import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
+import { makeupFractions } from '$lib/physics/makeup';
 
 // Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
 // so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
@@ -125,10 +127,43 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
 }
 
 // Fix up a single system in place (and return it). Caller should re-run systemProcessor.process().
+
+// MIGRATION: giants saved before the cloud model had nothing in them TO condense.
+//
+// Two things are wrong with an old giant, and only one of them heals itself. Its quoted pressure —
+// commonly 100000 bar, sometimes 200000 — is handled at read time, because the temperature beside it
+// has always been the ~1 bar reading and the profile simply anchors there. But its COMPOSITION is
+// missing data: bulk H2/He with, at best, methane. Nothing else was ever written, so nothing else
+// can condense, and Saturn comes out with an empty sky instead of the ammonia compound that makes it
+// gold. That cannot be re-derived; it has to be filled in.
+//
+// Deliberately narrow. We only touch a giant whose atmosphere carries NO cloud-forming gas beyond
+// methane AND is otherwise essentially all hydrogen and helium — the exact fingerprint of the old
+// default. A giant somebody actually authored, with sulphur or water or an ammonia figure of their
+// own, is left completely alone. And the fill is the repeatable mid-range mix, not a random roll: a
+// repair should give the same answer every time it runs.
+const OLD_DEFAULT_GASES = new Set(['H2', 'He', 'CH4']);
+
+function backfillGiantAtmosphere(body: CelestialBody): void {
+  const atm = body.atmosphere;
+  if (!atm?.composition) return;
+  if (makeupFractions(body).gas <= 0.5) return;                 // not a giant: it has a surface
+  const gases = Object.entries(atm.composition).filter(([, v]) => (v ?? 0) > 0);
+  if (!gases.length) return;
+  if (!gases.every(([g]) => OLD_DEFAULT_GASES.has(g))) return;  // authored something of their own
+  const bulk = gases.reduce((sum, [g, v]) => sum + (g === 'H2' || g === 'He' ? (v ?? 0) : 0), 0);
+  if (bulk < 0.9) return;                                       // not the old default shape
+  atm.composition = giantComposition(body.massKg);
+  atm.pressure_bar = GIANT_ANCHOR_BAR;
+  delete (atm as any).molarMassKg;                              // recomputed from the new mix
+}
+
 export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
   for (const node of system.nodes) {
-    if (node.kind === 'body') stripBody(node as CelestialBody, classNames);
+    if (node.kind !== 'body') continue;
+    stripBody(node as CelestialBody, classNames);
+    backfillGiantAtmosphere(node as CelestialBody);
   }
   // NOTE: we used to DELETE every auto-barycentre here and let the processor regenerate them. But a
   // nested auto-barycentre (e.g. a planet + an oversized moon that v1 promoted) carries the pair's REAL

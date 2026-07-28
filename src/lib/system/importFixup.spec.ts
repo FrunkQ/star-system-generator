@@ -147,3 +147,52 @@ describe('fixUpImportedSystem', () => {
     expect(star.tags.map((t: any) => t.key)).toEqual(['faction/empire']);  // class-tag stripped, authored kept
   });
 });
+
+// Giants written before the cloud model carried bulk H2/He and, at best, methane — nothing that
+// could condense, so Saturn loaded with an empty sky. That is missing DATA rather than stale derived
+// state, so unlike everything else in this file it has to be filled in rather than stripped.
+describe('older giants get the traces that were never written', () => {
+  const giant = (composition: Record<string, number>, pressure_bar = 100000) => ({
+    id: 'g', kind: 'body', roleHint: 'planet', name: 'Saturn',
+    makeup: { gas: 0.95, ice: 0.04, rock: 0.01 }, massKg: 5.68e26, radiusKm: 58232,
+    atmosphere: { main: 'H2', pressure_bar, composition }
+  }) as unknown as CelestialBody;
+  const fix = (b: CelestialBody) => {
+    const out = fixUpImportedSystem({ nodes: [b] } as any).nodes[0] as CelestialBody;
+    return out.atmosphere!;
+  };
+
+  it('fills an old bulk-only giant and re-anchors it to the reference level', () => {
+    const a = fix(giant({ H2: 0.96, He: 0.03, CH4: 0.0045 }));
+    expect(a.composition!.NH3).toBeGreaterThan(0);
+    expect(a.composition!.H2S).toBeGreaterThan(0);
+    expect(a.pressure_bar).toBe(1);                 // was 100000 — the level its temperature belongs to
+  });
+
+  it('is REPEATABLE — a repair must not roll dice', () => {
+    expect(fix(giant({ H2: 0.96, He: 0.03, CH4: 0.0045 })).composition)
+      .toEqual(fix(giant({ H2: 0.96, He: 0.03, CH4: 0.0045 })).composition);
+  });
+
+  it('leaves a giant somebody actually authored completely alone', () => {
+    // Any gas outside the old default trio means a real authoring decision was made here.
+    const authored = { H2: 0.9, He: 0.06, CH4: 0.003, SO2: 0.004 };
+    const a = fix(giant(authored, 2));
+    expect(a.composition).toEqual(authored);
+    expect(a.pressure_bar).toBe(2);
+    // …and so does an ammonia figure of their own, even using only the default gases.
+    const withNH3 = { H2: 0.9, He: 0.09, NH3: 0.001 };
+    expect(fix(giant(withNH3, 5)).composition).toEqual(withNH3);
+  });
+
+  it('leaves worlds with a SURFACE alone — this is a giant repair only', () => {
+    const mars = {
+      id: 'm', kind: 'body', roleHint: 'planet', name: 'Mars',
+      makeup: { rock: 0.7, metal: 0.3 }, massKg: 6.42e23, radiusKm: 3390,
+      atmosphere: { main: 'CO2', pressure_bar: 0.006, composition: { CO2: 0.95, N2: 0.027 } }
+    } as unknown as CelestialBody;
+    const out = fixUpImportedSystem({ nodes: [mars] } as any).nodes[0] as CelestialBody;
+    expect(out.atmosphere!.composition).toEqual({ CO2: 0.95, N2: 0.027 });
+    expect(out.atmosphere!.pressure_bar).toBe(0.006);
+  });
+});

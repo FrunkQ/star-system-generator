@@ -2,6 +2,25 @@
 
 All notable changes are listed here:
 
+## v2.1.258-beta - 29th Jul 2026
+
+* **"Delete all data" now actually deletes.** It cleared local storage, asked the browser to drop the
+  saved-map database, treated "blocked" as success, and reloaded — straight back into the map it had
+  just claimed to remove. The app was still holding the database open, and a database with an open
+  connection cannot be dropped. It now closes first, and if something genuinely still holds it (a
+  second tab of the app), it empties the contents rather than reporting a deletion that did not
+  happen.
+* **Gas giants in older saves get the traces that were never written for them.** A giant saved before
+  the cloud model carries bulk hydrogen and helium and, at best, methane — so nothing in it can
+  condense, and Saturn loads with an empty sky instead of the ammonia compound that makes it gold.
+  That is missing data rather than a stale calculation, so it cannot be re-derived; it is now filled
+  in when the save loads, using the same trace model new giants are built with. Deliberately narrow:
+  it only touches a giant carrying nothing but the old default gases, so any giant you actually
+  authored — your own ammonia figure, sulphur, water, anything — is left exactly as you wrote it. The
+  fill is repeatable, not a random roll.
+* Older giants quoted at 100,000 bar are re-anchored to the level their temperature actually belongs
+  to, so their clouds stop forming a hundred times too deep.
+
 ## v2.1.257-beta - 29th Jul 2026
 
 * **Tags explain themselves properly now.** A reported example: the "Episodic" geology tag described
