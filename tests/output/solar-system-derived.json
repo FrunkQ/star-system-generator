@@ -3409,7 +3409,7 @@
         }
       ],
       "apparentColor": {
-        "hex": "#d6b68f",
+        "hex": "#d1b498",
         "palette": [
           {
             "hex": "#ccc2ae",
@@ -3418,9 +3418,9 @@
             "label": "gas surface"
           },
           {
-            "hex": "#d8b48a",
+            "hex": "#d2b397",
             "role": "cloud",
-            "weight": 0.85,
+            "weight": 0.9,
             "label": "ammonia cloud deck"
           },
           {
@@ -3436,7 +3436,7 @@
             "label": "ammonia band"
           },
           {
-            "hex": "#be8857",
+            "hex": "#bb885d",
             "role": "cloud",
             "weight": 0.6998268649926069,
             "label": "chromophore band"
@@ -3444,7 +3444,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#d6b68f",
+      "apparentColorHex": "#d1b498",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -5688,7 +5688,7 @@
         }
       ],
       "apparentColor": {
-        "hex": "#c5b699",
+        "hex": "#acafab",
         "palette": [
           {
             "hex": "#ccc2ae",
@@ -5697,9 +5697,9 @@
             "label": "gas surface"
           },
           {
-            "hex": "#c3b395",
+            "hex": "#abaeab",
             "role": "cloud",
-            "weight": 0.85,
+            "weight": 0.9,
             "label": "ammonia cloud deck"
           },
           {
@@ -5715,7 +5715,7 @@
             "label": "methane band"
           },
           {
-            "hex": "#b4885c",
+            "hex": "#a98566",
             "role": "cloud",
             "weight": 0.4897742926108001,
             "label": "chromophore band"
@@ -5723,7 +5723,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#c5b699",
+      "apparentColorHex": "#acafab",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -9121,7 +9121,7 @@
         }
       ],
       "apparentColor": {
-        "hex": "#79b4c1",
+        "hex": "#60b1d3",
         "palette": [
           {
             "hex": "#ccc2ae",
@@ -9130,15 +9130,15 @@
             "label": "gas surface"
           },
           {
-            "hex": "#6bb1c4",
+            "hex": "#5bb0d4",
             "role": "cloud",
-            "weight": 0.85,
+            "weight": 0.9,
             "label": "methane haze"
           }
         ],
         "banding": 3
       },
-      "apparentColorHex": "#79b4c1",
+      "apparentColorHex": "#60b1d3",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -10739,7 +10739,7 @@
         }
       ],
       "apparentColor": {
-        "hex": "#8191b6",
+        "hex": "#5f8acf",
         "palette": [
           {
             "hex": "#ccc2ae",
@@ -10748,15 +10748,15 @@
             "label": "gas surface"
           },
           {
-            "hex": "#7489b7",
+            "hex": "#5a87d1",
             "role": "cloud",
-            "weight": 0.85,
+            "weight": 0.9,
             "label": "methane haze"
           }
         ],
         "banding": 3
       },
-      "apparentColorHex": "#8191b6",
+      "apparentColorHex": "#5f8acf",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,

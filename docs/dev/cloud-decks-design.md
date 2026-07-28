@@ -81,7 +81,16 @@ phase 2 — `gasGiantCloudColor`'s hardcoded ramp.
   profile later replaces.
 - **E5 no feedback:** decks are visual/descriptive only; they do not enter temperature/albedo.
   Idempotence test: two passes ⇒ identical tags.
-- **E6 giants sequenced separately:** terrestrials first (giants keep the legacy ramp), then
+- **E6 giants — DONE for Jupiter/Uranus/Neptune, SATURN STILL WRONG.** Giants now take their colour
+  from their deck stack, weighted deepest-heaviest (a warm-condensing deck forms far down where the
+  atmosphere is dense and holds vastly more material; a cold-condensing species on top is a thin
+  haze). Measured against reality: Jupiter dist 24, Neptune 47, Uranus 81 (right hue, too saturated
+  — the real planet has a pale haze layer we do not model), Saturn 74 and GREY rather than gold.
+  Saturn's fault is upstream: our condensation model gives it a methane deck that the real planet
+  does not visibly have, because we test condensation at one notional "deck temperature" rather than
+  at a real pressure level. That is precisely what the phase-2 adiabat fixes; do not paper over it
+  in the renderer.
+- **E6 original note, giants sequenced separately:** terrestrials first (giants keep the legacy ramp), then
   giants swap onto the deck stack in their own commit with Jupiter/Saturn/Uranus/Neptune
   fixtures (NH3 over NH4SH over H2O; same-but-deeper for Saturn; CH4-topped ice giants).
 - **E8 legacy values:** old saves' cloud-deck tags held a colour word ("white"); auto tags

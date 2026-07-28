@@ -225,9 +225,36 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
   // A giant takes its whole look from its cloud chemistry. Gate on rendersAsGiant (NOT just gas > 0.5) so
   // an ICE giant — ice-dominated, low gas — reads as a smooth cool cloud-world, not a cratered iceball.
   if (rendersAsGiant(body)) {
+    // A giant IS its cloud stack: you see the topmost deck, with the ones below showing through its
+    // gaps. That stack is derived physics arriving as tags, so the colour now comes from the decks
+    // the world actually has rather than from a temperature ramp — Jupiter's white ammonia over
+    // brown ammonium hydrosulphide, an ice giant's methane on top. A giant with NO deck at all
+    // (a hot Jupiter above every condensation point) still falls back to the thermal continuum,
+    // which is the one case where there genuinely is nothing condensed to see.
+    const giantDecks = decksFromTags(body.tags, rulePack);
     const comp = atm?.composition ?? {};
     const ch4 = comp['CH4'] ?? comp['methane'] ?? 0;
     let cloud = gasGiantCloudColor(teq); // warm thermal base (ammonia / water / alkali / silicate)
+    if (giantDecks.length) {
+      const stops: Array<[RGB, number]> = [];
+      giantDecks.forEach((d, i) => {
+        const hex = liquidDef(d.species, rulePack)?.colorHex;
+        if (!hex) return;
+        // Weight by DEPTH IN THE STACK, deepest heaviest. A deck that condenses warm forms far down
+        // where the atmosphere is dense, so it holds enormously more material and is the optically
+        // thick layer you actually see; a cold-condensing species on top is a thin high haze. This
+        // is why Saturn is gold despite carrying more methane than ammonia — its ammonia deck is
+        // deep and substantial while the methane above it is a veneer. Weighting the top deck
+        // heaviest instead turned Saturn grey-blue.
+        // Between the two extremes. A terrestrial's deck is thin droplets you see through, so it
+        // pales to near-white (condensateTint); a giant's deck is optically thick and shows its
+        // substance's own colour — but it is also a brightly sunlit high-albedo cloud top, not a
+        // dark pool of the stuff. The liquid colours are ocean colours; used raw they made every
+        // giant too dark, and fully paled they washed Jupiter's tan away entirely.
+        stops.push([mix(hexToRgb(hex), [255, 255, 255], 0.32), Math.max(0.04, d.coverage * Math.pow(0.35, i))]);
+      });
+      if (stops.length) cloud = mixWeighted(stops);
+    }
     // Methane absorption follows BEER-LAMBERT, not a linear ramp: it SATURATES, so a couple of
     // percent over a deep atmosphere swallows essentially all the red light. Modelling it linearly
     // (ch4 × 6) gave Uranus's real 2.3% a mere 0.14 of tint, which left the ice giants grey — they
@@ -253,8 +280,10 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     } else {
       iceGiant = methaneStrength > 0.32;
     }
-    col = mix(col, cloud, 0.85);
-    push(rgbToHex(cloud), 'cloud', 0.85, iceGiant ? 'methane haze' : 'ammonia cloud deck');
+    // A giant has no surface to see, so the cloud IS the view — the old 0.85 left 15% of a rocky
+    // "surface" colour showing through and dragged every giant darker than it should be.
+    col = mix(col, cloud, 0.96);
+    push(rgbToHex(cloud), 'cloud', 0.9, iceGiant ? 'methane haze' : 'ammonia cloud deck');
     // Chromophore stripes belong to warm ammonia giants (Jupiter's browns/oranges); ice giants are
     // near-featureless. Only emit band colours for the ammonia case → the renderer skips spots/stripes
     // on Uranus/Neptune.

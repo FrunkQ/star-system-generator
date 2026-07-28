@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.253-beta - 28th Jul 2026
+
+* **Gas giants take their colour from their own cloud chemistry.** Instead of a temperature lookup, a giant is now painted by the decks it actually derives — Jupiter's white ammonia over the brown ammonium hydrosulphide that makes its belts, an ice giant's methane on top — weighted so the deep, dense deck dominates and the thin high haze above it only tints. Jupiter and Neptune now land close to the real planets and Uranus reads properly cyan. Saturn is still too grey: our model gives it a methane deck the real planet does not visibly have, and fixing that honestly needs the deeper atmospheric work rather than a nudge to the paint.
+* Cloud decks on genuinely cloudy worlds are brighter in the 3D view again, and a star's corona breathes rather than wobbles.
+
 ## v2.1.252-beta - 28th Jul 2026
 
 * **Mars is red again — because its iron rusted.** Surface colour was derived from bulk composition alone, so every rocky world came out the same brown. Rust is surface chemistry, not bulk make-up: it needs iron, an oxidiser to react with (free oxygen, or the carbon dioxide and water that did the job on early Mars) and long exposure. The Moon and Mercury have the iron and the age but no atmosphere, so they stay grey; a freshly resurfaced world like Io has not had the time.
