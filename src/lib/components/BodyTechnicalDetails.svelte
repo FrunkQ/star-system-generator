@@ -12,6 +12,7 @@
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
   import { phaseAtP } from '$lib/physics/liquids';
   import { formatGauss } from '$lib/physics/magnetism';
+  import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
   export let body: CelestialBody | Barycenter | null;
@@ -20,18 +21,13 @@
   export let rootStar: CelestialBody | null = null;
 
   // The "Orbit (from …)" label: keep the host TYPE but name the actual host too (on a multi-star system
-  // a bare "Barycenter" / "star" is ambiguous). A barycentre also names its primary, since a body can
-  // orbit a barycentre though only its primary is selectable — e.g. "Pluto-Charon Barycenter — Pluto".
+  // a bare "Barycentre" / "star" is ambiguous). A barycentre names the bodies it holds, since a body can
+  // orbit one though the point itself is invisible — e.g. "Pluto-Charon Barycentre (Pluto + Charon)".
+  // Shared with the orbit editor so the two panels describe the same host the same way.
   $: orbitHostLabel = (() => {
       const p: any = parentBody;
       if (!p) return 'Unknown';
-      if (p.kind === 'barycenter') {
-          const nodes = $systemStore?.nodes || [];
-          const members = ((p.memberIds || []) as string[]).map((id) => nodes.find((n: any) => n.id === id)).filter(Boolean) as any[];
-          const primary = members.reduce((best: any, m: any) =>
-              ((m.massKg || m.effectiveMassKg || 0) > (best?.massKg || best?.effectiveMassKg || 0) ? m : best), null);
-          return primary ? `${p.name} — ${primary.name}` : p.name;
-      }
+      if (isBarycentre(p)) return barycentreLabel($systemStore, p);
       const role = p.roleHint ? p.roleHint[0].toUpperCase() + p.roleHint.slice(1) : 'Body';
       return `${role} ${p.name}`;
   })();

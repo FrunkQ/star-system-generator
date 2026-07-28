@@ -24,8 +24,44 @@
   import FilterFrame from './FilterFrame.svelte';
   import GraphicLayer from './GraphicLayer.svelte';
   import GraphicPlacementControls from './GraphicPlacementControls.svelte';
-  import StarmapListView from '$lib/starmap/StarmapListView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
+  import FilteredDocumentView from './FilteredDocumentView.svelte';
+  import { DOCUMENT_STYLES, documentStyleBase } from '$lib/catalogue/document/documentStyles';
+  import TransitionParamControls from './TransitionParamControls.svelte';
+  import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
+  import { starsOf } from '$lib/catalogue/document/systemTopology';
+  import DocPanel from './DocPanel.svelte';
+
+  // D6: for the 2D/3D views the info-block preview APPEARS while you're tweaking Info Block controls
+  // and hides while you're on the display (scene) controls, so each edit shows the thing it changes.
+  let infoPreview = false;
+
+  // ── Document colouration (feedback): the documentStyle is a SEED — it fills the editable colour set,
+  //    then the user tweaks individual slots. Each is a <input type=color> (hex), so rgba seed values are
+  //    shown as their opaque colour and become solid hex once edited.
+  const DOC_COLOUR_SLOTS = [
+    { id: 'bg', label: 'Background' }, { id: 'heading', label: 'Heading' }, { id: 'body', label: 'Body text' },
+    { id: 'label', label: 'Labels' }, { id: 'value', label: 'Values' }, { id: 'accent', label: 'Accent' },
+    { id: 'rule', label: 'Lines / rules' }
+  ] as const;
+  function toHex(c: string | undefined): string {
+    if (!c) return '#000000';
+    if (c[0] === '#') return c.length === 4 ? '#' + c.slice(1).split('').map((ch) => ch + ch).join('') : c.slice(0, 7);
+    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c);
+    if (m) { const h = (n: string) => parseInt(n).toString(16).padStart(2, '0'); return `#${h(m[1])}${h(m[2])}${h(m[3])}`; }
+    return '#888888';
+  }
+  function docColour(id: string): string {
+    const seed = (documentStyleBase(draft.documentStyle) as any).colors[id];
+    return toHex((draft.themeColors as any)?.[id] ?? seed);
+  }
+  function setDocColour(id: string, hex: string) {
+    draft = { ...draft, themeColors: { ...(draft.themeColors ?? {}), [id]: hex } };
+  }
+  function applyColouration(style: string) {
+    // New colouration → reset any per-slot tweaks so the picked style's colours show cleanly.
+    draft = { ...draft, documentStyle: style as any, themeColors: {} };
+  }
 
   export let preset: PlayerPreset;
 
@@ -33,12 +69,20 @@
 
   let draft: PlayerPreset = structuredClone(preset);
 
+  // Colouration swatches — reactive so they refresh when the Colouration style (or a tweak) changes.
+  $: docSeedColors = (documentStyleBase(draft.documentStyle) as any).colors;
+  $: docColours = DOC_COLOUR_SLOTS.map((s) => ({
+    id: s.id, label: s.label,
+    hex: toHex((draft.themeColors as any)?.[s.id] ?? docSeedColors[s.id])
+  }));
+
   // ── Wizard tabs ─────────────────────────────────────────────────────────────
   const TABS = [
     { id: 'general', label: 'General' },
     { id: 'cover', label: 'Cover' },
     { id: 'starmap', label: 'Starmap' },
     { id: 'system', label: 'System' },
+    { id: 'transitions', label: 'Transitions' },
     { id: 'filter', label: 'Visual filter' }
   ] as const;
   type TabId = (typeof TABS)[number]['id'];
@@ -52,7 +96,7 @@
     // default to the first ENABLED layer, preferring system
     if (filterPreview === 'system' && !draft.systemEnabled) filterPreview = draft.starmapEnabled ? 'starmap' : 'cover';
   }
-  $: previewLayer = tab === 'filter' ? filterPreview : tab === 'general' ? 'theme' : tab;
+  $: previewLayer = tab === 'filter' ? filterPreview : tab === 'general' ? 'theme' : tab === 'transitions' ? 'system' : tab;
   $: filterActive = tab === 'filter' && draft.filter !== 'none';
 
   // The 3D style: filter only applied on the filter tab (set up clean, costume last).
@@ -106,6 +150,13 @@
   // the PARENT feeds it back as the prop; that loop-back is what makes click-to-frame (and the click
   // ladder) work. The catalogue always wired it; the preview didn't, so clicks there did nothing.
   let previewFocusId: string | null = null;
+  // Preselect the primary star so the Document preview shows a body's file straight away.
+  $: if (draft.systemView === 'document' && previewSystem && !previewFocusId) {
+    const star: any = starsOf(previewSystem)[0];
+    if (star) previewFocusId = star.id;
+  }
+  // The 2D/3D info-block preview subject: the tapped body, else the primary star.
+  $: previewInfoId = previewFocusId ?? ((previewSystem ? (starsOf(previewSystem)[0] as any)?.id : null) ?? null);
 
   // A real colour for CSS vars / non-cover components (rainbow → representative mid colour).
   $: accentCss = accentSolid(draft.accentColor);
@@ -159,11 +210,20 @@
           </fieldset>
           <fieldset>
             <legend>Theme (used by every stage)</legend>
-            <label>Font
+            <label>Font{draft.systemView === 'document' ? ' (body)' : ''}
               <select bind:value={draft.font}>
                 {#each FONT_STACKS as f}<option value={f.css}>{f.label}</option>{/each}
               </select>
             </label>
+            {#if draft.systemView === 'document'}
+              <!-- The document can use a separate heading font; default follows the body font. -->
+              <label>Heading font
+                <select value={draft.headingFont ?? ''} on:change={(e) => { const v = (e.currentTarget as HTMLSelectElement).value; draft = { ...draft, headingFont: v || undefined }; }}>
+                  <option value="">Same as body</option>
+                  {#each FONT_STACKS as f}<option value={f.css}>{f.label}</option>{/each}
+                </select>
+              </label>
+            {/if}
             <label class="chk"><input type="checkbox" checked={isRainbow(draft.accentColor)} on:change={(e) => (draft = { ...draft, accentColor: (e.currentTarget as HTMLInputElement).checked ? RAINBOW : '#6aa0ff' })} /> Rainbow (The Guide look)</label>
             {#if !isRainbow(draft.accentColor)}
               <label class="inline">Accent colour <input type="color" bind:value={draft.accentColor} /></label>
@@ -220,7 +280,7 @@
             {#if draft.starmapEnabled}
               <label>View
                 <select bind:value={draft.starmapView}>
-                  <option value="list">Text list</option>
+                  <option value="list">Document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D map</option>
                 </select>
@@ -263,7 +323,7 @@
             {#if draft.systemEnabled}
               <label>View
                 <select bind:value={draft.systemView}>
-                  <option value="list">Text list</option>
+                  <option value="document">Document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D holo</option>
                 </select>
@@ -273,37 +333,27 @@
             {/if}
           </fieldset>
           {#if draft.systemEnabled}
-            <fieldset>
-              <legend>Appearance</legend>
-              <label>Colour
-                <select bind:value={draft.bodyStyle}>
-                  <option value="textured">True colour</option>
-                  <option value="flat">Flat colour</option>
-                  <option value="white">Monochrome (for tinting filters)</option>
-                </select>
-              </label>
-              <label>Body graphics
-                <select bind:value={draft.bodyGfx}>
-                  <option value="sphere">3D sphere</option>
-                  <option value="photo">Photo</option>
-                  <option value="disc">Simple disc</option>
-                  <option value="flat">Flat shape</option>
-                </select>
-              </label>
-              <label>Background
-                <select bind:value={draft.background}>
-                  <option value="space">Space</option>
-                  <option value="green">Greenscreen</option>
-                  <option value="blue">Bluescreen</option>
-                  <option value="black">Black</option>
-                </select>
-              </label>
-              <!-- The 2D map is the same engine locked flat, so the LOOK controls apply to both. Only the
-                   genuinely 3D ideas (tilt, lock-overhead, lighting, the turntable) are 3D-only — a flat map
-                   can't use them — and 2D gets its own "Lock rotation" in their place. -->
-              {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
-                <!-- Styles the star, and the bodies when Body graphics is a 3D sphere (the flat disc looks
-                     draw their own way and ignore it). -->
+            {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
+              <!-- DISPLAY (orrery/scene) controls. Interacting here HIDES the info-block preview so you
+                   can focus on the scene; the Info Block fieldset below brings it back. -->
+              <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+              <fieldset on:pointerdown={() => (infoPreview = false)} on:focusin={() => (infoPreview = false)}>
+                <legend>{draft.systemView === 'holo3d' ? '3D display' : '2D map display'}</legend>
+                <label>Colour
+                  <select bind:value={draft.bodyStyle}>
+                    <option value="textured">True colour</option>
+                    <option value="flat">Flat colour</option>
+                    <option value="white">Monochrome (for tinting filters)</option>
+                  </select>
+                </label>
+                <label>Background
+                  <select bind:value={draft.background}>
+                    <option value="space">Space</option>
+                    <option value="green">Greenscreen</option>
+                    <option value="blue">Bluescreen</option>
+                    <option value="black">Black</option>
+                  </select>
+                </label>
                 <label>Render
                   <select bind:value={draft.render}>
                     <option value="filled">Filled</option>
@@ -340,6 +390,7 @@
                   <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
                   <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
                   <label class="chk"><input type="checkbox" bind:checked={draft.unlit} /> Flat / no lighting (efficient 2D map)</label>
+                  <label class="chk"><input type="checkbox" checked={draft.lensing !== false} on:change={(e) => draft.lensing = e.currentTarget.checked} /> Black-hole gravitational lensing</label>
                   <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
                 {:else}
                   <!-- 2D only, in the turntable's place: a flat map stays fixed unless you say otherwise. -->
@@ -349,15 +400,100 @@
                      plan view that never zooms. -->
                 <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system (never zoom to a body)</label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
-                {#if draft.bodyGfx === 'sphere'}
-                  <!-- Auroras are an emissive shell on the 3D globe — the flat disc looks don't draw them. -->
-                  <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
+                <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
+              </fieldset>
+            {/if}
+            <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+            <fieldset on:pointerdown={() => (infoPreview = true)} on:focusin={() => (infoPreview = true)}>
+              <legend>Info Block Appearance</legend>
+              {#if draft.systemView === 'document'}
+                <!-- Colouration: a documentStyle SEEDS the colours, then tweak each slot. Layout is the
+                     same across styles — only the palette (and fonts, set on General) changes. -->
+                <label>Colouration
+                  <select value={draft.documentStyle} on:change={(e) => applyColouration((e.currentTarget as HTMLSelectElement).value)}>
+                    {#each DOCUMENT_STYLES as ds}<option value={ds.value}>{ds.label}</option>{/each}
+                  </select>
+                </label>
+                <label>Colour
+                  <select bind:value={draft.bodyStyle}>
+                    <option value="textured">True colour</option>
+                    <option value="flat">Flat colour (by type)</option>
+                    <option value="white">Monochrome (bleach — for a tinting filter)</option>
+                  </select>
+                </label>
+                {#if draft.bodyStyle !== 'white'}
+                  <details class="colour-picker">
+                    <summary>Colours</summary>
+                    <div class="doc-colours">
+                      {#each docColours as slot (slot.id)}
+                        <label class="col-row"><span>{slot.label}</span>
+                          <input type="color" value={slot.hex} on:input={(e) => setDocColour(slot.id, (e.currentTarget as HTMLInputElement).value)} />
+                        </label>
+                      {/each}
+                    </div>
+                  </details>
                 {/if}
               {/if}
-              <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info panel (clean display)</label>
-              {#if draft.systemView !== 'list' && !draft.hideInfoPanel}
-                <label>Info panel width (desktop) <span>{draft.inspectorWidth}px</span><input type="range" min="240" max="560" step="10" bind:value={draft.inspectorWidth} /></label>
-                <label>Info panel font size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="1.6" step="0.05" bind:value={draft.infoFontScale} /></label>
+              <!-- "Body graphics" is the per-body PICTURE in the info block — now for EVERY view (D6:
+                   the 2D/3D panels render through the same engine). The 3D orrery itself stays spheres. -->
+              <label>Body graphics
+                <select bind:value={draft.bodyGfx}>
+                  <option value="sphere">3D sphere</option>
+                  <option value="photo">Photo</option>
+                  <option value="disc">Simple disc</option>
+                  <option value="flat">Flat shape</option>
+                  <option value="none">None</option>
+                </select>
+              </label>
+              {#if draft.systemView === 'document' && draft.bodyGfx === 'sphere'}
+                <!-- The 3D body graphic is the real holo render, so it takes the same render styles. -->
+                <label>Render
+                  <select bind:value={draft.render}>
+                    <option value="filled">Filled</option>
+                    <option value="lopoly-filled">Lo-poly — filled</option>
+                    <option value="lopoly-lines">Lo-poly — filled + lines</option>
+                    <option value="wire-glow">Wireframe — glow</option>
+                    <option value="wire-flat">Wireframe — flat</option>
+                    <option value="wire-glow-occ">Wireframe — glow (solid)</option>
+                    <option value="wire-flat-occ">Wireframe — flat (solid)</option>
+                  </select>
+                </label>
+              {/if}
+              {#if draft.bodyGfx === 'photo'}
+                <label>Photo framing
+                  <select bind:value={draft.photoFrame}>
+                    <option value="letterbox">Letterbox band</option>
+                    <option value="full">Full image</option>
+                    <option value="sliver">Vertical sliver</option>
+                  </select>
+                </label>
+              {/if}
+              <label>Tags
+                <select bind:value={draft.tagStyle}>
+                  <option value="pills">Coloured pills</option>
+                  <option value="grouped">Grouped pills</option>
+                  <option value="grouped-list">Grouped list (headings, plain)</option>
+                  <option value="list">Plain list</option>
+                </select>
+              </label>
+              {#if draft.systemView === 'document'}
+                <label>Navigation
+                  <select bind:value={draft.navStyle}>
+                    <option value="plain">Plain text</option>
+                    <option value="boxed">Boxes / buttons</option>
+                  </select>
+                </label>
+              {/if}
+              <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info {draft.systemView === 'document' ? 'block' : 'panel'} (clean display)</label>
+              {#if !draft.hideInfoPanel}
+                <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block is
+                     part of the page, so it has no width to set — only a text size. -->
+                {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
+                  <label>Info panel width (desktop) <span>{draft.inspectorWidth}px</span><input type="range" min="240" max="560" step="10" bind:value={draft.inspectorWidth} /></label>
+                {/if}
+                {#if draft.systemView !== 'list'}
+                  <label>Info text size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="1.6" step="0.05" bind:value={draft.infoFontScale} /></label>
+                {/if}
               {/if}
             </fieldset>
             <fieldset>
@@ -366,6 +502,23 @@
                 on:change={(e) => (draft = { ...draft, systemOverlay: e.detail })} />
             </fieldset>
           {/if}
+        {:else if tab === 'transitions'}
+          <fieldset>
+            <legend>Page transition</legend>
+            <label>Transition
+              <select value={draft.transition}
+                on:change={(e) => { const id = (e.currentTarget as HTMLSelectElement).value; draft = { ...draft, transition: id, transitionParams: transitionRegistry.defaultParams(id) }; }}>
+                {#each transitionRegistry.getAll() as t}<option value={t.id}>{t.label}</option>{/each}
+              </select>
+            </label>
+            <p class="hint">Plays when the reader opens a different world in the Document view: the old page is captured, the new one is built underneath, then the snapshot is animated away. Tap a world in the preview to see it. (Other views cut instantly for now.)</p>
+            {#if draft.transition !== 'none'}
+              <div class="filter-params">
+                <TransitionParamControls transitionId={draft.transition} values={draft.transitionParams}
+                  on:change={(e) => (draft = { ...draft, transitionParams: e.detail })} />
+              </div>
+            {/if}
+          </fieldset>
         {:else if tab === 'filter'}
           <fieldset>
             <legend>Visual filter</legend>
@@ -433,9 +586,14 @@
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
                 background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
-              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
-                <StarmapListView starmap={$starmapStore} accentColor={accentCss} font={draft.font} />
-              </FilterFrame>
+              <!-- D9: the starmap DOCUMENT — same engine + theme as the system document, real filter. -->
+              <FilteredDocumentView stage="starmap" starmap={$starmapStore}
+                font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
+                listStyle={draft.listStyle} documentStyle={draft.documentStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
+                fontScale={draft.infoFontScale}
+                filterId={draft.filter} filterParams={draft.filterParams}
+                companyName={draft.companyName} footerText={draft.footerText}
+                selectable={false} />
             {/if}
           {:else if previewLayer === 'system'}
             {#if !draft.systemEnabled}
@@ -444,8 +602,43 @@
                  themselves — systemStageStyle is the same one the live player view uses, so this preview
                  can't drift from what players actually get. -->
             {:else if (draft.systemView === 'holo3d' || draft.systemView === 'diagram2d') && previewSystem && rulePack}
-              <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle}
-                focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
+              <div class="holo-wrap">
+                <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle}
+                  focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
+                {#if infoPreview && !draft.hideInfoPanel}
+                  <!-- Info-block preview (D6): the SAME DocPanel players get, docked like the live view.
+                       Shows while Info Block controls are being tweaked; display controls hide it. -->
+                  <aside class="preview-insp" style="width:{Math.min(draft.inspectorWidth, 340)}px; font-family:{draft.font}; font-size:{Math.round(13 * draft.infoFontScale)}px">
+                    <DocPanel system={previewSystem} selectedId={previewInfoId}
+                      font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
+                      fontScale={draft.infoFontScale} listStyle={draft.listStyle} documentStyle={draft.documentStyle}
+                      tagStyle={draft.tagStyle} themeColors={draft.themeColors}
+                      imagery={draft.bodyGfx} photoFrame={draft.photoFrame}
+                      bodyRender={draft.render} bodyStyle={draft.bodyStyle} interactive={true} transparentBg />
+                  </aside>
+                {/if}
+              </div>
+            {:else if draft.systemView === 'document' && previewSystem}
+              <!-- The WS2 Guide document, drawn through the real filter exactly as players get it. Tap a
+                   world on the schematic (or a navigator row) to drill in — the info block is in-page. -->
+              <FilteredDocumentView
+                system={previewSystem} selectedId={previewFocusId}
+                font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
+                colorful={draft.accentColor === 'rainbow'}
+                imagery={draft.bodyGfx} photoFrame={draft.photoFrame}
+                hideInfoBlock={draft.hideInfoPanel}
+                transition={draft.transition} transitionParams={draft.transitionParams ?? {}}
+                bodyRender={draft.render} bodyStyle={draft.bodyStyle}
+                listStyle={draft.listStyle} documentStyle={draft.documentStyle} tagStyle={draft.tagStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
+                fontScale={draft.infoFontScale}
+                filterId={draft.filter} filterParams={draft.filterParams}
+                companyName={draft.companyName} footerText={draft.footerText}
+                tips={draft.guideTips && draft.guideTips !== 'off' ? {
+                  top: (draft.guideTips === 'top' || draft.guideTips === 'both') ? 'Sample header note — players see a fresh quip each page.' : undefined,
+                  bottom: (draft.guideTips === 'bottom' || draft.guideTips === 'both') ? 'Sample footer note — reserved space, wrecked by the filter.' : undefined
+                } : null}
+                selectable={true}
+                on:select={(e) => (previewFocusId = e.detail)} />
             {:else if draft.systemView === 'list' && previewSystem}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 <div class="sm-preview" style="font-family:{draft.font}; --accent:{accentCss}">
@@ -494,6 +687,16 @@
   input[type=range] { width: 100%; accent-color: var(--accent, #6aa0ff); }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4; }
   .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
+  .holo-wrap { position: relative; width: 100%; height: 100%; }
+  .preview-insp {
+    position: absolute; top: 10px; right: 10px; bottom: 10px; overflow-y: auto;
+    background: rgba(6, 8, 13, 0.97); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+  }
+  .colour-picker > summary { font-size: 0.72rem; color: var(--text-muted); cursor: pointer; padding: 2px 0; list-style-position: inside; user-select: none; }
+  .colour-picker[open] > summary { margin-bottom: 3px; }
+  .doc-colours { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; padding: 2px 0 2px 8px; border-left: 2px solid var(--border); }
+  .col-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); gap: 6px; }
+  .col-row input[type=color] { width: 34px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 3px; background: none; cursor: pointer; }
   .overlay-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
   .assets { display: flex; flex-direction: column; gap: 6px; }
   .asset { display: flex; align-items: center; gap: 8px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; }

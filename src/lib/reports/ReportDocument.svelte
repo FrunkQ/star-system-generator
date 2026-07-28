@@ -887,7 +887,7 @@
                     <text x="66" y="56" class="orbit-label" transform="rotate(-45 66 56)">{set.starMembers[0]?.name || 'Star A'}</text>
                     <text x="106" y="56" class="orbit-label" transform="rotate(-45 106 56)">{set.starMembers[1]?.name || 'Star B'}</text>
                     <circle cx="74" cy="68" r="2.4" fill="#111" />
-                    <text x="74" y="92" text-anchor="middle" class="label">Barycenter</text>
+                    <text x="74" y="92" text-anchor="middle" class="label">Barycentre</text>
                     {#each set.orbitEntries as entry}
                         {@const markerX = 152 + ((entry.orbitRadius - 28) / (185 - 28)) * 500}
                         {#each getBodyStackItems(entry.body) as item, stackIdx}

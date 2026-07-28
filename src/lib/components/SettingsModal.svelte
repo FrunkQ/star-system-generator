@@ -387,6 +387,7 @@
         {:else if activeSection === 'planets'}
           <p class="section-hint">Planet rulepack overrides.</p>
           <button class="section-btn" on:click={() => { dispatch('editatmospheres'); showModal = false; }}>Atmospheres…</button>
+          <button class="section-btn" on:click={() => { dispatch('editliquids'); showModal = false; }}>Liquids…</button>
 
         {:else}
           <p class="section-hint">App-wide preferences.</p>

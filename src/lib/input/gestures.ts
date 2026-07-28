@@ -5,6 +5,8 @@
 // tap, right-click (contextmenu) or touch long-press = onLongPress. Contract is the one
 // specified in CLAUDE-CODE-HANDOFF.md 02.1.
 
+import { viewportToLocal } from './pointerMap';
+
 export interface GestureHandlers {
   onPanStart?: (p: { x: number; y: number }) => void;
   onPan?: (e: { dx: number; dy: number; x: number; y: number }) => void;
@@ -46,8 +48,9 @@ export function gestures(node: HTMLElement | SVGElement, opts: GestureHandlers =
   let velocity: VelocitySample[] = [];
 
   function localPoint(e: { clientX: number; clientY: number }): Point {
-    const rect = node.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    // Invert any ancestor CSS warp (CRT skew / projector scale) so hit-testing tracks the pixels
+    // the user sees. No-op (plain rect maths) when there's no transform or inversion is disabled.
+    return viewportToLocal(node as HTMLElement, e.clientX, e.clientY);
   }
 
   function clearLongPress() {

@@ -5,6 +5,9 @@
 // meant to colour it). The body photo is omitted (a cross-origin image would taint the WebGL texture).
 import type { Fact } from './bodyFacts';
 import type { GraphicPlacement } from '$lib/player/presetTypes';
+import { wrap } from './textLayout';
+import { renderDocument } from './document/renderDocument';
+import { hudCardToBlocks, hudCardTheme } from './document/cardBlocks';
 
 export interface HudOverlay { img: HTMLImageElement; placement: GraphicPlacement; }
 // "The Guide" margin notes drawn INTO the filtered HUD (so the CRT/NV/thermal shader catches them),
@@ -26,21 +29,12 @@ export interface HudCard {
   font: string;
   fontScale: number;
   mono: boolean;      // white scheme: draw everything white/grey so a filter colours it
+  // D6 unify: when present, the card body is these pre-built document blocks + theme (the SAME
+  // panel-mode builder/theme the 2D aside and the Document use) instead of the legacy title/facts flow.
+  blocks?: import('./document/blocks').DocBlock[];
+  theme?: import('./document/blocks').DocTheme;
 }
 export interface HudOpts { viewW: number; viewH: number; overlay?: HudOverlay | null; card?: HudCard | null; tips?: HudTips | null; }
-
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let line = '';
-  for (const w of words) {
-    const t = line ? line + ' ' + w : w;
-    if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; }
-    else line = t;
-  }
-  if (line) lines.push(line);
-  return lines;
-}
 
 // The per-screen overlay bitmap, placed by the standard 9-pin + size%/stretch + opacity rules.
 // Exported so the (gfx) list + cover surfaces composite an identical overlay INTO the real filter.
@@ -65,6 +59,43 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, o: HudOverlay, W: num
 // A single "Guide" margin banner pinned to the top or bottom edge (inside the bezel safe-area).
 // Prefix stamp + wrapped note, on a dark translucent pill so the filter tints it by luminance.
 // Exported so the cover and the (gfx) list views draw an identical banner.
+// Shared layout for the tip banner — computed once so drawTipBanner and tipBannerHeight (which the
+// document uses to RESERVE a header/footer band, so the banner doesn't overlap the body) agree exactly.
+function tipBannerLayout(
+  ctx: CanvasRenderingContext2D, text: string, edge: 'top' | 'bottom', viewW: number, viewH: number,
+  opts: { accent: string; font: string; mono: boolean }
+) {
+  const fontPx = Math.max(12, Math.min(viewW * 0.011, viewH * 0.026, 20));
+  const stampPx = Math.round(fontPx * 0.82);
+  const pad = Math.round(fontPx * 0.85);
+  const lineH = Math.round(fontPx * 1.32);
+  // Full-width bar flush to the edge — no centred pill, no dead space. Text runs the whole page width
+  // (minus a little side padding) before it wraps to a second line.
+  const barW = viewW;
+  const x0 = 0;
+  const innerW = barW - pad * 2;
+  const prefix = edge === 'top' ? 'TRAVELLER ADVISORY' : 'THE GUIDE SAYS';
+  const stampFont = `700 ${stampPx}px ${opts.font}`;
+  const noteFont = `italic ${Math.round(fontPx)}px ${opts.font}`;
+  ctx.font = stampFont;
+  const stampW = ctx.measureText(prefix + '  ').width;
+  ctx.font = noteFont;
+  const lines = wrap(ctx, text, innerW - stampW);
+  const barH = pad * 2 + Math.max(lineH, lines.length * lineH);
+  const y0 = edge === 'top' ? 0 : viewH - barH; // hard up against the top / bottom edge
+  return { fontPx, pad, lineH, barW, x0, prefix, stampFont, noteFont, stampW, lines, barH, y0 };
+}
+
+// The on-screen height of a top/bottom tip banner (0 if no text) — the document reserves this so the
+// banner reads as a genuine header/footer instead of overprinting the body.
+export function tipBannerHeight(
+  ctx: CanvasRenderingContext2D, text: string, edge: 'top' | 'bottom', viewW: number, viewH: number,
+  opts: { accent: string; font: string; mono: boolean }
+): number {
+  if (!text) return 0;
+  return tipBannerLayout(ctx, text, edge, viewW, viewH, opts).barH;
+}
+
 export function drawTipBanner(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -74,41 +105,17 @@ export function drawTipBanner(
   opts: { accent: string; font: string; mono: boolean }
 ) {
   if (!text) return;
-  const my = Math.round(viewH * 0.045);
-  // Font + box are sized as a FRACTION of the view (the HUD canvas maps 1:1 onto the display), so the
-  // banner reads at a consistent on-screen size and never stretches edge-to-edge on a wide screen: it's
-  // a centred, bounded box that reflows. Sizes scale with the smaller of a width- and height-based cap.
-  const fontPx = Math.max(12, Math.min(viewW * 0.011, viewH * 0.026, 20));
-  const stampPx = Math.round(fontPx * 0.82);
-  const pad = Math.round(fontPx * 1.0);
-  const lineH = Math.round(fontPx * 1.32);
-  const barW = Math.min(viewW * 0.92, Math.max(viewW * 0.42, fontPx * 44)); // centred, bounded to ~mid-width
-  const x0 = Math.round((viewW - barW) / 2);
-  const innerW = barW - pad * 2;
-  const prefix = edge === 'top' ? 'TRAVELLER ADVISORY' : 'THE GUIDE SAYS';
-  const font = opts.font;
-  const stampFont = `700 ${stampPx}px ${font}`;
-  const noteFont = `italic ${Math.round(fontPx)}px ${font}`;
+  const { fontPx, pad, lineH, barW, x0, prefix, stampFont, noteFont, stampW, lines, barH, y0 } =
+    tipBannerLayout(ctx, text, edge, viewW, viewH, opts);
 
-  ctx.font = stampFont;
-  const stampW = ctx.measureText(prefix + '  ').width;
-  ctx.font = noteFont;
-  const lines = wrap(ctx, text, innerW - stampW);
-  const barH = pad * 2 + Math.max(lineH, lines.length * lineH);
-  const y0 = edge === 'top' ? my : viewH - my - barH;
-
-  const r = 8;
-  ctx.beginPath();
-  ctx.moveTo(x0 + r, y0);
-  ctx.arcTo(x0 + barW, y0, x0 + barW, y0 + barH, r);
-  ctx.arcTo(x0 + barW, y0 + barH, x0, y0 + barH, r);
-  ctx.arcTo(x0, y0 + barH, x0, y0, r);
-  ctx.arcTo(x0, y0, x0 + barW, y0, r);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(6,8,13,0.9)';
-  ctx.fill();
+  // Full-width band flush to the edge (no rounded pill). A hairline on the inner edge separates it from
+  // the body without a gap of dead space.
+  ctx.fillStyle = 'rgba(6,8,13,0.92)';
+  ctx.fillRect(x0, y0, barW, barH);
+  ctx.fillStyle = 'rgba(200,214,232,0.14)';
+  ctx.fillRect(x0, edge === 'top' ? y0 + barH - 1 : y0, barW, 1);
   ctx.save();
-  ctx.clip();
+  ctx.beginPath(); ctx.rect(x0, y0, barW, barH); ctx.clip();
 
   const accent = opts.mono ? '#cfd6e4' : (opts.accent && opts.accent !== 'rainbow' ? opts.accent : '#8ed0ff');
   ctx.textBaseline = 'alphabetic';
@@ -134,7 +141,6 @@ function drawTips(ctx: CanvasRenderingContext2D, t: HudTips, viewW: number, view
 
 function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, viewH: number) {
   const panelW = Math.min(viewW, c.panelW);
-  const font = c.font;
   // Bezel margin: the CRT shader samples with fract() at the edges, so content flush to the edge wraps
   // around under barrel warp — inset keeps it in the safe area (reads like a screen with a bezel).
   const mx = Math.round(viewW * 0.035), my = Math.round(viewH * 0.045);
@@ -143,8 +149,6 @@ function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, view
   const pad = 18;
   const s = Math.max(0.7, Math.min(1.8, c.fontScale || 1));
   const cx = x0 + pad;
-  const rx = viewW - mx - pad;
-  const titleCol = c.mono ? '#f2f5fa' : (c.accent && c.accent !== 'rainbow' ? c.accent : '#e8edf4');
 
   const r = 10;
   ctx.beginPath();
@@ -168,44 +172,13 @@ function drawCard(ctx: CanvasRenderingContext2D, c: HudCard, viewW: number, view
   ctx.moveTo(xcx + hs, xcy - hs); ctx.lineTo(xcx - hs, xcy + hs);
   ctx.stroke();
 
-  let y = pTop + pad + 20 * s;
-  ctx.textBaseline = 'alphabetic';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = titleCol;
-  ctx.font = `700 ${Math.round(22 * s)}px ${font}`;
-  ctx.fillText(c.title, cx, y);
-  y += 8 * s;
-  ctx.fillStyle = 'rgba(200,214,232,0.6)';
-  ctx.font = `${Math.round(11 * s)}px ${font}`;
-  y += 14 * s;
-  ctx.fillText(c.sub.toUpperCase(), cx, y);
-  y += 16 * s;
-
-  const rowH = Math.round(18 * s);
-  const rowFont = `${Math.round(12 * s)}px ${font}`;
-  for (const f of c.facts) {
-    if (y > pBot - pad - rowH) break;
-    ctx.font = rowFont;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(190,205,224,0.7)';
-    ctx.fillText(f.label, cx, y);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#e8edf4';
-    ctx.fillText(f.value, rx, y);
-    y += rowH;
-  }
-
-  if (c.description && y < pBot - pad - 20 * s) {
-    y += 10 * s;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(200,214,232,0.8)';
-    ctx.font = `italic ${Math.round(12 * s)}px ${font}`;
-    for (const ln of wrap(ctx, c.description, panelW - pad * 2)) {
-      if (y > pBot - pad) break;
-      ctx.fillText(ln, cx, y);
-      y += Math.round(16 * s);
-    }
-  }
+  // Content is drawn by the SHARED document engine — the same renderDocument that draws the Document
+  // system-view (D6 unify). Preferred: the caller's panel-mode blocks + full preset theme (facts, TAGS,
+  // description, styled exactly like every other info block); fallback: the legacy card bridge. The
+  // panel chrome (rounded bg, clip, close glyph) stays bespoke here.
+  renderDocument(ctx, c.blocks ?? hudCardToBlocks(c), c.theme ?? hudCardTheme(c), {
+    x: cx, y: pTop + pad + 6 * s, w: panelW - pad * 2, maxY: pBot - pad, scrollY: 0
+  });
   ctx.restore();
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveGeoActivity, geothermalVigor, type GeoInputs } from './geoActivity';
+import { deriveGeoActivity, geothermalVigor, deriveSurfaceAgeGyr, type GeoInputs } from './geoActivity';
 
 const ROCK = { metal: 0.3, rock: 0.7, carbon: 0, ice: 0, gas: 0 };
 const base: GeoInputs = {
@@ -23,10 +23,29 @@ describe('deriveGeoActivity — reference worlds', () => {
     expect(w({ hasSurfaceWater: true }).regime).toBe('plate-tectonics');
   });
 
-  it('Venus: vigorous but dry → stagnant lid', () => {
+  it('Venus: vigorous but dry → episodic (heat-trapping lid overturns catastrophically)', () => {
     const v = w({ massMe: 0.815, radiusRe: 0.95, hasSurfaceWater: false });
-    expect(v.regime).toBe('stagnant-lid');
+    expect(v.regime).toBe('episodic');
     expect(v.volcanism).toBe('resurfacing');
+  });
+
+  it('a cooler dry world (below the episodic onset) sits on a quiet stagnant lid', () => {
+    // Dry, active, but not vigorous enough to trap heat to catastrophic overturn: vigor in [0.6, 0.7).
+    const s = w({ massMe: 0.65, radiusRe: 0.9, hasSurfaceWater: false });
+    expect(s.vigor).toBeGreaterThanOrEqual(0.6);
+    expect(s.vigor).toBeLessThan(0.7);
+    expect(s.regime).toBe('stagnant-lid');
+  });
+
+  it('a waning mid world (vigor 0.35–0.6) → plutonic (intrusive-only, no surface volcanism)', () => {
+    // An aging Earth-clone past its plate-tectonic prime: still warm at depth, but the heat no longer
+    // reaches the surface or mobilises the lid.
+    const p = w({ hasSurfaceWater: true, ageGyr: 7 });
+    expect(p.vigor).toBeGreaterThanOrEqual(0.35);
+    expect(p.vigor).toBeLessThan(0.6);
+    expect(p.regime).toBe('plutonic');
+    expect(p.volcanism).toBe('intrusive');
+    expect(p.active).toBe(true);
   });
 
   it('Mars: small + old → inactive (radiogenics decayed below threshold)', () => {
@@ -57,6 +76,16 @@ describe('deriveGeoActivity — reference worlds', () => {
     });
     expect(eu.regime).toBe('cryovolcanic');
   });
+
+  it('a tiny tidally-stressed icy lump (Phobos/Deimos-like) is shredded, not cryovolcanic → inactive', () => {
+    // Below the ~200 km round limit (radiusRe 0.0017 ≈ 11 km) a body can't differentiate or hold a
+    // melt layer — strong tidal forcing shatters it rather than driving cryovolcanism.
+    const phobos = w({
+      massMe: 1.8e-9, radiusRe: 0.0017, makeup: { metal: 0, rock: 0.7, carbon: 0, ice: 0.3, gas: 0 },
+      tidalHotspots: true, hasSubsurfaceOcean: true, icyShell: true
+    });
+    expect(phobos.regime).toBe('inactive');
+  });
 });
 
 describe('deriveGeoActivity — age turns Earth into Mars', () => {
@@ -65,8 +94,27 @@ describe('deriveGeoActivity — age turns Earth into Mars', () => {
     expect(w({ hasSurfaceWater: true, ageGyr: 9.5 }).regime).toBe('inactive');
   });
 
+  it('surface age: active worlds read their resurfacing timescale, capped at system age', () => {
+    // Earth (plate tectonics) → young ocean-floor surface; Io (tidal) → almost freshly repaved.
+    expect(deriveGeoActivity({ ...base, hasSurfaceWater: true }).surfaceAgeGyr).toBeCloseTo(0.2, 2);
+    const io = w({ massMe: 0.015, radiusRe: 0.28, tidalLavaFlows: true });
+    expect(io.surfaceAgeGyr).toBeLessThan(0.01);
+    // A young system caps the surface age (a 0.5 Gyr system can't have a 1 Gyr stagnant surface).
+    expect(deriveSurfaceAgeGyr('stagnant-lid', 0.8, 0.5)).toBeCloseTo(0.5, 2);
+  });
+
+  it('surface age: a dead world froze when its vigor decayed below the active threshold', () => {
+    // Mars died early → an ancient surface (~3.8 Gyr exposed); the inversion recovers that from vigor.
+    const mars = w({ massMe: 0.107, radiusRe: 0.532, ageGyr: 4.6 });
+    expect(mars.regime).toBe('inactive');
+    expect(mars.surfaceAgeGyr).toBeGreaterThan(3);
+    expect(mars.surfaceAgeGyr).toBeLessThanOrEqual(4.6);
+    // A world that was never active reads the full system age (capped), not more.
+    expect(deriveSurfaceAgeGyr('inactive', 0.02, 4.5)).toBeCloseTo(4.5, 2);
+  });
+
   it('tags are mechanism-specific and unique per regime', () => {
     expect(w({ hasSurfaceWater: true }).tags).toEqual(['geology/plate-tectonics']);
-    expect(w({}).tags).toEqual(['geology/stagnant-lid']);
+    expect(w({}).tags).toEqual(['geology/episodic']); // dry Earth-mass, vigor ≈ 1 → heat-trapping lid
   });
 });

@@ -18,6 +18,14 @@
           "name": "asphyxiant",
           "trigger": "pp > 0.9 AND percent > 0.9"
         }
+      ],
+      "aurora": [
+        {
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "efficiency": 1,
+          "altitude": 0
+        }
       ]
     },
     "O2": {
@@ -53,6 +61,21 @@
         {
           "name": "oxygen-toxicity",
           "trigger": "pp > 0.5"
+        }
+      ],
+      "aurora": [
+        {
+          "colour": "green",
+          "hex": "#57e39a",
+          "efficiency": 5,
+          "altitude": 1
+        },
+        {
+          "colour": "crimson",
+          "hex": "#e14b3a",
+          "efficiency": 1.5,
+          "altitude": 2,
+          "minFraction": 0.12
         }
       ]
     },
@@ -158,6 +181,14 @@
           "name": "crushing-atmosphere",
           "trigger": "pp > 50.0"
         }
+      ],
+      "aurora": [
+        {
+          "colour": "violet",
+          "hex": "#c86ad0",
+          "efficiency": 1.4,
+          "altitude": 0
+        }
       ]
     },
     "H2O": {
@@ -201,6 +232,14 @@
         {
           "name": "greenhouse",
           "trigger": "percent > 0.01"
+        }
+      ],
+      "aurora": [
+        {
+          "colour": "blue",
+          "hex": "#6ab6ff",
+          "efficiency": 1.2,
+          "altitude": 0
         }
       ]
     },
@@ -349,6 +388,14 @@
         {
           "name": "flammable",
           "trigger": "pp > 0.04 AND O2_gas_present"
+        }
+      ],
+      "aurora": [
+        {
+          "colour": "red-pink",
+          "hex": "#ff7e6a",
+          "efficiency": 1.8,
+          "altitude": 1
         }
       ]
     },

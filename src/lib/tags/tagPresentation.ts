@@ -167,6 +167,14 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Tidally locked',
     description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, Mercury, most close-in worlds). Pin it by hand in the body editor to override.'
   },
+  'orbit/locked-star': {
+    label: 'Locked to its star',
+    description: 'Tidally locked to the STAR — one face permanently sunward. A permanent day/night split (an eyeball world): a baked or molten substellar hemisphere and a frozen far side.'
+  },
+  'orbit/locked-planet': {
+    label: 'Locked to its planet',
+    description: 'A moon tidally locked to its planet — one face permanently toward the planet, but its whole surface still cycles through stellar day and night over its orbit, so it weathers evenly (no eyeball).'
+  },
   'orbit/retrograde': {
     label: 'Retrograde orbit',
     description: 'Orbits opposite to the system\'s general direction — usually the signature of a captured body or a violent dynamical past.'
@@ -260,6 +268,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'climate/runaway-greenhouse': { label: 'Runaway greenhouse', description: 'A runaway greenhouse has taken hold — trapped heat has driven surface volatiles into a thick, self-reinforcing hothouse atmosphere (Venus).' },
   'structure/subsurface-ocean': { label: 'Subsurface ocean', description: 'A liquid ocean beneath an ice crust, kept liquid by tidal and/or radiogenic interior heat.' },
   'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere — affects albedo, apparent colour and greenhouse warming.' },
+  'feature/polar-vortex':       { label: 'Polar vortex',     description: 'A standing polar jet stream on a gas giant that locks into a geometric polygon — Saturn\'s north pole is a famous hexagon (6 sides); Jupiter\'s poles hold polygonal cyclone rings (5–8). The value is the side count.' },
   'structure/supercritical-envelope': { label: 'Supercritical envelope', description: 'The dominant volatile is past its critical point (for water, 647 K / 218 bar) — a dense supercritical fluid that is neither a true sea nor a true sky.' },
 
   // --- Hydrosphere phase (the recorded surface volatile, read at the current temperature & pressure) ---

@@ -44,6 +44,12 @@ export const DEFAULT_PRESET: PlayerPreset = {
   starmapView: 'diagram2d',
   systemEnabled: true,
   systemView: 'holo3d',
+  documentStyle: 'guide',
+  tagStyle: 'pills',
+  navStyle: 'plain',
+  photoFrame: 'letterbox',
+  transition: 'none',
+  transitionParams: {},
   font: 'system-ui',
   accentColor: '#6aa0ff',
   starmapOverlay: null,
@@ -58,6 +64,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   bodyStyle: 'textured',
   render: 'filled',
   unlit: false,
+  lensing: true,
   auroras: true,
   bodyGfx: 'sphere',
   beltStyle: 'rocks',
@@ -92,11 +99,12 @@ const F_MONO = 'ui-monospace, "Cascadia Mono", Consolas, monospace';
 const F_TYPEWRITER = '"Courier New", Courier, monospace';
 
 export const BUILTIN_PRESETS: PlayerPreset[] = [
-  // The Guide: friendly + ILLUSTRATED — procedural true-colour discs, rainbow chrome, funny margin notes,
-  // DON'T PANIC cover. Mirrors the old 'guide' skin (CatalogueBrowser disc imagery + guide notes).
+  // The Guide: friendly + ILLUSTRATED — the interactive canvas GUIDE DOCUMENT (WS2): rainbow orbital
+  // schematic + in-page body file + navigator, funny margin notes, DON'T PANIC cover. `bodyGfx: disc`
+  // keeps the procedural-disc imagery intent (rendered into the document from Phase 4).
   preset({
     id: 'guide', name: 'The Guide', description: "A traveller's field guide — friendly, illustrated, mostly accurate.",
-    systemView: 'diagram2d', bodyStyle: 'textured', bodyGfx: 'disc', accentColor: RAINBOW, font: F_SERIF,
+    systemView: 'document', documentStyle: 'guide', bodyStyle: 'textured', bodyGfx: 'disc', accentColor: RAINBOW, font: F_SERIF,
     guideTips: 'both',
     cover: { enabled: true, title: "DON'T PANIC", subtitle: '', body: '', label: '', graphic: null }
   }),
@@ -110,11 +118,12 @@ export const BUILTIN_PRESETS: PlayerPreset[] = [
     id: 'console', name: 'Console', description: 'A ship-console orbital plot.',
     systemView: 'diagram2d', bodyGfx: 'flat', accentColor: '#7dff9e', font: F_MONO, grid: 'plain'
   }),
-  // CRT Terminal: a salvaged green-phosphor TEXT terminal — the body list in monochrome under the CRT
-  // filter (so the phosphor tints it) + scanlines. Old 'mono' skin (retro report, mono tint).
+  // CRT Terminal: a salvaged green-phosphor terminal — the Guide document in the TERMINAL style
+  // (phosphor mono, '>' log lines) under the CRT filter + scanlines. Old 'mono' skin, now a document.
   preset({
     id: 'crt', name: 'CRT Terminal', description: 'A green-phosphor CRT terminal with scanlines.',
-    systemView: 'list', filter: 'crt', filterParams: { phosphor: CRT_GREEN }, accentColor: CRT_GREEN,
+    systemView: 'document', documentStyle: 'terminal', bodyGfx: 'none',
+    filter: 'crt', filterParams: { phosphor: CRT_GREEN }, accentColor: CRT_GREEN,
     bodyStyle: 'white', starmapMono: true, font: F_TYPEWRITER
   }),
   // Holo Table: the 3D holographic orrery — textured spheres, tilted, starfield. Old 'holo' skin.
@@ -201,6 +210,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     bodyStyle: p.bodyStyle,
     render: p.render,
     unlit: p.unlit,
+    lensing: p.lensing !== false, // default on
     auroras: p.auroras,
     bodyGfx: p.bodyGfx,
     beltStyle: p.beltStyle,
@@ -221,6 +231,11 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
  */
 export function systemStageStyle(p: PlayerPreset, base?: HoloStyle): HoloStyle {
   const s = base ?? holoStyleOf(p);
+  // The 3D orrery always renders bodies as 3D spheres — "body graphics" (disc / photo / flat) is an
+  // INFO-BLOCK choice, not an orrery one (it belongs to the per-body picture, coming to 3D with the
+  // unified info block). Forcing sphere here stops a value stored for another view (e.g. a duplicated
+  // document preset's 'photo') from flattening the 3D scene into discs.
+  if (p.systemView === 'holo3d') return { ...s, bodyGfx: 'sphere' };
   if (p.systemView !== 'diagram2d') return s;
   // A 2D map is ALWAYS flat — lockOverhead is not the GM's to unset here, or unticking Lock rotation
   // would tilt it into a 3D view. Lock rotation only fixes the HEADING (spin + follow-by-pan).

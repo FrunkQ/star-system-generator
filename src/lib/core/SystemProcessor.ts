@@ -1,18 +1,19 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
-import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG } from '../constants';
+import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK } from '../physics/temperature';
 import { deriveAlbedo } from '../physics/albedo';
-import { calculateSurfaceRadiation, calculateTotalStellarRadiation } from '../physics/radiation';
+import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
 import { deriveFluidLayers, cloudColourName } from '../physics/fluidLayers';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
-import { deriveAurora } from '../physics/aurora';
+import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
 import { deriveGeoActivity } from '../physics/geoActivity';
+import { deriveVolatileRetention } from '../physics/volatileRetention';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
@@ -23,6 +24,15 @@ import { brownDwarfThermal } from '../physics/substellar';
 // Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
 // processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
 const FORMATION_DELAY_GYR = 0.005;
+
+// Deterministic 0..1 hash of a string — for procedural features that must be STABLE across
+// re-processing (they key off the body id, not the shared per-run RNG whose stream depends on
+// iteration order).
+function hash01(s: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return ((h >>> 0) % 100000) / 100000;
+}
 
 // Old friendly-label tags that duplicate physics-derived ones — dropped on load (the physics
 // re-adds the correct namespaced versions). Explicit so user free-text tags are never touched.
@@ -403,19 +413,37 @@ export class SystemProcessor implements ISystemProcessor {
 
         // Tidal locking — derived from the despinning timescale vs the system age (a moon locks to
         // its planet, a planet to its star/barycentre). DYNAMIC by default; the body editor's
-        // checkbox pins it (tidalLockManual) and skips this assessment. Emits orbit/tidally-locked.
+        // checkbox pins it (tidalLockManual) and skips this assessment.
+        // WHAT it locks to matters for the renderer, and the renderer (a pure function of one body)
+        // can't see the parent chain — so we surface it here as tags: orbit/locked-star (a planet with a
+        // PERMANENT substellar face → an eyeball world) vs orbit/locked-planet (a moon; its whole surface
+        // still cycles through stellar day/night, so NO eyeball — but its cratering still skews to its
+        // orbital leading face).
+        const lockParent = allNodes.find((n) => n.id === body.parentId);
+        const orbitsStar = !!lockParent && (
+            (lockParent.kind === 'body' && (lockParent as CelestialBody).roleHint === 'star') ||
+            (lockParent.kind === 'barycenter' && ((lockParent as Barycenter).memberIds || []).some((mid) => {
+                const m = allNodes.find((n) => n.id === mid); return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
+            }))
+        );
         if (!(body as any).tidalLockManual && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
-            const lockHost = allNodes.find(n => n.id === body.parentId);
-            const lockHostMass = lockHost
-                ? (lockHost.kind === 'barycenter' ? (lockHost as Barycenter).effectiveMassKg : (lockHost as CelestialBody).massKg)
+            const lockHostMass = lockParent
+                ? (lockParent.kind === 'barycenter' ? (lockParent as Barycenter).effectiveMassKg : (lockParent as CelestialBody).massKg)
                 : 0;
             body.tidallyLocked = predictTidalLock(
                 body.orbit?.elements.a_AU || 0, body.radiusKm || 0, body.massKg || 0,
                 lockHostMass || 0, this.systemAgeGyr
             );
         }
-        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked');
-        if (body.tidallyLocked) body.tags.push({ key: 'orbit/tidally-locked' });
+        body.starTidallyLocked = !!body.tidallyLocked && orbitsStar;
+        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked' && t.key !== 'orbit/locked-star' && t.key !== 'orbit/locked-planet');
+        // Surface the lock TARGET as its own tag (both are registered so they survive tag sanitising):
+        // locked-star = a permanent substellar face (eyeball candidate); locked-planet = a moon whose
+        // whole surface still cycles through stellar day/night.
+        if (body.tidallyLocked) {
+            body.tags.push({ key: 'orbit/tidally-locked' });
+            body.tags.push({ key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
+        }
 
         // Radiogenic Heating — a GM OVERRIDE (body.overrides.radiogenicHeatK), re-derived from it each run
         // so it survives save/load. Default 0 (radiogenic surface heat is negligible vs sunlight for most
@@ -444,6 +472,8 @@ export class SystemProcessor implements ISystemProcessor {
             pressureBar: body.atmosphere?.pressure_bar ?? 0,
             rotationHours: body.rotation_period_hours,
             tidallyLocked: body.tidallyLocked,
+            starTidallyLocked: body.starTidallyLocked,
+            orbitalPeriodHours: (body.orbital_period_days ?? 0) * 24,
             eccentricity: body.orbit?.elements.e,
             obliquityDeg: body.obliquity_deg,
             hasLiquidOcean: surfaceLiquidWater,
@@ -462,7 +492,7 @@ export class SystemProcessor implements ISystemProcessor {
     }
 
     private processClassification(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG) {
-        // Skip classification for Stars, Barycenters, etc. 
+        // Skip classification for Stars, Barycenters, etc.
         // Only Planets and Moons need dynamic classification based on physics.
         if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return;
 
@@ -482,18 +512,15 @@ export class SystemProcessor implements ISystemProcessor {
         // Does this body orbit a star (or a star-pair barycentre)? a_AU/period/eccentricity
         // are otherwise relative to a planet/moon barycentre, so star-relative modifiers
         // (ultra-short-period, disrupted) must not use them. Circumbinary planets count.
+        // orbitsStar: this body orbits a star / stellar barycentre (a planet), not a planet (a moon).
+        // (processEnvironment computes the same for the lock target; this pass has its own scope.)
         const parentNode = allNodes.find((n) => n.id === body.parentId);
-        let orbitsStar = 0;
-        if (parentNode?.kind === 'body' && (parentNode as CelestialBody).roleHint === 'star') {
-            orbitsStar = 1;
-        } else if (parentNode?.kind === 'barycenter') {
-            const memberIds = (parentNode as Barycenter).memberIds || [];
-            const membersAreStars = memberIds.some((mid) => {
-                const m = allNodes.find((n) => n.id === mid);
-                return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
-            });
-            if (membersAreStars) orbitsStar = 1;
-        }
+        const orbitsStar = !!parentNode && (
+            (parentNode.kind === 'body' && (parentNode as CelestialBody).roleHint === 'star') ||
+            (parentNode.kind === 'barycenter' && ((parentNode as Barycenter).memberIds || []).some((mid) => {
+                const m = allNodes.find((n) => n.id === mid); return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
+            }))
+        );
 
         // Feature vector for classification
         const features: Record<string, number | string> = {
@@ -505,7 +532,7 @@ export class SystemProcessor implements ISystemProcessor {
             escapeVelocity_kms,
             a_AU: body.orbit?.elements.a_AU || 0,
             eccentricity: body.orbit?.elements.e || 0,
-            orbitsStar,
+            orbitsStar: orbitsStar ? 1 : 0,
             age_Gyr: this.systemAgeGyr,
             stellarType,
             stellarIrradiation: body.stellarRadiation || 0, // incident flux, ~1 at Earth
@@ -520,7 +547,7 @@ export class SystemProcessor implements ISystemProcessor {
             // tidally locked to its PLANET, not the star, so its far side still cycles through stellar
             // day/night — it can never be an eyeball. orbitsStar is 0 for moons (they orbit a planet /
             // planet-moon barycentre), so this is 0 for them even when tidallyLocked is 1.
-            starTidallyLocked: (body.tidallyLocked && orbitsStar) ? 1 : 0
+            starTidallyLocked: body.starTidallyLocked ? 1 : 0
         };
 
         // Default the environment features so airless/dry bodies match (undefined would
@@ -619,8 +646,10 @@ export class SystemProcessor implements ISystemProcessor {
             body.tags.push({ key: 'activity/sublimating' });
         }
         // Cryovolcanism: an icy, frozen-surfaced world with active interior heat driving melt eruptions.
+        // Needs a solid, differentiated body: exclude gas/ice giants (no crust to vent through) and
+        // sub-round lumps below the ~200 km limit (a tidally-shredded moonlet like Phobos can't cryovolcano).
         const cryoHeat = (body.tidalHeatK ?? 0) > 1 || (body.radiogenicHeatK ?? 0) > 2 || (body.internalHeatK ?? 0) > 4;
-        if (mk.ice > 0.2 && surfacePhase !== 'liquid' && cryoHeat) {
+        if (mk.ice > 0.2 && surfacePhase !== 'liquid' && cryoHeat && mk.gas <= 0.5 && (body.radiusKm ?? 0) >= HYDROSTATIC_MIN_RADIUS_KM) {
             body.tags.push({ key: 'activity/cryovolcanism' });
         }
 
@@ -632,6 +661,16 @@ export class SystemProcessor implements ISystemProcessor {
         }
         const cloudLayer = mk.gas <= 0.5 ? fluidLayers.find((l) => l.location === 'cloud') : undefined;
         if (cloudLayer) body.tags.push({ key: 'structure/cloud-deck', value: cloudColourName(cloudLayer.liquid) });
+
+        // POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Too emergent to
+        // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8
+        // (6 = the Saturn hexagon, the commonest). Deterministic on the body id so it's stable across
+        // re-runs. Re-derived → strip any prior auto copy but keep a user's manual one.
+        body.tags = body.tags.filter((t) => t.key !== 'feature/polar-vortex' || t.manual);
+        if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex') && hash01(`${body.id}|vortex`) < 0.7) {
+            const sides = [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|vsides`) * 6) % 6];
+            body.tags.push({ key: 'feature/polar-vortex', value: String(sides) });
+        }
 
         // Ring system — DERIVED from geometry (does the body host ring children?), not hand-tagged.
         // One ring → "ringed"; more than one → "multiple rings". Each ring's debris mass sorts it into
@@ -695,6 +734,9 @@ export class SystemProcessor implements ISystemProcessor {
         body.tags = (body.tags || []).filter((t) => !t.key.startsWith('aurora/'));
         const aurora = deriveAurora(body);
         if (aurora.tier) body.tags.push({ key: `aurora/${aurora.tier}`, value: aurora.strength.toFixed(2) });
+        // Resolve the emission-colour bands from the pack's gas data (data-driven, editable) onto the
+        // body so every renderer reads the same colours without needing the rule pack.
+        body.auroraEmitters = body.atmosphere ? resolveAuroraEmitters(body, pack) : undefined;
 
         // Geological activity (tectonics + volcanism by MECHANISM) — the biosphere keystone. Uses
         // makeup (radiogenic budget + iron core), mass/radius (cooling rate), system AGE (radiogenic
@@ -727,12 +769,50 @@ export class SystemProcessor implements ISystemProcessor {
                 radiogenicOverrideK: body.radiogenicHeatK ?? 0
             });
             for (const key of body.geoActivity.tags) body.tags.push({ key });
+            // Surface age (Gyr the visible surface has been exposed) drives cratering / weathering /
+            // tholin build-up. Bucketed into a coarse tag for filtering; the number lives on geoActivity.
+            body.tags = body.tags.filter((t) => !t.key.startsWith('surface/age'));
+            const sAge = body.geoActivity.surfaceAgeGyr;
+            const ageBucket = sAge < 0.1 ? 'young' : sAge < 1 ? 'moderate' : sAge < 3 ? 'old' : 'ancient';
+            body.tags.push({ key: 'surface/age', value: ageBucket });
+            // Irradiation dose (space weathering) — stellar UV + cosmic-ray floor, unshielded, over the
+            // surface's exposure time. Drives tholin darkening (with retained organics as the precursor).
+            body.tags = body.tags.filter((t) => !t.key.startsWith('surface/irradiation'));
+            body.irradiationDose = deriveIrradiationDose(
+                body.equilibriumTempK ?? body.temperatureK ?? 0,
+                body.radiationShieldingMag ?? 0,
+                sAge
+            );
+            const doseBucket = body.irradiationDose < 0.05 ? 'low' : body.irradiationDose < 0.2 ? 'moderate' : 'high';
+            body.tags.push({ key: 'surface/irradiation', value: doseBucket });
             features['geoActive'] = body.geoActivity.active ? 1 : 0;
             features['plateTectonics'] = body.geoActivity.regime === 'plate-tectonics' ? 1 : 0;
         } else {
             body.geoActivity = undefined;
             features['geoActive'] = 0;
             features['plateTectonics'] = 0;
+        }
+
+        // Volatile-ice retention (which ices survive on the surface as frost/bright ice) — the physics
+        // base for frost/tholin/bright-ice visuals. Cold trap (surface below the ice's melt point) +
+        // gravity trap (Jeans λ holds the sublimated vapour). Solid surfaces only; giants excluded.
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('volatiles/'));
+        if (mk.gas <= 0.5 && (body.roleHint === 'planet' || body.roleHint === 'moon') && body.massKg && body.radiusKm) {
+            body.volatiles = deriveVolatileRetention({
+                massKg: body.massKg,
+                radiusKm: body.radiusKm,
+                surfaceTempK: body.temperatureK ?? body.equilibriumTempK ?? 0,
+                equilibriumTempK: body.equilibriumTempK ?? body.temperatureK ?? 0,
+                // Availability: a condensed-ice inventory (bulk ice / icy shell / hydrosphere) for the
+                // water + supervolatiles; active silicate volcanism (Io) for the SO2 frost source.
+                iceBearing: mk.ice > 0.05 || icyShell || (body.hydrosphere?.coverage ?? 0) > 0.05,
+                volcanic: body.geoActivity?.regime === 'tidal-volcanic'
+            }, pack);
+            if (body.volatiles.retained.length) {
+                body.tags.push({ key: 'volatiles/ices', value: body.volatiles.retained.join('+') });
+            }
+        } else {
+            body.volatiles = undefined;
         }
 
         // Re-run Classification
@@ -971,8 +1051,10 @@ export class SystemProcessor implements ISystemProcessor {
         //     penalise. Super-habitability (below) is what pushes a world above Earth. ---
         let geoMod = 0;
         const regime = planet.geoActivity?.regime;
-        if (regime === 'stagnant-lid') geoMod -= 25;          // runaway-greenhouse risk (Venus)
+        if (regime === 'episodic') geoMod -= 25;              // catastrophic resurfacing + runaway greenhouse (Venus)
+        else if (regime === 'stagnant-lid') geoMod -= 25;     // heat-trapping dry lid, no CO2 drawdown
         else if (regime === 'tidal-volcanic') geoMod -= 20;   // resurfaced too fast for surface life
+        else if (regime === 'plutonic') geoMod -= 10;         // intrusive only → no surface outgassing/recycling
         else if (regime === 'inactive') geoMod -= 10;         // no outgassing / nutrient recycling
         if (planet.magnetism && !planet.magnetism.intrinsic && planet.magnetism.source === 'none') {
             geoMod -= 8;                                       // unshielded → atmosphere stripping
@@ -1013,7 +1095,7 @@ export class SystemProcessor implements ISystemProcessor {
         // Determine Tier and add Tag. The top tiers now require a geologically STABLE world —
         // plate tectonics for Earth-like; not stagnant-lid/tidal-volcanic for human-habitable.
         const isEarthLike = factors.temp > 0.9 && factors.pressure > 0.8 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.9 && factors.gravity > 0.8 && planet.atmosphere?.composition?.['O2'] > 0.1 && regime === 'plate-tectonics';
-        const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6 && regime !== 'stagnant-lid' && regime !== 'tidal-volcanic';
+        const isHumanHabitable = factors.temp > 0.7 && factors.pressure > 0.6 && factors.solvent === 1 && planet.hydrosphere?.composition === 'water' && factors.radiation > 0.7 && factors.gravity > 0.6 && regime !== 'stagnant-lid' && regime !== 'episodic' && regime !== 'tidal-volcanic';
         const isAlienHabitable = planet.habitabilityScore > 40 && factors.solvent > 0; // needs SOME usable solvent
         const isSuperHabitable = planet.habitabilityScore > 100; // better-than-Earth (only super-habitable worlds)
 
@@ -1036,8 +1118,10 @@ export class SystemProcessor implements ISystemProcessor {
         const tempIdeal = planet.hydrosphere?.composition === 'methane' ? '−162 °C ±30'
             : planet.hydrosphere?.composition === 'ammonia' ? '−55 °C ±30' : '10–25 °C';
         const modifiers: { label: string; delta: number }[] = [];
-        if (regime === 'stagnant-lid') modifiers.push({ label: 'Stagnant lid (runaway-greenhouse risk)', delta: -25 });
+        if (regime === 'episodic') modifiers.push({ label: 'Episodic resurfacing (runaway-greenhouse risk)', delta: -25 });
+        else if (regime === 'stagnant-lid') modifiers.push({ label: 'Stagnant lid (no CO2 drawdown)', delta: -25 });
         else if (regime === 'tidal-volcanic') modifiers.push({ label: 'Tidal volcanism (resurfaced)', delta: -20 });
+        else if (regime === 'plutonic') modifiers.push({ label: 'Plutonic (no surface outgassing)', delta: -10 });
         else if (regime === 'inactive') modifiers.push({ label: 'Geologically inactive (no recycling)', delta: -10 });
         if (planet.magnetism && !planet.magnetism.intrinsic && planet.magnetism.source === 'none') modifiers.push({ label: 'No magnetosphere (atmosphere stripping)', delta: -8 });
         if (superBonus > 0) modifiers.push({ label: 'Super-habitable bonus', delta: superBonus });

@@ -3,6 +3,7 @@
 // same treatment as the cover/info-card. Static: redrawn only on data / scroll / size change (cheap).
 // Returns the row hit-boxes (in CSS px of the logical view) so a warp-mapped tap can find its row.
 import { drawTipBanner, drawOverlay, type HudOverlay } from './infoCard';
+import { ellipsise } from './textLayout';
 
 export interface ListRow {
   id: string;
@@ -121,11 +122,4 @@ export function drawList(opts: DrawListOpts): DrawListResult {
   }
 
   return { canvas, rows, contentH };
-}
-
-function ellipsise(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
-  if (ctx.measureText(text).width <= maxW) return text;
-  let t = text;
-  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
-  return t + '…';
 }

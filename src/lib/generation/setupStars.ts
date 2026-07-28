@@ -77,7 +77,7 @@ export function setupStars(seed: string, pack: RulePack, rng: SeededRNG, generat
         const barycenter: Barycenter = {
             id: barycenterId,
             parentId: null,
-            name: `${baseName} System Barycenter`,
+            name: `${baseName} System Barycentre`,
             kind: "barycenter",
             memberIds: [starA.id],
             tags: [],

@@ -9,6 +9,7 @@
 // sliding a gas mix / coverage / temperature in the editor visibly changes the disc. Textures are
 // seeded from the body id (stable frame-to-frame) and cached on an offscreen canvas.
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
+import { deriveAppearance } from './planetAppearance';
 
 const SIZE = 96; // offscreen texture resolution (diameter in px)
 const cache = new Map<string, HTMLCanvasElement>();
@@ -145,6 +146,19 @@ function render(body: CelestialBody): HTMLCanvasElement {
     }
   }
 
+  // Space-weathering regolith greying of the BASE only (Moon/Mercury go grey). The feature OVERLAYS
+  // (craters/cracks/tholins/frost/rifts) are NOT baked here: this disc texture is the base layer for
+  // PlanetDisc, which draws those crisply as SVG on top; baking them too would double them. (The 3D
+  // equirect sibling has no such overlay, so it DOES bake the full set.)
+  {
+    const a = deriveAppearance(body);
+    if (a.regolith > 0) {
+      ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = a.regolith;
+      ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, SIZE, SIZE);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    }
+  }
+
   // --- Haze: a wash plus a stronger limb tint (atmosphere reads thickest at the edge).
   if (haze) {
     const w = Math.min(0.8, haze.weight);
@@ -180,8 +194,8 @@ function render(body: CelestialBody): HTMLCanvasElement {
 // equirect sheet that wraps onto a sphere. No baked terminator/limb here — the 3D scene lights the
 // sphere and draws the atmosphere, so this is pure day-side albedo. Blobs are drawn three times
 // (x, x±W) so nothing seams at the ±180° meridian. Poles pinch is acceptable for stylised worlds.
-const EQ_W = 512;
-const EQ_H = 256;
+const EQ_W = 1024;  // hi-res so surface detail (craters, lineae) stays crisp wrapped onto the 3D sphere
+const EQ_H = 512;
 const eqCache = new Map<string, HTMLCanvasElement>();
 
 function drawPatchesEquirect(ctx: CanvasRenderingContext2D, rnd: () => number, color: string, fraction: number, alpha = 1) {
@@ -204,6 +218,180 @@ function drawPatchesEquirect(ctx: CanvasRenderingContext2D, rnd: () => number, c
   }
   ctx.globalAlpha = 1;
 }
+
+// Paint the foundation-driven surface weathering into the equirect sheet (512×256), reading the shared
+// appearance model so the 3D holo sphere shows the SAME features the 2D disc draws: age-graded craters
+// (leading-hemisphere biased when tidally locked) + fresh rayed craters, icy lineae, crustal rifts,
+// tholin staining and bright volatile frost. Longitude = x, latitude = y; strokes wrap at the seam.
+function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBody, rnd: () => number) {
+  const a = deriveAppearance(body);
+  const wrap = (draw: (dx: number) => void) => { for (const dx of [-EQ_W, 0, EQ_W]) draw(dx); };
+  const S = EQ_W / 512; // absolute-px sizes scale with the sheet resolution (relative ones auto-scale)
+
+  // Space-weathered regolith: desaturate an airless silicate surface toward grey (Moon/Mercury).
+  if (a.regolith > 0) {
+    ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = a.regolith;
+    ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, EQ_W, EQ_H);
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+
+  // EYEBALL — a tidally-locked world's permanent day/night split: a hot (baked or molten-glowing)
+  // substellar hemisphere fading through a terminator ring to a frozen antistellar one. The substellar
+  // point sits at the sheet centre (the 3D scene turns that face toward the star); the radial gradient
+  // reads as concentric climate zones out to the frozen far side.
+  if (a.eyeball) {
+    const g = ctx.createRadialGradient(EQ_W / 2, EQ_H / 2, 0, EQ_W / 2, EQ_H / 2, EQ_W * 0.45);
+    g.addColorStop(0, a.eyeball.dayHex);
+    g.addColorStop(0.32, a.eyeball.dayHex);
+    g.addColorStop(0.62, a.eyeball.kind === 'cold' ? '#5a6b82' : shade(a.eyeball.dayHex, -0.5)); // terminator
+    g.addColorStop(1, a.eyeball.nightHex);
+    ctx.globalAlpha = a.eyeball.molten ? 0.9 : 0.8; ctx.fillStyle = g;
+    ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
+  }
+
+  // POLAR ICE CAPS — bright frozen caps at the two poles (the equirect's top and bottom rows ARE the
+  // poles). A soft gradient fading toward the equator; craters/features drawn after show faintly through.
+  // POLAR VORTEX — a gas giant's geometric polar jet (Saturn hexagon). A polygon ringing the north
+  // pole: the boundary latitude waves N times with longitude, so from the pole it reads as an N-gon.
+  if (a.polarVortex) {
+    const sides = a.polarVortex.sides, baseLat = EQ_H * 0.1, amp = EQ_H * 0.028;
+    const yb = (x: number) => baseLat + amp * Math.cos(sides * (x / EQ_W) * 2 * Math.PI);
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yb(x));
+    ctx.lineTo(EQ_W, 0); ctx.closePath();
+    ctx.fillStyle = 'rgba(48,64,104,0.42)'; ctx.fill();                 // stormy vortex interior (darker = more contrast)
+    ctx.strokeStyle = 'rgba(220,230,250,0.7)'; ctx.lineWidth = 2.6 * S; // bright jet rim
+    ctx.beginPath();
+    for (let x = 0; x <= EQ_W; x += 3) (x === 0 ? ctx.moveTo(x, yb(x)) : ctx.lineTo(x, yb(x)));
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(205,218,242,0.42)';                          // a small bright eye at the pole
+    ctx.beginPath(); ctx.ellipse(EQ_W / 2, baseLat * 0.35, EQ_W * 0.12, baseLat * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
+  }
+
+  if (a.polarIce) {
+    // Bright frozen caps. The equirect pinches at the poles, so keep the cap SOLID across most of its
+    // latitude band (only fading near the equator edge) — otherwise it collapses into an invisible speck.
+    const capH = EQ_H * 0.26;
+    for (const top of [true, false]) {
+      const y0 = top ? 0 : EQ_H, y1 = top ? capH : EQ_H - capH;
+      const cg = ctx.createLinearGradient(0, y0, 0, y1);
+      cg.addColorStop(0, 'rgba(242,248,255,0.95)'); cg.addColorStop(0.7, 'rgba(242,248,255,0.9)'); cg.addColorStop(1, 'rgba(242,248,255,0)');
+      ctx.fillStyle = cg; ctx.fillRect(0, Math.min(y0, y1), EQ_W, capH);
+    }
+  }
+
+  if (a.tholin) {
+    if (a.tholin.atmospheric) {
+      ctx.globalAlpha = 0.22 + a.tholin.strength * 0.35; ctx.fillStyle = a.tholin.colorHex;
+      ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
+    } else {
+      drawPatchesEquirect(ctx, rnd, a.tholin.colorHex, 0.22 + a.tholin.strength * 0.4, 0.5);
+    }
+  }
+  if (a.frost) drawPatchesEquirect(ctx, rnd, a.frost.colorHex, 0.18 + a.frost.coverage * 0.32, 0.45);
+
+  if (a.craters) {
+    // A crater = a shadowed BOWL (dark radial gradient) ringed by a brighter RIM — reads as a real pit,
+    // not a flat dot. A FRESH one adds a soft ejecta blanket and a DIFFUSE ray splash (short, jittered,
+    // faint — not clean spokes).
+    // High contrast so the pit survives the sphere's diffuse lighting: a deep dark floor, a crisp bright
+    // rim, and a thin dark outer shadow so it reads as a raised-rim bowl rather than a smudge.
+    // POLE-PINCH FIX: near the poles the equirect squeezes horizontally (longitude lines converge), so
+    // a crater drawn round would smear into a pinched swirl. Pre-STRETCH each crater horizontally by
+    // 1/cos(latitude) (a save/scale transform); the sphere's UV squeeze then brings it back to round.
+    const crater = (x: number, y: number, r: number, fresh: boolean) => {
+      const cosLat = Math.max(0.16, Math.cos((0.5 - y / EQ_H) * Math.PI));
+      const xs = 1 / cosLat, lw = (w: number) => w / xs; // undo the h-scale for stroke widths
+      wrap((dx) => {
+        ctx.save(); ctx.translate(x + dx, y); ctx.scale(xs, 1);
+        if (fresh) {
+          const eg = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 3.2);
+          eg.addColorStop(0, 'rgba(230,236,246,0.24)'); eg.addColorStop(1, 'rgba(230,236,246,0)');
+          ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(0, 0, r * 3.2, 0, 2 * Math.PI); ctx.fill();
+          ctx.strokeStyle = 'rgba(238,242,250,0.16)';
+          const nr = 16 + Math.floor(rnd() * 8);
+          for (let k = 0; k < nr; k++) {
+            const ang = (k / nr) * 2 * Math.PI + (rnd() - 0.5) * 0.4, len = r * (1.2 + rnd() * rnd() * 2.8);
+            ctx.lineWidth = lw((0.4 + rnd() * 0.4) * S);
+            ctx.beginPath(); ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r); ctx.lineTo(Math.cos(ang) * len, Math.sin(ang) * len); ctx.stroke();
+          }
+        }
+        const fg = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+        fg.addColorStop(0, 'rgba(0,0,0,0.5)'); fg.addColorStop(0.68, 'rgba(0,0,0,0.22)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill();
+        ctx.strokeStyle = 'rgba(12,12,16,0.35)'; ctx.lineWidth = lw(Math.max(0.5 * S, r * 0.12));
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.04, 0, 2 * Math.PI); ctx.stroke();
+        ctx.strokeStyle = fresh ? 'rgba(248,250,255,0.72)' : 'rgba(238,238,244,0.42)';
+        ctx.lineWidth = lw(Math.max(0.5 * S, r * 0.22)); ctx.beginPath(); ctx.arc(0, 0, r * 0.88, 0, 2 * Math.PI); ctx.stroke();
+        ctx.restore();
+      });
+    };
+    const n = Math.round(90 + a.craters.density * 620);  // ~2x areal density: the sphere disperses them over far more visible surface than the 2D disc
+    for (let i = 0; i < n; i++) {
+      let x = rnd() * EQ_W;
+      // FAR-side bias: the substellar/sub-parent face sits at the sheet CENTRE, so the shielded near
+      // hemisphere is the middle and the more-cratered anti-parent side is the texture EDGES (which wrap
+      // to the antistellar point). Push biased craters into the outer quarters.
+      if (a.craters.farSideBias > 0 && rnd() < a.craters.farSideBias) x = rnd() < 0.5 ? rnd() * 0.25 * EQ_W : (0.75 + rnd() * 0.25) * EQ_W;
+      crater(x, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.95, (1.3 + rnd() * rnd() * 7) * S, false);
+    }
+    for (let i = 0; i < a.craters.rayed; i++) crater(rnd() * EQ_W, EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.7, (3.5 + rnd() * 3) * S, true);
+  }
+
+  // ROUGH REGOLITH — a small rubble pile: no craters, just a knobbly speckle of light highlights and
+  // dark hollows (boulders + shadowed pits), denser/rougher the stronger it is.
+  if (a.rough) {
+    const n = Math.round(240 + a.rough.strength * 520);
+    for (let i = 0; i < n; i++) {
+      const x = rnd() * EQ_W, y = EQ_H * 0.5 + (rnd() - 0.5) * EQ_H * 0.98, r = (0.6 + rnd() * rnd() * 3.2) * S;
+      const light = rnd() < 0.5;
+      wrap((dx) => {
+        const g = ctx.createRadialGradient(x + dx, y, 0, x + dx, y, r);
+        g.addColorStop(0, light ? `rgba(255,250,240,${0.12 + rnd() * 0.16})` : `rgba(20,16,12,${0.14 + rnd() * 0.2})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + dx, y, r, 0, 2 * Math.PI); ctx.fill();
+      });
+    }
+  }
+
+  if (a.iceCracks) {
+    // A cellular / tortoise-shell fracture NETWORK — scatter nodes and link each to its nearest few
+    // with short, slightly-bowed ridges. This reads like Europa's lineae / Pluto's polygonal terrain,
+    // and every segment is length-capped so no crack loops the whole globe.
+    const sev = a.iceCracks.severity, nn = Math.round(22 + sev * 34);
+    const maxLen = EQ_W * 0.14;
+    const nodes: [number, number][] = [];
+    for (let i = 0; i < nn; i++) nodes.push([rnd() * EQ_W, EQ_H * 0.08 + rnd() * EQ_H * 0.84]);
+    ctx.strokeStyle = a.iceCracks.colorHex; ctx.globalAlpha = 0.55; ctx.lineWidth = (0.7 + sev * 0.8) * S; ctx.lineCap = 'round';
+    for (let i = 0; i < nodes.length; i++) {
+      const near = nodes.map((p, j) => ({ j, d: Math.hypot(p[0] - nodes[i][0], p[1] - nodes[i][1]) }))
+        .filter((o) => o.j > i && o.d < maxLen).sort((a2, b2) => a2.d - b2.d).slice(0, 3);
+      for (const { j, d } of near) {
+        const [x1, y1] = nodes[i], [x2, y2] = nodes[j];
+        const mx = (x1 + x2) / 2 + (rnd() - 0.5) * d * 0.35, my = (y1 + y2) / 2 + (rnd() - 0.5) * d * 0.35;
+        wrap((dx) => { ctx.beginPath(); ctx.moveTo(x1 + dx, y1); ctx.quadraticCurveTo(mx + dx, my, x2 + dx, y2); ctx.stroke(); });
+      }
+    }
+    ctx.globalAlpha = 1; ctx.lineCap = 'butt';
+  }
+
+  if (a.rifts) {
+    const n = 1 + Math.round(a.rifts.extent);         // one or two canyons, not a barcode
+    ctx.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      const y = EQ_H * (0.3 + rnd() * 0.4), x = rnd() * EQ_W, len = EQ_W * (0.16 + rnd() * 0.18); // shorter
+      const ey = y + (rnd() - 0.5) * 16 * S, bow = (rnd() - 0.5) * 18 * S;
+      wrap((dx) => {
+        ctx.strokeStyle = 'rgba(34,40,52,0.4)'; ctx.lineWidth = 2.4 * S;   // a soft shadowed trough, not a bar
+        ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, ey); ctx.stroke();
+        ctx.strokeStyle = 'rgba(210,222,238,0.28)'; ctx.lineWidth = 0.5 * S; // faint sunlit rim
+        ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.quadraticCurveTo(x + dx + len / 2, y + bow, x + dx + len, ey); ctx.stroke();
+      });
+    }
+    ctx.lineCap = 'butt';
+  }
+}
+
 
 function renderEquirect(body: CelestialBody): HTMLCanvasElement {
   const c = document.createElement('canvas');
@@ -264,25 +452,12 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
       ctx.fillRect(0, 0, EQ_W, EQ_H);
       if (ocean && cover > 0.02) drawPatchesEquirect(ctx, rnd, ocean.hex, cover);
     }
-    const deck = clouds[0];
-    if (deck) {
-      ctx.globalAlpha = Math.min(0.85, 0.35 + deck.weight * 0.5);
-      ctx.fillStyle = deck.hex;
-      const streaks = 6 + Math.floor(rnd() * 5);
-      for (let i = 0; i < streaks; i++) {
-        const y = EQ_H * rnd();
-        const cx = EQ_W * rnd();
-        const rx = EQ_W * (0.1 + rnd() * 0.12);
-        const ry = EQ_H * 0.04;
-        for (const dx of [-EQ_W, 0, EQ_W]) {
-          ctx.beginPath();
-          ctx.ellipse(cx + dx, y, rx, ry, 0, 0, 2 * Math.PI);
-          ctx.fill();
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
+    // NB: clouds are NOT baked into the 3D surface — the holo draws them as separate drifting shells
+    // (buildCloudDeck). The 2D disc still paints its own cloud streaks (it has no shell layer).
   }
+
+  // Foundation-driven surface weathering (craters/cracks/rifts/tholins/frost) over the base surface.
+  paintFeaturesEquirect(ctx, body, rnd);
 
   // Haze: a uniform wash (the limb glow is drawn in 3D, not baked here).
   if (haze) {
@@ -305,14 +480,49 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
 export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement | null {
   if (typeof document === 'undefined' || !body.apparentColor) return null;
   const ap = body.apparentColor;
-  const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|` +
+  const g = (body as any).geoActivity;
+  const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}:${(body as any).starTidallyLocked ? 1 : 0}:${(body as any).makeup?.ice ?? ''}:${(body.tags ?? []).some((t) => t.key === 'climate/polar-ice') ? 'pi' : ''}:${(body as any).temperatureRangeK?.max ?? ''}:${(body.tags ?? []).find((t) => t.key === 'feature/polar-vortex')?.value ?? ''}`;
+  const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = eqCache.get(key);
   if (!tex) {
-    if (eqCache.size > 200) eqCache.clear();
+    if (eqCache.size > 80) eqCache.clear(); // 1024×512 canvases are ~2 MB each — keep the cache bounded
     tex = renderEquirect(body);
     eqCache.set(key, tex);
   }
+  return tex;
+}
+
+// EMISSIVE equirect: where the surface GLOWS of its own heat (a super-hot molten world, or a molten
+// eyeball's substellar hemisphere). Black elsewhere. Used as the sphere's emissiveMap in the 3D scene,
+// so the glow is self-lit and shows on the night side / against space. Returns null for cool worlds.
+const emCache = new Map<string, HTMLCanvasElement | null>();
+function renderEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
+  const a = deriveAppearance(body);
+  const molten = !!a.eyeball?.molten;
+  if (!a.thermalGlow && !molten) return null;
+  const c = document.createElement('canvas'); c.width = EQ_W; c.height = EQ_H;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, EQ_W, EQ_H);
+  if (molten && a.eyeball) {
+    // Glow confined to the molten substellar hemisphere; falls to black by the terminator.
+    const g = ctx.createRadialGradient(EQ_W / 2, EQ_H / 2, 0, EQ_W / 2, EQ_H / 2, EQ_W * 0.34);
+    g.addColorStop(0, a.eyeball.dayHex); g.addColorStop(0.55, shade(a.eyeball.dayHex, -0.35)); g.addColorStop(1, '#000');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, EQ_W, EQ_H);
+  } else if (a.thermalGlow) {
+    ctx.globalAlpha = 0.45 + a.thermalGlow.strength * 0.55; ctx.fillStyle = a.thermalGlow.colorHex;
+    ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
+  }
+  return c;
+}
+export function getEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
+  if (typeof document === 'undefined' || !body.apparentColor) return null;
+  const surfLiq = body.hydrosphere?.layers?.find((l) => l.location === 'surface')?.liquid ?? body.hydrosphere?.composition ?? '';
+  const key = `em|${body.id}|${(body as any).temperatureRangeK?.max ?? ''}|${(body as any).temperatureRangeK?.min ?? ''}|${(body as any).tidallyLocked ? 1 : 0}|${surfLiq}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}`;
+  if (emCache.has(key)) return emCache.get(key)!;
+  if (emCache.size > 80) emCache.clear();
+  const tex = renderEmissiveEquirect(body);
+  emCache.set(key, tex);
   return tex;
 }
 
@@ -320,7 +530,9 @@ export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement
 export function getPlanetTexture(body: CelestialBody): HTMLCanvasElement | null {
   if (typeof document === 'undefined' || !body.apparentColor) return null;
   const ap = body.apparentColor;
-  const key = `${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|` +
+  const g = (body as any).geoActivity;
+  const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}`;
+  const key = `${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = cache.get(key);
   if (!tex) {

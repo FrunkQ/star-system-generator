@@ -4,6 +4,7 @@
   // icon-only (minimal) ⇄ icon+text, toggled by the control at the top and remembered.
   import { createEventDispatcher } from 'svelte';
   import { railCollapsed } from '$lib/railStore';
+  import { PLAYER_VIEWS_ENABLED } from '$lib/config/releaseFlags';
   const dispatch = createEventDispatcher();
 
   // Which top-level view is showing. The Starmap entry is a live indicator when 'starmap'
@@ -92,11 +93,13 @@
   <button class="rail-btn" title="Field Guide — open and share the players' companion views" on:click={() => go('catalogue')}>
     <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
   </button>
-  <!-- HIDDEN for the production cut: Player Views, the unified players' presentation system
-       (the eventual Field Guide replacement — V2.2 line, still in beta testing). -->
-  <!-- <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
-    <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
-  </button> -->
+  <!-- Player Views: the unified players' presentation system that will replace the Field Guide.
+       Masked by ONE flag while the V2.2 line is in flight — see $lib/config/releaseFlags. -->
+  {#if PLAYER_VIEWS_ENABLED}
+    <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
+      <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
+    </button>
+  {/if}
 
   <!-- Projector + Report act on the loaded system. Shown in BOTH views for beta (they target the
        last-loaded system when invoked from the starmap). Greenscreen toggle only when a projector is live. -->

@@ -3,37 +3,52 @@
   // (land/ocean/cloud/banding via getPlanetTexture) clipped to a sphere, with a cartoon vignette,
   // a Saturn-style ring, a distinct belt glyph (grey field of rocks by density), and the obligatory
   // [Mostly Harmless] stamp for any world called Earth.
-  import type { CelestialBody, ApparentColorStop } from '$lib/types';
-  import { starColorFromTempK } from '$lib/rendering/apparentColor';
+  import type { CelestialBody } from '$lib/types';
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
-  import { oblatePolarFactor } from '$lib/rendering/bodyShape';
-  import { auroraEmitter } from '$lib/physics/aurora';
-  import { rendersAsGiant } from '$lib/physics/makeup';
-  import { EARTH_MASS_KG } from '$lib/constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
-  import { isSmallBodyShape, smallBodyOutline } from './smallBodyShape';
+  import { smallBodyOutline } from './smallBodyShape';
+  // THE shared appearance model — resolves every tag/property-driven surface feature (see WS1).
+  // This component just draws what the model decides; the orrery + 3D holo read the same model.
+  import { deriveAppearance, shade } from '$lib/rendering/planetAppearance';
 
   export let body: CelestialBody;
   export let ringed = false;
   export let ringDensity = 0.6;   // 0..1 (debris density of the ring); scales its drawn size/opacity
   export let size = 132;
 
+  // Diagnostic hook for the reference gallery: drop individual DERIVED features so a render can be
+  // bisected — "is it the cloud deck or the limb glow?" — without inventing a physically odd body to
+  // approximate the same thing (pressure gates both at once, so data alone cannot separate them).
+  // Null in the app; only the gallery's test row passes it.
+  export let suppress: { clouds?: boolean; atmGlow?: boolean; aurora?: boolean } | null = null;
+
+  // Everything tag/property-driven about this body's look, resolved once (WS1). The SVG below just
+  // draws what the model decides; seeded geometry (crater/magma/rock positions, aurora paths) is still
+  // generated here from the model's flags/counts, so the disc renders identically to before.
+  $: a = (() => {
+      const m = deriveAppearance(body);
+      if (!suppress) return m;
+      return {
+          ...m,
+          clouds: suppress.clouds ? null : m.clouds,
+          atmGlow: suppress.atmGlow ? null : m.atmGlow,
+          aurora: suppress.aurora ? null : m.aurora
+      };
+  })();
+
   // Oblate flattening (E4): squash the disc body vertically about the centre (y=50) so a fast rotator
   // reads as flattened. Rings keep their own plane, so only the body group is transformed.
-  $: discPolF = oblatePolarFactor(body.oblateness);
+  $: discPolF = a.oblatePolarFactor;
   $: discSquash = discPolF < 0.999 ? `translate(0 ${(50 * (1 - discPolF)).toFixed(2)}) scale(1 ${discPolF.toFixed(3)})` : '';
 
   // Rotationally unstable (Phase G): a body spun past ~0.8 of its break-up limit has flown apart into a
-  // ring — draw a true torus (a tilted annulus with a hole) instead of an ever-thinner lens. Oblateness
-  // 0.8 corresponds to spin fraction ~0.8 (the near-breakup / toroidal regime).
-  $: isToroid = !isStar(body) && !isBelt(body) && (body.oblateness ?? 0) >= 0.8;
+  // ring — draw a true torus (a tilted annulus with a hole) instead of an ever-thinner lens.
+  $: isToroid = a.isToroid;
 
   // SMALL BODY (composition redesign stage 4): below ~300 km (or any asteroid/* class) a solid body
-  // lacks the self-gravity to pull round, so the sphere becomes a seeded IRREGULAR outline — same
-  // deterministic LCG-from-id idiom as the belt rocks and craters, so each body keeps its own
-  // repeatable shape. Lumpier when smaller and when porous (rubble piles are ragged); colour still
-  // comes from the composition-derived apparent colour like every other body.
-  $: isSmallBody = !isStar(body) && !isBelt(body) && !isToroid && isSmallBodyShape(body);
+  // lacks the self-gravity to pull round, so the sphere becomes a seeded IRREGULAR outline (colour still
+  // comes from the composition-derived apparent colour like every other body).
+  $: isSmallBody = a.isSmallBody;
   $: smallBodyPath = isSmallBody ? smallBodyOutline(body) : '';
 
   // Light direction for the day/night terminator + specular highlight. Default (null) is the stylised
@@ -64,42 +79,7 @@
   const isStar = (b: CelestialBody) => b.roleHint === 'star';
   const isBelt = (b: CelestialBody) => b.roleHint === 'belt' || b.roleHint === 'ring';
 
-  function rgbHex(rgb: [number, number, number]): string {
-    const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
-    return `#${c(rgb[0])}${c(rgb[1])}${c(rgb[2])}`;
-  }
-  function hexToRgb(hex: string): [number, number, number] {
-    const h = hex.replace('#', '');
-    const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-    return [parseInt(n.slice(0, 2), 16), parseInt(n.slice(2, 4), 16), parseInt(n.slice(4, 6), 16)];
-  }
-  function shade(hex: string, f: number): string {
-    const [r, g, b] = hexToRgb(hex);
-    return f >= 0 ? rgbHex([r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f])
-                  : rgbHex([r * (1 + f), g * (1 + f), b * (1 + f)]);
-  }
-  // Emission colour for a self-luminous brown dwarf by effective temperature (K): cool → deep red, hot
-  // young L-dwarf → amber. Interpolates between calibrated blackbody-ish stops (never blue — BDs are cool).
-  function bdGlowColour(teff: number): string {
-    const stops: [number, string][] = [
-      [250, '#3a0f06'], [600, '#6e1808'], [1000, '#a3320c'], [1400, '#c85614'],
-      [1800, '#e07d22'], [2300, '#f2a03e'], [2800, '#ffbf6e']
-    ];
-    if (teff <= stops[0][0]) return stops[0][1];
-    for (let i = 1; i < stops.length; i++) {
-      if (teff <= stops[i][0]) {
-        const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
-        const f = (teff - t0) / (t1 - t0);
-        const a = hexToRgb(c0), b = hexToRgb(c1);
-        return rgbHex([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
-      }
-    }
-    return stops[stops.length - 1][1];
-  }
-
-  $: base = isStar(body)
-    ? (body.apparentColorHex ?? rgbHex(starColorFromTempK(body.temperatureK)))
-    : (body.apparentColorHex ?? body.apparentColor?.hex ?? '#8a8f99');
+  $: base = a.baseColorHex;
 
   // The real orrery texture (data URL), when the body carries the apparent-colour palette it needs.
   // Falls back to a flat shaded sphere if unavailable (e.g. no palette, or no canvas in tests).
@@ -108,9 +88,9 @@
     try { return getPlanetTexture(body)?.toDataURL() ?? null; } catch { return null; }
   })();
 
-  // Bands only as a FALLBACK (the texture already bands giants).
-  $: banding = (textureUrl || isStar(body) || isBelt(body)) ? 0 : (body.apparentColor?.banding ?? 0);
-  $: palette = (body.apparentColor?.palette ?? []) as ApparentColorStop[];
+  // Bands only as a FALLBACK (the texture already bands giants); the model already zeroes stars/belts.
+  $: banding = textureUrl ? 0 : a.bandingRaw;
+  $: palette = a.palette;
   $: bands = (() => {
     if (banding < 2) return [];
     const n = Math.min(banding, 9);
@@ -132,60 +112,163 @@
     });
   })();
 
-  $: isEarth = (body.name || '').trim().toLowerCase() === 'earth' && body.roleHint !== 'star';
+  $: isEarth = a.isEarth;
 
-  // Match the orrery: a day/night terminator (sharper for tidally locked worlds) and equatorial
-  // magma patches on tidally volcanic worlds. Lit from the upper-left (same as the vignette).
-  $: locked = !!(body as any).tidallyLocked;
-  $: tagKeys = (body.tags ?? []).map((t) => t.key);
-  $: isLava = tagKeys.includes('tidal/lava-flows');
-  // Polar ice caps (Phase G): frost at the cold poles / night side of a world liquid at its mean
-  // temperature. Tag-driven (climate/polar-ice), drawn on the surface so the terminator dims them.
-  $: hasPolarIce = !isStar(body) && !isBelt(body) && tagKeys.includes('climate/polar-ice');
+  // Day/night terminator is sharper for tidally locked worlds (drawn from this flag below).
+  $: locked = a.tidallyLocked;
+  // Polar ice caps: frost drawn on the surface (the terminator dims the night side). Model-driven.
+  $: hasPolarIce = a.polarIce;
 
-  // Self-luminous brown dwarf (thermal/self-luminous, value = its effective temperature): it radiates
-  // its OWN heat, so it glows like a dim, cool star — an emission halo coloured by that temperature
-  // (deep red when cold → amber when a hot young L-dwarf). Never blue: brown dwarfs are cool.
-  $: selfLumTag = (body.tags ?? []).find((t) => t.key === 'thermal/self-luminous');
-  $: isSelfLuminous = !!selfLumTag && !isStar(body) && !isBelt(body);
-  $: selfLumTeff = selfLumTag ? (Number(selfLumTag.value) || 0) : 0;
-  $: selfLumColor = bdGlowColour(selfLumTeff);
+  // Self-luminous brown dwarf: an emission halo coloured by its effective temperature (model-derived).
+  $: isSelfLuminous = !!a.selfLumGlow;
+  $: selfLumColor = a.selfLumGlow?.colorHex ?? '#a3320c';
 
-  // Atmosphere limb-glow (Phase G): a soft halo hugging the limb, its strength from the surface
-  // pressure (log-scaled: wispy ~0.02 bar → faint, Earth 1 bar → moderate, thick Venus/giant → full),
-  // coloured by the atmosphere/haze palette stop (else a default sky blue).
-  $: atmPressure = (body.atmosphere?.pressure_bar ?? (body.atmosphere as any)?.pressure_atm ?? 0) as number;
-  $: hasAtmoGlow = !isStar(body) && !isBelt(body) && atmPressure > 0.02;
-  $: atmColor = palette.find((p) => p.role === 'atmosphere')?.hex
-    ?? palette.find((p) => p.role === 'cloud')?.hex ?? '#9fc6e8';
-  $: atmStrength = Math.max(0, Math.min(1, (Math.log10(Math.max(1e-3, atmPressure)) + 2) / 3));
+  // Atmosphere limb-glow: a soft halo hugging the limb, strength log-scaled from pressure, coloured by
+  // the atmosphere/cloud palette stop (model-derived).
+  $: hasAtmoGlow = !!a.atmGlow;
+  $: atmColor = a.atmGlow?.colorHex ?? '#9fc6e8';
+  $: atmStrength = a.atmGlow?.strength ?? 0;
 
-  // Cratered surface (Phase G flourish): an old, airless, geologically DEAD world has no atmosphere to
-  // burn up impactors and no resurfacing to erase the scars, so it accumulates craters (Mercury, the
-  // Moon, Callisto). Driven by that airless + inactive condition, or an explicit impact-record tag.
-  // A fluid giant (gas OR ice giant) has no solid surface to crater — an ice giant reads as airless +
-  // "inactive" but must never be pockmarked, so exclude giants explicitly.
-  $: hasCraters = !isStar(body) && !isBelt(body) && !rendersAsGiant(body) && atmPressure < 0.02
-    && (tagKeys.includes('geology/inactive') || tagKeys.includes('science/impact-record') || isSmallBody);
-  $: craters = (() => {
-    if (!hasCraters) return [] as { cx: number; cy: number; r: number }[];
-    let s = 41; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
-    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
-    const n = 12 + Math.floor(rnd() * 6);                       // 12..17 craters, seeded by the body id
+  // Seeded PRNG (by body id + a salt) — every feature seeds its own positions so the look is stable.
+  function seeded(salt: number) {
+    let s = salt; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
+    return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  }
+
+  // Cratered surface: count scales with the model's crater DENSITY (surface age); a tidally-locked
+  // world biases craters to its FAR (anti-parent) hemisphere — the parent occults impactors, so the
+  // near/sub-parent face is shielded. The near face reads as the star-lit (upper-left) side here, so the
+  // far side is the shadowed right hemisphere. The decision + params are the model's; positions here.
+  // Rough regolith for a small rubble pile (no craters): a knobbly speckle of light boulders + dark pits.
+  $: roughSpeckle = (() => {
+    if (!a.rough) return [] as { cx: number; cy: number; r: number; light: boolean; op: number }[];
+    const rnd = seeded(97), n = Math.round(50 + a.rough.strength * 110);
     return Array.from({ length: n }, () => {
-      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 26; // spread over the disc, inside the limb
-      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 1.1 + rnd() * rnd() * 4 };
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 29;
+      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 0.5 + rnd() * rnd() * 2.4, light: rnd() < 0.5, op: 0.12 + rnd() * 0.2 };
     });
   })();
 
-  // Auroras (Phase G): a spiky glowing OVAL ringing each magnetic pole (Hubble-Jupiter style), driven by
-  // the aurora/* tag's strength. Colour comes from the atmosphere's dominant auroral emitter, like real
-  // skies: atomic oxygen → green, nitrogen → blue-violet, hydrogen/helium giants → red-pink, CO₂ → violet.
-  $: auroraTag = (body.tags ?? []).find((t) => t.key.startsWith('aurora/'));
-  $: auroraStr = auroraTag ? Math.max(0, Math.min(1.3, parseFloat(auroraTag.value ?? '0') || 0)) : 0;
-  $: hasAurora = !isStar(body) && !isBelt(body) && auroraStr > 0;
-  $: auroraBrilliant = auroraStr >= 0.55;
-  $: auroraCol = (() => { const e = auroraEmitter(body); return { core: e.hex, tip: e.tip }; })();
+  $: hasCraters = !!a.craters;
+  $: craters = (() => {
+    if (!a.craters) return [] as { cx: number; cy: number; r: number }[];
+    const rnd = seeded(41);
+    const n = Math.round(12 + a.craters.density * 78);         // saturates an ancient highland
+    const far = a.craters.farSideBias;
+    return Array.from({ length: n }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 26; // spread over the disc, inside the limb
+      let cx = 50 + Math.cos(t) * rr;
+      const cy = 50 + Math.sin(t) * rr;
+      if (far > 0 && rnd() < far) cx = 50 + Math.abs(cx - 50); // reflect onto the shadowed FAR limb
+      return { cx, cy, r: 1.1 + rnd() * rnd() * 4 };
+    });
+  })();
+  // Fresh rayed craters: a bright pit with radiating ejecta, punched into an old surface.
+  $: rayedCraters = (() => {
+    if (!a.craters || a.craters.rayed <= 0) return [] as { cx: number; cy: number; r: number; rays: string }[];
+    const rnd = seeded(83);
+    return Array.from({ length: a.craters.rayed }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 22;
+      const cx = 50 + Math.cos(t) * rr, cy = 50 + Math.sin(t) * rr, r = 1.6 + rnd() * 1.8;
+      let rays = '';
+      const nr = 14 + Math.floor(rnd() * 7);                    // many, short, jittered → a splash not a star
+      for (let i = 0; i < nr; i++) {
+        const ang = (i / nr) * 2 * Math.PI + (rnd() - 0.5) * 0.4, len = r * (1.2 + rnd() * rnd() * 2.6);
+        rays += `M${(cx + Math.cos(ang) * r).toFixed(1)} ${(cy + Math.sin(ang) * r).toFixed(1)} L${(cx + Math.cos(ang) * len).toFixed(1)} ${(cy + Math.sin(ang) * len).toFixed(1)} `;
+      }
+      return { cx, cy, r, rays };
+    });
+  })();
+  // Ice cracks / ridges (Europa lineae): a cellular TORTOISE-SHELL network — scatter nodes inside the
+  // disc, link each to its nearest few with short bowed ridges (length-capped, so nothing loops the disc).
+  $: iceCracks = (() => {
+    if (!a.iceCracks) return [] as string[];
+    const rnd = seeded(59), sev = a.iceCracks.severity, nn = Math.round(14 + sev * 22), maxLen = 22;
+    const nodes: [number, number][] = [];
+    for (let i = 0; i < nn; i++) { const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 28; nodes.push([50 + Math.cos(t) * rr, 50 + Math.sin(t) * rr]); }
+    const paths: string[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      const near = nodes.map((p, j) => ({ j, d: Math.hypot(p[0] - nodes[i][0], p[1] - nodes[i][1]) }))
+        .filter((o) => o.j > i && o.d < maxLen).sort((x, y) => x.d - y.d).slice(0, 3);
+      for (const { j, d } of near) {
+        const [x1, y1] = nodes[i], [x2, y2] = nodes[j];
+        const mx = (x1 + x2) / 2 + (rnd() - 0.5) * d * 0.4, my = (y1 + y2) / 2 + (rnd() - 0.5) * d * 0.4;
+        paths.push(`M${x1.toFixed(1)} ${y1.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`);
+      }
+    }
+    return paths;
+  })();
+  // Crustal rifts (Charon canyon): one or two subtle chasms — a shorter arc, not a full-disc slash.
+  $: rifts = (() => {
+    if (!a.rifts) return [] as string[];
+    const rnd = seeded(97), n = 1 + Math.round(a.rifts.extent);
+    return Array.from({ length: n }, () => {
+      const a1 = rnd() * 2 * Math.PI, span = (0.5 + rnd() * 0.5) * Math.PI, r1 = 16 + rnd() * 12;
+      const x1 = 50 + Math.cos(a1) * r1, y1 = 50 + Math.sin(a1) * r1;
+      const x2 = 50 + Math.cos(a1 + span) * (r1 + 6), y2 = 50 + Math.sin(a1 + span) * (r1 + 6);
+      const mx = (x1 + x2) / 2 + (rnd() - 0.5) * 8, my = (y1 + y2) / 2 + (rnd() - 0.5) * 8;
+      return `M${x1.toFixed(1)} ${y1.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+    });
+  })();
+  // Tholin mottling (irradiated organics): reddish patches (Pluto) or a whole-disc haze tint (Titan).
+  $: tholinPatches = (() => {
+    if (!a.tholin || a.tholin.atmospheric) return [] as { cx: number; cy: number; r: number }[];
+    const rnd = seeded(131), n = 3 + Math.round(a.tholin.strength * 4);
+    return Array.from({ length: n }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 22;
+      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 6 + rnd() * 9 };
+    });
+  })();
+  // Frost: bright volatile-ice patches (retained N2/CO2/water/SO2).
+  $: frostPatches = (() => {
+    if (!a.frost) return [] as { cx: number; cy: number; r: number }[];
+    const rnd = seeded(163), n = 3 + Math.round(a.frost.coverage * 5);
+    return Array.from({ length: n }, () => {
+      const t = rnd() * 2 * Math.PI, rr = Math.sqrt(rnd()) * 24;
+      return { cx: 50 + Math.cos(t) * rr, cy: 50 + Math.sin(t) * rr, r: 5 + rnd() * 8 };
+    });
+  })();
+
+  // Cloud deck (2D): east-west streaks organised into a few latitude BANDS with a clear equatorial lane —
+  // the same physics the 3D deck uses (winds run E-W; an even band count leaves the equator visible). Each
+  // patch is a flattened ellipse; x is placed within the disc's width at that latitude. Seeded, static.
+  $: cloudPatches = (() => {
+    if (!a.clouds) return [] as { cx: number; cy: number; rx: number; ry: number; op: number }[];
+    const rnd = seeded(211), cov = a.clouds.coverage, thick = cov > 0.72;
+    const bands = thick ? 6 : 4, n = Math.round((thick ? 16 : 8) + cov * (thick ? 22 : 14));
+    const out: { cx: number; cy: number; rx: number; ry: number; op: number }[] = [];
+    for (let i = 0; i < n; i++) {
+      const band = Math.floor(rnd() * bands);
+      const cy = 50 + (((band + 0.5) / bands - 0.5) * 2 * 27) + (rnd() - 0.5) * (54 / bands) * 0.5;
+      const half = Math.sqrt(Math.max(0, 30 * 30 - (cy - 50) * (cy - 50))); // disc half-width at this latitude
+      if (half < 3) continue;
+      const cx = 50 + (rnd() - 0.5) * 2 * half * 0.9;
+      const rx = (thick ? 5 : 3) + rnd() * (thick ? 7 : 5), ry = rx * (0.32 + rnd() * 0.16);
+      out.push({ cx, cy, rx, ry, op: (thick ? 0.4 : 0.22) + rnd() * 0.35 * cov });
+    }
+    return out;
+  })();
+
+  // Polar vortex: a gas giant's geometric polar jet, drawn as a foreshortened polygon near the top pole.
+  $: vortexPoly = (() => {
+    if (!a.polarVortex) return '';
+    const sides = a.polarVortex.sides, cx = 50, cy = 25, rx = 11, ry = 4;
+    const pts = Array.from({ length: sides }, (_, i) => {
+      const th = (i / sides) * 2 * Math.PI + Math.PI / sides;
+      return `${(cx + rx * Math.cos(th)).toFixed(1)},${(cy + ry * Math.sin(th)).toFixed(1)}`;
+    });
+    return 'M' + pts.join(' L') + ' Z';
+  })();
+
+  // Auroras: a spiky glowing OVAL ringing each magnetic pole (Hubble-Jupiter style). Strength + emitter
+  // colour are model-derived; the swirled oval PATHS are generated here (auroraOval).
+  $: auroraStr = a.aurora?.strength ?? 0;
+  $: hasAurora = !!a.aurora;
+  $: auroraBrilliant = a.aurora?.brilliant ?? false;
+  $: auroraCol = { core: a.aurora?.coreHex ?? '#8fe6a0', tip: a.aurora?.tipHex ?? '#dfffe6' };
+  // Secondary emitting gases (nitrogen purple over oxygen green, …) — layered as lighter strokes so the
+  // aurora hints at the atmosphere's mix, fainter for the lower-concentration gases.
+  $: auroraExtra = (a.aurora?.emitters ?? []).slice(1);
   // Spiky, swirled oval ringing a pole — a foreshortened ellipse whose points alternate out into spikes
   // (auroral curtains) and drift tangentially (a swirl), so it hugs the pole rather than floating flat.
   function auroraOval(cy: number, off: number): string {
@@ -209,11 +292,10 @@
   $: auroraBotCy = 76 - auroraStr * 3;
   $: auroraTop = hasAurora ? auroraOval(auroraTopCy, 3) : '';
   $: auroraBot = hasAurora ? auroraOval(auroraBotCy, 8) : '';
+  $: isLava = !!a.magma?.lava;
   $: magma = (() => {
-    if (isStar(body) || isBelt(body)) return [] as { cx: number; cy: number; r: number }[];
-    const volc = isLava || tagKeys.includes('tidal/volcanism') || tagKeys.includes('tidal/hotspots');
-    if (!volc) return [];
-    const n = isLava ? 7 : tagKeys.includes('tidal/volcanism') ? 5 : 3;
+    if (!a.magma) return [] as { cx: number; cy: number; r: number }[];
+    const n = a.magma.vents;
     let s = 11; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
     const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
     return Array.from({ length: n }, () => {
@@ -222,6 +304,26 @@
       return { cx: 50 + lon * 26 * Math.sqrt(Math.max(0, 1 - latEq * latEq)), cy: 50 + latEq * 28, r: 1.8 + rnd() * 3 };
     });
   })();
+  // Cryovolcanic plumes / geysers (Enceladus, Triton): icy jets. Physically these vent from the SOUTH
+  // POLAR region (Enceladus's tiger stripes) — so, like the 3D, we cluster them at the pole (bottom of
+  // the disc) fanning out, not scattered round the whole limb. Each jet tapers out and carries a couple
+  // of brightening puffs marching up it (the 3D's chain of spray). Reach scales with gravity (reachRadii).
+  $: plumes = (() => {
+    if (!a.cryoPlumes) return [] as { path: string; puffs: { x: number; y: number; r: number; op: number }[] }[];
+    const rnd = seeded(71), n = Math.max(3, a.cryoPlumes.jets);
+    const reach = Math.min(24, 8 + a.cryoPlumes.reachRadii * 4.5);
+    const pole = Math.PI / 2; // south pole = bottom of the (equator-on) disc
+    return Array.from({ length: n }, () => {
+      const ang = pole + (rnd() - 0.5) * 1.7, baseR = 29, len = reach * (0.6 + rnd() * 0.6), tipR = baseR + len, sp = 0.05 + rnd() * 0.04;
+      const bx1 = 50 + Math.cos(ang - sp) * baseR, by1 = 50 + Math.sin(ang - sp) * baseR;
+      const bx2 = 50 + Math.cos(ang + sp) * baseR, by2 = 50 + Math.sin(ang + sp) * baseR;
+      const tx = 50 + Math.cos(ang) * tipR, ty = 50 + Math.sin(ang) * tipR;
+      const path = `M${bx1.toFixed(1)} ${by1.toFixed(1)} Q ${tx.toFixed(1)} ${ty.toFixed(1)} ${bx2.toFixed(1)} ${by2.toFixed(1)} Z`;
+      const puffs = [0.28, 0.58, 0.85].map((f) => ({ x: 50 + Math.cos(ang) * (baseR + len * f), y: 50 + Math.sin(ang) * (baseR + len * f), r: 1.3 + f * 2.4, op: 0.55 * (1 - f * 0.55) }));
+      return { path, puffs };
+    });
+  })();
+
   $: showShade = !isStar(body) && !isBelt(body);
 
   const uid = Math.random().toString(36).slice(2, 8);
@@ -248,6 +350,26 @@
           <stop offset="100%" stop-color={base} stop-opacity="0" />
         </radialGradient>
       {/if}
+      <!-- Eyeball: a tidally-STAR-locked world's day/night split, substellar face toward us — a hot
+           (baked or molten) eye fading through a terminator to a frozen limb. -->
+      {#if a.eyeball}
+        <radialGradient id="eyeball-{uid}" cx="50%" cy="50%" r="52%">
+          <stop offset="0%" stop-color={a.eyeball.dayHex} />
+          <stop offset="34%" stop-color={a.eyeball.dayHex} />
+          <stop offset="62%" stop-color={a.eyeball.kind === 'cold' ? '#5a6b82' : shade(a.eyeball.dayHex, -0.5)} />
+          <stop offset="100%" stop-color={a.eyeball.nightHex} />
+        </radialGradient>
+      {/if}
+      <!-- Crater bowl (dark centre → transparent) + fresh-crater ejecta halo (bright centre → out). -->
+      <radialGradient id="crater-{uid}" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="rgba(0,0,0,0.32)" />
+        <stop offset="70%" stop-color="rgba(0,0,0,0.12)" />
+        <stop offset="100%" stop-color="rgba(0,0,0,0)" />
+      </radialGradient>
+      <radialGradient id="ejecta-{uid}" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="rgba(230,236,246,0.28)" />
+        <stop offset="100%" stop-color="rgba(230,236,246,0)" />
+      </radialGradient>
       <clipPath id="clip-{uid}">{#if isSmallBody}<path d={smallBodyPath} />{:else}<circle cx="50" cy="50" r="30" />{/if}</clipPath>
       <clipPath id="front-{uid}"><rect x="0" y="50" width="100" height="50" /></clipPath>
       <clipPath id="belt-{uid}"><ellipse cx="50" cy="50" rx="46" ry="15" /></clipPath>
@@ -320,6 +442,14 @@
           <stop offset="100%" stop-color={isLava ? 'rgba(255,120,20,0)' : 'rgba(220,70,18,0)'} />
         </radialGradient>
       {/if}
+      {#if plumes.length}
+        <radialGradient id="plume-{uid}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgba(226,240,252,0.72)" />
+          <stop offset="55%" stop-color="rgba(198,222,246,0.28)" />
+          <stop offset="100%" stop-color="rgba(198,222,246,0)" />
+        </radialGradient>
+        <filter id="plumeblur-{uid}"><feGaussianBlur stdDeviation="0.9" /></filter>
+      {/if}
       {#if isToroid}
         <mask id="torus-{uid}">
           <ellipse cx="50" cy="50" rx="34" ry="10" fill="white" />
@@ -386,11 +516,106 @@
         {/if}
       {/if}
 
-      <!-- Impact craters on an old airless surface: a dark bowl with a faint sunlit rim. -->
+      <!-- Eyeball day/night split (star-locked worlds); molten day glows. Painted over the base. -->
+      {#if a.eyeball}
+        <g clip-path="url(#clip-{uid})">
+          <circle cx="50" cy="50" r="30" fill="url(#eyeball-{uid})" opacity={a.eyeball.molten ? 0.92 : 0.82} />
+          {#if a.eyeball.molten}
+            <circle cx="50" cy="50" r="14" fill={a.eyeball.dayHex} opacity="0.55" />
+          {/if}
+        </g>
+      {/if}
+
+      <!-- Uniform thermal incandescence (a super-hot lava world glows all over). -->
+      {#if a.thermalGlow}
+        <circle cx="50" cy="50" r="30" fill={a.thermalGlow.colorHex} opacity={0.35 + a.thermalGlow.strength * 0.5} clip-path="url(#clip-{uid})" />
+      {/if}
+
+      <!-- Polar vortex: a gas giant's geometric polar jet (Saturn hexagon), foreshortened at the top pole. -->
+      {#if a.polarVortex}
+        <g clip-path="url(#clip-{uid})">
+          <path d={vortexPoly} fill="rgba(60,80,120,0.32)" stroke="rgba(210,222,245,0.6)" stroke-width="0.7" stroke-linejoin="round" />
+        </g>
+      {/if}
+
+      <!-- Tholin mottling: irradiated organics stain the crust. Atmospheric (Titan) = a whole-disc haze
+           tint; surface (Pluto) = dark-red patches. Drawn under craters/frost as base albedo. -->
+      {#if a.tholin}
+        <g clip-path="url(#clip-{uid})">
+          {#if a.tholin.atmospheric}
+            <circle cx="50" cy="50" r="30" fill={a.tholin.colorHex} opacity={0.28 + a.tholin.strength * 0.4} />
+          {:else}
+            {#each tholinPatches as p}
+              <circle cx={p.cx} cy={p.cy} r={p.r} fill={a.tholin.colorHex} opacity={0.18 + a.tholin.strength * 0.32} />
+            {/each}
+          {/if}
+        </g>
+      {/if}
+
+      <!-- Frost: bright volatile-ice patches (retained N2/CO2/water = white-blue, SO2 = sulphur-yellow). -->
+      {#if a.frost}
+        <g clip-path="url(#clip-{uid})">
+          {#each frostPatches as p}
+            <circle cx={p.cx} cy={p.cy} r={p.r} fill={a.frost.colorHex} opacity={0.2 + a.frost.coverage * 0.4} />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Cloud deck: E-W streaks in latitude bands (clear equatorial lane), floating over the surface. -->
+      {#if a.clouds}
+        <g clip-path="url(#clip-{uid})">
+          {#each cloudPatches as p}
+            <ellipse cx={p.cx} cy={p.cy} rx={p.rx} ry={p.ry} fill={a.clouds.colorHex} opacity={p.op} />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Rough regolith (a small rubble pile): knobbly light/dark speckle instead of craters. -->
+      {#if a.rough}
+        <g clip-path="url(#clip-{uid})">
+          {#each roughSpeckle as p}
+            <circle cx={p.cx} cy={p.cy} r={p.r} fill={p.light ? '#fff8ee' : '#141008'} opacity={p.op} />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Impact craters: a shadowed bowl (radial gradient) ringed by a brighter rim — reads as a pit. -->
       {#if hasCraters}
         <g clip-path="url(#clip-{uid})">
           {#each craters as c}
-            <circle cx={c.cx} cy={c.cy} r={c.r} fill="rgba(0,0,0,0.16)" stroke="rgba(236,236,240,0.16)" stroke-width={Math.max(0.25, c.r * 0.16)} />
+            <circle cx={c.cx} cy={c.cy} r={c.r} fill="url(#crater-{uid})" />
+            <circle cx={c.cx} cy={c.cy} r={c.r * 0.9} fill="none" stroke="rgba(232,232,238,0.22)" stroke-width={Math.max(0.3, c.r * 0.2)} />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Fresh rayed craters: a soft ejecta halo + diffuse ray splash + a bright-rimmed bowl. -->
+      {#if rayedCraters.length}
+        <g clip-path="url(#clip-{uid})">
+          {#each rayedCraters as c}
+            <circle cx={c.cx} cy={c.cy} r={c.r * 3} fill="url(#ejecta-{uid})" />
+            <path d={c.rays} stroke="rgba(238,242,250,0.16)" stroke-width="0.4" fill="none" stroke-linecap="round" />
+            <circle cx={c.cx} cy={c.cy} r={c.r} fill="url(#crater-{uid})" />
+            <circle cx={c.cx} cy={c.cy} r={c.r * 0.9} fill="none" stroke="rgba(245,248,255,0.5)" stroke-width={Math.max(0.3, c.r * 0.2)} />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Ice cracks / ridges: a network of fine lineae threading the icy crust (Europa). -->
+      {#if iceCracks.length}
+        <g clip-path="url(#clip-{uid})">
+          {#each iceCracks as d}
+            <path {d} fill="none" stroke={a.iceCracks?.colorHex} stroke-width={0.5 + (a.iceCracks?.severity ?? 0) * 0.6} opacity="0.55" />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Crustal rifts: bold chasms where a frozen former ocean split the crust (Charon). -->
+      {#if rifts.length}
+        <g clip-path="url(#clip-{uid})">
+          {#each rifts as d}
+            <path {d} fill="none" stroke="rgba(34,40,52,0.4)" stroke-width="1.6" stroke-linecap="round" />
+            <path {d} fill="none" stroke="rgba(210,222,238,0.3)" stroke-width="0.4" stroke-linecap="round" />
           {/each}
         </g>
       {/if}
@@ -416,6 +641,15 @@
           {#each magma as m}<circle cx={m.cx} cy={m.cy} r={m.r} fill="url(#magma-{uid})" />{/each}
         </g>
       {/if}
+      <!-- Cryovolcanic plumes / geysers: misty icy sprays venting from the south pole, past the limb. -->
+      {#if plumes.length}
+        <g filter="url(#plumeblur-{uid})">
+          {#each plumes as p}
+            <path d={p.path} fill="url(#plume-{uid})" />
+            {#each p.puffs as pf}<circle cx={pf.x} cy={pf.y} r={pf.r} fill="rgba(226,240,252,{pf.op})" />{/each}
+          {/each}
+        </g>
+      {/if}
       <!-- Auroral ovals ringing the poles: spiky glowing rings, colour set by the atmosphere gas. -->
       {#if hasAurora}
         {@const gw = 2.4 + auroraStr * 3.4}
@@ -428,17 +662,17 @@
         <g clip-path="url(#aurclip-{uid})">
           <path d={auroraTop} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
           <path d={auroraTop} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-          {#if auroraBrilliant}
-            <path d={auroraTop} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-          {/if}
+          {#each auroraExtra as em}
+            <path d={auroraTop} fill="none" stroke={em.colorHex} stroke-width={cw * 0.7} stroke-linejoin="round" opacity={Math.min(0.75, 0.25 + em.weight)} />
+          {/each}
         </g>
         <!-- Far pole (bottom): upper half fades behind the planet; lower arc pokes past the bottom limb. -->
         <g clip-path="url(#aurclip-{uid})" mask="url(#aurbotmask-{uid})">
           <path d={auroraBot} fill={auroraCol.core} fill-opacity={fo} stroke={auroraCol.core} stroke-width={gw} stroke-linejoin="round" opacity={go} filter="url(#aurblur-{uid})" />
           <path d={auroraBot} fill="none" stroke={auroraCol.core} stroke-width={cw} stroke-linejoin="round" opacity={co} />
-          {#if auroraBrilliant}
-            <path d={auroraBot} fill="none" stroke={auroraCol.tip} stroke-width={cw * 0.6} stroke-linejoin="round" opacity="0.6" />
-          {/if}
+          {#each auroraExtra as em}
+            <path d={auroraBot} fill="none" stroke={em.colorHex} stroke-width={cw * 0.7} stroke-linejoin="round" opacity={Math.min(0.75, 0.25 + em.weight)} />
+          {/each}
         </g>
       {/if}
 

@@ -5,6 +5,7 @@
   import { AU_KM } from '$lib/constants';
   import { fmt } from '$lib/stores';
   import OrbitalSlider from './OrbitalSlider.svelte';
+  import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
 
   export let body: CelestialBody;
   export let parentBody: CelestialBody | null = null;
@@ -12,6 +13,11 @@
   export let rulePack: RulePack | null = null;
 
   const dispatch = createEventDispatcher();
+
+  // Shared guard for every distance this panel writes — an unphysical semi-major axis silently wrecks
+  // the whole system's geometry, and NaN propagates into the orrery as a frozen or invisible orbit.
+  const clampAU = (v: number, lo: number, hi: number) =>
+      !Number.isFinite(v) ? lo : Math.min(hi, Math.max(lo, v));
 
   let a_AU = 0;
   // What the distance field DISPLAYS: for a binary member this is the pair SEPARATION
@@ -160,9 +166,13 @@
 function updateOrbit() {
     if (!body.orbit) return;
     // A negative/zero/NaN semi-major axis is unphysical and throws in ctx.ellipse
-    // (it froze the orrery in a user file). Clamp to a tiny positive floor.
+    // (it froze the orrery in a user file). Clamp to a tiny positive floor — and to a generous
+    // absolute ceiling, so a runaway or a fat-fingered exponent can't put a body 1e49 AU out and
+    // wreck the whole system's geometry. Typed values stay free within those bounds.
     if (!Number.isFinite(dist_AU) || dist_AU <= 0) {
         dist_AU = Math.max(minA, 1e-6);
+    } else if (dist_AU > PAIR_MAX_AU) {
+        dist_AU = PAIR_MAX_AU;
     }
     applyDistance();
     const boundedE = Math.max(0, Math.min(e, safeMaxE));
@@ -216,20 +226,21 @@ function updateOrbit() {
   $: pairHost = (isBinaryMember && (parentBody as any).parentId && system?.nodes)
       ? (system.nodes.find((n: any) => n.id === (parentBody as any).parentId) ?? null)
       : null;
-  // A body can legitimately orbit a barycentre (a valid orbital point) even though only the barycentre's
-  // primary is selectable — so when the host IS a barycentre, name it AND its primary, e.g.
-  // "Pluto-Charon Barycentre (Pluto)", so it's clear what's being orbited.
+  // A body can legitimately orbit a barycentre (a valid orbital point) even though the barycentre itself
+  // is invisible and unselectable — so name it AND the bodies it holds, e.g. "Pluto-Charon Barycentre
+  // (Pluto + Charon)". Nested pairs are FLATTENED to real bodies by the shared rule: naming the heaviest
+  // member alone produced "Alpha Centauri System Barycentre (Alpha Centauri Barycentre)", which told the
+  // user nothing about what was being orbited.
   function hostLabel(node: any, sys: any): string {
       if (!node) return '';
-      if (node.kind === 'barycenter' && sys?.nodes) {
-          const members = ((node.memberIds || []) as string[]).map((id) => sys.nodes.find((n: any) => n.id === id)).filter(Boolean) as any[];
-          const primary = members.reduce((best: any, m: any) =>
-              ((m.massKg || m.effectiveMassKg || 0) > (best?.massKg || best?.effectiveMassKg || 0) ? m : best), null);
-          return primary ? `${node.name} (${primary.name})` : node.name;
-      }
+      if (isBarycentre(node)) return barycentreLabel(sys, node);
       return node.name ?? '';
   }
-  $: pairHostName = pairHost ? hostLabel(pairHost, system) : 'the system centre';
+  // The pair-distance label names the host PLAINLY — spelling out a nested barycentre's contents here
+  // listed the very bodies being edited back at the user ("…(Rigil Kentaurus + Toliman + Proxima…)").
+  // The line under the control already says what moves; the contents matter only when something ORBITS
+  // the point (orbitHostName below), where they are the whole point.
+  $: pairHostName = pairHost ? (pairHost.name ?? '') : 'the system centre';
   // Name the actual bodies in the labels — on a multi-star system "partner"/"parent" is easy to lose.
   $: partnerBody = (isBinaryMember && system?.nodes)
       ? (system.nodes.find((n: any) => n.id !== body.id && ((parentBody as any).memberIds || []).includes(n.id)) ?? null)
@@ -237,16 +248,42 @@ function updateOrbit() {
   $: partnerName = partnerBody ? partnerBody.name : 'its partner';
   $: orbitHostName = hostLabel(parentBody, system);
   let pairA_AU = 0;
-  $: if (isBinaryMember && (parentBody as any).orbit && !editing) pairA_AU = (parentBody as any).orbit.elements.a_AU ?? 0;
-  $: pairMaxA = Math.max(60, (pairA_AU || 0) * 1.5);
+  // Rounded for display: the stored value carries the full mass-split float (874.2056190963333), which
+  // overflowed the box and read as noise.
+  $: if (isBinaryMember && (parentBody as any).orbit && !editing) {
+      pairA_AU = parseFloat((((parentBody as any).orbit.elements.a_AU ?? 0)).toFixed(4));
+  }
+  // FIXED log range — deliberately NOT derived from the current value. A slider whose maximum is a
+  // multiple of its own value is a runaway: drag to the end, the range re-scales around the new value,
+  // and the next drag multiplies again. Two drags took Alpha Centauri's inner pair from 874 AU to
+  // 3e49 AU and destroyed the system's geometry. 1e6 AU is ~16 light years — past any bound pair — and
+  // a log slider spans the eight decades comfortably.
+  const PAIR_MIN_AU = 0.01;
+  const PAIR_MAX_AU = 1e6;
 
   function handlePairDistance() {
       const bary: any = parentBody;
       if (!isBinaryMember || isRootPair || !bary?.orbit) return;
-      bary.orbit.elements.a_AU = Math.max(0.001, Number(pairA_AU) || 0);
+      // Clamp on WRITE too, so a typed value can't do what the slider no longer can.
+      const v = Number(pairA_AU);
+      const safe = Number.isFinite(v) ? clampAU(v, PAIR_MIN_AU, PAIR_MAX_AU) : PAIR_MIN_AU;
+      if (safe !== v) pairA_AU = safe;
+      bary.orbit.elements.a_AU = safe;
       bary.orbit.lastEditedT0 = Date.now();
       dispatch('update');
   }
+  function handlePairSlider(event: CustomEvent<number>) {
+      pairA_AU = parseFloat(event.detail.toFixed(4));
+      handlePairDistance();
+  }
+
+  // Each member orbits the barycentre at its OWN mass-weighted share of the separation, on opposite
+  // sides — so this body's distance from the centre is NOT the separation the control above sets. The
+  // read-only data panel shows that share, so spell both out here or the two panels look contradictory.
+  $: partnerA_AU = partnerBody?.orbit?.elements?.a_AU ?? 0;
+  $: splitText = isBinaryMember && a_AU > 0 && partnerA_AU > 0
+      ? `${body.name} orbits the centre at ${a_AU.toFixed(3)} AU, ${partnerName} at ${partnerA_AU.toFixed(3)} AU on the opposite side — heavier bodies sit closer in.`
+      : '';
 
   $: peri = dist_AU * (1 - e);
   $: aph = dist_AU * (1 + e);
@@ -266,13 +303,15 @@ function updateOrbit() {
         <div class="form-group pair-group" class:rooted={isRootPair}>
             <div class="label-row">
                 <label title="Moves the whole binary pair through the system. The control below only sets how far apart the two bodies sit.">Distance from {pairHostName} (AU)</label>
-                <input type="number" step="any" min="0.001" bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
+                <input type="number" step="any" min={PAIR_MIN_AU} max={PAIR_MAX_AU} bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
             </div>
+            {#if !isRootPair}
             <div class="full-width-slider">
-                <input class="pair-slider" type="range" min="0.05" max={pairMaxA} step="0.05" bind:value={pairA_AU} on:input={handlePairDistance} disabled={isRootPair} />
+                <OrbitalSlider value={pairA_AU} min={PAIR_MIN_AU} max={PAIR_MAX_AU} on:input={handlePairSlider} />
             </div>
+            {/if}
             <div class="info-row" style="font-size: 0.78em; color: var(--text-faint);">
-                {#if isRootPair}This pair is the system centre, so it has no distance to set. The control below sets how far apart the two bodies sit.{:else}Moves both bodies of the pair together. The control below sets their separation.{/if}
+                {#if isRootPair}This pair is the system centre, so it has no distance to set. The control below sets how far apart the two bodies sit.{:else}Moves {body.name} and {partnerName} together, as one. The control below sets how far apart they sit.{/if}
             </div>
         </div>
         {/if}
@@ -286,6 +325,9 @@ function updateOrbit() {
             <div class="full-width-slider">
                 <OrbitalSlider value={dist_AU} min={minA} max={maxA} {zones} on:input={handleOrbitalSliderInput} />
             </div>
+            {#if splitText}
+            <div class="info-row" style="font-size: 0.78em; color: var(--text-faint);">{splitText}</div>
+            {/if}
         </div>
 
         <div class="form-group">
@@ -376,7 +418,6 @@ function updateOrbit() {
       padding: 8px;
       background: color-mix(in srgb, var(--accent, #5b8def) 7%, transparent);
   }
-  .pair-slider { width: 100%; accent-color: var(--accent, #5b8def); }
   .pair-group.rooted { opacity: 0.55; }
   .pair-group input:disabled { cursor: not-allowed; }
   

@@ -97,7 +97,7 @@
     {:else if selectedTab === 'Atmosphere'}
       <BodyAtmosphereTab {body} {rulePack} {system} on:update={handleUpdate} />
     {:else if selectedTab === 'Hydro'}
-      <BodyHydrosphereTab {body} on:update={handleUpdate} />
+      <BodyHydrosphereTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Bio'}
       <BodyBiosphereTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'SystemInfo'}

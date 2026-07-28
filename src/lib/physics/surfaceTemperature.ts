@@ -21,6 +21,8 @@ export interface SurfaceTempInputs {
   pressureBar: number;
   rotationHours?: number;
   tidallyLocked?: boolean;
+  starTidallyLocked?: boolean;  // locked to the STAR (permanent substellar face). A moon locked to its
+  orbitalPeriodHours?: number;  // planet is NOT — its whole surface still cycles day/night (over its orbit)
   eccentricity?: number;
   obliquityDeg?: number;        // axial tilt; default 25° when unknown
   hasLiquidOcean?: boolean;
@@ -60,8 +62,11 @@ export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTemp
     coldAmp += seasAmp; hotAmp += seasAmp;
   }
 
-  // --- Day/night OR locked faces. ---
-  if (i.tidallyLocked) {
+  // --- Day/night OR permanently-locked faces. ONLY a STAR-locked body has a permanent substellar face
+  //     (a Mercury-3:2 aside — we model synchronous). A moon locked to its PLANET keeps turning relative
+  //     to the star over its orbit, so its whole surface still bakes and freezes on a slow day/night
+  //     cycle (its rotation relative to the sun ≈ its orbital period) — not a frozen far side. ---
+  if (i.starTidallyLocked) {
     const dayAmp = 0.40 * Teq * diurnalSpread;
     const nightAmp = 0.60 * Teq * diurnalSpread;
     if (dayAmp > 2 || nightAmp > 2) {
@@ -70,7 +75,10 @@ export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTemp
       coldAmp += nightAmp; hotAmp += dayAmp;
     }
   } else {
-    const rotFactor = Math.min(2.5, Math.max(0.5, (i.rotationHours ?? 24) / 24)); // slow spin → bigger swing
+    // A planet-locked moon turns relative to the sun once per orbit → use its orbital period as the
+    // effective solar-day length (slow → a big, but not permanent, swing).
+    const effRotHours = i.tidallyLocked ? (i.orbitalPeriodHours || i.rotationHours || 24) : (i.rotationHours ?? 24);
+    const rotFactor = Math.min(2.5, Math.max(0.5, effRotHours / 24)); // slow spin → bigger swing
     const diAmp = 0.30 * Teq * diurnalSpread * rotFactor;
     if (diAmp > 2) {
       components.push({ source: 'diurnal', label: 'Day ↔ night', lowK: mean - diAmp, highK: mean + diAmp });

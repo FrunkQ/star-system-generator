@@ -62,7 +62,7 @@ export const POI_FIELDS: PoIField[] = [
   { field: 'isLegendClass', label: 'Paradise type', type: 'bool', note: 'Ocean or eyeball world (legend bait).' },
   { field: 'roleHint', label: 'Body kind', type: 'string', values: ['planet', 'moon', 'belt'], note: 'planet / moon / belt.' },
   { field: 'hydro', label: 'Surface liquid', type: 'string', values: ['water', 'methane', 'ammonia'], note: 'Dominant surface liquid.' },
-  { field: 'regime', label: 'Geology regime', type: 'string', values: ['plate-tectonics', 'stagnant-lid', 'tidal-volcanic', 'cryovolcanic', 'crater', 'inactive'], note: 'Tectonic/volcanic regime.' },
+  { field: 'regime', label: 'Geology regime', type: 'string', values: ['plate-tectonics', 'stagnant-lid', 'episodic', 'plutonic', 'tidal-volcanic', 'cryovolcanic', 'crater', 'inactive'], note: 'Tectonic/volcanic regime.' },
   { field: 'atmMain', label: 'Main atmos. gas', type: 'string', values: ['CO2', 'N2', 'O2', 'CH4', 'H2', 'He'], note: 'Dominant atmospheric gas.' },
   { field: 'hasNobleGas', label: 'Noble gas in air', type: 'bool', note: 'Atmosphere contains Ar/Kr/Xe/Ne (>0.1%).' }
 ];

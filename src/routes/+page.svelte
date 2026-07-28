@@ -17,6 +17,7 @@
   import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
   import CompanionModal from '$lib/components/CompanionModal.svelte';
   import PlayerViewModal from '$lib/components/PlayerViewModal.svelte';
+  import { PLAYER_VIEWS_ENABLED } from '$lib/config/releaseFlags';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
   import { brandingStore } from '$lib/catalogue/branding';
   import { guideConfigStore } from '$lib/catalogue/guideConfig';
@@ -39,6 +40,7 @@
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
   import AutopilotShipIcon from '$lib/components/AutopilotShipIcon.svelte';
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
+  import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
   import EditTemporalModal from '$lib/components/EditTemporalModal.svelte';
   import AboutModal from '$lib/components/AboutModal.svelte';
@@ -107,6 +109,7 @@
   // sectioned Settings modal can open them from either view.
   let showFuelModal = false;
   let showAtmosphereModal = false;
+  let showLiquidsModal = false;
   let showSensorsModal = false;
   let showTemporalModal = false;
   let showAbout = false;
@@ -526,7 +529,9 @@
               if (systemNode) {
                   systemNode.viewport = currentViewport;
                   systemNode.system = currentSystem;
-                  systemNode.name = currentSystem.name;
+                  // The map label tracks the primary star's name only until the GM gives the system
+                  // its own name (see isNameUserDefined) — then it's pinned.
+                  if (!systemNode.isNameUserDefined) systemNode.name = currentSystem.name;
                   const fallbackSec = BigInt(Math.floor((currentSystem.epochT0 || Date.now()) / 1000));
                   const temporalDisplaySec = parseClockSeconds(starmap.temporal?.displayTimeSec, fallbackSec).toString();
                   systemNode.time = { ...(systemNode.time || {}), displayTimeSec: temporalDisplaySec };
@@ -586,6 +591,10 @@
 
           if (overrides.atmosphereCompositions && pack.distributions?.['atmosphere_composition']) {
               pack.distributions['atmosphere_composition'].entries = overrides.atmosphereCompositions;
+          }
+
+          if (overrides.liquids && overrides.liquids.length) {
+              pack.liquids = overrides.liquids;  // whole-list replace; allLiquids(pack) prefers pack.liquids
           }
       }
       return pack;
@@ -669,7 +678,7 @@
           const systemNode = starmap.systems.find(s => s.id === system.id || s.system.id === system.id);
           if (systemNode) {
             systemNode.system = system;
-            systemNode.name = system.name;
+            if (!systemNode.isNameUserDefined) systemNode.name = system.name;
           }
         }
         return starmap;
@@ -935,7 +944,13 @@
     'Negotiating with the second law of thermodynamics…', 'Convincing the moons to stay tidally locked…',
     'Balancing the barycentres…', 'Letting the comets finish their laps…', 'Warming up the habitable zones…',
     'Counting the rings (twice)…', 'Apologising to Pluto…', 'Checking nobody fell into a black hole…',
-    'Carrying the one — it is a big one…', 'Spinning up the dynamos…', 'Measuring twice, cutting the snow line once…'
+    'Carrying the one — it is a big one…', 'Spinning up the dynamos…', 'Measuring twice, cutting the snow line once…',
+    // v2.1.3
+    'Teaching the binaries to share a centre…', 'Filing the asteroids under "lumpy"…',
+    'Asking the tidally locked moons to face the front…', 'Dusting the accretion discs…',
+    'Reticulating the snow lines…', 'Checking the auroras are the right colour…',
+    'Sorting the ices by how well they stay put…', 'Weighing the worlds against their own composition…',
+    'Waiting for the cryovolcanoes to stop showing off…', 'Politely ignoring the second sun…'
   ];
   async function recalcAllSystems(starmap: StarmapType): Promise<StarmapType> {
     const systems = starmap.systems ?? [];
@@ -1106,7 +1121,7 @@
     starmapStore.update(starmap => {
       if (starmap) {
         const node = starmap.systems.find(s => s.id === systemId || s.system?.id === systemId);
-        if (node) node.name = name;
+        if (node) { node.name = name; node.isNameUserDefined = true; }
       }
       return starmap;
     });
@@ -1114,6 +1129,12 @@
 
   function handleDeleteSystem(event: CustomEvent<string>) {
     const target = event.detail;
+    // Deleting a system is destructive and irreversible — everything in it (bodies, constructs,
+    // routes, notes) is lost. Confirm first, naming the system so the GM knows exactly what goes.
+    const existing = get(starmapStore);
+    const targetNode = existing?.systems.find(s => s.id === target || s.system?.id === target);
+    const label = targetNode?.name || 'this system';
+    if (!confirm(`Delete "${label}"?\n\nThe entire system — every body, construct, route and note — will be permanently removed. This cannot be undone.\n\nDownload the starmap first if you want to keep a copy.`)) return;
     starmapStore.update(starmap => {
       if (starmap) {
         // Systems are keyed on the wrapper NODE id, but a delete can arrive with either that node id
@@ -1384,6 +1405,7 @@
       on:edittemporal={() => { settingsReturnSection = 'time'; showTemporalModal = true; }}
       on:editfuel={() => { settingsReturnSection = 'technology'; showFuelModal = true; }}
       on:editatmospheres={() => { settingsReturnSection = 'planets'; showAtmosphereModal = true; }}
+      on:editliquids={() => { settingsReturnSection = 'planets'; showLiquidsModal = true; }}
       on:editsensors={() => { settingsReturnSection = 'technology'; showSensorsModal = true; }}
       on:editpoi={() => { settingsReturnSection = 'generation'; showPoiEditor = true; }}
       on:editcoi={() => { settingsReturnSection = 'coi'; showCoiEditor = true; }}
@@ -1407,6 +1429,9 @@
   {/if}
   {#if showAtmosphereModal && $starmapStore && selectedRulepack}
     <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
+  {/if}
+  {#if showLiquidsModal && $starmapStore && selectedRulepack}
+    <EditLiquidsModal showModal={showLiquidsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showLiquidsModal = false; returnToSettings(); }} />
   {/if}
   {#if showSensorsModal && $starmapStore && selectedRulepack}
     <EditSensorsModal showModal={showSensorsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showSensorsModal = false; returnToSettings(); }} />
@@ -1434,7 +1459,9 @@
     <ReportConfigModal on:generate={handleStarmapReport} on:close={() => showReportConfigModal = false} />
   {/if}
 
-  {#if showPlayerPresets}
+  <!-- Player Views (V2.2 line): masked by the same single flag as its rail entry, so no stray dispatch
+       can open it while it is hidden. Flip $lib/config/releaseFlags to bring the whole feature back. -->
+  {#if showPlayerPresets && PLAYER_VIEWS_ENABLED}
     <PlayerViewModal sessionId={broadcastSessionId} on:close={() => showPlayerPresets = false} />
   {/if}
 

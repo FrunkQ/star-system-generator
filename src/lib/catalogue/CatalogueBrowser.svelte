@@ -9,6 +9,7 @@
   import { bodyFacts, bodyGlyph } from '$lib/catalogue/bodyFacts';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
+  import { dominantMemberOf } from '$lib/system/barycentres';
   import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
 
@@ -92,7 +93,12 @@
     const all = [...new Set([...byId, ...byParent])];
     return all.sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
   }
-  function dominantOf(bary: any): CelestialBody | null { return membersOf(bary)[0] ?? null; }
+  // Rank by the SHARED rule: a nested barycentre carries its pair mass under effectiveMassKg, so sorting
+  // members on massKg alone scored it 0 and handed "dominant" to the lighter outlying star (Alpha
+  // Centauri's whole inner pair lost to Proxima). That also resolves a nested pair through to a real body.
+  function dominantOf(bary: any): CelestialBody | null {
+    return (dominantMemberOf({ nodes } as any, bary.id) as CelestialBody | null) ?? membersOf(bary)[0] ?? null;
+  }
   // Friendly label for the diagram/list: a barycentre shows its dominant member's name.
   function displayLabel(n: any): string {
     if (isBary(n)) return dominantOf(n)?.name ?? n.name;

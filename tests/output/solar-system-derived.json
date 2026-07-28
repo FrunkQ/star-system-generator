@@ -70,10 +70,21 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-star"
+        },
+        {
           "key": "magnetic/tenuous"
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "high"
         },
         {
           "key": "habitability/none"
@@ -141,6 +152,7 @@
       "equilibriumTempK": 425.41259320721076,
       "surfaceRadiation": 3499.876774278839,
       "tidalHeatK": 0,
+      "starTidallyLocked": true,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 4.326640157213818e-9,
       "temperatureK": 425.4125932115374,
@@ -201,12 +213,24 @@
         "vigor": 0.099,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.10 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 8.077,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 35.6,
+          "methane": 20.3,
+          "carbon-dioxide": 55.9,
+          "water": 22.9,
+          "sulfur-dioxide": 81.3
+        }
       },
       "apparentColor": {
         "hex": "#977e44",
@@ -467,7 +491,15 @@
           "key": "magnetic/unshielded"
         },
         {
-          "key": "geology/stagnant-lid"
+          "key": "geology/episodic"
+        },
+        {
+          "key": "surface/age",
+          "value": "moderate"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -475,10 +507,6 @@
         {
           "key": "resource/volatiles",
           "source": "rule:d16"
-        },
-        {
-          "key": "science/runaway-greenhouse",
-          "source": "rule:d26"
         }
       ],
       "areas": [],
@@ -528,6 +556,7 @@
       "equilibriumTempK": 244.6440078746525,
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 501.1240884959156,
       "temperatureK": 745.7680963705681,
@@ -581,17 +610,29 @@
       },
       "oblateness": 7.637335768889923e-8,
       "geoActivity": {
-        "regime": "stagnant-lid",
+        "regime": "episodic",
         "volcanism": "resurfacing",
         "vigor": 0.803,
         "active": true,
-        "driver": "radiogenic (dry)",
+        "driver": "radiogenic (dry, heat-trapping)",
+        "surfaceAgeGyr": 0.7,
         "tags": [
-          "geology/stagnant-lid"
+          "geology/episodic"
         ],
         "notes": [
-          "Vigorous interior but a DRY, rigid lithosphere traps heat → stagnant lid with episodic catastrophic resurfacing → no CO2 drawdown (Venus-like)."
+          "Vigorous interior but a DRY, rigid lithosphere traps heat until it overturns in periodic catastrophic global resurfacing (Venus-like); no carbonate–silicate drawdown → runaway greenhouse."
         ]
+      },
+      "irradiationDose": 0.155,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 369.4,
+          "methane": 211.1,
+          "carbon-dioxide": 580.5,
+          "water": 237.5,
+          "sulfur-dioxide": 844.4
+        }
       },
       "apparentColor": {
         "hex": "#937559",
@@ -779,7 +820,7 @@
         "surfaceScore": 32,
         "modifiers": [
           {
-            "label": "Stagnant lid (runaway-greenhouse risk)",
+            "label": "Episodic resurfacing (runaway-greenhouse risk)",
             "delta": -25
           }
         ],
@@ -855,6 +896,14 @@
         },
         {
           "key": "geology/plate-tectonics"
+        },
+        {
+          "key": "surface/age",
+          "value": "moderate"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "low"
         },
         {
           "key": "habitability/earth-like"
@@ -970,6 +1019,7 @@
       "equilibriumTempK": 255.49408288423908,
       "surfaceRadiation": 2.298990432085668,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 32.80114380821948,
       "temperatureK": 288.2952266924585,
@@ -1022,12 +1072,24 @@
         "vigor": 0.975,
         "active": true,
         "driver": "radiogenic + water",
+        "surfaceAgeGyr": 0.2,
         "tags": [
           "geology/plate-tectonics"
         ],
         "notes": [
           "Vigorous interior with surface water hydrating the lithosphere → mobile-lid plate tectonics → the carbonate–silicate cycle regulates climate."
         ]
+      },
+      "irradiationDose": 0.022,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 412.3,
+          "methane": 235.6,
+          "carbon-dioxide": 647.9,
+          "water": 265.1,
+          "sulfur-dioxide": 942.4
+        }
       },
       "apparentColor": {
         "hex": "#718aa2",
@@ -1362,10 +1424,21 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "high"
         },
         {
           "key": "habitability/none"
@@ -1414,13 +1487,14 @@
       "surfaceRadiation": 512.3836279632528,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 267.19206115251916,
       "temperatureProfile": {
         "meanK": 267,
-        "totalMinK": 5,
-        "totalMaxK": 476,
+        "totalMinK": 3,
+        "totalMaxK": 569,
         "components": [
           {
             "source": "latitude",
@@ -1435,24 +1509,16 @@
             "highK": 310
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 267,
-            "highK": 374,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 107,
-            "highK": 267,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 67,
+            "highK": 468
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 5,
-        "max": 476
+        "min": 3,
+        "max": 569
       },
       "magnetism": {
         "source": "none",
@@ -1477,12 +1543,24 @@
         "vigor": 0.022,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 1.386,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 17.8,
+          "methane": 10.2,
+          "carbon-dioxide": 27.9,
+          "water": 11.4,
+          "sulfur-dioxide": 40.6
+        }
       },
       "apparentColor": {
         "hex": "#9c7a5a",
@@ -1751,6 +1829,14 @@
           "key": "geology/inactive"
         },
         {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "high"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -1809,6 +1895,7 @@
       "equilibriumTempK": 211.2578927318618,
       "surfaceRadiation": 213.69242475056376,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 5.811580890688286,
       "temperatureK": 217.06947362255008,
@@ -1861,12 +1948,24 @@
         "vigor": 0.135,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 3.8483074413881933,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.13 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.531,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 100.3,
+          "methane": 57.3,
+          "carbon-dioxide": 157.6,
+          "water": 64.5,
+          "sulfur-dioxide": 229.2
+        }
       },
       "apparentColor": {
         "hex": "#957659",
@@ -2084,6 +2183,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -2098,6 +2200,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "high"
         },
         {
           "key": "habitability/none"
@@ -2146,13 +2256,14 @@
       "surfaceRadiation": 223.89323317583214,
       "tidalHeatK": 0.24412215742011018,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 206.3342426978193,
       "temperatureProfile": {
         "meanK": 206,
-        "totalMinK": 9,
-        "totalMaxK": 362,
+        "totalMinK": 102,
+        "totalMaxK": 311,
         "components": [
           {
             "source": "latitude",
@@ -2167,18 +2278,10 @@
             "highK": 234
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 206,
-            "highK": 289,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 83,
-            "highK": 206,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 175,
+            "highK": 237
           },
           {
             "source": "tidal-hotspot",
@@ -2190,8 +2293,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 9,
-        "max": 362
+        "min": 102,
+        "max": 311
       },
       "magnetism": {
         "source": "none",
@@ -2216,12 +2319,24 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.59,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 0,
+          "methane": 0,
+          "carbon-dioxide": 0,
+          "water": 0,
+          "sulfur-dioxide": 0
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -2462,6 +2577,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -2473,6 +2591,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "high"
         },
         {
           "key": "habitability/none"
@@ -2525,13 +2651,14 @@
       "surfaceRadiation": 223.86590122376526,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 200.01352688297754,
       "temperatureProfile": {
         "meanK": 200,
-        "totalMinK": 11,
-        "totalMaxK": 349,
+        "totalMinK": 55,
+        "totalMaxK": 345,
         "components": [
           {
             "source": "latitude",
@@ -2546,24 +2673,16 @@
             "highK": 225
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 200,
-            "highK": 280,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 80,
-            "highK": 200,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 125,
+            "highK": 275
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 11,
-        "max": 349
+        "min": 55,
+        "max": 345
       },
       "magnetism": {
         "source": "none",
@@ -2588,12 +2707,24 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.541,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 0,
+          "methane": 0,
+          "carbon-dioxide": 0,
+          "water": 0,
+          "sulfur-dioxide": 0
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -2893,6 +3024,7 @@
       "equilibriumTempK": 161.89530157466643,
       "surfaceRadiation": 70.53487638711071,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 161.89530157466643,
@@ -3051,6 +3183,7 @@
       "equilibriumTempK": 110.11372430182148,
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 11.018301556485874,
       "temperatureK": 165.9797756348331,
@@ -3348,6 +3481,7 @@
       "equilibriumTempK": 116.56004482844226,
       "surfaceRadiation": 18.9524671384648,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 116.56004482844226,
@@ -3424,6 +3558,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "tidal/volcanism"
         },
         {
@@ -3431,6 +3568,18 @@
         },
         {
           "key": "geology/volcanic-tidal"
+        },
+        {
+          "key": "surface/age",
+          "value": "young"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "low"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "sulfur-dioxide"
         },
         {
           "key": "habitability/none"
@@ -3494,12 +3643,13 @@
       "surfaceRadiation": 20.939663111605615,
       "tidalHeatK": 4.107586565502499,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0.0000016660940237464605,
       "temperatureK": 119.17948275766433,
       "temperatureProfile": {
         "meanK": 119,
-        "totalMinK": 10,
+        "totalMinK": 18,
         "totalMaxK": 1240,
         "components": [
           {
@@ -3515,18 +3665,10 @@
             "highK": 134
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 119,
-            "highK": 165,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 50,
-            "highK": 119,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 58,
+            "highK": 180
           },
           {
             "source": "tidal-hotspot",
@@ -3538,7 +3680,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 10,
+        "min": 18,
         "max": 1240
       },
       "magnetism": {
@@ -3564,12 +3706,26 @@
         "vigor": 0.027,
         "active": true,
         "driver": "tidal flexing",
+        "surfaceAgeGyr": 0.002,
         "tags": [
           "geology/volcanic-tidal"
         ],
         "notes": [
           "Tidal flexing drives silicate volcanism far exceeding radiogenic heat (Io-like)."
         ]
+      },
+      "irradiationDose": 0,
+      "volatiles": {
+        "retained": [
+          "sulfur-dioxide"
+        ],
+        "lambda": {
+          "nitrogen": 47.9,
+          "methane": 27.4,
+          "carbon-dioxide": 75.2,
+          "water": 30.8,
+          "sulfur-dioxide": 109.4
+        }
       },
       "apparentColor": {
         "hex": "#ac9274",
@@ -3834,6 +3990,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "oxidizer"
         },
         {
@@ -3852,6 +4011,18 @@
         },
         {
           "key": "geology/cryovolcanic"
+        },
+        {
+          "key": "surface/age",
+          "value": "young"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "low"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+water"
         },
         {
           "key": "habitability/subsurface"
@@ -3945,12 +4116,13 @@
       "surfaceRadiation": 20.927586179598723,
       "tidalHeatK": 3.5914357329356754,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 99.46841494675006,
       "temperatureProfile": {
         "meanK": 99,
-        "totalMinK": 8,
+        "totalMinK": 3,
         "totalMaxK": 674,
         "components": [
           {
@@ -3966,18 +4138,10 @@
             "highK": 112
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 99,
-            "highK": 138,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 42,
-            "highK": 99,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 28,
+            "highK": 171
           },
           {
             "source": "tidal-hotspot",
@@ -3989,7 +4153,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 8,
+        "min": 3,
         "max": 674
       },
       "magnetism": {
@@ -4015,12 +4179,27 @@
         "vigor": 0.014,
         "active": true,
         "driver": "tidal flexing (icy)",
+        "surfaceAgeGyr": 0.05,
         "tags": [
           "geology/cryovolcanic"
         ],
         "notes": [
           "Tidal flexing keeps a subsurface ocean liquid; cryovolcanic plumes vent water/ice (Europa/Enceladus-like)."
         ]
+      },
+      "irradiationDose": 0.002,
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "water"
+        ],
+        "lambda": {
+          "nitrogen": 36,
+          "methane": 20.6,
+          "carbon-dioxide": 56.6,
+          "water": 23.2,
+          "sulfur-dioxide": 82.4
+        }
       },
       "apparentColor": {
         "hex": "#becddc",
@@ -4279,6 +4458,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -4294,6 +4476,18 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+water"
         },
         {
           "key": "habitability/none"
@@ -4367,13 +4561,14 @@
       "surfaceRadiation": 20.729950827259554,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 95.85237968671684,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 5,
-        "totalMaxK": 168,
+        "totalMinK": 3,
+        "totalMaxK": 201,
         "components": [
           {
             "source": "latitude",
@@ -4388,24 +4583,16 @@
             "highK": 108
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 96,
-            "highK": 134,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 38,
-            "highK": 96,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 24,
+            "highK": 168
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 5,
-        "max": 168
+        "min": 3,
+        "max": 201
       },
       "magnetism": {
         "source": "none",
@@ -4427,12 +4614,27 @@
         "vigor": 0.019,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.16,
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "water"
+        ],
+        "lambda": {
+          "nitrogen": 65.9,
+          "methane": 37.6,
+          "carbon-dioxide": 103.5,
+          "water": 42.3,
+          "sulfur-dioxide": 150.6
+        }
       },
       "apparentColor": {
         "hex": "#c4d8ec",
@@ -4680,6 +4882,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -4695,6 +4900,18 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+water"
         },
         {
           "key": "habitability/none"
@@ -4747,13 +4964,14 @@
       "surfaceRadiation": 20.868796287830442,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 95.80244283934795,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 5,
-        "totalMaxK": 168,
+        "totalMinK": 3,
+        "totalMaxK": 201,
         "components": [
           {
             "source": "latitude",
@@ -4768,24 +4986,16 @@
             "highK": 108
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 96,
-            "highK": 134,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 38,
-            "highK": 96,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 24,
+            "highK": 168
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 5,
-        "max": 168
+        "min": 3,
+        "max": 201
       },
       "magnetism": {
         "source": "none",
@@ -4810,12 +5020,27 @@
         "vigor": 0.013,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.01 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.174,
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "water"
+        ],
+        "lambda": {
+          "nitrogen": 52.1,
+          "methane": 29.8,
+          "carbon-dioxide": 81.8,
+          "water": 33.5,
+          "sulfur-dioxide": 119
+        }
       },
       "apparentColor": {
         "hex": "#c4d8ec",
@@ -5072,6 +5297,10 @@
           "key": "reducing"
         },
         {
+          "key": "feature/polar-vortex",
+          "value": "6"
+        },
+        {
           "key": "ring/system"
         },
         {
@@ -5165,6 +5394,7 @@
       "equilibriumTempK": 81.15750990778466,
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 5.258171591390225,
       "temperatureK": 134.44983435793435,
@@ -5480,6 +5710,7 @@
       "equilibriumTempK": 85.9661103740463,
       "surfaceRadiation": 5.594091223855793,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 85.9661103740463,
@@ -5547,6 +5778,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "inert"
         },
         {
@@ -5572,6 +5806,18 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+water"
         },
         {
           "key": "habitability/alien"
@@ -5664,13 +5910,14 @@
       "surfaceRadiation": 2.0001915525995857,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 13.82556199811241,
       "temperatureK": 96.15066124375716,
       "temperatureProfile": {
         "meanK": 96,
-        "totalMinK": 69,
-        "totalMaxK": 119,
+        "totalMinK": 66,
+        "totalMaxK": 126,
         "components": [
           {
             "source": "latitude",
@@ -5685,24 +5932,16 @@
             "highK": 102
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 96,
-            "highK": 105,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 83,
-            "highK": 96,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 80,
+            "highK": 112
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 69,
-        "max": 119
+        "min": 66,
+        "max": 126
       },
       "magnetism": {
         "source": "none",
@@ -5724,12 +5963,27 @@
         "vigor": 0.016,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.165,
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "water"
+        ],
+        "lambda": {
+          "nitrogen": 71,
+          "methane": 40.6,
+          "carbon-dioxide": 111.6,
+          "water": 45.7,
+          "sulfur-dioxide": 162.4
+        }
       },
       "apparentColor": {
         "hex": "#cadff1",
@@ -5921,6 +6175,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "greenhouse"
         },
         {
@@ -5951,6 +6208,14 @@
         },
         {
           "key": "geology/cryovolcanic"
+        },
+        {
+          "key": "surface/age",
+          "value": "young"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "low"
         },
         {
           "key": "habitability/subsurface"
@@ -6047,13 +6312,14 @@
       "surfaceRadiation": 7.593041652371447,
       "tidalHeatK": 3.032238426788762,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 2.5740848340110443e-8,
       "temperatureK": 74.54399032061438,
       "temperatureProfile": {
         "meanK": 75,
-        "totalMinK": 7,
-        "totalMaxK": 128,
+        "totalMinK": 20,
+        "totalMaxK": 129,
         "components": [
           {
             "source": "latitude",
@@ -6068,24 +6334,16 @@
             "highK": 84
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 75,
-            "highK": 103,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 32,
-            "highK": 75,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 45,
+            "highK": 104
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 7,
-        "max": 128
+        "min": 20,
+        "max": 129
       },
       "magnetism": {
         "source": "salty-ocean-induced",
@@ -6110,12 +6368,24 @@
         "vigor": 0.4,
         "active": true,
         "driver": "resonance-pumped tidal flexing (icy)",
+        "surfaceAgeGyr": 0.05,
         "tags": [
           "geology/cryovolcanic"
         ],
         "notes": [
           "A mean-motion resonance continually pumps the orbital eccentricity; the resulting tidal flexing is modest by silicate standards but ample to melt ICE (~273 K vs ~1000 K) — geysers vent a subsurface ocean (Enceladus-like)."
         ]
+      },
+      "irradiationDose": 0.002,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 0.7,
+          "methane": 0.4,
+          "carbon-dioxide": 1.1,
+          "water": 0.4,
+          "sulfur-dioxide": 1.5
+        }
       },
       "apparentColor": {
         "hex": "#c4d8ec",
@@ -6376,6 +6646,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -6387,6 +6660,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -6435,14 +6716,15 @@
       "surfaceRadiationMax": 8.114068685809151,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "internalHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 71.73387579592591,
       "temperatureProfile": {
         "meanK": 72,
-        "totalMinK": 4,
-        "totalMaxK": 125,
+        "totalMinK": 6,
+        "totalMaxK": 137,
         "components": [
           {
             "source": "latitude",
@@ -6457,24 +6739,16 @@
             "highK": 81
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 72,
-            "highK": 100,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 29,
-            "highK": 72,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 31,
+            "highK": 112
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 4,
-        "max": 125
+        "min": 6,
+        "max": 137
       },
       "magnetism": {
         "source": "none",
@@ -6499,12 +6773,24 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.16,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 1.8,
+          "methane": 1,
+          "carbon-dioxide": 2.9,
+          "water": 1.2,
+          "sulfur-dioxide": 4.2
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -6781,6 +7067,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -6792,6 +7081,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -6844,14 +7141,15 @@
       "surfaceRadiationMax": 8.113327779468168,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "internalHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 79.75917635626027,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 4,
-        "totalMaxK": 139,
+        "totalMinK": 3,
+        "totalMaxK": 167,
         "components": [
           {
             "source": "latitude",
@@ -6866,24 +7164,16 @@
             "highK": 90
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 80,
-            "highK": 112,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 32,
-            "highK": 80,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 20,
+            "highK": 140
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 4,
-        "max": 139
+        "min": 3,
+        "max": 167
       },
       "magnetism": {
         "source": "none",
@@ -6908,12 +7198,24 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.163,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 2.7,
+          "methane": 1.6,
+          "carbon-dioxide": 4.3,
+          "water": 1.8,
+          "sulfur-dioxide": 6.3
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -7161,26 +7463,31 @@
           "key": "orbit/tidally-locked"
         },
         {
-          "key": "structure/icy-shell",
-          "value": "water"
+          "key": "orbit/locked-planet"
         },
         {
-          "key": "structure/subsurface-ocean"
+          "key": "structure/icy-shell",
+          "value": "water"
         },
         {
           "key": "activity/sublimating"
         },
         {
-          "key": "activity/cryovolcanism"
+          "key": "magnetic/unshielded"
         },
         {
-          "key": "magnetic/induced"
+          "key": "geology/inactive"
         },
         {
-          "key": "geology/cryovolcanic"
+          "key": "surface/age",
+          "value": "ancient"
         },
         {
-          "key": "habitability/subsurface"
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
+          "key": "habitability/none"
         },
         {
           "key": "resource/helium-3",
@@ -7193,14 +7500,6 @@
         {
           "key": "resource/volatiles",
           "source": "rule:d8"
-        },
-        {
-          "key": "science/biosignature",
-          "source": "rule:d18"
-        },
-        {
-          "key": "science/extremophile-niche",
-          "source": "rule:d19"
         },
         {
           "key": "science/tidal-laboratory",
@@ -7248,12 +7547,13 @@
       "surfaceRadiation": 7.593451429166878,
       "tidalHeatK": 4.0361754106310945,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 79.55685729853637,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 7,
+        "totalMinK": 31,
         "totalMaxK": 320,
         "components": [
           {
@@ -7269,18 +7569,10 @@
             "highK": 90
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 80,
-            "highK": 110,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 34,
-            "highK": 80,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 58,
+            "highK": 101
           },
           {
             "source": "tidal-hotspot",
@@ -7292,48 +7584,50 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 7,
+        "min": 31,
         "max": 320
       },
-      "hydrosphere": {
-        "layers": [
-          {
-            "liquid": "salty-water",
-            "location": "subsurface",
-            "conductive": true,
-            "colorHex": "#3a6ea5"
-          }
-        ]
-      },
       "magnetism": {
-        "source": "salty-ocean-induced",
-        "geometry": "induced",
+        "source": "none",
+        "geometry": "none",
         "intrinsic": false,
         "estimatedRangeGauss": {
-          "min": 0.0005,
-          "max": 0.01
+          "min": 0,
+          "max": 0
         },
-        "nominalGauss": 0.005,
+        "nominalGauss": 0,
         "notes": [
-          "Conductive subsurface ocean induces a weak field within the host planet's magnetosphere (Europa-like)."
+          "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
       "magneticField": {
-        "strengthGauss": 0.005
+        "strengthGauss": 0
       },
       "oblateness": 0.023273436592320042,
       "geoActivity": {
-        "regime": "cryovolcanic",
-        "volcanism": "cryo",
+        "regime": "inactive",
+        "volcanism": "none",
         "vigor": 0,
-        "active": true,
-        "driver": "tidal flexing (icy)",
+        "active": false,
+        "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
-          "geology/cryovolcanic"
+          "geology/inactive"
         ],
         "notes": [
-          "Tidal flexing keeps a subsurface ocean liquid; cryovolcanic plumes vent water/ice (Europa/Enceladus-like)."
+          "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.161,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 0.3,
+          "methane": 0.2,
+          "carbon-dioxide": 0.4,
+          "water": 0.2,
+          "sulfur-dioxide": 0.6
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -7349,45 +7643,33 @@
       },
       "apparentColorHex": "#d8ecff",
       "classification": {
-        "base": "planet/subsurface-ocean",
-        "baseScore": 2.16,
+        "base": "asteroid/comet",
+        "baseScore": 1.43,
         "bands": [
           {
-            "feature": "hasSubsurfaceOcean",
-            "value": 1,
-            "band": "1 – 1",
+            "feature": "mass_Me",
+            "value": 0.000006279303415941058,
+            "band": "0 – 0.0001",
             "fit": 1
           },
           {
-            "feature": "Teq_K",
-            "value": 75.52068188790528,
-            "band": "0 – 273",
+            "feature": "makeup.ice",
+            "value": 0.7559644436449754,
+            "band": "0.35 – 1",
+            "fit": 1
+          },
+          {
+            "feature": "density",
+            "value": 1.1498248965954432,
+            "band": "0.2 – 1.5",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "asteroid/comet",
-          "score": 1.43
+          "class": "planet/planetesimal",
+          "score": 1.2
         },
         "candidates": [
-          {
-            "class": "planet/subsurface-ocean",
-            "score": 2.16,
-            "bands": [
-              {
-                "feature": "hasSubsurfaceOcean",
-                "value": 1,
-                "band": "1 – 1",
-                "fit": 1
-              },
-              {
-                "feature": "Teq_K",
-                "value": 75.52068188790528,
-                "band": "0 – 273",
-                "fit": 1
-              }
-            ]
-          },
           {
             "class": "asteroid/comet",
             "score": 1.43,
@@ -7489,7 +7771,7 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 35,
+      "habitabilityScore": 0,
       "habitabilityBreakdown": {
         "factors": [
           {
@@ -7563,12 +7845,16 @@
         "surfaceScore": 17,
         "modifiers": [
           {
-            "label": "Subsurface-ocean niche (floor)",
-            "delta": 18
+            "label": "Geologically inactive (no recycling)",
+            "delta": -10
+          },
+          {
+            "label": "No magnetosphere (atmosphere stripping)",
+            "delta": -8
           }
         ],
-        "finalScore": 35,
-        "tier": "habitability/subsurface"
+        "finalScore": 0,
+        "tier": "habitability/none"
       },
       "orbitalBoundaries": {
         "minLeoKm": 30,
@@ -7612,6 +7898,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -7623,6 +7912,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -7671,13 +7968,14 @@
       "surfaceRadiation": 7.590786065141442,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 76.84869268124385,
       "temperatureProfile": {
         "meanK": 77,
-        "totalMinK": 4,
-        "totalMaxK": 134,
+        "totalMinK": 3,
+        "totalMaxK": 161,
         "components": [
           {
             "source": "latitude",
@@ -7692,24 +7990,16 @@
             "highK": 87
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 77,
-            "highK": 108,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 31,
-            "highK": 77,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 19,
+            "highK": 134
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 4,
-        "max": 134
+        "min": 3,
+        "max": 161
       },
       "magnetism": {
         "source": "none",
@@ -7734,12 +8024,24 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.162,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 4.4,
+          "methane": 2.5,
+          "carbon-dioxide": 6.9,
+          "water": 2.8,
+          "sulfur-dioxide": 10.1
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -7974,6 +8276,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -7985,6 +8290,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -8033,13 +8346,14 @@
       "surfaceRadiation": 7.567190044330053,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 74.14197330317803,
       "temperatureProfile": {
         "meanK": 74,
         "totalMinK": 3,
-        "totalMaxK": 131,
+        "totalMaxK": 157,
         "components": [
           {
             "source": "latitude",
@@ -8054,24 +8368,16 @@
             "highK": 85
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 74,
-            "highK": 104,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 30,
-            "highK": 74,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 19,
+            "highK": 130
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 131
+        "max": 157
       },
       "magnetism": {
         "source": "none",
@@ -8096,12 +8402,24 @@
         "vigor": 0,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.161,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 3.7,
+          "methane": 2.1,
+          "carbon-dioxide": 5.8,
+          "water": 2.4,
+          "sulfur-dioxide": 8.5
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -8343,6 +8661,10 @@
           "key": "greenhouse"
         },
         {
+          "key": "feature/polar-vortex",
+          "value": "6"
+        },
+        {
           "key": "ring/system"
         },
         {
@@ -8425,6 +8747,7 @@
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
       "tidallyLocked": false,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 4.254974642156193,
       "temperatureK": 83.78277651216443,
@@ -8710,6 +9033,7 @@
       "equilibriumTempK": 60.66002987010062,
       "surfaceRadiation": 1.3902003978183888,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 60.66002987010062,
@@ -8776,6 +9100,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -8784,6 +9111,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -8828,13 +9163,14 @@
       "surfaceRadiation": 3.389844863084501,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 57.317413140429025,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 3,
-        "totalMaxK": 100,
+        "totalMaxK": 120,
         "components": [
           {
             "source": "latitude",
@@ -8849,24 +9185,16 @@
             "highK": 65
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 57,
-            "highK": 80,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 23,
-            "highK": 57,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 14,
+            "highK": 100
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 100
+        "max": 120
       },
       "magnetism": {
         "source": "none",
@@ -8891,12 +9219,24 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.156,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 8.5,
+          "methane": 4.8,
+          "carbon-dioxide": 13.3,
+          "water": 5.4,
+          "sulfur-dioxide": 19.3
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -9137,6 +9477,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -9145,6 +9488,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -9193,13 +9544,14 @@
       "surfaceRadiation": 3.389701558634683,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 57.141721023777,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 3,
-        "totalMaxK": 100,
+        "totalMaxK": 120,
         "components": [
           {
             "source": "latitude",
@@ -9214,24 +9566,16 @@
             "highK": 64
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 57,
-            "highK": 80,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 23,
-            "highK": 57,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 14,
+            "highK": 100
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 100
+        "max": 120
       },
       "magnetism": {
         "source": "none",
@@ -9256,12 +9600,24 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.156,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 7.7,
+          "methane": 4.4,
+          "carbon-dioxide": 12.2,
+          "water": 5,
+          "sulfur-dioxide": 17.7
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -9502,6 +9858,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -9510,6 +9869,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -9562,13 +9929,14 @@
       "surfaceRadiation": 3.3900823120513093,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 56.96979976867991,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 3,
-        "totalMaxK": 100,
+        "totalMaxK": 119,
         "components": [
           {
             "source": "latitude",
@@ -9583,24 +9951,16 @@
             "highK": 64
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 57,
-            "highK": 80,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 23,
-            "highK": 57,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 14,
+            "highK": 100
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 100
+        "max": 119
       },
       "magnetism": {
         "source": "none",
@@ -9625,12 +9985,24 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.156,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 4.4,
+          "methane": 2.5,
+          "carbon-dioxide": 6.9,
+          "water": 2.8,
+          "sulfur-dioxide": 10
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -9961,6 +10333,7 @@
       "equilibriumTempK": 46.44477891503087,
       "surfaceRadiation": 2,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 3.6917906597062884,
       "temperatureK": 71.60672086130536,
@@ -10274,6 +10647,7 @@
       "equilibriumTempK": 48.45052591890719,
       "surfaceRadiation": 0.5657973531214614,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 48.45052591890719,
@@ -10341,6 +10715,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "inert"
         },
         {
@@ -10360,6 +10737,18 @@
         },
         {
           "key": "geology/cryovolcanic"
+        },
+        {
+          "key": "surface/age",
+          "value": "young"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "low"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+nitrogen+water+methane"
         },
         {
           "key": "habitability/subsurface"
@@ -10446,13 +10835,14 @@
       "surfaceRadiation": 2.565664450687255,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0.000020408335639210383,
       "temperatureK": 39.86496792560042,
       "temperatureProfile": {
         "meanK": 40,
         "totalMinK": 3,
-        "totalMaxK": 70,
+        "totalMaxK": 84,
         "components": [
           {
             "source": "latitude",
@@ -10467,24 +10857,16 @@
             "highK": 45
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 40,
-            "highK": 56,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 16,
-            "highK": 40,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 10,
+            "highK": 70
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 70
+        "max": 84
       },
       "magnetism": {
         "source": "none",
@@ -10509,12 +10891,29 @@
         "vigor": 0.15,
         "active": true,
         "driver": "solar-seasonal sublimation",
+        "surfaceAgeGyr": 0.05,
         "tags": [
           "geology/cryovolcanic"
         ],
         "notes": [
           "Sunlight through translucent nitrogen ice drives a solid-state greenhouse; sub-surface gas pockets erupt as seasonal geysers (Triton-like). Driven by the distant sun, not interior heat."
         ]
+      },
+      "irradiationDose": 0.002,
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "nitrogen",
+          "water",
+          "methane"
+        ],
+        "lambda": {
+          "nitrogen": 44.6,
+          "methane": 25.5,
+          "carbon-dioxide": 70,
+          "water": 28.7,
+          "sulfur-dioxide": 101.9
+        }
       },
       "apparentColor": {
         "hex": "#bacee2",
@@ -10788,6 +11187,7 @@
       "equilibriumTempK": 42.0886574693289,
       "surfaceRadiation": 0.3222012500736142,
       "tidalHeatK": 0,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 42.0886574693289,
@@ -10862,6 +11262,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "inert"
         },
         {
@@ -10880,6 +11283,18 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "carbon-dioxide+nitrogen+water+methane"
         },
         {
           "key": "habitability/none"
@@ -10953,13 +11368,14 @@
       "surfaceRadiation": 2.339746346658621,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0.00005526266059632093,
       "temperatureK": 40.89980323292139,
       "temperatureProfile": {
         "meanK": 41,
         "totalMinK": 3,
-        "totalMaxK": 78,
+        "totalMaxK": 92,
         "components": [
           {
             "source": "latitude",
@@ -10974,24 +11390,16 @@
             "highK": 52
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 41,
-            "highK": 57,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 16,
-            "highK": 41,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 10,
+            "highK": 72
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 78
+        "max": 92
       },
       "hydrosphere": {
         "layers": [
@@ -11025,12 +11433,29 @@
         "vigor": 0.003,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.154,
+      "volatiles": {
+        "retained": [
+          "carbon-dioxide",
+          "nitrogen",
+          "water",
+          "methane"
+        ],
+        "lambda": {
+          "nitrogen": 30.1,
+          "methane": 17.2,
+          "carbon-dioxide": 47.3,
+          "water": 19.4,
+          "sulfur-dioxide": 68.9
+        }
       },
       "apparentColor": {
         "hex": "#cadff1",
@@ -11271,6 +11696,9 @@
           "key": "orbit/tidally-locked"
         },
         {
+          "key": "orbit/locked-planet"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -11279,6 +11707,14 @@
         },
         {
           "key": "geology/inactive"
+        },
+        {
+          "key": "surface/age",
+          "value": "ancient"
+        },
+        {
+          "key": "surface/irradiation",
+          "value": "moderate"
         },
         {
           "key": "habitability/none"
@@ -11344,13 +11780,14 @@
       "surfaceRadiation": 2.3397689809061775,
       "tidalHeatK": 0,
       "tidallyLocked": true,
+      "starTidallyLocked": false,
       "radiogenicHeatK": 0,
       "greenhouseTempK": 0,
       "temperatureK": 40.439825009162014,
       "temperatureProfile": {
         "meanK": 40,
         "totalMinK": 3,
-        "totalMaxK": 77,
+        "totalMaxK": 91,
         "components": [
           {
             "source": "latitude",
@@ -11365,24 +11802,16 @@
             "highK": 52
           },
           {
-            "source": "locked-day",
-            "label": "Day side (locked)",
-            "lowK": 40,
-            "highK": 57,
-            "note": "Permanent sub-stellar face."
-          },
-          {
-            "source": "locked-night",
-            "label": "Night side (locked)",
-            "lowK": 16,
-            "highK": 40,
-            "note": "Permanent dark face."
+            "source": "diurnal",
+            "label": "Day ↔ night",
+            "lowK": 10,
+            "highK": 71
           }
         ]
       },
       "temperatureRangeK": {
         "min": 3,
-        "max": 77
+        "max": 91
       },
       "magnetism": {
         "source": "none",
@@ -11407,12 +11836,24 @@
         "vigor": 0.001,
         "active": false,
         "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
         "tags": [
           "geology/inactive"
         ],
         "notes": [
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
+      },
+      "irradiationDose": 0.154,
+      "volatiles": {
+        "retained": [],
+        "lambda": {
+          "nitrogen": 7.2,
+          "methane": 4.1,
+          "carbon-dioxide": 11.4,
+          "water": 4.7,
+          "sulfur-dioxide": 16.6
+        }
       },
       "apparentColor": {
         "hex": "#d8ecff",

@@ -5,6 +5,23 @@ import { isLuminousSource } from "./substellar";
 
 const FLARE_PARTICLE_WEIGHT = 0.5;   // how much a star's flare activity adds to the particle dose
 
+// Cumulative high-energy IRRADIATION DOSE a surface has taken (relative, Earth-unshielded-young ≈ its
+// low value) — the driver of THOLIN darkening (docs/dev/geo-foundations.md §Foundation 4). Space
+// weathering reddens/darkens organic ices in proportion to how much radiation reaches the ground and
+// for how long: stellar UV (∝ bolometric flux, from equilibrium temperature vs Earth's 255 K) plus a
+// galactic-cosmic-ray FLOOR so distant, dimly-lit worlds still redden over Gyr (Pluto's tholins are
+// GCR/solar-wind aged, not sunlight); times the unshielded fraction (a magnetosphere deflects the
+// charged component); times how long the surface has been exposed (surface age). Necessary but not
+// sufficient for tholins — the visual also needs the organic precursors (retained CH4/N2 ice).
+const GCR_FLOOR = 0.15;              // galactic cosmic-ray / solar-wind background, relative to Earth UV
+export function deriveIrradiationDose(teqK: number, magShield: number, surfaceAgeGyr: number): number {
+  const uvRel = Math.pow(Math.max(0, teqK) / 255, 4);           // bolometric flux at orbit, Earth = 1
+  const unshielded = 1 - Math.max(0, Math.min(0.99, magShield));
+  const ageFactor = Math.max(0, Math.min(1.5, surfaceAgeGyr / 4.5)); // dose accumulates with exposure
+  return +((uvRel + GCR_FLOOR) * unshielded * ageFactor).toFixed(3);
+}
+
+
 // Photon (UV/visible/IR) vs particle (stellar wind / protons / flares) split by spectral
 // class. Cool dwarfs are wind/flare-dominated, so their particle fraction is much higher —
 // which matters because magnetospheres shield particles but not photons. (Phase 04.4)

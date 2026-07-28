@@ -5,8 +5,14 @@
 // (campaign data), not in localStorage.
 
 // The three view modules a layer can use. `holo3d` for the starmap (galaxy view) is not built yet —
-// the editor offers it disabled until it exists.
-export type ViewModule = 'list' | 'diagram2d' | 'holo3d';
+// the editor offers it disabled until it exists. `document` (WS2) renders the system as the interactive
+// Guide document through the block-model engine — additive, does NOT replace the diagram2d→holo path.
+export type ViewModule = 'list' | 'diagram2d' | 'holo3d' | 'document';
+
+// WS2 document look (see catalogue/document/blocks.ts — the engine owns these). Re-exported here so a
+// preset can carry them; type-only, so no runtime coupling between presets and the renderer.
+export type { ListStyle, DocumentStyle, DocColors, TagStyle, NavStyle } from '$lib/catalogue/document/blocks';
+import type { ListStyle, DocumentStyle, DocColors, TagStyle, NavStyle } from '$lib/catalogue/document/blocks';
 
 // A 9-point anchor for placing a graphic on the cover or as a map overlay.
 export type PinPosition =
@@ -71,8 +77,18 @@ export interface PlayerPreset {
   systemView: ViewModule;
 
   // Preset-wide theme.
-  font: string;            // one UI font across the player view
+  font: string;            // body font across the player view
+  headingFont?: string;    // document: heading font (defaults to `font`)
   accentColor: string;     // broad colour scheme (spectrum pick) — drives chrome/labels/tints
+  // WS2 Guide-document theme (all optional). `documentStyle` is a COLOURATION seed that populates
+  // `themeColors` (the editable per-slot colour set the renderer uses); `listStyle` the list glyphs;
+  // `tagStyle` how tags render; `navStyle` plain vs boxed navigator elements.
+  documentStyle?: DocumentStyle;
+  listStyle?: ListStyle;
+  tagStyle?: TagStyle;
+  navStyle?: NavStyle;
+  photoFrame?: 'letterbox' | 'full' | 'sliver'; // document: how a body photo is framed
+  themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,
   // different position). The cover's own image lives in cover.graphic.
   starmapOverlay: GraphicPlacement | null;
@@ -88,11 +104,16 @@ export interface PlayerPreset {
   // Look (generalised HoloStyle). Controls the editor shows are gated by the chosen view module.
   filter: string;                 // filter id — 'none' | 'crt' | 'night_vision' | 'thermal'
   filterParams: FilterParamValues; // e.g. CRT phosphor colour lives here
+  // Page/entry transition when the view changes (reused from Mappadux). 'none' = instant cut. The
+  // engine snapshots the frame, rebuilds underneath, then animates the snapshot away to reveal it.
+  transition: string;             // transition id — 'none' | 'fade' | 'crt_collapse' | 'wipe' | …
+  transitionParams: FilterParamValues; // per-transition control values (duration, direction, …)
   bodyStyle: 'textured' | 'flat' | 'white'; // colour selection: true colour / class swatch / white
   render: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
+  lensing?: boolean; // stylised black-hole gravitational lensing (§A13); default on (no-op without a BH)
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
-  bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat'; // 3D sphere vs a flat disc (photo / procedural / flat shape)
+  bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat' | 'none'; // body picture: 3D sphere / photo / procedural disc / flat shape / none (a new option honoured across every info surface — 2D document, 3D holo, …)
   beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black';
   grid: 'off' | 'plain' | 'scaled' | 'hex';

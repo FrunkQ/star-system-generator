@@ -1,6 +1,7 @@
 // ===== types.ts =====
 import type { OrbitalBoundaries } from './physics/orbits';
 import type { GeoActivity } from './physics/geoActivity';
+import type { VolatileRetention } from './physics/volatileRetention';
 import type { ClassExplanation } from './system/classification';
 import type { TravellerWorldData } from './traveller/types';
 import type { ScheduledJourneyLog } from './transit/types';
@@ -199,6 +200,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
   roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
   classes?: string[];
+  auroraEmitters?: AuroraEmitter[];  // resolved at process time from atmosphere × gas AuroraBand data
   orbit?: Orbit;
 
   // Physical parameters
@@ -210,7 +212,8 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // summer or tidal-volcanic hotspots). The mean alone hides this. (§ surface-temperature model)
   temperatureRangeK?: { min: number; max: number };
   temperatureProfile?: SurfaceTempProfile;  // the range DECOMPOSED by cause (seasonal/diurnal/…)
-  tidallyLocked?: boolean;      // one face permanently toward its primary (no day/night cycle)
+  tidallyLocked?: boolean;      // one face permanently toward its primary (planet or star)
+  starTidallyLocked?: boolean;  // locked specifically to its STAR → a permanent substellar face (eyeball)
   oblateness?: number;          // DERIVED equatorial flattening f=(a−c)/a from spin vs the breakup limit; renderers draw the squashed shape
   obliquity_deg?: number;       // axial tilt — drives seasonal variation
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
@@ -240,6 +243,8 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   magnetic_field?: MagneticField;
   magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
+  volatiles?: VolatileRetention; // derived surface-ice retention per species (see deriveVolatileRetention)
+  irradiationDose?: number;    // derived cumulative space-weathering dose (relative) — drives tholins
   habitabilityBreakdown?: {    // the AUTHORITATIVE habitability breakdown the Bio tab renders
     factors: {
       label: string; points: number; max: number; value: string; ideal: string;
@@ -414,6 +419,8 @@ export interface LiquidDef {
     tripleBar?: number;       // below this pressure there is NO liquid phase (sublimation regime)
     criticalK?: number;       // above this temperature the substance is supercritical at any pressure
     criticalBar?: number;     // pressure at the critical point (upper anchor of the boil curve)
+    incandescent?: boolean;   // self-luminous when molten (magma / molten metals): drives a temperature-
+                              // scaled thermal-glow emissive layer, so the ocean glows even under a dim star
 }
 
 export interface FuelDefinition {
@@ -447,6 +454,25 @@ export interface GasTag {
   trigger: string; // e.g. "pp > 0.05 AND O2_gas_present"
 }
 
+// One auroral emission band a gas produces when excited at the magnetic poles. A gas can have MORE
+// THAN ONE (atomic oxygen glows apple-green in its main band AND deep-red crimson high above), so this
+// is an ARRAY on the gas. efficiency = brightness per unit concentration (atomic oxygen glows far
+// brighter per molecule than N₂). altitude 0=low fringe, 1=main band, 2=high tenuous band (stacks the
+// renderer's shells). minFraction gates a band to gas-rich atmospheres (the crimson crown only appears
+// when the oxygen column is thick).
+export interface AuroraBand {
+  colour: string;        // human name (e.g. 'green', 'crimson') — for the trace/description
+  hex: string;           // emission colour
+  efficiency: number;    // brightness weight per unit gas fraction
+  altitude: number;      // 0 low | 1 main | 2 high
+  minFraction?: number;  // only emit when the gas fraction is at least this (default 0)
+}
+
+// A resolved auroral emitter present on a specific body, weight-normalised (dominant first). Derived
+// from the atmosphere composition × each gas's AuroraBand data at process time and stored on the body,
+// so every renderer draws the same colours without needing the rule pack.
+export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; altitude: number; }
+
 export interface GasPhysics {
   molarMass: number;
   shielding: number;
@@ -457,6 +483,7 @@ export interface GasPhysics {
   meltK: number;
   boilK: number;
   tags?: GasTag[];
+  aurora?: AuroraBand[];  // auroral emission bands (empty/absent = this gas does not fluoresce)
 }
 
 export interface ClimateModelGreenhouseConfig {
@@ -526,6 +553,10 @@ export type ViableOrbitResult = {
 export interface StarSystemNode {
   id: ID;
   name: string;
+  // The system was renamed independently of its primary star. While false/undefined the map label
+  // defaults to (and tracks) the primary star's name; once the GM sets a custom system name this
+  // pins it, so renaming the star no longer overwrites it.
+  isNameUserDefined?: boolean;
   position: { x: number; y: number };
   system: System;
   viewport?: { pan: { x: number; y: number }; zoom: number; }; // Fixed panX/panY to pan object
@@ -608,6 +639,7 @@ export interface RulePackOverrides {
   sensorDefinitions?: SensorDefinition[];
   gasPhysics?: Record<string, GasPhysics>;
   atmosphereCompositions?: any[];
+  liquids?: LiquidDef[];
 }
 
 export interface TemporalHierarchyUnit {

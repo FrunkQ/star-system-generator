@@ -70,7 +70,7 @@ function promoteMassiveCompanion(system: System): boolean {
     const barycenter: Barycenter = {
       id: baryId,
       kind: 'barycenter',
-      name: `${heavy.name}-${light.name} Barycenter`,
+      name: `${heavy.name}-${light.name} Barycentre`, // UK spelling in UI text; the node KIND stays 'barycenter'
       parentId: originalHostId,
       memberIds: [heavy.id, light.id],
       effectiveMassKg: pairMass,

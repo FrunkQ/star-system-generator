@@ -5,12 +5,15 @@
   //   - lo-fi terminal (green / amber): the printed-report document under a phosphor CRT skin.
   //   - hi-tech console: the live projector orbital map, tap a body for player-safe data.
   // v1 is local-only: same-machine BroadcastChannel, zero network (spec COMPANION-APP-SPEC.md §3).
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, beforeUpdate, afterUpdate } from 'svelte';
+  import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
+  import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
+  import { makeDocTheme } from '$lib/catalogue/document/documentStyles';
   import { drawHud } from '$lib/catalogue/infoCard';
   import { drawCover } from '$lib/catalogue/coverCard';
   import FilteredCanvas from '$lib/components/FilteredCanvas.svelte';
@@ -76,7 +79,10 @@
   import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredListView from '$lib/components/FilteredListView.svelte';
-  import { systemVisualStars } from '$lib/starmap/systemStars';
+  import QuoteInterstitial from '$lib/catalogue/QuoteInterstitial.svelte';
+  import DocPanel from '$lib/components/DocPanel.svelte';
+  import FilteredDocumentView from '$lib/components/FilteredDocumentView.svelte';
+  import { starsOf, dominantOf } from '$lib/catalogue/document/systemTopology';
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
   import { RATE_STEPS, DEFAULT_RATE_INDEX } from '$lib/player/timeRates';
@@ -439,6 +445,72 @@
   // "Players can click / focus / scrub" — false locks the surface: no picking, no camera, no clock,
   // no body picker, list rows not tappable. The view is a display driven by the GM (or its presets).
   $: presetInteractive = activePreset?.interactive !== false;
+
+  // ── D8: VIEW-ENTRY transitions. Stepping between stages (starmap ↔ system, any view — document, 2D
+  // map, 3D holo) plays the preset's transition over the whole stage: the outgoing screen is composited
+  // from the stage's canvases just BEFORE Svelte swaps the DOM (beforeUpdate), then animated away over
+  // the new view. WebGL canvases without preserveDrawingBuffer may snapshot blank — those regions fall
+  // back to the dark ground, which still reads as a clean entry effect. The document's own per-PAGE
+  // transition (inside FilteredDocumentView) is unchanged; this covers the page-level hops.
+  let stageMain: HTMLElement;
+  let entryOverlay: HTMLCanvasElement;
+  let entryEngine: import('$lib/transitions/TransitionEngine').TransitionEngine | null = null;
+  let renderedStageKey: string | null = null;
+  let pendingEntrySnap: HTMLCanvasElement | null = null;
+  $: stageKey = (!starmap || presetHold || !activePreset) ? ''
+    : (selectedSystemId ? 'sys:' + activePreset.systemView : 'map:' + activePreset.starmapView);
+  $: entryWanted = !!activePreset?.transition && activePreset.transition !== 'none';
+
+  function captureStage(): HTMLCanvasElement | null {
+    try {
+      const r = stageMain.getBoundingClientRect();
+      const c = document.createElement('canvas');
+      c.width = Math.max(2, Math.round(r.width));
+      c.height = Math.max(2, Math.round(r.height));
+      const ctx = c.getContext('2d');
+      if (!ctx) return null;
+      ctx.fillStyle = '#05070c';
+      ctx.fillRect(0, 0, c.width, c.height);
+      for (const cv of Array.from(stageMain.querySelectorAll('canvas'))) {
+        if (cv === entryOverlay) continue;
+        const b = cv.getBoundingClientRect();
+        if (b.width < 2 || b.height < 2) continue;
+        try { ctx.drawImage(cv, b.left - r.left, b.top - r.top, b.width, b.height); } catch { /* tainted / non-preserved WebGL */ }
+      }
+      return c;
+    } catch { return null; }
+  }
+
+  async function runEntryTransition(snap: HTMLCanvasElement) {
+    if (!activePreset || !entryOverlay) return;
+    const def = transitionRegistry.getOrFallback(activePreset.transition ?? 'none');
+    if (def.id === 'none') return;
+    if (!entryEngine) {
+      const { TransitionEngine } = await import('$lib/transitions/TransitionEngine');
+      entryEngine = new TransitionEngine(entryOverlay);
+    }
+    try {
+      const bmp = await createImageBitmap(snap);
+      const params = Object.keys(activePreset.transitionParams ?? {}).length
+        ? activePreset.transitionParams! : transitionRegistry.defaultParams(def.id);
+      await entryEngine.run(def, params, entryOverlay, async () => {}, bmp);
+    } catch { /* snapshot failed → plain cut */ }
+  }
+
+  beforeUpdate(() => {
+    if (!browser || !entryWanted || !stageMain) return;
+    // The DOM still shows the OUTGOING stage here — grab it before the swap.
+    if (renderedStageKey && stageKey && stageKey !== renderedStageKey && !pendingEntrySnap) {
+      pendingEntrySnap = captureStage();
+    }
+  });
+  afterUpdate(() => {
+    const changed = renderedStageKey !== stageKey;
+    renderedStageKey = stageKey;
+    const snap = pendingEntrySnap;
+    pendingEntrySnap = null;
+    if (snap && changed) void runEntryTransition(snap);
+  });
   $: presetAccent = activePreset ? accentSolid(activePreset.accentColor) : '#6aa0ff';
   $: presetFont = activePreset?.font || 'system-ui';
   // Guide tips: the preset picks off / top / bottom / both; the rolled notes fill the chosen edges.
@@ -447,17 +519,7 @@
   $: tipBottom = guideTipsMode === 'bottom' || guideTipsMode === 'both' ? bottomNote : '';
   $: tipsOn = !!(tipTop || tipBottom);
   $: tipMono = activePreset?.bodyStyle === 'white';
-  // Starmap "list" module, rendered to canvas through the real filter (FilteredListView).
-  $: starmapListModel = {
-    heading: starmap?.name || 'Known Space',
-    rows: (starmap?.systems ?? []).map((node) => ({
-      id: node.id,
-      title: node.name,
-      sub: systemSummary(node),
-      dots: systemVisualStars(node.system).map((s) => s.color),
-      selectable: true
-    }))
-  } as ListModel;
+  // (The starmap "list" module is now the starmap DOCUMENT — built in starmapDocument.ts, D9.)
   // System "list" module → a canvas body list (real filter). Bodies + constructs, a coloured dot each.
   $: systemListModel = {
     heading: displaySystem?.name || 'System',
@@ -472,10 +534,20 @@
       }))
   } as ListModel;
   function selectBodyById(id: string) {
-    const n = (displaySystem?.nodes ?? []).find((x: any) => x.id === id) as CelestialBody | undefined;
-    selectedBody = n && (n.kind === 'body' || n.kind === 'construct') ? n : null;
+    let n = (displaySystem?.nodes ?? []).find((x: any) => x.id === id) as any;
+    // A barycentre marker (e.g. Pluto-Charon) resolves to its dominant member — otherwise selectedBody
+    // is null (a barycentre isn't a body/construct) and the document falls back to the primary star.
+    if (n && n.kind === 'barycenter' && displaySystem) n = dominantOf(displaySystem, n);
+    selectedBody = n && (n.kind === 'body' || n.kind === 'construct') ? (n as CelestialBody) : null;
     bodyExpanded = false;
   }
+  // The document shows a barycentre AS its dominant member. When such a body is selected, feed the
+  // document the BARYCENTRE id so its schematic marker highlights and the title reads "Pluto (…)".
+  $: docSelectedId = (() => {
+    if (!selectedBody || !displaySystem) return null;
+    const bary = (displaySystem.nodes as any[]).find((n) => n.kind === 'barycenter' && dominantOf(displaySystem, n)?.id === selectedBody!.id);
+    return bary ? bary.id : selectedBody.id;
+  })();
   // The info panel eats the right edge of the holo stage on desktop/tablet, so the scene reframes
   // gently around the remaining strip while it's open (a phone panel is just a name bar — no reframe).
   $: holoPanelInset = !isPhone && selectedBody && !activePreset?.hideInfoPanel ? inspectorWidth : 0;
@@ -531,7 +603,19 @@
           facts: bodyFacts(selectedBody, units, tempUnit),
           description: selectedBody.description || '',
           accent: presetAccent, font: presetFont, fontScale: infoFontScale,
-          mono: activePreset?.bodyStyle === 'white'
+          mono: activePreset?.bodyStyle === 'white',
+          // D6 unify: the card body renders THESE (the shared panel-mode builder + theme). The body
+          // graphic is omitted in the HUD (imagery 'none') — a live renderer can't sit inside the
+          // filter-composited quad; the unfiltered aside shows it.
+          blocks: displaySystem ? buildGuideDocument(displaySystem, docSelectedId ?? selectedBody.id, {
+            panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle
+          }) : undefined,
+          theme: activePreset ? makeDocTheme({
+            font: presetFont, headingFont: activePreset.headingFont, fontScale: infoFontScale,
+            mono: activePreset.bodyStyle === 'white', accent: presetAccent,
+            documentStyle: activePreset.documentStyle, themeColors: activePreset.themeColors,
+            listStyle: activePreset.listStyle
+          }) : undefined
         } : null,
         tips: hudTipsOn ? { top: tipTop, bottom: tipBottom, accent: presetAccent, font: presetFont, mono: tipMono } : null
       })
@@ -543,6 +627,19 @@
     ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'holo' : 'static')
     : theme.tier;
   $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
+  // WS2 Guide document: the interactive canvas document (schematic + in-page info block + navigator),
+  // drawn by the block-model engine through the real filter. Falls under the 'static' tier (no 3D scene).
+  $: systemDoc = !!activePreset && activePreset.systemView === 'document';
+  // Pass the body-graphics mode straight through (sphere / disc / flat / photo / none) so the document
+  // can render each distinctly.
+  $: docImagery = activePreset ? activePreset.bodyGfx : 'none';
+  $: docColorful = activePreset?.accentColor === 'rainbow';
+  // Entering the Document view with nothing chosen: preselect the system's primary (most-massive) star
+  // so its file shows straight away, rather than an empty "tap a world" prompt.
+  $: if (systemDoc && displaySystem && !selectedBody) {
+    const star = starsOf(displaySystem)[0] as CelestialBody | undefined;
+    if (star) selectedBody = star;
+  }
   // 2D map = the holo locked overhead + flat. `whole` is NOT forced: with it off, tapping a body frames
   // (zooms) it just like the GM's orrery; a preset can still tick "Frame whole system" for a fixed plan view.
   // What the system stage renders with (the 2D map = the holo locked flat). Shared with the editor
@@ -755,30 +852,42 @@
       </div>
       <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
       <div class="insp-detail">
-        {#if selectedBody.image?.url}
-          <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
-        {/if}
-        <dl class="insp-grid">
-          {#each bodyFacts(selectedBody, units, tempUnit) as f}
-            <dt>{f.label}</dt><dd>{f.value}</dd>
-          {/each}
-        </dl>
-        {#if selectedBody.description}
-          <p class="insp-desc">{selectedBody.description}</p>
+        {#if activePreset && displaySystem}
+          <!-- D6 unify: the SAME document engine renders the info block (facts + tags + description +
+               body graphic) with the preset's full appearance. The aside stays as chrome (title, close,
+               resize); the legacy skins below keep their original markup. -->
+          <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg
+            font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+            fontScale={infoFontScale} listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle}
+            tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
+            imagery={activePreset.bodyGfx} photoFrame={activePreset.photoFrame}
+            bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
+            interactive={presetInteractive} {units} {tempUnit} />
+        {:else}
+          {#if selectedBody.image?.url}
+            <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
+          {/if}
+          <dl class="insp-grid">
+            {#each bodyFacts(selectedBody, units, tempUnit) as f}
+              <dt>{f.label}</dt><dd>{f.value}</dd>
+            {/each}
+          </dl>
+          {#if selectedBody.description}
+            <p class="insp-desc">{selectedBody.description}</p>
+          {/if}
         {/if}
       </div>
     </aside>
   {/if}
 {/snippet}
 
-<main class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
+<main bind:this={stageMain} class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
+  <!-- D8: view-entry transition overlay — the outgoing stage snapshot animates away here. -->
+  <canvas class="entry-transition" bind:this={entryOverlay}></canvas>
   {#if presetHold}
-    <!-- GM closed the live view: a calm hold screen until they open one again. -->
-    <div class="hold-screen">
-      <div class="hold-badge">{branding.name || 'STANDBY'}</div>
-      <h1>Please stand by</h1>
-      <p>The GM has paused the display.</p>
-    </div>
+    <!-- GM closed the live view: the quote interstitial holds the screen until they open one again. -->
+    <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
+      statusText="The GM has paused the display." />
   {/if}
   {#if showPresetCover && activePreset}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -826,18 +935,14 @@
   {/if}
 
   {#if !starmap}
-    <!-- Waiting / offline -->
-    <div class="waiting">
-      <div class="waiting-inner">
-        <h1>Reaching the host…</h1>
-        <p>Connecting to the game session. Make sure the host has the Field Guide open, then this
-          will fill in automatically.</p>
-        {#if sessionId}<p class="sid">session {sessionId}</p>{/if}
-        <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId })}>
-          Retry
-        </button>
-      </div>
-    </div>
+    <!-- Waiting / offline: the quote interstitial (connected, nothing broadcast yet). -->
+    <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
+      statusText="Reaching the host — this will fill in automatically once the GM is broadcasting."
+      sessionId={sessionId ?? ''}>
+      <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId })}>
+        Retry
+      </button>
+    </QuoteInterstitial>
   {:else if !selectedSystemId && activePreset && activePreset.starmapEnabled}
     <!-- Starmap level, PRESET-DRIVEN: the chosen module (text list / 2D / 3D), tap a system to enter. -->
     <div class="preset-stage" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
@@ -853,10 +958,16 @@
           lockRotation={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}
           selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {:else}
-        <!-- Text list rendered to canvas + the REAL GPU filter (no CSS fake), still tap-to-select + scroll. -->
-        <FilteredListView model={starmapListModel} accent={presetAccent} font={presetFont} mono={tipMono}
+        <!-- D9: the starmap DOCUMENT — the systems index through the SAME block-model engine as the
+             system Guide document, taking the preset's full appearance (colouration, fonts, nav style,
+             headers/footers) and the real GPU filter. Tap a system to enter. -->
+        <FilteredDocumentView stage="starmap" {starmap}
+          font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+          listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
+          fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}
+          companyName={activePreset.companyName} footerText={activePreset.footerText}
           selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {/if}
     </div>
@@ -956,6 +1067,29 @@
         <div class="console-hint">Tap a world to read its file.</div>
       {/if}
     </div>
+  {:else if systemDoc}
+    <!-- WS2 Guide document: the interactive canvas document (schematic + in-page body file + navigator),
+         drawn by the block-model engine and wrecked by the real filter. The info block is PART OF THE
+         PAGE, so there's no separate DOM inspector — tapping a world (on the chart or a navigator row)
+         drills straight in. -->
+    <div class="preset-stage preset-doc" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
+      {#if displaySystem}
+        <FilteredDocumentView
+          system={displaySystem} selectedId={docSelectedId}
+          font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+          colorful={docColorful} imagery={docImagery} photoFrame={activePreset.photoFrame} hideInfoBlock={activePreset.hideInfoPanel}
+          bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
+          listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} tagStyle={activePreset.tagStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
+          fontScale={infoFontScale}
+          filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
+          units={units} tempUnit={tempUnit}
+          tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={systemOverlayHud}
+          companyName={activePreset.companyName} footerText={activePreset.footerText}
+          transition={activePreset.transition} transitionParams={activePreset.transitionParams ?? {}}
+          selectable={presetInteractive}
+          on:select={(e) => selectBodyById(e.detail)} />
+      {/if}
+    </div>
   {:else if activePreset}
     <!-- Preset text-list system view: a canvas-rendered body list through the REAL filter (no CSS fake),
          tap a body to open its file in the shared inspector. -->
@@ -1000,15 +1134,9 @@
     flex-direction: column;
   }
 
-  .hold-screen {
-    position: absolute; inset: 0; z-index: 500;
-    background: radial-gradient(ellipse at center, #0b1119 0%, #05070c 75%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem;
-    text-align: center; color: #cfd6e4;
-  }
-  .hold-screen h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 3rem); letter-spacing: 0.06em; }
-  .hold-screen p { margin: 0; opacity: 0.6; }
-  .hold-badge { font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; opacity: 0.5; margin-bottom: 0.4rem; }
+  /* D8: full-stage entry-transition overlay — above the stage, below the interstitial (500). Cleared
+     (transparent) whenever no transition is running, so it never blocks the view; taps pass through. */
+  .entry-transition { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 450; pointer-events: none; }
 
   /* --- status bar (device chrome) --- */
   .statusbar {
@@ -1058,22 +1186,6 @@
   .status { margin-left: auto; opacity: 0.85; }
   .status.live { color: #6fffa0; }
   .status.offline { color: #ffb061; }
-  /* --- waiting state --- */
-  .waiting { flex: 1; display: grid; place-items: center; text-align: center; }
-  .waiting-inner h1 { font-size: 22px; margin: 0 0 8px; }
-  .waiting-inner p { opacity: 0.7; margin: 4px 0; }
-  .waiting-inner .sid { font-size: 11px; opacity: 0.4; }
-  .waiting-inner button {
-    margin-top: 14px;
-    background: rgba(255, 255, 255, 0.1);
-    color: inherit;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 4px;
-    padding: 8px 16px;
-    font: inherit;
-    cursor: pointer;
-  }
-
   /* --- diagrammatic browser tier --- */
   .doc-scroll {
     flex: 1;

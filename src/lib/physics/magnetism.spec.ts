@@ -17,7 +17,7 @@ describe('deriveMagnetism', () => {
   it('Earth: molten iron core + 24 h spin → intrinsic dipolar field ~0.1–0.7 G', () => {
     const m = deriveMagnetism(body({
       massKg: Me(1), rotation_period_hours: 24, makeup: { metal: 0.32, rock: 0.68 },
-      layers: [{ liquid: 'liquid-iron', location: 'interior', conductive: true }]
+      layers: [{ liquid: 'molten-iron', location: 'interior', conductive: true }]
     }));
     expect(m.source).toBe('iron-core');
     expect(m.geometry).toBe('dipolar');
@@ -28,7 +28,7 @@ describe('deriveMagnetism', () => {
   it('Venus: molten core but ~5832 h spin → suppressed, effectively unshielded', () => {
     const m = deriveMagnetism(body({
       massKg: Me(0.82), rotation_period_hours: 5832, makeup: { metal: 0.3, rock: 0.7 },
-      layers: [{ liquid: 'liquid-iron', location: 'interior', conductive: true }]
+      layers: [{ liquid: 'molten-iron', location: 'interior', conductive: true }]
     }));
     expect(m.source).toBe('suppressed');
     expect(m.intrinsic).toBe(false);
@@ -90,7 +90,7 @@ describe('deriveMagnetism', () => {
   it('a carbon-rich world damps its iron dynamo → suppressed/weak', () => {
     const m = deriveMagnetism(body({
       massKg: Me(1.5), rotation_period_hours: 24, makeup: { carbon: 0.5, metal: 0.2, rock: 0.3 },
-      layers: [{ liquid: 'liquid-iron', location: 'interior', conductive: true }]
+      layers: [{ liquid: 'molten-iron', location: 'interior', conductive: true }]
     }));
     expect(m.source).toBe('suppressed');
     expect(m.estimatedRangeGauss.max).toBeLessThan(0.1);

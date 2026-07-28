@@ -135,13 +135,22 @@ export function trimEnvelope(massMe: number, makeup: Required<Makeup>): TrimEnve
 
 export interface AnchoredResult extends BodyEditState { outOfBand: boolean; }
 
-// Edit RADIUS with composition anchored: inside the envelope only the trim moves (makeup held);
-// outside, classic flow-through (mass held, makeup re-inferred from the new density).
+// Edit RADIUS with composition anchored — the exact mirror of editMassAnchored: the composition holds,
+// so MASS follows the mix's mass–radius curve, preserving the current relative trim (a rubble pile keeps
+// its void fraction as it grows). Radius and mass now drive each other in BOTH directions.
+//
+// This previously held mass fixed and spent the drag on porosity/inflation instead, so the mass simply
+// never moved when you sized a world — and past the envelope it re-inferred the composition, which is
+// the opposite of anchoring it. The trim is still directly editable: at fixed mass, DENSITY is the
+// porosity/inflation control (editDensityAnchored), which is where that freedom belongs.
 export function editRadiusAnchored(s: BodyEditState, newRadiusRe: number): AnchoredResult {
   const r = clamp(newRadiusRe, MIN_R, MAX_R);
-  const env = trimEnvelope(s.massMe, s.makeup);
-  if (r >= env.radLo && r <= env.radHi) return { massMe: s.massMe, radiusRe: r, makeup: s.makeup, outOfBand: false };
-  return { ...editRadius(s, r, null), outOfBand: true };
+  const envOld = trimEnvelope(s.massMe, s.makeup);
+  const t = envOld.r0 > 0 ? clamp(s.radiusRe / envOld.r0, envOld.trimLo, envOld.trimHi) : 1;
+  // Solve for the mass whose zero-trim radius, wearing this same trim, is the radius asked for.
+  const r0Target = t > 0 ? r / t : r;
+  const massMe = clamp(massMeFromRadiusMakeup(r0Target, s.makeup, 1), MIN_M, MAX_M);
+  return { massMe, radiusRe: r, makeup: s.makeup, outOfBand: false };
 }
 
 // Edit DENSITY with composition anchored. Mass is held either way (density ↔ radius at fixed mass):

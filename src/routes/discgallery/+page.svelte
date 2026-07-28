@@ -5,6 +5,8 @@
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import type { CelestialBody } from '$lib/types';
   import { deriveApparentColorParts } from '$lib/rendering/apparentColor';
+  import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST,
+    GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL } from '$lib/catalogue/galleryExamples';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
     id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
@@ -52,6 +54,36 @@
     { name: 'G / Sun · 5800 K', t: 5800 },
     { name: 'A star · 9000 K', t: 9000 },
   ];
+  // The G-star Earth on its own, for the layer-by-layer test row above the comparison.
+  const earthDiagnostic = (() => {
+    const ap = deriveApparentColorParts(earthLike as any, undefined, { starTempK: 5800 });
+    return { ...JSON.parse(JSON.stringify(earthLike)), name: 'Earth · G / Sun', apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
+  })();
+
+  // The known-good control: the water world from the oceans row. Same coverage, same derived palette
+  // (surface #8c7157 at 1.0 + ocean #4579aa at 0.71) — so any difference is NOT the colour model.
+  const waterControl = (() => {
+    const base = {
+      id: 'ocean-water', roleHint: 'planet', makeup: { rock: 0.68, metal: 0.32, ice: 0 },
+      hydrosphere: { coverage: 0.71, composition: 'water', layers: [{ location: 'surface', liquid: 'water' }] },
+      atmosphere: { pressure_bar: 2, composition: {} }, equilibriumTempK: 288, temperatureK: 288, tags: [],
+    };
+    const ap = deriveApparentColorParts(base as any, undefined, { starTempK: 5800 });
+    return { ...JSON.parse(JSON.stringify(base)), name: 'Water control', apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
+  })();
+
+  // Data bisection: the two things the Earth example carries that the control does not.
+  const earthVariant = (id: string, mutate: (b: any) => void) => {
+    const b: any = JSON.parse(JSON.stringify(earthLike));
+    mutate(b);
+    b.id = id;
+    const ap = deriveApparentColorParts(b, undefined, { starTempK: 5800 });
+    return { ...b, name: id, apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
+  };
+  const earthNoCloudLayer = earthVariant('earth-no-cloud-layer',
+    (b) => { b.hydrosphere.layers = b.hydrosphere.layers.filter((l: any) => l.location !== 'cloud'); });
+  const earthNoPolarIce = earthVariant('earth-no-polar-ice', (b) => { b.tags = []; });
+
   const earthUnderStars = starClasses.map((s) => {
     const ap = deriveApparentColorParts(earthLike as any, undefined, { starTempK: s.t });
     return { ...JSON.parse(JSON.stringify(earthLike)), name: `Earth · ${s.name}`, apparentColor: ap, apparentColorHex: ap.hex } as unknown as CelestialBody;
@@ -102,9 +134,11 @@
   ];
 
   const auroras = [
-    mk({ name: 'Oxygen · green (Earth)', apparentColorHex: '#2f6ea5', atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.42' }, { key: 'climate/polar-ice', value: 'water' }] }),
-    mk({ name: 'Nitrogen · blue-violet · 40° tilt', apparentColorHex: '#37589a', axial_tilt_deg: 40, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
-    mk({ name: 'CO₂ · violet', apparentColorHex: '#9a6a5a', atmosphere: { pressure_bar: 2, composition: { CO2: 0.95 } } as any, tags: [{ key: 'aurora/moderate', value: '0.28' }] }),
+    mk({ name: 'O₂ + N₂ · green/purple (Earth)', apparentColorHex: '#2f6ea5', atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }, { key: 'climate/polar-ice', value: 'water' }] }),
+    mk({ name: 'Nitrogen · purple · 40° tilt', apparentColorHex: '#37589a', axial_tilt_deg: 40, atmosphere: { pressure_bar: 1.5, composition: { N2: 0.98 } } as any, tags: [{ key: 'aurora/strong', value: '0.48' }] }),
+    mk({ name: 'CO₂ · violet', apparentColorHex: '#9a6a5a', atmosphere: { pressure_bar: 2, composition: { CO2: 0.95, N2: 0.05 } } as any, tags: [{ key: 'aurora/strong', value: '0.4' }] }),
+    mk({ name: 'O₂ + CO₂ · green/violet', apparentColorHex: '#5a8a6a', atmosphere: { pressure_bar: 1.5, composition: { CO2: 0.55, O2: 0.3, N2: 0.15 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }] }),
+    mk({ name: 'N₂ + CH₄ · purple/blue', apparentColorHex: '#7a8a6a', atmosphere: { pressure_bar: 1.5, composition: { N2: 0.9, CH4: 0.1 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }] }),
     mk({ name: 'H/He giant · red-pink (brilliant)', apparentColorHex: '#c9a878', axial_tilt_deg: 3,
         atmosphere: { pressure_bar: 1000, composition: { H2: 0.9, He: 0.1 } } as any,
         apparentColor: { hex: '#c9a878', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any,
@@ -112,14 +146,25 @@
   ];
 
   const giants = [
-    mk({ name: 'Jupiter-like · fast spin · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3,
+    mk({ name: 'Jupiter-like · fast spin · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3, makeup: { gas: 0.9, ice: 0.1 } as any,
         apparentColor: { hex: '#d8b888', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any }),
-    mk({ name: 'Saturn-like · 27° tilt', apparentColorHex: '#d8c89a', axial_tilt_deg: 27,
+    mk({ name: 'Saturn-like · 27° tilt', apparentColorHex: '#d8c89a', axial_tilt_deg: 27, makeup: { gas: 0.9, ice: 0.1 } as any,
         apparentColor: { hex: '#d8c89a', banding: 5, palette: ammonia('#e6dcb8', '#c8b888', '#a89860') } as any }),
-    mk({ name: 'Ice giant · smooth', apparentColorHex: '#8fc4d6', axial_tilt_deg: 28,
+    mk({ name: 'Ice giant · smooth', apparentColorHex: '#8fc4d6', axial_tilt_deg: 28, makeup: { gas: 0.6, ice: 0.4 } as any,
         apparentColor: { hex: '#8fc4d6', banding: 3, palette: iceGiant('#a6d4e2') } as any }),
-    mk({ name: 'Uranus-like · 98° tilt (on its side)', apparentColorHex: '#a6d8dc', axial_tilt_deg: 98,
+    mk({ name: 'Uranus-like · 98° tilt (on its side)', apparentColorHex: '#a6d8dc', axial_tilt_deg: 98, makeup: { gas: 0.6, ice: 0.4 } as any,
         apparentColor: { hex: '#a6d8dc', banding: 4, palette: iceGiant('#b8e0e4') } as any }),
+  ];
+
+  // Polar vortices — a gas giant's geometric polar jet. Saturn's north pole is a hexagon (6); Jupiter's
+  // poles run polygonal cyclone rings 5–9. Side count rides on the feature/polar-vortex tag value.
+  const gasGiant = (name: string, sides: number, hex: string, banding: number, pal: any) =>
+    mk({ name, apparentColorHex: hex, radiusKm: 60000, makeup: { gas: 0.9, ice: 0.1 } as any,
+        apparentColor: { hex, banding, palette: pal } as any, tags: [{ key: 'feature/polar-vortex', value: String(sides) }] });
+  const polarVortices = [
+    gasGiant('Pentagon jet (5)', 5, '#d8c89a', 6, ammonia('#e6dcb8', '#c8b888', '#a89860')),
+    gasGiant('Hexagon jet (6) · Saturn', 6, '#d8c89a', 6, ammonia('#e6dcb8', '#c8b888', '#a89860')),
+    gasGiant('Octagon jet (8) · Jupiter N', 8, '#d8b888', 9, ammonia('#e8d3ab', '#c89868', '#9c6b3e')),
   ];
 
   // Self-luminous brown dwarfs: the emission halo's colour comes from the thermal/self-luminous tag's
@@ -134,7 +179,57 @@
 
 <div class="page">
   <h1>Rendered worlds — reference gallery</h1>
-  <p class="lead">How The Guide draws a world from its physics and tags. These are illustrative examples.</p>
+  <p class="lead">How The Guide draws a world from its physics and tags. These are illustrative examples.
+    <a href="/discgallery3d">3D holo gallery →</a></p>
+
+  <h2>Star types — by temperature</h2>
+  <div class="gallery">
+    {#each GALLERY_STAR_TYPES as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Black holes — by accretion level (2D schematic; comes alive with lensing in 3D)</h2>
+  <div class="gallery">
+    {#each [{ n: 'Quiescent', e: 0 }, { n: 'Feeding · 20%', e: 0.2 }, { n: 'Feeding · 50%', e: 0.5 }, { n: 'Feeding · 100%', e: 1 }] as bh, i}
+      {@const rx = 22 + bh.e * 26}
+      {@const ry = 2.5 + bh.e * 3.5}
+      <figure>
+        <svg viewBox="0 0 100 100" width="168" height="168">
+          <defs>
+            <!-- Concentric temperature grade across the disc: hot-white inner (at the hole) → orange → fade. -->
+            <radialGradient id="acc-{i}" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#fff4d0" stop-opacity="0" /><stop offset="0.24" stop-color="#fff4d0" />
+              <stop offset="0.45" stop-color="#f0a030" /><stop offset="0.75" stop-color="#8a3212" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
+            </radialGradient>
+            <!-- The bright blade / lensed rims: hot-white in the middle, fading at the tips. -->
+            <linearGradient id="accl-{i}" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#8a3212" stop-opacity="0" /><stop offset="0.22" stop-color="#f0a030" />
+              <stop offset="0.5" stop-color="#fff4d0" /><stop offset="0.78" stop-color="#f0a030" /><stop offset="1" stop-color="#8a3212" stop-opacity="0" />
+            </linearGradient>
+            <!-- Particle fuzz for the blaze — heavier at higher accretion. -->
+            <filter id="bhb-{i}" x="-40%" y="-300%" width="180%" height="700%"><feGaussianBlur stdDeviation={1.1 + bh.e * 1.7} /></filter>
+          </defs>
+          {#if bh.e > 0}
+            <!-- The edge-on particle blaze: fuzzy blurred gradient ellipses, WIDTH growing with feeding. -->
+            <ellipse cx="50" cy="50" rx={rx} ry={ry} fill="url(#acc-{i})" filter="url(#bhb-{i})" />
+            <ellipse cx="50" cy="50" rx={rx * 0.72} ry={ry * 0.75} fill="url(#acc-{i})" filter="url(#bhb-{i})" opacity="0.95" />
+            <!-- Far side of the disc lensed over the top, hugging the ring. -->
+            <path d="M{50 - rx * 0.5} 50 Q 50 {28 - bh.e * 4} {50 + rx * 0.5} 50" fill="none" stroke="url(#accl-{i})" stroke-width={1.2 + bh.e * 1.2} opacity="0.9" />
+          {/if}
+          <!-- Event horizon + a bright photon ring (with a soft outer glow). -->
+          <circle cx="50" cy="50" r="11" fill="#000" />
+          <circle cx="50" cy="50" r="13.4" fill="none" stroke="#fff" stroke-width="1.1" opacity="0.3" />
+          <circle cx="50" cy="50" r="12.2" fill="none" stroke="#fff" stroke-width="2.1" />
+          {#if bh.e > 0}
+            <!-- The near-side blade crossing IN FRONT of the hole — the signature of the lensed look. -->
+            <ellipse cx="50" cy="50.8" rx={rx * 0.98} ry={0.9 + bh.e * 1.1} fill="url(#accl-{i})" opacity="0.95" />
+          {/if}
+        </svg>
+        <figcaption>{bh.n}</figcaption>
+      </figure>
+    {/each}
+  </div>
 
   <h2>Surface features</h2>
   <div class="gallery">
@@ -148,6 +243,25 @@
     {#each atmospheres as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
+  </div>
+
+  <!-- Bisection aid: the SAME body drawn with individual derived features dropped, so a wrong-looking
+       world can be attributed to one layer instead of guessed at. Drawn large, since the complaint is
+       about what the haze and the cloud deck do at close zoom. -->
+  <h2>Test render — Earth under a G star, one layer at a time</h2>
+  <p class="note">
+    The same Earth-like world as the row below, drawn at full size with individual layers suppressed.
+    Whichever pair differs is the layer responsible.
+  </p>
+  <div class="gallery">
+    <figure><PlanetDisc body={earthDiagnostic} size={260} /><figcaption>As shipped (all layers)</figcaption></figure>
+    <figure><PlanetDisc body={earthDiagnostic} size={260} suppress={{ clouds: true }} /><figcaption>No cloud deck</figcaption></figure>
+    <figure><PlanetDisc body={earthDiagnostic} size={260} suppress={{ atmGlow: true }} /><figcaption>No atmosphere glow</figcaption></figure>
+    <figure><PlanetDisc body={earthDiagnostic} size={260} suppress={{ clouds: true, atmGlow: true, aurora: true }} /><figcaption>Bare surface (nothing over it)</figcaption></figure>
+    <figure><PlanetDisc body={waterControl} size={260} /><figcaption>Water-ocean control (renders correctly)</figcaption></figure>
+    <figure><PlanetDisc body={waterControl} size={260} suppress={{ clouds: true, atmGlow: true, aurora: true }} /><figcaption>Control, bare surface</figcaption></figure>
+    <figure><PlanetDisc body={earthNoCloudLayer} size={260} /><figcaption>Earth minus its hydrosphere CLOUD layer</figcaption></figure>
+    <figure><PlanetDisc body={earthNoPolarIce} size={260} /><figcaption>Earth minus its polar-ice tag</figcaption></figure>
   </div>
 
   <h2>Same Earth under different stars — starlight tints ocean, cloud &amp; surface</h2>
@@ -186,6 +300,48 @@
     {/each}
   </div>
 
+  <h2>Surface weathering — cratering climbs with surface age (last is tidally locked)</h2>
+  <div class="gallery">
+    {#each GALLERY_CRATERING as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Ice fractures vs rock craters — a frozen former ocean rifts the crust</h2>
+  <div class="gallery">
+    {#each GALLERY_ICE_VS_ROCK as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Tholins &amp; volatile frosts — irradiated organics redden; retained ices frost</h2>
+  <div class="gallery">
+    {#each GALLERY_THOLIN_FROST as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Thermal emission &amp; eyeball worlds — a super-hot surface glows; star-locked worlds split day/night</h2>
+  <div class="gallery">
+    {#each GALLERY_HOT_EYEBALL as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Volcanism — glowing vents by tier</h2>
+  <div class="gallery">
+    {#each GALLERY_VOLCANISM as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Cryovolcanic plumes — icy jets vented through the crust</h2>
+  <div class="gallery">
+    {#each GALLERY_CRYO_PLUMES as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
   <h2>Auroras — atmosphere + magnetic field + ionising radiation</h2>
   <div class="gallery">
     {#each auroras as b}
@@ -203,6 +359,13 @@
   <h2>Gas &amp; ice giants — banding from spin, tilted by the axis</h2>
   <div class="gallery">
     {#each giants as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Polar vortices — a gas giant's geometric polar jet (Saturn's hexagon; 5–8 sides)</h2>
+  <div class="gallery">
+    {#each polarVortices as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>

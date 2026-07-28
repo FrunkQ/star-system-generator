@@ -12,22 +12,31 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
+import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import type { FilterParamValues } from './filters/schema';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
-import { getPlanetTextureEquirect, getPlanetTexture } from '$lib/rendering/planetTexture';
+import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
+import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
+import {
+  makeHotspotTexture, makePlumeTexture, makeGlowTexture,
+  buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, updateMagma, updatePlumes, accretionColor,
+  type EmissiveVisual
+} from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
 import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep } from '$lib/viewport/camera';
+import { contextPeerIds } from '$lib/system/barycentres';
 import { perfCount, perfFrame } from '$lib/perfTrace';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
-import { deriveAurora, auroraEmitter } from '$lib/physics/aurora';
+import { deriveAurora, auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import { AU_KM, G } from '$lib/constants';
 import type { System } from '$lib/types';
@@ -82,6 +91,10 @@ export interface HoloController {
   setHud(canvas: HTMLCanvasElement | null): void; // static info-card overlay, composited INTO the filter
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
+  setLensing(on: boolean): void; // stylised black-hole gravitational lensing (§A13)
+  setPortrait(colorHex: string | null, fixed?: boolean): void; // isolated-body PORTRAIT key light in the star's
+  // colour at a fixed 3/4 angle (camera-relative; `fixed` = WORLD-fixed for a tidally-locked body). null = off.
+  setUserSpin(on: boolean): void; // isolated-body thumbnail: allow hand-drag to spin (rotate only, no zoom)
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -113,7 +126,7 @@ interface BodyVisual {
   framingParentId?: string | null; // the click-ladder's parent (a construct's UI host, else the real parent)
   satellite: boolean; // a moon: positioned as a magnified offset around its (compressed) parent
   radiusScene?: number; // rendered radius in scene units (so satellites can sit just outside the parent)
-  spinPeriodSec?: number; // sidereal rotation period; drives the texture turning
+  spinPeriodSec?: number; // sidereal rotation period (SIGNED: negative = retrograde); drives the texture turning
   tiltQuat?: THREE.Quaternion; // fixed axial-tilt rotation, composed with the live spin each frame
   isConstruct?: boolean; // icon sprite: fixed screen size, focus-driven size/dim states
   physRadiusAu?: number; // true physical radius in AU (for detecting surface-locked constructs)
@@ -123,6 +136,8 @@ interface BodyVisual {
   surfaceLock?: { dir0: THREE.Vector3 } | null;
   occluderId?: string | null; // body whose shadow can eclipse this one (a moon's parent planet)
   shadow?: { uStarPos: { value: THREE.Vector3 }; uOcc: { value: THREE.Vector4 }; uHasOcc: { value: number } };
+  isBH?: boolean; // a black hole — a lensing centre for the gravitational-lensing pass
+  tidallyLocked?: boolean; // keeps one face toward its parent — orientation is geometry-locked, not free-spun
 }
 
 // A planetary ring: a particle disc in the planet's tilted equatorial plane, spinning DIFFERENTIALLY
@@ -139,6 +154,9 @@ interface RingVisual {
   t0Sec: number; // sim time at build (seconds)
   planetR: number; // rendered planet radius (scene units) — the shadow-casting sphere for ring shadow
   baseColor: THREE.Color; // unshadowed particle tint
+  emissiveBase?: Float32Array; // per-particle rgb for a SELF-LUMINOUS disc (a BH accretion disc, temp-
+                               // graded hot-inner→red-outer). When present, updateRings paints it
+                               // directly (no planet-shadow shading — the disc glows).
 }
 
 // A belt orbits the system centre (origin). Each rock advances around the vertical axis at its
@@ -238,6 +256,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   const scene = new THREE.Scene();
+  // Background as scene.background (a colour-managed Color), NOT renderer.setClearColor: a bare clear
+  // colour is written to the composer's LINEAR render target without the sRGB->linear decode, so the
+  // OutputPass then sRGB-encodes it and lifts the near-black navy into a visibly brighter blue — but
+  // ONLY on the composer path (i.e. when a black hole's lensing pass is active). scene.background is
+  // decoded consistently whether rendering straight to the canvas or through the composer, so the
+  // background matches on both paths. (Proven: clear-colour 5,7,12 -> 38,46,61 via composer; fixed.)
+  scene.background = new THREE.Color(0x05070c);
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
   const HOME_CAM = new THREE.Vector3(0, GRID_RADIUS * 1.1, GRID_RADIUS * 1.4);
   camera.position.copy(HOME_CAM);
@@ -272,7 +297,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function setSkybox(on: boolean) { skyboxOn = on; applyStarfield(); }
   function setBackground(bg: string) {
     background = bg;
-    renderer.setClearColor(BG_COLORS[bg] ?? BG_COLORS.space, 1);
+    // Named preset, OR a raw #rrggbb (used when the holo is embedded — e.g. the Guide document's 3D body
+    // graphic — so its ground matches the surrounding page instead of the default navy).
+    const named = BG_COLORS[bg];
+    (scene.background as THREE.Color).set(named ?? (typeof bg === 'string' && bg[0] === '#' ? bg : BG_COLORS.space));
     applyStarfield();
   }
 
@@ -381,9 +409,63 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const ambient = new THREE.HemisphereLight(0xaecbff, 0x0a0e16, 0.35);
   scene.add(ambient);
 
+  // Isolated-body PORTRAIT key light: when the document's body thumbnail frames a single planet there is
+  // no star node to cast a terminator, so a fabricated star would drag in a stray sphere + corona and skew
+  // the aurora flux. Instead a dedicated directional key — coloured by the real star ("the sun provides the
+  // colour") — is placed each frame at a fixed 3/4 angle RELATIVE TO THE CAMERA (offscreen, upper-front-
+  // side) so the framed body always reads as mostly day with a sliver of night whatever the turntable does.
+  let portraitLight: THREE.DirectionalLight | null = null;
+  let portraitOn = false;
+  let portraitFixed = false; // tidally-locked: light held in WORLD space so the same face stays lit
+  const _portR = new THREE.Vector3();
+  const _portU = new THREE.Vector3();
+  const _portF = new THREE.Vector3();
+  function setPortrait(colorHex: string | null, fixed = false) {
+    portraitOn = !!colorHex;
+    portraitFixed = fixed;
+    if (colorHex) {
+      if (!portraitLight) {
+        portraitLight = new THREE.DirectionalLight(0xffffff, 2.4);
+        scene.add(portraitLight);
+        scene.add(portraitLight.target);
+      }
+      portraitLight.color.set(colorHex);
+      portraitLight.visible = true;
+    } else if (portraitLight) {
+      portraitLight.visible = false;
+    }
+  }
+  function updatePortraitLight() {
+    if (!portraitLight) return;
+    portraitLight.target.position.copy(controls.target);
+    if (portraitFixed) {
+      // WORLD-fixed key (tidally-locked body): a constant direction, so as the turntable orbits the
+      // camera the same physical hemisphere stays lit — the permanent day side sweeps to night correctly.
+      portraitLight.position.copy(controls.target).add(_portF.set(3, 1.4, 2));
+      return;
+    }
+    _portR.setFromMatrixColumn(camera.matrixWorld, 0); // camera right
+    _portU.setFromMatrixColumn(camera.matrixWorld, 1); // camera up
+    _portF.subVectors(camera.position, controls.target).normalize(); // toward the camera
+    // Front-dominant (day fills most of the disc) with a side+up offset so one limb falls into night.
+    portraitLight.position.copy(controls.target)
+      .addScaledVector(_portF, 1.0).addScaledVector(_portR, 0.5).addScaledVector(_portU, 0.4);
+  }
+
   // --- GPU post-processing filter chain (Mappadux filter package, ported) ---
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  // Black-hole gravitational lensing pass (§A13). Sits BEFORE the CRT filter so the scene is lensed and
+  // then the filter treats the lensed image. Disabled unless a preset turns it on AND a hole is on screen.
+  const lensingPass = new ShaderPass(makeLensingShader());
+  lensingPass.enabled = false;
+  composer.addPass(lensingPass);
+  let lensingOn = false;
+  // Final sRGB/tone-map — needed so a composer render (lensing on, no CRT filter) matches the direct
+  // renderer.render output. DISABLED while a CRT filter is active: the filter stays the last pass and
+  // owns the output exactly as before (so filtered views are unchanged).
+  const outputPass = new OutputPass();
+  composer.addPass(outputPass);
   const filterResolution = new THREE.Vector2(1, 1);
   const filterClock = new THREE.Clock();
   let filterPass: ShaderPass | null = null;
@@ -397,10 +479,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       filterPass = null;
     }
     const def = filterRegistry.get(filterId);
-    if (!def || filterId === 'none') return;
+    if (!def || filterId === 'none') { outputPass.enabled = true; return; }
     const params = { ...filterRegistry.defaultParams(filterId), ...filterParams };
     filterPass = new ShaderPass(buildShaderObject(def, params, filterResolution));
-    composer.addPass(filterPass);
+    composer.insertPass(filterPass, composer.passes.length - 1); // before the OutputPass
+    outputPass.enabled = false; // the CRT filter is the final pass now — output unchanged from before
   }
 
   function setFilter(id: string, params?: FilterParamValues) {
@@ -530,6 +613,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Aurora emitters (additive), flickering over time; base opacity scales with strength. Filled bodies
   // use a glow shell (MeshBasicMaterial); wireframe bodies use a few emissive polar arcs (LineBasic).
   let auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
+  // Volcanic vent glows + cryovolcanic plumes (shared EmissiveVisual from ./bodyFeatures): additive
+  // sprites whose opacity is flickered/glistened each frame by updateMagma / updatePlumes.
+  let magmaVisuals: EmissiveVisual[] = [];
+  let plumeVisuals: EmissiveVisual[] = [];
+  // Cloud decks: a translucent shell per cloudy body, drifted in longitude each frame so it floats over
+  // the surface (its own spin, on top of the parent sphere's).
+  let cloudVisuals: { mesh: THREE.Object3D; drift: number }[] = [];
+  // Auto-generated black-hole accretion discs, by BH node id — the lens exempts each disc's projected
+  // band so its near side shows in front of the shadow (see lensingShader).
+  const bhDiscInfo = new Map<string, { pivot: THREE.Group; inner: number; outer: number }>();
   // Orbit path rings, keyed by node id so they can follow the SAME visibility rule as the names
   // ("if you show a name, show an orbit"). Moon rings carry trackParentId to follow the parent.
   let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string }[] = [];
@@ -552,6 +645,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   scene.add(contentGroup);
 
   const glowTexture = makeGlowTexture();
+  const hotspotTexture = makeHotspotTexture(); // shared filled glow for volcanic vents
+  const plumeTexture = makePlumeTexture(); // shared soft white puff for cryovolcanic plumes
   const tmp = new THREE.Vector3();
   const proj = new THREE.Vector3();
 
@@ -820,13 +915,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   // Which of the ladder's levels exist for a body, by the SHARED rule (no parent → no 1; no satellites → no 2).
+  // The holo draws no mesh for a barycentre, so a member's parent is only reachable through the shared
+  // pair rule — without it every binary star read as the system ROOT here and lost its context level,
+  // giving the 3D view a different ladder from the orrery for the same click.
   function levelsForBody(id: string | null): number[] {
     const b = id ? bodyById.get(id) : undefined;
     if (!b) return [3];
-    const pid = b.framingParentId;
+    const pid = b.framingParentId ?? null;
     return frameLevelsFrom({
-      hasParent: !!(pid && bodyById.has(pid)),
-      hasSatellites: bodies.some((x) => x.framingParentId === id)
+      hasParent: contextPeerIds(currentSystem, b.id, pid).some((pid2) => bodyById.has(pid2)),
+      hasSatellites: bodies.some((x) => x.framingParentId === id),
+      hasRadius: !b.isConstruct && (b.radiusScene ?? 0) > 0 // a radius-less root keeps whole-system-first
     });
   }
 
@@ -837,8 +936,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // identical framing from the same click.
   function frameDistance(b: BodyVisual): number {
     const radius = b.isConstruct ? 0 : (b.radiusScene ?? 0);
-    const pv = b.framingParentId ? bodyById.get(b.framingParentId) : undefined;
-    const parentDist = pv ? b.mesh.position.distanceTo(pv.mesh.position) : 0;
+    // Reach the FURTHEST context peer — for a barycentre member that is the partner star, so the pair
+    // frames as a pair from either half (the barycentre point itself has no mesh here).
+    let parentDist = 0;
+    for (const peerId of contextPeerIds(currentSystem, b.id, b.framingParentId ?? null)) {
+      const pv = bodyById.get(peerId);
+      if (pv) parentDist = Math.max(parentDist, b.mesh.position.distanceTo(pv.mesh.position));
+    }
     let maxSatelliteDist = 0;
     for (const x of bodies) {
       if (x.framingParentId !== b.id) continue;
@@ -1110,6 +1214,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     starLights = [];
     starVisuals = [];
     auroraVisuals = [];
+    magmaVisuals = [];
+    plumeVisuals = [];
+    cloudVisuals = [];
+    bhDiscInfo.clear();
   }
 
   function setSystem(system: System | null) {
@@ -1198,17 +1306,31 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           mesh = buildWireframeBody(starR, colorHex, glow, occluded);
         } else if (isBH) {
           // Black hole: a pure-black event horizon. A quiescent hole shows only a faint photon-ring
-          // glow; a FEEDING hole (star/BH_active or accretionEddington>0) gets a bright, hot blue-white
-          // accretion glow that flickers over time (the accretion DISC itself is a separate ring node).
-          const eh = new THREE.Mesh(new THREE.SphereGeometry(starR, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+          // glow; a FEEDING hole (star/BH_active or accretionEddington>0) gets a bright, hot white-gold
+          // inner glow that flickers over time (matching the hot inner edge of its temperature-graded
+          // accretion DISC — a separate ring node, coloured white→yellow→red outward).
+          // Drawn far smaller than the lens's shadow mask — the lens magnifies the black it finds at
+          // the centre, so a full-size sphere would smear black well past the photon ring and eat the
+          // starfield. The shader's horizon mask (sized from radiusScene) is the real shadow.
+          const eh = new THREE.Mesh(new THREE.SphereGeometry(starR * 0.55, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
           mesh = eh;
           const edd = Math.max(0, Math.min(1, (node as any).accretionEddington ?? (feeding ? 0.5 : 0)));
-          const glowMat = new THREE.SpriteMaterial({ map: glowTexture, color: feeding ? 0xbfe0ff : 0x7f93b5, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: feeding ? 1 : 0.42 });
-          const glow = new THREE.Sprite(glowMat);
-          const glowScale = starR * (feeding ? 3.5 + edd * 3.5 : 2.3);
-          glow.scale.setScalar(glowScale);
-          eh.add(glow);
-          if (feeding) starVisuals.push({ corona: glow, coronaScale: glowScale, activity: Math.max(0.5, edd) }); // flickering accretion
+          // A black hole is BLACK — no big glow ball (that read as a "crystal ball"). The look is the
+          // temperature-graded accretion disc + the gravitational-lensing pass wrapping it + a small
+          // photon-ring glint (from the lensing). A quiescent hole is a bare, lensed shadow.
+          if (feeding) {
+            // Auto-generate a glowing, temperature-graded ACCRETION DISC (real BH systems carry no
+            // explicit ring node). It's a normal RingVisual so updateRings spins it + tracks the hole;
+            // the lensing pass then wraps its far side over/under the shadow (the Interstellar look).
+            const rkm = node.radiusKm || 30;
+            const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: rkm * 1.6, radiusOuterKm: rkm * (5 + edd * 4) };
+            const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs);
+            if (disc) {
+              contentGroup.add(disc.pivot);
+              ringVisuals.push(disc);
+              bhDiscInfo.set(node.id, { pivot: disc.pivot, inner: starR * 1.6, outer: starR * (5 + edd * 4) });
+            }
+          }
         } else {
           // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
           // scales with the star's flare activity), so you see surface detail and it spins. Under the
@@ -1301,9 +1423,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             if (texCanvas) {
               const t = new THREE.CanvasTexture(texCanvas);
               t.colorSpace = THREE.SRGBColorSpace;
+              t.wrapS = THREE.RepeatWrapping; // wrap the longitude seam so u=0/u=1 blend (no vertical seam line)
+              t.anisotropy = renderer.capabilities.getMaxAnisotropy(); // keep surface detail crisp at the limb
               mat.map = t;
             } else {
               mat.color.set(colorHex);
+            }
+            // Thermal EMISSION: a super-hot / molten surface glows of its own heat (the molten eyeball's
+            // substellar hemisphere, or a uniformly incandescent lava world). Self-lit emissiveMap so it
+            // shows against space and on the night side.
+            if (!useUnlit) {
+              const emCanvas = getEmissiveEquirect(node);
+              if (emCanvas) {
+                const et = new THREE.CanvasTexture(emCanvas);
+                et.colorSpace = THREE.SRGBColorSpace;
+                et.anisotropy = renderer.capabilities.getMaxAnisotropy();
+                const sm = mat as THREE.MeshStandardMaterial;
+                sm.emissiveMap = et; sm.emissive = new THREE.Color(0xffffff); sm.emissiveIntensity = 1.15;
+              }
             }
           }
           // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).
@@ -1330,10 +1467,51 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (!unlit) {
             const aur = deriveAurora(node as any);
             if (aur.strength > 0.06) {
-              const built = buildAuroraShell(radius, auroraEmitter(node as any).hex, aur.strength);
-              sphere.add(built.shell);
+              // One additive shell per emitting gas, stacked at its physical ALTITUDE (purple N₂ fringe
+              // low, green O main, crimson O crown high) and fading independently — so at any moment the
+              // sky shows one colour or several, never a merged white.
+              const ems = auroraEmitters(node as any);
               let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
-              auroraVisuals.push({ mat: built.mat, base: built.base, seed: seed / 997 });
+              ems.forEach((e, i) => {
+                const built = buildAuroraShell(radius, e.hex, aur.strength, e.weight / ems[0].weight, e.altitude);
+                sphere.add(built.shell);
+                auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.31) % 1 });
+              });
+            }
+            // Emissive surface activity (3D-only wins) from the shared appearance model. Volcanism =
+            // additive hot-spot vents that flicker like heat (lava world = many white-hot; hotspots = a
+            // few orange). Cryovolcanism = icy plume jets venting from a pole, thrown far on a low-gravity
+            // world (Enceladus). Both parented to the sphere, so they turn with the surface.
+            const appear = deriveAppearance(node as any);
+            if (appear.magma) {
+              const built = buildMagmaVents(radius, appear.magma, String(node.id), hotspotTexture);
+              sphere.add(built.group);
+              magmaVisuals.push(...built.visuals);
+            }
+            if (appear.cryoPlumes) {
+              const built = buildCryoPlumes(radius, appear.cryoPlumes, String(node.id), plumeTexture);
+              sphere.add(built.group);
+              plumeVisuals.push(...built.visuals);
+            }
+            // Self-luminous glow (a brown dwarf / hot young sub-stellar body radiating its own heat):
+            // a dim, cool corona-like halo coloured by the emission temperature (deep red → amber), like
+            // a failed star. Reuses the corona glow sprite at a modest scale — a steady dim glow (not a
+            // blazing stellar corona).
+            if (appear.selfLumGlow) {
+              sphere.add(buildSelfLumGlow(radius, appear.selfLumGlow.colorHex, glowTexture));
+            }
+            // Atmosphere limb-glow: a thin Fresnel halo hugging the silhouette, coloured by the air/haze.
+            if (appear.atmGlow) {
+              sphere.add(buildAtmoGlow(radius, appear.atmGlow.colorHex, appear.atmGlow.strength));
+            }
+            // Cloud deck: a separate translucent shell above the surface that DRIFTS on its own — a
+            // patchy deck on Earth-likes, an opaque haze veil on Venus-likes. Parented to the sphere so
+            // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
+            if (appear.clouds) {
+              let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
+              const cl = buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
+              sphere.add(cl.group);
+              cloudVisuals.push(...cl.layers);
             }
           }
         }
@@ -1346,8 +1524,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const label = makeLabelSprite(String(node.name ?? ''));
       // Spin: sidereal rotation from the data, composed onto a fixed axial tilt each frame. Stars
       // spin too (their sunspots turn); the corona is a billboard child, unaffected by the spin.
-      // Constructs are camera-facing sprites — no spin.
-      const spinPeriodSec = !isConstruct ? Math.abs(node.rotation_period_hours || 0) * 3600 || undefined : undefined;
+      // Constructs are camera-facing sprites — no spin. The SIGN of rotation_period_hours encodes
+      // retrograde spin (negative = spins backwards, e.g. Venus/Uranus), so keep it — updateSpin below
+      // reads the sign to turn the right way (prograde matches the orbital/ring/disc sense).
+      const spinPeriodSec = !isConstruct ? (node.rotation_period_hours || 0) * 3600 || undefined : undefined;
       const tiltRad = ((node.axial_tilt_deg || 0) * Math.PI) / 180;
       const tiltQuat = !isConstruct ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad) : undefined;
       // A ship mid-journey is positioned absolutely by the transit sampler — never apply the
@@ -1355,7 +1535,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
       const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked });
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
     // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
@@ -1506,11 +1686,42 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function updateSpin() {
     const tSec = timeMs / 1000;
     for (const b of bodies) {
-      if (!b.tiltQuat || !b.spinPeriodSec) continue;
-      const angle = (tSec / b.spinPeriodSec) * Math.PI * 2;
+      if (!b.tiltQuat) continue;
+      // A tidally-locked body keeps ONE face toward its parent — its orientation is a function of where
+      // it is in its orbit, NOT a free clock spin. A plain rate-matched spin (below) starts at an
+      // arbitrary phase, so each moon ends up locked at a DIFFERENT constant offset (Mimas faces us,
+      // Rhea sits 90° out). Geometry-lock it instead: aim the sub-parent meridian at the parent.
+      if (b.tidallyLocked && b.parentId && bodyById.has(b.parentId)) { faceParent(b); continue; }
+      if (!b.spinPeriodSec) continue;
+      // Negated so a prograde body (positive period) turns +X->+Z about +Y — the SAME sense its moons,
+      // rings and belts orbit (all +X->+Z in the ground plane) and the way it orbits its own star. A
+      // plain +angle would spin the surface the opposite way (a THREE +Y rotation sends +X->-Z), which
+      // is what made planets appear to spin backwards against their discs. A negative period (retrograde)
+      // flips the sign back, so Venus/Uranus spin the other way as they should.
+      const angle = -(tSec / b.spinPeriodSec) * Math.PI * 2;
       spinQuat.setFromAxisAngle(spinAxis, angle); // spin about local (pre-tilt) pole
       b.mesh.quaternion.copy(b.tiltQuat).multiply(spinQuat); // tilt the axis, then spin about it
     }
+  }
+
+  // Aim a tidally-locked body's sub-parent meridian (equirect texture centre = local +X) at its parent,
+  // rotating only about its (tilted) pole so the axial tilt is preserved. Runs each frame off the LIVE
+  // rendered positions, so the near face tracks the parent through the whole orbit — and, since the
+  // crater far-side bias lives at the texture edges, the battered anti-parent hemisphere faces away.
+  const _pole = new THREE.Vector3(), _toParent = new THREE.Vector3(), _refX = new THREE.Vector3(), _cross = new THREE.Vector3();
+  function faceParent(b: BodyVisual) {
+    const pv = bodyById.get(b.parentId!);
+    if (!pv) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
+    _pole.set(0, 1, 0).applyQuaternion(b.tiltQuat!).normalize();          // world spin axis
+    _toParent.copy(pv.mesh.position).sub(b.mesh.position);                 // moon → parent
+    _toParent.addScaledVector(_pole, -_toParent.dot(_pole));               // project into the equatorial plane
+    if (_toParent.lengthSq() < 1e-12) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
+    _toParent.normalize();
+    _refX.set(1, 0, 0).applyQuaternion(b.tiltQuat!);                       // where +X points at spin angle 0
+    _refX.addScaledVector(_pole, -_refX.dot(_pole)).normalize();
+    const angle = Math.atan2(_cross.crossVectors(_refX, _toParent).dot(_pole), _refX.dot(_toParent));
+    spinQuat.setFromAxisAngle(spinAxis, angle);
+    b.mesh.quaternion.copy(b.tiltQuat!).multiply(spinQuat);
   }
 
   // Surface-locked constructs (see BodyVisual.surfaceLock): re-glue each to its fixed surface point,
@@ -1543,10 +1754,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function updateAuroras(nowSec: number) {
     for (const a of auroraVisuals) {
       if (!aurorasOn) { a.mat.opacity = 0; continue; } // GM toggle off → hide (additive, so opacity 0 = gone)
-      const s = 0.5 + 0.5 * (0.62 * Math.sin(nowSec * 2.6 + a.seed * 6.283) + 0.38 * Math.sin(nowSec * 5.9 + a.seed * 12.57));
-      a.mat.opacity = a.base * (0.4 + 0.6 * Math.max(0, Math.min(1, s)));
+      // A slow deep SWELL (each colour layer fades nearly out and back on its own phase — so a mixed sky
+      // shows one colour, then both, never a merged white) times a fast shimmer for the curtain flicker.
+      const swell = 0.5 + 0.5 * Math.sin(nowSec * 0.45 + a.seed * 6.283);
+      const shimmer = 0.5 + 0.5 * (0.62 * Math.sin(nowSec * 2.6 + a.seed * 6.283) + 0.38 * Math.sin(nowSec * 5.9 + a.seed * 12.57));
+      a.mat.opacity = a.base * (0.08 + 0.92 * swell) * (0.55 + 0.45 * Math.max(0, Math.min(1, shimmer)));
     }
   }
+
+  // Volcanic vents, cryo plumes and their flicker helpers now live in ./bodyFeatures (shared with the
+  // 3D gallery). updateMagma/updatePlumes are called below with this scene's visual arrays.
 
   // Feed each shadow-capable body its occluder (parent planet) sphere + the primary star position,
   // in scene space, so the shader can do its ray–sphere eclipse test.
@@ -1625,6 +1842,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const arr = attr.array as Float32Array;
       const cattr = rv.points!.geometry.getAttribute('color') as THREE.BufferAttribute;
       const carr = cattr.array as Float32Array;
+      const eb = rv.emissiveBase; // a glowing accretion disc: paint the temp gradient directly, no shadow
       for (let i = 0; i < rv.radii.length; i++) {
         const ang = rv.baseAng[i] + rv.omega[i] * dt;
         const r = rv.radii[i];
@@ -1632,10 +1850,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const z = r * Math.sin(ang);
         arr[3 * i] = x;
         arr[3 * i + 2] = z;
-        const shade = shadeAt(x, z);
-        carr[3 * i] = cr * shade;
-        carr[3 * i + 1] = cg * shade;
-        carr[3 * i + 2] = cb * shade;
+        if (eb) {
+          carr[3 * i] = eb[3 * i]; carr[3 * i + 1] = eb[3 * i + 1]; carr[3 * i + 2] = eb[3 * i + 2];
+        } else {
+          const shade = shadeAt(x, z);
+          carr[3 * i] = cr * shade;
+          carr[3 * i + 1] = cg * shade;
+          carr[3 * i + 2] = cb * shade;
+        }
       }
       attr.needsUpdate = true;
       cattr.needsUpdate = true;
@@ -1671,6 +1893,45 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // Feed the lensing pass each black hole's screen position + Einstein radius (in UV). Projects the
+  // hole's scene position and its rendered edge to the screen; the Einstein radius is a multiple of the
+  // event-horizon's screen radius. Disables the pass when lensing is off or no hole is on screen.
+  const _lensCentre = new THREE.Vector3();
+  const _lensEdge = new THREE.Vector3();
+  const _camRight = new THREE.Vector3();
+  function updateLensing() {
+    if (!lensingOn) { lensingPass.enabled = false; return; }
+    _camRight.setFromMatrixColumn(camera.matrixWorld, 0); // camera's world-space right vector
+    const arr = lensingPass.uniforms.uBH.value as THREE.Vector4[];
+    const discArr = lensingPass.uniforms.uDisc.value as THREE.Vector4[];
+    const discNArr = lensingPass.uniforms.uDiscN.value as THREE.Vector2[];
+    const aspect = viewW / Math.max(1, viewH);
+    let n = 0;
+    for (const b of bodies) {
+      if (!b.isBH) continue;
+      _lensCentre.copy(b.mesh.position).project(camera);
+      if (_lensCentre.z >= 1) continue; // behind the camera / clipped
+      _lensEdge.copy(b.mesh.position).addScaledVector(_camRight, b.radiusScene ?? 0.02).project(camera);
+      // Horizon screen radius in the shader's aspect-corrected UV space (pixels/height).
+      const rC = Math.hypot((_lensEdge.x - _lensCentre.x) * 0.5 * aspect, (_lensEdge.y - _lensCentre.y) * 0.5);
+      if (rC <= 0.0002) continue; // too small on screen to bother
+      const disc = bhDiscInfo.get(b.id);
+      arr[n].set(_lensCentre.x * 0.5 + 0.5, _lensCentre.y * 0.5 + 0.5, Math.min(0.5, rC * 0.85), disc ? disc.inner / disc.outer : 0);
+      if (disc) feedDiscEllipse(discArr[n], discNArr[n], disc.pivot, b.mesh.position, disc.outer, camera, _lensCentre.x, _lensCentre.y, aspect);
+      else { discArr[n].set(0, 0, 0, 0); discNArr[n].set(0, 0); }
+      if (++n >= MAX_LENSES) break;
+    }
+    lensingPass.uniforms.uCount.value = n;
+    lensingPass.uniforms.uAspect.value = aspect;
+    lensingPass.enabled = n > 0;
+  }
+  function setLensing(on: boolean) { lensingOn = on; }
+  // Isolated-body thumbnail: let the player drag to SPIN the body by hand. Rotate stays on (OrbitControls
+  // default) and whether events even reach the scene is gated by the overlay's pointer-events. In spin
+  // mode we kill ZOOM (a drag mustn't zoom the little frame away) and DAMPING (so the globe stops the
+  // instant the button is released, rather than coasting). Off restores both for the full 3D view.
+  function setUserSpin(on: boolean) { controls.enableZoom = !on; controls.enableDamping = !on; }
+
   function loop() {
     if (disposed) return;
     perfFrame(performance.now()); // slow-spell tracker (logs only when a 5s window dips below 45fps)
@@ -1693,19 +1954,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateSurfaceConstructs();
     updateStarFx(nowSec);
     updateAuroras(nowSec);
+    updateMagma(magmaVisuals, nowSec);
+    updatePlumes(plumeVisuals, nowSec);
+    for (const c of cloudVisuals) c.mesh.rotation.y = nowSec * c.drift; // clouds drift over the surface
     updateConstructs();
     updateShadows();
     updateRings();
     updateBelts();
     updateOrbitRings();
     controls.update();
+    if (portraitOn) updatePortraitLight(); // AFTER controls.update so the camera basis is current this frame
     updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
-    if (filterPass) {
-      filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
-      composer.render();
-    } else {
-      renderer.render(scene, camera);
-    }
+    updateLensing();
+    if (filterPass) filterPass.uniforms.time.value = nowSec; // drive scanlines/flicker
+    if (filterPass || lensingPass.enabled) composer.render();
+    else renderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
   }
   raf = requestAnimationFrame(loop);
@@ -1731,13 +1994,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     (starfield.geometry as any)?.dispose?.();
     (starfield.material as any)?.dispose?.();
     if (filterPass) (filterPass.material as THREE.Material).dispose();
+    (lensingPass.material as THREE.Material)?.dispose();
     composer.dispose();
     glowTexture.dispose();
+    hotspotTexture.dispose();
+    plumeTexture.dispose();
     renderer.dispose();
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -1942,14 +2208,17 @@ function buildWireAurora(radius: number, hex: string, strength: number): { group
 }
 
 // A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
-// aurora strength; the render loop shimmers it around that.
-function buildAuroraShell(radius: number, hex: string, strength: number): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
+// aurora strength; `weight` (0..1, relative to the dominant gas) fades the lower-concentration emitters;
+// `altitude` (0 low fringe / 1 main band / 2 high tenuous) sets the shell height so a multi-gas sky
+// STACKS physically — Earth's purple nitrogen fringe under the green oxygen band, the crimson oxygen
+// crown above. The render loop swells each layer independently around its base.
+export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1, altitude = 1): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
   const tex = new THREE.CanvasTexture(makeAuroraTexture(hex));
   tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-  const base = Math.min(0.85, 0.28 + strength * 0.6);
+  const base = Math.min(0.85, 0.28 + strength * 0.6) * (0.35 + 0.65 * weight);
   mat.opacity = base;
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.06, 28, 20), mat);
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.04 + altitude * 0.025), 28, 20), mat);
   shell.renderOrder = 2; // draw over the body surface
   return { shell, mat, base };
 }
@@ -2348,18 +2617,23 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
 }
 
 function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number): RingVisual | null {
+  const isAccretionDisc = isBlackHoleNode(parent);
   const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
   let innerScene: number;
   let outerScene: number;
   if (node.radiusInnerKm > 0 && node.radiusOuterKm > node.radiusInnerKm) {
     innerScene = (node.radiusInnerKm / planetKm) * planetRenderedR;
     outerScene = (node.radiusOuterKm / planetKm) * planetRenderedR;
+  } else if (isAccretionDisc) {
+    innerScene = planetRenderedR * 1.6; // just outside the ISCO
+    outerScene = planetRenderedR * 6.5;
   } else {
     innerScene = planetRenderedR * 1.35;
     outerScene = planetRenderedR * 2.3;
   }
-  innerScene = Math.max(innerScene, planetRenderedR * 1.08); // clear the planet surface
-  outerScene = Math.min(outerScene, planetRenderedR * 4.5); // don't let a ring dominate
+  // An accretion disc starts at the ISCO and reaches much further than a planet's ring.
+  innerScene = Math.max(innerScene, planetRenderedR * (isAccretionDisc ? 1.4 : 1.08));
+  outerScene = Math.min(outerScene, planetRenderedR * (isAccretionDisc ? 9 : 4.5));
   if (!(outerScene > innerScene)) return null;
 
   const massKg = parent.massKg || 0; // planet mass — host for the particles' orbital speed
@@ -2377,19 +2651,41 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
     radii[i] = r;
     baseAng[i] = ang;
     const rM = (r / planetRenderedR) * planetKm * 1000; // this particle's physical radius (m)
-    omega[i] = massKg > 0 && rM > 0 ? Math.sqrt((G * massKg) / (rM * rM * rM)) : 0.4 * Math.pow(innerScene / r, 1.5);
+    // A black hole's true Keplerian rate is relativistic (blur/garbage on screen), so an accretion disc
+    // uses a tame VISUAL differential rate (inner faster) instead of the physical one.
+    omega[i] = isAccretionDisc
+      ? 0.9 * Math.pow(innerScene / r, 1.5)
+      : (massKg > 0 && rM > 0 ? Math.sqrt((G * massKg) / (rM * rM * rM)) : 0.4 * Math.pow(innerScene / r, 1.5));
     pos[3 * i] = r * Math.cos(ang);
     pos[3 * i + 2] = r * Math.sin(ang);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const baseColor = new THREE.Color(0xcdd6e2);
-  // Per-particle colour so updateRings can darken the arc that falls in the planet's shadow.
+  // A black hole's ring is a glowing ACCRETION DISC: colour each particle by its radius on the hot-inner
+  // → red-outer temperature gradient, self-luminous (additive), rather than a cool icy ring.
+  const baseColor = new THREE.Color(isAccretionDisc ? 0xffd060 : 0xcdd6e2);
   const colors = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) { colors[3 * i] = baseColor.r; colors[3 * i + 1] = baseColor.g; colors[3 * i + 2] = baseColor.b; }
+  let emissiveBase: Float32Array | undefined;
+  if (isAccretionDisc) {
+    emissiveBase = new Float32Array(count * 3);
+    const span = Math.max(1e-6, outerScene - innerScene);
+    const tmp = new THREE.Color();
+    for (let i = 0; i < count; i++) {
+      accretionColor((radii[i] - innerScene) / span, tmp);
+      colors[3 * i] = emissiveBase[3 * i] = tmp.r;
+      colors[3 * i + 1] = emissiveBase[3 * i + 1] = tmp.g;
+      colors[3 * i + 2] = emissiveBase[3 * i + 2] = tmp.b;
+    }
+  } else {
+    // Per-particle colour so updateRings can darken the arc that falls in the planet's shadow.
+    for (let i = 0; i < count; i++) { colors[3 * i] = baseColor.r; colors[3 * i + 1] = baseColor.g; colors[3 * i + 2] = baseColor.b; }
+  }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const size = Math.max(0.008, planetRenderedR * 0.06);
-  const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true, opacity: ringOpacity, depthWrite: false });
+  const size = Math.max(0.008, planetRenderedR * (isAccretionDisc ? 0.09 : 0.06));
+  const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true,
+    opacity: isAccretionDisc ? Math.min(1, ringOpacity + 0.35) : ringOpacity, depthWrite: false,
+    depthTest: !isAccretionDisc, // the disc draws OVER the horizon so its far half is in the buffer for the lens to wrap
+    blending: isAccretionDisc ? THREE.AdditiveBlending : THREE.NormalBlending });
   const points = new THREE.Points(geo, mat);
 
   const pivot = new THREE.Group();
@@ -2398,26 +2694,7 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   const tiltRad = ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
   pivot.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
   pivot.add(points);
-  return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor };
+  return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor, emissiveBase };
 }
 
 
-function makeGlowTexture(): THREE.Texture {
-  const size = 128;
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const ctx = c.getContext('2d')!;
-  // A corona HALO: transparent through the centre (so the photosphere sphere shows) with a bright
-  // ring just outside it, fading to nothing — additive-blended around the star.
-  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, 'rgba(255,255,255,0)');
-  g.addColorStop(0.32, 'rgba(255,255,255,0.05)');
-  g.addColorStop(0.5, 'rgba(255,255,255,0.55)');
-  g.addColorStop(0.72, 'rgba(255,255,255,0.18)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, size);
-  const tex = new THREE.Texture(c);
-  tex.needsUpdate = true;
-  return tex;
-}
