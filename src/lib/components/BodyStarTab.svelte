@@ -15,6 +15,7 @@
   let tempK = $state(0);
   let radiation = $state(0);
   let rotationHours = $state(0);
+  let axialTilt = $state(0);
   let magGauss = $state(0);
 
   // --- Mass Slider Config ---
@@ -226,6 +227,7 @@
           radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
       }
       rotationHours = body.rotation_period_hours || 0;
+      axialTilt = body.axial_tilt_deg || 0;
       if (body.magneticField?.strengthGauss !== undefined) {
           magGauss = body.magneticField.strengthGauss;
           magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
@@ -332,6 +334,11 @@
 
   function updateRotation() {
       body.rotation_period_hours = rotationHours;
+      dispatch('update');
+  }
+
+  function updateTilt() {
+      body.axial_tilt_deg = axialTilt;
       dispatch('update');
   }
 
@@ -611,6 +618,31 @@
                 <rect x="{getRangePct('rot', 'start')}%" y="0" width="{getRangePct('rot', 'width')}%" height="8" fill="#22aa44" />
             </svg>
             <input type="range" min="0.1" max="10000" step="0.1" bind:value={rotationHours} on:input={updateRotation} class="full-width-slider overlay" />
+        </div>
+    </div>
+
+    <!-- AXIAL TILT. A star's spin axis is not automatically square to the orbits around it: the two
+         start aligned out of the same disc, and it takes something violent to knock them apart. The
+         Sun is 7 degrees out. Systems that migrated hard, or were passed close by another star, can
+         end up wildly misaligned -- so a big number here IS a statement about the system's past. -->
+    <div class="form-group">
+        <div class="label-row">
+            <label>Axial Tilt (degrees)</label>
+            <input type="number" step="any" min="0" max="180" bind:value={axialTilt} on:input={updateTilt} />
+        </div>
+        <div class="slider-container">
+            <input type="range" min="0" max="180" step="0.5" bind:value={axialTilt} on:input={updateTilt} class="full-width-slider" />
+        </div>
+        <div class="sub-label">
+            {#if axialTilt < 12}
+                Aligned with its planets, as a star formed from the same disc should be (the Sun: 7&deg;)
+            {:else if axialTilt < 45}
+                Noticeably tilted &mdash; something stirred this system
+            {:else if axialTilt < 120}
+                Severely misaligned &mdash; a violent history: hard migration, or a close pass by another star
+            {:else}
+                Retrograde &mdash; spinning against the orbits around it
+            {/if}
         </div>
     </div>
 

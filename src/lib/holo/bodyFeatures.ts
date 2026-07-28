@@ -470,6 +470,73 @@ export function buildDeckStack(
 // --- Animation helpers ----------------------------------------------------------------------------
 
 /** Flicker volcanic vents like heat — faster + hotter than the aurora shimmer. */
+
+// ── Lightning ────────────────────────────────────────────────────────────────────────────────────
+// Storms firing inside a cloud deck. Everything else that glows on a body — vents, plumes, coronae —
+// breathes on a sine, because it is always on and merely varies. Lightning is the opposite: dark
+// almost all of the time, then a hard spike that decays in a fraction of a second and flickers while
+// it does, because a real stroke is several strokes down the same channel. So it gets its own curve.
+//
+// The flashes sit just inside the cloud shells and light them from within, and they are ADDITIVE, so
+// they barely register against a sunlit cloud top and read vividly on the night side — which is
+// exactly where you see them from orbit.
+export interface LightningVisual { mat: THREE.SpriteMaterial; peak: number; period: number; offset: number }
+
+export function buildLightning(
+	radius: number,
+	deckHex: string,
+	strength: number,
+	seed: number,
+	glowTexture: THREE.Texture
+): { group: THREE.Group; visuals: LightningVisual[] } {
+	const group = new THREE.Group();
+	const visuals: LightningVisual[] = [];
+	let s = (seed | 0) || 7;
+	const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+	// A stroke is white-blue. Let the deck tint it a little — a storm inside an ammonia cloud is not
+	// lighting up the same stuff as one inside a water cloud — but keep it mostly the flash's own colour.
+	const col = new THREE.Color(0xdce8ff).lerp(new THREE.Color(deckHex), 0.25);
+	const count = 3 + Math.round(strength * 9);
+	const pos = new THREE.Vector3();
+	for (let i = 0; i < count; i++) {
+		// Storms cluster in the warm belts rather than the poles, so bias towards the equator.
+		const lat = (rnd() * 2 - 1); const phi = lat * lat * lat * 0.65 * Math.PI * 0.5;
+		const lon = rnd() * Math.PI * 2;
+		const cphi = Math.cos(phi);
+		pos.set(Math.cos(lon) * cphi, Math.sin(phi), Math.sin(lon) * cphi).multiplyScalar(radius * 1.03);
+		const mat = new THREE.SpriteMaterial({
+			map: glowTexture, color: col, blending: THREE.AdditiveBlending,
+			depthWrite: false, transparent: true, opacity: 0
+		});
+		const sprite = new THREE.Sprite(mat);
+		sprite.position.copy(pos);
+		const sz = radius * (0.22 + rnd() * 0.2);
+		sprite.scale.set(sz, sz, 1);
+		group.add(sprite);
+		visuals.push({
+			mat,
+			peak: 0.5 + strength * 0.4,
+			// Constant lightning fires roughly every second and a half per cell; occasional, every six.
+			period: 6.5 - strength * 5 + rnd() * 1.5,
+			offset: rnd() * 8
+		});
+	}
+	return { group, visuals };
+}
+
+/** The flash curve: dark, then a sharp decaying spike with a flicker inside it. */
+export function updateLightning(visuals: LightningVisual[], nowSec: number): void {
+	const FLASH = 0.07;                       // fraction of the cycle the stroke is visible at all
+	for (const f of visuals) {
+		const p = (((nowSec + f.offset) % f.period) + f.period) % f.period / f.period;
+		if (p >= FLASH) { if (f.mat.opacity !== 0) f.mat.opacity = 0; continue; }
+		const q = p / FLASH;                    // 0..1 across the stroke
+		const decay = Math.exp(-q * 4.5);
+		const flicker = 0.62 + 0.38 * Math.sin(q * 34);
+		f.mat.opacity = Math.max(0, f.peak * decay * flicker);
+	}
+}
+
 export function updateMagma(visuals: EmissiveVisual[], nowSec: number): void {
 	for (const m of visuals) {
 		const s = 0.5 + 0.5 * Math.sin(nowSec * 6 + m.seed * 6.283);

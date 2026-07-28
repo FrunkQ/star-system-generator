@@ -103,3 +103,25 @@ describe('generateSystemFromConfig', () => {
     expect(circumbinary.length).toBeGreaterThan(0);   // P-type: distant orbits around a pair
   });
 });
+
+describe('star spin axis', () => {
+  const tilts = (dynamicalHistory: number) =>
+    generateSystemFromConfig('k2-planets', pack(), { seeds: [sun()], ageGyr: 4.6, knobs: { dynamicalHistory } })
+      .nodes.filter((n: any) => n.roleHint === 'star').map((n: any) => n.axial_tilt_deg);
+
+  it('gives a star a spin axis at all', () => {
+    const t = tilts(0.5);
+    expect(t.length).toBeGreaterThan(0);
+    for (const v of t) expect(typeof v).toBe('number');
+  });
+
+  it('keeps a CALM system close to square, and only a violent one tips over', () => {
+    // The point of the tilt is that it means something: a star and its planets form from one disc, so
+    // misalignment is evidence of a violent past rather than decoration. A calm system that rolled a
+    // big tilt would be telling the player a lie about its own history.
+    for (const v of tilts(0)) expect(v).toBeLessThan(12);
+    const wild = tilts(1);
+    expect(Math.max(...wild)).toBeGreaterThan(0);   // the range is genuinely open at the top
+    for (const v of wild) expect(v).toBeLessThanOrEqual(64);
+  });
+});

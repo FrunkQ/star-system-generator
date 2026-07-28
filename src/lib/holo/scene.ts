@@ -21,11 +21,12 @@ import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
-import { deriveAppearance } from '$lib/rendering/planetAppearance'; // shared feature model (WS1)
+import { deriveAppearance } from '$lib/rendering/planetAppearance';
+import { lightningStrength } from '$lib/physics/cloudDecks'; // shared feature model (WS1)
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack,
-  applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, accretionColor,
+  applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, updateLightning, buildLightning, type LightningVisual, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
@@ -618,6 +619,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Volcanic vent glows + cryovolcanic plumes (shared EmissiveVisual from ./bodyFeatures): additive
   // sprites whose opacity is flickered/glistened each frame by updateMagma / updatePlumes.
   let magmaVisuals: EmissiveVisual[] = [];
+  let lightningVisuals: LightningVisual[] = [];
   let plumeVisuals: EmissiveVisual[] = [];
   // Cloud decks: a translucent shell per cloudy body, drifted in longitude each frame so it floats over
   // the surface (its own spin, on top of the parent sphere's).
@@ -1218,6 +1220,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     starVisuals = [];
     auroraVisuals = [];
     magmaVisuals = [];
+    lightningVisuals = [];
     plumeVisuals = [];
     cloudVisuals = [];
     starFlareVisuals = [];
@@ -1510,6 +1513,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               const built = buildCryoPlumes(radius, appear.cryoPlumes, String(node.id), plumeTexture);
               sphere.add(built.group);
               plumeVisuals.push(...built.visuals);
+            }
+            // Storms firing inside the cloud deck — additive, so they read on the night side the way
+            // they actually do from orbit. Needs a deck to fire inside: the tag says a world has the
+            // convection for lightning, the clouds are what it lights up.
+            const storms = lightningStrength((node as any).tags);
+            if (storms > 0 && (appear.clouds || appear.cloudDecks.length)) {
+              const deckHex = appear.cloudDecks.at(-1)?.colorHex ?? appear.clouds?.colorHex ?? '#e8eef8';
+              let lseed = 5; for (const ch of String(node.id)) lseed = (lseed * 31 + ch.charCodeAt(0)) & 0xffffff;
+              const built = buildLightning(radius, deckHex, storms, lseed || 1, glowTexture);
+              sphere.add(built.group);
+              lightningVisuals.push(...built.visuals);
             }
             // Self-luminous glow (a brown dwarf / hot young sub-stellar body radiating its own heat):
             // a dim, cool corona-like halo coloured by the emission temperature (deep red → amber), like
@@ -1982,6 +1996,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateStarFx(nowSec);
     updateAuroras(nowSec);
     updateMagma(magmaVisuals, nowSec);
+    updateLightning(lightningVisuals, nowSec);
     updatePlumes(plumeVisuals, nowSec);
     updateStellarFlares(starFlareVisuals, nowSec);
     for (const c of cloudVisuals) c.mesh.rotation.y = nowSec * c.drift; // clouds drift over the surface

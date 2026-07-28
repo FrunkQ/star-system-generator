@@ -304,6 +304,12 @@ export function deriveOxidation(body: CelestialBody): string | null {
   return score > 0.45 ? 'heavy' : score > 0.2 ? 'moderate' : 'light';
 }
 
+/** Renderer view: 0..1 storm rate from the lightning tag — how often the sky fires. */
+export function lightningStrength(tags: Tag[] | undefined): number {
+  const v = (tags ?? []).find((t) => t.key === LIGHTNING_TAG)?.value;
+  return v === 'constant' ? 1 : v === 'frequent' ? 0.65 : v === 'occasional' ? 0.35 : 0;
+}
+
 /** Renderer view: 0..1 rust strength from the tag. */
 export function oxidationStrength(tags: Tag[] | undefined): number {
   const v = (tags ?? []).find((t) => t.key === OXIDISED_TAG)?.value;

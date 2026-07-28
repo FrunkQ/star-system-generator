@@ -38,6 +38,23 @@ function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, kn
   const met = knobs.metallicity ?? 0.5;
   const dyn = knobs.dynamicalHistory ?? 0.5;
   for (const n of nodes) {
+    // STARS get a spin axis, and only from the dynamical-history knob. A star and its planets
+    // condense out of the same disc, so they start aligned and STAY aligned unless something moves
+    // them — the Sun is 7 degrees off after four and a half billion years. Misalignment is therefore
+    // not a die-roll to make stars look varied; it is evidence, and the systems that show it are the
+    // ones that migrated hard or were passed close by another star. So a calm system stays near
+    // square and only a violent one tips over, which keeps the tilt meaning something when you see it.
+    if (n.kind === 'body' && n.roleHint === 'star') {
+      const b = n as CelestialBody;
+      // Falsy, not undefined: BodyFactory stamps every body with axial_tilt_deg 0, so testing for
+      // undefined here never fired and the whole branch was dead. This runs once at generation, on
+      // freshly-made nodes, so there is no authored value to tread on.
+      if (!b.axial_tilt_deg) {
+        const spread = 4 + dyn * dyn * 60;          // calm ~4 degrees; violent, up to ~64
+        b.axial_tilt_deg = Math.round(rng.nextFloat() * spread * 10) / 10;
+      }
+      continue;
+    }
     if (n.kind !== 'body' || (n.roleHint !== 'planet' && n.roleHint !== 'moon')) continue;
     const b = n as CelestialBody;
     // Metallicity → makeup: high metallicity favours metal+rock, low favours ice+gas. Skip giants.

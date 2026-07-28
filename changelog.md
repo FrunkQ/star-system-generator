@@ -2,6 +2,23 @@
 
 All notable changes are listed here:
 
+## v2.1.259-beta - 29th Jul 2026
+
+* **Storms flash inside the clouds in 3D.** A world that derives lightning now fires it: brief
+  flashes lighting the deck from within, several strokes down the same channel the way a real one
+  goes, and because they add light rather than replace it they barely register on the sunlit side and
+  read vividly across the night side — which is where you would actually see them from orbit. How
+  often they fire comes from the world's own weather: a thick warm convecting deck, or ash from a
+  volcanic surface.
+* **Stars have a spin axis.** Their surfaces already turned; now they turn about a real, tiltable
+  axis, so a star's spots and faculae track across it properly. Editable on the star's own tab, with
+  the tilt described in plain terms as you drag it.
+* Generated stars get theirs from the **dynamical-history** dial rather than a die-roll. A star and
+  its planets condense out of the same disc, so they start aligned and stay that way unless something
+  moves them — our own Sun is only 7 degrees out after four and a half billion years. A calm system
+  therefore stays near square and only a violent one tips over, which means a badly-tilted star you
+  come across is telling you something true about that system's past.
+
 ## v2.1.258-beta - 29th Jul 2026
 
 * **"Delete all data" now actually deletes.** It cleared local storage, asked the browser to drop the

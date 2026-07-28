@@ -13,10 +13,11 @@ import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader'
 import { getPlanetTextureEquirect, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
+import { lightningStrength } from '$lib/physics/cloudDecks';
 import { buildAuroraShell } from './scene';
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack,
+	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack, buildLightning, updateLightning, type LightningVisual,
 	applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, accretionColor,
 	type EmissiveVisual
 } from './bodyFeatures';
@@ -81,6 +82,7 @@ export function createGalleryScene(
 	const cloudSpinners: { obj: THREE.Object3D; drift: number }[] = [];
 	const magmaVisuals: EmissiveVisual[] = [];
 	const plumeVisuals: EmissiveVisual[] = [];
+	const lightningVisuals: LightningVisual[] = [];
 	const auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
 	const discs: { points: THREE.Points; rate: number }[] = [];
 	const starVisuals: { corona: THREE.Sprite; baseScale: number; activity: number; seed: number }[] = [];
@@ -149,6 +151,14 @@ export function createGalleryScene(
 			// Emissive features — the same builders the live holo uses.
 			if (appear.magma) { const b = buildMagmaVents(R, appear.magma, node.id, hotspotTexture); sphere.add(b.group); magmaVisuals.push(...b.visuals); }
 			if (appear.cryoPlumes) { const b = buildCryoPlumes(R, appear.cryoPlumes, node.id, plumeTexture); sphere.add(b.group); plumeVisuals.push(...b.visuals); }
+			// Storms inside the deck — additive flashes, brightest against the night side.
+			const storms = lightningStrength(node.tags);
+			if (storms > 0 && (appear.clouds || appear.cloudDecks.length)) {
+				let ls = 5; for (const ch of String(node.id)) ls = (ls * 31 + ch.charCodeAt(0)) & 0xffffff;
+				const b = buildLightning(R, appear.cloudDecks.at(-1)?.colorHex ?? appear.clouds?.colorHex ?? '#e8eef8', storms, ls || 1, glowTexture);
+				sphere.add(b.group);
+				lightningVisuals.push(...b.visuals);
+			}
 			if (appear.selfLumGlow) g.add(buildSelfLumGlow(R, appear.selfLumGlow.colorHex, glowTexture));
 			if (appear.atmGlow) g.add(buildAtmoGlow(R, appear.atmGlow.colorHex, appear.atmGlow.strength));
 			if (appear.clouds) {
@@ -341,6 +351,7 @@ export function createGalleryScene(
 		}
 		updateMagma(magmaVisuals, clock.t);
 		updatePlumes(plumeVisuals, clock.t);
+		updateLightning(lightningVisuals, clock.t);
 		for (const a of auroraVisuals) {
 			// Slow deep swell per colour layer (independent phases → one colour or both at any moment) × shimmer.
 			const swell = 0.5 + 0.5 * Math.sin(clock.t * 0.45 + a.seed * 6.283);
