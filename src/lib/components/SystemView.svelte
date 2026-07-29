@@ -36,6 +36,7 @@
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
   import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { MAP_OVERLAY_OPTIONS, type MapOverlay } from '$lib/map/mapOverlay';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
@@ -221,6 +222,8 @@
   let showNames = true;
   let showZones = false;
   let showHillSpheres = false;
+  // WS3: the 2D system view's spatial overlay (shared vocabulary — see lib/map/mapOverlay.ts).
+  let systemOverlay: MapOverlay = 'off';
   let showZoneKeyPanel = false; // Controls display of ZoneKey in the right panel
   let showLPoints = false;
   let showTravellerZones = false;
@@ -2209,6 +2212,11 @@
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
                     <label title="Each planet-mass body's gravitational bubble — where an adrift ship gets grabbed"><input type="checkbox" bind:checked={showHillSpheres} /> Hill spheres</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
+                    <label class="ov-select" title="Spatial overlay — the same set every map view offers">Overlay
+                      <select bind:value={systemOverlay}>
+                        {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                      </select>
+                    </label>
                     {#if $starmapUiStore.travellerMode}
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
                     {/if}
@@ -2245,6 +2253,7 @@
                 {showNames}
                 {showZones}
                 {showHillSpheres}
+                overlay={systemOverlay}
                 {showLPoints}
                 {showTravellerZones}
                 {showSensors}

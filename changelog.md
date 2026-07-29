@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.263-beta - 29th Jul 2026
+
+* WS3 (2/2) the 2D system view finally has overlays. The orrery had no grid of any kind; it now offers the same six as everywhere else, from a new "Overlay" picker in View options — square and hex lattices spaced in round AU (the spacing re-snaps as you zoom), or polar rings about the primary with optional AU labels. The overlay pans and zooms with the map and sits under the orbits.
+
 ## v2.1.262-beta - 29th Jul 2026
 
 * WS3 (1/2) one overlay vocabulary: every spatial view now shares a single grid/overlay list — None, Square, Hex, Traveller hex, Polar, Polar + scale — instead of the two disjoint sets that existed before (a decorative 3D one with no square, and the 2D snap-grid with no polar). The 3D starmap and 3D system both gained square and hex lattices, and the player-view editor's two grid pickers now render the same shared list, so they can't drift apart.

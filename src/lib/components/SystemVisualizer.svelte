@@ -36,6 +36,9 @@
   export let showSensors: boolean = false;
   export let showVectors: boolean = false;
   export let showHillSpheres: boolean = false;
+  // WS3 — the shared overlay vocabulary. The 2D system view had no grid of any kind; it now offers the
+  // same set as every other spatial view (lattices in AU, or polar rings about the primary).
+  export let overlay: import('$lib/map/mapOverlay').MapOverlay = 'off';
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   // Canvas backdrop — overridable so the projector can switch to a chroma-key green.
@@ -421,6 +424,75 @@
 
   onDestroy(() => { cancelAnimationFrame(animationFrameId); stopInertia(); });
 
+  // WS3 — the spatial overlay for the 2D system view. Drawn INSIDE the world transform (context coords
+  // are world-AU minus renderPan), so it pans and zooms with the orrery; line widths are divided by the
+  // zoom to stay hairline on screen. Lattice spacing is a 1/2/5-decade "nice" number of AU picked so the
+  // cells stay a sensible size on screen at any zoom, and the polar modes ring the primary at the origin.
+  function drawSystemOverlay(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    if (overlay === 'off' || !zoom) return;
+    // Visible world rect (context coords).
+    const hw = width / 2 / zoom, hh = height / 2 / zoom;
+    const cx = renderPan.x, cy = renderPan.y;               // world point at screen centre
+    const x0 = -hw, x1 = hw, y0 = -hh, y1 = hh;             // context-coord bounds
+    // A cell of roughly 90 screen px, snapped to 1/2/5 × 10^n AU.
+    const raw = 90 / zoom;
+    const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+    const mant = raw / pow;
+    const step = (mant >= 5 ? 5 : mant >= 2 ? 2 : 1) * pow;
+    const line = 1 / zoom;
+    ctx.save();
+    ctx.lineWidth = line;
+    ctx.strokeStyle = 'rgba(140,170,210,0.20)';
+    ctx.fillStyle = 'rgba(160,185,220,0.55)';
+    if (overlay === 'square') {
+      ctx.beginPath();
+      for (let x = Math.ceil((cx + x0) / step) * step; x <= cx + x1; x += step) { const c = x - cx; ctx.moveTo(c, y0); ctx.lineTo(c, y1); }
+      for (let y = Math.ceil((cy + y0) / step) * step; y <= cy + y1; y += step) { const c = y - cy; ctx.moveTo(x0, c); ctx.lineTo(x1, c); }
+      ctx.stroke();
+    } else if (overlay === 'hex' || overlay === 'traveller-hex') {
+      // Flat-topped hex lattice with circumradius = step; CCRR numbering is a starmap-scale idea, so the
+      // system view draws the Traveller choice as the plain lattice.
+      const s = step, dx = s * Math.sqrt(3), dy = s * 1.5;
+      const q0 = Math.floor((cx + x0) / dx) - 1, q1 = Math.ceil((cx + x1) / dx) + 1;
+      const r0 = Math.floor((cy + y0) / dy) - 1, r1 = Math.ceil((cy + y1) / dy) + 1;
+      ctx.beginPath();
+      for (let r = r0; r <= r1; r++) {
+        for (let q = q0; q <= q1; q++) {
+          const hx = dx * (q + (r & 1 ? 0.5 : 0)) - cx, hy = dy * r - cy;
+          for (let k = 0; k < 6; k++) {
+            const a0 = (Math.PI / 180) * (60 * k - 30), a1 = (Math.PI / 180) * (60 * (k + 1) - 30);
+            ctx.moveTo(hx + s * Math.cos(a0), hy + s * Math.sin(a0));
+            ctx.lineTo(hx + s * Math.cos(a1), hy + s * Math.sin(a1));
+          }
+        }
+      }
+      ctx.stroke();
+    } else {
+      // Polar: rings about the primary (world origin) + spokes. 'scaled' labels each ring in AU.
+      const ox = -cx, oy = -cy;                                    // the origin in context coords
+      const maxR = Math.hypot(Math.max(Math.abs(x0 - ox), Math.abs(x1 - ox)), Math.max(Math.abs(y0 - oy), Math.abs(y1 - oy)));
+      ctx.beginPath();
+      for (let r = step; r <= maxR; r += step) { ctx.moveTo(ox + r, oy); ctx.arc(ox, oy, r, 0, Math.PI * 2); }
+      ctx.stroke();
+      ctx.beginPath();
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(a) * maxR, oy + Math.sin(a) * maxR); }
+      ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1;
+      if (overlay === 'scaled') {
+        ctx.save();
+        ctx.scale(1 / zoom, 1 / zoom);          // labels in screen px, unscaled by the zoom
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        for (let r = step; r <= maxR; r += step) {
+          const lbl = r >= 100 ? `${Math.round(r)} AU` : `${r < 1 ? r.toFixed(2) : r.toFixed(r < 10 ? 1 : 0)} AU`;
+          ctx.fillText(lbl, (ox + r) * zoom, oy * zoom - 2);
+        }
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
       if (!canvas || !zoom) return { x: 0, y: 0 };
       const { width, height } = canvas;
@@ -784,6 +856,7 @@
       ctx.fillRect(0, 0, width, height);
       ctx.translate(width / 2, height / 2);
       ctx.scale(zoom, zoom);
+      drawSystemOverlay(ctx, width, height); // WS3 grid/overlay — under everything else
       // Zones are drawn in screen-space overlay after world-space pass for better dash/LOD performance.
       if (showTravellerZones) drawTravellerZones(ctx);
       drawSensorOverlay(ctx);   // gates internally on the global view toggle OR the ship's sensors flag
