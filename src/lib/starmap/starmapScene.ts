@@ -17,7 +17,9 @@ import { starClusterOffsets } from './systemStars';
 const GRID_RADIUS = 12; // scene units the map's extent maps to
 const HOLO_TINT = 0x63b3ff;
 
-export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string; bh?: 'quiescent' | 'active'; edd?: number }[] }
+// WS7: `z` is the system's DEPTH in map units (absent/0 = on the reference plane). It is rendered as
+// scene height, multiplied by the DISPLAY-ONLY exaggeration — which never touches distance maths.
+export interface SmSystem { id: string; name: string; x: number; y: number; z?: number; stars: { color: string; bh?: 'quiescent' | 'active'; edd?: number }[] }
 // WS3: routes carry their NAME so the 3D/flat starmap can label them like the 2D editor does — and,
 // because the label rides the shared label pipeline, it obeys the Hide-labels override too.
 export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?: string }
@@ -44,6 +46,7 @@ export interface StarmapSceneOptions {
 export interface StarmapController {
   setData(systems: SmSystem[], routes: SmRoute[]): void;
   setGrid(mode: MapOverlay): void;
+  setZExaggeration(v: number): void; // DISPLAY ONLY — stretches depth for clarity, never distances
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setMono(on: boolean): void; // monochrome palette for tinting filters
   setMapGrid(cfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null): void; // GM's snap-grid
@@ -194,6 +197,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   let extent = 1; // world half-extent of the map (map units), for LY labels
   let mapCx = 0, mapCy = 0, mapK = 1; // the fit transform from setData (scene = (mapPos - c)*k)
   let mapGridCfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null = null;
+  // WS7 depth exaggeration. True interstellar depth is visually tiny next to the map's spread, so the
+  // GM can stretch it for clarity. PURELY VISUAL: distances come from lib/map/systemDistance.ts and
+  // never see this value.
+  let zExaggeration = 1;
 
   function clearGroup(g: THREE.Object3D) {
     g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { x?.map?.dispose?.(); x?.dispose?.(); }); });
@@ -380,6 +387,14 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 })));
   }
   function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  // Rebuilds the content because depth is baked into the placed geometry (positions, drop-lines,
+  // route lines). Cheap at starmap scale and keeps one code path for placement.
+  function setZExaggeration(v: number) {
+    const next = Math.max(0, Math.min(50, Number.isFinite(v) ? v : 1));
+    if (Math.abs(next - zExaggeration) < 1e-6) return;
+    zExaggeration = next;
+    if (lastData) setData(lastData.systems, lastData.routes);
+  }
   // "2D starmap": the TILT is pinned top-down like the classic flat map — it can never become a 3D view.
   // Zoom and pan stay. Pinned just off true vertical (0.05) because an exactly-overhead orbit camera is
   // gimbal-degenerate (view axis parallel to `up`); at ~3° the ground plane still reads perfectly flat.
@@ -513,12 +528,15 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     extent = spanMap / 2; // half-extent in map units (for LY labels)
     const k = (GRID_RADIUS * 0.92) / (spanMap / 2);
     mapCx = cx; mapCy = cy; mapK = k; // keep the fit transform so the map-grid aligns to the systems
-    const toScene = (x: number, y: number) => new THREE.Vector3((x - cx) * k, 0, (y - cy) * k);
+    // Scene Y is HEIGHT, so a system's depth lifts it off the reference plane (times the display-only
+    // exaggeration). Straight down, this collapses and the map reads exactly as the 2D one.
+    const toScene = (x: number, y: number, z = 0) =>
+      new THREE.Vector3((x - cx) * k, z * k * zExaggeration, (y - cy) * k);
 
     const centers = new Map<string, THREE.Vector3>();
     const glow = starGlow();
     for (const sys of systems) {
-      const center = toScene(sys.x, sys.y);
+      const center = toScene(sys.x, sys.y, sys.z ?? 0);
       centers.set(sys.id, center);
       const stars = sys.stars.length ? sys.stars : [{ color: '#8899aa' }];
       const offs = starClusterOffsets(stars.length);
@@ -535,6 +553,24 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         sp.scale.setScalar(!st.bh ? R * 3.2 : st.bh === 'active' ? R * (3.6 + Math.min(1, st.edd ?? 0.6) * 1.2) : R * 3.4);
         content.add(sp);
       });
+      // DROP-LINE: without a tether to the reference plane, exaggerated depth is unreadable — you cannot
+      // tell above from below, or by how much. Fades out as it descends, and a small tick marks the spot
+      // on the plane directly beneath, so the system's 2D position stays legible.
+      if (Math.abs(center.y) > 1e-4) {
+        const foot = new THREE.Vector3(center.x, 0, center.z);
+        const dl = new THREE.BufferGeometry();
+        dl.setAttribute('position', new THREE.Float32BufferAttribute([center.x, center.y, center.z, foot.x, foot.y, foot.z], 3));
+        const base = new THREE.Color(monoOn ? MONO_HEX : routeColor());
+        dl.setAttribute('color', new THREE.Float32BufferAttribute([base.r, base.g, base.b, 0.5, base.r, base.g, base.b, 0.06], 4));
+        content.add(new THREE.Line(dl, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false })));
+        const tick = new THREE.Mesh(
+          new THREE.RingGeometry(0.06, 0.1, 12),
+          new THREE.MeshBasicMaterial({ color: base, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide })
+        );
+        tick.rotation.x = -Math.PI / 2;
+        tick.position.set(foot.x, 0.012, foot.z);
+        content.add(tick);
+      }
       placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name) });
     }
     // Routes: an emissively-GLOWING filament — a soft additive ground-quad halo + a bright additive
@@ -687,7 +723,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

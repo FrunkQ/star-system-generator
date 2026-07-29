@@ -961,7 +961,7 @@
           labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} mono={activePreset.starmapMono}
-          overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null}
+          overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} zExaggeration={activePreset.zExaggeration ?? 1}
           flat={activePreset.starmapView === 'diagram2d'}
           lockRotation={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}
           selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />

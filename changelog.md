@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.269-beta - 30th Jul 2026
+
+* The 3D starmap now SHOWS depth: systems sit above or below the reference plane, each tethered to it by a fading drop-line with a small tick marking its position on the plane, so you can tell at a glance which way and how far. Viewed straight down it collapses and reads exactly like the 2D map.
+* New "Depth exaggeration" slider for the 3D starmap (1x = true depth). Real interstellar depth is tiny next to a map's spread, so this stretches it for clarity. It is purely visual and never changes distances or journey times.
+
 ## v2.1.268-beta - 30th Jul 2026
 
 * Star systems can now carry DEPTH: a system position gains an optional third axis, and distance is measured in three dimensions -- routes, the measure tool and journey duration/fuel all agree, because they now share one distance module. Existing campaigns are untouched (no depth = the old flat distances, exactly as before).

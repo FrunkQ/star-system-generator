@@ -121,6 +121,9 @@ export interface PlayerPreset {
   beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black';
   grid: import('$lib/map/mapOverlay').MapOverlay; // WS3: shared overlay vocabulary across every view
+  // WS7: 3D starmap DEPTH stretch, display-only (1 = true depth). True interstellar depth is tiny next
+  // to the map's spread, so this exaggerates it for clarity. Never affects distances.
+  zExaggeration?: number;
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1

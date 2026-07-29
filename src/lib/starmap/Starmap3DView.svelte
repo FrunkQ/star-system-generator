@@ -14,6 +14,8 @@
   export let routeGlow = true; // emissive glow on the transit routes
   export let mono = false; // monochrome palette (white/grey) for tinting filters
   export let mapGrid: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null = null; // GM's snap-grid
+  // WS7: DISPLAY-ONLY depth stretch. 1 = true depth. Never reaches the distance maths.
+  export let zExaggeration = 1;
   export let flat = false;         // 2D starmap: tilt pinned top-down — never becomes a 3D view
   export let lockRotation = false; // fix the heading (no spin by drag); independent of the tilt
   export let background: 'space' | 'green' | 'blue' | 'black' = 'space';
@@ -48,7 +50,7 @@
   }
 
   $: smSystems = ((starmap?.systems ?? []) as any[]).map<SmSystem>((s) => ({
-    id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0,
+    id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0, z: s.position?.z ?? 0,
     stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd }))
   }));
   $: smRoutes = ((starmap?.routes ?? []) as any[]).map<SmRoute>((r) => ({ fromId: r.sourceSystemId, toId: r.targetSystemId, dashed: r.lineStyle === 'dashed', name: r.name }));
@@ -60,6 +62,7 @@
     controller.setMapGrid(mapGrid); // before setData: setData's rebuildGrid uses the fresh fit transform
     controller.setData(smSystems, smRoutes);
     controller.setGrid(grid);
+    controller.setZExaggeration(zExaggeration); // display-only depth stretch
     controller.setBackground(background);
     controller.setFraming(angleDeg);
     controller.setFlatOverhead(flat); // after setFraming: pins the tilt overhead
@@ -90,7 +93,7 @@
   onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; routeGlow; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; zExaggeration; routeGlow; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
 </script>
