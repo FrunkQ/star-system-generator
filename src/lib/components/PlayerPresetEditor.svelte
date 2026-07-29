@@ -565,7 +565,12 @@
         {/if}
 
         <div class="wiz-nav">
-          <button disabled={tabIndex === 0} on:click={() => (tab = TABS[tabIndex - 1].id)}>‹ Back</button>
+          <!-- No Back on the first step — a greyed-out button there is just noise. -->
+          {#if tabIndex > 0}
+            <button on:click={() => (tab = TABS[tabIndex - 1].id)}>‹ Back</button>
+          {:else}
+            <span></span>
+          {/if}
           <button disabled={tabIndex === TABS.length - 1} on:click={() => (tab = TABS[tabIndex + 1].id)}>Next ›</button>
         </div>
       </div>

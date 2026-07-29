@@ -33,6 +33,17 @@ const LINE = 1.36;    // line-height multiple
 
 function px(n: number, s: number) { return Math.round(n * s); }
 
+// The Guide's rainbow: when the preset's accent is 'rainbow', HEADINGS are painted with the spectrum
+// rather than falling back to a flat readable colour — the rainbow is the Guide's signature, so it
+// should carry through the document, not just the schematic. Same hues as the app's RAINBOW_GRADIENT.
+const RAINBOW_STOPS = ['#ff4d4d', '#ff9f43', '#ffd93d', '#4dff88', '#4db8ff', '#9d6bff', '#ff5ecd'];
+function rainbowFill(ctx: CanvasRenderingContext2D, x: number, w: number): CanvasGradient {
+  const g = ctx.createLinearGradient(x, 0, x + Math.max(1, w), 0);
+  RAINBOW_STOPS.forEach((c, i) => g.addColorStop(i / (RAINBOW_STOPS.length - 1), c));
+  return g;
+}
+
+
 export function renderDocument(
   ctx: CanvasRenderingContext2D,
   blocks: DocBlock[],
@@ -43,6 +54,7 @@ export function renderDocument(
   const c = resolveDocColors(theme);
   const font = theme.font;
   const headingFont = theme.headingFont || theme.font;
+  const rainbow = theme.accent === 'rainbow';
   const { x: colX, w: colW } = layout;   // full content column
   const maxY = layout.maxY ?? Infinity;
   const scroll = Math.max(0, layout.scrollY ?? 0);
@@ -115,7 +127,14 @@ export function renderDocument(
         if (visible(top, h)) {
           ctx.textAlign = 'left';
           ctx.font = `${weight} ${px(size, s)}px ${headingFont}`;
-          ctx.fillStyle = level === 1 ? c.heading : c.body;
+          // Rainbow accent → paint the heading across the spectrum (never under mono, which deliberately
+          // bleaches the whole page for a tinting filter). The gradient spans the heading's own width so
+          // every heading shows the full sweep rather than a slice of a page-wide ramp.
+          if (rainbow && !theme.mono) {
+            ctx.fillStyle = rainbowFill(ctx, x, ctx.measureText(b.text).width);
+          } else {
+            ctx.fillStyle = level === 1 ? c.heading : c.body;
+          }
           ctx.fillText(b.text, x, top + px(size, s));
           if (b.sub) {
             ctx.font = `${px(11, s)}px ${font}`;

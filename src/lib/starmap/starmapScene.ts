@@ -24,7 +24,7 @@ export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?
 // WS3: the shared overlay vocabulary (see lib/map/mapOverlay.ts). Re-exported under the historic name
 // so existing importers keep working.
 export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
-import type { MapOverlay } from '$lib/map/mapOverlay';
+import { isLattice as isLatticeMode, type MapOverlay } from '$lib/map/mapOverlay';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -239,24 +239,72 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     return sp;
   }
 
-  function renderMapGrid(base: THREE.Color) {
-    const cfg = mapGridCfg!;
+
+  // The 2D editor's default snap cell, in MAP units — the fallback when a campaign has no grid config,
+  // so a lattice overlay still matches the scale the GM is used to.
+  const DEFAULT_MAP_CELL = 50;
+
+  // Lattice geometry from a list of ground edges. Two things happen here that the old flat LineSegments
+  // couldn't do:
+  //  • RADIAL FADE — alpha falls off with distance from the map centre, so the lattice dissolves instead
+  //    of stopping at a hard ragged disc edge ("they could be anywhere").
+  //  • DEPTH SKIRT — each edge drops a short curtain that fades to nothing. Seen straight down it's
+  //    edge-on and invisible (identical to the 2D map); tilt the view and the grid gains subtle depth.
+  // Alpha rides a vec4 colour attribute, so one draw call carries the whole gradient.
+  function addLattice(edges: [number, number, number, number][], col: THREE.Color, cell: number, fadeFrom: number, fadeTo: number) {
+    const A = 0.42;                                  // line alpha at full strength
+    const depth = Math.max(0.01, cell * 0.18);       // curtain drop — deliberately shallow; full-height read as too intense
+    const y0 = 0.01;
+    const fade = (x: number, z: number) => {
+      const d = Math.hypot(x, z);
+      if (d <= fadeFrom) return 1;
+      return Math.max(0, 1 - (d - fadeFrom) / Math.max(1e-6, fadeTo - fadeFrom));
+    };
+    const lp: number[] = [], lc: number[] = [];
+    const sp: number[] = [], sc: number[] = [];
+    const pushC = (arr: number[], a: number) => arr.push(col.r, col.g, col.b, a);
+    for (const [x1, z1, x2, z2] of edges) {
+      const a1 = A * fade(x1, z1), a2 = A * fade(x2, z2);
+      if (a1 <= 0.002 && a2 <= 0.002) continue;
+      lp.push(x1, y0, z1, x2, y0, z2);
+      pushC(lc, a1); pushC(lc, a2);
+      // Curtain: two triangles, full alpha along the top edge fading to zero at the bottom.
+      sp.push(x1, y0, z1, x2, y0, z2, x2, y0 - depth, z2);
+      pushC(sc, a1 * 0.55); pushC(sc, a2 * 0.55); pushC(sc, 0);
+      sp.push(x1, y0, z1, x2, y0 - depth, z2, x1, y0 - depth, z1);
+      pushC(sc, a1 * 0.55); pushC(sc, 0); pushC(sc, 0);
+    }
+    if (!lp.length) return;
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
+    lg.setAttribute('color', new THREE.Float32BufferAttribute(lc, 4));
+    gridGroup.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false })));
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+    sg.setAttribute('color', new THREE.Float32BufferAttribute(sc, 4));
+    gridGroup.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide })));
+  }
+
+  function renderMapGrid(base: THREE.Color, typeOverride?: string, sizeOverride?: number) {
+    // A lattice OVERLAY renders as the map-aligned grid at the GM's own cell size, so the player's
+    // hexes/squares are the same scale as the GM's map — they used to be an arbitrary GRID_RADIUS/7,
+    // which made them several times too big.
+    const cfg = { type: (typeOverride ?? mapGridCfg?.type ?? 'none'), size: (sizeOverride ?? mapGridCfg?.size ?? DEFAULT_MAP_CELL) };
     const cell0 = cfg.size * mapK;
     if (cell0 <= 1e-4) return;
-    const half = GRID_RADIUS * 1.03;
+    const half = GRID_RADIUS * 2.4;   // well past the map so the lattice fills the view; it fades out below
     const originX = -mapCx * mapK, originZ = -mapCy * mapK; // scene coords of map (0,0)
     const draw = Math.max(1, Math.ceil(0.22 / cell0)); // thin out if the cells are tiny on screen
     const cell = cell0 * draw;
-    const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.42), transparent: true, opacity: 0.42 });
-    const pts: THREE.Vector3[] = [];
+    const edges: [number, number, number, number][] = [];
     let hexLabels = 0;
     const HEX_LABEL_CAP = 400;
     if (cfg.type === 'grid') {
       for (let n = Math.ceil((-half - originX) / cell); n <= Math.floor((half - originX) / cell); n++) {
-        const x = originX + n * cell; pts.push(new THREE.Vector3(x, 0.01, -half), new THREE.Vector3(x, 0.01, half));
+        const x = originX + n * cell; edges.push([x, -half, x, half]);
       }
       for (let n = Math.ceil((-half - originZ) / cell); n <= Math.floor((half - originZ) / cell); n++) {
-        const z = originZ + n * cell; pts.push(new THREE.Vector3(-half, 0.01, z), new THREE.Vector3(half, 0.01, z));
+        const z = originZ + n * cell; edges.push([-half, z, half, z]);
       }
     } else {
       // hex / traveller-hex: replicate the GM's FLAT-TOPPED lattice EXACTLY (Grid.svelte geometry) so
@@ -280,7 +328,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
           if (Math.abs(cxp) > half + sizeS || Math.abs(czp) > half + hh) continue;
           for (let i = 0; i < 6; i++) {
             const a = V[i], b = V[(i + 1) % 6];
-            pts.push(new THREE.Vector3(cxp + a[0], 0.01, czp + a[1]), new THREE.Vector3(cxp + b[0], 0.01, czp + b[1]));
+            edges.push([cxp + a[0], czp + a[1], cxp + b[0], czp + b[1]]);
           }
           // TRAVELLER NUMBERING (WS3 [Q5]) — the CCRR hex address, matching Grid.svelte exactly: 1-based
           // col/row, wrapping at the 32×40 sector, zero-padded. Only drawn when the hexes are big enough
@@ -294,7 +342,12 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         }
       }
     }
-    gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mat));
+    // Fade from the map's own radius out to the generous span, so the lattice covers the view but
+    // dissolves rather than ending in a hard ragged edge.
+    // Fade in world space from a little past the map out to the span: viewed top-down the visible area
+    // sits inside the solid zone so the lattice fills the screen, but tilt the camera and the far field
+    // dissolves toward the horizon instead of stretching away as clutter.
+    addLattice(edges, base.clone().multiplyScalar(0.42), cell, GRID_RADIUS * 0.75, GRID_RADIUS * 1.9);
   }
   function rebuildGrid() {
     clearGroup(gridGroup);
@@ -302,40 +355,14 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     if (gridMode === 'off') return;
     const base = new THREE.Color(routeColor());
     const unit = (opts.distanceUnit || 'ly').toLowerCase() === 'diagrammatic' ? '' : (opts.distanceUnit || 'ly');
-    // The GM's snap-grid, when present, takes precedence over the decorative polar/hex grid.
-    if (mapGridCfg && mapGridCfg.type !== 'none' && mapK > 0) { renderMapGrid(base); return; }
-    // Hex lattice — 'traveller-hex' draws the same lattice here (the CCRR numbering + subsector lines
-    // remain a 2D-only affordance; see WS3 [Q5]).
-    if (gridMode === 'hex' || gridMode === 'traveller-hex') {
-      // A hex lattice on the ground plane, clipped to the map disc — aligned to the starmap.
-      const s = GRID_RADIUS / 7;              // hex circumradius
-      const pts: THREE.Vector3[] = [];
-      const corner = (cx: number, cz: number, k: number) => new THREE.Vector3(cx + s * Math.cos((Math.PI / 180) * (60 * k - 30)), 0.01, cz + s * Math.sin((Math.PI / 180) * (60 * k - 30)));
-      const rng = 7;
-      for (let q = -rng; q <= rng; q++) {
-        for (let r = -rng; r <= rng; r++) {
-          const cx = s * Math.sqrt(3) * (q + r / 2), cz = s * 1.5 * r;
-          if (Math.hypot(cx, cz) > GRID_RADIUS + s) continue;
-          for (let k = 0; k < 6; k++) { pts.push(corner(cx, cz, k), corner(cx, cz, k + 1)); } // 6 edges (overlaps are harmless)
-        }
-      }
-      gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4 })));
-      return;
-    }
-    // Square lattice — the same disc-clipped treatment, orthogonal instead of hexagonal.
-    if (gridMode === 'square') {
-      const s = GRID_RADIUS / 7;              // cell size, matched to the hex circumradius so they read alike
-      const pts: THREE.Vector3[] = [];
-      const n = Math.ceil(GRID_RADIUS / s);
-      for (let i = -n; i <= n; i++) {
-        const c = i * s;
-        // Chord half-length at this offset, so lines stop at the map disc rather than forming a box.
-        const half = Math.sqrt(Math.max(0, GRID_RADIUS * GRID_RADIUS - c * c));
-        if (half <= 0) continue;
-        pts.push(new THREE.Vector3(c, 0.01, -half), new THREE.Vector3(c, 0.01, half)); // meridian
-        pts.push(new THREE.Vector3(-half, 0.01, c), new THREE.Vector3(half, 0.01, c)); // parallel
-      }
-      gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4 })));
+    // The OVERLAY CHOICE WINS, always. This used to defer to the GM's snap-grid whenever one existed,
+    // which meant a GM with hexes on made every player overlay render as hexes — pick Polar, get hexes.
+    // Mirroring the GM's grid is still available: choose Square / Hex / Traveller hex, which render that
+    // very grid at the GM's own cell size and alignment.
+    // A LATTICE overlay is the map-aligned grid at the GM's cell size (see renderMapGrid) — never an
+    // invented size, so the player's hexes match the GM's map exactly.
+    if (isLatticeMode(gridMode)) {
+      renderMapGrid(base, gridMode === 'square' ? 'grid' : gridMode, mapGridCfg?.size ?? DEFAULT_MAP_CELL);
       return;
     }
     for (let ri = 1; ri <= 6; ri++) {

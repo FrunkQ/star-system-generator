@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.266-beta - 29th Jul 2026
+
+* Grid overlays on the starmap are now the map's OWN grid: a lattice choice renders at the GM's cell size and alignment instead of an invented size several times too big, so the players' hexes match the GM's map. They also fill the view and dissolve with distance rather than stopping at a ragged disc edge.
+* 3D grids gained depth: each line drops a short curtain that fades to nothing. Straight down it's edge-on and reads exactly like the 2D map; tilt the view and the lattice gains a subtle sense of depth, dissolving toward the horizon.
+* Fixed: on the starmap, every overlay choice rendered as hexes whenever the GM had a hex snap-grid — the GM's grid took precedence over the player's choice. The overlay choice now always wins (mirroring the GM's grid is still available by choosing Square / Hex / Traveller hex).
+* If the Guide's Rainbow accent is on, document HEADINGS now paint across the spectrum instead of falling back to a flat colour (never under Monochrome, which deliberately bleaches the page for a tinting filter).
+* Dropped the "Back" button on the preset editor's first step, where it did nothing.
+
 ## v2.1.265-beta - 29th Jul 2026
 
 * The preset editor no longer throws your work away on a stray click: it takes the whole screen (so there is barely a backdrop left to hit), and every exit — backdrop, Cancel, Escape — asks before discarding unsaved changes.
