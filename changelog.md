@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.261-beta - 29th Jul 2026
+
+* WS5 player-view lock-down: a preset with the starmap stage switched off now PINS which system players are dropped into (chosen in the editor), so a shared link always lands in the same place — it used to always pick the first system on the map. The escape routes were already sealed (back button hidden, browser Back refuses to surface the map, the cover only re-arms when the GM changes preset). A follow-the-GM preset still tracks the GM's current system: the pin sets where players land, not a cage.
+
 ## v2.1.260-beta - 29th Jul 2026
 
 * Beta resumes the V2.2 line after the **v2.1.4** production cut: Player Views is back on the rail

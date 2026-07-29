@@ -277,6 +277,19 @@
           <fieldset>
             <legend>Starmap stage</legend>
             <label class="chk"><input type="checkbox" bind:checked={draft.starmapEnabled} /> Players get a starmap level</label>
+            {#if !draft.starmapEnabled}
+              <!-- WS5 lock-down: no starmap ⇒ the player is dropped into ONE system and can never reach
+                   the map. Pin WHICH system here so a shared link always lands in the same place. -->
+              <label>Players are locked to
+                <select value={draft.pinnedSystemId ?? ''}
+                  on:change={(e) => (draft = { ...draft, pinnedSystemId: (e.currentTarget as HTMLSelectElement).value || undefined })}>
+                  <option value="">First system on the map</option>
+                  {#each ($starmapStore?.systems ?? []) as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+                </select>
+              </label>
+              <p class="hint">Players drop straight into this system with no way back to the starmap. Leave
+                as "first system" to follow whatever is first on the map.</p>
+            {/if}
             {#if draft.starmapEnabled}
               <label>View
                 <select bind:value={draft.starmapView}>

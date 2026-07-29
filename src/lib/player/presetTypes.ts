@@ -75,6 +75,10 @@ export interface PlayerPreset {
   starmapView: ViewModule;
   systemEnabled: boolean;
   systemView: ViewModule;
+  // WS5 lock-down: with the starmap stage disabled the player is dropped straight into ONE system and
+  // can never reach the map. This pins WHICH one (chosen by the GM when authoring, so a shared link is
+  // deterministic); unset falls back to the first charted system.
+  pinnedSystemId?: string;
 
   // Preset-wide theme.
   font: string;            // body font across the player view

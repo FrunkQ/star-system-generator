@@ -665,10 +665,18 @@
   let coverForId: string | null = null;
   $: if (activePreset?.cover?.enabled && coverForId !== activePreset.id) { coverForId = activePreset.id; coverDismissed = false; }
   $: showPresetCover = !!activePreset?.cover?.enabled && !coverDismissed && !!starmap && !presetHold;
-  // Starmap disabled → players skip straight to the (first) system, no back-to-systems navigation.
+  // WS5 — starmap disabled → players are dropped straight into ONE system, with no back-to-systems
+  // navigation. The preset PINS which system (GM's choice at authoring time, so a shared link always
+  // lands in the same place); an unset or stale pin falls back to the first charted system.
+  $: pinnedSystemNode = activePreset?.pinnedSystemId
+    ? (starmap?.systems ?? []).find((s: any) => s.id === activePreset!.pinnedSystemId) ?? null
+    : null;
   $: if (activePreset && activePreset.starmapEnabled === false && starmap?.systems?.length && !selectedSystemId) {
-    selectedSystemId = starmap.systems[0].id;
+    selectedSystemId = (pinnedSystemNode ?? starmap.systems[0]).id;
   }
+  // NB the pin governs where the player LANDS, not where they may stay: a followGM preset still tracks
+  // the GM's current system (that's the point of projection mode). The lock is about never surfacing
+  // the starmap — enforced on the exit paths (back button, popstate) below.
 
   function startClock() {
     if (!browser) return;
