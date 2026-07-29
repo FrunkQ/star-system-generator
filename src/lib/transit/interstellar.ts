@@ -8,6 +8,7 @@ import type { Starmap, ActiveJourney, CelestialBody, AdriftConstruct, ID } from 
 import { G, SOLAR_MASS_KG, AU_KM } from '$lib/constants';
 import { hyperbolicFlyby } from '$lib/physics/flyby';
 import { distanceToMeters } from '$lib/interstellar/transit';
+import { mapSeparation, zCounts } from '$lib/map/systemDistance';
 
 const AU_M = AU_KM * 1000;
 const isStarNode = (n: any) =>
@@ -38,8 +39,9 @@ export function flybyTurn(
     a_AU = body?.orbit?.elements?.a_AU || 0;
   }
   const rp_m = Math.max(a_AU, GRAZE_AU) * AU_M;
-  const dx = to.x - from.x, dy = to.y - from.y;
-  const coordDist = Math.hypot(dx, dy);
+  // WS7: separation counts DEPTH (unless the campaign opted out) — this feeds the scalar cruise speed,
+  // so the 3D magnitude is the right input. Shared module keeps it consistent with route/measure.
+  const coordDist = mapSeparation(to, from, !zCounts(starmap));
   const dur = j.durationSec || 0;
   if (!(coordDist > 0) || !(dur > 0)) return 0;
   const vinf = distanceToMeters(coordDist, starmap.distanceUnit) / dur; // m/s, outside-observer cruise speed

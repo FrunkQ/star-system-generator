@@ -8,6 +8,7 @@
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import { getAbsoluteOrbitalDistanceAU } from '$lib/system/utils';
   import { AU_KM, C_MS } from '$lib/constants';
+  import { mapSeparation, zCounts } from '$lib/map/systemDistance';
   import {
     realisticTransit, masslessTransit, relativisticTransit, jumpTransit,
     distanceToMeters, formatDuration, crewLoad, kineticEnergyJoules, massEnergyEquivalent, fmtFractionC,
@@ -150,9 +151,9 @@
   // Straight-line distance from the ship's current position to the target, using the starmap scale.
   $: distanceInfo = (() => {
     if (!originPoint || !targetPoint) return null;
-    const dx = originPoint.x - targetPoint.x;
-    const dy = originPoint.y - targetPoint.y;
-    const px = Math.hypot(dx, dy);
+    // WS7: the straight-line separation counts DEPTH (unless the campaign opted out). The redirect-dv
+    // vector maths below stays planar — see the limitation note in lib/map/systemDistance.ts.
+    const px = mapSeparation(originPoint, targetPoint, !zCounts(starmap));
     const unit = starmap.scale?.unit || starmap.distanceUnit || 'LY';
     const perUnit = starmap.scale?.pixelsPerUnit || 1;
     const value = px / perUnit;

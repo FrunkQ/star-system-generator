@@ -14,6 +14,7 @@
   import { railCollapsed } from '$lib/railStore';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
@@ -165,12 +166,10 @@
     svgScale = svgElement.clientWidth / viewBox.width;
   }
 
-  function getRouteDistance(sourceX: number, sourceY: number, targetX: number, targetY: number, pixelsPerUnit: number): number {
-    const dx = targetX - sourceX;
-    const dy = targetY - sourceY;
-    const pixelDistance = Math.sqrt(dx * dx + dy * dy);
-    if (pixelsPerUnit <= 0) return 0;
-    return roundDistance(pixelDistance / pixelsPerUnit);
+  // WS7: distances come from the ONE shared module so routes, the measure tool and journey duration
+  // can never disagree about whether depth counts. Depth counts unless the campaign opts out.
+  function getRouteDistance(source: { x: number; y: number; z?: number }, target: { x: number; y: number; z?: number }, pixelsPerUnit: number): number {
+    return roundDistance(systemSeparation(source, target, pixelsPerUnit, !zCounts(starmap)));
   }
 
   function formatRouteDistance(distance: number): string {
@@ -186,7 +185,7 @@
       if (!source || !target) return route;
       return {
         ...route,
-        distance: getRouteDistance(source.position.x, source.position.y, target.position.x, target.position.y, activeScale.pixelsPerUnit),
+        distance: getRouteDistance(source.position, target.position, activeScale.pixelsPerUnit),
         unit: starmap.distanceUnit
       };
     });
@@ -672,7 +671,7 @@
   $: mA = resolveMeasure(measureA, journeyNowSec, starmap);
   $: mB = resolveMeasure(measureB, journeyNowSec, starmap);
   $: measureDist = (mA && mB && activeScale.pixelsPerUnit > 0)
-    ? roundDistance(Math.hypot(mB.x - mA.x, mB.y - mA.y) / activeScale.pixelsPerUnit)
+    ? roundDistance(systemSeparation(mA, mB, activeScale.pixelsPerUnit, !zCounts(starmap)))
     : null;
 
   function handleStarClick(event: MouseEvent, systemId: string) {

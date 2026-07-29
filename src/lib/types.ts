@@ -573,7 +573,10 @@ export interface StarSystemNode {
   // defaults to (and tracks) the primary star's name; once the GM sets a custom system name this
   // pins it, so renaming the star no longer overwrites it.
   isNameUserDefined?: boolean;
-  position: { x: number; y: number };
+  // WS7: optional DEPTH. Absent is treated as the reference plane (0), so every existing campaign
+  // loads byte-identical. Whether z counts toward DISTANCE is the campaign's choice — see
+  // Starmap.ignoreZForDistances and lib/map/systemDistance.ts.
+  position: { x: number; y: number; z?: number };
   system: System;
   viewport?: { pan: { x: number; y: number }; zoom: number; }; // Fixed panX/panY to pan object
   time?: {
@@ -733,6 +736,10 @@ export interface Starmap {
   mapGrid?: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number };
   distanceUnit: string;                        // INTERSTELLAR map unit (ly / pc / diagrammatic) — see mapMode
   unitIsPrefix: boolean;
+  // WS7: when true, system DEPTH is presentational only and distances stay planar as they always were.
+  // Default (absent/false) = depth COUNTS, which is the honest answer. The 3D view's z-exaggeration is
+  // a separate display-only control and never affects distance.
+  ignoreZForDistances?: boolean;
   measurementUnits?: 'metric' | 'imperial';    // IN-SYSTEM distance/speed display: km/km·s (default) vs miles/mph
   temperatureUnit?: 'C' | 'F' | 'K';            // temperature display: °C (default) / °F / Kelvin — its own switch
   systemEdgeAu?: number;                        // "leaves the system" boundary in AU; unset = the star's Hill limit

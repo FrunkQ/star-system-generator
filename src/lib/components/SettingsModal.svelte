@@ -115,6 +115,8 @@
     return m;
   })();
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
+  // WS7: depth counts toward distance by default; a GM can opt into visual-only height.
+  let ignoreZForDistances = starmap.ignoreZForDistances ?? false;
   let measurementUnits: 'metric' | 'imperial' = starmap.measurementUnits ?? 'metric';
   let temperatureUnit: 'C' | 'F' | 'K' = starmap.temperatureUnit ?? 'C';
   // System edge — the "left the local system" boundary. Unset = each star's Hill limit; a number = a fixed AU.
@@ -175,6 +177,7 @@
         mapMode: diagrammatic ? 'diagrammatic' : 'scaled',
         generationEngine,
         invertDisplay,
+        ignoreZForDistances,
         measurementUnits,
         temperatureUnit,
         systemEdgeAu: systemEdgeMode === 'custom' && systemEdgeAu > 0 ? systemEdgeAu : undefined,
@@ -333,6 +336,13 @@
           </div>
           <div class="form-group">
             <label title="Print-friendly white background + dark labels (disables the background image)."><input type="checkbox" bind:checked={invertDisplay} /> Invert Starmap display (print)</label>
+          </div>
+          <div class="form-group">
+            <label title="Systems can sit above or below the map plane. By default that depth counts toward real distances (and so travel times). Turn this on to treat depth as purely visual and keep distances flat, as they were before.">
+              <input type="checkbox" bind:checked={ignoreZForDistances} /> Ignore depth when measuring distances
+            </label>
+            <p class="section-hint">Off (recommended): a system's depth counts toward distance, so journeys are
+              measured honestly in three dimensions. On: depth is decorative only and distances stay flat.</p>
           </div>
           <div class="form-group">
             <label for="gridType">Snap grid</label>

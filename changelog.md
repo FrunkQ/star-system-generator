@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.268-beta - 30th Jul 2026
+
+* Star systems can now carry DEPTH: a system position gains an optional third axis, and distance is measured in three dimensions -- routes, the measure tool and journey duration/fuel all agree, because they now share one distance module. Existing campaigns are untouched (no depth = the old flat distances, exactly as before).
+* New Starmap setting "Ignore depth when measuring distances" for GMs who want purely visual height with flat distances. Off by default, because counting depth is the honest answer.
+
 ## v2.1.267-beta - 30th Jul 2026
 
 * Settings > System gained a "Your data" section: it shows how much space your campaigns use of what is available, and lets you ask the browser to keep them rather than clearing them when space runs low. It reports exactly what the browser granted -- some browsers agree silently based on how often you use the app, and some refuse -- so it never claims your data is safe when it is not. Saving to a file remains the only real backup.
