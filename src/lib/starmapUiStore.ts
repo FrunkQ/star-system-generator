@@ -5,19 +5,27 @@ const STARMAP_UI_STORE_KEY = 'starmap-ui-store';
 // Snap-grid shape is now purely cosmetic/snapping; "Traveller mode" is its OWN flag (it used to
 // be smuggled in as the gridType 'traveller-hex' value). When travellerMode is on the map renders
 // the Traveller hex (numbered, 1 hex = 1 parsec) regardless of the snap-grid choice.
-type GridType = 'grid' | 'hex' | 'none';
+// WS3: 'traveller-hex' is a first-class snap-grid choice again — ANY user can pick the numbered hex
+// without turning on Traveller mode. Traveller MODE remains its own flag (parsec scaling, UWP import,
+// subsector detection); it just defaults the look to the numbered hex.
+type GridType = 'grid' | 'hex' | 'traveller-hex' | 'none';
 type UiState = { gridType: GridType; travellerMode: boolean; showBackgroundImage: boolean };
 
 const DEFAULTS: UiState = { gridType: 'none', travellerMode: false, showBackgroundImage: true };
 
-// Migrate the legacy single-knob state where Traveller lived inside gridType.
+const GRID_TYPES: GridType[] = ['grid', 'hex', 'traveller-hex', 'none'];
+
 function migrate(parsed: any): UiState {
   const out: UiState = { ...DEFAULTS, ...parsed };
-  if (parsed && parsed.gridType === 'traveller-hex') {
+  // LEGACY single-knob state (Traveller lived inside gridType and there was no travellerMode key at
+  // all) → split it into hex + mode. Discriminating on the ABSENT key matters now that 'traveller-hex'
+  // is a legitimate choice again: without this check, reloading would silently rewrite a user's
+  // deliberate Traveller-hex selection into hex + Traveller mode.
+  if (parsed && parsed.gridType === 'traveller-hex' && typeof parsed.travellerMode !== 'boolean') {
     out.gridType = 'hex';
     out.travellerMode = true;
   }
-  if (out.gridType !== 'grid' && out.gridType !== 'hex' && out.gridType !== 'none') out.gridType = 'none';
+  if (!GRID_TYPES.includes(out.gridType)) out.gridType = 'none';
   if (typeof out.travellerMode !== 'boolean') out.travellerMode = false;
   return out;
 }

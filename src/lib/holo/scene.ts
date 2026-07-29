@@ -17,6 +17,7 @@ import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import type { FilterParamValues } from './filters/schema';
+import { isLattice, type MapOverlay } from '$lib/map/mapOverlay';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
@@ -85,7 +86,7 @@ export interface HoloController {
   setBodyGfx(mode: BodyGfx): void; // 3D sphere vs flat disc (photo / procedural / flat)
   setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
-  setGrid(mode: 'off' | 'plain' | 'scaled' | 'hex'): void; // ground reference grid
+  setGrid(mode: MapOverlay): void; // ground reference overlay (shared vocabulary, lib/map/mapOverlay.ts)
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
   setLabelColor(hex: string | null): void; // in-scene label colour (null = default); matched to CRT phosphor
   setLabelSize(px: number): void; // in-scene label font size
@@ -284,7 +285,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Ground reference grid: 'off' | 'plain' (even polar rings) | 'scaled' (rings at round AU radii,
   // labelled). 'scaled' depends on the live radial map (compression + rMax), so it rebuilds with the
   // system / spread. Built after compressScalar/rMax are defined (rebuildGrid called there + on change).
-  let gridMode: 'off' | 'plain' | 'scaled' | 'hex' = 'plain';
+  let gridMode: MapOverlay = 'plain';
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
 
@@ -692,6 +693,37 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     gridGroup.visible = gridMode !== 'off';
     if (gridMode === 'off') return;
     const base = new THREE.Color(HOLO_TINT);
+    // WS3 — lattice overlays (square / hex / traveller-hex) on the system's ground plane. The system
+    // view draws the Traveller lattice without CCRR numbering: the numbering is a starmap-scale idea
+    // (sector/subsector addressing), meaningless inside one system.
+    if (isLattice(gridMode)) {
+      const s = GRID_RADIUS / 7;
+      const pts: THREE.Vector3[] = [];
+      const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4, depthWrite: false });
+      if (gridMode === 'square') {
+        const n = Math.ceil(GRID_RADIUS / s);
+        for (let i = -n; i <= n; i++) {
+          const c = i * s;
+          const half = Math.sqrt(Math.max(0, GRID_RADIUS * GRID_RADIUS - c * c)); // clip to the disc
+          if (half <= 0) continue;
+          pts.push(new THREE.Vector3(c, 0.01, -half), new THREE.Vector3(c, 0.01, half));
+          pts.push(new THREE.Vector3(-half, 0.01, c), new THREE.Vector3(half, 0.01, c));
+        }
+      } else {
+        const corner = (cx: number, cz: number, k: number) => new THREE.Vector3(
+          cx + s * Math.cos((Math.PI / 180) * (60 * k - 30)), 0.01, cz + s * Math.sin((Math.PI / 180) * (60 * k - 30)));
+        const rng = 7;
+        for (let q = -rng; q <= rng; q++) {
+          for (let r = -rng; r <= rng; r++) {
+            const cx = s * Math.sqrt(3) * (q + r / 2), cz = s * 1.5 * r;
+            if (Math.hypot(cx, cz) > GRID_RADIUS + s) continue;
+            for (let k = 0; k < 6; k++) pts.push(corner(cx, cz, k), corner(cx, cz, k + 1));
+          }
+        }
+      }
+      gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mat));
+      return;
+    }
     if (gridMode === 'scaled') {
       // Concentric rings at round AU distances (mapped through the live compression), each labelled.
       for (const au of gridAuSteps()) {
@@ -721,7 +753,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), spokeMat));
   }
 
-  function setGrid(mode: 'off' | 'plain' | 'scaled' | 'hex') {
+  function setGrid(mode: MapOverlay) {
     if (mode === gridMode) return;
     gridMode = mode;
     rebuildGrid();

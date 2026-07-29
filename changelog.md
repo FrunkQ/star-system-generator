@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.262-beta - 29th Jul 2026
+
+* WS3 (1/2) one overlay vocabulary: every spatial view now shares a single grid/overlay list — None, Square, Hex, Traveller hex, Polar, Polar + scale — instead of the two disjoint sets that existed before (a decorative 3D one with no square, and the 2D snap-grid with no polar). The 3D starmap and 3D system both gained square and hex lattices, and the player-view editor's two grid pickers now render the same shared list, so they can't drift apart.
+* The numbered Traveller hex is available to EVERY user as a normal snap-grid choice — it no longer requires Traveller mode (mode keeps its own job: parsec scaling, UWP import, subsector detection). Existing Traveller-mode maps are unaffected.
+
 ## v2.1.261-beta - 29th Jul 2026
 
 * WS5 player-view lock-down: a preset with the starmap stage switched off now PINS which system players are dropped into (chosen in the editor), so a shared link always lands in the same place — it used to always pick the first system on the map. The escape routes were already sealed (back button hidden, browser Back refuses to surface the map, the cover only re-arms when the GM changes preset). A follow-the-GM preset still tracks the GM's current system: the pin sets where players land, not a cage.

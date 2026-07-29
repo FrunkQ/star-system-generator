@@ -120,7 +120,7 @@ export interface PlayerPreset {
   bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat' | 'none'; // body picture: 3D sphere / photo / procedural disc / flat shape / none (a new option honoured across every info surface — 2D document, 3D holo, …)
   beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black';
-  grid: 'off' | 'plain' | 'scaled' | 'hex';
+  grid: import('$lib/map/mapOverlay').MapOverlay; // WS3: shared overlay vocabulary across every view
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1

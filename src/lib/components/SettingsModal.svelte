@@ -308,8 +308,10 @@
             <label for="gridType">Snap grid</label>
             <select id="gridType" bind:value={$starmapUiStore.gridType}>
               <option value="none">No Grid</option>
-              <option value="grid">Grid</option>
+              <option value="grid">Square</option>
               <option value="hex">Hex</option>
+              <!-- WS3: the numbered Traveller hex is available to EVERY user now, not just Traveller mode. -->
+              <option value="traveller-hex">Traveller hex (numbered)</option>
             </select>
           </div>
           <div class="form-group">

@@ -289,9 +289,12 @@
   // …but the VISIBLE grid obeys the snap-grid switch in Settings: Traveller mode no longer FORCES
   // the numbered hex overlay. Choose "Hex" to see it; "None"/"Grid" hides it while Traveller data,
   // parsec scale and snapping keep working underneath.
-  $: displayGridType = $starmapUiStore.travellerMode
-    ? ($starmapUiStore.gridType === 'hex' ? 'traveller-hex' : $starmapUiStore.gridType)
-    : $starmapUiStore.gridType;
+  // WS3: picking "Traveller hex" explicitly shows the numbered overlay for ANY user, mode or not.
+  $: displayGridType = $starmapUiStore.gridType === 'traveller-hex'
+    ? 'traveller-hex'
+    : $starmapUiStore.travellerMode
+      ? ($starmapUiStore.gridType === 'hex' ? 'traveller-hex' : $starmapUiStore.gridType)
+      : $starmapUiStore.gridType;
 
   // --- Active interstellar journeys: ships in flight along the starmap, driven by the game clock. ---
   $: journeyNowSec = Number(ensuredTemporal?.displayTimeSec ?? 0);

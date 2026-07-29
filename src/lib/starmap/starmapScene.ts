@@ -19,7 +19,10 @@ const HOLO_TINT = 0x63b3ff;
 
 export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string; bh?: 'quiescent' | 'active'; edd?: number }[] }
 export interface SmRoute { fromId: string; toId: string; dashed?: boolean }
-export type GridMode = 'off' | 'plain' | 'scaled' | 'hex';
+// WS3: the shared overlay vocabulary (see lib/map/mapOverlay.ts). Re-exported under the historic name
+// so existing importers keep working.
+export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
+import type { MapOverlay } from '$lib/map/mapOverlay';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -38,7 +41,7 @@ export interface StarmapSceneOptions {
 
 export interface StarmapController {
   setData(systems: SmSystem[], routes: SmRoute[]): void;
-  setGrid(mode: GridMode): void;
+  setGrid(mode: MapOverlay): void;
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setMono(on: boolean): void; // monochrome palette for tinting filters
   setMapGrid(cfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null): void; // GM's snap-grid
@@ -178,7 +181,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   scene.add(starfield);
 
   // --- Grid (LY rings / hex lattice) ---
-  let gridMode: GridMode = 'plain';
+  let gridMode: MapOverlay = 'plain';
   let routeGlowOn = true; // emissive glow on routes (vs plain lines)
   let monoOn = false; // monochrome palette (white/grey) so a tint filter colours the whole map
   let lastData: { systems: SmSystem[]; routes: SmRoute[] } | null = null; // for rebuilds (route-glow / mono toggle)
@@ -263,7 +266,9 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const unit = (opts.distanceUnit || 'ly').toLowerCase() === 'diagrammatic' ? '' : (opts.distanceUnit || 'ly');
     // The GM's snap-grid, when present, takes precedence over the decorative polar/hex grid.
     if (mapGridCfg && mapGridCfg.type !== 'none' && mapK > 0) { renderMapGrid(base); return; }
-    if (gridMode === 'hex') {
+    // Hex lattice — 'traveller-hex' draws the same lattice here (the CCRR numbering + subsector lines
+    // remain a 2D-only affordance; see WS3 [Q5]).
+    if (gridMode === 'hex' || gridMode === 'traveller-hex') {
       // A hex lattice on the ground plane, clipped to the map disc — aligned to the starmap.
       const s = GRID_RADIUS / 7;              // hex circumradius
       const pts: THREE.Vector3[] = [];
@@ -275,6 +280,22 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
           if (Math.hypot(cx, cz) > GRID_RADIUS + s) continue;
           for (let k = 0; k < 6; k++) { pts.push(corner(cx, cz, k), corner(cx, cz, k + 1)); } // 6 edges (overlaps are harmless)
         }
+      }
+      gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4 })));
+      return;
+    }
+    // Square lattice — the same disc-clipped treatment, orthogonal instead of hexagonal.
+    if (gridMode === 'square') {
+      const s = GRID_RADIUS / 7;              // cell size, matched to the hex circumradius so they read alike
+      const pts: THREE.Vector3[] = [];
+      const n = Math.ceil(GRID_RADIUS / s);
+      for (let i = -n; i <= n; i++) {
+        const c = i * s;
+        // Chord half-length at this offset, so lines stop at the map disc rather than forming a box.
+        const half = Math.sqrt(Math.max(0, GRID_RADIUS * GRID_RADIUS - c * c));
+        if (half <= 0) continue;
+        pts.push(new THREE.Vector3(c, 0.01, -half), new THREE.Vector3(c, 0.01, half)); // meridian
+        pts.push(new THREE.Vector3(-half, 0.01, c), new THREE.Vector3(half, 0.01, c)); // parallel
       }
       gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4 })));
       return;
@@ -293,7 +314,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; spokes.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(a) * GRID_RADIUS, 0, Math.sin(a) * GRID_RADIUS)); }
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 })));
   }
-  function setGrid(mode: GridMode) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
   // "2D starmap": the TILT is pinned top-down like the classic flat map — it can never become a 3D view.
   // Zoom and pan stay. Pinned just off true vertical (0.05) because an exactly-overhead orbit camera is
   // gimbal-degenerate (view axis parallel to `up`); at ~3° the ground plane still reads perfectly flat.

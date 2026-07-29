@@ -30,6 +30,7 @@
   import TransitionParamControls from './TransitionParamControls.svelte';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { starsOf } from '$lib/catalogue/document/systemTopology';
+  import { MAP_OVERLAY_OPTIONS } from '$lib/map/mapOverlay';
   import DocPanel from './DocPanel.svelte';
 
   // D6: for the 2D/3D views the info-block preview APPEARS while you're tweaking Info Block controls
@@ -300,12 +301,9 @@
               </label>
               <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
               {#if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
-                <label>Grid
+                <label>Overlay
                   <select bind:value={draft.grid}>
-                    <option value="off">Off</option>
-                    <option value="plain">Polar</option>
-                    <option value="scaled">Polar + scale</option>
-                    <option value="hex">Hex</option>
+                    {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                   </select>
                 </label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.starmapRouteGlow} /> Glowing routes</label>
@@ -378,11 +376,9 @@
                     <option value="wire-flat-occ">Wireframe — flat (solid)</option>
                   </select>
                 </label>
-                <label>Grid
+                <label>Overlay
                   <select bind:value={draft.grid}>
-                    <option value="off">Off</option>
-                    <option value="plain">Grid</option>
-                    <option value="scaled">Grid + scale</option>
+                    {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                   </select>
                 </label>
                 <label>Spread <span>{Math.round(draft.compression * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></label>
