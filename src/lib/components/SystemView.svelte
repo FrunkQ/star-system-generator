@@ -36,7 +36,7 @@
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
   import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import { MAP_OVERLAY_OPTIONS, type MapOverlay } from '$lib/map/mapOverlay';
+  import { SYSTEM_OVERLAY_OPTIONS, type MapOverlay } from '$lib/map/mapOverlay';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
@@ -2214,7 +2214,7 @@
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
                     <label class="ov-select" title="Spatial overlay — the same set every map view offers">Overlay
                       <select bind:value={systemOverlay}>
-                        {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                        {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                       </select>
                     </label>
                     {#if $starmapUiStore.travellerMode}

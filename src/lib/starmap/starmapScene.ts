@@ -214,6 +214,31 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
   // The GM's live snap-grid, drawn at the SAME cell size + origin as the GM map (transformed by the fit),
   // so snapped systems land on the grid exactly like the GM sees them. Overrides the decorative grid.
+
+  // A hex NUMBER label: a small canvas sprite that scales WITH the world (unlike the constant-size name
+  // labels), so the digits stay inside their hex as you zoom. Lives in gridGroup, so a grid rebuild
+  // disposes it with the lattice.
+  function makeHexNumber(text: string, worldH: number): THREE.Sprite | null {
+    const c = document.createElement('canvas');
+    const px = 64;                                  // texture height; the sprite is scaled in world units
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+    ctx.font = `600 ${Math.round(px * 0.62)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+    const w = Math.ceil(ctx.measureText(text).width) + 8;
+    c.width = w; c.height = px;
+    const ctx2 = c.getContext('2d')!;
+    ctx2.font = `600 ${Math.round(px * 0.62)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+    ctx2.fillStyle = labelColor;
+    ctx2.textAlign = 'center';
+    ctx2.textBaseline = 'middle';
+    ctx2.fillText(text, w / 2, px / 2);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.75 }));
+    sp.scale.set(worldH * (w / px), worldH, 1);
+    return sp;
+  }
+
   function renderMapGrid(base: THREE.Color) {
     const cfg = mapGridCfg!;
     const cell0 = cfg.size * mapK;
@@ -224,6 +249,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const cell = cell0 * draw;
     const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.42), transparent: true, opacity: 0.42 });
     const pts: THREE.Vector3[] = [];
+    let hexLabels = 0;
+    const HEX_LABEL_CAP = 400;
     if (cfg.type === 'grid') {
       for (let n = Math.ceil((-half - originX) / cell); n <= Math.floor((half - originX) / cell); n++) {
         const x = originX + n * cell; pts.push(new THREE.Vector3(x, 0.01, -half), new THREE.Vector3(x, 0.01, half));
@@ -254,6 +281,15 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
           for (let i = 0; i < 6; i++) {
             const a = V[i], b = V[(i + 1) % 6];
             pts.push(new THREE.Vector3(cxp + a[0], 0.01, czp + a[1]), new THREE.Vector3(cxp + b[0], 0.01, czp + b[1]));
+          }
+          // TRAVELLER NUMBERING (WS3 [Q5]) — the CCRR hex address, matching Grid.svelte exactly: 1-based
+          // col/row, wrapping at the 32×40 sector, zero-padded. Only drawn when the hexes are big enough
+          // on screen to read, and capped, so a zoomed-out sector doesn't spawn thousands of sprites.
+          if (cfg.type === 'traveller-hex' && hd >= 0.5 && hexLabels < HEX_LABEL_CAP) {
+            let dCol = (col + 1) % 32; if (dCol <= 0) dCol += 32;
+            let dRow = (row + 1) % 40; if (dRow <= 0) dRow += 40;
+            const sp = makeHexNumber(`${String(dCol).padStart(2, '0')}${String(dRow).padStart(2, '0')}`, hh * 0.22);
+            if (sp) { sp.position.set(cxp, 0.03, czp - hh * 0.3); gridGroup.add(sp); hexLabels++; }
           }
         }
       }

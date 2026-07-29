@@ -28,6 +28,19 @@ export const MAP_OVERLAY_OPTIONS: MapOverlayOption[] = [
   { value: 'scaled',        label: 'Polar + scale' }
 ];
 
+// HEXES ARE A STARMAP IDEA (Alex 2026-07-29): a hex/Traveller lattice addresses interstellar space —
+// one hex is a jump, and the Traveller numbering is sector/subsector addressing. Inside a single system
+// the meaningful overlays are a square grid or polar distance rings, so the system views offer those
+// only. Same vocabulary, filtered per scale — not a second enum.
+export const SYSTEM_OVERLAY_OPTIONS: MapOverlayOption[] =
+  MAP_OVERLAY_OPTIONS.filter((o) => o.value !== 'hex' && o.value !== 'traveller-hex');
+
+// A stored system-scale overlay that predates the above (or a preset shared from a starmap) can still
+// say 'hex' — fold it to the nearest system-meaningful lattice rather than rendering a stray hex grid.
+export function forSystemScale(v: MapOverlay): MapOverlay {
+  return v === 'hex' || v === 'traveller-hex' ? 'square' : v;
+}
+
 const ALL: MapOverlay[] = ['off', 'plain', 'scaled', 'hex', 'square', 'traveller-hex'];
 
 // Accepts anything that has ever been persisted (including the 2D snap-grid's 'grid'/'none' spellings)

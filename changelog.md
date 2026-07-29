@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.265-beta - 29th Jul 2026
+
+* The preset editor no longer throws your work away on a stray click: it takes the whole screen (so there is barely a backdrop left to hit), and every exit — backdrop, Cancel, Escape — asks before discarding unsaved changes.
+* Hexes are treated as a STARMAP idea, because that is what they are: one hex is a jump, and Traveller numbering is sector addressing. The system views (2D orrery and 3D holo) now offer only None / Square / Polar / Polar + scale, and a stored hex value folds to the square lattice rather than painting a jump grid over an orrery. The starmap keeps all six.
+* Traveller hex NUMBERING now draws on the 3D and flat starmaps — the CCRR hex address (1-based, wrapping at the 32x40 sector, zero-padded) matching the 2D editor exactly, drawn only when the hexes are big enough to read.
+
 ## v2.1.264-beta - 29th Jul 2026
 
 * Named routes are now labelled on the 3D and flat starmaps (they only ever showed in the GM's 2D editor), and — because the label rides the same pipeline as system names — route names finally obey the Hide-labels override instead of ignoring it. Completes WS3.

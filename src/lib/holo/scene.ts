@@ -17,7 +17,7 @@ import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import type { FilterParamValues } from './filters/schema';
-import { isLattice, type MapOverlay } from '$lib/map/mapOverlay';
+import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
@@ -753,7 +753,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), spokeMat));
   }
 
-  function setGrid(mode: MapOverlay) {
+  function setGrid(raw: MapOverlay) {
+    // Hexes address interstellar space, not the inside of a system — fold them to the square lattice
+    // so a preset authored for a starmap can't paint a jump grid over an orrery.
+    const mode = forSystemScale(raw);
     if (mode === gridMode) return;
     gridMode = mode;
     rebuildGrid();

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { forSystemScale } from '$lib/map/mapOverlay';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
@@ -39,6 +40,8 @@
   // WS3 — the shared overlay vocabulary. The 2D system view had no grid of any kind; it now offers the
   // same set as every other spatial view (lattices in AU, or polar rings about the primary).
   export let overlay: import('$lib/map/mapOverlay').MapOverlay = 'off';
+  // Hexes are a starmap-scale idea (a hex = a jump); inside a system they fold to the square lattice.
+  $: effOverlay = forSystemScale(overlay);
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   // Canvas backdrop — overridable so the projector can switch to a chroma-key green.
@@ -429,7 +432,7 @@
   // zoom to stay hairline on screen. Lattice spacing is a 1/2/5-decade "nice" number of AU picked so the
   // cells stay a sensible size on screen at any zoom, and the polar modes ring the primary at the origin.
   function drawSystemOverlay(ctx: CanvasRenderingContext2D, width: number, height: number) {
-    if (overlay === 'off' || !zoom) return;
+    if (effOverlay === 'off' || !zoom) return;
     // Visible world rect (context coords).
     const hw = width / 2 / zoom, hh = height / 2 / zoom;
     const cx = renderPan.x, cy = renderPan.y;               // world point at screen centre
@@ -444,12 +447,12 @@
     ctx.lineWidth = line;
     ctx.strokeStyle = 'rgba(140,170,210,0.20)';
     ctx.fillStyle = 'rgba(160,185,220,0.55)';
-    if (overlay === 'square') {
+    if (effOverlay === 'square') {
       ctx.beginPath();
       for (let x = Math.ceil((cx + x0) / step) * step; x <= cx + x1; x += step) { const c = x - cx; ctx.moveTo(c, y0); ctx.lineTo(c, y1); }
       for (let y = Math.ceil((cy + y0) / step) * step; y <= cy + y1; y += step) { const c = y - cy; ctx.moveTo(x0, c); ctx.lineTo(x1, c); }
       ctx.stroke();
-    } else if (overlay === 'hex' || overlay === 'traveller-hex') {
+    } else if (effOverlay === 'hex' || effOverlay === 'traveller-hex') {
       // Flat-topped hex lattice with circumradius = step; CCRR numbering is a starmap-scale idea, so the
       // system view draws the Traveller choice as the plain lattice.
       const s = step, dx = s * Math.sqrt(3), dy = s * 1.5;
@@ -477,7 +480,7 @@
       ctx.beginPath();
       for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(a) * maxR, oy + Math.sin(a) * maxR); }
       ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1;
-      if (overlay === 'scaled') {
+      if (effOverlay === 'scaled') {
         ctx.save();
         ctx.scale(1 / zoom, 1 / zoom);          // labels in screen px, unscaled by the zoom
         ctx.font = '10px system-ui, sans-serif';

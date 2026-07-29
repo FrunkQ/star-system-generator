@@ -30,7 +30,7 @@
   import TransitionParamControls from './TransitionParamControls.svelte';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { starsOf } from '$lib/catalogue/document/systemTopology';
-  import { MAP_OVERLAY_OPTIONS } from '$lib/map/mapOverlay';
+  import { MAP_OVERLAY_OPTIONS, SYSTEM_OVERLAY_OPTIONS } from '$lib/map/mapOverlay';
   import DocPanel from './DocPanel.svelte';
 
   // D6: for the 2D/3D views the info-block preview APPEARS while you're tweaking Info Block controls
@@ -169,10 +169,25 @@
     dispatch('saved', draft);
     dispatch('close');
   }
+
+  // Losing a preset's worth of design work to a stray click was far too easy: the editor filled only
+  // part of the screen and ANY click on the backdrop discarded silently. Now the editor takes the whole
+  // screen (so there's barely a backdrop to hit), and every exit route — backdrop, Cancel, Escape —
+  // checks for unsaved changes first. `dirty` compares the draft against the preset we opened.
+  $: dirty = JSON.stringify(draft) !== JSON.stringify(preset);
+  function requestClose() {
+    if (dirty && !confirm('You have unsaved changes to this preset. Discard them?')) return;
+    dispatch('close');
+  }
+  function onKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
+  }
 </script>
 
+<svelte:window on:keydown={onKeydown} />
+
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="modal-bg" on:click={() => dispatch('close')}>
+<div class="modal-bg" on:click={requestClose}>
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div class="modal" on:click|stopPropagation>
     <header>
@@ -185,7 +200,7 @@
         {/each}
       </div>
       <div class="hbtns">
-        <button on:click={() => dispatch('close')}>Cancel</button>
+        <button on:click={requestClose}>Cancel</button>
         <button class="primary" on:click={save}>Save</button>
       </div>
     </header>
@@ -378,7 +393,7 @@
                 </label>
                 <label>Overlay
                   <select bind:value={draft.grid}>
-                    {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                    {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                   </select>
                 </label>
                 <label>Spread <span>{Math.round(draft.compression * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></label>
@@ -675,8 +690,11 @@
 </div>
 
 <style>
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.72); display: flex; justify-content: center; align-items: center; z-index: 2100; }
-  .modal { background: var(--bg-panel); color: var(--text); border-radius: 8px; width: 1100px; max-width: 97vw; height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+  /* Full-screen editor: the design surface deserves the room, and there is essentially no backdrop
+     left to mis-click. A hair of inset keeps it readable as a layer above the app. */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.86); display: flex; justify-content: center; align-items: center; z-index: 2100; }
+  .modal { background: var(--bg-panel); color: var(--text); border-radius: 6px; width: 100vw; max-width: 100vw; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  @media (min-width: 900px) { .modal { width: calc(100vw - 16px); max-width: calc(100vw - 16px); height: calc(100vh - 16px); } }
   header { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 1.1rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   header h2 { margin: 0; font-size: 1rem; flex: 0 0 auto; }
   .tabs { display: flex; gap: 4px; flex: 1 1 auto; }
