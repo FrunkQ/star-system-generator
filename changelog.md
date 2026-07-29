@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.264-beta - 29th Jul 2026
+
+* Named routes are now labelled on the 3D and flat starmaps (they only ever showed in the GM's 2D editor), and — because the label rides the same pipeline as system names — route names finally obey the Hide-labels override instead of ignoring it. Completes WS3.
+
 ## v2.1.263-beta - 29th Jul 2026
 
 * WS3 (2/2) the 2D system view finally has overlays. The orrery had no grid of any kind; it now offers the same six as everywhere else, from a new "Overlay" picker in View options — square and hex lattices spaced in round AU (the spacing re-snaps as you zoom), or polar rings about the primary with optional AU labels. The overlay pans and zooms with the map and sits under the orbits.

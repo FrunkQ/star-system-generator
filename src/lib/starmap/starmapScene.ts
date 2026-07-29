@@ -18,7 +18,9 @@ const GRID_RADIUS = 12; // scene units the map's extent maps to
 const HOLO_TINT = 0x63b3ff;
 
 export interface SmSystem { id: string; name: string; x: number; y: number; stars: { color: string; bh?: 'quiescent' | 'active'; edd?: number }[] }
-export interface SmRoute { fromId: string; toId: string; dashed?: boolean }
+// WS3: routes carry their NAME so the 3D/flat starmap can label them like the 2D editor does — and,
+// because the label rides the shared label pipeline, it obeys the Hide-labels override too.
+export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?: string }
 // WS3: the shared overlay vocabulary (see lib/map/mapOverlay.ts). Re-exported under the historic name
 // so existing importers keep working.
 export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
@@ -481,6 +483,14 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       const a = centers.get(r.fromId), b = centers.get(r.toId);
       if (!a || !b) continue;
       (r.dashed ? routePtsDash : routePts).push(a.clone().setY(0.02), b.clone().setY(0.02));
+      // Route NAME at the midpoint. Pushed into `placed` so it inherits the whole label pipeline —
+      // constant on-screen size, colour/font redraws, and crucially the labelsVisible (Hide labels)
+      // gate that system names already obey. Route names used to render unconditionally in 2D and
+      // not at all here.
+      if (r.name && r.name.trim()) {
+        const mid = a.clone().add(b).multiplyScalar(0.5).setY(0.03);
+        placed.push({ id: `route:${r.fromId}>${r.toId}`, name: r.name, center: mid, label: makeLabelSprite(r.name) });
+      }
       // Glow band (skipped when the glow is toggled off, or for dashed — the dash reads better plain).
       if (!r.dashed && routeGlowOn) {
         const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz);
