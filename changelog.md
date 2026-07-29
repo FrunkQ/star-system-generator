@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.267-beta - 30th Jul 2026
+
+* Settings > System gained a "Your data" section: it shows how much space your campaigns use of what is available, and lets you ask the browser to keep them rather than clearing them when space runs low. It reports exactly what the browser granted -- some browsers agree silently based on how often you use the app, and some refuse -- so it never claims your data is safe when it is not. Saving to a file remains the only real backup.
+
 ## v2.1.266-beta - 29th Jul 2026
 
 * Grid overlays on the starmap are now the map's OWN grid: a lattice choice renders at the GM's cell size and alignment instead of an invented size several times too big, so the players' hexes match the GM's map. They also fill the view and dissolve with distance rather than stopping at a ragged disc edge.

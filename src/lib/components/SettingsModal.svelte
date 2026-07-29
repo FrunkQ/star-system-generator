@@ -77,6 +77,36 @@
   // Traveller mode INFERS the unit: maps are parsec-scaled (1 hex = 1 pc), so the picker is
   // disabled and the choice coerced — including when the mode is ticked with the modal open.
   $: if ($starmapUiStore.travellerMode && unitChoice !== 'pc') unitChoice = 'pc';
+
+  // ── Keep-my-data (browser storage persistence) ───────────────────────────────
+  // Campaigns live in IndexedDB, which browsers may EVICT under storage pressure. We can only ASK for
+  // persistence; the browser decides (Chrome grants on heuristics and may refuse silently, Firefox
+  // prompts, Safari evicts long-unused sites regardless). So this reports exactly what was granted and
+  // never claims the data is safe — file export stays the real guarantee.
+  let storeState: import('$lib/storagePersistence').PersistenceState | null = null;
+  let storeUsage = '—';
+  let storeQuota = '—';
+  let storeAsking = false;
+  async function refreshStorage() {
+    const { storageReport, formatBytes } = await import('$lib/storagePersistence');
+    const r = await storageReport();
+    storeState = r.state;
+    storeUsage = formatBytes(r.usageBytes);
+    storeQuota = formatBytes(r.quotaBytes);
+  }
+  async function askPersistence() {
+    storeAsking = true;
+    try {
+      const { requestPersistence } = await import('$lib/storagePersistence');
+      storeState = await requestPersistence();   // the ACTUAL outcome, re-read from the browser
+      await refreshStorage();
+    } finally {
+      storeAsking = false;
+    }
+  }
+  // Only look when the System section is actually open — no need to poke storage APIs otherwise.
+  $: if (showModal && activeSection === 'system' && storeState === null) refreshStorage();
+
   let generationEngine = starmap.generationEngine ?? 'standard';   // preserved on save; no longer surfaced in the UI
   // Enabled-rule count per category across the enabled packs (shown beside each PoI category).
   $: ruleCounts = (() => {
@@ -398,6 +428,28 @@
           <a class="section-btn" href="/discgallery" target="_blank" rel="noopener" on:click={() => showModal = false}>Rendered world gallery…</a>
           <p class="section-hint">A reference for how worlds are drawn from their physics and tags — polar ice, gas-giant banding, rotational shape and more.</p>
 
+          <h4 class="advanced-head">Your data</h4>
+          <div class="form-group">
+            <p class="section-hint">Your campaigns are stored in this browser. Browsers may clear that storage
+              when space runs low. You can ask this browser to keep it — but the browser decides, so this
+              lowers the risk rather than removing it. Saving to a file is still the only real backup.</p>
+            <p class="store-line">
+              Status:
+              {#if storeState === 'granted'}<strong class="ok">Browser has agreed to keep your data</strong>
+              {:else if storeState === 'not-granted'}<strong class="warn">Not guaranteed — may be cleared if space runs low</strong>
+              {:else if storeState === 'unsupported'}<strong class="warn">This browser doesn't support the setting</strong>
+              {:else}checking…{/if}
+            </p>
+            <p class="store-line">Used: <strong>{storeUsage}</strong> of <strong>{storeQuota}</strong> available</p>
+            {#if storeState !== 'granted' && storeState !== 'unsupported'}
+              <button class="section-btn" on:click={askPersistence} disabled={storeAsking}>
+                {storeAsking ? 'Asking the browser…' : 'Ask the browser to keep my data'}
+              </button>
+              <p class="section-hint">Some browsers grant this silently based on how often you use the app, and
+                may refuse the first time. If it stays off, keep saving your campaign to a file.</p>
+            {/if}
+          </div>
+
           <h4 class="advanced-head">Advanced</h4>
           <div class="form-group">
             <label for="generationEngine">Generation engine</label>
@@ -522,6 +574,9 @@
   .cat-name { flex: 1; }
   .cat-count { color: var(--text-faint, #8a8f9a); font-size: 0.85em; }
   .cat-req { font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #5b8def); border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; vertical-align: middle; }
+  .store-line { font-size: 0.82rem; margin: 2px 0; color: var(--text-muted); }
+  .store-line .ok { color: #6ad48b; }
+  .store-line .warn { color: #ffb061; }
   .advanced-head { margin: 22px 0 8px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8a8f9a); border-top: 1px solid var(--border); padding-top: 14px; }
   .danger-head { color: var(--status-bad, #d04545); border-top-color: color-mix(in srgb, var(--status-bad, #d04545) 40%, var(--border)); }
   .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
