@@ -32,8 +32,8 @@ export interface SystemOutcome {
   anchorId?: string;
   anchorName?: string;
   movedBy?: number; // in the campaign's distance unit
-  /** GM-authored content on a REPLACED base system, which the replacement does not carry. */
-  customisations?: string[];
+  /** Things present on a REPLACED base system that will not be present afterwards. */
+  losses?: string[];
 }
 
 /** A route whose stored distance no longer matches its endpoints after the move. */
@@ -73,24 +73,36 @@ function posOf(n: StarSystemNode) {
 }
 
 /**
- * GM-authored content on a base system that a straight replacement would discard.
+ * What a replacement would LOSE from the campaign's copy of a base system.
  *
- * Deliberately limited to signals that are UNAMBIGUOUSLY the GM's work. Body-level differences cannot be
- * told apart from the data corrections the rebuild exists to deliver — without a copy of the old base map
- * to diff against, claiming otherwise would produce confident nonsense. So we report what we are sure of
- * and say nothing about the rest, rather than guessing.
+ * This is deliberately phrased — and computed — as fact rather than as blame. We cannot tell a construct the
+ * GM added from one the OLD bundled map shipped and the new one dropped, because the old map is no longer
+ * around to diff against; the first draft of this function claimed the ISS and Tiangong Station were the
+ * GM's work, which they never were. So it reports only what is verifiably true: this thing is here now, and
+ * it will not be here afterwards. A name change is reported only when `isNameUserDefined` marks it as the
+ * GM's own pin, because otherwise the label simply tracks the primary star and a difference is the rebuild's
+ * own renaming.
+ *
+ * Body-level differences are not reported at all: they cannot be told apart from the data corrections the
+ * rebuild exists to deliver, and a confident wrong list is worse than no list.
  */
-export function customisationsOf(node: StarSystemNode, baseName: string | undefined): string[] {
+export function lossesOf(node: StarSystemNode, replacement: StarSystemNode | undefined): string[] {
   const out: string[] = [];
-  if (baseName && node.name !== baseName) out.push(`renamed to "${node.name}"`);
-  else if (node.isNameUserDefined) out.push('a custom system name');
-  const nodes = (node.system as any)?.nodes as any[] | undefined;
-  const constructs = nodes?.filter((n) => n?.kind === 'construct') ?? [];
-  if (constructs.length) {
-    const names = constructs.map((c) => c.name).filter(Boolean);
-    out.push(`${constructs.length} construct${constructs.length === 1 ? '' : 's'}${names.length ? ` (${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''})` : ''}`);
+  if (node.isNameUserDefined && replacement && node.name !== replacement.name) {
+    out.push(`your name for it, "${node.name}"`);
   }
-  if ((node.system as any)?.gmNotes) out.push('GM notes');
+  const mine = ((node.system as any)?.nodes as any[] | undefined)?.filter((n) => n?.kind === 'construct') ?? [];
+  const theirs = new Set(
+    (((replacement?.system as any)?.nodes as any[] | undefined) ?? [])
+      .filter((n) => n?.kind === 'construct')
+      .map((n) => String(n.name ?? '').toLowerCase())
+  );
+  const dropped = mine.filter((c) => !theirs.has(String(c.name ?? '').toLowerCase()));
+  if (dropped.length) {
+    const names = dropped.map((c) => c.name).filter(Boolean);
+    out.push(names.length ? names.slice(0, 4).join(', ') + (names.length > 4 ? `, and ${names.length - 4} more` : '') : `${dropped.length} constructs`);
+  }
+  if ((node.system as any)?.gmNotes) out.push('its GM notes');
   return out;
 }
 
@@ -122,20 +134,20 @@ export function planRebase(
   }
 
   const systems: SystemOutcome[] = [];
-  const customisedBase: SystemOutcome[] = [];
+  const lossyBase: SystemOutcome[] = [];
   // Where each system ENDS UP, so route distances can be recomputed against the same numbers the GM reviews.
   const finalPos = new Map<string, { x: number; y: number; z: number }>();
 
   for (const node of campaign.systems) {
     if (baseIds.has(node.id) && newById.has(node.id)) {
       const replacement = newById.get(node.id)!;
-      const customisations = customisationsOf(node, replacement.name);
+      const losses = lossesOf(node, replacement);
       const outcome: SystemOutcome = {
         id: node.id, name: replacement.name, kind: 'base-replaced',
-        ...(customisations.length ? { customisations } : {})
+        ...(losses.length ? { losses } : {})
       };
       systems.push(outcome);
-      if (customisations.length) customisedBase.push(outcome);
+      if (losses.length) lossyBase.push(outcome);
       finalPos.set(node.id, posOf(replacement));
       continue;
     }
@@ -193,13 +205,16 @@ export function planRebase(
   const unanchored = systems.filter((s) => s.kind === 'custom-unanchored' && !baseIds.has(s.id));
   if (moved.length) {
     const worst = moved.reduce((m, s) => Math.max(m, s.movedBy ?? 0), 0);
+    const far = `${worst < 10 ? worst.toFixed(1) : Math.round(worst)} ${campaign.scale?.unit ?? 'ly'}`;
     warnings.push(
-      `${moved.length} of your own system${moved.length === 1 ? '' : 's'} will move, each following the base system nearest to it (the furthest travels about ${worst < 10 ? worst.toFixed(1) : Math.round(worst)} ${campaign.scale?.unit ?? 'ly'}). Distances to that neighbour are preserved; distances to anything else may change.`
+      moved.length === 1
+        ? `One of your own systems, ${moved[0].name}, will move about ${far}, following ${moved[0].anchorName} — the bundled system nearest to it. Its distance to ${moved[0].anchorName} is preserved; distances to anything else may change.`
+        : `${moved.length} of your own systems will move, each following the bundled system nearest to it (the furthest travels about ${far}). Distances to those neighbours are preserved; distances to anything else may change.`
     );
   }
-  if (customisedBase.length) {
+  if (lossyBase.length) {
     warnings.push(
-      `${customisedBase.length} base system${customisedBase.length === 1 ? '' : 's'} you had changed will be replaced, and those changes will not carry over: ${customisedBase.map((s) => `${s.name} (${(s.customisations ?? []).join(', ')})`).join('; ')}. Note them down first if you want to re-apply them.`
+      `Replacing bundled systems drops some of what is in them now: ${lossyBase.map((s) => `${s.name} — ${(s.losses ?? []).join(', ')}`).join('; ')}. Note down anything there you added yourself, so you can put it back.`
     );
   }
   if (routes.length) {
@@ -211,7 +226,7 @@ export function planRebase(
   if (orphanedSystemNames.length) {
     warnings.push(`${orphanedSystemNames.length} system${orphanedSystemNames.length === 1 ? '' : 's'} came from the old bundled map but are not in the new one; they are kept as your own content: ${orphanedSystemNames.join(', ')}.`);
   }
-  warnings.push('Your current map is not touched. The upgrade is built as a separate campaign, so if you do not like the result you can go straight back to this one.');
+  warnings.push('The upgrade is built as a separate campaign and only replaces this one if you accept it. A copy of today\'s version is kept, and Settings > System will offer to go back to it.');
 
   return {
     applicable: anchors.length > 0,

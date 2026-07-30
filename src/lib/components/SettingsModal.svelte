@@ -18,6 +18,9 @@
 
   export let showModal: boolean;
   export let starmap: Starmap;
+  // WS8: the name of the campaign kept from before a base-map upgrade, or null when there is none. The page
+  // owns the snapshot; this is only the offer to go back to it.
+  export let preUpgradeName: string | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -459,6 +462,19 @@
                 may refuse the first time. If it stays off, keep saving your campaign to a file.</p>
             {/if}
           </div>
+
+          <!-- WS8: only shown while a pre-upgrade snapshot exists. This is the "go straight back" the upgrade
+               screen promises, and it lives here because Your data is where copies of a campaign belong. -->
+          {#if preUpgradeName}
+            <div class="form-group">
+              <p class="section-hint">You upgraded a campaign onto the updated bundled map. The version from
+                before that upgrade is still here, and you can go back to it. Doing so replaces what is
+                currently loaded, so save it to a file first if you want to keep it.</p>
+              <button class="section-btn" on:click={() => dispatch('restorepreupgrade')}>
+                Go back to "{preUpgradeName}" (before the upgrade)
+              </button>
+            </div>
+          {/if}
 
           <h4 class="advanced-head">Advanced</h4>
           <div class="form-group">

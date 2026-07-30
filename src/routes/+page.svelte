@@ -24,7 +24,8 @@
   import { crtControls } from '$lib/catalogue/crtControls';
   import { starmapStore } from '$lib/starmapStore';
   import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
-  import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap } from '$lib/starmapStorage';
+  import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
+           savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import GenerationWizard from '$lib/components/GenerationWizard.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
@@ -54,6 +55,8 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { stampForSave } from '$lib/map/provenance';
+  import { shouldOfferUpgrade, dismissUpgrade, type UpgradeOffer } from '$lib/map/upgradeOffer';
+  import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
@@ -618,6 +621,9 @@
     try { if (browser && localStorage.getItem(WELCOME_KEY) !== '1') showWelcome = true; } catch { /* private mode */ }
 
     await migrateLegacyStarmapToIndexedDb();
+    // The undo has to survive a reload — a GM who upgrades, closes the tab and thinks better of it tomorrow
+    // still has the offer waiting in Settings.
+    await refreshPreUpgradeSnapshot();
     hasSavedStarmap = await hasPersistedStarmap();
     if (hasSavedStarmap) {
       await handleLoadStarmap();
@@ -625,6 +631,67 @@
       showNewStarmapModal = true;
     }
   });
+
+  // --- WS8: offer to move a campaign onto the updated bundled base map ---
+  // Checked once per campaign id, whichever way it arrived (browser storage on startup, a loaded file, the
+  // example map), because a GM whose campaign only ever lived in IndexedDB never "loads a file" at all and
+  // would otherwise never see the offer. Every decision to stay quiet lives in shouldOfferUpgrade().
+  let baseMapOffer: UpgradeOffer | null = null;
+  let checkedUpgradeFor: string | null = null;
+  async function maybeOfferBaseMapUpgrade(map: StarmapType | null) {
+    if (!browser || !map || checkedUpgradeFor === map.id) return;
+    checkedUpgradeFor = map.id;
+    try {
+      const result = await shouldOfferUpgrade(map);
+      if (result.offer) baseMapOffer = result;
+      else console.info('[base map] no upgrade offered:', result.reason);
+    } catch (e) {
+      console.warn('[base map] upgrade check failed', e);
+    }
+  }
+  $: maybeOfferBaseMapUpgrade($starmapStore);
+
+  // Accepting: the rebased campaign takes its systems from the bundled FILE, so they are authored inputs
+  // that have not been through the physics engine yet — re-derive before it becomes current, exactly as
+  // every other load path does.
+  //
+  // The snapshot is written BEFORE the store changes. Browser storage holds one campaign, so without this
+  // the original would be overwritten by the next autosave, and the upgrade screen's promise that the GM
+  // can go back to it would be false.
+  async function acceptBaseMapUpgrade(next: StarmapType) {
+    const original = $starmapStore;
+    baseMapOffer = null;
+    checkedUpgradeFor = next.id; // it is stamped to the current edition; do not re-offer
+    if (original) {
+      const stored = await savePreUpgradeStarmap(original);
+      if (!stored) {
+        alert(
+          'The upgrade is ready, but a copy of your current campaign could not be kept in this browser.\n\n' +
+          'Save your campaign to a file first if you have not already — otherwise there will be no way back to it.'
+        );
+      }
+    }
+    starmapStore.set(await recalcAllSystems(next));
+    preUpgradeSnapshotName = original?.name ?? null;
+  }
+
+  // The undo, offered from Settings once a snapshot exists. Restoring is a decision, so the upgrade is not
+  // offered again for that campaign afterwards — they have already seen it and said no.
+  let preUpgradeSnapshotName: string | null = null;
+  async function refreshPreUpgradeSnapshot() {
+    if (!browser) return;
+    preUpgradeSnapshotName = (await loadPreUpgradeStarmap())?.name ?? null;
+  }
+  async function restorePreUpgradeStarmap() {
+    const snap = await loadPreUpgradeStarmap();
+    if (!snap) { preUpgradeSnapshotName = null; return; }
+    dismissUpgrade(snap.id);
+    checkedUpgradeFor = snap.id;
+    starmapStore.set(await recalcAllSystems(snap));
+    await clearPreUpgradeStarmap();
+    preUpgradeSnapshotName = null;
+    showSettingsModal = false;
+  }
 
   // --- Companion App broadcast (whole redacted starmap) ---
   // The player snapshot carries the GM's LIVE snap-grid (type + cell size) so the player-view starmap
@@ -1411,6 +1478,8 @@
       bind:showModal={showSettingsModal}
       starmap={$starmapStore}
       initialSection={settingsReturnSection}
+      preUpgradeName={preUpgradeSnapshotName}
+      on:restorepreupgrade={restorePreUpgradeStarmap}
       on:save={handleSaveSettings}
       on:close={() => reprocessAllReasons()}
       on:edittemporal={() => { settingsReturnSection = 'time'; showTemporalModal = true; }}
@@ -1455,6 +1524,18 @@
   {/if}
   {#if showHelpMenu}
     <HelpMenuModal on:close={() => showHelpMenu = false} />
+  {/if}
+  <!-- WS8: only ever shown for a campaign that descends from an OLDER edition of a bundled map. Held back
+       until the welcome screen is out of the way, so a first-run user is not hit with both at once. -->
+  {#if baseMapOffer && $starmapStore && !showWelcome}
+    <BaseMapUpgradeModal
+      campaign={$starmapStore}
+      offer={baseMapOffer}
+      on:backup={handleDownloadStarmap}
+      on:accept={(e) => acceptBaseMapUpgrade(e.detail)}
+      on:dismiss={() => { if ($starmapStore) dismissUpgrade($starmapStore.id); baseMapOffer = null; }}
+      on:close={() => (baseMapOffer = null)}
+    />
   {/if}
   {#if showAbout}
     <AboutModal rulePack={$systemStore ? effectiveRulePack : null} on:close={() => showAbout = false} />

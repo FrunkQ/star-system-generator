@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planRebase, applyRebase, customisationsOf, type BaseMapManifestEntry } from './rebase';
+import { planRebase, applyRebase, lossesOf, type BaseMapManifestEntry } from './rebase';
 import type { Starmap, StarSystemNode } from '$lib/types';
 
 const MANIFEST: BaseMapManifestEntry = {
@@ -88,31 +88,51 @@ describe('rebase — planning', () => {
     expect(r1.newDistance).toBeGreaterThan(r1.oldDistance);
   });
 
-  it('warns about every consequence, and always says the original is untouched', () => {
+  it('warns about every consequence, and always closes by saying there is a way back', () => {
     const campaign = OLD();
     campaign.systems.push(sys('mine', 'Colony', 250, 210));
     const plan = planRebase(campaign, NEW(), MANIFEST, 1);
     expect(plan.warnings.some((w) => w.includes('will move'))).toBe(true);
-    expect(plan.warnings[plan.warnings.length - 1]).toContain('not touched');
+    expect(plan.warnings[plan.warnings.length - 1]).toContain('go back to it');
   });
 });
 
-describe('rebase — GM customisations on base systems', () => {
-  it('spots a rename, constructs and GM notes', () => {
-    const node = sys('sys-sol', 'Sol System (Expanse)', 400, 300);
+describe('rebase — what a replacement loses', () => {
+  it('names constructs the new edition does not have', () => {
+    const node = sys('sys-sol', 'Sol', 400, 300);
     (node.system as any).nodes = [{ kind: 'construct', name: 'Rocinante' }];
+    expect(lossesOf(node, sys('sys-sol', 'Sol', 0, 0)).join(' | ')).toContain('Rocinante');
+  });
+
+  it('does NOT claim a construct the new edition also ships', () => {
+    // The bug this pins: the ISS and Tiangong Station are bundled with the map, and the first version of
+    // this reported them as the GM's own work.
+    const node = sys('sys-sol', 'Sol', 400, 300);
+    (node.system as any).nodes = [{ kind: 'construct', name: 'International Space Station' }];
+    const rep = sys('sys-sol', 'Sol', 0, 0);
+    (rep.system as any).nodes = [{ kind: 'construct', name: 'International Space Station' }];
+    expect(lossesOf(node, rep)).toEqual([]);
+  });
+
+  it('reports a name change only when the GM pinned the name', () => {
+    // The rebuild renamed "Alpha Centauri System" to "Alpha Centauri". That is not the GM's doing.
+    const drifted = sys('sys-alphacen', 'Alpha Centauri System', 0, 0);
+    expect(lossesOf(drifted, sys('sys-alphacen', 'Alpha Centauri', 0, 0))).toEqual([]);
+    const pinned = sys('sys-alphacen', 'Rigel Colony', 0, 0, undefined, { isNameUserDefined: true });
+    expect(lossesOf(pinned, sys('sys-alphacen', 'Alpha Centauri', 0, 0)).join(' ')).toContain('Rigel Colony');
+  });
+
+  it('reports GM notes', () => {
+    const node = sys('sys-sol', 'Sol', 400, 300);
     (node.system as any).gmNotes = 'secret';
-    const c = customisationsOf(node, 'Sol');
-    expect(c.join(' | ')).toContain('renamed');
-    expect(c.join(' | ')).toContain('Rocinante');
-    expect(c.join(' | ')).toContain('GM notes');
+    expect(lossesOf(node, sys('sys-sol', 'Sol', 0, 0)).join(' ')).toContain('GM notes');
   });
 
-  it('says nothing for an untouched base system', () => {
-    expect(customisationsOf(sys('sys-sol', 'Sol', 400, 300), 'Sol')).toEqual([]);
+  it('says nothing for a base system that loses nothing', () => {
+    expect(lossesOf(sys('sys-sol', 'Sol', 400, 300), sys('sys-sol', 'Sol', 0, 0))).toEqual([]);
   });
 
-  it('surfaces them in the plan warnings so they can be re-applied', () => {
+  it('surfaces losses in the plan warnings so they can be put back', () => {
     const campaign = OLD();
     (campaign.systems[0].system as any).nodes = [{ kind: 'construct', name: 'Rocinante' }];
     const plan = planRebase(campaign, NEW(), MANIFEST, 1);

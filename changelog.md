@@ -2,11 +2,17 @@
 
 All notable changes are listed here:
 
+## v2.1.274-beta - 30th Jul 2026
+
+* Campaigns built on the older bundled Local Neighbourhood are now offered an upgrade onto the rebuilt one. It tells you exactly what will happen to YOUR campaign before you commit -- which of your own systems move and how far, which links get re-measured, and what disappears from the updated systems -- then builds the upgrade as a separate campaign for you to look over and keep or throw away.
+* Your own systems move with the bundled system nearest to each of them, so what sits next to what survives: a colony 0.6 light years off Sirius is still 0.6 light years off Sirius afterwards, even though Sirius itself moves from a decorative 4.4 to its true 8.6 light years from Sol.
+* You are asked to save a copy before upgrading, and a copy of the pre-upgrade campaign is kept in the browser besides -- Settings > System offers to go straight back to it, for as long as you have not used it.
+
 ## v2.1.272-beta - 30th Jul 2026
 
 * Saved starmap files now record which build wrote them, and which edition of a bundled starter map they descend from. Until now a starmap file carried no version of any kind, which made it impossible to tell reliably what produced it -- this is groundwork for offering campaigns a clean upgrade when the bundled maps change. Nothing changes about how your maps load; older files without a stamp keep working exactly as before.
 
-## v2.1.272-beta - 30th Jul 2026
+## v2.1.273-beta - 30th Jul 2026
 
 * The bundled Local Neighbourhood starmap has been rebuilt from real astronomy. Every system now sits at its TRUE 3D position (x, y and the new z depth) from Gaia/Hipparcos/SIMBAD astrometry, and the planet roster is exactly the NASA Exoplanet Archive's confirmed set -- Barnard's Star gains its four 2024-25 sub-Earths, Lacaille 9352 its four, tau Ceti drops the retracted e, and the fictional content that had crept in is gone. The map grows from 20 to 42 systems: the complete known census to ~13 light years (brown dwarfs included), every confirmed planet host to ~16.5, plus Altair, Vega, Zeta Reticuli and TRAPPIST-1. Same stable system ids throughout, plus new appVersion/baseMapVersion stamps and a manifest for the coming campaign-upgrade feature.
 * New second example map: "Local Neighbourhood (Science Fiction)" -- the same real stars at the same true positions, populated with the famous fiction set among them: The Expanse across Sol, Pandora at Alpha Centauri, Reach at Epsilon Eridani, the Wolf 359 graveyard, LV-426 at Zeta Reticuli, Project Hail Mary at Tau Ceti and 40 Eridani (where Vulcan also lives), Rocheworld at Barnard's Star, Mesklin at 61 Cygni, and more. Deliberately fictional and it says so; stars without a famous tenant keep their real planets.
