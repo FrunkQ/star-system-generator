@@ -7160,7 +7160,7 @@
             "kind": "body",
             "roleHint": "planet",
             "massKg": 2.3469960000000004e+25,
-            "radiusKm": 11527,
+            "radiusKm": 9219,
             "autoClassify": true,
             "atmosphere": {
               "name": "Dense CO2",
@@ -7244,7 +7244,7 @@
             ],
             "current_cargo_tonnes": 18,
             "cargoDescription": "Two million kilograms of Astrophage (spent), four data beetles — John, Paul, George and Ringo — prepped for the run home, and a crew roster of one science teacher who was not supposed to wake up first.",
-            "description": "Earth’s last-throw interstellar ship, Astrophage-fuelled, crewed by whoever survived the coma. Currently orbiting Adrian and doing science with whatever is to hand. Amaze.",
+            "description": "Earth’s last-throw interstellar ship, Astrophage-fuelled, crewed by whoever survived the coma. Currently orbiting Adrian and doing science with whatever is to hand. Amaze, Amaze!",
             "gmNotes": "Fist my bump.",
             "orbit": {
               "hostId": "tauceti-adrian",

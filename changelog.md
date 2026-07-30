@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.281-beta - 30th Jul 2026
+
+* Adrian's radius was wrong, and it was the cause of two things that looked like rendering faults. A 3.93 Earth-mass rocky planet should be about 1.45 Earth radii; it was carrying 1.81, which is a real measurement nobody has ever made -- Tau Ceti e does not transit. At that size its density came out at 3.66 g/cc, too low for rock, so the physics correctly inferred a fifth of it was ice and painted the ice on the outside, which is why it rendered white. The same inflated radius shortened its tidal despinning time to 4.7 Gyr, under the system's 5.8, so it locked and classified as a cold eyeball -- a label on a 309 degree world.
+* At the correct 9,219 km it comes out at 7.15 g/cc, no inferred ice, 1.88 g at the surface, and a despinning time of 9.2 Gyr -- longer than the system has existed, so it no longer locks. Density, makeup, colour, rotation and classification all follow from the one number, derived rather than asserted.
+* The Hail Mary signs off properly now. Amaze, Amaze!
+
 ## v2.1.280-beta - 30th Jul 2026
 
 * Fixed: the 3D starmap's "Depth exaggeration" slider did nothing. It was capped so the deepest system could never rise past the map's edge, which was sound when the bundled map was flat -- but the map now carries real astrometric depth, so the cap bound immediately and pinned the slider at 1x. It now does what it says; a map with real depth is dramatic at 1x already, so a little goes a long way.
