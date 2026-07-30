@@ -1073,14 +1073,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     } else if (framingWhole) {
       desiredTarget.set(0, 0, 0);
       outward.set(0, 0, 1); // azimuth reference for the whole-system framing
-      // The outermost body maps to exactly GRID_RADIUS by construction (compressScalar), so that is the
-      // half-extent to fit — and the distance that fits it depends on the LENS. The old fixed
-      // GRID_RADIUS * 1.5 ignored fov and aspect entirely: at 45° it showed a half-extent of 7.5 out of
-      // the 12 that exist, so "frame whole system" cut off the outer third of every system. Same maths
-      // as frameDistance, with a little border so the outermost orbit is not flush with the edge.
-      const wholeHalf = GRID_RADIUS * 1.06;
-      const wholeTan = Math.tan((camera.fov * Math.PI) / 360);
-      dist = wholeHalf / Math.max(1e-6, wholeTan * Math.min(1, camera.aspect));
+      // Everything the scene draws sits inside a sphere of GRID_RADIUS about the origin, by construction
+      // (compressScalar maps the outermost body to exactly that). So the honest fit is the BOUNDING
+      // SPHERE, not a flat half-extent: at a tilt the near edge of the disc is closer to the camera than
+      // the centre and projects larger, which a flat estimate does not see — it left the outer orbits
+      // clipping off the bottom of a 64° shot. R / sin(half-fov) fits a sphere of radius R at any tilt.
+      // (The old fixed GRID_RADIUS * 1.5 ignored the lens altogether: at fov 45 it framed a half-extent
+      // of 7.5 out of the 12 that exist, so "frame whole system" cut off the outer third of everything.)
+      const wholeR = GRID_RADIUS * 1.06; // a little border so the outermost orbit is not flush with the edge
+      const halfV = (camera.fov * Math.PI) / 360;
+      const halfH = Math.atan(Math.tan(halfV) * Math.max(1e-6, camera.aspect));
+      dist = wholeR / Math.max(1e-6, Math.sin(Math.min(halfV, halfH)));
     } else if (focusedId && beltFocus) {
       // A belt/ring-of-debris is centred on the star: keep the star centred and pull back so the
       // whole annulus fits — same overhead-at-angle shot, framed to the ring rather than one body.

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.298-beta - 30th Jul 2026
+
+* "Frame whole system" fits the system at a tilt too. Fitting a flat half-extent is only right looking straight down: tilt the camera and the near edge of the disc is closer than the centre, so it projects larger than a flat estimate expects, and the outer orbits still ran off the bottom of a 64-degree shot. Everything the scene draws sits inside a sphere of known radius about the origin, so it now fits the SPHERE, which holds at any angle.
+
 ## v2.1.297-beta - 30th Jul 2026
 
 * True scale draws the planets. At the true end of the dial a real planet is a fraction of a pixel across at whole-system framing -- Earth is about a twentieth of one -- so "true" was coming out as "absent", which is not what the setting means, and v2.1.288 made it worse by taking the old floor down with everything else. The mistake was the floor being written in scene units at all: a fixed size in a world whose zoom is not fixed hides bodies when you are zoomed out and bloats them when you are zoomed in, and either way it renders Jupiter and Mercury as the same dot. The floor is in SCREEN space now. A body draws at its true size the moment that reaches a few pixels and is never allowed below it, so nothing vanishes and true proportions appear as soon as they can be resolved -- frame Jupiter and it is a globe while its moons are still dots. Rings follow their planet, so Saturn keeps them. The readable end of the dial is untouched.
