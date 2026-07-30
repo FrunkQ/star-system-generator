@@ -92,6 +92,13 @@
   let panX = 0;
   let panY = 0;
   let zoom = 1;
+  // Map text must not grow with the map. Everything below lives INSIDE the world transform, so it tracks
+  // its system as you pan and zoom — which is right — but it also inherits the scale, so zooming in blew
+  // the names up to headlines and zooming out made them illegible. Dividing each text's font size and
+  // its offset from the marker by the zoom cancels exactly that one inherited factor, leaving a constant
+  // SCREEN size. (The 3D starmap gets the same result a different way: its labels are sprites with an
+  // explicit size, which never inherit scene scale in the first place.)
+  $: labelK = 1 / Math.max(0.05, zoom);
 
   let lastMouseX = 0;
   let lastMouseY = 0;
@@ -1365,9 +1372,10 @@
           {/if}
         </g>
         <text
-          x={systemNode.position.x + 15}
-          y={systemNode.position.y + 5}
+          x={systemNode.position.x + 15 * labelK}
+          y={systemNode.position.y + 5 * labelK}
           class="star-label"
+          style="font-size:{12 * labelK}px; stroke-width:{2 * labelK}px"
         >
           {systemNode.name}
         </text>
@@ -1377,9 +1385,10 @@
         {#if (systemNode.position.z ?? 0) !== 0 && activeScale.pixelsPerUnit > 0}
           {@const dz = (systemNode.position.z ?? 0) / activeScale.pixelsPerUnit}
           <text
-            x={systemNode.position.x + 15}
-            y={systemNode.position.y + 16}
+            x={systemNode.position.x + 15 * labelK}
+            y={systemNode.position.y + 16 * labelK}
             class="depth-label"
+            style="font-size:{9 * labelK}px"
           >{dz > 0 ? '+' : ''}{Math.abs(dz) < 10 ? dz.toFixed(1) : Math.round(dz)} {activeScale.unit}</text>
         {/if}
       {/each}
@@ -1392,9 +1401,9 @@
         <line class="ghost-tether" x1={placeOrigin.position.x} y1={placeOrigin.position.y} x2={placeGhost.x} y2={placeGhost.y} />
         <circle class="ghost-ring" cx={placeGhost.x} cy={placeGhost.y} r="9" />
         <circle class="ghost-core" cx={placeGhost.x} cy={placeGhost.y} r="3" />
-        <text class="ghost-label" x={placeGhost.x + 14} y={placeGhost.y + 5}>New system</text>
+        <text class="ghost-label" x={placeGhost.x + 14 * labelK} y={placeGhost.y + 5 * labelK} style="font-size:{10 * labelK}px">New system</text>
         {#if Math.abs(gz) > 1e-6 && activeScale.pixelsPerUnit > 0}
-          <text class="depth-label" x={placeGhost.x + 14} y={placeGhost.y + 16}
+          <text class="depth-label" x={placeGhost.x + 14 * labelK} y={placeGhost.y + 16 * labelK} style="font-size:{9 * labelK}px"
           >{gz > 0 ? '+' : ''}{Math.abs(gz) < 10 ? gz.toFixed(1) : Math.round(gz)} {activeScale.unit}</text>
         {/if}
       {/if}

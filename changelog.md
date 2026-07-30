@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.295-beta - 30th Jul 2026
+
+* System names on the GM starmap stay the same size on screen however far you zoom. They sit inside the map's own transform so they follow their system as you pan, which is right, but they inherited its scale too -- so zooming in turned the names into headlines and zooming out made them unreadable. Their size and their offset from the marker now divide out that one factor. The depth annotations and the placement ghost's labels go with them.
+
 ## v2.1.294-beta - 30th Jul 2026
 
 * The info-panel width is a percentage of the screen, and the preview follows the slider as you drag it. It was a raw pixel count, which is the wrong thing to author on one machine for someone reading on another -- 28% of the display is a promise that travels and 340px is not. The preview was worse than wrong: it drew the pixel figure capped at 340, so the top half of the slider's travel moved nothing at all. It now shows the same proportion of the stage the players will see.
