@@ -19,6 +19,7 @@
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
   import StarmapScaleBar from './StarmapScaleBar.svelte';
+  import SystemPlacementDialog from './SystemPlacementDialog.svelte';
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { packsForStarmap, reasonsConfig } from '$lib/physics/reasonsToVisit';
@@ -64,7 +65,14 @@
   let showAddTravellerModal = false;
   
   let travellerImportCoords = { x: 0, y: 0 };
-  
+
+  // WS7b relative placement: the system being measured FROM, the live ghost position, and which side of the
+  // map the dialogue is docked to. Non-null `placeOrigin` is what opens the dialogue.
+  let placeOrigin: Starmap['systems'][number] | null = null;
+  let placeGhost: { x: number; y: number; z?: number } | null = null;
+  let placeSide: 'left' | 'right' = 'right';
+  let placeInset = 16;
+
   const aboutContent = `
 <h1>Star System Explorer</h1>
 
@@ -787,6 +795,48 @@
     closeContextMenu();
   }
 
+  // WS7b — place a new system RELATIVE to this one, by bearing / elevation / distance. The dialogue docks
+  // to whichever side of the map the origin ISN'T on, so the live ghost stays visible while you drag.
+  function handleContextMenuAddNear() {
+    if (contextMenuSystemId) {
+      const sys = starmap.systems.find((s) => s.id === contextMenuSystemId);
+      if (sys) {
+        placeOrigin = sys;
+        placeGhost = null;
+        // Dock the panel to whichever side of the MAP CANVAS the origin is not on, so the ghost stays in
+        // sight. Both measurements have to be in the container's frame (which is what contextMenuX is in)
+        // and the inset has to clear the rail and the detail sidebar — the container spans those too.
+        const cont = starmapContainer?.getBoundingClientRect();
+        const svg = svgElement?.getBoundingClientRect();
+        if (cont && svg) {
+          const svgLeft = svg.left - cont.left;
+          placeSide = contextMenuX > svgLeft + svg.width / 2 ? 'left' : 'right';
+          placeInset = Math.round((placeSide === 'left' ? svgLeft : cont.right - svg.right) + 16);
+        } else {
+          placeSide = 'right';
+          placeInset = 16;
+        }
+      }
+    }
+    closeContextMenu();
+  }
+  // The distance slider's top end: a tenth of the map's own diagonal, rounded to something friendly, so the
+  // range suits a 12 ly neighbourhood and a 4000 ly sector alike without the GM configuring anything.
+  $: placeMaxDistance = (() => {
+    const perUnit = activeScale.pixelsPerUnit > 0 ? activeScale.pixelsPerUnit : 25;
+    const xs = starmap.systems.map((s) => s.position.x), ys = starmap.systems.map((s) => s.position.y);
+    if (!xs.length) return 50;
+    const span = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / perUnit;
+    const raw = Math.max(5, span / 2);
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    return Math.ceil(raw / mag) * mag;
+  })();
+  function handlePlaceSystem(pos: { x: number; y: number; z?: number }) {
+    placeOrigin = null;
+    placeGhost = null;
+    dispatch('addsystemat', pos);
+  }
+
   // WS7 — the SIMPLE depth path, for GMs who think in 2D: type how far above or below the map plane the
   // system sits, in the campaign's own distance unit. (Spherical RA/Dec entry is the power tool; this is
   // the plain door.) Stored in MAP units, so it converts through the scale like every other coordinate.
@@ -1332,6 +1382,21 @@
         {/if}
       {/each}
 
+      <!-- WS7b GHOST: where the system being placed would land. A tether back to the origin so the bearing
+           is unmistakable, a dashed ring for the system itself, and — when it has depth — the same signed
+           label the real systems carry, since a flat map cannot show height any other way. -->
+      {#if placeOrigin && placeGhost}
+        {@const gz = (placeGhost.z ?? 0) / (activeScale.pixelsPerUnit > 0 ? activeScale.pixelsPerUnit : 1)}
+        <line class="ghost-tether" x1={placeOrigin.position.x} y1={placeOrigin.position.y} x2={placeGhost.x} y2={placeGhost.y} />
+        <circle class="ghost-ring" cx={placeGhost.x} cy={placeGhost.y} r="9" />
+        <circle class="ghost-core" cx={placeGhost.x} cy={placeGhost.y} r="3" />
+        <text class="ghost-label" x={placeGhost.x + 14} y={placeGhost.y + 5}>New system</text>
+        {#if Math.abs(gz) > 1e-6 && activeScale.pixelsPerUnit > 0}
+          <text class="depth-label" x={placeGhost.x + 14} y={placeGhost.y + 16}
+          >{gz > 0 ? '+' : ''}{Math.abs(gz) < 10 ? gz.toFixed(1) : Math.round(gz)} {activeScale.unit}</text>
+        {/if}
+      {/if}
+
       <!-- Measure tool overlay: line + distance between the two picked targets (stars or ships). -->
       {#if measureMode && mA}
         <circle class="measure-pt" cx={mA.x} cy={mA.y} r="4" />
@@ -1392,6 +1457,7 @@
         {:else if contextMenuSystemId}
             <li on:click={handleContextMenuRename}>Rename System…</li>
             <li on:click={handleContextMenuDepth}>Set Depth…</li>
+            <li on:click={handleContextMenuAddNear}>Add System near here…</li>
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
                 Start Link
@@ -1417,6 +1483,21 @@
                 </ul>
               </div>
           {/if}
+
+  {#if placeOrigin}
+    <SystemPlacementDialog
+      originName={placeOrigin.name}
+      originPos={placeOrigin.position}
+      unit={activeScale.unit}
+      pixelsPerUnit={activeScale.pixelsPerUnit}
+      maxDistance={placeMaxDistance}
+      side={placeSide}
+      inset={placeInset}
+      on:change={(e) => (placeGhost = e.detail)}
+      on:place={(e) => handlePlaceSystem(e.detail)}
+      on:cancel={() => { placeOrigin = null; placeGhost = null; }}
+    />
+  {/if}
 
   {#if showSaveModal}
       <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
@@ -1823,6 +1904,12 @@
   }
   /* WS7 depth cue — quieter than the name, so it reads as an annotation not a second label. */
   .depth-label { font-size: 9px; fill: #8fb4e0; opacity: 0.85; pointer-events: none; }
+
+  /* WS7b: the not-yet-real system. Dashed and warm so it reads as a proposal, never as map content. */
+  .ghost-tether { stroke: #ff7a45; stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.6; pointer-events: none; }
+  .ghost-ring { fill: none; stroke: #ff7a45; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.9; pointer-events: none; }
+  .ghost-core { fill: #ff7a45; opacity: 0.9; pointer-events: none; }
+  .ghost-label { font-size: 10px; fill: #ff9a6b; pointer-events: none; }
 
   .plus-indicator {
     fill: #fff;

@@ -2,6 +2,17 @@
 
 All notable changes are listed here:
 
+## v2.1.271-beta - 30th Jul 2026
+
+* New on a system's right-click menu: "Add System near here…". Place a new system by direction and distance from one already on the map -- bearing, elevation above or below the plane, and how far -- with a slider and a numeric box for each. A ghost marker, tethered back to the origin, shows exactly where it will land and slides around as you drag; the panel docks to the far side of the map so it never covers it. North is up the screen, and every direction is spelled out in words as well as degrees.
+
+## v2.1.270-beta - 30th Jul 2026
+
+* New on a system's right-click menu: "Set Depth…" -- type how far above or below the map plane a system sits, in your campaign's own distance unit. Any route touching it re-measures. Systems off the plane now show their signed depth beside the name on the 2D map, so you are not editing blind.
+* Fixed: the 2D starmap applied depth as if it were a 3D view, so a system with depth drifted away from its own map position. The 2D map is a plan view: depth belongs to the 3D one.
+* Fixed: high depth exaggeration threw deep systems clean out of frame. The stretch now stops at the map's own radius, so the deepest system always stays in view.
+* Fixed: dragging a system on the map wiped its depth.
+
 ## v2.1.269-beta - 30th Jul 2026
 
 * The 3D starmap now SHOWS depth: systems sit above or below the reference plane, each tethered to it by a fading drop-line with a small tick marking its position on the plane, so you can tell at a glance which way and how far. Viewed straight down it collapses and reads exactly like the 2D map.

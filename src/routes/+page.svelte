@@ -92,7 +92,7 @@
 
   let showNewStarmapModal = false;
   let showGenerationWizard = false;
-  let pendingWizardPosition: { x: number; y: number } | null = null;
+  let pendingWizardPosition: { x: number; y: number; z?: number } | null = null;
   let showEvolutionaryWizard = false;
   let pendingStarmapData: any = null;
   let currentSystemId: string | null = null;
@@ -1004,9 +1004,12 @@
 
   // "Add System" now opens the generation wizard (examples / presets / HR + age + knobs) instead of
   // dropping a fully-random system. The clicked position is remembered for placement.
-  function handleAddSystemAt(event: CustomEvent<{ x: number; y: number }>) {
+  // WS7b: `z` is optional and only present when the system was placed with the relative-placement dialogue.
+  // It has to be carried through to the wizard, or a system placed above the plane would land back on it.
+  function handleAddSystemAt(event: CustomEvent<{ x: number; y: number; z?: number }>) {
     if (!$starmapStore || !selectedRulepack) return;
-    pendingWizardPosition = { x: event.detail.x, y: event.detail.y };
+    const { x, y, z } = event.detail;
+    pendingWizardPosition = z ? { x, y, z } : { x, y };
     showGenerationWizard = true;
   }
 
