@@ -378,14 +378,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent();
   }
 
-  // How far anything drawn at a FIXED size is allowed to shrink as the body-size dial leaves
-  // "readable". The scene is full of MARKERS rather than geometry — the minimum body radius, the
-  // wireframe vertex dots, belt rubble, ring particles — and every one of their sizes was picked for
-  // the readable end and then applied at every setting. At TRUE scale a real body shrinks by three or
-  // four orders of magnitude; the markers did not follow, so the planets vanished underneath a wall of
-  // boulders sitting across their own orbit, all of them the same size whatever they stood for.
-  // They now shrink with the dial. The 2% stop is where a marker is already sub-pixel at whole-system
-  // framing, so there is nothing to gain by taking it to zero and a belt would simply cease to exist.
+  // How far a SPRITE is allowed to shrink as the body-size dial leaves "readable". The scene draws a
+  // good deal that is a marker rather than geometry — wireframe vertex dots, belt rubble, ring particles
+  // — and each of those sizes was picked for the readable end and then used at every setting. At TRUE
+  // scale a real body shrinks by three or four orders of magnitude and the sprites did not follow, so
+  // the planets sat under a wall of boulders lying across their own orbits. They now shrink with the
+  // dial, stopping at 2%, below which a belt would cease to exist rather than read as fine dust.
+  // NB sprites ONLY. The minimum body radius is not a sprite: the camera is sized off it, so scaling it
+  // down puts the framing distance inside the near plane. Body visibility is a screen-space job.
   function markerScale(): number {
     return bodySize >= 0.999 ? 1 : Math.max(0.02, bodySize);
   }
@@ -396,7 +396,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (bodySize >= 0.999) return readable;
     const km = node.physical_parameters?.radiusKm || node.radiusKm || 3000;
     const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax); // physical radius at the true-scale factor
-    return Math.max(0.006 * markerScale(), trueScene * (1 - bodySize) + readable * bodySize);
+    // The 0.006 floor is NOT cosmetic and must not be scaled down with the marker sizes: the CAMERA is
+    // sized off it. Framing a body puts the camera at about radius/(fillFrac*tan(halfFov)), and the near
+    // plane is 0.01 — shrink the radius by 50x and that distance lands INSIDE the near plane, so the body
+    // you just framed is clipped away as the camera closes on it. (That is exactly what v2.1.288 did.)
+    // Visibility at wide zoom is handled where it belongs, in screen space — see updateTrueScaleFloor.
+    return Math.max(0.006, trueScene * (1 - bodySize) + readable * bodySize);
   }
 
   // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
@@ -405,7 +410,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (bodySize >= 0.999) return STAR_RADIUS;
     const km = node.physical_parameters?.radiusKm || node.radiusKm || 696000;
     const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-    return Math.max(0.02 * markerScale(), trueScene * (1 - bodySize) + STAR_RADIUS * bodySize);
+    return Math.max(0.02, trueScene * (1 - bodySize) + STAR_RADIUS * bodySize); // floor sizes the camera too — see bodyRadiusScene
   }
 
   function rebuildContent() {

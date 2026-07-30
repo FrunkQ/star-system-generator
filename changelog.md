@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.299-beta - 31st Jul 2026
+
+* Framing a body at true scale works again. v2.1.288 shrank the minimum body radius along with the sprite sizes, and that minimum is not cosmetic -- the CAMERA is sized off it. Framing puts the camera at roughly the body radius divided by the fill fraction, so a fiftyfold smaller radius put that distance inside the near plane, and the world you had just asked to look at was clipped away as the camera closed on it: it got near, then vanished. The minimum radius is back where it was; the sprite sizes, which were the actual complaint, still follow the dial; and visibility at wide zoom is handled in screen space, which is where it belongs.
+
 ## v2.1.298-beta - 30th Jul 2026
 
 * "Frame whole system" fits the system at a tilt too. Fitting a flat half-extent is only right looking straight down: tilt the camera and the near edge of the disc is closer than the centre, so it projects larger than a flat estimate expects, and the outer orbits still ran off the bottom of a 64-degree shot. Everything the scene draws sits inside a sphere of known radius about the origin, so it now fits the SPHERE, which holds at any angle.
