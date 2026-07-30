@@ -184,17 +184,39 @@ most gameable way possible: the stars ORBIT each other fast enough to watch.
   (the Trapezium in Orion is a genuinely bound mini-cluster), and high-order multiples
   (Castor's six stars) — anywhere the mean separation approaches system scale.
 
-**The gate.** Two triggers, either sufficient, both cheap at preview time:
+**The gate — mass-aware, not just density.** Density is a tempting criterion but it is not
+mass-related, and mass is what actually sets the behaviour. Two red dwarfs 0.25 ly apart are
+gravitationally bound with a ~million-year period — dense by any separation threshold, yet a
+starmap represents them perfectly well. S2 sits a mere ~970 AU from Sgr A* and completes an
+orbit in 16 years, because the enclosed mass is 4.3 million Suns. Same "crowding", opposite
+answer. So the deciding quantity is the **dynamical time** of the region,
 
-1. **Identity:** the resolved centre's SIMBAD object type is a cluster or black hole
-   (`GlC`, `OpC`, `Cl*`, `BH?`/`BH*`, or Sgr A* itself). Offer immediately.
-2. **Density:** from the COUNT query, mean separation = (4/3 π R³ / N)^(1/3). Below a
-   threshold (first guess ~0.25 ly — a few thousand times a wide-binary separation, far
-   inside any starmap's useful node spacing) the region is flagged dense.
+    t_dyn ≈ 2π sqrt(R³ / G · M_enclosed)
+
+— the characteristic orbital period at the region's scale — and the gate runs in two stages
+matching what data is available when:
+
+1. **Cheap tripwire (pre-fetch).** Runs on the COUNT query alone, where masses are unknown:
+   (a) identity — the resolved centre's SIMBAD object type is a cluster or black hole
+   (`GlC`, `OpC`, `Cl*`, `BH?`/`BH*`, Sgr A* itself): flag immediately; (b) density — mean
+   separation below a generous threshold: flag as "worth checking". The tripwire only decides
+   whether to EVALUATE, never what to offer — density is the stand-in, and it is allowed to
+   over-trigger because stage 2 is cheap once data is in hand.
+2. **Real decision (post-fetch, pre-import).** With the preview data fetched, masses are known
+   (catalogue masses, mass-from-luminosity estimates, SMBH masses from a small curated list).
+   Compute M_enclosed and t_dyn:
+   - **t_dyn below the watchable band** (first guess: under ~10,000 years — motion a campaign
+     can actually run forward into with the time controls): offer cluster-as-system.
+   - **Dense but slow** (small separations, stellar-only masses, t_dyn in the millions of
+     years): do NOT offer a system — offer the starmap with a crowding note instead ("these
+     stars are a bound group; on any playable timescale they are scenery"). This is the case
+     pure density gets wrong.
+   - Borderline: say the number ("typical orbital period here is ~80,000 years") and let the
+     GM choose.
 
 When the gate fires, the dialog offers a third import shape alongside the usual one:
 
-    ⚠ This region is dense enough to behave as one gravitational system.
+    ⚠ These stars orbit each other on playable timescales (typical period ~16 y).
     (•) Import as a single system — stars (and the central black hole) as
         orbiting bodies; watch them move on the system view's timescale.
     ( ) Import as a starmap anyway (nodes will crowd; positions still true).
@@ -202,7 +224,20 @@ When the gate fires, the dialog offers a third import shape alongside the usual 
 **Conversion rules (cluster-as-system):**
 
 - Primary = the dominant central mass (the SMBH when present; else a cluster barycentre with
-  `effectiveMassKg` from the summed membership).
+  `effectiveMassKg` from the summed membership). Which regime applies is itself a mass
+  question: if one body holds the majority of M_enclosed, it is a central-potential system and
+  per-node Keplerian orbits are genuinely accurate (the Sgr A* case); if mass is spread across
+  the membership, it is a swarm — orbits go around the barycentre and get the honesty footnote
+  below.
+- **Hierarchy by Hill spheres, with the machinery SSE already has.** Membership and nesting are
+  decided exactly the way SSE decides who orbits whom today (`findContainingHost` /
+  the Hill-radius reasoning in `lib/physics/orbits.ts`, and `reconcileBarycenters`): each star
+  is assigned to the deepest node whose Hill sphere (with respect to its parent) contains it.
+  A tight binary deep inside the cluster therefore imports as its own barycentre pair orbiting
+  the primary — the same nested-barycentre shape as Alpha Centauri in the bundled map — rather
+  than as two independent primary-orbiters that would shear apart. The importer computes each
+  candidate's Hill radius from the same masses it just fetched, so structure and physics come
+  from one source.
 - Members become star nodes with orbits. Where published elements exist (the S-stars), import
   them verbatim — real periods, real eccentricities (S2's e = 0.88 is a gift to any GM).
   Where they don't, generate plausible bound orbits deterministically from each star's true
