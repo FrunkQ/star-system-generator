@@ -55,6 +55,8 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { stampForSave } from '$lib/map/provenance';
+  import { systemSeparation, zCounts } from '$lib/map/systemDistance';
+  import { unitKind, rescaleForUnitChange } from '$lib/map/distanceUnits';
   import { shouldOfferUpgrade, dismissUpgrade, type UpgradeOffer } from '$lib/map/upgradeOffer';
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
@@ -796,17 +798,17 @@
     return { ...temporalNormalized, mapMode, invertDisplay, scale, generationEngine: sanitized.generationEngine };
   }
 
+  // WS7: this MUST go through lib/map/systemDistance.ts like every other distance. It used to measure
+  // dx/dy only, so a route between two systems at different depths reported its planar shadow — a system
+  // labelled "3.8 ly below the plane" could sit on a 2.1 ly route, which is geometrically impossible.
+  // The shared module is the single place that decides whether depth counts.
   function getSystemDistanceLy(starmap: StarmapType, sourceSystemId: string, targetSystemId: string): number {
     const source = starmap.systems.find((s) => s.id === sourceSystemId);
     const target = starmap.systems.find((s) => s.id === targetSystemId);
     if (!source || !target) return 0;
-
-    const dx = target.position.x - source.position.x;
-    const dy = target.position.y - source.position.y;
-    const pixelDistance = Math.sqrt(dx * dx + dy * dy);
-    const pixelsPerUnit = starmap.scale?.pixelsPerUnit ?? 25;
-    if (pixelsPerUnit <= 0) return 0;
-    return roundDistance(pixelDistance / pixelsPerUnit);
+    return roundDistance(
+      systemSeparation(source.position, target.position, starmap.scale?.pixelsPerUnit ?? 25, !zCounts(starmap))
+    );
   }
 
   function rebuildRouteDistancesFromGeometry(starmap: StarmapType): StarmapType {
@@ -1344,6 +1346,19 @@
     starmapStore.update(starmap => {
       if (starmap) {
         const merged = { ...starmap, ...starmapSettings };
+        // Changing the distance unit changes the RULER, not the layout: rescale pixelsPerUnit so nothing
+        // moves and every distance converts. Without this the numbers stay put and only the suffix changes,
+        // so a 3.8 ly depth reads "3.8 pc". Routes are rebuilt from geometry just below, so they follow.
+        if (merged.scale && unitKind(starmap.scale?.unit) && unitKind(merged.scale.unit)) {
+          merged.scale = {
+            ...merged.scale,
+            pixelsPerUnit: rescaleForUnitChange(
+              starmap.scale?.pixelsPerUnit ?? merged.scale.pixelsPerUnit,
+              starmap.scale?.unit,
+              merged.scale.unit
+            )
+          };
+        }
         if ((merged.mapMode ?? 'diagrammatic') === 'scaled') {
           return rebuildRouteDistancesFromGeometry(withStarmapDefaults(merged));
         }

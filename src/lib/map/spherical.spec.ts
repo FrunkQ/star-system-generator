@@ -3,7 +3,7 @@ import {
   offsetToMapPos, mapPosToOffset, wrapBearing, clampElevation, compassName, elevationName,
   bearingToRa, raToBearing, elevationToDec, decToElevation, formatRa, formatDec
 } from './spherical';
-import { unitKind, convertDistance, unitOptionsFor, LY_PER_PC } from './distanceUnits';
+import { unitKind, convertDistance, unitOptionsFor, rescaleForUnitChange, LY_PER_PC } from './distanceUnits';
 
 const ORIGIN = { x: 100, y: 100, z: 0 };
 const PPU = 10; // 10 map units per distance unit
@@ -201,5 +201,33 @@ describe('distance units', () => {
 
   it('leaves a value exactly alone when the unit does not change', () => {
     expect(convertDistance(8.6, 'ly', 'ly')).toBe(8.6);
+  });
+});
+
+describe('distance units — changing a map’s unit rescales the ruler, not the layout', () => {
+  const PPU_LY = 43.30127018922193; // the bundled Local Neighbourhood's scale
+
+  it('converts pixelsPerUnit so every distance reads correctly in the new unit', () => {
+    const ppuPc = rescaleForUnitChange(PPU_LY, 'ly', 'pc');
+    // Alpha Centauri sits 166.18 map units below the plane. That is 3.84 ly, and 3.84 ly IS 1.18 pc.
+    expect(166.18 / PPU_LY).toBeCloseTo(3.8378, 3);
+    expect(166.18 / ppuPc).toBeCloseTo(3.8378 / LY_PER_PC, 3);
+    expect(166.18 / ppuPc).toBeCloseTo(1.1767, 3);
+  });
+
+  it('round trips, so switching back and forth does not drift the scale', () => {
+    const there = rescaleForUnitChange(PPU_LY, 'ly', 'pc');
+    expect(rescaleForUnitChange(there, 'pc', 'ly')).toBeCloseTo(PPU_LY, 9);
+  });
+
+  it('leaves the scale ALONE when either side is an invented unit', () => {
+    // A "jump" has no defined size, so there is no honest factor and inventing one would corrupt the map.
+    expect(rescaleForUnitChange(PPU_LY, 'ly', 'jumps')).toBe(PPU_LY);
+    expect(rescaleForUnitChange(PPU_LY, 'jumps', 'ly')).toBe(PPU_LY);
+    expect(rescaleForUnitChange(PPU_LY, 'ly', 'ly')).toBe(PPU_LY);
+  });
+
+  it('ignores an unusable scale rather than producing an infinity', () => {
+    expect(rescaleForUnitChange(0, 'ly', 'pc')).toBe(0);
   });
 });

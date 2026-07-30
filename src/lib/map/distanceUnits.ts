@@ -41,3 +41,27 @@ export function convertDistance(value: number, from: LinearUnit, to: LinearUnit)
 export function unitOptionsFor(campaignUnit: string | null | undefined): LinearUnit[] {
   return unitKind(campaignUnit) ? (['ly', 'pc'] as LinearUnit[]) : [];
 }
+
+/**
+ * The `pixelsPerUnit` a map needs after its distance UNIT changes, so that nothing on it moves and every
+ * distance converts properly.
+ *
+ * Changing the unit is a change of ruler, not of layout. Positions are stored in map units, and a distance
+ * is `mapUnits / pixelsPerUnit` — so leaving `pixelsPerUnit` alone when the unit changes keeps every NUMBER
+ * the same and simply relabels it, which is how "Alpha Centauri, 3.8 ly away" silently became "3.8 pc".
+ * Scaling the ruler instead means the map is untouched and 3.8 ly correctly reads 1.2 pc.
+ *
+ * Returns the value unchanged when either side is an abstract unit: an invented unit has no defined size,
+ * so there is no honest conversion factor and inventing one would corrupt the map's scale.
+ */
+export function rescaleForUnitChange(
+  pixelsPerUnit: number,
+  fromUnit: string | null | undefined,
+  toUnit: string | null | undefined
+): number {
+  const from = unitKind(fromUnit);
+  const to = unitKind(toUnit);
+  if (!from || !to || from === to || !(pixelsPerUnit > 0)) return pixelsPerUnit;
+  // One OLD unit is this many NEW units; the ruler scales by its reciprocal.
+  return pixelsPerUnit / convertDistance(1, from, to);
+}

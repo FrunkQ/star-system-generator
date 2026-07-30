@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.276-beta - 30th Jul 2026
+
+* Fixed: link distances ignored DEPTH. A route measured only its flat shadow on the map, so a system labelled "3.8 ly below the plane" could sit on a 2.1 ly link -- which is not a shape that exists. Links now measure in three dimensions like everything else, and honour the campaign's "ignore depth" setting. Sol to Alpha Centauri now reads its real 4.4 light years instead of 2.1.
+* Fixed: changing a campaign's distance unit relabelled every number without converting it, so switching light years to parsecs left "3.8" in place and simply wrote "pc" after it. Changing the unit is a change of ruler, not of layout: the map now keeps its shape and 3.8 ly correctly becomes 1.2 pc. Campaigns using their own invented unit are left alone, because there is no honest conversion for a made-up unit.
+* Fixed: the star-generation wizard juddered between two sizes as its scrollbar appeared and vanished on every frame. The HR diagram sized itself to the panel, which made the panel overflow, which added a scrollbar, which narrowed the panel... The scrollbar space is now always reserved, and the diagram ignores changes too small to see.
+
 ## v2.1.275-beta - 30th Jul 2026
 
 * "Add System near here…" gained a units choice at the top. Angles can be typed the plain way (bearing and elevation in degrees) or the astronomer's way -- right ascension in hours, minutes and seconds, declination in degrees, arcminutes and arcseconds, with its own sign button so "half a degree below the plane" is sayable. Distance can be typed and read in light years or parsecs whichever the campaign stores.

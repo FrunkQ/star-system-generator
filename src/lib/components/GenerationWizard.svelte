@@ -392,7 +392,11 @@
   .stepchip { font-size: 0.7rem; background: var(--bg-control, #232733); color: var(--text-muted, #cfcfcf); border-radius: 999px; padding: 2px 8px; margin-left: 8px; }
   .sub { margin: 3px 0 0; font-size: 0.82rem; color: var(--text-muted, #cfcfcf); }
   .close { background: none; border: none; color: var(--text-muted, #cfcfcf); font-size: 1.6rem; line-height: 1; cursor: pointer; }
-  .content { overflow-y: auto; padding: 14px 18px; }
+  /* `scrollbar-gutter: stable` kills a resize feedback loop at its source. The HR diagram sizes itself to
+     this panel's width and is tall, so without a reserved gutter: canvas grows -> content overflows ->
+     scrollbar appears -> panel narrows -> canvas shrinks -> overflow gone -> scrollbar disappears -> panel
+     widens, once per frame, forever. Reserving the gutter means the width never depends on the content. */
+  .content { overflow-y: auto; scrollbar-gutter: stable; padding: 14px 18px; }
   .block { margin-bottom: 18px; }
   .block h3 { margin: 0 0 8px; font-size: 0.9rem; color: var(--text, #fff); }
   .row { display: flex; gap: 8px; }

@@ -191,7 +191,9 @@
     .header-actions { display: flex; gap: 10px; align-items: center; }
     .steps { display: flex; gap: 1.5rem; font-size: 0.85rem; color: #a0aec0; }
     .step.active { color: #63b3ed; font-weight: bold; text-decoration: underline; }
-    .wizard-content { flex-grow: 1; display: flex; justify-content: center; align-items: flex-start; min-height: 0; width: 100%; overflow-y: auto; }
+    /* scrollbar-gutter: stable — the HR diagram sizes itself to this panel, so a scrollbar that comes and
+       goes with the content would make it oscillate. Reserving the gutter fixes the width. */
+    .wizard-content { flex-grow: 1; display: flex; justify-content: center; align-items: flex-start; min-height: 0; width: 100%; overflow-y: auto; scrollbar-gutter: stable; }
     .phase.split-layout { display: flex; gap: 2rem; width: 100%; max-width: 1600px; align-items: flex-start; height: 100%; }
     .phase.vertical-layout { display: flex; flex-direction: column; width: 100%; max-width: 1200px; gap: 1.5rem; padding-bottom: 2rem; }
     .phase.full-width { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }

@@ -142,36 +142,59 @@
     }
 
     let resizeObserver: ResizeObserver;
+    // RESIZE GATING. This canvas sizes itself to its container, which makes it capable of driving its own
+    // container's size — the classic feedback loop: a taller canvas makes the panel overflow, a scrollbar
+    // appears, the panel narrows, the canvas shrinks, the scrollbar goes, and round again once per frame.
+    // The host reserves a scrollbar gutter so the width cannot wobble; these two guards mean the diagram
+    // cannot oscillate even if it is dropped into some other layout that does wobble.
+    //  1. A DEAD BAND: sub-pixel and 1px changes are invisible, and they are exactly what a loop feeds on.
+    //  2. rAF COALESCING: ResizeObserver can fire several times per frame, and resizing synchronously
+    //     inside its callback is what produces "ResizeObserver loop completed with undelivered
+    //     notifications". One resize per frame, after the browser has settled.
+    let appliedWidth = 0;
+    let appliedHeight = 0;
+    let resizeFrame = 0;
+
+    function requestResize() {
+        if (resizeFrame) return;
+        resizeFrame = requestAnimationFrame(() => { resizeFrame = 0; handleResize(); });
+    }
 
     function handleResize() {
         if (!canvas || !imageLoaded || !container) return;
-        
+
         const dpr = window.devicePixelRatio || 1;
         const aspect = bgImage.width / bgImage.height;
-        
+
         // Use the container (hr-container) width
         const availWidth = container.clientWidth;
         const availHeight = Math.min(window.innerHeight * 0.8, 850);
-        
+
         if (availWidth < 100) return; // Ignore tiny/uninitialized widths
 
         let targetWidth = availWidth;
         let targetHeight = targetWidth / aspect;
-        
+
         if (targetHeight > availHeight) {
             targetHeight = availHeight;
             targetWidth = targetHeight * aspect;
         }
-        
+
+        // The dead band. Anything under 2px is beneath noticing, so redrawing for it buys nothing and
+        // risks feeding a loop.
+        if (Math.abs(targetWidth - appliedWidth) < 2 && Math.abs(targetHeight - appliedHeight) < 2) return;
+        appliedWidth = targetWidth;
+        appliedHeight = targetHeight;
+
         logicalWidth = targetWidth;
         logicalHeight = targetHeight;
 
         canvas.style.height = `${targetHeight}px`;
         canvas.style.width = `${targetWidth}px`;
-        
+
         canvas.width = targetWidth * dpr;
         canvas.height = targetHeight * dpr;
-        
+
         ctx.scale(dpr, dpr);
         drawDiagram();
     }
@@ -185,16 +208,16 @@
             handleResize();
         };
 
-        // ResizeObserver is much more reliable than window resize for layout shifts
-        resizeObserver = new ResizeObserver(() => {
-            handleResize();
-        });
+        // ResizeObserver is much more reliable than window resize for layout shifts. Never resize
+        // synchronously from inside it — see requestResize.
+        resizeObserver = new ResizeObserver(() => requestResize());
         resizeObserver.observe(container);
     });
 
     import { onDestroy } from 'svelte';
     onDestroy(() => {
         if (resizeObserver) resizeObserver.disconnect();
+        if (resizeFrame) cancelAnimationFrame(resizeFrame);
     });
 </script>
 
