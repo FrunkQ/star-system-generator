@@ -376,13 +376,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent();
   }
 
+  // How far anything drawn at a FIXED size is allowed to shrink as the body-size dial leaves
+  // "readable". The scene is full of MARKERS rather than geometry — the minimum body radius, the
+  // wireframe vertex dots, belt rubble, ring particles — and every one of their sizes was picked for
+  // the readable end and then applied at every setting. At TRUE scale a real body shrinks by three or
+  // four orders of magnitude; the markers did not follow, so the planets vanished underneath a wall of
+  // boulders sitting across their own orbit, all of them the same size whatever they stood for.
+  // They now shrink with the dial. The 2% stop is where a marker is already sub-pixel at whole-system
+  // framing, so there is nothing to gain by taking it to zero and a belt would simply cease to exist.
+  function markerScale(): number {
+    return bodySize >= 0.999 ? 1 : Math.max(0.02, bodySize);
+  }
+
   // Rendered sphere radius for a body, blending its readable size toward its true physical size.
   function bodyRadiusScene(node: any, systemLevel: boolean): number {
     const readable = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
     if (bodySize >= 0.999) return readable;
     const km = node.physical_parameters?.radiusKm || node.radiusKm || 3000;
     const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax); // physical radius at the true-scale factor
-    return Math.max(0.006, trueScene * (1 - bodySize) + readable * bodySize);
+    return Math.max(0.006 * markerScale(), trueScene * (1 - bodySize) + readable * bodySize);
   }
 
   // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
@@ -391,7 +403,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (bodySize >= 0.999) return STAR_RADIUS;
     const km = node.physical_parameters?.radiusKm || node.radiusKm || 696000;
     const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-    return Math.max(0.02, trueScene * (1 - bodySize) + STAR_RADIUS * bodySize);
+    return Math.max(0.02 * markerScale(), trueScene * (1 - bodySize) + STAR_RADIUS * bodySize);
   }
 
   function rebuildContent() {
@@ -1283,7 +1295,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (isBelt(node)) {
         const belt = beltStyle === 'band'
           ? buildBeltRing(node, positionToScene)
-          : buildBeltBand(node, positionToScene, beltDetail, timeMs, renderStyle !== 'filled');
+          : buildBeltBand(node, positionToScene, beltDetail, timeMs, renderStyle !== 'filled', markerScale());
         if (belt) { contentGroup.add(belt.group); beltVisuals.push(belt); }
         continue;
       }
@@ -1293,7 +1305,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (parent) {
           const rv = beltStyle === 'band'
             ? buildPlanetRingBand(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)))
-            : buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs);
+            : buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs, markerScale());
           if (rv) { contentGroup.add(rv.pivot); ringVisuals.push(rv); }
         }
         continue;
@@ -1339,7 +1351,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // non-emissive polys, glow adds the emissive glowing vertices — same as the other bodies.
           const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
           const occluded = renderStyle === 'wire-glow-occ' || renderStyle === 'wire-flat-occ';
-          mesh = buildWireframeBody(starR, colorHex, glow, occluded);
+          mesh = buildWireframeBody(starR, colorHex, glow, occluded, null, 0.02 * markerScale());
         } else if (isBH) {
           // Black hole: a pure-black event horizon. A quiescent hole shows only a faint photon-ring
           // glow; a FEEDING hole (star/BH_active or accretionEddington>0) gets a bright, hot white-gold
@@ -1360,7 +1372,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // the lensing pass then wraps its far side over/under the shadow (the Interstellar look).
             const rkm = node.radiusKm || 30;
             const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: rkm * 1.6, radiusOuterKm: rkm * (5 + edd * 4) };
-            const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs);
+            const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs, markerScale());
             if (disc) {
               contentGroup.add(disc.pivot);
               ringVisuals.push(disc);
@@ -1395,7 +1407,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
-            const dotMat = new THREE.PointsMaterial({ color: colorHex, size: Math.max(0.02, starR * 0.13), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+            const dotMat = new THREE.PointsMaterial({ color: colorHex, size: Math.max(0.02 * markerScale(), starR * 0.13), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.Points(sphere.geometry, dotMat));
           }
           // Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
@@ -1438,7 +1450,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
           const occluded = renderStyle === 'wire-glow-occ' || renderStyle === 'wire-flat-occ';
           const terrain = bodyStyle === 'textured' ? wireTerrain(node) : null;
-          const wf = buildWireframeBody(radius, selHex, glow, occluded, terrain);
+          const wf = buildWireframeBody(radius, selHex, glow, occluded, terrain, 0.02 * markerScale());
           if (polF < 0.999) wf.scale.set(1, polF, 1);
           mesh = wf;
           // Wireframe aurora: don't light the whole body — just add a few flickering emissive polar arcs
@@ -1500,7 +1512,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: selHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
-            const dotMat = new THREE.PointsMaterial({ color: selHex, size: Math.max(0.02, radius * 0.13), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+            const dotMat = new THREE.PointsMaterial({ color: selHex, size: Math.max(0.02 * markerScale(), radius * 0.13), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.Points(sphere.geometry, dotMat));
           }
           // Aurora: an additive emissive shell glowing at the (tilted) magnetic poles, flickering over
@@ -2285,7 +2297,7 @@ function buildLandPolys(geo: THREE.SphereGeometry, radius: number, t: WireTerrai
 // only. `occluded` adds an invisible depth-writing sphere so the far-side edges are hidden (a solid
 // vector globe) instead of see-through. `terrain` fills the land facets so worlds with coastlines show
 // rough continents. Returned as a Group so the caller can tilt/scale/spin it.
-function buildWireframeBody(radius: number, color: number, glow: boolean, occluded: boolean, terrain?: WireTerrain | null): THREE.Group {
+function buildWireframeBody(radius: number, color: number, glow: boolean, occluded: boolean, terrain?: WireTerrain | null, dotFloor = 0.02): THREE.Group {
   const g = new THREE.Group();
   const SEG_LON = 16, SEG_LAT = 10;
   const geo = new THREE.SphereGeometry(radius, SEG_LON, SEG_LAT); // low-poly for the faceted vector look
@@ -2306,7 +2318,7 @@ function buildWireframeBody(radius: number, color: number, glow: boolean, occlud
   g.add(new THREE.LineSegments(new THREE.WireframeGeometry(geo), lineMat));
   if (glow) {
     // Vertices brighter than lines — the vector-screen highlight. Flat modes omit these.
-    const dotMat = new THREE.PointsMaterial({ color, size: Math.max(0.02, radius * 0.16), sizeAttenuation: true, transparent: true, opacity: 1, blending, depthWrite: occluded });
+    const dotMat = new THREE.PointsMaterial({ color, size: Math.max(dotFloor, radius * 0.16), sizeAttenuation: true, transparent: true, opacity: 1, blending, depthWrite: occluded });
     g.add(new THREE.Points(geo, dotMat));
   }
   return g;
@@ -2425,7 +2437,7 @@ function buildBeltRing(node: any, project: Projector): BeltVisual | null {
   return { group, buckets: [], t0Sec: 0, id: node.id, outerScene, parentId: node.parentId ?? null };
 }
 
-function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number, wire: boolean): BeltVisual | null {
+function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number, wire: boolean, markerFloor = 1): BeltVisual | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
@@ -2459,7 +2471,7 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     bucketPos[b].push(v.x, v.y, v.z);
     bucketOmega[b].push(om);
   }
-  const sizes = [0.1, 0.15, 0.2, 0.12];
+  const sizes = [0.1, 0.15, 0.2, 0.12].map((v) => v * markerFloor); // rubble sprites follow the body-size dial
   const tints = [0xc4cdd8, 0xd2c3ab, 0xb3bcc8, 0xcabfa6]; // grey/brown rubble, lifted to read against space
   const group = new THREE.Group();
   const buckets: BeltVisual['buckets'] = [];
@@ -2580,7 +2592,7 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
   };
 }
 
-function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number): RingVisual | null {
+function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number, markerFloor = 1): RingVisual | null {
   const isAccretionDisc = isBlackHoleNode(parent);
   const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
   let innerScene: number;
@@ -2645,7 +2657,7 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
     for (let i = 0; i < count; i++) { colors[3 * i] = baseColor.r; colors[3 * i + 1] = baseColor.g; colors[3 * i + 2] = baseColor.b; }
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const size = Math.max(0.008, planetRenderedR * (isAccretionDisc ? 0.09 : 0.06));
+  const size = Math.max(0.008 * markerFloor, planetRenderedR * (isAccretionDisc ? 0.09 : 0.06));
   const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true,
     opacity: isAccretionDisc ? Math.min(1, ringOpacity + 0.35) : ringOpacity, depthWrite: false,
     depthTest: !isAccretionDisc, // the disc draws OVER the horizon so its far half is in the buffer for the lens to wrap
