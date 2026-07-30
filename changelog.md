@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.292-beta - 30th Jul 2026
+
+* Choosing Body graphics: photo shows the photo straight away. The loader was keyed on which body was selected, and the branch that clears the photo for every other imagery mode stamped that same key -- so switching TO photo without also changing body looked, to the loader, like nothing had happened. It only appeared after leaving the tab and coming back, which remounts the panel. Now the key is the subject AND the mode, in both info-block surfaces.
+
 ## v2.1.291-beta - 30th Jul 2026
 
 * "Frame whole system" shows the whole system. It parked the camera at a fixed multiple of the scene radius with no reference to the lens, which at the 45-degree field of view fitted about eight of the twelve units the system actually occupies -- so the outer third was always off the edge. It now works the distance out from the field of view and the aspect ratio, the same way framing a single body already did.

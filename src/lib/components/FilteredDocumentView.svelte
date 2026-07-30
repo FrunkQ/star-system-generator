@@ -115,8 +115,13 @@
   // document and every info block resolve the preset's appearance identically.
   $: theme = makeDocTheme({ font, headingFont, fontScale, mono, accent, documentStyle, themeColors, listStyle, navStyle }) as DocTheme;
 
-  $: if (imagery === 'photo' && selectedId && selectedId !== imgForId) loadBodyImage(selectedId);
-  $: if (imagery !== 'photo' || !selectedId) { bodyImg = null; imgForId = selectedId; }
+  // Key on subject AND mode, not the subject alone -- see DocPanel: switching Body graphics to 'photo'
+  // without changing the selected body left imgForId already stamped, so the loader never ran.
+  $: photoKey = imagery === 'photo' && selectedId ? selectedId : null;
+  $: if (photoKey !== imgForId) {
+    if (photoKey) loadBodyImage(photoKey);
+    else { bodyImg = null; bodyImgFocus = null; imgForId = null; }
+  }
 
   function loadBodyImage(id: string) {
     imgForId = id; bodyImg = null; bodyImgFocus = null;

@@ -73,11 +73,16 @@
   // Body photo via the shared loader (same-origin rule + auto-centre focus in one place).
   let loaded: LoadedBodyImage | null = null;
   let imgForId: string | null = null;
-  $: if (imagery === 'photo' && selectedId && selectedId !== imgForId) {
-    imgForId = selectedId; loaded = null;
-    loadBodyImage(system, selectedId, (l) => { if (imgForId === selectedId) { loaded = l; render(); } });
+  // Reload whenever the SUBJECT or the imagery MODE changes. Keying on the id alone meant that
+  // switching Body graphics to 'photo' with the same body already selected never fired the loader --
+  // the non-photo branch had stamped imgForId with that id -- so nothing appeared until you left the
+  // tab and came back, which remounts the panel and clears it. The key IS the subject-when-in-photo.
+  $: photoKey = imagery === 'photo' && selectedId ? selectedId : null;
+  $: if (photoKey !== imgForId) {
+    imgForId = photoKey;
+    loaded = null;
+    if (photoKey) loadBodyImage(system, photoKey, (l) => { if (imgForId === photoKey) { loaded = l; render(); } });
   }
-  $: if (imagery !== 'photo' || !selectedId) { loaded = null; imgForId = selectedId; }
 
   function render() {
     if (!canvas || w <= 0 || !system) return;
