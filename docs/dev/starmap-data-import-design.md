@@ -111,11 +111,11 @@ pretending completeness, the UI offers honest presets:
 Multiplicity: pairs within Gaia are separate rows; stars the map cannot visually resolve merge
 into one SSE system. Phase 1 ships with a separation heuristic (same parallax ±5%, separation
 < 1000 AU → one system) plus the WDS catalogue later for real orbits. Whether the merged pair
-gets a BARYCENTRE ORBIT or just static co-placement follows the period rule in §5c: orbits are
-authored only when the period is significant in human terms; a bound-but-glacial wide pair
-imports as two stars sharing a node with a note, not a barycentre. Unknown-but-fast orbits get
-flagged assumptions (circular, mass-ratio split), same as the SpaceEngine importer's
-assumptions list.
+gets a BARYCENTRE ORBIT or just static co-placement follows the period tiers in §5c: orbits
+are authored up to roughly million-year periods (they cost nothing and draw the true
+architecture); only glacial or dynamically meaningless memberships import static with a note.
+Unknown-element orbits get flagged assumptions (circular, mass-ratio split), same as the
+SpaceEngine importer's assumptions list.
 
 ## 4. Pipeline (shared library, three consumers)
 
@@ -236,21 +236,29 @@ When the gate fires, the dialog offers a third import shape alongside the usual 
   logic) is deliberately NOT the criterion for building orbital structure: half the sky is
   technically bound to something, and a pair that takes tens of thousands of years to orbit
   is, for every purpose a campaign has, static — it wants a static starmap, not a barycentre.
-  Two thresholds, both in human terms:
-  - **Resolution floor (must-merge):** stars closer than the starmap can visually resolve
-    (≲ ~0.1 ly — well under a node's footprint at 43.3 px/ly) cannot be separate map nodes
-    regardless of dynamics, so they merge into one system node. WITHIN that node, orbital
-    elements are only authored when the period is meaningful (a barycentre pair for a 50-year
-    Sirius, static co-placement with a descriptive note for a 100,000-year wide pair — no
-    orbit authored, nothing moves).
-  - **Motion threshold (may-orbit):** orbital structure at cluster scale (the cluster-as-
-    system offer, nested pairs inside it) is authored only where the period is significant in
-    human terms — the t_dyn watchable band above (first guess ≲ 10,000 yr, configurable).
-    Everything slower imports static even when it is formally bound.
-  Hill logic (`findContainingHost` / `reconcileBarycenters`) is used only AFTER those
-  thresholds have decided that structure should exist at all — to assign each orbiting member
-  to the correct parent so a fast pair deep in a cluster nests properly instead of shearing
-  apart on fast-forward.
+  Three tiers, from fast to glacial:
+  - **Watchable (offer tier, t_dyn ≲ ~10,000 yr):** this is the band that triggers the
+    cluster-as-system OFFER — "import this so you can watch it move". The threshold governs
+    the pitch, not the data.
+  - **Author-the-orbit tier (period ≲ ~1 million yr):** inside a merged system node, a real
+    (or estimated) orbit is authored even when it is far too slow to watch — a barycentre
+    ellipse costs nothing, draws the pair's true architecture, and keeps the data honest.
+    Proxima's 547,000-year orbit around Alpha Centauri AB in the bundled map is exactly this
+    tier and stays as shipped. A pleasing Kepler coincidence makes the cut-off almost
+    self-enforcing: for stellar masses a ~1 Myr period means ~10,000 AU ≈ 0.16 ly separation,
+    which is already at the map-resolution floor — so nearly every pair that merges into one
+    node also earns an authored orbit.
+  - **Static (period ≳ ~1 million yr, or membership too loose to call an orbit):** no orbital
+    elements — co-placement with a descriptive note. At these scales "orbit" stops being
+    meaningful data (perturbations dominate over any Keplerian ellipse) and a static starmap
+    is the honest representation. This is where bound-but-glacial cluster outskirts and wide
+    common-proper-motion pairs land.
+  The **resolution floor (must-merge)** still decides node membership: stars closer than the
+  starmap can visually resolve (≲ ~0.1 ly at 43.3 px/ly) cannot be separate map nodes
+  regardless of dynamics. Hill logic (`findContainingHost` / `reconcileBarycenters`) is used
+  only AFTER these tiers have decided that structure should exist — to assign each orbiting
+  member to the correct parent so a fast pair deep in a cluster nests properly instead of
+  shearing apart on fast-forward.
 - Members become star nodes with orbits. Where published elements exist (the S-stars), import
   them verbatim — real periods, real eccentricities (S2's e = 0.88 is a gift to any GM).
   Where they don't, generate plausible bound orbits deterministically from each star's true
