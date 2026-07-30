@@ -134,6 +134,12 @@
                                    on:input={(e) => { liq.cloudOpacity = Math.max(0, Math.min(1, +e.currentTarget.value)); liquids = [...liquids]; }} />
                         </div>
                         <div class="field">
+                            <label title="How much starlight a CLOUD DECK of this substance sends back out — its reflectivity, which is not the same thing as its opacity. This is what makes a cloudy world COLD: it feeds the body's Bond albedo and through that its equilibrium temperature. Venus's sulphuric acid returns three quarters of the light that reaches it; a methane haze returns barely a quarter.">Cloud Albedo</label>
+                            <input type="number" step="0.05" min="0" max="1"
+                                   value={liq.cloudAlbedo ?? 0.45}
+                                   on:input={(e) => { liq.cloudAlbedo = Math.max(0, Math.min(1, +e.currentTarget.value)); liquids = [...liquids]; }} />
+                        </div>
+                        <div class="field">
                             <label title={biosolventHelp}>Biosolvent</label>
                             <select bind:value={liq.biosolvent}>
                                 <option value="ideal">ideal</option>

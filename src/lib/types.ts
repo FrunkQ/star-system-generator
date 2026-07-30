@@ -423,6 +423,10 @@ export interface LiquidDef {
                               // scaled thermal-glow emissive layer, so the ocean glows even under a dim star
     cloudOpacity?: number;    // 0..1 veil strength when this substance condenses as a CLOUD DECK
                               // (how opaquely it hides what is beneath). Absent → a moderate default.
+    cloudAlbedo?: number;     // 0..1 REFLECTIVITY of a deck of this condensate — the share of starlight
+                              // a fully-covered sky of it sends back out. Distinct from cloudOpacity:
+                              // opacity is what it hides, this is what it returns. Feeds Bond albedo,
+                              // and through it equilibrium temperature. Absent → a moderate default.
 }
 
 export interface FuelDefinition {
