@@ -95,3 +95,76 @@ export function elevationName(elevationDeg: number): string {
   if (Math.abs(e) < 0.5) return 'level with the plane';
   return `${e > 0 ? 'above' : 'below'} the plane by ${Math.abs(Math.round(e))}°`;
 }
+
+// --- SEXAGESIMAL NOTATION: the same two angles, written the way an astronomer writes them ---
+//
+// Bearing becomes hours/minutes/seconds like a right ascension (24h to the full turn, so 15° per hour), and
+// elevation becomes signed degrees/arcminutes/arcseconds like a declination. This is NOTATION ONLY: the
+// angles are still measured in the MAP's own frame, from map-north and the map plane, not from the vernal
+// equinox and the celestial equator. A campaign map need not contain Earth, so there is no real sky to
+// reference — the dialogue says as much, and nothing here should ever be labelled J2000.
+//
+// Every conversion carries on rounding (59.97s must become the next minute, not "60s"), because a readout
+// that can print 60 in a field that only goes to 59 is a readout nobody trusts.
+
+export interface RaHms { h: number; m: number; s: number }
+export interface DecDms { sign: 1 | -1; d: number; m: number; s: number }
+
+function carry(whole: number, minutes: number, seconds: number, wholeLimit: number | null) {
+  let w = whole, m = minutes, s = Math.round(seconds * 10) / 10;
+  if (s >= 60) { s -= 60; m += 1; }
+  if (m >= 60) { m -= 60; w += 1; }
+  if (wholeLimit !== null && w >= wholeLimit) w -= wholeLimit;
+  return { w, m, s };
+}
+
+/** A bearing as hours/minutes/seconds of the full turn. 0h is map-north, 6h is due east. */
+export function bearingToRa(bearingDeg: number): RaHms {
+  const hours = wrapBearing(bearingDeg) / 15;
+  const h = Math.floor(hours);
+  const remMin = (hours - h) * 60;
+  const m = Math.floor(remMin);
+  const { w, m: mm, s } = carry(h, m, (remMin - m) * 60, 24);
+  return { h: w, m: mm, s };
+}
+
+/** …and back. Tolerates out-of-range parts (75 minutes is 1h15m) so typing never gets stuck. */
+export function raToBearing(ra: Partial<RaHms>): number {
+  const hours = (ra.h ?? 0) + (ra.m ?? 0) / 60 + (ra.s ?? 0) / 3600;
+  return wrapBearing(hours * 15);
+}
+
+/** An elevation as signed degrees/arcminutes/arcseconds. */
+export function elevationToDec(elevationDeg: number): DecDms {
+  const e = clampElevation(elevationDeg);
+  const sign: 1 | -1 = e < 0 ? -1 : 1;
+  const abs = Math.abs(e);
+  const d = Math.floor(abs);
+  const remMin = (abs - d) * 60;
+  const m = Math.floor(remMin);
+  const { w, m: mm, s } = carry(d, m, (remMin - m) * 60, null);
+  return { sign, d: w, m: mm, s };
+}
+
+/** …and back. The SIGN is carried separately, so "-0° 30′" is unambiguous where a bare -0 would not be. */
+export function decToElevation(dec: Partial<DecDms>): number {
+  const mag = Math.abs(dec.d ?? 0) + Math.abs(dec.m ?? 0) / 60 + Math.abs(dec.s ?? 0) / 3600;
+  return clampElevation((dec.sign ?? 1) < 0 ? -mag : mag);
+}
+
+const pad = (n: number) => String(Math.floor(n)).padStart(2, '0');
+// Seconds pad the WHOLE part only — "00.0", never "0.0" — so the columns line up when a GM reads several
+// of these down a list.
+const padSec = (n: number) => (n < 10 ? '0' : '') + n.toFixed(1);
+
+/** "6h 00m 00.0s" */
+export function formatRa(bearingDeg: number): string {
+  const { h, m, s } = bearingToRa(bearingDeg);
+  return `${h}h ${pad(m)}m ${padSec(s)}s`;
+}
+
+/** "+30° 00′ 00.0″" — always signed, so above and below the plane are never confused. */
+export function formatDec(elevationDeg: number): string {
+  const { sign, d, m, s } = elevationToDec(elevationDeg);
+  return `${sign < 0 ? '−' : '+'}${d}° ${pad(m)}′ ${padSec(s)}″`;
+}

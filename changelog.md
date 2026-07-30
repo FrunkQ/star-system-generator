@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.275-beta - 30th Jul 2026
+
+* "Add System near here…" gained a units choice at the top. Angles can be typed the plain way (bearing and elevation in degrees) or the astronomer's way -- right ascension in hours, minutes and seconds, declination in degrees, arcminutes and arcseconds, with its own sign button so "half a degree below the plane" is sayable. Distance can be typed and read in light years or parsecs whichever the campaign stores.
+* Both choices are remembered, and neither changes the map: they are how you type a placement, not what gets saved, so switching units never moves the system you are placing. Campaigns using their own invented distance unit see no distance picker, because there is nothing to convert to.
+* The R.A. and Dec. readout is shown alongside the plain-language one ("E, below the plane by 30°"), and it is measured in the map's own frame -- from map-north and the map plane, not the real sky.
+
 ## v2.1.274-beta - 30th Jul 2026
 
 * Campaigns built on the older bundled Local Neighbourhood are now offered an upgrade onto the rebuilt one. It tells you exactly what will happen to YOUR campaign before you commit -- which of your own systems move and how far, which links get re-measured, and what disappears from the updated systems -- then builds the upgrade as a separate campaign for you to look over and keep or throw away.
