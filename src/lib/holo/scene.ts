@@ -830,9 +830,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   function setFraming(o: { angleDeg?: number; whole?: boolean; fillFrac?: number }) {
-    if (o.angleDeg != null) framingAngleRad = (Math.max(0, Math.min(85, o.angleDeg)) * Math.PI) / 180;
-    if (o.whole != null) framingWhole = o.whole;
-    if (o.fillFrac != null) frameFillFrac = Math.max(0.05, Math.min(1, o.fillFrac));
+    // Every other setter here bails when handed the value it already holds; this one did not, and it is
+    // called from applyStyle on EVERY style object — which is a fresh object on every keystroke in the
+    // preset editor. So changing the belt type, or the accent colour, re-armed the ease and threw the
+    // camera back to its framed shot, discarding whatever the user had panned or zoomed to. An
+    // appearance setting must never move the camera; only a genuine framing change may.
+    const nextAngle = o.angleDeg != null ? (Math.max(0, Math.min(85, o.angleDeg)) * Math.PI) / 180 : framingAngleRad;
+    const nextWhole = o.whole != null ? o.whole : framingWhole;
+    const nextFill = o.fillFrac != null ? Math.max(0.05, Math.min(1, o.fillFrac)) : frameFillFrac;
+    if (nextAngle === framingAngleRad && nextWhole === framingWhole && nextFill === frameFillFrac) return;
+    framingAngleRad = nextAngle;
+    framingWhole = nextWhole;
+    frameFillFrac = nextFill;
     applyPolarLimits();
     applyInteractionLocks();
     focusDrive = 48; // re-ease into the new framing

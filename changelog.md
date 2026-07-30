@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.290-beta - 30th Jul 2026
+
+* Changing an appearance setting no longer moves the preview camera. Every setter in the 3D scene bails when handed the value it already has -- except the framing one, which re-armed its ease every time it was called, and it is called on every style object the editor produces, which is a fresh one on every keystroke. So picking a different belt type threw the preview back to its framed shot and discarded whatever you had panned or zoomed to. Only a genuine change of angle or framing moves the camera now.
+
 ## v2.1.289-beta - 30th Jul 2026
 
 * The body picture in the info block fills the space it is given. Both flat discs carried a 220px intrinsic size that CSS was treating as a ceiling, so a tall panel showed a small disc adrift in the middle of it; and the 3D globe was framed by the shared click-ladder, which fits a close-up into half the viewport. Half is right on a MAP, where a framed world wants its surroundings in shot -- a portrait has no surroundings, so it now asks for nearly the whole frame. The map's own framing is untouched.
