@@ -58,7 +58,10 @@
     lockOverhead: false, lockRotation: false, render, bodyStyle,
     // auroras OFF for the isolated thumbnail — zoomed to fill the frame their additive shell blooms into a
     // "massive glow"; the full 3D view keeps them. Portrait key light gives the day/night terminator instead.
-    unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, portrait, portraitFixed: tidal,
+    // fillFrac 0.92: the shared click-ladder frames a close-up at HALF the viewport, which is right on a
+    // map (a framed world wants its surroundings) and wrong here — there are no surroundings, so the
+    // body sat small in the middle of whatever space the info block gave it.
+    unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, fillFrac: 0.92, portrait, portraitFixed: tidal,
     background: bg, beltStyle: 'rocks', labelSize: 0, filter: 'none', filterParams: undefined
   };
 </script>
@@ -95,7 +98,11 @@
 <style>
   .bg-3d { width: 100%; height: 100%; }
   .bg-2d { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-  .bg-2d :global(svg) { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+  /* FILL the space the info block gives it. The svg carries a 220px width/height attribute as its
+     intrinsic size; `width:auto` honoured that as a ceiling, so a 400px-tall panel still showed a
+     220px disc adrift in the middle of it. Both discs have a square viewBox and the default
+     xMidYMid meet, so stretching the box to 100% scales the drawing without distorting it. */
+  .bg-2d :global(svg) { width: 100%; height: 100%; max-width: 100%; max-height: 100%; }
   /* Monochrome safety net for the 2D disc (the 3D holo greys itself via bodyStyle='white'). */
   .mono { filter: grayscale(1) brightness(1.06) contrast(1.02); }
 </style>

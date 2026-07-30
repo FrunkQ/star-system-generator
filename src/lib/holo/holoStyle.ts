@@ -28,6 +28,10 @@ export interface HoloStyle {
   labelSize?: number; // in-scene body-label font size in px (default 11)
   font?: string; // in-scene label font-family — inherited from the preset theme when set
   portrait?: string | null; // isolated-body key light in this star colour at a 3/4 angle (null = normal star lighting)
+  fillFrac?: number; // close-up framing: object diameter as a fraction of the smaller viewport dimension.
+                     // Omitted = the shared click-ladder default (0.5), which is right for a MAP, where a
+                     // framed body wants room around it. An isolated portrait has no context to leave room
+                     // for, so the info block asks for nearly the whole frame.
   portraitFixed?: boolean; // portrait light is WORLD-fixed (tidally-locked body) rather than camera-relative
 }
 

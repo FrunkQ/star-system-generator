@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.289-beta - 30th Jul 2026
+
+* The body picture in the info block fills the space it is given. Both flat discs carried a 220px intrinsic size that CSS was treating as a ceiling, so a tall panel showed a small disc adrift in the middle of it; and the 3D globe was framed by the shared click-ladder, which fits a close-up into half the viewport. Half is right on a MAP, where a framed world wants its surroundings in shot -- a portrait has no surroundings, so it now asks for nearly the whole frame. The map's own framing is untouched.
+
 ## v2.1.288-beta - 30th Jul 2026
 
 * True scale is in proportion again. The scene draws a good deal that is a MARKER rather than a body -- the minimum radius a body is allowed to render at, the glowing vertex dots of the wireframe styles, belt rubble, ring particles -- and every one of those sizes was chosen for the READABLE end of the body-size dial and then used at every setting. Turn the dial to true and a real body shrinks by three or four orders of magnitude while the markers stayed put, so the planets disappeared under a wall of boulders lying across their own orbits, every rock the same size as every other thing on screen. The markers now shrink with the dial, down to a floor of 2% of readable, which is already sub-pixel at whole-system framing -- below that a belt would simply cease to exist rather than read as fine dust. Nothing moves at the readable end.

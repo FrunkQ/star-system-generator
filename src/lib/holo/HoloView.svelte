@@ -33,7 +33,7 @@
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
     controller?.setFilter(filterBypass ? 'none' : s.filter, filterBypass ? undefined : s.filterParams);
-    controller?.setFraming({ angleDeg: s.angleDeg, whole: s.whole });
+    controller?.setFraming({ angleDeg: s.angleDeg, whole: s.whole, fillFrac: s.fillFrac });
     controller?.setSkybox(s.skybox);
     controller?.setBackground(s.background);
     controller?.setCompression(s.compression);
@@ -67,7 +67,7 @@
     controller?.resetView();
   }
   // Two framing knobs (angle from overhead, whole-system vs body) — for GM/projector control later.
-  export function setFraming(opts: { angleDeg?: number; whole?: boolean }) {
+  export function setFraming(opts: { angleDeg?: number; whole?: boolean; fillFrac?: number }) {
     controller?.setFraming(opts);
   }
   export function setSkybox(on: boolean) {

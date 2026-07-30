@@ -34,7 +34,7 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
-import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep } from '$lib/viewport/camera';
+import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep, FRAME_LEVELS } from '$lib/viewport/camera';
 import { contextPeerIds } from '$lib/system/barycentres';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { perfCount, perfFrame } from '$lib/perfTrace';
@@ -72,7 +72,7 @@ export interface HoloController {
   // The two framing knobs (surface as GM controls later, docs §A8/§A10): angleDeg is the camera's
   // tilt from straight down (0 = overhead top-down, ~64 = the 3/4 default); whole fits the entire
   // system rather than the focused body. overhead + whole = the projector's top-down plan view.
-  setFraming(opts: { angleDeg?: number; whole?: boolean }): void;
+  setFraming(opts: { angleDeg?: number; whole?: boolean; fillFrac?: number }): void;
   setSkybox(on: boolean): void;
   setBackground(bg: string): void; // 'space' | 'green' | 'blue' | 'black' (greenscreen for OBS)
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
@@ -804,6 +804,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let focusLevel = 1; // the click-ladder level for the focused body (see viewport/camera FRAME_LEVELS)
   let framingAngleRad = (64 * Math.PI) / 180; // camera tilt from vertical (0 = overhead)
   let framingWhole = false; // frame the whole system instead of the focused body
+  let frameFillFrac = FRAME_LEVELS.fillFrac; // close-up fill; an isolated portrait raises it (see setFraming)
   // TWO independent ideas — conflating them turned an unlocked 2D map into a 3D one:
   //   flatOverhead — the view is a MAP: the tilt is pinned top-down. A 2D map is always flat.
   //   lockRotate   — the heading is fixed: no spinning by drag, and following a body PANS (below).
@@ -828,9 +829,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     controls.enableZoom = !fixedPlan;
   }
 
-  function setFraming(o: { angleDeg?: number; whole?: boolean }) {
+  function setFraming(o: { angleDeg?: number; whole?: boolean; fillFrac?: number }) {
     if (o.angleDeg != null) framingAngleRad = (Math.max(0, Math.min(85, o.angleDeg)) * Math.PI) / 180;
     if (o.whole != null) framingWhole = o.whole;
+    if (o.fillFrac != null) frameFillFrac = Math.max(0.05, Math.min(1, o.fillFrac));
     applyPolarLimits();
     applyInteractionLocks();
     focusDrive = 48; // re-ease into the new framing
@@ -992,7 +994,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       maxSatelliteDist = Math.max(maxSatelliteDist, x.mesh.position.distanceTo(b.mesh.position));
     }
     // 0 = a radius-less construct at level 3: give it a small patch (its glyph is screen-fixed anyway).
-    const half = frameHalfExtent({ level: focusLevel, radius, parentDist, maxSatelliteDist })
+    const half = frameHalfExtent({ level: focusLevel, radius, parentDist, maxSatelliteDist, config: { ...FRAME_LEVELS, fillFrac: frameFillFrac } })
       || Math.max(0.35, controls.minDistance * 3);
     const tan = Math.tan((camera.fov * Math.PI) / 360);
     const dist = half / Math.max(1e-6, tan * Math.min(1, camera.aspect));
