@@ -728,6 +728,15 @@ export interface Starmap {
   activeJourneys?: ActiveJourney[];
   adriftConstructs?: AdriftConstruct[];   // ships stranded in interstellar space (ended a journey mid-flight)
   mapMode?: 'diagrammatic' | 'scaled';
+  // PROVENANCE (M1). Two independent stamps, both optional so every existing file still loads:
+  //  - `appVersion`: the build that last SAVED this map. Written on every save. Its ABSENCE is itself
+  //    information — it means the file predates 2.1.271-beta, which is what the base-map upgrade offer
+  //    keys on (see docs/dev/v2.2-player-view-visual-overhaul.md, WS8).
+  //  - `baseMapVersion`: which edition of a BUNDLED starter map this descends from. Set by the shipped
+  //    maps (static/example-starmaps/manifest.json), carried through saves untouched, and never invented
+  //    for a map the GM built themselves — a map with no base has no base version.
+  appVersion?: string;
+  baseMapVersion?: number;
   generationEngine?: 'standard' | 'evolutionary';
   invertDisplay?: boolean;
   scale?: StarmapScaleConfig;

@@ -15,6 +15,7 @@
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
+  import { stampForSave } from '$lib/map/provenance';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
@@ -442,8 +443,9 @@
           (starmapToSave as any).coiCategories = coiForStarmap();
       }
 
-      // Download
-      const json = JSON.stringify(starmapToSave, null, 2);
+      // Download. M1: stamp the build that wrote the file — see lib/map/provenance.ts. A Player handout is
+      // stamped too: it is still a file this build produced, and knowing which build made it is the point.
+      const json = JSON.stringify(stampForSave(starmapToSave), null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

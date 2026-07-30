@@ -53,6 +53,7 @@
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
+  import { stampForSave } from '$lib/map/provenance';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
@@ -1203,7 +1204,8 @@
     // file needs only authored inputs. Keeps saved files small and free of stale baked-in data.
     const lean = stripStarmapForExport($starmapStore, selectedRulepack ?? undefined);
     // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
-    const exportObj = { ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() };
+    // M1: stamp the build that wrote the file. See lib/map/provenance.ts for why explicit saves only.
+    const exportObj = stampForSave({ ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() });
     const data = JSON.stringify(exportObj, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

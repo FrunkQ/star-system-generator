@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.272-beta - 30th Jul 2026
+
+* Saved starmap files now record which build wrote them, and which edition of a bundled starter map they descend from. Until now a starmap file carried no version of any kind, which made it impossible to tell reliably what produced it -- this is groundwork for offering campaigns a clean upgrade when the bundled maps change. Nothing changes about how your maps load; older files without a stamp keep working exactly as before.
+
+## v2.1.272-beta - 30th Jul 2026
+
+* The bundled Local Neighbourhood starmap has been rebuilt from real astronomy. Every system now sits at its TRUE 3D position (x, y and the new z depth) from Gaia/Hipparcos/SIMBAD astrometry, and the planet roster is exactly the NASA Exoplanet Archive's confirmed set -- Barnard's Star gains its four 2024-25 sub-Earths, Lacaille 9352 its four, tau Ceti drops the retracted e, and the fictional content that had crept in is gone. The map grows from 20 to 42 systems: the complete known census to ~13 light years (brown dwarfs included), every confirmed planet host to ~16.5, plus Altair, Vega, Zeta Reticuli and TRAPPIST-1. Same stable system ids throughout, plus new appVersion/baseMapVersion stamps and a manifest for the coming campaign-upgrade feature.
+* New second example map: "Local Neighbourhood (Science Fiction)" -- the same real stars at the same true positions, populated with the famous fiction set among them: The Expanse across Sol, Pandora at Alpha Centauri, Reach at Epsilon Eridani, the Wolf 359 graveyard, LV-426 at Zeta Reticuli, Project Hail Mary at Tau Ceti and 40 Eridani (where Vulcan also lives), Rocheworld at Barnard's Star, Mesklin at 61 Cygni, and more. Deliberately fictional and it says so; stars without a famous tenant keep their real planets.
+* New reusable build kit at scripts/starmap-build/ (TAP fetchers for the NASA Exoplanet Archive and SIMBAD + a deterministic generator), and a design doc for a full in-app "import the real sky" feature at docs/dev/starmap-data-import-design.md.
+
 ## v2.1.271-beta - 30th Jul 2026
 
 * New on a system's right-click menu: "Add System near here…". Place a new system by direction and distance from one already on the map -- bearing, elevation above or below the plane, and how far -- with a slider and a numeric box for each. A ghost marker, tethered back to the origin, shows exactly where it will land and slides around as you drag; the panel docks to the far side of the map so it never covers it. North is up the screen, and every direction is spelled out in words as well as degrees.
