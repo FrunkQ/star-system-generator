@@ -120,12 +120,24 @@
         star and its nearby brown-dwarf host</strong>, the near source usually dominating. The distance to each
         source is the hierarchical path (a moon's distance to a star = its orbit around its planet + the planet's
         orbit around the star).</p>
-      <p><code>A</code>, the Bond albedo, is now <strong>derived</strong>, not dialled in: a surface reflectivity
-        from the makeup (dark ocean ~0.06, rock ~0.15, bright ice ~0.62) plus the <strong>cloud decks</strong> that
-        condense at the world's temperature (water ~0.5, CO₂ ~0.7, sulfuric ~0.75, methane haze ~0.3). A liquid
-        ocean makes its own water clouds — that's where Earth's 0.30 comes from. Because clouds depend on
-        temperature and temperature depends on albedo, it's solved as a quick fixed point. A manually-pinned
-        albedo still wins, but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
+      <p><code>A</code>, the Bond albedo, is <strong>derived</strong>, not dialled in: a surface reflectivity from
+        the makeup (dark ocean ~0.06, rock ~0.15, bright frost ~0.62) seen through the world's
+        <a href="#clouds">cloud decks</a>, each reflecting what its own condensate reflects — water 0.42,
+        sulphuric acid 0.76, ammonia 0.51, methane haze 0.28, all rule-pack data you can edit. The decks are
+        composited bottom-up, so the top one has the largest say: Jupiter's bright ammonia veil, not the brown
+        hydrosulphide beneath it, is what makes Jupiter bright. A liquid ocean makes its own water clouds, which
+        is where Earth's 0.31 comes from.</p>
+      <p>Crucially, <strong>albedo does not decide for itself what clouds a world has</strong> — it asks the one
+        cloud model, the same one that publishes the deck tags. That used to be two models: albedo carried its
+        own boiling-point table and could declare a CO₂ deck on a world where the column physics found nothing
+        condensing at all, and being upstream it set the temperature everything else was judged by.</p>
+      <p>It is a <strong>circular</strong> problem — albedo sets the temperature, the temperature sets which
+        clouds condense, and the clouds set the albedo — so the whole loop is solved as one fixed point rather
+        than broken with a shortcut. It settles in two to five passes; a world sitting exactly on the edge of
+        condensing something has two self-consistent answers, and lands between them with its albedo note saying
+        the cover is marginal. Against measured Bond albedos: Venus 0.76 (model 0.757), Earth 0.306 (0.308),
+        Saturn 0.342 (0.343), Neptune 0.290 (0.288), Jupiter 0.503 (0.490). A manually-pinned albedo still wins,
+        but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
     </section>
 
     <section id="eccentric-flux">
