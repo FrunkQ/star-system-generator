@@ -108,10 +108,13 @@ pretending completeness, the UI offers honest presets:
 - **Curated census** (later) — CNS5 via VizieR for a genuinely complete nearby-star list,
   including the brown dwarfs Gaia misses.
 
-Multiplicity: pairs within Gaia are separate rows; known binaries should merge into one SSE
-system with a barycentre. Phase 1 ships with a separation heuristic (same parallax ±5%,
-separation < 1000 AU → one system) plus the WDS catalogue later for real orbits. Unknown orbital
-elements get flagged assumptions (circular, mass-ratio split), same as the SpaceEngine importer's
+Multiplicity: pairs within Gaia are separate rows; stars the map cannot visually resolve merge
+into one SSE system. Phase 1 ships with a separation heuristic (same parallax ±5%, separation
+< 1000 AU → one system) plus the WDS catalogue later for real orbits. Whether the merged pair
+gets a BARYCENTRE ORBIT or just static co-placement follows the period rule in §5c: orbits are
+authored only when the period is significant in human terms; a bound-but-glacial wide pair
+imports as two stars sharing a node with a note, not a barycentre. Unknown-but-fast orbits get
+flagged assumptions (circular, mass-ratio split), same as the SpaceEngine importer's
 assumptions list.
 
 ## 4. Pipeline (shared library, three consumers)
@@ -229,15 +232,25 @@ When the gate fires, the dialog offers a third import shape alongside the usual 
   per-node Keplerian orbits are genuinely accurate (the Sgr A* case); if mass is spread across
   the membership, it is a swarm — orbits go around the barycentre and get the honesty footnote
   below.
-- **Hierarchy by Hill spheres, with the machinery SSE already has.** Membership and nesting are
-  decided exactly the way SSE decides who orbits whom today (`findContainingHost` /
-  the Hill-radius reasoning in `lib/physics/orbits.ts`, and `reconcileBarycenters`): each star
-  is assigned to the deepest node whose Hill sphere (with respect to its parent) contains it.
-  A tight binary deep inside the cluster therefore imports as its own barycentre pair orbiting
-  the primary — the same nested-barycentre shape as Alpha Centauri in the bundled map — rather
-  than as two independent primary-orbiters that would shear apart. The importer computes each
-  candidate's Hill radius from the same masses it just fetched, so structure and physics come
-  from one source.
+- **Structure is created by PERIOD, not by binding.** Gravitational binding (full Hill-sphere
+  logic) is deliberately NOT the criterion for building orbital structure: half the sky is
+  technically bound to something, and a pair that takes tens of thousands of years to orbit
+  is, for every purpose a campaign has, static — it wants a static starmap, not a barycentre.
+  Two thresholds, both in human terms:
+  - **Resolution floor (must-merge):** stars closer than the starmap can visually resolve
+    (≲ ~0.1 ly — well under a node's footprint at 43.3 px/ly) cannot be separate map nodes
+    regardless of dynamics, so they merge into one system node. WITHIN that node, orbital
+    elements are only authored when the period is meaningful (a barycentre pair for a 50-year
+    Sirius, static co-placement with a descriptive note for a 100,000-year wide pair — no
+    orbit authored, nothing moves).
+  - **Motion threshold (may-orbit):** orbital structure at cluster scale (the cluster-as-
+    system offer, nested pairs inside it) is authored only where the period is significant in
+    human terms — the t_dyn watchable band above (first guess ≲ 10,000 yr, configurable).
+    Everything slower imports static even when it is formally bound.
+  Hill logic (`findContainingHost` / `reconcileBarycenters`) is used only AFTER those
+  thresholds have decided that structure should exist at all — to assign each orbiting member
+  to the correct parent so a fast pair deep in a cluster nests properly instead of shearing
+  apart on fast-forward.
 - Members become star nodes with orbits. Where published elements exist (the S-stars), import
   them verbatim — real periods, real eccentricities (S2's e = 0.88 is a gift to any GM).
   Where they don't, generate plausible bound orbits deterministically from each star's true
