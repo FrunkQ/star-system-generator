@@ -201,6 +201,9 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // GM can stretch it for clarity. PURELY VISUAL: distances come from lib/map/systemDistance.ts and
   // never see this value.
   let zExaggeration = 1;
+  // The flat "2D map" is the PLAN view: depth collapses entirely, so a system's marker never drifts off
+  // its map position and the 2D view stays pixel-honest against the GM map. Depth is a 3D-only reading.
+  let flatMode = false;
 
   function clearGroup(g: THREE.Object3D) {
     g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { x?.map?.dispose?.(); x?.dispose?.(); }); });
@@ -399,6 +402,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // Zoom and pan stay. Pinned just off true vertical (0.05) because an exactly-overhead orbit camera is
   // gimbal-degenerate (view axis parallel to `up`); at ~3° the ground plane still reads perfectly flat.
   function setFlatOverhead(on: boolean) {
+    // Depth is baked into the placement, so switching between the plan view and the 3D view has to rebuild.
+    if (on !== flatMode) { flatMode = on; if (lastData) setData(lastData.systems, lastData.routes); }
     controls.minPolarAngle = 0.05;
     controls.maxPolarAngle = on ? 0.05 : Math.PI * 0.49;
     // Flat map: the primary gesture is PAN — left-drag/one-finger pans (OrbitControls' default puts
@@ -529,9 +534,18 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const k = (GRID_RADIUS * 0.92) / (spanMap / 2);
     mapCx = cx; mapCy = cy; mapK = k; // keep the fit transform so the map-grid aligns to the systems
     // Scene Y is HEIGHT, so a system's depth lifts it off the reference plane (times the display-only
-    // exaggeration). Straight down, this collapses and the map reads exactly as the 2D one.
+    // exaggeration). The 2D plan view collapses it outright.
+    //
+    // The stretch is BOUNDED by the map's own radius: raw multiplication sends a deep system clean out of
+    // frame (a 6 ly depth at 13x is 78 ly of height on a 20 ly map — invisible, and the drop-line with it).
+    // So the tallest system can rise at most to the map's edge-distance; ask for more and you simply get
+    // that. Never scales DOWN — 1x is always true depth. A map whose depth already exceeds its spread is
+    // dramatic enough on its own and the slider does nothing, which is the honest answer.
+    const maxAbsZ = systems.reduce((m, s) => Math.max(m, Math.abs(s.z ?? 0)), 0);
+    const zCap = maxAbsZ * k > 1e-9 ? (GRID_RADIUS * 0.9) / (maxAbsZ * k) : Infinity;
+    const effZ = flatMode ? 0 : Math.max(1, Math.min(zExaggeration, zCap));
     const toScene = (x: number, y: number, z = 0) =>
-      new THREE.Vector3((x - cx) * k, z * k * zExaggeration, (y - cy) * k);
+      new THREE.Vector3((x - cx) * k, z * k * effZ, (y - cy) * k);
 
     const centers = new Map<string, THREE.Vector3>();
     const glow = starGlow();

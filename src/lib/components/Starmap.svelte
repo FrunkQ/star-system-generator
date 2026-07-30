@@ -264,7 +264,9 @@
       const nextX = dragRawPosition ? dragRawPosition.x : systemNode.position.x + worldDeltaX;
       const nextY = dragRawPosition ? dragRawPosition.y : systemNode.position.y + worldDeltaY;
       const snapped = snapPointToCurrentGrid(nextX, nextY);
-      return { ...systemNode, position: { x: snapped.x, y: snapped.y } };
+      // Spread the old position first: dragging moves a system ACROSS the map plane, it does not reset its
+      // depth. Naming x/y explicitly here would silently drop z on every drag.
+      return { ...systemNode, position: { ...systemNode.position, x: snapped.x, y: snapped.y } };
     });
     const updatedStarmap = {
       ...starmap,
@@ -785,6 +787,36 @@
     closeContextMenu();
   }
 
+  // WS7 — the SIMPLE depth path, for GMs who think in 2D: type how far above or below the map plane the
+  // system sits, in the campaign's own distance unit. (Spherical RA/Dec entry is the power tool; this is
+  // the plain door.) Stored in MAP units, so it converts through the scale like every other coordinate.
+  function handleContextMenuDepth() {
+    if (contextMenuSystemId) {
+      const sys = starmap.systems.find((s) => s.id === contextMenuSystemId);
+      if (sys) {
+        const perUnit = activeScale.pixelsPerUnit > 0 ? activeScale.pixelsPerUnit : 1;
+        const unit = starmap.distanceUnit || 'ly';
+        const currentUnits = (sys.position.z ?? 0) / perUnit;
+        const reply = prompt(
+          `Depth of ${sys.name} in ${unit}\n\nPositive is above the map plane, negative below. 0 puts it back on the plane.`,
+          String(Number(currentUnits.toFixed(3)))
+        );
+        if (reply !== null) {
+          const v = Number(reply.trim());
+          if (Number.isFinite(v)) {
+            const nextSystems = starmap.systems.map((s) =>
+              s.id === contextMenuSystemId ? { ...s, position: { ...s.position, z: v * perUnit } } : s
+            );
+            // Depth counts toward distance unless the campaign opted out, so any route touching this
+            // system needs its stored distance recomputed — force it even on a diagrammatic map.
+            dispatch('updatestarmap', { ...starmap, systems: nextSystems, routes: recomputeScaledRoutes(nextSystems, true) });
+          }
+        }
+      }
+    }
+    closeContextMenu();
+  }
+
   // Rename the SYSTEM (the map node) independently of its central star — the star name is only the
   // default, so a system can carry its own name (e.g. "Hyperspace bypass hub" vs the star "Sol").
   function handleContextMenuRename() {
@@ -1287,6 +1319,17 @@
         >
           {systemNode.name}
         </text>
+        <!-- WS7 DEPTH CUE: the GM map is 2D and cannot show height, so a system that sits off the plane
+             says so in words. Without this, editing depth here is editing blind — you would only see the
+             result by switching to the 3D view. Signed, in the campaign's own unit. -->
+        {#if (systemNode.position.z ?? 0) !== 0 && activeScale.pixelsPerUnit > 0}
+          {@const dz = (systemNode.position.z ?? 0) / activeScale.pixelsPerUnit}
+          <text
+            x={systemNode.position.x + 15}
+            y={systemNode.position.y + 16}
+            class="depth-label"
+          >{dz > 0 ? '+' : ''}{Math.abs(dz) < 10 ? dz.toFixed(1) : Math.round(dz)} {activeScale.unit}</text>
+        {/if}
       {/each}
 
       <!-- Measure tool overlay: line + distance between the two picked targets (stars or ships). -->
@@ -1348,6 +1391,7 @@
             <li on:click={handleContextMenuEditRoute}>Edit Link…</li>
         {:else if contextMenuSystemId}
             <li on:click={handleContextMenuRename}>Rename System…</li>
+            <li on:click={handleContextMenuDepth}>Set Depth…</li>
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
                 Start Link
@@ -1777,6 +1821,8 @@
     stroke: #000;
     stroke-width: 2px;
   }
+  /* WS7 depth cue — quieter than the name, so it reads as an annotation not a second label. */
+  .depth-label { font-size: 9px; fill: #8fb4e0; opacity: 0.85; pointer-events: none; }
 
   .plus-indicator {
     fill: #fff;
