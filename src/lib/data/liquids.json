@@ -201,7 +201,8 @@
     "family": "molten",
     "refractiveIndex": 1.9,
     "cloudOpacity": 0.75,
-    "cloudAlbedo": 0.45
+    "cloudAlbedo": 0.45,
+    "cloudTintDistance": 130
   },
   {
     "name": "magma",
@@ -229,7 +230,8 @@
     "refractiveIndex": 2.9,
     "incandescent": true,
     "cloudOpacity": 0.75,
-    "cloudAlbedo": 0.35
+    "cloudAlbedo": 0.35,
+    "cloudTintDistance": 140
   },
   {
     "name": "sulfur-dioxide",
@@ -320,7 +322,8 @@
     "biosolvent": "none",
     "family": "internal",
     "cloudOpacity": 0.65,
-    "cloudAlbedo": 0.38
+    "cloudAlbedo": 0.38,
+    "cloudTintDistance": 110
   },
   {
     "name": "taumoeba-bloom",
@@ -337,7 +340,8 @@
     "family": "water",
     "refractiveIndex": 1.34,
     "cloudOpacity": 0.72,
-    "cloudAlbedo": 0.35
+    "cloudAlbedo": 0.35,
+    "cloudTintDistance": 120
   },
   {
     "name": "iron-oxide-dust",
@@ -354,6 +358,7 @@
     "family": "rock",
     "refractiveIndex": 2.9,
     "cloudOpacity": 0.5,
-    "cloudAlbedo": 0.25
+    "cloudAlbedo": 0.25,
+    "cloudTintDistance": 150
   }
 ]

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   deriveCloudDecks, effectiveComposition, applyCloudDeckTags, decksFromTags, deriveWeather,
-  parseCloudDeckValue, CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG
+  parseCloudDeckValue, condensateTint, DEFAULT_CONDENSATE_DISTANCE, CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG
 } from './cloudDecks';
 import type { CelestialBody, RulePack, Tag } from '$lib/types';
 
@@ -345,5 +345,49 @@ describe('the temperature profile places decks at real pressure levels', () => {
       .toBeLessThan(0.8);
     expect(deriveCloudDecks(venus(), pack).find((d) => d.species === 'sulfuric-acid')!.bucket)
       .toBe('veil');
+  });
+});
+
+// ── Condensate colour ────────────────────────────────────────────────────────────────────────────
+// A deck is scattering droplets, not bulk liquid, so it reads far lighter than the sea would. HOW
+// MUCH lighter is per-substance: a clean scatterer goes white, an absorbing suspension keeps its
+// colour. That used to be one constant for every substance, which put a pastel ceiling on all of
+// them however pigmented the data said they were.
+describe('condensateTint — per-substance distance from white', () => {
+  const dist = (hex: string) => {
+    const h = hex.replace('#', '');
+    const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    return Math.max(...c.map((v) => 255 - v));
+  };
+
+  it('lightens a dark liquid a lot and an already-pale one barely at all', () => {
+    // Water is deep blue as a sea and white as cloud; sulphuric acid is pale either way.
+    expect(dist(condensateTint('#2b6cb0'))).toBeCloseTo(60, 0);
+    const acid = '#efe6c0';
+    expect(dist(condensateTint(acid))).toBeLessThanOrEqual(dist(acid) + 1);   // barely moves
+  });
+
+  it('the hue survives whitening — a yellow deck stays yellow', () => {
+    const out = condensateTint('#c9a227');
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(out.replace('#', '').slice(i, i + 2), 16));
+    expect(r).toBeGreaterThan(b);
+    expect(g).toBeGreaterThan(b);
+  });
+
+  it('an ABSORBING condensate keeps more of its colour, when the data says so', () => {
+    // Jupiter's hydrosulphide is genuinely brown; no amount of scattering makes it pastel.
+    const scattering = condensateTint('#b8845a');
+    const absorbing = condensateTint('#b8845a', 110);
+    expect(dist(absorbing)).toBeGreaterThan(dist(scattering));
+    expect(dist(absorbing)).toBeCloseTo(110, 0);
+  });
+
+  it('omitting the distance reproduces the scattering default exactly', () => {
+    expect(condensateTint('#6FBF3A')).toBe(condensateTint('#6FBF3A', DEFAULT_CONDENSATE_DISTANCE));
+  });
+
+  it('a white condensate is left alone, and junk input still returns a colour', () => {
+    expect(condensateTint('#ffffff', 200)).toBe('#ffffff');
+    expect(condensateTint('nonsense')).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

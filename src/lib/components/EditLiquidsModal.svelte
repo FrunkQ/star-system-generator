@@ -140,6 +140,12 @@
                                    on:input={(e) => { liq.cloudAlbedo = Math.max(0, Math.min(1, +e.currentTarget.value)); liquids = [...liquids]; }} />
                         </div>
                         <div class="field">
+                            <label title="How far from WHITE a cloud deck of this substance stays, in 0-255 colour terms. Droplets that only scatter light go white however dark the bulk liquid is -- that is water, and 60 is its number. A suspension whose particles absorb keeps its colour however finely divided it is: Jupiter's belts are genuinely brown and a martian dust storm genuinely ochre. Raise it for a pigmented condensate; leave it for a clean one.">Cloud Tint Distance</label>
+                            <input type="number" step="10" min="0" max="255"
+                                   value={liq.cloudTintDistance ?? 60}
+                                   on:input={(e) => { liq.cloudTintDistance = Math.max(0, Math.min(255, +e.currentTarget.value)); liquids = [...liquids]; }} />
+                        </div>
+                        <div class="field">
                             <label title={biosolventHelp}>Biosolvent</label>
                             <select bind:value={liq.biosolvent}>
                                 <option value="ideal">ideal</option>

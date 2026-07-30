@@ -160,17 +160,25 @@ function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas
 // metres of path) yet white as cloud; sulphuric acid is genuinely yellow-tinted and its cloud stays
 // creamy. So the rule is not "mix toward white by a fixed amount" — that whitens out substances that
 // are already pale, which cost Venus its yellow haze. Instead normalise the colour's DISTANCE from
-// white to a fixed small amount: a dark liquid lightens a lot, an already-pale one barely moves, and
-// the hue survives either way.
-const CONDENSATE_DISTANCE = 60;   // how far from white a deck sits, in 0..255 channel terms
-export function condensateTint(hex: string): string {
+// white: a dark liquid lightens a lot, an already-pale one barely moves, and the hue survives either
+// way.
+//
+// HOW FAR from white is per-substance, because the physics differs. A cloud of transparent droplets
+// scatters every wavelength alike and goes white however dark the bulk liquid is — that is water,
+// and 60 is its number. A suspension whose particles ABSORB keeps its colour no matter how finely
+// divided it is: Jupiter's belts are genuinely brown, a martian dust storm genuinely ochre, and no
+// amount of scattering turns either pastel. One constant for both cases made every deck in the game
+// pastel; it is `LiquidDef.cloudTintDistance` now, and it is rule-pack data like every other optical
+// property of a liquid.
+export const DEFAULT_CONDENSATE_DISTANCE = 60;   // how far from white, in 0..255 channel terms
+export function condensateTint(hex: string, distance?: number): string {
   const h = hex.replace('#', '');
   if (h.length !== 6) return '#eef2f8';
   const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
   const d = c.map((v) => 255 - v);
   const max = Math.max(...d);
   if (max <= 0) return hex;
-  const f = Math.min(1, CONDENSATE_DISTANCE / max);
+  const f = Math.min(1, Math.max(0, distance ?? DEFAULT_CONDENSATE_DISTANCE) / max);
   const out = d.map((v) => Math.round(255 - v * f));
   return '#' + out.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
 }

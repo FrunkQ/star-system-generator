@@ -210,7 +210,7 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
       .sort((a, b) => b.veil - a.veil)[0];
     if (top && top.veil > 0.02) {
       // Droplets, not bulk liquid — condensateTint owns that rule (see cloudDecks).
-      const condensate = hexToRgb(condensateTint(top.def?.colorHex ?? '#c8d2dc'));
+      const condensate = hexToRgb(condensateTint(top.def?.colorHex ?? '#c8d2dc', top.def?.cloudTintDistance));
       col = mix(col, condensate, Math.min(0.85, top.veil));
       push(rgbToHex(condensate), 'cloud', top.veil, `${top.d.species} clouds`);
     }
