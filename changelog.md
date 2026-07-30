@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.280-beta - 30th Jul 2026
+
+* Fixed: the 3D starmap's "Depth exaggeration" slider did nothing. It was capped so the deepest system could never rise past the map's edge, which was sound when the bundled map was flat -- but the map now carries real astrometric depth, so the cap bound immediately and pinned the slider at 1x. It now does what it says; a map with real depth is dramatic at 1x already, so a little goes a long way.
+
 ## v2.1.279-beta - 30th Jul 2026
 
 * Reverted the rendering-engine changes made in v2.1.277 to give Adrian its look. Appearance is derived from physics and data through tags -- adding engine code to produce a particular picture is the wrong end of that pipeline, however well-reasoned the rule. The atmospheric tint returns to the dominant gas, and cloud decks return to a single condensate whitening for every substance.

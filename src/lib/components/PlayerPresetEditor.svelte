@@ -330,7 +330,7 @@
                     <input type="range" min="1" max="20" step="0.5" value={draft.zExaggeration ?? 1}
                       on:input={(e) => (draft = { ...draft, zExaggeration: Number((e.currentTarget as HTMLInputElement).value) })} />
                   </label>
-                  <p class="hint">Lifts systems off the map plane so their depth reads on a tilted view. Display only — journey distances never change. Capped so the deepest system stays in frame, so a map that is already deep may ignore it.</p>
+                  <p class="hint">Lifts systems off the map plane so their depth reads on a tilted view. Display only — journey distances never change. A map with real depth is already dramatic at 1x, so a little goes a long way; zoom out if you push it.</p>
                   <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
                 {:else}
                   <!-- 2D only: keeps the classic flat fixed starmap. Zoom + pan still work either way. -->

@@ -536,14 +536,12 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // Scene Y is HEIGHT, so a system's depth lifts it off the reference plane (times the display-only
     // exaggeration). The 2D plan view collapses it outright.
     //
-    // The stretch is BOUNDED by the map's own radius: raw multiplication sends a deep system clean out of
-    // frame (a 6 ly depth at 13x is 78 ly of height on a 20 ly map — invisible, and the drop-line with it).
-    // So the tallest system can rise at most to the map's edge-distance; ask for more and you simply get
-    // that. Never scales DOWN — 1x is always true depth. A map whose depth already exceeds its spread is
-    // dramatic enough on its own and the slider does nothing, which is the honest answer.
-    const maxAbsZ = systems.reduce((m, s) => Math.max(m, Math.abs(s.z ?? 0)), 0);
-    const zCap = maxAbsZ * k > 1e-9 ? (GRID_RADIUS * 0.9) / (maxAbsZ * k) : Infinity;
-    const effZ = flatMode ? 0 : Math.max(1, Math.min(zExaggeration, zCap));
+    // The exaggeration is applied AS ASKED. An earlier version capped it so the deepest system could never
+    // rise past the map's edge-distance, which was sound when the bundled map was flat — but the map now
+    // carries real astrometric depth (up to 1508 map units against a 2182-unit spread), so the cap bound
+    // immediately and pinned the slider at 1x: the control did nothing at all. A control that silently
+    // ignores you is worse than one that lets you overdo it, and the camera can always be zoomed out.
+    const effZ = flatMode ? 0 : Math.max(0, zExaggeration);
     const toScene = (x: number, y: number, z = 0) =>
       new THREE.Vector3((x - cx) * k, z * k * effZ, (y - cy) * k);
 
