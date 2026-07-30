@@ -145,6 +145,25 @@
         not stacked as naive +K, so a body already warm doesn't gain a full extra degree per degree of forcing.
         The greenhouse model and its cryo/CIA parameters live in the rulepack (<code>climateModel.greenhouse</code>)
         so they're tunable, not hard-coded.</p>
+      <h3>A giant makes its own heat</h3>
+      <p>A gas giant is still radiating the gravitational energy of its own formation, and cooling as it does.
+        This is not a small correction: Jupiter puts out about 1.67 times the energy it receives from the Sun,
+        Saturn 1.78, Neptune 2.6. So the dominant term for a giant has <em>nothing to do with its star</em> —
+        and the lever is <strong>age</strong>. A young giant is genuinely hot. The planets we have photographed
+        directly, like the HR 8799 family, sit at roughly 1000&ndash;1200 K at 30 million years old, glowing in
+        the infrared entirely on their own account.</p>
+      <p>We model that as a cooling curve in age, scaled up (never down) for giants heavier than Jupiter, and
+        anchored on today's solar system: whatever the curve does when young, it must still reproduce Jupiter's
+        real excess at 4.6 billion years. That anchoring is the guard rather than a decoration — it caught a
+        mass term that had quietly cost Saturn 23 K. Above 8 Jupiter masses the
+        <a href="#temp-range">brown-dwarf model</a> takes over with its own cooling tracks, and the two are
+        matched at the boundary so a giant never gets colder by gaining mass.</p>
+      <p><strong>Rocky worlds work differently and deliberately get none of this.</strong> A planet is not
+        contracting, so its internal heat is radioactive decay plus whatever tides are kneading it — and on
+        Earth that reaches the surface as about 0.09 W/m² against roughly 340 W/m² of sunlight, moving the
+        surface temperature by around a fiftieth of a degree. It matters enormously for geology and not at all
+        for climate, and the model says so rather than inventing a term.</p>
+
       <p>The result is <strong>one</strong> mean surface temperature, and everything downstream reads that same
         number: the <a href="#habitability">habitability</a> temperature score, the classifier, and the display.
         <strong>Radiogenic heat</strong> is a GM override (0 by default — negligible against sunlight for most
@@ -672,6 +691,10 @@
       <h2>Known fudges</h2>
       <ul>
         <li>Greenhouse forcing is capped to prevent runaway blow-ups on thick atmospheres (it's a forcing model, not a full radiative-convective solve).</li>
+        <li>A giant's cooling curve is a calibrated power law in age, not a structural model — pinned to the
+          real solar system at one end and matched to the brown-dwarf tracks at the other, but a fit either
+          way. Below Jupiter mass it deliberately does not scale with mass at all, because the per-class
+          figure already accounts for a smaller giant.</li>
         <li>Gas-giant "surface" temperature and pressure are both reported at a ~1 bar reference level — and this
           is now load-bearing rather than cosmetic, since it is where the <a href="#clouds">atmosphere model</a>
           starts climbing from. Nothing below that level is simulated.</li>

@@ -795,10 +795,13 @@
       "denseCo2BoostMax": 1
     },
     "internalHeat": {
-      "minPressureBarForGiants": 10,
       "minHydrogenHeliumFraction": 0.6,
       "gasGiantHeatK": 52,
-      "iceGiantHeatK": 24
+      "iceGiantHeatK": 24,
+      "coolingExponent": 0.48,
+      "massExponent": 0.33,
+      "minAgeGyr": 0.005,
+      "maxHeatK": 1800
     }
   },
   "distributions": {

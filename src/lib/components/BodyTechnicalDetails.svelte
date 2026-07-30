@@ -63,6 +63,13 @@
   let orbitalDistanceTooltip: string | null = null;
   let circumferenceKm: number | null = null;
   let tempTooltip: string = '';
+  // Internal heat, broken out by SOURCE. A giant's is leftover formation heat still leaking away
+  // (Kelvin-Helmholtz), which is why it depends on age and mass and not at all on the star. A rocky
+  // world's is radioactive decay plus whatever tides are kneading it. A brown dwarf sets its own
+  // photosphere temperature outright, so it is reported as an absolute rather than a rise.
+  let internalHeatSources: { label: string; k: number }[] = [];
+  let internalHeatTotalK = 0;
+  let internalHeatNote = '';
   let surfaceRadiationText: string | null = null;
   let surfaceRadiationTooltip: string | null = null;
   let displayedSurfaceRadiation: number | null = null;
@@ -93,6 +100,9 @@
     orbitalDistanceTooltip = null;
     circumferenceKm = null;
     tempTooltip = '';
+    internalHeatSources = [];
+    internalHeatTotalK = 0;
+    internalHeatNote = '';
     surfaceRadiationText = null;
     surfaceRadiationTooltip = null;
     displayedSurfaceRadiation = null;
@@ -343,6 +353,22 @@
                 nightMaxTempC = Math.max(nightMinTempC, nightMaxTempC);
             }
             tempTooltip = `Equilibrium: ${$fmt.tempK(body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K`;
+            // Break the same numbers out by SOURCE for the Internal Heat block. Kept beside the
+            // tooltip that already lists them so the two can never disagree.
+            const selfLumK = (body as any).selfLuminousTeffK || 0;
+            const srcs: { label: string; k: number }[] = [];
+            if ((body.internalHeatK || 0) > 0.5) srcs.push({ label: 'Formation heat (still cooling)', k: body.internalHeatK! });
+            if ((body.radiogenicHeatK || 0) > 0.5) srcs.push({ label: 'Radioactive decay', k: body.radiogenicHeatK! });
+            if ((body.tidalHeatK || 0) > 0.5) srcs.push({ label: 'Tidal flexing', k: body.tidalHeatK! });
+            internalHeatSources = srcs;
+            internalHeatTotalK = srcs.reduce((t, x) => t + x.k, 0);
+            if (selfLumK > 0) {
+                internalHeatNote = `Self-luminous: radiates at ${Math.round(selfLumK)} K on its own account`;
+            } else if (srcs.length && (body.internalHeatK || 0) > 0.5) {
+                internalHeatNote = 'Left over from forming — falls away as the world ages';
+            } else if (srcs.length) {
+                internalHeatNote = 'Drives the geology; barely touches the surface temperature';
+            }
         }
     }
 
@@ -648,6 +674,27 @@
                           <span class="tc-range">{$fmt.tempK(c.lowK)} to {$fmt.tempK(c.highK)}</span>
                       </div>
                   {/each}
+              {/if}
+          </div>
+      {/if}
+
+      <!-- INTERNAL HEAT — the heat a world makes for ITSELF, listed apart from the starlight falling
+           on it. Worth its own block because for a giant it is the dominant term and has nothing to do
+           with the star (Jupiter puts out 1.67x what it receives), while for a rocky world it drives
+           the geology and contributes essentially nothing to the surface temperature — two different
+           stories that the old single tooltip flattened together. -->
+      {#if internalHeatSources.length}
+          <div class="detail-item" title="Heat the body generates itself, as opposed to the starlight it receives. Each figure is how much it raises the surface temperature.">
+              <span class="label">Internal Heat</span>
+              <span class="value">+{Math.round(internalHeatTotalK)} K</span>
+              {#each internalHeatSources as src}
+                  <div class="temp-comp">
+                      <span class="tc-label">{src.label}</span>
+                      <span class="tc-range">+{Math.round(src.k)} K</span>
+                  </div>
+              {/each}
+              {#if internalHeatNote}
+                  <div class="temp-comp"><span class="tc-label">{internalHeatNote}</span></div>
               {/if}
           </div>
       {/if}

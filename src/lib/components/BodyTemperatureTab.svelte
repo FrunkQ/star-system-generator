@@ -9,6 +9,9 @@
   export let rootStar: CelestialBody | null = null;
   export let parentBody: CelestialBody | null = null;
   export let nodes: (CelestialBody | Barycenter)[] = [];
+  // A giant's internal heat is age-dependent (it is still cooling from formation), so the live
+  // preview needs the system's age or it would quote a 4.6 Gyr answer for a young world.
+  export let systemAgeGyr: number = 4.6;
 
   const dispatch = createEventDispatcher();
 
@@ -86,7 +89,7 @@
       // Greenhouse and Tidal are derived, but we need to ensure the props exist for display.
       if (body.greenhouseTempK === undefined) body.greenhouseTempK = 0;
       if (body.tidalHeatK === undefined) body.tidalHeatK = 0;
-      body.internalHeatK = estimateInternalHeatK(body, rulePack);
+      body.internalHeatK = estimateInternalHeatK(body, rulePack, systemAgeGyr);
 
       const eq = calculateEquilibrium();
       // Compose through the shared helper (reads greenhouse/tidal/radiogenic/internal AND the

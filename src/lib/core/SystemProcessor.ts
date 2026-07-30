@@ -457,7 +457,7 @@ export class SystemProcessor implements ISystemProcessor {
         // worlds). When the GM sets it, it adds surface heat AND boosts the geological vigor (see geology).
         const radiogenicHeatK = body.overrides?.radiogenicHeatK ?? 0;
         body.radiogenicHeatK = radiogenicHeatK;
-        body.internalHeatK = estimateInternalHeatK(body, pack);
+        body.internalHeatK = estimateInternalHeatK(body, pack, this.systemAgeGyr);
 
         // V1.4.0 Unified Atmospheric Physics
         recalculateAtmosphereDerivedProperties(body, allNodes, pack);

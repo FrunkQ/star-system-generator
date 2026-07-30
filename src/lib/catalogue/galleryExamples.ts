@@ -387,6 +387,18 @@ export function buildGiantLab(pack: RulePack | null): GalleryRow[] {
 	const pressures = [0.1, 0.5, 1, 5, 20].map((p) =>
 		giantBody(`${p} bar anchor · 150 K`, 150, 105, p, HYDROGEN(jovianTrace), pack));
 
+	// AGE. A giant is still radiating the gravitational energy of its own formation, and cooling as it
+	// does — so the same planet, at the same distance from the same star, is a different object at 10
+	// million years and at four and a half billion. This row is the one that answers "how do I make a
+	// really hot gas giant?": you do not move it closer to its star, you make it young. Temperatures
+	// here are what estimateInternalHeatK derives for a Jupiter-mass world at each age, on top of the
+	// same faint 110 K equilibrium throughout.
+	const ageSweep: [string, number][] = [
+		['10 Myr', 987], ['50 Myr', 456], ['100 Myr', 327], ['500 Myr', 151], ['1 Gyr', 108], ['4.6 Gyr', 165]
+	];
+	const ages = ageSweep.map(([label, tK]) =>
+		giantBody(`${label} old`, tK, 110, 1, HYDROGEN(jovianTrace), pack));
+
 	return [
 		{ title: 'Giant lab — one Jovian chemistry, cooled', blurb: 'The same trace gases throughout — only the temperature changes. Every deck below is the model’s answer, not a label.',
 			bodies: cooling.map(([label, t, eq]) => giantBody(label, t, eq, 1, HYDROGEN(jovianTrace), pack)) },
@@ -396,6 +408,7 @@ export function buildGiantLab(pack: RulePack | null): GalleryRow[] {
 			bodies: methaneAbundance },
 		{ title: 'Giant lab — other chemistries', blurb: 'Sulphur, steam, ammonia and acid skies — all derived, none authored.', bodies: exotic },
 		{ title: 'Giant lab — hot Jupiters (rock as a condensate)', blurb: 'Sodium, potassium, silicate and iron vapour. Which of them is a cloud at each temperature is derived, not assigned.', bodies: hotJupiters },
-		{ title: 'Giant lab — the same air at different depths', blurb: 'One composition, anchored from 0.1 to 20 bar.', bodies: pressures }
+		{ title: 'Giant lab — the same air at different depths', blurb: 'One composition, anchored from 0.1 to 20 bar.', bodies: pressures },
+		{ title: 'Giant lab — the same giant, growing old', blurb: 'One Jupiter, one orbit, one chemistry — only its AGE changes. A giant makes its own heat from the gravitational energy of forming, and spends the rest of its life losing it. This is why a young giant glows and distance from the star has nothing to do with it.', bodies: ages }
 	];
 }

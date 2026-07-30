@@ -5,6 +5,7 @@ import { equivalentFluxDistanceAU } from './zones';
 import { deriveAlbedo } from './albedo';
 
 const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
+const JUPITER_MASS_KG = 1.898e27;
 
 type DistanceRangeAU = { mean: number; min: number; max: number };
 
@@ -226,21 +227,48 @@ export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (Cele
     }
 }
 
-export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack): number {
+export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack, ageGyr = 4.6): number {
     if (body.roleHint !== 'planet') return 0;
     const cfg = rulePack?.climateModel?.internalHeat;
-    const pressure = body.atmosphere?.pressure_bar || 0;
     const h2 = getMainGasFraction(body, 'H2');
     const he = getMainGasFraction(body, 'He');
-    const h2He = h2 + he;
-    const minPressure = cfg?.minPressureBarForGiants ?? 10;
-    const minH2He = cfg?.minHydrogenHeliumFraction ?? 0.6;
-    if (pressure < minPressure || h2He < minH2He) return 0;
+    if (h2 + he < (cfg?.minHydrogenHeliumFraction ?? 0.6)) return 0;
+    // NOTE: there used to be a `pressure_bar >= 10` gate here as well, and it was silently doing all
+    // the work. A giant has no surface, so its quoted pressure is whatever depth its author picked —
+    // the app's own convention quotes the ~1 bar reference level, which failed the gate. Every giant
+    // in the bundled Sol file, and every generated one, was getting ZERO internal heat because of a
+    // number that carries no physical meaning for a body with no ground. Composition decides whether
+    // this is a giant; pressure has no say.
 
+    // Giants are still radiating the gravitational energy of their own formation, and they COOL as
+    // they do it. That is why age is the dominant term and distance from the star is irrelevant:
+    // Jupiter puts out 1.67x what it receives from the Sun, Saturn 1.78x, Neptune 2.6x. A young
+    // giant is dramatically hotter — the directly imaged planets (HR 8799, Beta Pictoris b) sit at
+    // 900-1600 K at 10-30 Myr purely because they are young.
+    //
+    // Kelvin-Helmholtz cooling goes as a power law in age, so: heat = reference x (age/4.6)^-alpha,
+    // where the reference is TODAY'S solar system. That calibration is the point — whatever the
+    // curve does when young, it has to still produce Jupiter's +52 K and Neptune's +24 K at 4.6 Gyr,
+    // which pins it to something we can check rather than leaving it free.
     const isIceGiant = body.classes?.some((c) => c.includes('ice-giant')) || false;
-    const gasGiantHeatK = cfg?.gasGiantHeatK ?? 52;
-    const iceGiantHeatK = cfg?.iceGiantHeatK ?? 24;
-    return isIceGiant ? iceGiantHeatK : gasGiantHeatK;
+    const referenceK = isIceGiant ? (cfg?.iceGiantHeatK ?? 24) : (cfg?.gasGiantHeatK ?? 52);
+    const alpha = cfg?.coolingExponent ?? 0.62;
+    const age = Math.max(cfg?.minAgeGyr ?? 0.005, ageGyr || 4.6);
+    let heatK = referenceK * Math.pow(age / 4.6, -alpha);
+
+    // MASS, but ONLY upward from Jupiter. A heavier giant formed with more gravitational energy to
+    // shed and holds it longer. Below Jupiter mass we deliberately do NOT scale down, because the
+    // per-class reference above is already the measured answer for a smaller giant: Saturn is a third
+    // of Jupiter's mass and radiates essentially the same excess (+53 K against +55 K), and the ice
+    // giants have their own constant. Scaling by mass on top of that double-counted it and cost
+    // Saturn 23 K — the calibration catching a mistake, which is what it is for.
+    const mJup = (body.massKg ?? 0) / JUPITER_MASS_KG;
+    if (mJup > 1) heatK *= Math.pow(mJup, cfg?.massExponent ?? 0.45);
+
+    // Above the substellar floor the brown-dwarf model takes over with its own Burrows/Baraffe
+    // tracks and sets an absolute photosphere temperature, so stop here and let it lead rather than
+    // double-counting the same contraction heat.
+    return Math.max(0, Math.min(cfg?.maxHeatK ?? 2000, heatK));
 }
 
 export function calculateEquilibriumTemperature(

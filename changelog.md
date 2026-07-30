@@ -2,6 +2,35 @@
 
 All notable changes are listed here:
 
+## v2.1.278-beta - 29th Jul 2026
+
+* **Gas giants make their own heat, and it depends on how old they are.** A giant is still radiating
+  the gravitational energy of its own formation — Jupiter puts out 1.67 times what it receives from
+  the Sun, Saturn 1.78, Neptune 2.6 — so the dominant term has nothing to do with the star. It is now
+  modelled as a cooling curve in age: a Jupiter reads nearly 1000 K at ten million years old and 52 K
+  at four and a half billion. Which means the answer to "how do I make a really hot gas giant?" is
+  not to move it closer to its star, it is to make it young.
+* **The curve is anchored on today's solar system**, and that anchoring earned its keep immediately —
+  it caught a mass term that had quietly cost Saturn 23 K. It is also matched to the brown-dwarf
+  cooling tracks at 8 Jupiter masses, so a giant can no longer get colder by gaining mass. Checked
+  against the planets we have actually photographed: the HR 8799 family come out at 990–1110 K
+  against a real 1000–1200 K.
+* **Fixed: giants were getting no internal heat at all.** The old model gated on the atmosphere being
+  quoted at 10 bar or deeper — but a giant has no surface, so its pressure is whatever depth its
+  author picked, and this app quotes the 1 bar reference level. Every giant in the bundled solar
+  system, and every generated one, was silently getting zero. That is why Saturn read 87 K instead of
+  134. Composition decides whether something is a giant now; pressure has no say.
+* **A new Internal Heat block** on the body data panel, for every world rather than giants alone: how
+  much heat it makes itself, broken out by where that heat comes from — formation heat still leaking
+  away, radioactive decay, tidal flexing — kept apart from the starlight falling on it. It was
+  previously a run-on tooltip.
+* **A new gallery row: the same giant, growing old.** One Jupiter, one orbit, one chemistry, and only
+  its age changing.
+* Rocky worlds deliberately get none of the above. A planet is not contracting, and Earth's internal
+  heat reaches the surface as about 0.09 W/m² against 340 W/m² of sunlight — it moves the surface
+  temperature by roughly a fiftieth of a degree. It matters for geology, not for climate, and the
+  model now says so on the physics page instead of implying otherwise.
+
 ## v2.1.277-beta - 30th Jul 2026
 
 * The opening screen now offers BOTH bundled starter maps -- Local Neighbourhood and Local Neighbourhood (Science Fiction). The list is read from the shipped manifest, so bundling another map in future is a data change rather than a code change.

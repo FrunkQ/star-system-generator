@@ -545,7 +545,7 @@
       // So as long as the parent is in allNodes, we are good.
       const tempK = calculateEquilibriumTemperature(newPlanet, $systemStore.nodes, estimateBondAlbedo(newPlanet));
       newPlanet.equilibriumTempK = tempK;
-      newPlanet.internalHeatK = estimateInternalHeatK(newPlanet, rulePack);
+      newPlanet.internalHeatK = estimateInternalHeatK(newPlanet, rulePack, ($systemStore as any)?.age_Gyr ?? 4.6);
       newPlanet.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
           tempK,
           newPlanet.greenhouseTempK || 0,
