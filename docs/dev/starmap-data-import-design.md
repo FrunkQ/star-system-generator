@@ -17,6 +17,58 @@ A "New Starmap from the Real Sky" path in the New Starmap modal:
 5. Import: every selected system arrives as a full SSE system, positioned at its TRUE 3D
    position, processed by SystemProcessor like any other data.
 
+## 1b. Choosing the centre and the range
+
+**Centre.** Three entry modes, one resolution path — everything becomes a 3D point in the
+shared equatorial frame before any query runs:
+
+- **Sol (default).** The dialog opens Sol-centred with the radius at 16 ly and the Planet
+  hosts preset — i.e. its opening state reproduces roughly the bundled Local Neighbourhood,
+  so the first thing a GM sees is familiar, correct, and green-band cheap.
+- **Named star.** A text box resolved live through SIMBAD's ident table ("Trappist-1",
+  "Betelgeuse", "HD 219134" — any alias works). Resolution returns RA/Dec/parallax, which
+  fixes the centre's 3D position; failures are shown inline ("SIMBAD does not know this
+  name"), never silently ignored. Component names need the alias care noted in §2.
+- **RA/Dec + distance.** For deep-field or fictional-frontier campaigns where the interesting
+  point is not a star at all ("centre on the Orion direction, 400 ly out").
+
+There is also a fourth, contextual entry: **"Add real systems near here…"** on an existing
+map's right-click menu pre-fills the centre from the clicked system's stored true position
+(or its SIMBAD identity when it has one) — so a GM can grow an existing campaign map outward
+without re-deriving anything.
+
+**Range.** One number: a radius in light years around the centre — a true 3D sphere, not a
+sky-cone (a sky-cone of nearby directions plus a distance shell is how it is IMPLEMENTED, see
+below, but what the GM reasons about is "everything within N light years of X"). The slider
+is log-scaled (2 ly → 100 ly for star-centred maps, wider for deep-field), because the star
+count grows with the cube of the radius and a linear slider makes the top half of its travel
+useless. The live count readout (§5b) is what actually guides the choice: the GM drags until
+the number and the cost line look right, or taps a preset chip ("Bundled-map size", "Subsector
+~50 systems", "Sector ~200").
+
+**How the sphere becomes a query.** TAP services think in sky coordinates + parallax, not in
+Cartesian spheres, so the library translates:
+
+- Centre at Sol: trivial — `1000/parallax_mas < R_pc` (a distance shell IS a Sol-centred
+  sphere).
+- Centre at another star P: fetch a bounding shell `dist(Sol) ∈ [d_P − R, d_P + R]`
+  intersected with a sky-cone around P's direction of half-angle `asin(R / max(d_P − R, ε))`
+  — a slight over-fetch that is then cut exactly client-side by computing each candidate's
+  Cartesian position and keeping `|x − x_P| < R`. (COUNT queries run on the over-fetch
+  bounds, so the live readout is a small over-estimate, labelled "~".) A centre farther than
+  the radius is required for the cone formula; when the sphere contains Sol (d_P < R) it
+  degrades to the plain distance-shell query.
+- The exact-cut step is the same code that computes map positions, so the filter and the
+  final placement can never disagree.
+
+**Placement on the map.** The CENTRE lands at the map origin (pixel 400,300, z = 0) and every
+other system is placed at its true Cartesian offset FROM THAT CENTRE, in the same equatorial
+axes and at the standard 43.30127 px/ly. A Sol-centred import therefore matches the bundled
+maps exactly; a TRAPPIST-1-centred map puts TRAPPIST-1 at the origin with Sol out at its true
+offset (if Sol is inside the radius at all). The map description records the centre and radius
+("Real-sky import: 14 ly around TRAPPIST-1, Gaia DR3 + NASA Exoplanet Archive, 2026-07-30")
+so the map is self-documenting and refreshable later.
+
 ## 2. Data sources (all free, no key, CORS-friendly or proxyable)
 
 | Source | Gives us | Endpoint |
@@ -122,14 +174,21 @@ New Starmap modal gains a third card: **"Real sky…"** →
     ┌─ Import from the real sky ─────────────────────────────┐
     │ Centre   [ Sol ▾ | star name… | RA/Dec ]               │
     │ Radius   [====○——————] 16 ly                           │
-    │ Include  (•) Planet hosts  ( ) Bright stars  ( ) All   │
+    │ Include  (•) Planet hosts (38)  ( ) Bright stars (~220)│
+    │          ( ) Everything (~1,850)                       │
     │ Planets  (•) Confirmed only ( ) Fill out (generated    │
     │              worlds are tagged and reproducible)       │
-    │ ├─ 38 systems · 61 confirmed planets · ~450 KB ────────┤
+    │ ├─ 38 systems · 61 confirmed planets · ~450 KB ·       │
+    │ │  loads in ~2s — comfortable ──────────────────────── │
     │ │  preview list w/ per-system tick boxes …             │
     │ Sources: NASA Exoplanet Archive · SIMBAD · Gaia DR3    │
     │              [ Cancel ]  [ Import 38 systems ]         │
     └────────────────────────────────────────────────────────┘
+
+    (amber state: the count line becomes "~340 systems · ~3 MB · ~15s recalc on load —
+    large" with one-click chips: [ Radius 13 ly → ~120 ] [ Planet hosts → 41 ]
+    [ Brighter cut → ~90 ]. Red state: button reads "Import anyway (not recommended)"
+    behind a confirm restating the cost; above the ceiling it is disabled outright.)
 
 - The preview list is fetched live (counts first, details lazily) and supports deselecting
   individual systems.
