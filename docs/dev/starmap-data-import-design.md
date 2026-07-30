@@ -167,6 +167,62 @@ seeded and constrained by what is actually known:
 - The bundled maps put this to work too: official map = confirmed-only; the science-fiction
   map (and any GM map) can go nuts.
 
+## 5c. Dense regions — import as ONE SYSTEM, not a starmap (the cluster gate)
+
+A starmap is the right container when stars are effectively fixed relative to each other on
+campaign timescales. In VERY dense environments that assumption breaks — and breaks in the
+most gameable way possible: the stars ORBIT each other fast enough to watch.
+
+- **The galactic centre** is the extreme case: the S-star cluster swarms Sgr A* (4.3 million
+  solar masses) at system-like scales — S2 orbits at a ~970 AU semi-major axis with a
+  **16-year period**, and its neighbours range from years to centuries. That is not a starmap;
+  that is an SSE SYSTEM with a supermassive black hole as its primary and stars as its
+  "planets", and the published orbital elements for the brightest S-stars are REAL data we can
+  import directly. SSE already renders black holes and multi-star barycentre hierarchies; the
+  time controls already make a 16-year period watchable.
+- The same is true, less spectacularly, of globular-cluster cores, young dense clusters
+  (the Trapezium in Orion is a genuinely bound mini-cluster), and high-order multiples
+  (Castor's six stars) — anywhere the mean separation approaches system scale.
+
+**The gate.** Two triggers, either sufficient, both cheap at preview time:
+
+1. **Identity:** the resolved centre's SIMBAD object type is a cluster or black hole
+   (`GlC`, `OpC`, `Cl*`, `BH?`/`BH*`, or Sgr A* itself). Offer immediately.
+2. **Density:** from the COUNT query, mean separation = (4/3 π R³ / N)^(1/3). Below a
+   threshold (first guess ~0.25 ly — a few thousand times a wide-binary separation, far
+   inside any starmap's useful node spacing) the region is flagged dense.
+
+When the gate fires, the dialog offers a third import shape alongside the usual one:
+
+    ⚠ This region is dense enough to behave as one gravitational system.
+    (•) Import as a single system — stars (and the central black hole) as
+        orbiting bodies; watch them move on the system view's timescale.
+    ( ) Import as a starmap anyway (nodes will crowd; positions still true).
+
+**Conversion rules (cluster-as-system):**
+
+- Primary = the dominant central mass (the SMBH when present; else a cluster barycentre with
+  `effectiveMassKg` from the summed membership).
+- Members become star nodes with orbits. Where published elements exist (the S-stars), import
+  them verbatim — real periods, real eccentricities (S2's e = 0.88 is a gift to any GM).
+  Where they don't, generate plausible bound orbits deterministically from each star's true
+  position (a from the projected radius, a virial-ish e distribution, hashed phases) and tag
+  them `origin/generated`, same honesty rule as fill-out mode (§5).
+- Membership cap: a whole globular cluster is millions of stars — the count gate (§5b) applies
+  unchanged, defaulting to "brightest N inside the core radius". The remainder can arrive as a
+  belt-like backdrop node ("unresolved cluster glow") rather than pretending completeness.
+- Physics honesty note in the map/system description: SSE integrates two-body Keplerian orbits
+  per node; a real cluster is an N-body swarm. For play this is exactly right; for pedantry
+  there is a footnote.
+- Scale sanity: the S-cluster spans ~10^4 AU — comfortably inside SSE's system scale. The gate
+  should refuse (with explanation) regions whose bound structure exceeds `systemEdgeAu`-ish
+  scales by orders of magnitude, and suggest tightening the radius to the core.
+
+This also composes with the starmap path: a starmap import whose region CONTAINS a known dense
+knot (e.g. a 50 ly map around the Orion Nebula) can place that knot as ONE starmap node whose
+nested system is the cluster-as-system conversion — a star system you can fly a campaign into,
+sitting on a map you can navigate between.
+
 ## 6. UI sketch
 
 New Starmap modal gains a third card: **"Real sky…"** →
@@ -205,7 +261,10 @@ New Starmap modal gains a third card: **"Real sky…"** →
    TAP fetch with the download-fallback, preview + import. This alone is shippable and useful.
 3. **Population presets**: Gaia cone queries, magnitude cuts, binary merging heuristic, caps.
 4. **Fill-out mode**: generator integration with anchors/constraints/priors + origin tags.
-5. **Later**: CNS5/WDS via VizieR (census + real binary orbits), "add real systems near here",
+5. **Cluster gate**: dense-region detection + cluster-as-system conversion (S-star elements
+   hand-curated first, generated virial orbits after) — see 5c. Sgr A* makes a spectacular
+   flagship example map for this phase.
+6. **Later**: CNS5/WDS via VizieR (census + real binary orbits), "add real systems near here",
    region re-import/refresh against a newer catalogue (WS8-style report before applying).
 
 ## 8. Open questions
