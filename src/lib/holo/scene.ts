@@ -1152,7 +1152,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (focusDrive > 0) {
       controls.target.lerp(desiredTarget, 0.18);
       camera.position.lerp(desiredCam, 0.14);
-      focusDrive--;
+      // 48 frames of a 0.14 lerp closes about three orders of magnitude, which was always enough for
+      // readable-scale distances. Framing a TRUE-scale world spans six — the ease used to expire while
+      // the camera was still hundreds of radii out, leaving the planet a marker in an empty frame. So
+      // the drive only expires when the shot has actually been reached (or the user grabs the zoom):
+      // hold the counter at 1 while the distance is still >5% off the framed ideal.
+      const arrived = camera.position.distanceTo(controls.target) <= dist * 1.05;
+      if (focusDrive > 1 || arrived || userZoomOverride) focusDrive--;
       return;
     }
     // Free heading (3D): gently re-aim at the body — the camera stays put and turns to track, which

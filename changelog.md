@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.301-beta - 31st Jul 2026
+
+* The 3D holo's focus ease no longer expires mid-approach. It ran a fixed 48 frames, which closes about three orders of magnitude of distance -- always enough at readable sizes, half the journey to a true-scale world, so the camera stopped dead in empty space with the planet still a marker. The ease now expires when the shot is actually reached, or the moment the user takes the zoom.
+
 ## v2.1.300-beta - 31st Jul 2026
 
 * TRUE body size now means true. The old floor was a fixed 0.006 scene units, which is bigger than the true size of anything in a solar system -- Earth is 0.00001, even the Sun is 0.001 -- so at the bottom of the dial every body clamped to the same size and the Moon drew as Earth's equal. It came out fine at 5% and collapsed at exactly true, because 5% of the readable size still cleared the floor. The holo now works the way the GM orrery always has, which is the gold standard here: bodies carry their TRUE radius, and visibility comes from a per-role PIXEL floor at draw time -- stars rank above planets, planets above moons, exactly the orrery's 4/2/1 marker hierarchy -- so real proportions appear the moment the zoom can resolve them.
