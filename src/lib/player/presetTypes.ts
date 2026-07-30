@@ -137,6 +137,9 @@ export interface PlayerPreset {
   whole: boolean;        // frame the whole system vs the focused body
   labelSize: number;     // in-scene body-label font size (px); the font is the theme `font`
   hideInfoPanel: boolean; // system page: never show the body info panel (a clean display; tap still frames)
-  inspectorWidth: number; // desktop body info-panel width in px (mobile ignores it and does its own layout)
+  inspectorWidthPct: number; // desktop body info-panel width as a FRACTION of the viewport width (0..1).
+                             // A proportion, not a pixel count: the GM authors on one screen and players
+                             // read on another, so 28% of the display is a promise that travels and
+                             // "340px" is not. Mobile ignores it and does its own layout.
   infoFontScale: number;  // body info-panel font-size multiplier (~0.8..1.6)
 }

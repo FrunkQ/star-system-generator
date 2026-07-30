@@ -353,7 +353,8 @@
     themeKey = BUILTIN_THEME[p.id] ?? (p.systemView === 'holo3d' ? 'holo' : p.systemView === 'list' ? 'guide' : 'console');
     includeConstructs = true;
     holoStyle = holoStyleOf(p);
-    if (p.inspectorWidth) inspectorWidth = Math.max(200, Math.min(640, p.inspectorWidth)); // desktop; mobile ignores it
+    // The preset stores a FRACTION of the viewport; turn it into this display's pixels. (Mobile ignores it.)
+    if (p.inspectorWidthPct && browser) inspectorWidth = Math.max(200, Math.min(640, Math.round(p.inspectorWidthPct * window.innerWidth)));
     // Default time: the preset picks the starting rate + play state (ignored while following the GM,
     // whose clock takes over wholesale).
     rateIndex = Math.max(0, Math.min(RATE_STEPS.length - 1, p.defaultRateIndex ?? DEFAULT_RATE_INDEX));

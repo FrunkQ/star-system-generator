@@ -83,7 +83,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   whole: false,
   labelSize: 11,
   hideInfoPanel: false,
-  inspectorWidth: 340,
+  inspectorWidthPct: 0.26,
   infoFontScale: 1
 };
 

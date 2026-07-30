@@ -525,7 +525,7 @@
                 <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block is
                      part of the page, so it has no width to set — only a text size. -->
                 {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
-                  <label>Info panel width (desktop) <span>{draft.inspectorWidth}px</span><input type="range" min="240" max="560" step="10" bind:value={draft.inspectorWidth} /></label>
+                  <label>Info panel width (desktop) <span>{Math.round(draft.inspectorWidthPct * 100)}% of screen</span><input type="range" min="0.15" max="0.5" step="0.01" bind:value={draft.inspectorWidthPct} /></label>
                 {/if}
                 {#if draft.systemView !== 'list'}
                   <label>Info text size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="1.6" step="0.05" bind:value={draft.infoFontScale} /></label>
@@ -649,7 +649,10 @@
                 {#if infoPreview && !draft.hideInfoPanel}
                   <!-- Info-block preview (D6): the SAME DocPanel players get, docked like the live view.
                        Shows while Info Block controls are being tweaked; display controls hide it. -->
-                  <aside class="preview-insp" style="width:{Math.min(draft.inspectorWidth, 340)}px; font-family:{draft.font}; font-size:{Math.round(13 * draft.infoFontScale)}px">
+                  <!-- The panel is a PROPORTION of the stage, so the preview shows the same proportion the
+                       players will see. It used to be the raw pixel figure capped at 340, which meant the
+                       top half of the slider's travel moved nothing on screen at all. -->
+                  <aside class="preview-insp" style="width:{Math.round(draft.inspectorWidthPct * 100)}%; font-family:{draft.font}; font-size:{Math.round(13 * draft.infoFontScale)}px">
                     <DocPanel system={previewSystem} selectedId={previewInfoId}
                       font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                       fontScale={draft.infoFontScale} listStyle={draft.listStyle} documentStyle={draft.documentStyle}

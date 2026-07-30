@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.294-beta - 30th Jul 2026
+
+* The info-panel width is a percentage of the screen, and the preview follows the slider as you drag it. It was a raw pixel count, which is the wrong thing to author on one machine for someone reading on another -- 28% of the display is a promise that travels and 340px is not. The preview was worse than wrong: it drew the pixel figure capped at 340, so the top half of the slider's travel moved nothing at all. It now shows the same proportion of the stage the players will see.
+
 ## v2.1.293-beta - 30th Jul 2026
 
 * The accent colour reaches the info-block headings, Rainbow included. Two faults in the same line. The colouration style seeded every colour slot and the accent was never part of that seeding, so picking a colour moved the chrome and left the headings on the style's default gold. And the resolver replaced the 'rainbow' sentinel with a flat colour before handing the theme on -- which is why the Guide's spectrum headings, built for the document engine back in v2.1.266, have never once appeared: by the time the renderer looked for the sentinel it had already been spent. The accent now outranks the style seed for the accent and heading slots, an explicitly tweaked slot still outranks both, and the sentinel survives to the renderer that needs it.
