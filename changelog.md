@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.293-beta - 30th Jul 2026
+
+* The accent colour reaches the info-block headings, Rainbow included. Two faults in the same line. The colouration style seeded every colour slot and the accent was never part of that seeding, so picking a colour moved the chrome and left the headings on the style's default gold. And the resolver replaced the 'rainbow' sentinel with a flat colour before handing the theme on -- which is why the Guide's spectrum headings, built for the document engine back in v2.1.266, have never once appeared: by the time the renderer looked for the sentinel it had already been spent. The accent now outranks the style seed for the accent and heading slots, an explicitly tweaked slot still outranks both, and the sentinel survives to the renderer that needs it.
+
 ## v2.1.292-beta - 30th Jul 2026
 
 * Choosing Body graphics: photo shows the photo straight away. The loader was keyed on which body was selected, and the branch that clears the photo for every other imagery mode stamped that same key -- so switching TO photo without also changing body looked, to the loader, like nothing had happened. It only appeared after leaving the tab and coming back, which remounts the panel. Now the key is the subject AND the mode, in both info-block surfaces.

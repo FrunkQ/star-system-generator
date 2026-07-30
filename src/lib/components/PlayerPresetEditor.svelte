@@ -71,7 +71,12 @@
   let draft: PlayerPreset = structuredClone(preset);
 
   // Colouration swatches — reactive so they refresh when the Colouration style (or a tweak) changes.
-  $: docSeedColors = (documentStyleBase(draft.documentStyle) as any).colors;
+  // The swatches must show what is ACTUALLY used, and the preset's accent seeds the accent + heading
+  // slots on top of the colouration (see makeDocTheme) — so seed them the same way here.
+  $: docSeedColors = {
+    ...(documentStyleBase(draft.documentStyle) as any).colors,
+    ...(draft.accentColor && draft.accentColor !== 'rainbow' ? { accent: draft.accentColor, heading: draft.accentColor } : {})
+  };
   $: docColours = DOC_COLOUR_SLOTS.map((s) => ({
     id: s.id, label: s.label,
     hex: toHex((draft.themeColors as any)?.[s.id] ?? docSeedColors[s.id])

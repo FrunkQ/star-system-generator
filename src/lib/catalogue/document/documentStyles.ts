@@ -70,13 +70,23 @@ export function makeDocTheme(o: {
   navStyle?: import('./blocks').NavStyle | null;
 }): import('./blocks').DocTheme {
   const base = documentStyleBase(o.documentStyle);
+  // The preset's chosen accent OUTRANKS the document style's seed for the two slots it is about — the
+  // accent itself and the headings — while an explicitly tweaked slot still outranks both. That is the
+  // model the editor describes ("a colouration SEEDS the colours, then tweak each slot"), but the
+  // accent was never part of the seeding, so picking a colour changed the chrome and left every info
+  // block's headings on the style's default.
+  const accentHex = o.accent && o.accent !== 'rainbow' ? o.accent : null;
   return {
     font: o.font,
     headingFont: o.headingFont || o.font,
     fontScale: o.fontScale ?? 1,
     mono: o.mono,
-    accent: o.accent && o.accent !== 'rainbow' ? o.accent : base.colors.accent,
-    colors: { ...base.colors, ...(o.themeColors ?? {}) },
+    // Keep the accent VALUE, sentinel and all: the concrete colours are resolved into `colors` right
+    // below, so nothing downstream needs a hex here — while renderDocument has to still SEE 'rainbow'
+    // to paint headings across the spectrum. Flattening it here is why the Guide's rainbow headings
+    // (v2.1.266) never reached an info block: by the time the renderer looked, the sentinel was gone.
+    accent: o.accent,
+    colors: { ...base.colors, ...(accentHex ? { accent: accentHex, heading: accentHex } : {}), ...(o.themeColors ?? {}) },
     listStyle: o.listStyle ?? base.listStyle,
     documentStyle: o.documentStyle,
     navStyle: o.navStyle ?? undefined
