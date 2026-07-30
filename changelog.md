@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.279-beta - 30th Jul 2026
+
+* Reverted the rendering-engine changes made in v2.1.277 to give Adrian its look. Appearance is derived from physics and data through tags -- adding engine code to produce a particular picture is the wrong end of that pipeline, however well-reasoned the rule. The atmospheric tint returns to the dominant gas, and cloud decks return to a single condensate whitening for every substance.
+* Adrian's hand-written cloud-deck tags are gone with them. Tags are something the physics emits from data, not something an example map asserts.
+* The DATA all remains: the Taumoeba gas with its cloud block, the taumoeba-bloom and iron-oxide-dust condensates, Astrophage and its spin drive, the Hall Effect thruster, and both starter maps on the opening screen.
+
 ## v2.1.278-beta - 29th Jul 2026
 
 * **Gas giants make their own heat, and it depends on how old they are.** A giant is still radiating

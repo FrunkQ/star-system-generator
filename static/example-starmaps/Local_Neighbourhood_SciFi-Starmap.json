@@ -7186,18 +7186,7 @@
                 "M0_rad": 2.82
               }
             },
-            "tags": [
-              {
-                "key": "structure/cloud-deck",
-                "value": "iron-oxide-dust broken",
-                "manual": true
-              },
-              {
-                "key": "structure/cloud-deck",
-                "value": "taumoeba-bloom overcast",
-                "manual": true
-              }
-            ],
+            "tags": [],
             "description": "A hot, heavy super-Earth whose upper atmosphere hosts Taumoeba: the natural predator of Astrophage, and the reason Tau Ceti still shines. Sampling it involves a chain, a scoop, and more courage than fuel. (Its slot corresponds to the once-catalogued Tau Ceti e.)"
           },
           {

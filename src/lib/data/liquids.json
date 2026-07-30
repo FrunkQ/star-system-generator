@@ -318,8 +318,7 @@
     "biosolvent": "poor",
     "family": "water",
     "refractiveIndex": 1.34,
-    "cloudOpacity": 0.72,
-    "cloudTintDistance": 170
+    "cloudOpacity": 0.72
   },
   {
     "name": "iron-oxide-dust",
@@ -335,7 +334,6 @@
     "biosolvent": "none",
     "family": "rock",
     "refractiveIndex": 2.9,
-    "cloudOpacity": 0.5,
-    "cloudTintDistance": 130
+    "cloudOpacity": 0.5
   }
 ]

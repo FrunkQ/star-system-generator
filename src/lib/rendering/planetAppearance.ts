@@ -446,7 +446,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 				species: d.species,
 				coverage: d.coverage,
 				// Scattering droplets, not bulk liquid — condensateTint owns that rule.
-				colorHex: condensateTint(base, def?.cloudTintDistance),
+				colorHex: condensateTint(base),
 				opacity: def?.cloudOpacity ?? 0.5,
 				ice: (def?.meltK ?? 273) > (body.temperatureK ?? body.equilibriumTempK ?? 288)
 			};
