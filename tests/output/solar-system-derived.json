@@ -278,8 +278,8 @@
             "fit": 1
           },
           {
-            "feature": "Teq_K",
-            "value": 429.8787897112186,
+            "feature": "SurfaceTemp_K",
+            "value": 429.8787897155452,
             "band": "320 – 1200",
             "fit": 1
           }
@@ -300,8 +300,8 @@
                 "fit": 1
               },
               {
-                "feature": "Teq_K",
-                "value": 429.8787897112186,
+                "feature": "SurfaceTemp_K",
+                "value": 429.8787897155452,
                 "band": "320 – 1200",
                 "fit": 1
               }

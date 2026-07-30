@@ -145,10 +145,11 @@ describe('eyeball classes require star-lock, not planet-lock (E2)', () => {
     fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')
   ).classifier.fingerprints as Fingerprint[];
 
-  // A cold, tidally-locked terrestrial: icy except the substellar point.
+  // A cold, tidally-locked terrestrial: icy except the substellar point. Airless, so its surface
+  // sits at its equilibrium temperature.
   const coldEyeball = {
     tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1,
-    Teq_K: 200, radius_Re: 0.9, density: 4, mass_Me: 0.8
+    Teq_K: 200, SurfaceTemp_K: 200, radius_Re: 0.9, density: 4, mass_Me: 0.8
   };
 
   it('a STAR-locked world in the cold band classifies as a cold-eyeball', () => {
@@ -162,5 +163,26 @@ describe('eyeball classes require star-lock, not planet-lock (E2)', () => {
     expect(cls).not.toContain('planet/cold-eyeball');
     expect(cls).not.toContain('planet/eyeball');
     expect(cls).not.toContain('planet/hot-eyeball');
+  });
+
+  // The eyeball bands describe the GROUND — "icy except the substellar point", "molten/dry
+  // dayside", "temperate oasis". They were matched against EQUILIBRIUM temperature, which is the
+  // temperature the world would have with no atmosphere, so a thick greenhouse could be labelled
+  // an icy world while its surface ran at 300 °C.
+  it('a greenhouse-baked locked world is a HOT eyeball, not a cold one', () => {
+    const runaway = {
+      ...coldEyeball,
+      Teq_K: 240,           // it looks cold from orbit…
+      SurfaceTemp_K: 580    // …and the ground is at 307 °C
+    };
+    const cls = classifyByFingerprint(runaway, realFps, 4);
+    expect(cls).toContain('planet/hot-eyeball');
+    expect(cls).not.toContain('planet/cold-eyeball');
+  });
+
+  it('an airless locked world is unaffected: with no atmosphere the two temperatures agree', () => {
+    expect(classifyByFingerprint(coldEyeball, realFps, 4)[0]).toBe('planet/cold-eyeball');
+    const hot = { ...coldEyeball, Teq_K: 700, SurfaceTemp_K: 700 };
+    expect(classifyByFingerprint(hot, realFps, 4)[0]).toBe('planet/hot-eyeball');
   });
 });

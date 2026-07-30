@@ -656,7 +656,13 @@ export class SystemProcessor implements ISystemProcessor {
         // driven by the ACTUAL phase at surface T & P, so stale hydrosphere data reads honestly.
         const surfacePhase = hydroComp && hydroComp !== 'none' ? phaseAtP(hydroComp, surfTForStruct, surfPbar, pack) : undefined;
         // A frozen surface is named for its volatile; an icy shell from makeup-ice is water ice.
-        const icyShell = mk.ice > 0.3 || (surfacePhase === 'solid' && hydroCov > 0.05);
+        // BOTH branches need the ice to actually be ice HERE. The makeup branch used to have no
+        // temperature gate at all, so a body that inferred an ice-rich interior got a frozen crust
+        // painted on it whatever its surface was doing — an icy shell on a 582 K world. Ice-rich
+        // interior and icy SHELL are different claims: a warm volatile-rich world has its water as
+        // steam or a supercritical envelope, and those already have their own tags.
+        const makeupIceIsSolid = phaseAtP('water', surfTForStruct, surfPbar, pack) === 'solid';
+        const icyShell = (mk.ice > 0.3 && makeupIceIsSolid) || (surfacePhase === 'solid' && hydroCov > 0.05);
         const iceLabel = surfacePhase === 'solid' ? (hydroComp as string) : 'water';
         // Cloud-deck + precipitation tags are OWNED by applyCloudDeckTags below (it strips its own
         // auto tags and keeps manual ones) — exempt them from this blanket strip or a GM's manual
