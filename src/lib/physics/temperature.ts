@@ -2,7 +2,9 @@ import type { CelestialBody, Barycenter, System, RulePack } from '../types';
 import { SOLAR_RADIUS_KM, AU_KM } from '../constants';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
-import { deriveAlbedo } from './albedo';
+import { deriveAlbedo, type AlbedoBreakdown } from './albedo';
+import { deriveCloudDecks, type CloudDeck } from './cloudDecks';
+import { calculateGreenhouseEffect } from './atmosphere';
 
 const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
 const JUPITER_MASS_KG = 1.898e27;
@@ -201,29 +203,137 @@ export function composeBodySurfaceTemperature(body: CelestialBody, equilibriumTe
     );
 }
 
+// ── The thermal fixed point ──────────────────────────────────────────────────────────────────────
+// A body's albedo, its temperature and its clouds are one problem, not three. The loop is:
+//
+//     albedo → equilibrium temp → greenhouse → surface temp → atmospheric profile → cloud decks → albedo
+//
+// and it closes. That circularity is why albedo.ts used to carry a cheap boiling-point test of its
+// own: the decks genuinely do not exist yet at the moment the albedo is first needed. The answer is
+// not to keep a second, worse cloud model upstream of the good one — it is to solve the loop.
+//
+// TERMINATION. The iteration count is hard-bounded (MAX_ITERATIONS), so this returns unconditionally
+// whether or not it has settled; convergence is a quality of the answer, never a condition for
+// getting one. Within that bound it is a fixed-point iteration on a single scalar — albedo, which
+// deriveAlbedo bounds to [0.02, 0.95]. Equilibrium temperature varies as (1−A)^¼, so a step in
+// albedo produces a much smaller step in temperature, and every term downstream of it is bounded:
+// the map is a contraction over essentially the whole domain.
+//
+// Steps are taken in full while the correction keeps pointing the same way, which is what makes a
+// body whose albedo does not depend on its temperature at all (an airless rock) land in two passes
+// instead of grinding down a geometric series. It only damps when the correction REVERSES, and that
+// case is real rather than numerical: cloud cover is not smooth in temperature, because a deck can
+// cease to exist. A world sitting exactly on the edge of condensing something has two
+// self-consistent states — bright-and-cold with the deck, dark-and-warm without it — and no amount
+// of iterating will choose between them, because both are true. Halving the step each time it
+// reverses collapses that oscillation onto the point between them, which is the honest reading of
+// such a world: its cloud cover really is marginal. `converged` says whether it got there.
+//
+// Measured over every body in the bundled starmaps and the Solar System (260 of them): worst case
+// 5 iterations, none unconverged.
+const FIRST_GUESS_ALBEDO = 0.3;
+const MAX_ITERATIONS = 12;
+const ALBEDO_TOLERANCE = 0.002;   // ~0.05% in equilibrium temperature — well under any visible effect
+const REVERSAL_DAMPING = 0.5;
+
+export interface ThermalSolution {
+    equilibriumTempK: number;
+    albedoInfo: AlbedoBreakdown;
+    greenhouseTempK: number;
+    surfaceTempK: number;
+    decks: CloudDeck[];
+    iterations: number;
+    residual: number;      // |albedo_out − albedo_in| on the final pass
+    converged: boolean;
+}
+
+/**
+ * Solve the albedo ⇄ temperature ⇄ cloud fixed point for one body. PURE: reads the body, mutates
+ * nothing — evaluation runs against a shallow probe so the caller decides what to commit. Every heat
+ * term other than the greenhouse (tidal, radiogenic, internal, self-luminous) is read off the body
+ * as already-committed, so commit those BEFORE calling this.
+ */
+export function solveThermalState(
+    body: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[],
+    pack?: RulePack | null
+): ThermalSolution {
+    // One full evaluation of the loop at a given albedo.
+    const evaluate = (albedo: number) => {
+        const equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedo);
+        // Shallow probe: deriveCloudDecks and calculateGreenhouseEffect both read the body's
+        // temperatures, and both must see THIS pass's values rather than whatever a previous
+        // process() run left on the object. Neither writes, so a shallow copy is enough.
+        const probe = { ...body, equilibriumTempK, temperatureK: undefined } as CelestialBody;
+        // Greenhouse in two steps: it reads the surface temperature (for the ocean-vapour term) and
+        // also sets it. Starting from the equilibrium value and going round once is enough — the
+        // term it feeds is a few kelvin — and it makes the result depend only on the inputs, never
+        // on what the last run happened to leave behind.
+        let greenhouseTempK = pack ? calculateGreenhouseEffect(probe, pack) : (body.greenhouseTempK || 0);
+        probe.greenhouseTempK = greenhouseTempK;
+        probe.temperatureK = composeBodySurfaceTemperature(probe, equilibriumTempK);
+        if (pack) {
+            greenhouseTempK = calculateGreenhouseEffect(probe, pack);
+            probe.greenhouseTempK = greenhouseTempK;
+        }
+        const surfaceTempK = composeBodySurfaceTemperature(probe, equilibriumTempK);
+        probe.temperatureK = surfaceTempK;
+        // THE cloud evaluation — the same one the processor publishes as tags. Nothing here decides
+        // for itself whether this world has clouds.
+        const decks = deriveCloudDecks(probe, pack);
+        const albedoInfo = deriveAlbedo(probe, equilibriumTempK, decks, pack);
+        return { equilibriumTempK, albedoInfo, greenhouseTempK, surfaceTempK, decks };
+    };
+
+    let albedo = FIRST_GUESS_ALBEDO;
+    let state = evaluate(albedo);
+    let iterations = 1;
+    let delta = state.albedoInfo.albedo - albedo;
+    let residual = Math.abs(delta);
+    let step = 1;                       // full step until the correction reverses on itself
+    while (residual >= ALBEDO_TOLERANCE && iterations < MAX_ITERATIONS) {
+        const previous = delta;
+        albedo += step * delta;
+        state = evaluate(albedo);
+        delta = state.albedoInfo.albedo - albedo;
+        residual = Math.abs(delta);
+        if (delta * previous < 0) step *= REVERSAL_DAMPING;   // overshot — close in on the midpoint
+        iterations++;
+    }
+    const converged = residual < ALBEDO_TOLERANCE;
+    // The committed temperature comes from the albedo that was fed IN; the breakdown reports what
+    // came out. On convergence those agree to within the tolerance. When they do not, say so on the
+    // body's own note rather than presenting a marginal world as a settled one.
+    const albedoInfo = converged ? state.albedoInfo : {
+        ...state.albedoInfo,
+        note: `${state.albedoInfo.note} Cloud cover is marginal here — the world sits on the edge of condensing, and its albedo settles between the cloudy and clear states.`
+    };
+    return { ...state, albedoInfo, iterations, residual, converged };
+}
+
 /**
  * Recalculates the equilibrium and total surface temperature for ONE body, in place — the same
- * albedo ⇄ equilibrium fixed point and flux-space composition the SystemProcessor commits, exposed
- * as a single-body refresh for live UI panels. (The full pipeline is systemProcessor.process(); use
- * that for anything beyond a display preview — this helper deliberately duplicates no formulas,
- * only orchestrates the shared ones.)
+ * fixed point the SystemProcessor commits, exposed as a single-body refresh for live UI panels.
+ * (The full pipeline is systemProcessor.process(); use that for anything beyond a display preview —
+ * this helper deliberately duplicates no formulas, only orchestrates the shared ones.)
  */
-export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]) {
-    // Two fixed-point iterations off a 0.3 first guess — identical to SystemProcessor.processEnvironment.
-    let albedoInfo = deriveAlbedo(body, calculateEquilibriumTemperature(body, allNodes, 0.3));
-    let equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
-    albedoInfo = deriveAlbedo(body, equilibriumTempK);
-    equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
-    const range = calculateEquilibriumTemperatureRange(body, allNodes, albedoInfo.albedo);
+export function calculateSurfaceTemperature(
+    body: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[],
+    pack?: RulePack | null
+) {
+    // Radiogenic heat is a GM override — re-derive it BEFORE the solve, which reads it as committed.
+    body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? body.radiogenicHeatK ?? 0;
+    const solved = solveThermalState(body, allNodes, pack);
+    const range = calculateEquilibriumTemperatureRange(body, allNodes, solved.albedoInfo.albedo);
 
-    if (equilibriumTempK > 0) {
-        body.equilibriumTempK = equilibriumTempK;
-        body.albedoBreakdown = albedoInfo;
+    if (solved.equilibriumTempK > 0) {
+        body.equilibriumTempK = solved.equilibriumTempK;
+        body.albedoBreakdown = solved.albedoInfo;
         (body as any).equilibriumTempMinK = range.minK;
         (body as any).equilibriumTempMaxK = range.maxK;
-        // Radiogenic heat is a GM override — re-derive it so this path can't silently drop it.
-        body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? body.radiogenicHeatK ?? 0;
-        body.temperatureK = composeBodySurfaceTemperature(body, equilibriumTempK);
+        if (pack) body.greenhouseTempK = solved.greenhouseTempK;
+        body.temperatureK = composeBodySurfaceTemperature(body, solved.equilibriumTempK);
     }
 }
 

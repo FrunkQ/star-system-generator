@@ -1,8 +1,7 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK } from '../physics/temperature';
-import { deriveAlbedo } from '../physics/albedo';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose } from '../physics/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
@@ -360,45 +359,28 @@ export class SystemProcessor implements ISystemProcessor {
         // Escape Velocity
         const escapeVelocity = Math.sqrt(2 * G * (body.massKg || 0) / ((body.radiusKm || 1) * 1000)) / 1000; // in km/s
 
+        // Reconcile an inconsistent makeup HERE as well as in processClassification. A body at giant
+        // mass and giant density cannot be the ice world its authored makeup claims, and everything
+        // below reads that makeup — a giant is optically its cloud stack over a deep atmosphere,
+        // a rock/ice world is a surface. Only classification used to make the correction, one pass
+        // too late: the first process() ran the temperature model against the authored makeup and
+        // the second against the corrected one, so the same file gave two different temperatures
+        // depending on how many times it had been loaded. Idempotent (a gas-dominated makeup is
+        // returned unchanged), so running it in both places costs nothing.
+        const earlyGiantFix = reconcileGiantMakeup(body);
+        if (earlyGiantFix) body.makeup = earlyGiantFix;
+
         // Temperature Components
         const allStars = allNodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
         let equilibriumTempK = 0;
-        
-        if (allStars.length > 0) {
-            // Albedo is DERIVED from surface makeup + cloud decks (which depend on temperature), so
-            // solve the albedo ⇄ equilibrium-temp coupling as a quick fixed point: a first-guess temp
-            // picks the clouds, the clouds set the albedo, the albedo sets the temp. Two iterations
-            // converge (albedo is bounded). A manually-pinned body.albedo short-circuits this.
-            let albedoInfo = deriveAlbedo(body, calculateEquilibriumTemperature(body, allNodes, 0.3), pack);
-            equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
-            albedoInfo = deriveAlbedo(body, equilibriumTempK, pack);
-            equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
-            body.albedoBreakdown = albedoInfo;
-            const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, albedoInfo.albedo);
-            (body as any).equilibriumTempMinK = eqRange.minK;
-            (body as any).equilibriumTempMaxK = eqRange.maxK;
-        }
-        body.equilibriumTempK = equilibriumTempK;
 
-        // Atmospheric escape over the system's age — thins/strips the atmosphere BEFORE greenhouse &
-        // radiation read it (so a stripped world loses its greenhouse + shielding). Planets are assumed
-        // to form a few Myr into the system's life (FORMATION_DELAY_GYR), so they erode for ~that long.
-        // OPT-IN per body (evolveAtmosphere): hand-authored, imported and picker-placed worlds carry
-        // END-STATE atmospheres the GM chose — re-aging them deletes every deliberate trace exosphere.
-        // Opted-in bodies erode a COPY of their primordial baseline (atmosphere0, snapshotted on first
-        // run) so re-processing — which happens on every load and edit — never compounds the loss.
-        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && body.evolveAtmosphere) {
-            if (!body.atmosphere0 && body.atmosphere) body.atmosphere0 = JSON.parse(JSON.stringify(body.atmosphere));
-            if (body.atmosphere0) body.atmosphere = JSON.parse(JSON.stringify(body.atmosphere0));
-            const magG = body.magneticField?.strengthGauss || 0;
-            const magShield = magG > 0 ? Math.min(0.99, (Math.log10(magG + 0.01) + 2) / 3) : 0;
-            const stellarFluxRel = calculateTotalStellarRadiation(body, allNodes);
-            const planetAgeGyr = Math.max(0, this.systemAgeGyr - FORMATION_DELAY_GYR);
-            applyAtmosphericEscape(body, equilibriumTempK, planetAgeGyr, stellarFluxRel, magShield, pack);
-        }
-
-        // Radiation (after escape, so shielding reflects any thinned/stripped atmosphere).
-        body.surfaceRadiation = calculateSurfaceRadiation(body, allNodes, pack);
+        // --- Heat terms that do NOT depend on temperature, committed FIRST. ---
+        // The thermal solve below composes the surface temperature from every heat term on the body,
+        // so these have to be on it before it runs. They read mass, orbit and age only — nothing
+        // downstream of albedo — so computing them here costs nothing and closes a real hole: they
+        // used to be committed AFTER the albedo pass, which meant the clouds and the albedo were
+        // being judged against last run's leftovers on a re-process, or against nothing at all on
+        // the first.
 
         // Tidal Heating
         let tidalHeatingK = 0;
@@ -417,6 +399,64 @@ export class SystemProcessor implements ISystemProcessor {
             }
         }
         body.tidalHeatK = tidalHeatingK;
+
+        // Radiogenic Heating — a GM OVERRIDE (body.overrides.radiogenicHeatK), re-derived from it each run
+        // so it survives save/load. Default 0 (radiogenic surface heat is negligible vs sunlight for most
+        // worlds). When the GM sets it, it adds surface heat AND boosts the geological vigor (see geology).
+        const radiogenicHeatK = body.overrides?.radiogenicHeatK ?? 0;
+        body.radiogenicHeatK = radiogenicHeatK;
+        body.internalHeatK = estimateInternalHeatK(body, pack, this.systemAgeGyr);
+
+        // --- THE thermal fixed point: albedo ⇄ equilibrium temp ⇄ greenhouse ⇄ surface temp ⇄
+        //     cloud decks ⇄ albedo (physics/temperature.ts solveThermalState, which explains why it
+        //     terminates). The clouds it reads are deriveCloudDecks' — the same single evaluation
+        //     published as tags in processClassification — so the albedo model and the deck model
+        //     can no longer disagree about what is in this world's sky. A manually-pinned
+        //     body.albedo / overrides.albedo short-circuits the albedo half of it.
+        const commitThermal = () => {
+            const solved = solveThermalState(body, allNodes, pack);
+            equilibriumTempK = solved.equilibriumTempK;
+            body.equilibriumTempK = equilibriumTempK;
+            body.albedoBreakdown = solved.albedoInfo;
+            body.greenhouseTempK = solved.greenhouseTempK;
+            // Commit the solved SURFACE temperature too, not just the equilibrium one. The greenhouse
+            // reads it (an ocean only feeds water vapour into the sky between freezing and boiling),
+            // so leaving the previous run's value here meant recalculateAtmosphereDerivedProperties
+            // below re-derived the greenhouse against stale history: a world processed once and
+            // processed twice came out at two different temperatures. It now reproduces exactly what
+            // the solve already converged on.
+            body.temperatureK = solved.surfaceTempK;
+            const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, solved.albedoInfo.albedo);
+            (body as any).equilibriumTempMinK = eqRange.minK;
+            (body as any).equilibriumTempMaxK = eqRange.maxK;
+        };
+        if (allStars.length > 0) commitThermal();
+        body.equilibriumTempK = equilibriumTempK;
+
+        // Atmospheric escape over the system's age — thins/strips the atmosphere BEFORE greenhouse &
+        // radiation read it (so a stripped world loses its greenhouse + shielding). Planets are assumed
+        // to form a few Myr into the system's life (FORMATION_DELAY_GYR), so they erode for ~that long.
+        // OPT-IN per body (evolveAtmosphere): hand-authored, imported and picker-placed worlds carry
+        // END-STATE atmospheres the GM chose — re-aging them deletes every deliberate trace exosphere.
+        // Opted-in bodies erode a COPY of their primordial baseline (atmosphere0, snapshotted on first
+        // run) so re-processing — which happens on every load and edit — never compounds the loss.
+        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && body.evolveAtmosphere) {
+            if (!body.atmosphere0 && body.atmosphere) body.atmosphere0 = JSON.parse(JSON.stringify(body.atmosphere));
+            if (body.atmosphere0) body.atmosphere = JSON.parse(JSON.stringify(body.atmosphere0));
+            const magG = body.magneticField?.strengthGauss || 0;
+            const magShield = magG > 0 ? Math.min(0.99, (Math.log10(magG + 0.01) + 2) / 3) : 0;
+            const stellarFluxRel = calculateTotalStellarRadiation(body, allNodes);
+            const planetAgeGyr = Math.max(0, this.systemAgeGyr - FORMATION_DELAY_GYR);
+            const pressureBefore = body.atmosphere?.pressure_bar ?? 0;
+            applyAtmosphericEscape(body, equilibriumTempK, planetAgeGyr, stellarFluxRel, magShield, pack);
+            // Escape changed the air the clouds condense out of, so the fixed point has to be solved
+            // again against what is actually left. Only these opted-in bodies pay for it, and only
+            // when something was really lost.
+            if (allStars.length > 0 && (body.atmosphere?.pressure_bar ?? 0) !== pressureBefore) commitThermal();
+        }
+
+        // Radiation (after escape, so shielding reflects any thinned/stripped atmosphere).
+        body.surfaceRadiation = calculateSurfaceRadiation(body, allNodes, pack);
 
         // Tidal locking — derived from the despinning timescale vs the system age (a moon locks to
         // its planet, a planet to its star/barycentre). DYNAMIC by default; the body editor's
@@ -452,14 +492,9 @@ export class SystemProcessor implements ISystemProcessor {
             body.tags.push({ key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
         }
 
-        // Radiogenic Heating — a GM OVERRIDE (body.overrides.radiogenicHeatK), re-derived from it each run
-        // so it survives save/load. Default 0 (radiogenic surface heat is negligible vs sunlight for most
-        // worlds). When the GM sets it, it adds surface heat AND boosts the geological vigor (see geology).
-        const radiogenicHeatK = body.overrides?.radiogenicHeatK ?? 0;
-        body.radiogenicHeatK = radiogenicHeatK;
-        body.internalHeatK = estimateInternalHeatK(body, pack, this.systemAgeGyr);
-
-        // V1.4.0 Unified Atmospheric Physics
+        // V1.4.0 Unified Atmospheric Physics — molar mass, scale height and the gas tags, plus a
+        // recompute of the greenhouse the thermal solve already committed (idempotent: it lands on
+        // the same value, now that the surface temperature it reads is this pass's).
         recalculateAtmosphereDerivedProperties(body, allNodes, pack);
 
         // Total temperature from flux-space composition (avoids direct +K stacking artifacts). All heat

@@ -158,12 +158,13 @@
              };
              body.orbitalBoundaries = calculateOrbitalBoundaries(planetData, rulePack);
              calculateDeltaVBudgets(body);
-             calculateGreenhouseEffect(body, rulePack);
-             
-             // Dynamic Surface Temperature Recalculation
+
+             // Dynamic Surface Temperature Recalculation — the shared albedo ⇄ temperature ⇄ cloud
+             // solve, which commits the greenhouse itself (there used to be a bare
+             // calculateGreenhouseEffect call here whose return value was thrown away).
              const sys = get(systemStore);
              if (sys) {
-                 calculateSurfaceTemperature(body, sys.nodes);
+                 calculateSurfaceTemperature(body, sys.nodes, rulePack);
              }
 
         }
