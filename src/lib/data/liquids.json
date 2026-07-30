@@ -330,7 +330,7 @@
     "label": "Taumoeba bloom",
     "meltK": 200,
     "boilK": 450,
-    "tripleBar": 0.01,
+    "tripleBar": 3e-6,
     "criticalK": 640,
     "criticalBar": 200,
     "colorHex": "#6FBF3A",
@@ -340,7 +340,7 @@
     "family": "water",
     "refractiveIndex": 1.34,
     "cloudOpacity": 0.72,
-    "cloudAlbedo": 0.35,
+    "cloudAlbedo": 0.18,
     "cloudTintDistance": 120
   },
   {

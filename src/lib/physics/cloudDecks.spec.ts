@@ -391,3 +391,42 @@ describe('condensateTint — per-substance distance from white', () => {
     expect(condensateTint('nonsense')).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
+
+// Adrian (Tau Ceti, bundled science-fiction map). Taumoeba is an ORGANISM that lives in the air,
+// and the bloom it forms is not water however much its placeholder phase data used to look like it:
+// it does not sublime away at low pressure, and being pigmented it absorbs far more than it
+// reflects. With that said in the data, the column puts a thin green deck high over a hot CO2 world
+// — which is the point of the planet.
+describe('ADRIAN: a living bloom condenses where a vapour would not', () => {
+  const adrian = () => world({
+    massKg: 2.347e25, radiusKm: 9219, equilibriumTempK: 303.9, temperatureK: 640.8,
+    atmosphere: { main: 'CO2', pressure_bar: 8,
+      composition: { CO2: 0.9095, N2: 0.08, Ar: 0.01, Taumoeba: 0.0005 } } as any
+  });
+
+  it('carries a taumoeba-bloom deck, and only that', () => {
+    const decks = deriveCloudDecks(adrian(), pack);
+    expect(species(decks)).toEqual(['taumoeba-bloom']);
+  });
+
+  it('the deck is PARTIAL — swirls over a visible surface, not a shroud', () => {
+    const d = deriveCloudDecks(adrian(), pack)[0];
+    expect(d.coverage).toBeGreaterThan(0.05);
+    expect(d.coverage).toBeLessThan(0.55);        // wisps/scattered/broken, never a veil
+    expect(['scattered', 'broken']).toContain(d.bucket);
+  });
+
+  it('it sits HIGH and nothing reaches the ground', () => {
+    const d = deriveCloudDecks(adrian(), pack)[0];
+    expect(d.baseBar!).toBeLessThan(1);           // well above the 8 bar surface
+    expect(d.precip).toBe('virga');               // the ground is supercritical for it
+  });
+
+  it('the CO2 itself still condenses nowhere — that was never the deck', () => {
+    const bare = world({
+      massKg: 2.347e25, radiusKm: 9219, equilibriumTempK: 304.4, temperatureK: 641.2,
+      atmosphere: { main: 'CO2', pressure_bar: 8, composition: { CO2: 0.91, N2: 0.08, Ar: 0.01 } } as any
+    });
+    expect(deriveCloudDecks(bare, pack)).toEqual([]);
+  });
+});

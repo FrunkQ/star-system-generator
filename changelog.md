@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.284-beta - 30th Jul 2026
+
+* Adrian has green clouds, and it got them by being described properly rather than by being told what to look like. Two numbers on the Taumoeba bloom were placeholders copied from water, and neither survives a second's thought about what the substance actually is. Its triple pressure said the bloom sublimes away at low pressure exactly as water ice does, which is the opposite of true for something whose whole existence is staying aloft in a hot sky. And its cloud albedo said a dense green pigmented organism reflects a third of the light that hits it, when the entire function of a pigment is to absorb.
+* Corrected -- triple pressure to 3e-6 bar, cloud albedo to 0.18 -- the column now condenses a thin bloom high above the surface, and the physics does the rest. It comes out as scattered cover at about a fifth of the sky, so you see green swirls over the reddish ground rather than a green planet, and the precipitation reads virga because the bloom never reaches the surface: below 0.19 bar it is above its critical temperature and cannot exist as a condensate at all. That is Taumoeba's actual habitat falling out of the model instead of being asserted.
+* The albedo correction matters more than it looks. At the old 0.35 the deck was bright enough to cool the planet, which thickened the deck, which cooled it further -- a runaway that snapped Adrian to a total shroud with only a hair's breadth of settings in between. A pigmented bloom that absorbs breaks that loop, so the partial deck is stable: the solve settles in three passes with no residual, and Adrian's surface temperature moves by 0.4 K.
+* Nothing else in either bundled starmap changes: no classifications, no temperatures, no other body's colour. Taumoeba exists on exactly one world.
+
 ## v2.1.283-beta - 30th Jul 2026
 
 * An icy shell no longer appears on worlds that are far too hot to have one. The rule had two branches and only one of them checked the temperature, so a body that inferred an ice-rich interior got a frozen crust painted on it whatever its surface was doing. Ice-rich interior and icy SHELL are different claims -- a warm volatile-rich world carries its water as steam or a supercritical envelope, and both of those already have their own tags. Three bundled worlds lose a crust they could not have had, at 303 K, 488 K and 523 K.
