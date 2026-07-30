@@ -1,12 +1,25 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import type { RulePack } from '$lib/types';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
+  import { loadBaseMapManifest } from '$lib/map/baseMapManifest';
 
   export let rulepacks: RulePack[];
   export let hasSavedStarmap: boolean;
 
   const dispatch = createEventDispatcher();
+
+  // The bundled starter maps, read from the shipped manifest so a new one appears here by shipping data,
+  // never by editing this component. Falls back to the original single entry if the manifest is unreadable
+  // — this is the screen a first-time user lands on, and it must always offer a way in.
+  const FALLBACK = [{ file: 'Local_Neighbourhood-Starmap.json', name: 'Local Neighbourhood', description: '' }];
+  let exampleMaps: { file: string; name: string; description?: string }[] = FALLBACK;
+  onMount(async () => {
+    const manifest = await loadBaseMapManifest();
+    if (manifest?.maps?.length) {
+      exampleMaps = manifest.maps.map((m) => ({ file: m.file, name: m.name, description: m.description }));
+    }
+  });
 
   // The intro blurb alternates on each appearance: Option 1 (physics-forward) on the
   // first display, Option 2 (GM-facing) on the next, and so on. The chosen index is
@@ -58,7 +71,14 @@
     <div class="right-pane">
         <div class="load-options">
             <button on:click={() => dispatch('upload')}>Upload Starmap</button>
-            <button on:click={() => dispatch('loadExampleStarmap')}>Load Example: Local Neighbourhood</button>
+            <!-- The starter maps come from the shipped manifest, so adding a bundled map is a data change
+                 and never a code change. While it loads (or if it cannot be read) the original single
+                 button stands in, so this screen always offers a way to start. -->
+            {#each exampleMaps as m}
+              <button title={m.description ?? ''} on:click={() => dispatch('loadExampleStarmap', m.file)}>
+                Load Example: {m.name}
+              </button>
+            {/each}
         </div>
 
         <div class="new-starmap-form">

@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.277-beta - 30th Jul 2026
+
+* The opening screen now offers BOTH bundled starter maps -- Local Neighbourhood and Local Neighbourhood (Science Fiction). The list is read from the shipped manifest, so bundling another map in future is a data change rather than a code change.
+* Fixed: Tiangong Station and the Lunar Gateway were fitted with a Hall Effect thruster that did not exist in the rule pack. It does now -- xenon, 0.6 kN, 1800 s, the workhorse of station keeping.
+* New fuel and engine: ASTROPHAGE and the Astrophage Spin Drive, and the Hail Mary and Blip-A now actually run on them instead of standing in with an antimatter beam core. Astrophage converts its own mass to light, so the exhaust velocity is c and the specific impulse is c/g -- about 30.6 million seconds, within a rounding error of the best any reaction drive can ever manage. The numbers check out against the book: at total mass-to-light conversion, two grams of Astrophage carries exactly a ten-second 60 kN test firing.
+* Adrian, at Tau Ceti, now looks like Adrian: a green Taumoeba bloom over rust-coloured dust, built from two cloud decks rather than a painted-on colour. Taumoeba joins the gas list as a custom constituent, so the whole thing is editable data.
+* Atmospheric tint now comes from the most abundant COLOURED gas rather than simply the most abundant gas, scaled by how much of it there is. Bulk gases are usually colourless, so keying off the main constituent meant a striking trace was invisible -- which is backwards, since Earth's sky is not the colour of nitrogen.
+* Cloud decks can now keep their own colour instead of being pulled toward white. Condensed droplets and ice crystals scatter broadly and read near-white whatever the liquid beneath, which is right for water and wrong for a pigmented bloom or a mineral dust; those now say how far from white they sit.
+
 ## v2.1.276-beta - 30th Jul 2026
 
 * Fixed: link distances ignored DEPTH. A route measured only its flat shadow on the map, so a system labelled "3.8 ly below the plane" could sit on a 2.1 ly link -- which is not a shape that exists. Links now measure in three dimensions like everything else, and honour the campaign's "ignore depth" setting. Sol to Alpha Centauri now reads its real 4.4 light years instead of 2.1.

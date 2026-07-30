@@ -133,7 +133,33 @@
       "atmo_efficiency": 0.0,
       "powerDraw_MW": 5000.0,
       "description": "Compresses space to allow FTL travel. Requires exotic matter.",
-      "drive_tags": ["drive/warp"]
+      "drive_tags": [
+        "drive/warp"
+      ]
+    },
+    {
+      "id": "engine-hall-effect",
+      "name": "Hall Effect Thruster",
+      "type": "Electric (Ion)",
+      "fuel_type_id": "fuel-xenon",
+      "thrust_kN": 0.6,
+      "efficiency_isp": 1800,
+      "atmo_efficiency": 0,
+      "powerDraw_MW": 0.1,
+      "description": "Accelerates xenon ions through a radial magnetic field. Lower exhaust velocity than a gridded ion drive but far more thrust per kilowatt, which is why it is the workhorse of station keeping.",
+      "drive_tags": []
+    },
+    {
+      "id": "engine-astrophage-spin",
+      "name": "Astrophage Spin Drive",
+      "type": "Photonic (Astrophage)",
+      "fuel_type_id": "fuel-astrophage",
+      "thrust_kN": 31000,
+      "efficiency_isp": 30570000,
+      "atmo_efficiency": 0,
+      "powerDraw_MW": 40,
+      "description": "Astrophage converts its own mass to light and emits it in one direction. The exhaust is a beam of 25.984 micron infrared, so the exhaust velocity is c and the specific impulse is c/g0 -- about 30.6 million seconds, within a rounding error of the best any reaction drive can ever do. Thrust here is what holds 1.5 g at full load. The beam is 9.3 petawatts: never fire it at anything you like.",
+      "drive_tags": []
     }
   ]
 }

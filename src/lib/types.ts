@@ -423,6 +423,10 @@ export interface LiquidDef {
                               // scaled thermal-glow emissive layer, so the ocean glows even under a dim star
     cloudOpacity?: number;    // 0..1 veil strength when this substance condenses as a CLOUD DECK
                               // (how opaquely it hides what is beneath). Absent → a moderate default.
+    cloudTintDistance?: number; // How far from WHITE this substance's deck sits, in 0..255 channel terms.
+                              // Condensed droplets scatter broadly and read near-white whatever the bulk
+                              // liquid's colour, which is the default (60). A PIGMENTED suspension — a
+                              // living bloom, a mineral dust — keeps its own colour, so it says so here.
 }
 
 export interface FuelDefinition {

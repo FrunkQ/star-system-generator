@@ -181,17 +181,33 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     }
   }
 
-  // 3. Atmosphere/cloud tint from the dominant coloured gas (thicker → more dominant). Gas
-  // giants (no real surface) take their whole look from the atmosphere.
+  // 3. Atmosphere tint from the dominant COLOURED gas (thicker → more dominant). Gas giants (no real
+  // surface) take their whole look from the atmosphere.
+  //
+  // The bulk gas is usually colourless — N2, CO2 and Ar all carry a null colorHex — so keying off the
+  // single most abundant gas meant a world was tinted only when its MAIN constituent happened to be
+  // coloured, and a striking trace was invisible. That is backwards: colour in an atmosphere comes from
+  // the minor constituents, which is why Earth's sky is not the colour of nitrogen. We now take the most
+  // abundant gas that HAS a colour, and scale how strongly it reads by its own share, so a trace tints
+  // rather than repaints and a thick coloured layer still dominates.
   const atm = body.atmosphere;
   if (atm?.composition && rulePack?.gasPhysics) {
-    const g = dominantGas(atm.composition);
-    const hex = rulePack.gasPhysics[g]?.colorHex;
-    if (hex) {
+    const coloured = Object.entries(atm.composition)
+      .filter(([g]) => !!rulePack.gasPhysics[g]?.colorHex)
+      .sort((a, b) => (b[1] as number) - (a[1] as number))[0];
+    if (coloured) {
+      const [g, fractionRaw] = coloured;
+      const fraction = Math.max(0, Math.min(1, Number(fractionRaw) || 0));
+      const hex = rulePack.gasPhysics[g]!.colorHex!;
       const thickness = Math.min(1, (atm.pressure_bar ?? 0) / 2);
-      const opacity = mk.gas > 0.5 ? Math.max(0.6, thickness) : 0.2 + 0.6 * thickness;
-      col = mix(col, hexToRgb(hex), opacity);
-      push(hex, 'atmosphere', opacity, `${g} haze`);
+      const base = mk.gas > 0.5 ? Math.max(0.6, thickness) : 0.2 + 0.6 * thickness;
+      // A trace still shows, but faintly: the cube root keeps 1% visible (~0.22 of full strength) without
+      // letting it repaint the world, and a gas at unity is unchanged from the old behaviour.
+      const opacity = base * Math.cbrt(fraction);
+      if (opacity > 0.01) {
+        col = mix(col, hexToRgb(hex), opacity);
+        push(hex, 'atmosphere', opacity, `${g} haze`);
+      }
     }
   }
 
@@ -210,7 +226,7 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
       .sort((a, b) => b.veil - a.veil)[0];
     if (top && top.veil > 0.02) {
       // Droplets, not bulk liquid — condensateTint owns that rule (see cloudDecks).
-      const condensate = hexToRgb(condensateTint(top.def?.colorHex ?? '#c8d2dc'));
+      const condensate = hexToRgb(condensateTint(top.def?.colorHex ?? '#c8d2dc', top.def?.cloudTintDistance));
       col = mix(col, condensate, Math.min(0.85, top.veil));
       push(rgbToHex(condensate), 'cloud', top.veil, `${top.d.species} clouds`);
     }

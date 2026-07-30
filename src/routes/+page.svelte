@@ -1060,9 +1060,12 @@
     }
   }
 
-  async function handleLoadExampleStarmap() {
+  // The starter map to load is named by the modal (from the shipped manifest), so bundling another one is
+  // a data change. Falls back to the original file for any caller that does not name one.
+  async function handleLoadExampleStarmap(event?: CustomEvent<string>) {
+      const file = event?.detail || 'Local_Neighbourhood-Starmap.json';
       try {
-          const response = await fetch('/example-starmaps/Local_Neighbourhood-Starmap.json');
+          const response = await fetch('/example-starmaps/' + file);
           if (!response.ok) throw new Error('Failed to load example starmap.');
           const data = await response.json();
           starmapStore.set(await recalcAllSystems(data));

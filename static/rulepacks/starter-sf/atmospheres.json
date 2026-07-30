@@ -471,7 +471,7 @@
       },
       "cloud": {
         "condensesTo": "hydrogen-cyanide",
-        "minFraction": 0.00008
+        "minFraction": 8e-05
       }
     },
     "C2H6": {
@@ -659,7 +659,7 @@
       ],
       "cloud": {
         "condensesTo": "sulfuric-acid",
-        "minFraction": 0.00001
+        "minFraction": 1e-05
       },
       "reaction": {
         "from": [
@@ -754,7 +754,31 @@
       },
       "cloud": {
         "condensesTo": "ammonium-hydrosulfide",
-        "minFraction": 0.00003
+        "minFraction": 3e-05
+      }
+    },
+    "Taumoeba": {
+      "molarMass": 0.03,
+      "shielding": 1,
+      "greenhouse": 0,
+      "specificHeat": 1.0,
+      "radiativeCooling": 0.5,
+      "colorHex": "#5FD35F",
+      "meltK": 180,
+      "boilK": 400,
+      "tags": [
+        {
+          "name": "biosignature",
+          "trigger": "percent > 0.0001"
+        },
+        {
+          "name": "exotic-biology",
+          "trigger": "percent > 0.0001"
+        }
+      ],
+      "cloud": {
+        "condensesTo": "taumoeba-bloom",
+        "minFraction": 0.0001
       }
     }
   },
@@ -1035,8 +1059,8 @@
           "value": {
             "name": "Sulfur Dioxide (Io-like)",
             "pressure_range_bar": [
-              1e-9,
-              1e-7
+              1e-09,
+              1e-07
             ],
             "mass_range_earths": [
               0.01,
@@ -1092,11 +1116,11 @@
           "value": {
             "name": "Water Vapor Plume (Enceladus-like)",
             "pressure_range_bar": [
-              1e-9,
-              1e-8
+              1e-09,
+              1e-08
             ],
             "mass_range_earths": [
-              0.00001,
+              1e-05,
               0.01
             ],
             "temp_range_K": [
@@ -1720,7 +1744,7 @@
           "value": {
             "name": "Nitrogen-Methane Exosphere (Pluto/Triton-like)",
             "pressure_range_bar": [
-              0.000001,
+              1e-06,
               0.0001
             ],
             "mass_range_earths": [

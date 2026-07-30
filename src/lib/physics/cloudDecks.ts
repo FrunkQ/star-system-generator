@@ -163,14 +163,19 @@ function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas
 // white to a fixed small amount: a dark liquid lightens a lot, an already-pale one barely moves, and
 // the hue survives either way.
 const CONDENSATE_DISTANCE = 60;   // how far from white a deck sits, in 0..255 channel terms
-export function condensateTint(hex: string): string {
+// A deck of CONDENSED droplets or ice crystals scatters broadly and reads near-white whatever the bulk
+// liquid's colour — water clouds are white, not blue. But not every deck is condensate: a suspension that
+// carries its own PIGMENT (a living bloom, a mineral dust) keeps its colour, and forcing it toward white
+// makes an alien sky look like weather on Earth. A liquid may therefore state its own distance from white
+// via `cloudTintDistance`; absent, the condensate default applies and nothing changes.
+export function condensateTint(hex: string, distance: number = CONDENSATE_DISTANCE): string {
   const h = hex.replace('#', '');
   if (h.length !== 6) return '#eef2f8';
   const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
   const d = c.map((v) => 255 - v);
   const max = Math.max(...d);
   if (max <= 0) return hex;
-  const f = Math.min(1, CONDENSATE_DISTANCE / max);
+  const f = Math.min(1, Math.max(0, distance) / max);
   const out = d.map((v) => Math.round(255 - v * f));
   return '#' + out.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
 }
