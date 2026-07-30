@@ -26,6 +26,8 @@ Last triage: 2026-07-30, at v2.1.283-beta. Bucket F worked through at v2.1.286-2
 
 | A5 | **Stat block pairs two different temperatures in adjacent rows.** Pandora: "Surface temp 45 °C" against "Temp range -28 °C to -23 °C" — the mean sits 70 °C outside its own range. 45 °C is 318 K, the range is 245–250 K, and the ~71 K gap is the GREENHOUSE: the block shows the composed surface temperature on one row and the EQUILIBRIUM min/max on the next. A proper surface range already exists — `SurfaceTempProfile.totalMinK` / `.totalMaxK`, which is what the GM body panel decomposes by cause. Use that. Check every other paired figure in the same block while there. | captured |
 
+| A6 | **In the DOCUMENT view of a system, the star's page should list its natural satellites — the planets — exactly as a planet lists its moons.** It currently does not, so the only way down into the system from the star is the picker at the top, and that is sometimes ineffective. Every other body in the document gets a satellite list; the star is the one node missing it, and it is the node you land on first (E1 preselects the primary star on entry), so the omission is on the FIRST page a player sees. Treat it as the same list the planets already render — `buildGuideDocument` / `systemTopology` — not a new bespoke block. Fixing this also gives the document a working navigation path that does not depend on the picker at all. | captured |
+
 ## F — Player Views: preset editor (one batch, 2026-07-30)
 
 All from a single pass over the preset editor. Several may share a root — F4/F5 are both "the preview
