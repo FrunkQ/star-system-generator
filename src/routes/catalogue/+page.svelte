@@ -513,6 +513,10 @@
     if (snap && changed) void runEntryTransition(snap);
   });
   $: presetAccent = activePreset ? accentSolid(activePreset.accentColor) : '#6aa0ff';
+  // The document engine wants the accent RAW — it resolves 'rainbow' itself, into spectrum headings
+  // rather than a flat stand-in, and can only do that if the sentinel survives the trip. presetAccent
+  // is the flattened form, correct for a CSS variable and wrong for the engine.
+  $: presetAccentRaw = activePreset ? (activePreset.accentColor || '#6aa0ff') : '#6aa0ff';
   $: presetFont = activePreset?.font || 'system-ui';
   // Guide tips: the preset picks off / top / bottom / both; the rolled notes fill the chosen edges.
   $: guideTipsMode = activePreset?.guideTips ?? 'off';
@@ -866,7 +870,7 @@
                body graphic) with the preset's full appearance. The aside stays as chrome (title, close,
                resize); the legacy skins below keep their original markup. -->
           <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg
-            font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+            font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
             fontScale={infoFontScale} listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle}
             tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
             imagery={activePreset.bodyGfx} photoFrame={activePreset.photoFrame}
@@ -971,7 +975,7 @@
              system Guide document, taking the preset's full appearance (colouration, fonts, nav style,
              headers/footers) and the real GPU filter. Tap a system to enter. -->
         <FilteredDocumentView stage="starmap" {starmap}
-          font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+          font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
           listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
           fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
@@ -1085,7 +1089,7 @@
       {#if displaySystem}
         <FilteredDocumentView
           system={displaySystem} selectedId={docSelectedId}
-          font={presetFont} headingFont={activePreset.headingFont} accent={presetAccent} mono={activePreset.bodyStyle === 'white'}
+          font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
           colorful={docColorful} imagery={docImagery} photoFrame={activePreset.photoFrame} hideInfoBlock={activePreset.hideInfoPanel}
           bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
           listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} tagStyle={activePreset.tagStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}

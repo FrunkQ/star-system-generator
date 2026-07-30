@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.296-beta - 30th Jul 2026
+
+* The live player view feeds the document engine the accent it was given, sentinel and all. The editor preview passed the preset's own value while the player view passed a pre-flattened one, so the Rainbow headings fixed a moment ago would have shown up in the preview and nowhere else -- the exact drift the shared style function exists to prevent. The flattened colour is still what the CSS variables get, because a CSS variable cannot hold a spectrum.
+
 ## v2.1.295-beta - 30th Jul 2026
 
 * System names on the GM starmap stay the same size on screen however far you zoom. They sit inside the map's own transform so they follow their system as you pan, which is right, but they inherited its scale too -- so zooming in turned the names into headlines and zooming out made them unreadable. Their size and their offset from the marker now divide out that one factor. The depth annotations and the placement ghost's labels go with them.
