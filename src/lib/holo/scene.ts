@@ -50,9 +50,9 @@ const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
 // Body render style: solid, or an 80s vector wireframe — glowing/flat points, see-through or with the
 // back hidden (an invisible depth-writing occluder culls the far-side edges).
 export type RenderStyle = 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ';
-// Body graphics: a 3D 'sphere' (the render/style options above), or a flat camera-facing DISC — with a
-// photo, the procedural true-colour disc, or a plain class-colour shape. The "2D map" body look.
-export type BodyGfx = 'sphere' | 'photo' | 'disc' | 'flat';
+// NB there is deliberately NO body-graphics knob here. "Body graphics" (photo / procedural disc / flat
+// shape) belongs to the INFO BLOCK — the per-body picture — and never to a system map. The scene once
+// carried a flat camera-facing-sprite path for it; it was cut so the map cannot draw one at all.
 // Belts & rings: individual tumbling rocks, or the GM orrery's flat translucent band.
 export type BeltStyle = 'rocks' | 'band';
 const GRID_RADIUS = 12; // scene units the outermost data maps to
@@ -83,7 +83,6 @@ export interface HoloController {
   setAuroras(on: boolean): void; // show/hide the emissive polar aurora shells
   setFlatOverhead(on: boolean): void; // "2D map": tilt pinned top-down (+ pan enabled). Never a 3D view.
   setLockRotation(on: boolean): void; // fix the heading: no spin by drag, and follow a body by PANNING
-  setBodyGfx(mode: BodyGfx): void; // 3D sphere vs flat disc (photo / procedural / flat)
   setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: MapOverlay): void; // ground reference overlay (shared vocabulary, lib/map/mapOverlay.ts)
@@ -360,13 +359,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent();
   }
 
-  // Body graphics: 3D sphere vs a flat camera-facing disc (photo / procedural / flat). Rebuilds.
-  function setBodyGfx(mode: BodyGfx) {
-    if (mode === bodyGfx) return;
-    bodyGfx = mode;
-    rebuildContent();
-  }
-
   // Orbit-ring colour follows the body COLOUR selection: white → neutral grey, flat → class swatch,
   // textured → the body's own (true) colour.
   function orbitColor(node: any): number {
@@ -640,7 +632,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // COLOUR selection: true-colour / class / white
   let unlit = false; // flat lighting (MeshBasic, no terminator) — the efficient "2D map" look
   let aurorasOn = true; // GM toggle: show the emissive polar aurora shells (updateAuroras hides when off)
-  let bodyGfx: BodyGfx = 'sphere'; // sphere (3D) vs flat disc (photo / procedural / flat)
   let beltStyle: BeltStyle = 'rocks'; // rocks vs the orrery's flat band
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
@@ -1431,10 +1422,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           sizeAttenuation: false, transparent: true, depthTest: true
         });
         mesh = new THREE.Sprite(mat);
-      } else if (bodyGfx !== 'sphere') {
-        // Flat "2D map" body: a camera-facing disc (photo / procedural / flat), sized to the body.
-        // Belts & rings still render as their own nodes, so a flat world keeps its ring.
-        mesh = buildBodyDisc(node, bodyRadiusScene(node, systemLevel), bodyGfx, bodyStyle);
       } else {
         // Moons are capped small so they read as satellites; the whole thing scales with bodySize.
         const radius = bodyRadiusScene(node, systemLevel);
@@ -2081,7 +2068,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBodyGfx, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -2112,64 +2099,6 @@ function isBlackHoleNode(node: any): boolean {
 }
 function bhFeeding(node: any): boolean {
   return node.classes?.[0] === 'star/BH_active' || ((node.accretionEddington ?? 0) > 0.01);
-}
-
-// A plain filled disc (class colour) with a soft rim shade, transparent outside — the "flat shape".
-function makeFlatDiscTexture(colorCss: string): HTMLCanvasElement {
-  const s = 128, c = document.createElement('canvas'); c.width = c.height = s;
-  const ctx = c.getContext('2d')!;
-  const r = s * 0.46, cx = s / 2, cy = s / 2;
-  const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
-  const base = new THREE.Color(colorCss);
-  const lit = base.clone().lerp(new THREE.Color(0xffffff), 0.25);
-  const dark = base.clone().multiplyScalar(0.55);
-  g.addColorStop(0, `#${lit.getHexString()}`);
-  g.addColorStop(0.7, `#${base.getHexString()}`);
-  g.addColorStop(1, `#${dark.getHexString()}`);
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
-  return c;
-}
-
-// Load body.image.url into the sprite material, TAINT-SAFE: cross-origin photos without CORS would
-// throw on WebGL upload, so we verify the pixels are readable (getImageData) before swapping — else the
-// disc/flat fallback already in place stays. Circle-cropped so it reads as a body disc.
-function loadPhotoDiscInto(mat: THREE.SpriteMaterial, url: string | undefined) {
-  if (!url || typeof Image === 'undefined') return;
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    try {
-      const s = 128, c = document.createElement('canvas'); c.width = c.height = s;
-      const ctx = c.getContext('2d')!;
-      ctx.beginPath(); ctx.arc(s / 2, s / 2, s * 0.48, 0, Math.PI * 2); ctx.clip();
-      const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-      const scale = Math.max(s / iw, s / ih); const dw = iw * scale, dh = ih * scale;
-      ctx.drawImage(img, (s - dw) / 2, (s - dh) / 2, dw, dh);
-      ctx.getImageData(0, 0, 1, 1); // throws if the canvas is tainted → keep the fallback
-      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-      mat.map?.dispose(); mat.map = t; mat.needsUpdate = true;
-    } catch { /* tainted / no CORS — keep the procedural fallback */ }
-  };
-  img.src = url;
-}
-
-// Build a flat camera-facing disc for a body (the "2D map" body look): photo / procedural disc / flat
-// class-colour shape. Sized to the body's rendered radius; belts & rings render as their own nodes.
-function buildBodyDisc(node: any, radius: number, mode: BodyGfx, bodyStyle: 'textured' | 'flat' | 'white'): THREE.Sprite {
-  const mat = new THREE.SpriteMaterial({ transparent: true, depthWrite: false, depthTest: true });
-  // The COLOUR choice outranks the imagery, exactly as it does for spheres: true colour keeps the photo /
-  // procedural disc, flat paints the class swatch, and monochrome goes white so a filter tints it.
-  const trueColour = bodyStyle === 'textured';
-  const canvas = (mode === 'flat' || !trueColour)
-    ? makeFlatDiscTexture(bodyStyle === 'white' ? '#e8edf4' : getClassColor(node))
-    : (getPlanetTexture(node) || makeFlatDiscTexture(getClassColor(node)));
-  const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
-  mat.map = tex;
-  if (mode === 'photo' && trueColour) loadPhotoDiscInto(mat, node.image?.url); // async swap when a clean photo arrives
-  const sp = new THREE.Sprite(mat);
-  sp.scale.setScalar(radius * 2); // diameter in world units, matching the sphere's size
-  sp.renderOrder = 3; // draw AFTER the orbit rings so the disc covers them (a 3D sphere occludes naturally)
-  return sp;
 }
 
 type Projector = (p: { x: number; y: number; z: number }, out: THREE.Vector3) => THREE.Vector3;

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.286-beta - 30th Jul 2026
+
+* Body graphics are no longer drawn on the system map. Body graphics -- photo, simple disc, flat shape -- is the per-body PICTURE in the info block, and a map, 2D or 3D, always shows the real render. The 2D map had been flattening every world into a camera-facing sprite, which is also why the wireframe and lo-poly render styles appeared to apply to the star but not to the planets: those styles only exist on the sphere path the sprites replaced. The renderer no longer has a way to draw one at all, rather than being told not to at each call site.
+
 ## v2.1.285-beta - 30th Jul 2026
 
 * Adrian gets its second organism. Astrophage now exists as a gas and a condensate, not just as fuel and a drive -- which it always should have, because Adrian is where astrophage goes for carbon dioxide, and that is the entire reason taumoeba lives there to eat it. The planet now carries two living cloud decks: a green taumoeba layer as the base, and patches of astrophage above it.

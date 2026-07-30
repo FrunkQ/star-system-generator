@@ -212,7 +212,6 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     unlit: p.unlit,
     lensing: p.lensing !== false, // default on
     auroras: p.auroras,
-    bodyGfx: p.bodyGfx,
     beltStyle: p.beltStyle,
     background: p.background,
     bodySize: p.bodySize,
@@ -230,12 +229,13 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
  * did exactly that once, and the preview quietly lied about colour and body graphics for weeks.
  */
 export function systemStageStyle(p: PlayerPreset, base?: HoloStyle): HoloStyle {
+  // NO SYSTEM MAP EVER DRAWS BODY GRAPHICS — see holo/scene.ts, which no longer has a way to. "Body
+  // graphics" (photo / disc / flat / none) is an INFO-BLOCK choice, the per-body picture; the map, 2D or
+  // 3D, always uses the real render. `bodyGfx` therefore never reaches a HoloStyle at all; it used to,
+  // and this function suppressed it for `holo3d` only, which left the 2D map flattening every world into
+  // a sprite (and, as a side effect, skipping the wireframe/low-poly render styles, which only exist on
+  // the sphere path).
   const s = base ?? holoStyleOf(p);
-  // The 3D orrery always renders bodies as 3D spheres — "body graphics" (disc / photo / flat) is an
-  // INFO-BLOCK choice, not an orrery one (it belongs to the per-body picture, coming to 3D with the
-  // unified info block). Forcing sphere here stops a value stored for another view (e.g. a duplicated
-  // document preset's 'photo') from flattening the 3D scene into discs.
-  if (p.systemView === 'holo3d') return { ...s, bodyGfx: 'sphere' };
   if (p.systemView !== 'diagram2d') return s;
   // A 2D map is ALWAYS flat — lockOverhead is not the GM's to unset here, or unticking Lock rotation
   // would tilt it into a 3D view. Lock rotation only fixes the HEADING (spin + follow-by-pan).

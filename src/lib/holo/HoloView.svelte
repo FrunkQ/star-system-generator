@@ -46,7 +46,6 @@
     controller?.setFlatOverhead(s.lockOverhead ?? false); // 2D map: tilt pinned top-down
     controller?.setLockRotation(s.lockRotation ?? false); // fixed heading: follow by panning
     controller?.setAuroras(s.auroras ?? true);
-    controller?.setBodyGfx(s.bodyGfx ?? 'sphere');
     controller?.setBeltStyle(s.beltStyle ?? 'rocks');
     controller?.setBodySize(s.bodySize);
     controller?.setGrid(s.grid);

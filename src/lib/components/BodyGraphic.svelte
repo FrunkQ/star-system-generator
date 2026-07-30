@@ -55,7 +55,7 @@
   $: holoStyle = {
     ...DEFAULT_STYLE,
     whole: false, orbitSpeed: interactive ? 0 : 0.24, angleDeg: isBH ? 82 : 70, skybox: false, grid: 'off',
-    lockOverhead: false, lockRotation: false, bodyGfx: 'sphere', render, bodyStyle,
+    lockOverhead: false, lockRotation: false, render, bodyStyle,
     // auroras OFF for the isolated thumbnail — zoomed to fill the frame their additive shell blooms into a
     // "massive glow"; the full 3D view keeps them. Portrait key light gives the day/night terminator instead.
     unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, portrait, portraitFixed: tidal,
