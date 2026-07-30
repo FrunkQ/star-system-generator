@@ -7166,10 +7166,11 @@
               "name": "Dense CO2",
               "main": "CO2",
               "composition": {
-                "CO2": 0.9095,
-                "N2": 0.08,
+                "CO2": 0.9077,
+                "N2": 0.0798,
                 "Ar": 0.01,
-                "Taumoeba": 0.0005
+                "Taumoeba": 0.0005,
+                "Astrophage": 0.002
               },
               "pressure_bar": 8
             },
@@ -7280,7 +7281,7 @@
               }
             },
             "id": "tauceti-blip-a",
-            "parentId": "tauceti-adrian",
+            "parentId": "tauceti-star",
             "name": "Blip-A",
             "class": "Ship/Interstellar/Eridian",
             "crew": {
@@ -7317,13 +7318,13 @@
             "cargoDescription": "Xenonite hull stock, tools for every conceivable emergency, a large supply of hot high-pressure ammonia, and one grieving, brilliant engineer. Amaze, question?",
             "description": "The Eridian ship from 40 Eridani, named by the human who saw it as a blip on radar. Sole survivor aboard: Rocky, engineer, last of a crew of twenty-three who never discovered radiation until it found them.",
             "orbit": {
-              "hostId": "tauceti-adrian",
-              "hostMu": 1566455540280000.2,
+              "hostId": "tauceti-star",
+              "hostMu": 103944680540999990000,
               "t0": 1762339146908,
               "elements": {
-                "a_AU": 0.0006,
-                "e": 0,
-                "i_deg": 0,
+                "a_AU": 0.3,
+                "e": 0.01,
+                "i_deg": 0.4,
                 "omega_deg": 190.7,
                 "Omega_deg": 132.4,
                 "M0_rad": 2.7892

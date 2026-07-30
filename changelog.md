@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.285-beta - 30th Jul 2026
+
+* Adrian gets its second organism. Astrophage now exists as a gas and a condensate, not just as fuel and a drive -- which it always should have, because Adrian is where astrophage goes for carbon dioxide, and that is the entire reason taumoeba lives there to eat it. The planet now carries two living cloud decks: a green taumoeba layer as the base, and patches of astrophage above it.
+* The layering is physics, not a paint order. Taumoeba saturates at 0.194 bar and astrophage higher up at 0.138, so the green condenses deeper and the red sits over it. The renderer works the stack out again from the tags alone, so the two condensates' boiling points had to be set to agree with the column -- astrophage condenses colder, so it is the upper layer in both accounts. There is a test that fails if they ever disagree.
+* Astrophage is nearly black, and that is not decoration: absorbing everything that hits it is the whole point of the organism, and the reason it dims stars. Its cloud albedo of 0.04 pulls Adrian's overall albedo down to 0.147 and warms the world by about a degree -- and that warming thins the green deck beneath it, because a warmer column condenses less. The predator and its prey now compete through the temperature, which is a nicer accident than anything that could have been arranged deliberately.
+* The green base thickened to overcast, so there are still real gaps to see the ground through rather than a shroud. Adrian also picks up constant lightning: a thick convecting atmosphere under heavy cloud earns it.
+* Blip-A never went to Adrian -- only the Hail Mary did. It was parented to the planet; it now holds a 0.3 AU orbit around Tau Ceti itself, out in the Petrova line where it belongs.
+* Nothing else in either bundled starmap moves: no classifications, no other body's temperature or colour.
+
 ## v2.1.284-beta - 30th Jul 2026
 
 * Adrian has green clouds, and it got them by being described properly rather than by being told what to look like. Two numbers on the Taumoeba bloom were placeholders copied from water, and neither survives a second's thought about what the substance actually is. Its triple pressure said the bloom sublimes away at low pressure exactly as water ice does, which is the opposite of true for something whose whole existence is staying aloft in a hot sky. And its cloud albedo said a dense green pigmented organism reflects a third of the light that hits it, when the entire function of a pigment is to absorb.

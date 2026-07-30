@@ -780,6 +780,30 @@
         "condensesTo": "taumoeba-bloom",
         "minFraction": 0.0001
       }
+    },
+    "Astrophage": {
+      "molarMass": 0.03,
+      "shielding": 1,
+      "greenhouse": 0,
+      "specificHeat": 1.0,
+      "radiativeCooling": 0.5,
+      "colorHex": "#7a1f1a",
+      "meltK": 150,
+      "boilK": 380,
+      "tags": [
+        {
+          "name": "biosignature",
+          "trigger": "percent > 0.0001"
+        },
+        {
+          "name": "exotic-biology",
+          "trigger": "percent > 0.0001"
+        }
+      ],
+      "cloud": {
+        "condensesTo": "astrophage-bloom",
+        "minFraction": 0.0001
+      }
     }
   },
   "climateModel": {

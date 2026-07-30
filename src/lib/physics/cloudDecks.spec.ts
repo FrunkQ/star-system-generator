@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   deriveCloudDecks, effectiveComposition, applyCloudDeckTags, decksFromTags, deriveWeather,
-  parseCloudDeckValue, condensateTint, DEFAULT_CONDENSATE_DISTANCE, CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG
+  parseCloudDeckValue, condensateTint, DEFAULT_CONDENSATE_DISTANCE, cloudDeckTags, CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG
 } from './cloudDecks';
 import type { CelestialBody, RulePack, Tag } from '$lib/types';
 
@@ -392,34 +392,49 @@ describe('condensateTint — per-substance distance from white', () => {
   });
 });
 
-// Adrian (Tau Ceti, bundled science-fiction map). Taumoeba is an ORGANISM that lives in the air,
-// and the bloom it forms is not water however much its placeholder phase data used to look like it:
-// it does not sublime away at low pressure, and being pigmented it absorbs far more than it
-// reflects. With that said in the data, the column puts a thin green deck high over a hot CO2 world
-// — which is the point of the planet.
-describe('ADRIAN: a living bloom condenses where a vapour would not', () => {
+// Adrian (Tau Ceti, bundled science-fiction map) carries TWO living decks, and the pair is the
+// point of the planet: astrophage migrates there for the CO2, taumoeba lives there and eats it.
+// Neither is water, however much their placeholder phase data used to look like it — they do not
+// sublime away at low pressure, and being pigmented they absorb far more than they reflect.
+describe('ADRIAN: two living blooms, layered', () => {
   const adrian = () => world({
-    massKg: 2.347e25, radiusKm: 9219, equilibriumTempK: 303.9, temperatureK: 640.8,
+    massKg: 2.347e25, radiusKm: 9219, equilibriumTempK: 305.6, temperatureK: 642.4,
     atmosphere: { main: 'CO2', pressure_bar: 8,
-      composition: { CO2: 0.9095, N2: 0.08, Ar: 0.01, Taumoeba: 0.0005 } } as any
+      composition: { CO2: 0.9077, N2: 0.0798, Ar: 0.01, Taumoeba: 0.0005, Astrophage: 0.002 } } as any
   });
 
-  it('carries a taumoeba-bloom deck, and only that', () => {
+  it('both blooms condense, and nothing else does', () => {
+    expect(species(deriveCloudDecks(adrian(), pack)).sort())
+      .toEqual(['astrophage-bloom', 'taumoeba-bloom']);
+  });
+
+  it('the green is the BASE and the red sits above it', () => {
+    const decks = deriveCloudDecks(adrian(), pack);   // deepest first
+    const tau = decks.find((d) => d.species === 'taumoeba-bloom')!;
+    const ast = decks.find((d) => d.species === 'astrophage-bloom')!;
+    expect(tau.baseBar!).toBeGreaterThan(ast.baseBar!);   // taumoeba condenses deeper
+    expect(decks[0].species).toBe('taumoeba-bloom');      // …so it is painted first
+    // The RENDERER re-derives the same order from boilK alone (it only has the tags), so the two
+    // must agree or the picture contradicts the physics.
+    const rendered = decksFromTags(cloudDeckTags(decks), pack).map((d) => d.species);
+    expect(rendered).toEqual(['taumoeba-bloom', 'astrophage-bloom']);
+  });
+
+  it('lots of green, a little red — you can still see the ground', () => {
     const decks = deriveCloudDecks(adrian(), pack);
-    expect(species(decks)).toEqual(['taumoeba-bloom']);
+    const tau = decks.find((d) => d.species === 'taumoeba-bloom')!;
+    const ast = decks.find((d) => d.species === 'astrophage-bloom')!;
+    expect(tau.bucket).toBe('overcast');            // substantial, but not a veil
+    expect(tau.coverage).toBeLessThan(0.85);        // gaps remain
+    expect(ast.bucket).toBe('scattered');           // patches
+    expect(ast.coverage).toBeLessThan(tau.coverage);
   });
 
-  it('the deck is PARTIAL — swirls over a visible surface, not a shroud', () => {
-    const d = deriveCloudDecks(adrian(), pack)[0];
-    expect(d.coverage).toBeGreaterThan(0.05);
-    expect(d.coverage).toBeLessThan(0.55);        // wisps/scattered/broken, never a veil
-    expect(['scattered', 'broken']).toContain(d.bucket);
-  });
-
-  it('it sits HIGH and nothing reaches the ground', () => {
-    const d = deriveCloudDecks(adrian(), pack)[0];
-    expect(d.baseBar!).toBeLessThan(1);           // well above the 8 bar surface
-    expect(d.precip).toBe('virga');               // the ground is supercritical for it
+  it('neither reaches the ground — both are virga over a supercritical surface', () => {
+    for (const d of deriveCloudDecks(adrian(), pack)) {
+      expect(d.precip).toBe('virga');
+      expect(d.baseBar!).toBeLessThan(1);           // high above the 8 bar surface
+    }
   });
 
   it('the CO2 itself still condenses nowhere — that was never the deck', () => {
