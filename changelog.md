@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.297-beta - 30th Jul 2026
+
+* True scale draws the planets. At the true end of the dial a real planet is a fraction of a pixel across at whole-system framing -- Earth is about a twentieth of one -- so "true" was coming out as "absent", which is not what the setting means, and v2.1.288 made it worse by taking the old floor down with everything else. The mistake was the floor being written in scene units at all: a fixed size in a world whose zoom is not fixed hides bodies when you are zoomed out and bloats them when you are zoomed in, and either way it renders Jupiter and Mercury as the same dot. The floor is in SCREEN space now. A body draws at its true size the moment that reaches a few pixels and is never allowed below it, so nothing vanishes and true proportions appear as soon as they can be resolved -- frame Jupiter and it is a globe while its moons are still dots. Rings follow their planet, so Saturn keeps them. The readable end of the dial is untouched.
+
 ## v2.1.296-beta - 30th Jul 2026
 
 * The live player view feeds the document engine the accent it was given, sentinel and all. The editor preview passed the preset's own value while the player view passed a pre-flattened one, so the Rainbow headings fixed a moment ago would have shown up in the preview and nowhere else -- the exact drift the shared style function exists to prevent. The flattened colour is still what the CSS variables get, because a CSS variable cannot hold a spectrum.

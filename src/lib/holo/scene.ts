@@ -141,6 +141,8 @@ interface BodyVisual {
   shadow?: { uStarPos: { value: THREE.Vector3 }; uOcc: { value: THREE.Vector4 }; uHasOcc: { value: number } };
   isBH?: boolean; // a black hole — a lensing centre for the gravitational-lensing pass
   tidallyLocked?: boolean; // keeps one face toward its parent — orientation is geometry-locked, not free-spun
+  baseScale?: THREE.Vector3; // the mesh scale set at build (oblateness); the true-scale floor multiplies it
+  screenK?: number;          // current true-scale visibility multiplier (1 = drawing at its real size)
 }
 
 // A planetary ring: a particle disc in the planet's tilted equatorial plane, spinning DIFFERENTIALLY
@@ -1016,6 +1018,32 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // quad, on-screen px = scale · viewH / (2·tan(fov/2)).
   const CONSTRUCT_PX_FOCUS = 12;
   const CONSTRUCT_PX_IDLE = 4;
+  // TRUE-SCALE VISIBILITY FLOOR. At the true end of the body-size dial a real planet is a fraction of a
+  // pixel across at whole-system framing — Earth is about 0.05 px — so "true" came out as "absent", which
+  // is not what the setting means. Any floor written in SCENE units is the wrong instrument for that: it
+  // is a fixed size in a world whose zoom is not, so it hides bodies when you are zoomed out and bloats
+  // them when you are zoomed in, and either way it flattens Jupiter and Mercury to the same dot. The floor
+  // belongs in SCREEN space. A body draws at its true size whenever that reaches MIN_BODY_PX and is never
+  // allowed below it, so true proportions appear the moment they can be resolved and nothing ever
+  // vanishes. Same principle as the construct glyphs, which have always been sized this way.
+  // Readable mode is left alone entirely: its sizes are already chosen to read.
+  const MIN_BODY_PX = 2.6; // on-screen RADIUS, so a body is never smaller than about 5 px across
+  function updateTrueScaleFloor() {
+    const perPx = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH); // scene units per px at unit distance
+    for (const b of bodies) {
+      if (b.isConstruct || !b.baseScale) continue;
+      let k = 1;
+      if (bodySize < 0.999 && (b.radiusScene ?? 0) > 0) {
+        const dist = camera.position.distanceTo(b.mesh.position);
+        const pxR = (b.radiusScene as number) / Math.max(1e-9, perPx * dist);
+        if (pxR < MIN_BODY_PX) k = MIN_BODY_PX / Math.max(1e-9, pxR);
+      }
+      if (k === b.screenK) continue;
+      b.screenK = k;
+      b.mesh.scale.set(b.baseScale.x * k, b.baseScale.y * k, b.baseScale.z * k);
+    }
+  }
+
   function updateConstructs() {
     const f = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
     for (const b of bodies) {
@@ -1628,7 +1656,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
       const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, baseScale: mesh.scale.clone(), screenK: 1 });
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
     // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
@@ -1891,7 +1919,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const starWorld = starLights[0]?.light.position;
     for (const rv of ringVisuals) {
       const parent = bodyById.get(rv.parentId);
-      if (parent) rv.pivot.position.copy(parent.mesh.position);
+      if (parent) {
+        rv.pivot.position.copy(parent.mesh.position);
+        // A ring is drawn in multiples of its planet's rendered radius, so when the true-scale floor
+        // magnifies the planet the ring has to come with it or Saturn loses its rings at true scale.
+        rv.pivot.scale.setScalar(parent.screenK ?? 1);
+      }
       if (!rv.points && !rv.bandMesh) continue;
       // Star direction in the ring's local (tilted) frame; planet centre is the local origin.
       let hasShadow = false;
@@ -2053,6 +2086,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateStellarFlares(starFlareVisuals, nowSec);
     for (const c of cloudVisuals) c.mesh.rotation.y = nowSec * c.drift; // clouds drift over the surface
     updateConstructs();
+    updateTrueScaleFloor();
     updateShadows();
     updateRings();
     updateBelts();
