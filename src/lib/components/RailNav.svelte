@@ -89,29 +89,34 @@
   <button class="rail-btn" title={routesAttention ? `Routes & journeys — a ship needs attention (${routesAttention})` : 'Routes & journeys'} on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}{#if routesAttention}<span class="rail-dot {routesAttention}"></span>{/if}</span><span class="rail-label">Routes…{#if routesAttention}<span class="rail-dot inline {routesAttention}"></span>{/if}</span>
   </button>
-  <!-- Field Guide: the players' companion launcher. -->
-  <button class="rail-btn" title="Field Guide — open and share the players' companion views" on:click={() => go('catalogue')}>
-    <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
-  </button>
-  <!-- Player Views: the unified players' presentation system that will replace the Field Guide.
-       Masked by ONE flag while the V2.2 line is in flight — see $lib/config/releaseFlags. -->
+  <!-- ONE way to put something in front of the players, decided by ONE flag. Player Views replaces
+       BOTH older launchers: the Field Guide (its skins are presets now) and the Projector (the shipped
+       "Projection" preset is the overhead table view, following the GM). Showing all three at once was
+       three doors to the same room, and the two old ones lead to the version being retired — so the
+       flag that reveals Player Views is the same flag that hides them. See $lib/config/releaseFlags.
+       Nothing is deleted: flip PLAYER_VIEWS_ENABLED off for a production cut and the old pair return. -->
   {#if PLAYER_VIEWS_ENABLED}
     <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
       <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
     </button>
+  {:else}
+    <!-- Field Guide: the players' companion launcher. -->
+    <button class="rail-btn" title="Field Guide — open and share the players' companion views" on:click={() => go('catalogue')}>
+      <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
+    </button>
+    <!-- Projector acts on the loaded system (from the starmap it targets the last-loaded one).
+         Greenscreen toggle only while a projector is live. -->
+    {#if projectorOpen}
+      <button class="rail-btn" class:gs-on={crtOn} title="Toggle the projector's green-CRT look" on:click={() => dispatch('projectorcrt')}>
+        <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen CRT</span>
+      </button>
+    {:else}
+      <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
+        <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
+      </button>
+    {/if}
   {/if}
 
-  <!-- Projector + Report act on the loaded system. Shown in BOTH views for beta (they target the
-       last-loaded system when invoked from the starmap). Greenscreen toggle only when a projector is live. -->
-  {#if projectorOpen}
-    <button class="rail-btn" class:gs-on={crtOn} title="Toggle the projector's green-CRT look" on:click={() => dispatch('projectorcrt')}>
-      <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen CRT</span>
-    </button>
-  {:else}
-    <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
-      <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
-    </button>
-  {/if}
   <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
     <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
   </button>
