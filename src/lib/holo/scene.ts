@@ -141,6 +141,7 @@ interface BodyVisual {
   shadow?: { uStarPos: { value: THREE.Vector3 }; uOcc: { value: THREE.Vector4 }; uHasOcc: { value: number } };
   isBH?: boolean; // a black hole — a lensing centre for the gravitational-lensing pass
   tidallyLocked?: boolean; // keeps one face toward its parent — orientation is geometry-locked, not free-spun
+  isStar?: boolean;          // role for the pixel-floor hierarchy (star > planet > moon)
   baseScale?: THREE.Vector3; // the mesh scale set at build (oblateness); the true-scale floor multiplies it
   screenK?: number;          // current true-scale visibility multiplier (1 = drawing at its real size)
 }
@@ -396,12 +397,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (bodySize >= 0.999) return readable;
     const km = node.physical_parameters?.radiusKm || node.radiusKm || 3000;
     const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax); // physical radius at the true-scale factor
-    // The 0.006 floor is NOT cosmetic and must not be scaled down with the marker sizes: the CAMERA is
-    // sized off it. Framing a body puts the camera at about radius/(fillFrac*tan(halfFov)), and the near
-    // plane is 0.01 — shrink the radius by 50x and that distance lands INSIDE the near plane, so the body
-    // you just framed is clipped away as the camera closes on it. (That is exactly what v2.1.288 did.)
-    // Visibility at wide zoom is handled where it belongs, in screen space — see updateTrueScaleFloor.
-    return Math.max(0.006, trueScene * (1 - bodySize) + readable * bodySize);
+    // NO scene-unit floor. This is the GM orrery's model, which is the gold standard for actual size:
+    // the body's TRUE radius in world units, with visibility guaranteed by a per-role PIXEL floor at
+    // draw time (updateTrueScaleFloor). A floor in scene units destroys the very thing true scale is
+    // for — 0.006 sat above every real body's true radius (Earth 1.1e-5, even Sol 1.2e-3), so Sol,
+    // Jupiter, Earth and Luna all drew at the identical clamped size. The camera adapts instead: the
+    // near plane and minimum zoom follow the framed body's size (see the render loop / focusBody).
+    return Math.max(1e-7, trueScene * (1 - bodySize) + readable * bodySize);
   }
 
   // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
@@ -410,7 +412,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (bodySize >= 0.999) return STAR_RADIUS;
     const km = node.physical_parameters?.radiusKm || node.radiusKm || 696000;
     const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-    return Math.max(0.02, trueScene * (1 - bodySize) + STAR_RADIUS * bodySize); // floor sizes the camera too — see bodyRadiusScene
+    return Math.max(1e-7, trueScene * (1 - bodySize) + STAR_RADIUS * bodySize); // true size; pixel floor at draw time (see bodyRadiusScene)
   }
 
   function rebuildContent() {
@@ -1032,16 +1034,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // allowed below it, so true proportions appear the moment they can be resolved and nothing ever
   // vanishes. Same principle as the construct glyphs, which have always been sized this way.
   // Readable mode is left alone entirely: its sizes are already chosen to read.
-  const MIN_BODY_PX = 2.6; // on-screen RADIUS, so a body is never smaller than about 5 px across
+  // Per-ROLE pixel floors, exactly as the GM orrery ranks its markers (star 4 / planet 2 / moon 1 px
+  // there): when bodies are too far to resolve they become markers, and the marker hierarchy should
+  // still say which is the star, which the planet, which the moon — one shared floor made a framed
+  // Earth and its Luna read as equals.
+  const MIN_PX_STAR = 3.2, MIN_PX_BODY = 2.2, MIN_PX_MOON = 1.2; // on-screen RADIUS in px
   function updateTrueScaleFloor() {
     const perPx = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH); // scene units per px at unit distance
     for (const b of bodies) {
       if (b.isConstruct || !b.baseScale) continue;
       let k = 1;
       if (bodySize < 0.999 && (b.radiusScene ?? 0) > 0) {
+        const minPx = b.isStar ? MIN_PX_STAR : b.satellite ? MIN_PX_MOON : MIN_PX_BODY;
         const dist = camera.position.distanceTo(b.mesh.position);
         const pxR = (b.radiusScene as number) / Math.max(1e-9, perPx * dist);
-        if (pxR < MIN_BODY_PX) k = MIN_BODY_PX / Math.max(1e-9, pxR);
+        if (pxR < minPx) k = minPx / Math.max(1e-9, pxR);
       }
       if (k === b.screenK) continue;
       b.screenK = k;
@@ -1126,7 +1133,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           current: lastAutoDist > 0 ? lastAutoDist : d,
           ideal: dist,                       // the current ladder level's framing distance
           userOverride: userZoomOverride,
-          sinceLastMs: now - lastAutoDistMs
+          sinceLastMs: now - lastAutoDistMs,
+          // This is a camera DISTANCE, not the orrery's zoom scalar — the policy's default floor of
+          // 0.05 would hold the camera thousands of radii from a true-scale world. Our floor is the
+          // controls' own minimum approach.
+          minValue: Math.max(1e-7, controls.minDistance)
         });
         if (next !== null) { d = next; lastAutoDist = next; lastAutoDistMs = now; }
         else if (lastAutoDist > 0) d = lastAutoDist;
@@ -1175,7 +1186,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const rad = id ? (bodies.find((x) => x.id === id)?.radiusScene ?? 0) : 0;
-    controls.minDistance = id ? Math.max(0.004, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : DEFAULT_MIN_DIST;
+    // The lower clamp tracks the body: a true-scale world is ~1e-5 scene units, and a fixed 0.004 clamp
+    // would hold the camera thousands of radii out from the thing it just framed.
+    controls.minDistance = id ? Math.max(1e-6, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : DEFAULT_MIN_DIST;
     focusDrive = id ? 48 : 0; // ~0.8 s of easing toward the framed shot
     visibleSet = getVisibleNodeIds(currentSystem, focusedId);
   }
@@ -1664,7 +1677,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
       const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, baseScale: mesh.scale.clone(), screenK: 1 });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
     // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
@@ -2100,6 +2113,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateBelts();
     updateOrbitRings();
     controls.update();
+    // Near plane follows the working distance. Framing a true-scale world puts the camera ~1e-5 scene
+    // units out, far inside the fixed 0.01 near plane — the framed body would be clipped away as the
+    // camera arrived. Tie near to the camera-target distance (2%, floored well below any body) and the
+    // clip always sits between the camera and the subject. Only touched when it moves >20%, so the
+    // projection matrix is not rebuilt every frame; zoomed out it returns to the usual 0.01.
+    {
+      const dT = camera.position.distanceTo(controls.target);
+      const wantNear = Math.min(0.01, Math.max(1e-8, dT * 0.02));
+      if (wantNear < camera.near * 0.8 || wantNear > camera.near * 1.25) { camera.near = wantNear; camera.updateProjectionMatrix(); }
+    }
     if (portraitOn) updatePortraitLight(); // AFTER controls.update so the camera basis is current this frame
     updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
     updateLensing();

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.300-beta - 31st Jul 2026
+
+* TRUE body size now means true. The old floor was a fixed 0.006 scene units, which is bigger than the true size of anything in a solar system -- Earth is 0.00001, even the Sun is 0.001 -- so at the bottom of the dial every body clamped to the same size and the Moon drew as Earth's equal. It came out fine at 5% and collapsed at exactly true, because 5% of the readable size still cleared the floor. The holo now works the way the GM orrery always has, which is the gold standard here: bodies carry their TRUE radius, and visibility comes from a per-role PIXEL floor at draw time -- stars rank above planets, planets above moons, exactly the orrery's 4/2/1 marker hierarchy -- so real proportions appear the moment the zoom can resolve them.
+* Two camera locks that made that impossible are opened. The near clip plane now follows the working distance, since framing a true-scale world puts the camera far inside the old fixed plane. And the shared auto-frame policy's zoom clamp turned out to be the orrery's zoom-scalar range applied to the holo's camera DISTANCE, where its floor of 0.05 means four and a half thousand Earth radii -- the ease dived in and the follow step hauled the camera straight back out, which is why a framed world got close and then vanished. The bounds are the caller's now.
+* Framing Earth at true scale gives the full globe; Earth-plus-Luna shows the Moon genuinely smaller; the whole-system view shows role-ranked markers. Readable mode is untouched.
+
 ## v2.1.299-beta - 31st Jul 2026
 
 * Framing a body at true scale works again. v2.1.288 shrank the minimum body radius along with the sprite sizes, and that minimum is not cosmetic -- the CAMERA is sized off it. Framing puts the camera at roughly the body radius divided by the fill fraction, so a fiftyfold smaller radius put that distance inside the near plane, and the world you had just asked to look at was clipped away as the camera closed on it: it got near, then vanished. The minimum radius is back where it was; the sprite sizes, which were the actual complaint, still follow the dial; and visibility at wide zoom is handled in screen space, which is where it belongs.

@@ -21,17 +21,21 @@ export const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
 export const AUTO_FRAME_MIN_UPDATE_MS = 180; // rate-limit: don't re-frame every frame
 export const AUTO_FRAME_DEADBAND = 0.02;     // ignore sub-2% corrections (stops hunting)
 
-export function clampZoom(value: number): number {
-	if (!Number.isFinite(value)) return MIN_CAMERA_ZOOM;
-	return Math.max(MIN_CAMERA_ZOOM, Math.min(MAX_CAMERA_ZOOM, value));
+// The bounds default to the orrery's zoom-scalar range, but they are the CALLER'S to set: the holo runs
+// its camera DISTANCE through this same policy, and there 0.05 is not "maximum zoom-out" but a floor of
+// ~4500 Earth radii — it silently forbade ever framing a true-scale world (the ease dived in, then the
+// follow step clamped the distance back out and the planet collapsed to a marker).
+export function clampZoom(value: number, min = MIN_CAMERA_ZOOM, max = MAX_CAMERA_ZOOM): number {
+	if (!Number.isFinite(value)) return min;
+	return Math.max(min, Math.min(max, value));
 }
 
-export function dampedZoomStep(current: number, target: number): number {
-	const safeCurrent = Math.max(current, MIN_CAMERA_ZOOM);
-	const safeTarget = clampZoom(target);
+export function dampedZoomStep(current: number, target: number, min = MIN_CAMERA_ZOOM, max = MAX_CAMERA_ZOOM): number {
+	const safeCurrent = Math.max(current, min);
+	const safeTarget = clampZoom(target, min, max);
 	const ratio = safeTarget / safeCurrent;
 	const clampedRatio = Math.max(1 / AUTO_ZOOM_MAX_STEP_RATIO, Math.min(AUTO_ZOOM_MAX_STEP_RATIO, ratio));
-	return clampZoom(safeCurrent * clampedRatio);
+	return clampZoom(safeCurrent * clampedRatio, min, max);
 }
 
 /**
@@ -53,12 +57,16 @@ export function autoFrameStep(args: {
 	sinceLastMs: number;
 	minUpdateMs?: number;
 	deadband?: number;
+	minValue?: number;       // caller's own lower bound (the holo: its camera min-distance)
+	maxValue?: number;       // caller's own upper bound
 }): number | null {
 	const { current, ideal, userOverride, suppress = false, sinceLastMs } = args;
 	if (userOverride || suppress) return null;
 	if (sinceLastMs < (args.minUpdateMs ?? AUTO_FRAME_MIN_UPDATE_MS)) return null;
-	const next = dampedZoomStep(current, ideal);
-	const delta = Math.abs(next - current) / Math.max(current, MIN_CAMERA_ZOOM);
+	const mn = args.minValue ?? MIN_CAMERA_ZOOM;
+	const mx = args.maxValue ?? MAX_CAMERA_ZOOM;
+	const next = dampedZoomStep(current, ideal, mn, mx);
+	const delta = Math.abs(next - current) / Math.max(current, mn);
 	return delta > (args.deadband ?? AUTO_FRAME_DEADBAND) ? next : null;
 }
 
