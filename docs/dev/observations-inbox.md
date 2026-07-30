@@ -22,6 +22,27 @@ Last triage: 2026-07-30, at v2.1.283-beta.
 | A1 | Headers/footers break when the window is resized in the player catalogue view. Screenshot exists. Suspected same class as the earlier HUD re-measure bug: a canvas sized against a stale viewport. | triaged |
 | A2 | Player-view construct panel is anaemic — Blip-A shows Type / Orbit distance / Atmosphere, i.e. BODY fields, while the data holds crew, engines, fuel tanks, cargo and delta-v. Constructs need their own block in the document / DocPanel builder. | triaged |
 
+| A4 | **GM starmap labels grow with zoom.** System-name font should stay a constant screen size as you zoom, not scale with the map transform. `Starmap.svelte` — the labels are inside the world transform, so they scale with it. Same class as the depth-label and route-label text. (Compare: the 3D starmap uses sprites with an explicit `setLabelSize`, which is why it does not have this.) | captured |
+
+## F — Player Views: preset editor (one batch, 2026-07-30)
+
+All from a single pass over the preset editor. Several may share a root — F4/F5 are both "the preview
+re-frames when it should not", F2/F3 are both "true-scale mode breaks proportion".
+
+| # | Observation | Status |
+|---|---|---|
+| F1 | **Body graphics are being drawn on the SYSTEM MAP itself. They must NEVER be.** Body graphics (photo / disc / sphere) are for the INFO BLOCK only; the map always uses the 2D or 3D render. This was stated once before during the D5/E2 work and fixed for the 3D list — so this is either a regression or the fix never covered 2D. **Highest priority in this bucket: it is a rule, not a preference.** | captured |
+| F2 | At TRUE scale, the "glow" points are far too large and do not stay in proportion to the orbit lines — an oversaturated field of giant blobs. Probably affects 3D as well as 2D. | captured |
+| F3 | Same at true scale for RINGS and BELTS — they lose proportion when zoomed to actual sizes rather than readable sizes. Likely the same root as F2: a minimum-size floor that is right for readable mode and wrong for true scale. | captured |
+| F4 | Changing a general setting (e.g. belt type) re-zooms the preview to the star. Appearance settings should never move the camera. | captured |
+| F5 | "Frame whole system (never zoom to a body)" did not show the whole system in the preview. | captured |
+| F6 | 2D low-poly / wireframe render styles apply to the STAR but not to the bodies. | captured |
+| F7 | Body Graphics → photo: nothing appears in the preview until you leave the tab and come back. | captured |
+| F8 | Info-block appearance settings were tested on 2D — but the info block is meant to be ONE shared 2D/3D component (D6 unified them onto `DocPanel`). Verify the settings reach both, and that there is still only one builder. | captured |
+| F9 | The selected font COLOUR should carry through to the headings in the info box, **including Rainbow**. Rainbow headings were built for the document engine (v2.1.266) — they appear not to have reached `DocPanel`. | captured |
+| F10 | The info-panel WIDTH slider should show its effect live as you drag, and should read as a percentage of the screen rather than a raw pixel count. | captured |
+| F11 | **FEATURE, not a bug.** Pin the info panel to top / bottom / left / right to change the look and feel, with the view sliding to re-frame around it the way it already does when the panel appears. | captured, feature |
+
 ## B — Physics engine (needs someone holding that context)
 
 | # | Observation | Status |
