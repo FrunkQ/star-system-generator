@@ -1045,7 +1045,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     } else if (framingWhole) {
       desiredTarget.set(0, 0, 0);
       outward.set(0, 0, 1); // azimuth reference for the whole-system framing
-      dist = GRID_RADIUS * 1.5;
+      // The outermost body maps to exactly GRID_RADIUS by construction (compressScalar), so that is the
+      // half-extent to fit — and the distance that fits it depends on the LENS. The old fixed
+      // GRID_RADIUS * 1.5 ignored fov and aspect entirely: at 45° it showed a half-extent of 7.5 out of
+      // the 12 that exist, so "frame whole system" cut off the outer third of every system. Same maths
+      // as frameDistance, with a little border so the outermost orbit is not flush with the edge.
+      const wholeHalf = GRID_RADIUS * 1.06;
+      const wholeTan = Math.tan((camera.fov * Math.PI) / 360);
+      dist = wholeHalf / Math.max(1e-6, wholeTan * Math.min(1, camera.aspect));
     } else if (focusedId && beltFocus) {
       // A belt/ring-of-debris is centred on the star: keep the star centred and pull back so the
       // whole annulus fits — same overhead-at-angle shot, framed to the ring rather than one body.

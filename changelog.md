@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.291-beta - 30th Jul 2026
+
+* "Frame whole system" shows the whole system. It parked the camera at a fixed multiple of the scene radius with no reference to the lens, which at the 45-degree field of view fitted about eight of the twelve units the system actually occupies -- so the outer third was always off the edge. It now works the distance out from the field of view and the aspect ratio, the same way framing a single body already did.
+
 ## v2.1.290-beta - 30th Jul 2026
 
 * Changing an appearance setting no longer moves the preview camera. Every setter in the 3D scene bails when handed the value it already has -- except the framing one, which re-armed its ease every time it was called, and it is called on every style object the editor produces, which is a fresh one on every keystroke. So picking a different belt type threw the preview back to its framed shot and discarded whatever you had panned or zoomed to. Only a genuine change of angle or framing moves the camera now.
