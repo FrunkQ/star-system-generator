@@ -216,7 +216,28 @@
       ro = new ResizeObserver((e) => { const cr = e[0]?.contentRect; if (cr) { vw = cr.width; vh = cr.height; ctrl?.resize(vw, vh); render(); } });
       ro.observe(container);
     })();
-    return () => { cancelled = true; };
+    // Belt-and-braces re-measure (A1: headers/footers broken after a window resize). ResizeObserver
+    // notifications are delivered BEFORE PAINT, so any resize that lands while the page isn't painting
+    // (window hidden/minimised, another virtual desktop, a background player tab on a TV) can leave this
+    // canvas rendered against the old viewport — the flush header/footer bands then draw at the stale
+    // width and upscale wrongly. Re-measuring on window resize AND on becoming visible costs one
+    // getBoundingClientRect and is idempotent when the observer already did its job.
+    const remeasure = () => {
+      if (!container || !ctrl) return;
+      const r = container.getBoundingClientRect();
+      if (r.width > 0 && (Math.abs(r.width - vw) > 0.5 || Math.abs(r.height - vh) > 0.5)) {
+        vw = r.width; vh = r.height;
+        ctrl.resize(vw, vh);
+        render();
+      }
+    };
+    window.addEventListener('resize', remeasure);
+    document.addEventListener('visibilitychange', remeasure);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('resize', remeasure);
+      document.removeEventListener('visibilitychange', remeasure);
+    };
   });
   onDestroy(() => { ro?.disconnect(); engine?.cancel(); engine = null; ctrl?.dispose(); ctrl = null; });
 

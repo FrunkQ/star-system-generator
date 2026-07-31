@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.304-beta - 31st Jul 2026
+
+* Hardened the document view against resizes it never hears about. ResizeObserver notifications arrive before paint, so a resize landing while the page is not painting -- a minimised window, a background player tab, another virtual desktop -- can leave the canvas rendered against the old viewport, with the flush header and footer bands drawn at the stale width. The view now also re-measures on window resize and on becoming visible; both are idempotent when the observer already did its job.
+
 ## v2.1.303-beta - 31st Jul 2026
 
 * The Spread and Body size dials say where reality is. Both share a convention nothing on screen stated: the left end is physical truth and the right end is the readable exaggeration. A green pip now marks the actual end of each slider, and the read-out names it -- "actual distances" / "actual size", in green -- when the dial is on it.
