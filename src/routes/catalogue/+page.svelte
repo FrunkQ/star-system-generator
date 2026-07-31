@@ -1052,6 +1052,7 @@
       {#if displaySystem && presetInteractive}
         <div class="holo-picker-left">
           <BodyPicker
+            floating
             nodes={displaySystem.nodes}
             focusedId={focusedBodyId}
             emptyLabel="Bodies"

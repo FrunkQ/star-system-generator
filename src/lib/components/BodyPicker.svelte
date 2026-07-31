@@ -35,6 +35,11 @@
   export let top = 8; // px from the top of the canvas; host raises it below the phone strip
   export let emptyLabel = 'System'; // chip text when nothing is focused
   export let inline = false; // embed in a form (relative, full-width) vs float over a canvas
+  // Over a map the always-on strip takes permanent space and is not where the eye is. `floating`
+  // collapses it to a puck that opens on demand and gets out of the way again — the same shape as
+  // the player time control. Defaults OFF: the inline mounts (transit planner, the two find-a-body
+  // modals) are in a panel, not over a canvas, and want the strip they already have.
+  export let floating = false;
   export let summaryText = ''; // optional aggregate summary shown at the top of the dropdown
   export let startOpen = false; // open the dropdown immediately (e.g. in a dedicated modal)
   export let sections = false; // multi-category: show consecutive heading+items sections instead of drill-in
@@ -70,6 +75,9 @@
   let query = '';
   let drill: string | null = null; // active category when drilled in
   let root: HTMLElement;
+  let expanded = false; // floating mode only: is the puck open into the full strip?
+  // A non-floating picker is always shown; a floating one only once its puck is opened.
+  $: stripShown = !floating || expanded;
 
   // Mirrors the old SystemSummary stat definitions so the picker's counts match 1:1
   // (overlapping membership: Planets + Terrestrial + Biospheres etc.).
@@ -178,16 +186,36 @@
     open = false;
     query = '';
     drill = null;
+    expanded = false; // a floating picker's whole point is to leave again
     removeOutside();
   }
+  // Puck → full strip with the list already showing, so a jump is still two clicks.
+  function openPuck() {
+    expanded = true;
+    open = true;
+    drill = null;
+    addOutside();
+  }
+  function collapse() {
+    expanded = false;
+    open = false;
+    drill = null;
+    removeOutside();
+  }
+  // Shutting the dropdown must not drop the outside-click listener while a floating strip is
+  // still expanded — that listener is what puts the puck away again.
+  function closeDropdown() {
+    open = false;
+    drill = null;
+    if (!expanded) removeOutside();
+  }
   function toggleOpen() {
-    open = !open;
-    if (open) addOutside();
-    else { drill = null; removeOutside(); }
+    if (open) closeDropdown();
+    else { open = true; addOutside(); }
   }
   // Primary affordance: always opens at the root category list.
   function browseClick() {
-    if (open) { open = false; drill = null; removeOutside(); }
+    if (open) closeDropdown();
     else { open = true; drill = null; addOutside(); }
   }
   function openToFocused() {
@@ -201,7 +229,7 @@
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       if (query) query = '';
-      else { open = false; drill = null; removeOutside(); }
+      else collapse();
     }
   }
   function onInput() {
@@ -210,11 +238,7 @@
   }
 
   function onOutside(e: Event) {
-    if (root && !root.contains(e.target as Node)) {
-      open = false;
-      drill = null;
-      removeOutside();
-    }
+    if (root && !root.contains(e.target as Node)) collapse();
   }
   function addOutside() {
     if (typeof window !== 'undefined') window.addEventListener('pointerdown', onOutside, true);
@@ -227,12 +251,21 @@
   // modal, so open without the outside-click listener (the modal owns dismissal).
   onMount(() => { if (startOpen) { open = true; drill = null; } });
 
-  // If the host changes the focused body (e.g. canvas tap), collapse the dropdown.
+  // If the host changes the focused body (e.g. canvas tap), collapse the dropdown — and the puck
+  // with it, since the user has just said what they wanted by other means.
   let lastFocus: string | null = null;
-  $: if (focusedId !== lastFocus) { lastFocus = focusedId; if (open) { open = false; drill = null; removeOutside(); } }
+  $: if (focusedId !== lastFocus) { lastFocus = focusedId; if (open || expanded) collapse(); }
 </script>
 
-<div class="body-picker" class:open class:inline class:flow={startOpen} bind:this={root} style={inline ? '' : `top:${top}px`}>
+<div class="body-picker" class:open class:inline class:flow={startOpen} class:floating class:expanded bind:this={root} style={inline ? '' : `top:${top}px`}>
+  {#if !stripShown}
+    <button class="puck" on:click={openPuck} aria-expanded={false} aria-label={focused ? `Browse — ${focused.name}` : `Browse ${emptyLabel}`} title="Browse & search">
+      <span class="browse-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </span>
+      {#if focused}<span class="dot" style={swatchStyle(focused)}></span>{/if}
+    </button>
+  {:else}
   <div class="strip">
     <button class="browse" on:click={browseClick} aria-expanded={open} title="Browse all">
       <span class="browse-icon" aria-hidden="true">
@@ -335,6 +368,7 @@
       {/if}
     </div>
   {/if}
+  {/if}
 </div>
 
 <style>
@@ -347,6 +381,24 @@
     width: min(420px, calc(100% - 24px));
     font-size: 0.9rem;
   }
+  /* Collapsed puck: the container must shrink to the button, or a 420px-wide transparent box
+     would sit over the map swallowing clicks that never reach a control. */
+  .body-picker.floating:not(.expanded) { width: auto; }
+  .puck {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 12px;
+    background: color-mix(in srgb, var(--bg-panel, #14161c) 88%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent, #ff5a1f) 45%, var(--border, #2a2d36));
+    border-radius: 999px;
+    color: var(--accent, #ff5a1f);
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+  .puck:hover { background: color-mix(in srgb, var(--accent, #ff5a1f) 20%, var(--bg-control, #1b1e26)); }
   .body-picker.inline {
     position: relative;
     left: auto;

@@ -2191,6 +2191,7 @@
               </div>
             {/if}
             <BodyPicker
+                floating
                 nodes={displaySystem?.nodes ?? $systemStore.nodes}
                 focusedId={focusedBodyId}
                 top={mode === 'phone' ? 64 : 56}

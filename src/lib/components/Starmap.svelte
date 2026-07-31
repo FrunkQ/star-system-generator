@@ -1060,6 +1060,7 @@
       <div class="time-display-overlay"><TimeDisplay temporal={ensuredTemporal} /></div>
     {/if}
     <BodyPicker
+      floating
       nodes={pickerNodes}
       focusedId={null}
       emptyLabel="Starmap"
