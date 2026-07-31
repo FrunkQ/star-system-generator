@@ -813,9 +813,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // So the samples MOVE instead. The same 1024 are redistributed along the orbit, packed into the arc
   // nearest the floating origin and thinned on the far side, which at that zoom is off screen anyway. A
   // ring whose nearest point is well outside the view is left uniform, so in practice one ring re-samples.
+  // The refinement follows the CAMERA; the rebase follows precision. Two separate concerns, so the dense
+  // arc is centred on the camera's focus rather than on the floating origin — between rebases the target
+  // is allowed to drift two thousand camera-distances, which is wider than the dense arc itself.
   const RING_ADAPT_NEAR = 8; // only refine a ring passing within this many camera-distances
   const RING_SAG_FRAC = 1 / 2000; // allowed chord sag, as a fraction of the working distance
+  const RING_FOCUS_SLACK = 0.25; // re-emit once the focus has crossed this much of the dense arc
   let lastRingCamDist = 0;
+  let lastRingCoreArc = Infinity; // the dense arc's half-width; Infinity when nothing was refined
+  const lastRingFocus = new THREE.Vector3(); // absolute scene units, so a rebase does not disturb it
+  const _ringFocus = new THREE.Vector3();
 
   /**
    * A monotonic odd warp of the orbit parameter about the focus. `s` is the sample SPACING at the centre
@@ -828,28 +835,47 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return 0.5 * Math.sign(x) * (s * y + (1 - s) * y * y * y);
   }
 
+  /**
+   * Distance from a point to a segment. The ring's proximity has to be measured against its SEGMENTS, not
+   * its vertices: on a 1024-gon at 12 scene units the vertices are 0.074 apart, so a nearest-vertex test
+   * reports 0.037 for a ring passing exactly THROUGH the point — 46x over the threshold at the zoom where
+   * this matters, which is why the refinement below silently never fired.
+   */
+  function distToSegment(p: THREE.Vector3, a: Float64Array, i: number, j: number): number {
+    const ex = a[j] - a[i], ey = a[j + 1] - a[i + 1], ez = a[j + 2] - a[i + 2];
+    const px = p.x - a[i], py = p.y - a[i + 1], pz = p.z - a[i + 2];
+    const ee = ex * ex + ey * ey + ez * ez;
+    const t = ee > 0 ? Math.max(0, Math.min(1, (px * ex + py * ey + pz * ez) / ee)) : 0;
+    return Math.hypot(px - ex * t, py - ey * t, pz - ez * t);
+  }
+
   /** Emit one ring for the current origin, re-sampling about the focus when the facets would show. */
-  function emitOrbitRing(r: { obj: THREE.Object3D; abs?: Float64Array; node?: any }, camDist: number) {
-    if (!r.abs) return;
-    // Nearest point of the ring to the origin, from the uniform master — no propagation needed.
+  function emitOrbitRing(r: { obj: THREE.Object3D; abs?: Float64Array; node?: any }, camDist: number, focus: THREE.Vector3): number {
+    if (!r.abs) return Infinity;
+    // Nearest vertex of the uniform master to the origin — no propagation needed, and it also fixes the
+    // orbit parameter the refinement is centred on.
     let best = Infinity, bi = 0;
     for (let i = 0; i < r.abs.length; i += 3) {
-      const dx = r.abs[i] - sceneOrigin.x, dy = r.abs[i + 1] - sceneOrigin.y, dz = r.abs[i + 2] - sceneOrigin.z;
+      const dx = r.abs[i] - focus.x, dy = r.abs[i + 1] - focus.y, dz = r.abs[i + 2] - focus.z;
       const d = dx * dx + dy * dy + dz * dz;
       if (d < best) { best = d; bi = i; }
     }
+    // ...then how close the CURVE actually comes, via the two segments meeting at that vertex.
+    const n = r.abs.length;
+    const prev = (bi - 3 + n) % n, next = (bi + 3) % n;
+    const dNear = Math.min(distToSegment(focus, r.abs, bi, next), distToSegment(focus, r.abs, prev, bi));
     const period = r.node ? orbitPeriodMs(r.node.orbit) : 0;
     let s = 1;
-    if (period > 0 && Math.sqrt(best) <= camDist * RING_ADAPT_NEAR) {
+    if (period > 0 && dNear <= camDist * RING_ADAPT_NEAR) {
       // Chord sag over one facet is R*dTheta^2/8 with dTheta = 2*pi*s/N, so invert that for the tolerance.
       const curveR = Math.max(1e-9, Math.hypot(r.abs[bi], r.abs[bi + 1], r.abs[bi + 2]));
       const tol = Math.max(1e-12, camDist * RING_SAG_FRAC);
       s = (ORBIT_SAMPLES * Math.sqrt((8 * tol) / curveR)) / (2 * Math.PI);
       s = Math.max(0.002, Math.min(1, s));
     }
-    if (s >= 0.999) { rebaseStaticGeometry(r.obj, r.abs, sceneOrigin); return; } // uniform: the master stands
+    if (s >= 0.999) { rebaseStaticGeometry(r.obj, r.abs, sceneOrigin); return Infinity; } // uniform: the master stands
     const attr = (r.obj as any).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
-    if (!attr) return;
+    if (!attr) return Infinity;
     const arr = attr.array as Float32Array;
     const t0 = r.node.orbit.t0 || 0;
     const uCentre = bi / 3 / ORBIT_SAMPLES;
@@ -862,11 +888,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
     attr.needsUpdate = true;
     (r.obj as any).geometry?.computeBoundingSphere?.();
+    // How far the focus may travel before the dense arc no longer covers it (see RING_FOCUS_SLACK).
+    return 2 * Math.PI * Math.hypot(r.abs[bi], r.abs[bi + 1], r.abs[bi + 2]) * Math.abs(warpOrbitParam(0.05, s));
   }
 
   function emitOrbitRings() {
     lastRingCamDist = camera.position.distanceTo(controls.target);
-    for (const r of orbitRings) if (r.abs) emitOrbitRing(r, lastRingCamDist);
+    lastRingFocus.addVectors(sceneOrigin, controls.target); // the focus, in absolute scene units
+    lastRingCoreArc = Infinity;
+    for (const r of orbitRings) {
+      if (!r.abs) continue;
+      lastRingCoreArc = Math.min(lastRingCoreArc, emitOrbitRing(r, lastRingCamDist, lastRingFocus));
+    }
   }
 
   /**
@@ -2490,9 +2523,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const dT = camera.position.distanceTo(controls.target);
       const wantNear = Math.min(0.01, Math.max(1e-8, dT * 0.02));
       if (wantNear < camera.near * 0.8 || wantNear > camera.near * 1.25) { camera.near = wantNear; camera.updateProjectionMatrix(); }
-      // The ring sample density is chosen against the working distance, so a real zoom re-chooses it.
-      // Only while rebased: an un-rebased scene is always uniform, and this must not touch it.
-      if (sceneOrigin.lengthSq() > 0 && (dT > lastRingCamDist * 1.6 || dT < lastRingCamDist / 1.6)) emitOrbitRings();
+      // The ring sample density is chosen against the working distance, and the dense arc is laid down
+      // around where the camera was looking — so a real zoom re-chooses the one, and a body carrying the
+      // camera along its orbit eventually walks out of the other. Only while rebased: an un-rebased scene
+      // is always uniform and this must not touch it. One ring re-propagates, so it is cheap to be eager.
+      if (sceneOrigin.lengthSq() > 0) {
+        const zoomed = dT > lastRingCamDist * 1.6 || dT < lastRingCamDist / 1.6;
+        const strayed = _ringFocus.addVectors(sceneOrigin, controls.target).distanceTo(lastRingFocus)
+          > lastRingCoreArc * RING_FOCUS_SLACK;
+        if (zoomed || strayed) emitOrbitRings();
+      }
     }
     if (portraitOn) updatePortraitLight(); // AFTER controls.update so the camera basis is current this frame
     updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
