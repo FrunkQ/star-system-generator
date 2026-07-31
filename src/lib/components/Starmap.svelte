@@ -1132,10 +1132,14 @@
             class:jump-route={route.lineStyle === 'dashed'}
             style="stroke-width: {strokeWidth}px;"
           />
+          <!-- A8: constant SCREEN size under zoom, like the system names (A4). Both the font and the
+               offset from the line divide by the zoom, cancelling the one factor inherited from the
+               world transform. -->
           <text
             x={midX}
-            y={midY - 5}
+            y={midY - 5 * labelK}
             class="route-label"
+            style="font-size:{10 * labelK}px; stroke-width:{2 * labelK}px"
             on:pointerdown={handleRoutePointerDown}
             on:contextmenu={(e) => handleRouteContextMenu(e, route)}
           >
@@ -1145,10 +1149,13 @@
             <!-- Name runs along the line: rotated about the midpoint, flipped to stay readable. -->
             {@const rawAngle = Math.atan2(targetSystem.position.y - sourceSystem.position.y, targetSystem.position.x - sourceSystem.position.x) * 180 / Math.PI}
             {@const nameAngle = rawAngle > 90 ? rawAngle - 180 : rawAngle < -90 ? rawAngle + 180 : rawAngle}
+            <!-- The rotation is about the midpoint, so scaling the offset keeps the name the same
+                 distance off the line at every zoom; the transform itself needs no change. -->
             <text
               x={midX}
-              y={midY + 10}
+              y={midY + 10 * labelK}
               class="route-name"
+              style="font-size:{7 * labelK}px; stroke-width:{1.5 * labelK}px"
               transform={`rotate(${nameAngle}, ${midX}, ${midY})`}
               on:pointerdown={handleRoutePointerDown}
               on:contextmenu={(e) => handleRouteContextMenu(e, route)}
@@ -1418,7 +1425,13 @@
         {#if mB}
           <line class="measure-line" x1={mA.x} y1={mA.y} x2={mB.x} y2={mB.y} />
           <circle class="measure-pt" cx={mB.x} cy={mB.y} r="4" />
-          <text class="measure-label" x={(mA.x + mB.x) / 2} y={(mA.y + mB.y) / 2 - 6} text-anchor="middle">{measureDist} {activeScale.unit}</text>
+          <text
+            class="measure-label"
+            x={(mA.x + mB.x) / 2}
+            y={(mA.y + mB.y) / 2 - 6 * labelK}
+            text-anchor="middle"
+            style="font-size:{11 * labelK}px; stroke-width:{3 * labelK}px"
+          >{measureDist} {activeScale.unit}</text>
         {/if}
       {/if}
       </g>
