@@ -827,6 +827,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const desiredCam = new THREE.Vector3();
   const outward = new THREE.Vector3();
   const camDir = new THREE.Vector3();      // target→camera offset direction (re-seating the auto-framed distance)
+  const followOffset = new THREE.Vector3(); // target→camera offset carried with a followed body (heading + distance)
   // Auto-frame bookkeeping, mirroring the orrery: once the user drives zoom we stop re-framing (never
   // fight them) until the next explicit (re)selection re-engages it.
   let userZoomOverride = false;
@@ -1195,9 +1196,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (focusDrive > 1 || arrived || userZoomOverride) focusDrive--;
       return;
     }
-    // Free heading (3D): gently re-aim at the body — the camera stays put and turns to track, which
-    // is the natural hologram feel and never fights the user's own rotate/zoom.
-    controls.target.lerp(desiredTarget, 0.08);
+    // Free heading (3D): the camera TRAVELS WITH the body, keeping the offset the user has chosen —
+    // their heading and their distance — so a selected world stays framed as it moves along its orbit.
+    //
+    // This used to only re-aim: the target lerped onto the body while the camera stayed where it stood.
+    // Turning to track reads well for a second and then fails, because a body orbiting AWAY from a fixed
+    // camera gets further away every frame — the shot quietly retreated until the planet was a dot in an
+    // empty frame. Rotating in place cannot hold a distance; only travelling with the body can.
+    //
+    // Everything else still works BECAUSE the offset is what is preserved: dragging orbits the body
+    // (OrbitControls rewrites this same offset), the wheel changes its length, the turntable spins it,
+    // and re-clicking re-frames through the ladder above, which arms `focusDrive` and eases to the new
+    // distance. The target is COPIED, not lerped — a lerp lags a fast-moving moon off centre, which is
+    // why the locked-heading branch above copies too.
+    followOffset.subVectors(camera.position, controls.target);
+    controls.target.copy(desiredTarget);
+    camera.position.addVectors(controls.target, followOffset);
   }
 
   // A planetary RING has no body of its own in the holo — selecting one (GM menu, follow-GM) frames

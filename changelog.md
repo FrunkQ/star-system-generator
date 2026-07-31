@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.313-beta - 31st Jul 2026
+
+* A selected body stays framed while time runs. In the 3D player view the camera used to re-aim at the focused body but never move with it, so a world orbiting away from a stationary camera got further away every frame and the shot quietly retreated until the planet was a dot. The camera now travels with the body, keeping the heading and distance you chose. Dragging still orbits it, the wheel still zooms, the turntable still spins, and re-selecting still steps through the framing ladder -- all of them work by changing the same offset the follow preserves.
+
 ## v2.1.312-beta - 31st Jul 2026
 
 * The picker opens RIGHTWARDS from its puck, the way the time transport does. It was centred, so the bar grew symmetrically and the puck you had just tapped slid out from under the pointer into the middle of the bar. Its left edge is now the anchor: the strip opens from exactly where the puck stood.
