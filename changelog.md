@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.321-beta - 31st Jul 2026
+
+* Constructs draw their orbits on the player view. Stations and ships were the one kind of thing excluded from orbit lines. Each now gets one, in its own icon colour lightened toward white so the line reads as belonging to the station rather than to a world -- and neutral grey under the white body-colour setting, where the whole scene is deliberately one palette for a screen filter to tint. A ship with journeys booked is flown by the transit planner rather than by its orbit, so it draws no line it is not on; nor does anything sitting on a surface, which is checked live so a lift-off restores it.
+* Orbit lines stay smooth however far you zoom in. An orbit is drawn as a 1024-sided polygon, and at Pluto's distance a single side turns a third of a degree and departs from the true ellipse by more than the whole Pluto-Charon separation -- so a line that should be smooth showed a visible kink, and ran past the pair rather than through their barycentre. Adding sides cannot fix it: the kink alone would need sixteen thousand of them at that zoom, and more again the closer you go. Instead the same thousand samples now bunch up around whatever you are looking at and thin out on the far side, which at that zoom is off screen anyway. The line is held within a two-thousandth of the viewing distance -- under a pixel -- at any zoom, and only the one orbit you are actually near is ever recalculated.
+
 ## v2.1.320-beta - 31st Jul 2026
 
 * Pluto and Charon orbit their barycentre, visibly. Neither had an orbit ring anywhere near it: a member of a barycentre counts as system-level, so it was drawn the way a planet is -- an orbit around the origin -- and since a member's orbit is measured from its barycentre rather than from the star, that put both rings AT THE SUN, a few hundred-thousandths of a unit across and buried inside the star itself. Each now gets its ring around the barycentre it actually goes round, and the pair sit on their own orbits.
