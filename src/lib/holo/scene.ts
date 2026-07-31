@@ -572,7 +572,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       hudMesh.position.set(0, 0, -1); // 1 unit in front of the camera
       camera.add(hudMesh);
     } else {
-      (hudMesh.material as THREE.MeshBasicMaterial).map!.image = canvas;
+      // A canvas of a DIFFERENT SIZE must not be swapped into a live texture: WebGL2 texture storage is
+      // immutable once allocated (texStorage2D), so the upload of a resized canvas lands against the
+      // old-size storage and FAILS SILENTLY — the quad then stretches the stale bitmap over the new
+      // frame. That was A1: on every resize the banners were faithfully rebuilt at the new size, with a
+      // constant font and re-wrapped text, and the rebuild never reached the screen. Recreate the
+      // texture whenever the dimensions move; same-size updates keep the cheap image swap.
+      const old = hudTex!.image as HTMLCanvasElement;
+      if (old.width !== canvas.width || old.height !== canvas.height) {
+        hudTex!.dispose();
+        hudTex = new THREE.CanvasTexture(canvas);
+        hudTex.colorSpace = THREE.SRGBColorSpace;
+        (hudMesh.material as THREE.MeshBasicMaterial).map = hudTex;
+        (hudMesh.material as THREE.MeshBasicMaterial).needsUpdate = true;
+      } else {
+        (hudMesh.material as THREE.MeshBasicMaterial).map!.image = canvas;
+      }
     }
     hudTex!.needsUpdate = true;
     sizeHud();
@@ -606,8 +621,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const textW = Math.max(1, Math.ceil(ctx.measureText(ls.text).width));
     const cw = textW + pad * 2;
     const ch = Math.ceil(fontPx * 1.35) + pad * 2;
-    ls.canvas.width = Math.max(2, Math.round(cw * dpr));
-    ls.canvas.height = Math.max(2, Math.round(ch * dpr));
+    const newW = Math.max(2, Math.round(cw * dpr));
+    const newH = Math.max(2, Math.round(ch * dpr));
+    const resized = ls.canvas.width !== newW || ls.canvas.height !== newH;
+    ls.canvas.width = newW;
+    ls.canvas.height = newH;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
     ctx.font = font;
@@ -619,8 +637,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     ctx.fillText(ls.text, cw / 2, ch / 2);
     ls.aspect = cw / ch;
     ls.heightRatio = ch / fontPx; // sprite full height ÷ text height
-    const map = (ls.sprite.material as THREE.SpriteMaterial).map;
-    if (map) map.needsUpdate = true;
+    // Same immutable-storage rule as the HUD (see setHud): resizing the canvas element does NOT resize
+    // the GL texture storage behind it, so a label whose pixel size changed (new font, new text width)
+    // needs a fresh texture or its update silently never lands.
+    const smat = ls.sprite.material as THREE.SpriteMaterial;
+    if (resized || !smat.map) {
+      smat.map?.dispose();
+      smat.map = new THREE.CanvasTexture(ls.canvas);
+      smat.needsUpdate = true;
+    } else {
+      smat.map.needsUpdate = true;
+    }
   }
 
   // --- Dynamic content ---

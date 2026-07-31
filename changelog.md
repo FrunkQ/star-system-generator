@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.305-beta - 31st Jul 2026
+
+* Header and footer banners behave like text on resize: constant font size, centred, re-wrapped -- because the redraw finally reaches the screen. They were ALWAYS being rebuilt correctly at the new size; the rebuild was then swapped into a live WebGL texture, and WebGL2 texture storage is immutable once allocated, so an upload of a different-sized canvas fails silently and the old bitmap stays -- stretched over the new frame by the full-screen quad. The texture is now recreated whenever the banner canvas changes size, in both the system holo and the starmap. Same-size updates keep the cheap path.
+* The in-scene body labels carried the identical trap -- a label whose pixel size changed (font change, longer name) resized its canvas under a live texture -- and are fixed the same way.
+
 ## v2.1.304-beta - 31st Jul 2026
 
 * Hardened the document view against resizes it never hears about. ResizeObserver notifications arrive before paint, so a resize landing while the page is not painting -- a minimised window, a background player tab, another virtual desktop -- can leave the canvas rendered against the old viewport, with the flush header and footer bands drawn at the stale width. The view now also re-measures on window resize and on becoming visible; both are idempotent when the observer already did its job.

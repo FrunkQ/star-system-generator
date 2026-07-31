@@ -717,7 +717,22 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       hudMesh.position.set(0, 0, -1);
       camera.add(hudMesh);
     } else {
-      (hudMesh.material as THREE.MeshBasicMaterial).map!.image = hud;
+      // A canvas of a DIFFERENT SIZE must not be swapped into a live texture: WebGL2 texture storage is
+      // immutable once allocated (texStorage2D), so the upload of a resized canvas lands against the
+      // old-size storage and FAILS SILENTLY — the quad then stretches the stale bitmap over the new
+      // frame. That was A1: on every resize the banners were faithfully rebuilt at the new size, with a
+      // constant font and re-wrapped text, and the rebuild never reached the screen. Recreate the
+      // texture whenever the dimensions move; same-size updates keep the cheap image swap.
+      const old = hudTex!.image as HTMLCanvasElement;
+      if (old.width !== hud.width || old.height !== hud.height) {
+        hudTex!.dispose();
+        hudTex = new THREE.CanvasTexture(hud);
+        hudTex.colorSpace = THREE.SRGBColorSpace;
+        (hudMesh.material as THREE.MeshBasicMaterial).map = hudTex;
+        (hudMesh.material as THREE.MeshBasicMaterial).needsUpdate = true;
+      } else {
+        (hudMesh.material as THREE.MeshBasicMaterial).map!.image = hud;
+      }
     }
     hudTex!.needsUpdate = true;
     sizeHud();
