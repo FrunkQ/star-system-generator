@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.328-beta - 1st Aug 2026
+
+* A ship is no longer illustrated with a planet. The body-graphics setting drew whatever was selected, so Blip-A -- a 110-metre hull -- got the same featureless sphere a rocky world gets, above a stat block describing its crew and engines. A construct now gets no body graphic at all, which is the honest minimum; a GM-uploaded photograph of the ship still shows, as before.
+* A construct's cargo manifest stays with the GM. The written description of what is in a hold was crossing to players in the broadcast -- nothing displayed it, but it was there, and unlike a body's description it had no way to be withheld. A star catalogue would know what a hold can take, not what is in it, so the prose is now stripped alongside GM notes. The tonnage, which anyone could see from outside, still shows.
+
 ## v2.1.327-beta - 1st Aug 2026
 
 * A companion star is no longer filed under a heading that says "Moons". The Alpha Centauri AB Barycentre page listed Toliman -- a main-sequence K star -- as a moon, glyph and all, because a barycentre's members and a body's satellites shared one list. They are two different relationships and now have two headings. The split is by what each node actually is rather than by which list it arrived in, which also settles the case that made a single honest heading impossible: a planet orbiting a whole binary pair counts as a member too, and now lands under Planets where it belongs. Pluto and Charon still read "Moons", because there the companion really is one.

@@ -73,6 +73,13 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
   playerSystem.nodes = playerSystem.nodes.filter((node: any) => !hiddenIds.has(node.id)).map((node: CelestialBody | Barycenter) => {
       // Remove GM-only fields
       delete (node as any).gmNotes;
+      // A construct's cargo MANIFEST is GM-only. A star catalogue would know what a hold can take, not
+      // what is in it — and unlike `description` this field has no per-node hide flag, so leaving it in
+      // would publish every ship's manifest the moment the ship itself is visible. Nothing has ever
+      // rendered it, but it was crossing the wire regardless, so this closes a real leak rather than
+      // only settling a display question. The A2 construct block still prints cargo TONNAGE, which is
+      // observable from outside; the prose is what stays behind. See A27.
+      delete (node as any).cargoDescription;
 
       // Handle Description Hiding
       if ((node as any).description_playerhidden) {
