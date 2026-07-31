@@ -56,7 +56,13 @@ export type RenderStyle = 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-gl
 // Belts & rings: individual tumbling rocks, or the GM orrery's flat translucent band.
 export type BeltStyle = 'rocks' | 'band';
 const GRID_RADIUS = 12; // scene units the outermost data maps to
-const ORBIT_SAMPLES = 96;
+// Orbit lines are sampled polylines, and the sample count is a TRUE-SCALE accuracy figure, not a
+// smoothness one: the body rides the real ellipse while the line is an N-gon cutting inside it, so the
+// gap between them oscillates as the body runs vertex-chord-vertex. At 96 samples that chord error on
+// Saturn's orbit is ~14 true Saturn radii — invisible under readable body sizes, but at true scale the
+// planet visibly floats OFF its own orbit line, and appears to drift on and off it as it moves. 1024
+// brings the error under ~0.1 true radii (the line passes through the planet's disc at any framing).
+const ORBIT_SAMPLES = 1024;
 const R0_AU = 0.35; // log-compression softening radius
 const DEFAULT_COMPRESSION = 0.65; // 0 = true scale, 1 = fully log-compressed (GM slider later)
 const AU_M = 1.495978707e11;
@@ -376,6 +382,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const clamped = Math.max(0, Math.min(1, v));
     if (clamped === bodySize) return;
     bodySize = clamped;
+    if (!focusedId) controls.minDistance = unfocusedMinDist(); // the zoom floor is scale-dependent
     rebuildContent();
   }
 
@@ -1194,7 +1201,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const rad = id ? (bodies.find((x) => x.id === id)?.radiusScene ?? 0) : 0;
     // The lower clamp tracks the body: a true-scale world is ~1e-5 scene units, and a fixed 0.004 clamp
     // would hold the camera thousands of radii out from the thing it just framed.
-    controls.minDistance = id ? Math.max(1e-6, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : DEFAULT_MIN_DIST;
+    controls.minDistance = id ? Math.max(1e-6, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : unfocusedMinDist();
     focusDrive = id ? 48 : 0; // ~0.8 s of easing toward the framed shot
     visibleSet = getVisibleNodeIds(currentSystem, focusedId);
   }
@@ -1262,12 +1269,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     camera.position.copy(controls.target).addScaledVector(headingDir, distV);
   }
 
+  // The wheel-zoom floor when NOTHING is focused. 0.05 scene units is right for readable mode (the
+  // bodies are 0.1-0.3 units; closer is inside them) and wrong at true scale, where it holds the camera
+  // thousands of radii out — the GM can zoom the orrery onto any moon, and this view could not.
+  function unfocusedMinDist(): number {
+    return bodySize < 0.999 ? 1e-6 : DEFAULT_MIN_DIST;
+  }
+
   function resetView() {
     focusedId = null;
     focusDrive = 0;
     followEngaged = false;
     lockedHeading = 0; // HOME sits on x=0, azimuth 0
-    controls.minDistance = DEFAULT_MIN_DIST;
+    controls.minDistance = unfocusedMinDist();
     camera.position.copy(HOME_CAM);
     controls.target.set(0, 0, 0);
     visibleSet = getVisibleNodeIds(currentSystem, null);
@@ -1378,7 +1392,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (parent) {
           const rv = beltStyle === 'band'
             ? buildPlanetRingBand(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)))
-            : buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs, markerScale());
+            : buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs);
           if (rv) { contentGroup.add(rv.pivot); ringVisuals.push(rv); }
         }
         continue;
@@ -1445,7 +1459,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // the lensing pass then wraps its far side over/under the shadow (the Interstellar look).
             const rkm = node.radiusKm || 30;
             const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: rkm * 1.6, radiusOuterKm: rkm * (5 + edd * 4) };
-            const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs, markerScale());
+            const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs);
             if (disc) {
               contentGroup.add(disc.pivot);
               ringVisuals.push(disc);
@@ -2681,7 +2695,7 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
   };
 }
 
-function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number, markerFloor = 1): RingVisual | null {
+function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number): RingVisual | null {
   const isAccretionDisc = isBlackHoleNode(parent);
   const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
   let innerScene: number;
@@ -2746,7 +2760,12 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
     for (let i = 0; i < count; i++) { colors[3 * i] = baseColor.r; colors[3 * i + 1] = baseColor.g; colors[3 * i + 2] = baseColor.b; }
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const size = Math.max(0.008 * markerFloor, planetRenderedR * (isAccretionDisc ? 0.09 : 0.06));
+  // Rock size is PROPORTIONAL to the planet, full stop. The old absolute floor (0.008 scene units,
+  // later scaled by the body-size dial but stopped at 2%) was still ~26x a true-scale Saturn's whole
+  // radius — each "rock" was bigger than the planet, and the ring drew as one fused white slab instead
+  // of rocks. Proportional keeps the readable end identical (R*0.06 there is ~the old floor anyway)
+  // and at true scale the rocks are simply small, which is what rocks are.
+  const size = Math.max(1e-7, planetRenderedR * (isAccretionDisc ? 0.09 : 0.06));
   const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true,
     opacity: isAccretionDisc ? Math.min(1, ringOpacity + 0.35) : ringOpacity, depthWrite: false,
     depthTest: !isAccretionDisc, // the disc draws OVER the horizon so its far half is in the buffer for the lens to wrap

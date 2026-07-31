@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.302-beta - 31st Jul 2026
+
+* A true-scale planet sits ON its orbit line. The line is a sampled polygon and the body rides the real ellipse, so the drawn line cut inside the truth by a chord error that at 96 samples came to about fourteen true Saturn radii -- under readable body sizes nobody can see it, at true scale Saturn visibly floated off its own orbit and appeared to drift on and off it as it moved, since the gap oscillates from vertex to mid-chord and back. 1024 samples brings the error under a tenth of a radius, so the line passes through the planet disc at any framing.
+* Ring rocks are sized by their planet, not by a constant. The old floor on ring-particle size was still ~26x a true-scale Saturn radius after the dial scaling -- each rock bigger than the planet, the ring one fused white slab. Proportional sizing leaves the readable end looking identical and makes true-scale rocks simply small, which is what rocks are.
+* You can wheel-zoom to a moon at true scale without focusing it first. The unfocused zoom floor was 0.05 scene units -- right for readable mode, thousands of radii out at true. It now follows the scale, matching what the GM orrery has always allowed.
+
 ## v2.1.301-beta - 31st Jul 2026
 
 * The 3D holo's focus ease no longer expires mid-approach. It ran a fixed 48 frames, which closes about three orders of magnitude of distance -- always enough at readable sizes, half the journey to a true-scale world, so the camera stopped dead in empty space with the planet still a marker. The ease now expires when the shot is actually reached, or the moment the user takes the zoom.
