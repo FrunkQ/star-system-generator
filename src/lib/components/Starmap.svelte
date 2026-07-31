@@ -337,7 +337,9 @@
   // Clicking a ship opens the starmap-level ship panel (+page owns it: full construct editor + the
   // in-flight controls). All journey resolution + construct edits are handled there against the store.
   function requestCancelJourney(j: any, mx?: number, my?: number) {
-    if (measureMode && mx !== undefined && my !== undefined) { measurePick(mx, my, j.shipName, j.shipId); return; }
+    // A construct endpoint needs no z here: `resolveMeasure` re-derives its whole position (depth
+    // included) from the clock on every frame, so the ship stays tracked as time advances.
+    if (measureMode && mx !== undefined && my !== undefined) { measurePick(mx, my, undefined, j.shipName, j.shipId); return; }
     dispatch('openship', { journeyId: j.id });
   }
 
@@ -666,14 +668,20 @@
   let measureMode = false;
   // An endpoint is a fixed point (star) or — when constructId is set — a moving construct, in which case
   // its position is re-derived from the clock so the ruler TRACKS the ship as time advances.
-  type MeasureEnd = { x: number; y: number; label: string; constructId?: string };
+  // WS7: an endpoint carries DEPTH. Without it `posZ` reads both ends as the reference plane and the
+  // 3D branch of `systemSeparation` returns the planar answer however the campaign is configured — the
+  // flag looks wired and does nothing. A construct's z is not picked up here (it is re-derived from the
+  // clock in `resolveMeasure` every frame, so anything stored at pick time is immediately overwritten).
+  type MeasureEnd = { x: number; y: number; z?: number; label: string; constructId?: string };
   let measureA: MeasureEnd | null = null;
   let measureB: MeasureEnd | null = null;
   function toggleMeasure() { measureMode = !measureMode; if (!measureMode) { measureA = null; measureB = null; } }
-  function measurePick(x: number, y: number, label: string, constructId?: string) {
-    const same = (e: MeasureEnd) => constructId ? e.constructId === constructId : (!e.constructId && x === e.x && y === e.y);
-    if (!measureA || (measureA && measureB)) { measureA = { x, y, label, constructId }; measureB = null; }
-    else if (!same(measureA)) { measureB = { x, y, label, constructId }; }
+  function measurePick(x: number, y: number, z: number | undefined, label: string, constructId?: string) {
+    // Depth is part of identity: two systems CAN share an x/y and differ only in z, which is exactly
+    // what WS7 made possible, and picking one then the other must read as two distinct ends.
+    const same = (e: MeasureEnd) => constructId ? e.constructId === constructId : (!e.constructId && x === e.x && y === e.y && (z ?? 0) === (e.z ?? 0));
+    if (!measureA || (measureA && measureB)) { measureA = { x, y, z, label, constructId }; measureB = null; }
+    else if (!same(measureA)) { measureB = { x, y, z, label, constructId }; }
   }
   // Resolve an endpoint to a live position: a construct endpoint follows its clock-derived placement
   // (transit/adrift point, or the system it's resting in); a plain point stays put. Takes nowSec + sm as
@@ -682,8 +690,9 @@
     if (!ep) return null;
     if (ep.constructId) {
       const pl = constructDisplayPlacement(sm, ep.constructId, nowSec);
-      if (pl.kind === 'transit' || pl.kind === 'adrift') return { ...ep, x: pl.x, y: pl.y };
-      if (pl.kind === 'system') { const s = systemById(pl.systemId); if (s) return { ...ep, x: s.position.x, y: s.position.y }; }
+      if (pl.kind === 'transit' || pl.kind === 'adrift') return { ...ep, x: pl.x, y: pl.y, z: pl.z };
+      // Resting in a system: the ship's depth IS that system's depth, known exactly.
+      if (pl.kind === 'system') { const s = systemById(pl.systemId); if (s) return { ...ep, x: s.position.x, y: s.position.y, z: s.position.z }; }
     }
     return ep;
   }
@@ -701,7 +710,7 @@
     if (event.button === 0) { // Left click
       if (measureMode) {
         const s = systemById(systemId);
-        if (s) measurePick(s.position.x, s.position.y, s.name);
+        if (s) measurePick(s.position.x, s.position.y, s.position.z, s.name);
       } else if (linkingMode) {
         dispatch('selectsystemforlink', systemId);
       } else {

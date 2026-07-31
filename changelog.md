@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.314-beta - 31st Jul 2026
+
+* The measure tool counts depth. It never has: Vega to Zeta Reticuli read 34.17 ly for a pair 51 ly apart in depth alone, while the routes and journey durations for the same pair used the honest figure. It now reads 60.99 ly, and still 34.17 ly for a campaign that has turned depth off. The flag was always wired correctly -- the depth was dropped at the pick, so both ends arrived on the reference plane and the 3D maths could only ever return the planar answer.
+* A ship's measured position carries depth too. Resting in a system it takes that system's depth; in transit between two systems it takes the same interpolation as its x and y, because the hop is a straight line. A ship stranded at a bare point still has no recorded depth -- nothing stores one -- so it reads as being on the plane.
+
 ## v2.1.313-beta - 31st Jul 2026
 
 * A selected body stays framed while time runs. In the 3D player view the camera used to re-aim at the focused body but never move with it, so a world orbiting away from a stationary camera got further away every frame and the shot quietly retreated until the planet was a dot. The camera now travels with the body, keeping the heading and distance you chose. Dragging still orbits it, the wheel still zooms, the turntable still spins, and re-selecting still steps through the framing ladder -- all of them work by changing the same offset the follow preserves.
