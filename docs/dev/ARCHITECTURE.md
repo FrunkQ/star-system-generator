@@ -82,6 +82,24 @@ The application is built on a modular "Factory-Generator-Processor" pipeline, de
     *   `SystemView.svelte`: Main controller for the system view.
     *   `SystemVisualizer.svelte`: Canvas/SVG renderer for the orbital view.
         *   **Rendering Strategy**: Employs a **Floating Origin (Relative Camera)** pattern. All drawing coordinates are calculated in 64-bit JavaScript relative to the current camera focus before being passed to the Canvas API. This prevents floating-point precision loss (jitter) that occurs when using large absolute AU coordinates in the browser's 32-bit rendering matrix.
+*   `src/lib/holo/`: The 3D player view (three.js).
+    *   `scene.ts`: the whole orrery scene — bodies, orbit rings, belts, grid, labels, camera and framing.
+    *   `floatingOrigin.ts`: the SAME Floating Origin pattern as `SystemVisualizer`, brought to the 3D
+        scene (inbox A19). **Read this before writing any coordinate into the holo scene.** Scene
+        positions are RELATIVE to `sceneOrigin`, not absolute: writing `(0, 0, 0)` to mean "the star" or
+        "the middle of the system" is wrong wherever the origin has moved — use `originShift`. The module
+        is pure numbers and carries the float32 precision model the fix is measured against, so the
+        arithmetic is under test in `floatingOrigin.spec.ts` rather than sealed inside the scene closure.
+        The origin only leaves zero when the camera gets closer to its subject than float32 can describe
+        the space around it, which at readable body sizes it never does.
+    *   Objects holding ABSOLUTE vertices (heliocentric orbit rings, the grid) keep a float64 master copy
+        and re-emit from it when the origin moves. An object offset is NOT a substitute: it moves the
+        object but leaves the large magnitudes in the float32 buffer, which is where both the shape
+        quantisation and the shader-side cancellation live.
+    *   Orbit rings additionally RE-SAMPLE about the camera's focus (inbox A23): a ring is a 1024-gon, and
+        past a certain zoom you are inside one of its facets. The samples are redistributed rather than
+        multiplied, because the facet angle needs ~16k samples to disappear at Pluto's distance and more
+        again deeper in.
 *   `static/rulepacks/`: JSON configuration files.
 
 ## Future Extensibility
