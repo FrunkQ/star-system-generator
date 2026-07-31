@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.327-beta - 1st Aug 2026
+
+* A companion star is no longer filed under a heading that says "Moons". The Alpha Centauri AB Barycentre page listed Toliman -- a main-sequence K star -- as a moon, glyph and all, because a barycentre's members and a body's satellites shared one list. They are two different relationships and now have two headings. The split is by what each node actually is rather than by which list it arrived in, which also settles the case that made a single honest heading impossible: a planet orbiting a whole binary pair counts as a member too, and now lands under Planets where it belongs. Pluto and Charon still read "Moons", because there the companion really is one.
+* A ringed planet lists its rings. Rings are not moons, so nothing on Jupiter's page ever mentioned Jupiter's Rings -- and since all four sets in the Solar System hang off their planet rather than off the Sun, they were reachable from nowhere in the document at all. Each ringed planet now has a Rings row alongside its moons. A planet with no rings is unchanged.
+
 ## v2.1.326-beta - 1st Aug 2026
 
 * Two stars in the bundled maps could not be selected at all. In Struve 2398 and Groombridge 34 the companion star and one of the primary's planets had been given the same id -- "Struve 2398 A b" and "Struve 2398 B" were both `struve2398-b`, because the slug for the planet dropped the component letter. Anything looking a node up by id takes the first match, so asking for the star returned the planet, and the barycentre listed the planet as one of its own members. The planet takes an id carrying the component letter, the way its name already does; the star keeps the id everything else refers to. Both maps are now clean, and the generator refuses to write a map containing a duplicate id rather than shipping one quietly.

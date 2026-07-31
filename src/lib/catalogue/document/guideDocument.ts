@@ -29,6 +29,7 @@ export interface GuideDocOpts {
   // schematic, body graphic, parent-nav and drill-in lists — for the 2D/3D side panel, where the live
   // map already IS the schematic/body/navigator. One builder → the document AND the 2D/3D info block.
   noHeading?: boolean;                   // panel hosted in a DOM aside that already shows the title bar
+  liveReadings?: boolean;                // A29: a construct's CURRENT fuel/cargo/crew as well as capacity
   rulePack?: import('$lib/types').RulePack | null; // names a construct's engines and fuels, and gives them
   // an Isp and a density — without it a construct's mass, Δv and acceleration cannot be derived and
   // those rows are simply left out. Optional everywhere: a caller without a pack still gets the rest.
@@ -102,7 +103,13 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   const sliver = opts.imagery === 'photo' && !!opts.image && opts.photoFrame === 'sliver';
   if (opts.imagery === 'photo' && opts.image && !sliver) {
     blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox', focus: opts.imageFocus });
-  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat') && subject) {
+    // A GM-uploaded picture still wins for a construct, which is why this branch is NOT gated below.
+  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
+    && subject && subject.kind !== 'construct') {
+    // A CONSTRUCT gets no body graphic. The body-graphics setting drew whatever was selected, so a
+    // 110 m ship was illustrated with the same featureless sphere a rocky world gets — a picture that
+    // is not merely plain but wrong about what the thing is. Drawing nothing is the honest minimum;
+    // giving it a graphic of its own is a separate question (A30), not something to invent here.
     // '__bodygfx' lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
     blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
   }
@@ -115,7 +122,8 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     // same way the parent-nav row above does, so the two cannot name different parents.
     const hostId = (subject as any).parentId || (subject as any).orbit?.hostId;
     const host = hostId ? (nodeById(system, hostId) as CelestialBody | null) : null;
-    const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C', { rulePack: opts.rulePack, host });
+    const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C',
+      { rulePack: opts.rulePack, host, liveReadings: opts.liveReadings });
     const rows = facts.filter((f) => f.value && f.label !== 'Tags');
     if (rows.length) blocks.push({ kind: 'spacer', h: 4 });
     for (const f of rows) blocks.push({ kind: 'keyValue', label: f.label, value: f.value });
@@ -139,9 +147,25 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   if (panel) { blocks.push({ kind: 'spacer', h: 12 }); return blocks; }
   const drillItems = (nodes: Node[]) => nodes.map((n) => ({ id: n.id, text: `${bodyGlyph(n as any)} ${displayLabel(system, n)}` }));
 
+  // A barycentre's MEMBERS and a body's MOONS are different relationships — a co-orbiting peer versus
+  // a satellite — and merging them under one heading called them all moons: the Alpha Centauri AB
+  // Barycentre page filed Toliman, a main-sequence K star, as a moon, glyph and all. They are split by
+  // WHAT EACH NODE IS rather than by which query produced it, which also settles the case that made
+  // one merged heading impossible to name honestly: `membersOf` matches `parentId === bary.id` as well
+  // as `memberIds`, so a CIRCUMBINARY PLANET arrives in this list too. A star goes under Companions, a
+  // moon under Moons (so Pluto–Charon still reads correctly), and a planet is left for the orbiters
+  // block below to file under Planets, where it belongs.
   const companions = bary ? membersOf(system, selected).filter((m) => m.id !== subject?.id) : [];
+  const companionStars = companions.filter((c) => isStar(c));
+  const companionMoons = companions.filter((c) => (c as any).roleHint === 'moon');
+  if (companionStars.length) {
+    blocks.push({ kind: 'spacer', h: 6 });
+    blocks.push({ kind: 'heading', level: 3, text: companionStars.length > 1 ? 'Companion stars' : 'Companion star' });
+    blocks.push({ kind: 'list', items: drillItems(companionStars) });
+  }
+
   const moons = subject ? moonsOf(system, subject.id) : [];
-  const moonRow = [...companions, ...moons];
+  const moonRow = [...companionMoons, ...moons];
   if (moonRow.length) {
     blocks.push({ kind: 'spacer', h: 6 });
     blocks.push({ kind: 'heading', level: 3, text: 'Moons' });
@@ -160,14 +184,26 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // The `listed` filter is not defensive padding — `orbiters()` only excludes moons, and Pluto is a
   // roleHint 'planet' parented to the Pluto-Charon barycentre, so selecting that barycentre would
   // otherwise offer Pluto as its own satellite.
-  const listed = new Set([subject?.id, ...companions.map((c) => c.id)].filter(Boolean) as string[]);
-  const orbiters = (isStar(selected) || bary)
-    ? listBodiesOf(system, selected.id).filter((n) => !listed.has(n.id))
-    : [];
+  // Runs for ANY subject, not just a star or a barycentre. A RING is `roleHint: 'ring'`, so `moonsOf`
+  // excludes it and a ringed planet listed nothing about its own rings: all four in the Solar System
+  // hang off their planet rather than off the Sun, so they were reachable from nowhere in the document
+  // at all. A ring is admittedly not somewhere you drill INTO the way a moon is — but it is a real node
+  // with its own facts page, and the star's list has always offered belts on exactly that basis, so a
+  // row is the consistent answer rather than a special case.
+  // Only the companion stars and moons are excluded here: a circumbinary planet is deliberately NOT,
+  // so it lands under Planets instead of being filed as a companion (see the split above).
+  const listed = new Set([subject?.id, ...companionStars.map((c) => c.id), ...companionMoons.map((c) => c.id)]
+    .filter(Boolean) as string[]);
+  const orbiters = listBodiesOf(system, selected.id).filter((n) => !listed.has(n.id));
   if (orbiters.length) {
-    const belts = orbiters.some(isBeltish), planets = orbiters.some((n) => !isBeltish(n));
+    // Heading from CONTENT, so a page never announces something it is not showing.
+    const isRing = (n: any) => n?.roleHint === 'ring';
+    const hasPlanets = orbiters.some((n) => !isBeltish(n));
+    const hasRings = orbiters.some(isRing), hasBelts = orbiters.some((n) => isBeltish(n) && !isRing(n));
+    const parts = [hasPlanets && 'Planets', hasBelts && 'Belts', hasRings && 'Rings'].filter(Boolean) as string[];
+    const text = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} & ${parts[parts.length - 1].toLowerCase()}` : parts[0];
     blocks.push({ kind: 'spacer', h: 6 });
-    blocks.push({ kind: 'heading', level: 3, text: planets && belts ? 'Planets & belts' : belts ? 'Belts' : 'Planets' });
+    blocks.push({ kind: 'heading', level: 3, text });
     blocks.push({ kind: 'list', items: drillItems(orbiters) });
   }
 
