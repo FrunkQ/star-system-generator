@@ -46,7 +46,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   systemView: 'holo3d',
   documentStyle: 'guide',
   tagStyle: 'pills',
-  navStyle: 'plain',
+  navStyle: 'chips', // side-by-side buttons that wrap — a 13-planet list is 2 rows, not 13
   photoFrame: 'letterbox',
   transition: 'none',
   transitionParams: {},

@@ -252,6 +252,41 @@ function drawList(
   font: string, s: number, x: number, w: number, top: number, colTop: number, maxY: number, regions: DocRegion[]
 ): number {
   const style: ListStyle = b.style ?? theme.listStyle ?? 'plain';
+
+  // CHIPS: buttons flowing across the page and wrapping, rather than one per line. A star's planet
+  // list runs to thirteen entries in Sol alone, and one row each turns a page of facts into a column
+  // of links. Laid out here rather than as a new block kind because it is the same list — only its
+  // arrangement changes — so every drill-in list (moons, rings, companions, constructs, the parent
+  // row) gets it at once and none of them has to know.
+  if (theme.navStyle === 'chips') {
+    ctx.font = `${px(13, s)}px ${font}`;
+    ctx.textBaseline = 'alphabetic';
+    const padX = px(10, s), gap = px(6, s), chipH = px(23, s), r = px(6, s);
+    let cx = x, cy = top;
+    for (const it of b.items) {
+      const sel = !!it.selected || (!!it.id && !!b.selected);
+      const label = it.sub ? `${it.text}  ${it.sub}` : it.text;
+      // A chip never exceeds the column: an over-long name is ellipsised to a full-width chip rather
+      // than running off the edge, which is the one way a flowing layout can break where rows cannot.
+      const chipW = Math.min(w, ctx.measureText(label).width + padX * 2);
+      if (cx > x && cx + chipW > x + w) { cx = x; cy += chipH + gap; } // wrap
+      if (cy + chipH > colTop - 2 && cy < maxY + 2) {
+        roundRectPath(ctx, cx, cy, chipW, chipH, r);
+        ctx.fillStyle = sel ? hexA(c.accent, 0.16) : hexA(c.rule || '#8899aa', 0.08);
+        ctx.fill();
+        ctx.strokeStyle = sel ? c.accent : c.rule; ctx.lineWidth = 1; ctx.stroke();
+        ctx.textAlign = 'left';
+        ctx.fillStyle = sel ? c.value : c.body;
+        ctx.fillText(ellipsise(ctx, label, chipW - padX * 2), cx + padX, cy + chipH - px(7, s));
+      }
+      // x-bounded region: side-by-side chips share a y band, so a tap has to be resolved by column
+      // too. The hit test already prefers x when a region carries it (schematic boxes do the same).
+      if (it.id) regions.push({ id: it.id, x0: cx, x1: cx + chipW, y0: cy, y1: cy + chipH });
+      cx += chipW + gap;
+    }
+    return cy + chipH + px(4, s);
+  }
+
   const boxed = theme.navStyle === 'boxed';
   const lh = px(boxed ? 24 : 20, s);
   const indent = px(boxed ? 12 : 18, s);

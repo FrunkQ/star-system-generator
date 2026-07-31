@@ -34,7 +34,11 @@ export type DocumentStyle =
   | 'terminal';  // green-screen terminal (phosphor mono, '>' log lines) — shines under CRT
 
 // How navigator rows + key elements render: plain hanging text, or boxed "buttons".
-export type NavStyle = 'plain' | 'boxed';
+// 'plain'  hanging-bullet rows, one per line (the book look)
+// 'boxed'  one full-width rounded button per line
+// 'chips'  buttons flowing SIDE BY SIDE across the page and wrapping — a thirteen-planet list is two
+//          rows instead of thirteen, which is why it is the default
+export type NavStyle = 'plain' | 'boxed' | 'chips';
 
 // The full colour set threaded through EVERY text draw (not just an accent). Light-on-dark by default
 // so a luminance-tinting filter (CRT/NV) colours it; a `mono` theme collapses everything to grey/white

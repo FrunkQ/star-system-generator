@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.330-beta - 1st Aug 2026
+
+* Navigation links in the system document sit side by side across the page and wrap, instead of one per line. A star's planet list runs to thirteen entries in Sol alone, so a page of facts was ending in a long column of links; it is now a single wrapping row of buttons. Every drill-in list gets it -- planets, moons, rings, companions, constructs and the "up one level" link. This is the new default; the old arrangements are still there as "Buttons -- one per row" and "Plain text" under Navigation.
+
 ## v2.1.329-beta - 1st Aug 2026
 
 * Player views get a "Live readings" setting: fuel, cargo and crew as they are now, rather than just capacity. A star catalogue would record what a ship can carry; only an instrument knows what is in the tanks this minute, and the construct block was always showing the latter. Off, it reads crew capacity, cargo capacity and fuel capacity; on, it reads current-of-capacity and adds supplies remaining, total mass, acceleration and delta-v. The label says which figure it is either way, so a reader is never left guessing.

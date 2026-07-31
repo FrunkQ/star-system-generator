@@ -523,8 +523,9 @@
               {#if draft.systemView === 'document'}
                 <label>Navigation
                   <select bind:value={draft.navStyle}>
+                    <option value="chips">Buttons — side by side</option>
+                    <option value="boxed">Buttons — one per row</option>
                     <option value="plain">Plain text</option>
-                    <option value="boxed">Boxes / buttons</option>
                   </select>
                 </label>
               {/if}
