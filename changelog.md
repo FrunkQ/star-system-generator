@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.316-beta - 31st Jul 2026
+
+* Moons orbit in their planet's equator, where their inclinations were always quoted. The rings already knew this -- both ring builders lay the ring plane on the planet's equator -- but moon orbits were left in the system plane, so Saturn's inner moons sat 26.73 degrees away from the rings they are supposed to be embedded in. They now sit at their own quoted inclinations instead: Enceladus 0.01, Dione 0.02, Rhea 0.34, Titan 0.35, Tethys 1.12, Mimas 1.57 degrees from the ring plane, with Iapetus the one visibly tilted moon at 15.47. Uranus is the dramatic case -- its moons were 97.77 degrees out of place and now sit in its heavily tilted equator, where they belong. Triton reads its true retrograde 157.3 to Neptune's equator.
+* Luna is deliberately exempt, and can say so. Beyond roughly fifty planetary radii a moon's orbit stops following its planet's equator and follows the system plane instead, which is why Luna's 5.145 degrees is quoted to the ecliptic while Saturn's inner moons are quoted to Saturn's equator. An orbit can now declare `frame: "ecliptic"` and keep its own plane; Luna and Phoebe are marked accordingly.
+
 ## v2.1.315-beta - 31st Jul 2026
 
 * A construct that says it is on the surface is put on the surface. The 3D scene never read the declaration -- it worked surface-lock out from geometry instead, comparing the construct's offset from its parent against the parent's radius, and that test needed a non-zero offset. But the honest way to author a ground station is with no orbit at all, which is exactly what every one in the bundled maps does, so the offset was zero, no branch claimed them, and they were left sitting at the centre of the body, motionless. The scene now uses the same test as the document builder, so the two cannot disagree about which constructs are on the ground.

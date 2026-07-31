@@ -684,6 +684,7 @@
               "planet/sub-earth"
             ],
             "orbit": {
+              "frame": "ecliptic",
               "hostId": "solar-system-earth",
               "hostMu": 398600441800000,
               "t0": 1762339146908,
@@ -3102,6 +3103,7 @@
             "autoClassify": true,
             "rotation_period_hours": 9.27,
             "orbit": {
+              "frame": "ecliptic",
               "hostId": "solar-system-saturn",
               "hostMu": 37930046900000000,
               "t0": 1762339146908,

@@ -142,6 +142,12 @@ interface BodyVisual {
   // The construct DECLARES it is on the surface (`placement: 'Surface'`), which outranks the geometric
   // detection below: a declaration is a statement, the radius comparison is only a guess about one.
   surfaceDeclared?: boolean;
+  // C3: the PARENT's axial tilt in radians, for rotating this satellite's orbit into the parent's
+  // equatorial plane. Zero for a non-satellite, and zero when the orbit declares `frame: 'ecliptic'` —
+  // which is a real physical case, not a data error: beyond roughly 50 host radii the Laplace plane
+  // hands over from the parent's equator to the system plane, which is why Luna's 5.145 deg is quoted
+  // to the ecliptic while Saturn's inner moons are quoted to Saturn's equator.
+  orbitTiltRad?: number;
   // A construct sitting AT (or below) its parent's physical surface: glued to a fixed surface point
   // that co-rotates with the planet's spin, instead of following its own (Keplerian) orbit — so it
   // slides over the surface at the planet's rotation rate. dir0 is that point in the parent's local frame.
@@ -1457,7 +1463,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const kP = rP > 1e-9 ? compressScalar(rP) / rP : 0;
           const parentNode = nodesById.get(node.parentId);
           const parentRad = parentNode ? bodyRadiusScene(parentNode, true) : 0;
-          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, bodyRadiusScene(node, false), compression, orbitColor(node)) : null;
+          const parentTiltRad = (((parentNode as any)?.axial_tilt_deg || 0) * Math.PI) / 180; // C3: the moon's orbit is in the parent's equator
+          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, bodyRadiusScene(node, false), compression, orbitColor(node), parentTiltRad) : null;
           if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
         }
       }
@@ -1744,7 +1751,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Same test the document builder uses (`constructsOf`, systemTopology.ts) so the two cannot
       // disagree about which constructs are on the ground.
       const surfaceDeclared = isConstruct && String((node as any).placement ?? '').toLowerCase() === 'surface';
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
+      // C3: satellites inherit their parent's equatorial frame unless the orbit declares otherwise.
+      const parentTiltDeg = (nodesById.get(node.parentId as string) as any)?.axial_tilt_deg || 0;
+      const orbitTiltRad = String((node as any).orbit?.frame ?? '').toLowerCase() === 'ecliptic'
+        ? 0
+        : (parentTiltDeg * Math.PI) / 180;
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, orbitTiltRad, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
     // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
@@ -1772,6 +1784,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   const tmpParent = new THREE.Vector3();
+  const _satEq = { x: 0, y: 0, z: 0 }; // scratch for the satellite equatorial rotation (C3)
   function updatePositions() {
     if (!currentSystem) return;
     const positions = computeWorldPositions3D(currentSystem, timeMs);
@@ -1788,7 +1801,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // At compression 0 (true scale / projector) satellites sit exactly where physics puts them;
         // at the toytown end they fan out so a moon system doesn't collapse onto the planet.
         positionToScene(parent, tmpParent);
-        const ox = p.x - parent.x, oy = p.y - parent.y, oz = p.z - parent.z; // AU offset
+        // C3: a SATELLITE's elements are quoted in its parent's equatorial frame, so rotate the
+        // parent-relative offset into it — the same rotation the rings use, which is what puts moons
+        // and rings in one plane. Barycentre members are system-level, not satellites: they must not be
+        // rotated, which is why this is gated on `b.satellite` and not merely on having a parent.
+        const rawX = p.x - parent.x, rawY = p.y - parent.y, rawZ = p.z - parent.z; // AU offset, system frame
+        const eq = b.satellite ? toParentEquator(rawX, rawY, rawZ, b.orbitTiltRad ?? 0, _satEq) : null;
+        const ox = eq ? eq.x : rawX, oy = eq ? eq.y : rawY, oz = eq ? eq.z : rawZ;
         const off = Math.hypot(ox, oy, oz);
         const pv = bodyById.get(b.parentId!);
         // Anchor to the parent's RENDERED position, not its raw compressed physics position: whenever the
@@ -2329,13 +2348,40 @@ function moonSpread(off: number, localScale: number, parentRadius: number): numb
 // spread transform the moon's own position uses (see the satellite branch in setTime), so the ring sits
 // exactly under the moon. kHelio = the parent's radial compression factor (compressScalar(r)/r);
 // localScale = the parent's orbit radius in scene units (compressScalar(r)).
-function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number): THREE.LineLoop | null {
+/**
+ * C3: a satellite's orbital elements are quoted in its PARENT'S EQUATORIAL frame, not the system plane
+ * — that is the convention for regular satellites, and it is what the bundled data uses (Saturn's rings
+ * are i_deg 0 and its inner moons 0.009–1.57, all meaning "in the ring plane"). The propagator works in
+ * the system frame, so without this rotation a moon's inclination lands in the wrong plane entirely and
+ * Saturn's moons stay flat while its rings tilt 26.73° away from them. Both ring builders already do
+ * exactly this rotation ("Ring plane = planet equator"); this is the same one, so moons and rings end up
+ * coplanar by construction.
+ *
+ * Rotates a parent-relative PHYSICS offset. Scene space is (x, z, y), so the rings' scene-Z rotation is
+ * this rotation here — keep the two in step if either ever changes.
+ *
+ * SATELLITES ONLY. A planet's inclination is ecliptic-relative and must never be touched by this.
+ */
+function toParentEquator(x: number, y: number, z: number, tiltRad: number, out: { x: number; y: number; z: number }) {
+  if (!tiltRad) { out.x = x; out.y = y; out.z = z; return out; }
+  const c = Math.cos(tiltRad), s = Math.sin(tiltRad);
+  out.x = x * c - z * s;
+  out.y = y;
+  out.z = x * s + z * c;
+  return out;
+}
+
+function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, parentTiltRad = 0): THREE.LineLoop | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
   const pts: THREE.Vector3[] = [];
+  const _eq = { x: 0, y: 0, z: 0 };
+  const eclipticFramed = String(node?.orbit?.frame ?? '').toLowerCase() === 'ecliptic';
+  const tilt = eclipticFramed ? 0 : parentTiltRad;
   for (let i = 0; i < ORBIT_SAMPLES; i++) {
-    const r = propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r; // moon relative to parent (AU)
+    const raw = propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r; // moon relative to parent (AU)
+    const r = toParentEquator(raw.x, raw.y, raw.z, tilt, _eq);
     const off = Math.hypot(r.x, r.y, r.z);
     if (off < 1e-12) continue;
     const spreadDist = moonSpread(off, localScale, parentRadius);
