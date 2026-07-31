@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.323-beta - 31st Jul 2026
+
+* The stat block's temperature range is the SURFACE range, so it agrees with the surface temperature printed above it. The two rows came from different stages of the pipeline: the mean was the composed surface temperature and the range was the EQUILIBRIUM one, which omits the greenhouse and every other heat term. Venus read 480 °C against a range of -44 to -42 °C. Across the Solar System eleven of thirty-four bodies had a mean outside their own quoted range -- Earth, Venus, all four giants, Io, Europa, Titan, Mimas, Luna's neighbours -- and every one of the thirty-four sits inside the surface range instead. It is the same figure the GM's body panel decomposes by cause, so the two views now print the same numbers.
+* A frozen surface is no longer described as liquid. The recorded coverage is an inventory; whether it is liquid at this temperature and pressure is a separate question the physics already answers and publishes. The block asserted "Surface liquid" regardless, so Europa read "Surface liquid 100% water" directly above its own "Frozen surface" tag -- and its liquid is famously under the ice. Five of the Solar System's seven bodies with a hydrosphere are frozen. The label now follows the physics: surface liquid, surface ice, or a surface volatile marked boiled off or supercritical.
+
 ## v2.1.322-beta - 31st Jul 2026
 
 * The orbit-line smoothing from the last build was switched off by its own guard. It asked whether an orbit passed near enough to the thing you are looking at to be worth recalculating, and measured that as the distance to the nearest CORNER of the thousand-sided polygon -- which, for an orbit running exactly through what you are watching, is still half a corner-spacing away, forty-six times over the threshold. So it always answered no. It now measures the distance to the nearest EDGE, which is what the question meant, and the line is smooth where you are looking.

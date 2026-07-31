@@ -90,15 +90,39 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   // --- Climate ---
   // Stars are always Kelvin (a ~5,778 K star reads oddly as °C); the switch governs planet/moon temps.
   add('Surface temp', tempC(b, b.roleHint === 'star' ? 'K' : tempUnit));
-  const tminK = any.equilibriumTempMinK, tmaxK = any.equilibriumTempMaxK;
-  if (typeof tminK === 'number' && typeof tmaxK === 'number') add('Temp range', `${formatTempK(tminK, tempUnit)} to ${formatTempK(tmaxK, tempUnit)}`);
+  // The range must be the SURFACE range, to match the row above it. `temperatureRangeK` is the
+  // SurfaceTempProfile's total (`totalMinK`/`totalMaxK`), built as mean ± the swings combined in
+  // quadrature — so it brackets `temperatureK` by construction. The EQUILIBRIUM min/max does not:
+  // it omits the greenhouse and every other heat term, so a world with any air showed a mean sitting
+  // outside its own quoted range (Pandora: 45 °C against −28 to −23 °C, the 71 K gap being its
+  // greenhouse). Stars and constructs have neither field — `processEnvironment` returns early for a
+  // star — and both are stripped and re-derived together on import, so there is no state where one
+  // exists without the other and nothing to fall back to: the row simply drops.
+  const range = any.temperatureRangeK;
+  if (typeof range?.min === 'number' && typeof range?.max === 'number') {
+    add('Temp range', `${formatTempK(range.min, tempUnit)} to ${formatTempK(range.max, tempUnit)}`);
+  }
   add('Atmosphere', atmosphere(b));
   if (b.atmosphere?.composition) {
     const gases = Object.entries(b.atmosphere.composition).sort((a, c) => c[1] - a[1]).slice(0, 3)
       .map(([g, p]) => `${g} ${Math.round((p as number) * 100)}%`).join(', ');
     if (gases) add('Air mix', gases);
   }
-  if (b.hydrosphere?.coverage) add('Surface liquid', `${Math.round(b.hydrosphere.coverage * 100)}%${b.hydrosphere.composition ? ` ${b.hydrosphere.composition}` : ''}`);
+  // The recorded coverage is an INVENTORY; whether it is liquid is a separate question the physics
+  // has already answered and published as a `hydrosphere/*` phase tag. Calling it "Surface liquid"
+  // regardless contradicts this block's own Tags row — Europa reads "Surface liquid 100% water"
+  // beside "Frozen surface: water", and its liquid is famously UNDER the ice. Five of Sol's seven
+  // hydrosphere bodies are frozen. The label follows the tag; no phase tag (coverage under 1%, or a
+  // body that never ran the pass) takes the neutral wording rather than re-asserting the claim.
+  if (b.hydrosphere?.coverage) {
+    const phase = (b.tags ?? []).map((t: any) => String(t.key)).find((k) =>
+      k.startsWith('hydrosphere/') || k === 'structure/supercritical-envelope');
+    const label = phase === 'hydrosphere/ocean' || phase === 'hydrosphere/brine' ? 'Surface liquid'
+      : phase === 'hydrosphere/frozen' ? 'Surface ice' : 'Surface volatile';
+    const state = phase === 'hydrosphere/boiled-off' ? ' (boiled off)'
+      : phase === 'structure/supercritical-envelope' ? ' (supercritical)' : '';
+    add(label, `${Math.round(b.hydrosphere.coverage * 100)}%${b.hydrosphere.composition ? ` ${b.hydrosphere.composition}` : ''}${state}`);
+  }
 
   // --- Hazards / interior ---
   if (typeof any.surfaceRadiation === 'number') {
