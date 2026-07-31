@@ -11,12 +11,32 @@ items are marked with the version that fixed them.
 **Status vocabulary:** `captured` (raw) · `triaged` (understood, not started) · `assigned` (a session has
 it) · `fixed vX.Y.Z` · `wont-fix` (with the reason).
 
-Last triage: 2026-07-31, at v2.1.306-beta. Bucket F is CLOSED (F11 untouched -- it is a feature). A1, A3,
-A4 and A9 are all done. Two items landed in the same run that were never inbox observations, recorded here
-so they are not lost: the Field Guide and Projector rail entries now sit behind the same
-`PLAYER_VIEWS_ENABLED` flag as Player Views, so beta shows one door and a production cut restores the old
-pair (v2.1.287-beta); and the info-block body picture now fills its space, where flat discs had a 220 px
-ceiling and the 3D globe was framed at the map style's 50% (v2.1.289-beta).
+Last triage: 2026-07-31, at v2.1.313-beta.
+
+**Signed off at v2.1.313-beta.** Bucket F is CLOSED (F11 untouched -- it is a feature). The GM starmap
+chrome batch is CLOSED: A8, A11, A12, A13, A14, A15, A16, A18 all done, on top of A1, A3, A4 and A9
+earlier in the same run. Two items landed that were never inbox observations, recorded so they are not
+lost: the Field Guide and Projector rail entries now sit behind the same `PLAYER_VIEWS_ENABLED` flag as
+Player Views, so beta shows one door and a production cut restores the old pair (v2.1.287-beta); and the
+info-block body picture now fills its space, where flat discs had a 220 px ceiling and the 3D globe was
+framed at the map style's 50% (v2.1.289-beta).
+
+**What is open, and what to pick up first.**
+- **A17 is the one correctness bug on the board.** The measure tool has never counted depth, so a GM is
+  told roughly half the distance the routes and journey durations use for the same pair. Small fix, found
+  and diagnosed but NOT shipped. Do this before anything cosmetic.
+- **A5, A6, A2** are one batch: the guide document / info block, all in `src/lib/catalogue/` on the single
+  `buildGuideDocument` builder shared by `DocPanel` and `FilteredDocumentView`. A grounded prompt for this
+  batch exists; A5 is a verified one-liner, A2 is the only real new work.
+- **A19** (Pluto/Charon at 1:1) needs the cheap thing ruled out before the expensive one: test whether the
+  A9 screen-space floor is resizing a sub-pixel body per frame, and only then take on floating-origin work
+  in the holo scene.
+- **B5, B6, B7** all want a physics session holding that context, and each needs a before/after diff
+  across the bundled maps. B6 alone moves ~14 classification fingerprints.
+- **C3** (moon orbits ignore the parent's axial tilt) and **C4** (on-planet constructs render at the body
+  centre) are both "a declared fact is being re-derived from geometry that may not be there" -- worth
+  scoping together.
+- A10, C2, D1, D2 are parked and low value. E1 is not ours. F11 is a feature.
 
 ---
 
