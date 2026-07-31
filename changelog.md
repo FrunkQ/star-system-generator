@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.326-beta - 1st Aug 2026
+
+* Two stars in the bundled maps could not be selected at all. In Struve 2398 and Groombridge 34 the companion star and one of the primary's planets had been given the same id -- "Struve 2398 A b" and "Struve 2398 B" were both `struve2398-b`, because the slug for the planet dropped the component letter. Anything looking a node up by id takes the first match, so asking for the star returned the planet, and the barycentre listed the planet as one of its own members. The planet takes an id carrying the component letter, the way its name already does; the star keeps the id everything else refers to. Both maps are now clean, and the generator refuses to write a map containing a duplicate id rather than shipping one quietly.
+
 ## v2.1.325-beta - 31st Jul 2026
 
 * Constructs get their own information block instead of borrowing a planet's. Selecting Blip-A gave you Type, Orbit distance and Atmosphere -- three rows, one of which said "None" -- while the ship itself carried a crew, a reactor, engines, fuel tanks and a hold. It now reads its class, where it is, crew aboard and berths, supplies remaining, dimensions, dry mass, cargo against capacity, total mass, power surplus, fuel remaining by name, maximum acceleration and total delta-v. Twelve rows where there were three, and every figure comes from the same derivation the GM's own construct panel uses, so the two cannot disagree about one ship.

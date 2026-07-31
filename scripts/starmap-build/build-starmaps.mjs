@@ -390,7 +390,27 @@ const mapB = makeStarmap(MAP_B, mapBSystems);
 mapB.id = MAP_B.id;
 
 // ---------------------------------------------------------------- write
+// A node id is a STABLE REFERENCE, not a label: parents, barycentre members, orbits, routes,
+// constructs and the WS8 campaign rebase all key off it, and `nodeById` is a `.find()`, so when two
+// nodes in one system share an id the second is simply unreachable — you cannot select it, and
+// anything pointing at that id silently resolves to the other one. Two such pairs shipped for four
+// months before anyone noticed (D3), because nothing was looking. This THROWS rather than
+// de-duplicating: a generator that quietly renames a clash hides the next one exactly as well as
+// silence did.
+function assertUniqueIds(file, obj) {
+  const clashes = [];
+  for (const s of obj.systems ?? []) {
+    const seen = new Map();
+    for (const n of s.system?.nodes ?? []) {
+      if (seen.has(n.id)) clashes.push(`${s.name} [${s.id}]: "${n.id}" is both "${seen.get(n.id)}" and "${n.name}"`);
+      else seen.set(n.id, n.name);
+    }
+  }
+  if (clashes.length) throw new Error(`${file}: ${clashes.length} duplicate node id(s)\n  ${clashes.join('\n  ')}`);
+}
+
 function write(file, obj) {
+  assertUniqueIds(file, obj);
   writeFileSync(join(outDir, file), JSON.stringify(obj, null, 1) + '\n');
   const count = obj.systems.length;
   const planets = obj.systems.reduce((s, x) => s + x.system.nodes.filter((n) => n.roleHint === 'planet').length, 0);

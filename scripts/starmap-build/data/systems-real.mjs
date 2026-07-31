@@ -266,6 +266,11 @@ export const systems = [
           star: {
             key: 'a', starId: 'struve2398-a', name: 'Struve 2398 A (GJ 725 A)', type: 'M3V',
             planetsFrom: 'Gl 725 A', planetNameBase: 'Struve 2398 A', planetIdPrefix: 'struve2398',
+            // The default id would be `struve2398-b` — the planet letter dropped onto the system slug —
+            // which is the id the companion STAR already holds. Two nodes, one id: the star is the one
+            // referenced (the barycentre's memberIds), so the planet takes the explicit id, carrying the
+            // component letter the way its NAME already does. See D3.
+            planetOverrides: { 'Gl 725 A b': { id: 'struve2398-a-b' } },
             desc: 'The primary, a mid-M dwarf with a compact confirmed planet found by ESPRESSO radial velocities.'
           }
         },
@@ -286,6 +291,10 @@ export const systems = [
           star: {
             key: 'a', name: 'Groombridge 34 A (GX Andromedae)', type: 'M2V',
             planetsFrom: 'GJ 15 A', planetNameBase: 'Groombridge 34 A', planetIdPrefix: 'groombridge34',
+            // Same collision as Struve 2398: `groombridge34-b` is the companion star's id. Only the
+            // colliding planet is moved — `groombridge34-c` is a working stable id and renaming it to
+            // match would break the rule this fix exists to protect. See D3.
+            planetOverrides: { 'GJ 15 A b': { id: 'groombridge34-a-b' } },
             desc: 'A quiet M2 dwarf with a confirmed two-planet system spanning from an 11-day orbit out beyond the snow line.'
           }
         },

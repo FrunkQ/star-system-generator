@@ -6528,7 +6528,7 @@
             }
           },
           {
-            "id": "struve2398-b",
+            "id": "struve2398-a-b",
             "parentId": "struve2398-a",
             "name": "Struve 2398 A b",
             "kind": "body",
@@ -6662,7 +6662,7 @@
             }
           },
           {
-            "id": "groombridge34-b",
+            "id": "groombridge34-a-b",
             "parentId": "groombridge34-a",
             "name": "Groombridge 34 A b",
             "kind": "body",
