@@ -66,6 +66,9 @@ export const DEFAULT_PRESET: PlayerPreset = {
   unlit: false,
   lensing: true,
   auroras: true,
+  // OFF by default: the reference-work reading. A preset that is an INSTRUMENT turns it on
+  // (Datapad, Console below). See A29.
+  liveReadings: false,
   bodyGfx: 'sphere',
   beltStyle: 'rocks',
   starmapRouteGlow: true,
@@ -111,12 +114,14 @@ export const BUILTIN_PRESETS: PlayerPreset[] = [
   // Datapad: a hand-held instrument feed — stock body PHOTOS on a clean cyan terminal. Old 'clean' skin.
   preset({
     id: 'datapad', name: 'Datapad', description: 'A hand-held data terminal readout.',
-    systemView: 'diagram2d', bodyGfx: 'photo', accentColor: '#5bd7ff', font: F_MONO
+    systemView: 'diagram2d', bodyGfx: 'photo', accentColor: '#5bd7ff', font: F_MONO,
+    liveReadings: true // a hand-held instrument reads what is in the tanks now, not what fits in them
   }),
   // Console: a ship-console orbital plot — flat schematic body shapes, green mono. Old 'console' skin.
   preset({
     id: 'console', name: 'Console', description: 'A ship-console orbital plot.',
-    systemView: 'diagram2d', bodyGfx: 'flat', accentColor: '#7dff9e', font: F_MONO, grid: 'plain'
+    systemView: 'diagram2d', bodyGfx: 'flat', accentColor: '#7dff9e', font: F_MONO, grid: 'plain',
+    liveReadings: true // a ship's own console is the one surface that certainly knows its own state
   }),
   // CRT Terminal: a salvaged green-phosphor terminal — the Guide document in the TERMINAL style
   // (phosphor mono, '>' log lines) under the CRT filter + scanlines. Old 'mono' skin, now a document.

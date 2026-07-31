@@ -51,6 +51,8 @@
   // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
   // Optional: without it the construct block simply omits those rows.
   export let rulePack: import('$lib/types').RulePack | null = null;
+  // A29: show a construct's current fuel/cargo/crew, not just its capacity. Preset-driven.
+  export let liveReadings = false;
   export let tips: { top?: string; bottom?: string } | null = null;
   export let overlay: HudOverlay | null = null;
   export let companyName = '';
@@ -159,7 +161,7 @@
     const blocks = stage === 'starmap'
       ? buildStarmapDocument(starmap, { selectedId })
       : (system ? buildGuideDocument(system, selectedId, {
-          units, tempUnit, colorful, imagery, rulePack,
+          units, tempUnit, colorful, imagery, rulePack, liveReadings,
           image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
         }) : []);
     // GENUINE header/footer: reserve a band for the tip banners (and the company/footer stamps) so the

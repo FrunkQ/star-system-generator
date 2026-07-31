@@ -528,6 +528,10 @@
                   </select>
                 </label>
               {/if}
+              <!-- A29: a star catalogue holds what a ship CAN carry; only an instrument knows what is in
+                   the tanks now. Off = capacity alone, on = current-of-capacity. -->
+              <label class="chk"><input type="checkbox" bind:checked={draft.liveReadings} /> Live readings</label>
+              <p class="hint">Fuel, cargo and crew as they are now, not just capacity.</p>
               <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info {draft.systemView === 'document' ? 'block' : 'panel'} (clean display)</label>
               {#if !draft.hideInfoPanel}
                 <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block is
@@ -661,7 +665,7 @@
                        players will see. It used to be the raw pixel figure capped at 340, which meant the
                        top half of the slider's travel moved nothing on screen at all. -->
                   <aside class="preview-insp" style="width:{Math.round(draft.inspectorWidthPct * 100)}%; font-family:{draft.font}; font-size:{Math.round(13 * draft.infoFontScale)}px">
-                    <DocPanel system={previewSystem} selectedId={previewInfoId} {rulePack}
+                    <DocPanel system={previewSystem} selectedId={previewInfoId} {rulePack} liveReadings={draft.liveReadings}
                       font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                       fontScale={draft.infoFontScale} listStyle={draft.listStyle} documentStyle={draft.documentStyle}
                       tagStyle={draft.tagStyle} themeColors={draft.themeColors}
@@ -674,7 +678,7 @@
               <!-- The WS2 Guide document, drawn through the real filter exactly as players get it. Tap a
                    world on the schematic (or a navigator row) to drill in — the info block is in-page. -->
               <FilteredDocumentView
-                system={previewSystem} selectedId={previewFocusId} {rulePack}
+                system={previewSystem} selectedId={previewFocusId} {rulePack} liveReadings={draft.liveReadings}
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 colorful={draft.accentColor === 'rainbow'}
                 imagery={draft.bodyGfx} photoFrame={draft.photoFrame}

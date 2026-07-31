@@ -40,6 +40,8 @@
   // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
   // Optional: without it the construct block simply omits those rows.
   export let rulePack: import('$lib/types').RulePack | null = null;
+  // A29: show a construct's current fuel/cargo/crew, not just its capacity. Preset-driven.
+  export let liveReadings = false;
 
   let wrap: HTMLDivElement;
   let canvas: HTMLCanvasElement;
@@ -90,7 +92,7 @@
   function render() {
     if (!canvas || w <= 0 || !system) return;
     const blocks = buildGuideDocument(system, selectedId, {
-      panel: true, noHeading: !showHeading, units, tempUnit, imagery, tagStyle, photoFrame, rulePack,
+      panel: true, noHeading: !showHeading, units, tempUnit, imagery, tagStyle, photoFrame, rulePack, liveReadings,
       image: loaded?.img ?? null, imageAspect: loaded?.aspect, imageFocus: loaded?.focus ?? null
     });
     const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);

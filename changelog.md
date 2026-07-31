@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.329-beta - 1st Aug 2026
+
+* Player views get a "Live readings" setting: fuel, cargo and crew as they are now, rather than just capacity. A star catalogue would record what a ship can carry; only an instrument knows what is in the tanks this minute, and the construct block was always showing the latter. Off, it reads crew capacity, cargo capacity and fuel capacity; on, it reads current-of-capacity and adds supplies remaining, total mass, acceleration and delta-v. The label says which figure it is either way, so a reader is never left guessing.
+* Total mass, acceleration and delta-v follow the setting too, because all three are computed from the fuel and cargo actually aboard -- delta-v is literally a measure of how much fuel is left. Showing them while claiming to withhold the readings would have made the setting a lie.
+* Defaults chosen by what each preset IS: on for the Datapad and the Console, which are instruments, and off for The Guide, the CRT Terminal, the Holo Table and the Projection, which are reference views. This is a presentation setting rather than a privacy boundary, and deliberately so -- the figures still travel to the player either way.
+
 ## v2.1.328-beta - 1st Aug 2026
 
 * A ship is no longer illustrated with a planet. The body-graphics setting drew whatever was selected, so Blip-A -- a 110-metre hull -- got the same featureless sphere a rocky world gets, above a stat block describing its crew and engines. A construct now gets no body graphic at all, which is the honest minimum; a GM-uploaded photograph of the ship still shows, as before.

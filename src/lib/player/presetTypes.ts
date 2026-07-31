@@ -117,6 +117,11 @@ export interface PlayerPreset {
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
   lensing?: boolean; // stylised black-hole gravitational lensing (§A13); default on (no-op without a BH)
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
+  // A construct's CURRENT levels — fuel, cargo, crew aboard — as against its permanent capacity. A star
+  // catalogue would hold what a ship CAN carry; only a live instrument knows what is in the tanks right
+  // now. Off = capacity alone, on = current-of-capacity. Presentation only, and deliberately so: the
+  // figures still cross the wire either way (see A29 — do not turn this into a snapshot strip).
+  liveReadings: boolean;
   bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat' | 'none'; // body picture: 3D sphere / photo / procedural disc / flat shape / none (a new option honoured across every info surface — 2D document, 3D holo, …)
   beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black';

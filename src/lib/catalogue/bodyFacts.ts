@@ -62,7 +62,14 @@ export function classLabel(b: CelestialBody): string {
 // fuels (and gives them an Isp and a density, without which no mass, Δv or acceleration exists), and
 // its host, which is what turns an orbit into "Adrian: Low Orbit". Both OPTIONAL — a caller that has
 // neither still gets every fact the construct carries on its own.
-export interface FactContext { rulePack?: RulePack | null; host?: CelestialBody | null; }
+export interface FactContext {
+  rulePack?: RulePack | null;
+  host?: CelestialBody | null;
+  // A29: print a construct's CURRENT levels as well as its capacity. Off (the default) is the reference
+  // -work reading — what a ship can carry, not what is in it. Presentation only; the figures reach the
+  // player either way, which is a known and accepted trade-off recorded in A29.
+  liveReadings?: boolean;
+}
 
 // A CONSTRUCT is not a small planet, and the body block was describing it as one: Blip-A read Type /
 // Orbit distance / Atmosphere while the node carried crew, engines, fuel tanks, cargo and a reactor.
@@ -84,6 +91,10 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
   // density, so its mass is silently zero — and a "Total mass" that quietly leaves out the fuel is a
   // wrong number, not a partial one. Same for an unresolved engine: its power draw is missing, so what
   // is left is the plant's OUTPUT and calling it a surplus would be a claim we cannot make.
+  // A29: whether this surface is an INSTRUMENT (current levels) or a REFERENCE WORK (capacity alone).
+  // Where it applies, the LABEL says which figure it is rather than leaving the reader to guess — the
+  // same approach already used for Power surplus vs Power output just below.
+  const live = !!ctx.liveReadings;
   const fuelKnown = !(b.fuel_tanks?.length) || (b.fuel_tanks ?? []).every((t) => fuels.some((f) => f.id === t.fuel_type_id));
   const enginesKnown = !(b.engines?.length) || (b.engines ?? []).every((e) => engines.some((d) => d.id === e.engine_id));
 
@@ -103,10 +114,13 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
   const crew = b.crew ?? {};
   if (typeof crew.current === 'number' || typeof crew.max === 'number') {
     const n = (x: number) => x.toLocaleString(); // a colony station's crew runs to seven figures
-    add('Crew', typeof crew.max === 'number' ? `${n(crew.current ?? 0)} of ${n(crew.max)}` : n(crew.current ?? 0));
+    if (!live) add('Crew capacity', typeof crew.max === 'number' ? n(crew.max) : '');
+    else add('Crew', typeof crew.max === 'number' ? `${n(crew.current ?? 0)} of ${n(crew.max)}` : n(crew.current ?? 0));
   }
-  add('Supplies remaining', typeof specs.endurance_days === 'number'
-    ? `${specs.endurance_days.toLocaleString()} days` : (specs.endurance_days === 'Indefinite' ? 'Indefinite' : ''));
+  if (live) {
+    add('Supplies remaining', typeof specs.endurance_days === 'number'
+      ? `${specs.endurance_days.toLocaleString()} days` : (specs.endurance_days === 'Indefinite' ? 'Indefinite' : ''));
+  }
   if (specs.simulatedG > 0.005) add('Spin gravity', `${specs.simulatedG.toFixed(2)} g`);
 
   // --- Hull ---
@@ -118,10 +132,14 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
     add('Dimensions', `${d.map((x) => (big ? (x / 1000) : x)).map((x) => fmtNum(x, big ? 1 : 0)).join(' × ')} ${big ? 'km' : 'm'}`);
   }
   add('Dry mass', tonnes(specs.dryMass_tonnes));
-  add('Cargo', typeof pp.cargoCapacity_tonnes === 'number' && pp.cargoCapacity_tonnes > 0
-    ? `${Math.round(b.current_cargo_tonnes ?? 0).toLocaleString()} of ${Math.round(pp.cargoCapacity_tonnes).toLocaleString()} t`
+  const cargoCap = typeof pp.cargoCapacity_tonnes === 'number' && pp.cargoCapacity_tonnes > 0 ? pp.cargoCapacity_tonnes : 0;
+  if (!live) add('Cargo capacity', tonnes(cargoCap));
+  else add('Cargo', cargoCap
+    ? `${Math.round(b.current_cargo_tonnes ?? 0).toLocaleString()} of ${Math.round(cargoCap).toLocaleString()} t`
     : tonnes(b.current_cargo_tonnes));
-  if (fuelKnown) add('Total mass', tonnes(specs.totalMass_tonnes));
+  // Total mass is dry + CURRENT cargo + CURRENT fuel, so it restates the reading the other rows just
+  // withheld. It follows the toggle rather than quietly leaking it back.
+  if (fuelKnown && live) add('Total mass', tonnes(specs.totalMass_tonnes));
 
   // --- Power, fuel and performance. All of this is zero without the rule pack's engine/fuel data,
   //     which is why each row is gated on a positive figure rather than printed as 0. ---
@@ -134,11 +152,16 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
   if (specs.fuelCapacity_units > 0) {
     const named = Array.from(new Set((b.fuel_tanks ?? [])
       .map((t) => fuels.find((f) => f.id === t.fuel_type_id)?.name).filter(Boolean)));
-    add('Fuel', `${Math.round(specs.fuelVolume_units).toLocaleString()} of ${Math.round(specs.fuelCapacity_units).toLocaleString()} m³`
-      + (named.length ? ` ${named.join(', ')}` : ''));
+    const suffix = named.length ? ` ${named.join(', ')}` : '';
+    if (!live) add('Fuel capacity', `${Math.round(specs.fuelCapacity_units).toLocaleString()} m³${suffix}`);
+    else add('Fuel', `${Math.round(specs.fuelVolume_units).toLocaleString()} of ${Math.round(specs.fuelCapacity_units).toLocaleString()} m³${suffix}`);
   }
-  if (specs.maxVacuumG > 0) add('Max acceleration', `${specs.maxVacuumG.toFixed(2)} g`);
-  if (specs.totalVacuumDeltaV_ms > 0) add('Δv (vacuum)', formatSpeedKmS(specs.totalVacuumDeltaV_ms / 1000, units, 1));
+  // Both are computed from the CURRENT wet mass — acceleration divides by it, and Δv is the log of the
+  // wet/dry ratio, i.e. how much fuel is left. So they are readings, not specifications, and they follow
+  // the toggle for the same reason Total mass does. The RATED figures a catalogue would want (full tanks)
+  // are a derivation that does not exist yet — see A31 rather than inventing one here.
+  if (live && specs.maxVacuumG > 0) add('Max acceleration', `${specs.maxVacuumG.toFixed(2)} g`);
+  if (live && specs.totalVacuumDeltaV_ms > 0) add('Δv (vacuum)', formatSpeedKmS(specs.totalVacuumDeltaV_ms / 1000, units, 1));
   if (specs.canAerobrake) add('Aerobraking', `up to ${specs.aerobrakeLimit_kms.toFixed(1)} km/s`);
 
   // Same contract as a body's tags: the row is named 'Tags' so the document can lift it out and
