@@ -32,7 +32,7 @@ It has been "vibe-coded" over many months across several AI coding assistants �
 
 V2 is a ground-up overhaul. The headline changes:
 
-**A tablet- and phone-friendly UI.** The whole interface was rebuilt around an app shell that works from a 375px phone up to a desktop — collapsible panels, a left rail with Find-by-tag and a Measure tool, and persistent draggable time controls.
+**A tablet- and phone-friendly UI.** The whole interface was rebuilt around an app shell that works from a 375px phone up to a desktop — collapsible panels, a left rail with Find-by-tag and a Measure tool, and floating on-canvas controls — the time transport and the body picker share one behaviour, dragged by a slim handle, locked open when you want them and folded away to a puck when you don't.
 
 **Interstellar travel.** Fly between systems with abstract **Jump** drives or realistic reaction drives, including **relativistic time dilation** — watch crew-frame and observer-frame clocks diverge as you approach light speed. Under-fuelled ships fall short and drift; gravity assists curve real trajectories around destination stars.
 

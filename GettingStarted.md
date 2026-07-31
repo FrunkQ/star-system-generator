@@ -16,7 +16,9 @@ You start at the **Starmap** — a pan-and-zoom map tracking many star systems a
 * **Add systems**: right-click empty space to place a new system. In the **New System** dialogue you can also **import** a Universe Sandbox save (`.ubox`) or a SpaceEngine export (`.sc`) — pick the file, choose how many small bodies to include with the mass slider, and review the diff before loading.
 * **Link systems**: right-click a star → *Link System*, then click a second star to draw a jump route.
 * **Find by tag…**: from the rail, hunt across every system for what you need — the nearest gas giant to refuel at, a world with a breathable atmosphere, or anything you've tagged.
-* **Settings**: toggle the Milky Way backdrop, switch grid style (Square / Hex / None), pick metric or imperial units, and enable **Traveller mode** for hex alignment.
+* **Find a system**: the **picker** — the puck at the top of the map — opens a searchable list of every system and ship. Tap it, pick, and it folds away again.
+* **Describe the map**: the floating panel holds the map's **Description** and your **GM Notes**, both editable in place. Drag its header to move it, or the corner grip to make it bigger when you have more to say than fits.
+* **Settings**: toggle the Milky Way backdrop, switch grid style (Square / Hex / None), pick metric or imperial units, enable **Traveller mode** for hex alignment, and choose whether **depth** counts toward distances — when it doesn't, the map stops annotating it.
 
 ## 2. The System View: orbital mechanics
 
@@ -26,6 +28,7 @@ Click a system to drop into the **System Visualiser** — a real-time 2D orbital
 
 * **Focus**: click any planet, moon or construct to centre the camera and open its data.
 * **Time control**: play/pause and scrub the time slider to watch orbits evolve — fast-forward years to find alignment windows (the first time you press **+**, playback starts so you immediately see it move). Display Time (what you're scrubbing) and Actual Time (the committed "now") are independent.
+* **The floating controls**: the time transport and the picker behave identically wherever you meet them. A slim handle on the left moves them and the position is remembered; the padlock on the right locks one open. Unlocked, a control folds away to a puck as soon as you touch something else — which is how you keep a tablet screen clear. Unlocking puts it away too, so the padlock is also the "done with this" button.
 * **Toytown view**: real space is mostly empty, so scale bodies up to see them relative to each other.
 * **True-colour worlds**: bodies are drawn from their real physics — star light, surface liquids, haze and clouds, plus auroras, ice caps, cratering, volcanic hotspots, and visible oblateness on fast rotators.
 * **Overlays**: turn on **Hill Spheres** to see each body's gravitational "grab" boundary (handy for placing moons), or use the **Measure** tool from the rail to read the straight-line distance between two bodies — it even tracks a moving ship.

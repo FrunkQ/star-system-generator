@@ -76,6 +76,8 @@ The application is built on a modular "Factory-Generator-Processor" pipeline, de
     *   **`ubox/`**: Universe Sandbox (`.ubox`). State-vector→Keplerian conversion + Hill-sphere hierarchy inference (US stores neither orbits nor parents).
     *   **`spaceengine/`**: SpaceEngine (`.sc`/`.pak`). A `.sc` brace-format parser + near-1:1 mapping (SpaceEngine stores Keplerian elements and an explicit `ParentBody`).
     *   **`adapters.ts`**: normalises each format to the surface `ImportModal.svelte` needs, so one modal serves every source. CLIs: `scripts/ubox2ssg.mjs`, `scripts/sc2ssg.mjs`.
+*   `src/lib/ui/`: **Shared UI behaviour** — logic that more than one component must agree on, kept out of any single component so two consumers cannot drift apart.
+    *   `floatingControl.ts`: the ONE behaviour for every floating on-canvas control (the time transport, the body picker). Owns the drag offset and its persistence, the collapse-to-a-puck state, the lock-open flag, the close-when-something-else-is-touched rule, and the clamp that keeps a control on whatever screen it opens on. Its chrome is `FloatGrip.svelte` (the move handle) and `FloatPin.svelte` (the lock), so the two controls look as well as behave alike. See inbox items A11 / A16 for why it exists.
 *   `src/lib/components/`: Svelte UI components.
     *   `SystemView.svelte`: Main controller for the system view.
     *   `SystemVisualizer.svelte`: Canvas/SVG renderer for the orbital view.
