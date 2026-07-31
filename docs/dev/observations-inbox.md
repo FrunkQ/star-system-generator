@@ -25,9 +25,15 @@ framed at the map style's 50% (v2.1.289-beta).
 - **A17 is the one correctness bug on the board.** The measure tool has never counted depth, so a GM is
   told roughly half the distance the routes and journey durations use for the same pair. Small fix, found
   and diagnosed but NOT shipped. Do this before anything cosmetic.
-- **A5, A6, A2** are one batch: the guide document / info block, all in `src/lib/catalogue/` on the single
-  `buildGuideDocument` builder shared by `DocPanel` and `FilteredDocumentView`. A grounded prompt for this
-  batch exists; A5 is a verified one-liner, A2 is the only real new work.
+- **A5, A6, A2 are DONE** (v2.1.323-325-beta): the guide-document batch. The stat block's temperature range
+  is the surface range and a frozen surface is no longer called liquid; a star's page lists its planets, so
+  the page you land on finally has a way down; and a construct has its own block instead of a planet's.
+  All three verified on BOTH `DocPanel` and `FilteredDocumentView`. **They left six items behind, and the
+  first two are the ones worth reading:** [[D3]] (two nodes share one ID in two bundled systems, so one of
+  each pair cannot be selected at all — a DATA bug in the build kit) and [[A27]] (`cargoDescription`
+  reaches players with no hide flag of its own; needs a decision, not a fix). Then [[B8]], [[A25]],
+  [[A26]], [[A28]]. A5 also strengthened the cross-references on [[B6]] and [[B7]]: both are the same
+  "two rows, two pipeline stages" fault, and both are VISIBLE in the stat block rather than internal.
 - **A19, A22, A23 and A24 are DONE** (v2.1.319-321-beta): the holo scene has a floating origin, barycentre
   members have orbit rings about their barycentre, orbit rings re-sample about the focus so they stay smooth
   at any zoom, and constructs draw their orbits. All four confirmed on screen except the last.
