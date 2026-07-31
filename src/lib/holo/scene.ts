@@ -392,6 +392,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return safeColor(node);
   }
 
+  // A CONSTRUCT's orbit takes its own glyph colour, lightened, so the line reads as belonging to the
+  // station rather than to a world (the same tie the player starmap makes between a route and its name).
+  // Under the 'white' body-colour selection everything is deliberately neutral so a screen filter has one
+  // palette to tint — an amber line through a monochrome skin would break that, so match the grey instead.
+  const CONSTRUCT_ORBIT_LIGHTEN = 0.45; // toward white
+  const _white = new THREE.Color(0xffffff);
+  function constructOrbitColor(node: any): number {
+    let base = 0xffd24d; // the glyph's own default amber
+    if (bodyStyle === 'white') base = 0x8a93a0;
+    else if (node.icon_color) { try { base = new THREE.Color(node.icon_color).getHex(); } catch { /* keep the default */ } }
+    return new THREE.Color(base).lerp(_white, CONSTRUCT_ORBIT_LIGHTEN).getHex();
+  }
+  /** One entry point for every orbit line, so a construct can never be coloured as a world by mistake. */
+  function ringColor(node: any): number {
+    return node.kind === 'construct' ? constructOrbitColor(node) : orbitColor(node);
+  }
+
   // Body-size dial: 1 = readable log-scaled sizes (default), 0 = true physical radius at the system's
   // true-scale factor (planets become the tiny dots they really are). Blends between the two.
   function setBodySize(v: number) {
@@ -700,7 +717,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // `abs` = the ring's vertices in ABSOLUTE scene units, kept in float64. A heliocentric ring is the one
   // line a body is judged against, and its buffer is float32, so on a rebase it is re-emitted from this
   // master copy rather than left where it was. See rebaseStaticGeometry.
-  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array }[] = [];
+  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array; node?: any }[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -780,10 +797,76 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     originShift.copy(sceneOrigin).negate();
     camera.position.sub(delta);
     controls.target.sub(delta);
-    for (const r of orbitRings) if (r.abs) rebaseStaticGeometry(r.obj, r.abs, sceneOrigin);
+    emitOrbitRings(); // re-sampled about the new focus where the facets would otherwise show
     rebaseGrid();
     updatePositions(); // bodies + lights into the new frame (they are only recomputed on a time change)
     updateSurfaceConstructs(); // and the constructs glued to them
+  }
+
+  // ---- Focus-adaptive orbit rings (A23) ----------------------------------------------------------
+  // An orbit ring is a POLYGON, and past a certain zoom you are inside one of its facets: at Pluto's 12
+  // scene units, 1024 uniform samples turn 0.35 degrees at each vertex and sag 5.6e-5 units off the true
+  // ellipse — more than the whole Pluto-Charon separation. You see it as a kink in a line that should be
+  // smooth. Raising the count globally cannot reach it (the kink needs ~16k samples at that zoom, and
+  // deeper zoom needs more again) and would cost 16x the buffer and 16x the propagation on every rebuild.
+  //
+  // So the samples MOVE instead. The same 1024 are redistributed along the orbit, packed into the arc
+  // nearest the floating origin and thinned on the far side, which at that zoom is off screen anyway. A
+  // ring whose nearest point is well outside the view is left uniform, so in practice one ring re-samples.
+  const RING_ADAPT_NEAR = 8; // only refine a ring passing within this many camera-distances
+  const RING_SAG_FRAC = 1 / 2000; // allowed chord sag, as a fraction of the working distance
+  let lastRingCamDist = 0;
+
+  /**
+   * A monotonic odd warp of the orbit parameter about the focus. `s` is the sample SPACING at the centre
+   * as a fraction of uniform, so density there is 1/s; s = 1 is exactly the uniform sampling everything
+   * had before. Cubic in the tail, which keeps it monotonic (f' = s + 3(1-s)y^2 > 0) and lands f(1) = 1
+   * so the warp still covers exactly one orbit.
+   */
+  function warpOrbitParam(x: number, s: number): number {
+    const y = Math.abs(2 * x);
+    return 0.5 * Math.sign(x) * (s * y + (1 - s) * y * y * y);
+  }
+
+  /** Emit one ring for the current origin, re-sampling about the focus when the facets would show. */
+  function emitOrbitRing(r: { obj: THREE.Object3D; abs?: Float64Array; node?: any }, camDist: number) {
+    if (!r.abs) return;
+    // Nearest point of the ring to the origin, from the uniform master — no propagation needed.
+    let best = Infinity, bi = 0;
+    for (let i = 0; i < r.abs.length; i += 3) {
+      const dx = r.abs[i] - sceneOrigin.x, dy = r.abs[i + 1] - sceneOrigin.y, dz = r.abs[i + 2] - sceneOrigin.z;
+      const d = dx * dx + dy * dy + dz * dz;
+      if (d < best) { best = d; bi = i; }
+    }
+    const period = r.node ? orbitPeriodMs(r.node.orbit) : 0;
+    let s = 1;
+    if (period > 0 && Math.sqrt(best) <= camDist * RING_ADAPT_NEAR) {
+      // Chord sag over one facet is R*dTheta^2/8 with dTheta = 2*pi*s/N, so invert that for the tolerance.
+      const curveR = Math.max(1e-9, Math.hypot(r.abs[bi], r.abs[bi + 1], r.abs[bi + 2]));
+      const tol = Math.max(1e-12, camDist * RING_SAG_FRAC);
+      s = (ORBIT_SAMPLES * Math.sqrt((8 * tol) / curveR)) / (2 * Math.PI);
+      s = Math.max(0.002, Math.min(1, s));
+    }
+    if (s >= 0.999) { rebaseStaticGeometry(r.obj, r.abs, sceneOrigin); return; } // uniform: the master stands
+    const attr = (r.obj as any).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
+    if (!attr) return;
+    const arr = attr.array as Float32Array;
+    const t0 = r.node.orbit.t0 || 0;
+    const uCentre = bi / 3 / ORBIT_SAMPLES;
+    for (let i = 0; i < ORBIT_SAMPLES; i++) {
+      const u = uCentre + warpOrbitParam(i / ORBIT_SAMPLES - 0.5, s);
+      positionToSceneAbs(propagateState3D(r.node, t0 + u * period).r, tmp);
+      arr[3 * i] = tmp.x - sceneOrigin.x;
+      arr[3 * i + 1] = tmp.y - sceneOrigin.y;
+      arr[3 * i + 2] = tmp.z - sceneOrigin.z;
+    }
+    attr.needsUpdate = true;
+    (r.obj as any).geometry?.computeBoundingSphere?.();
+  }
+
+  function emitOrbitRings() {
+    lastRingCamDist = camera.position.distanceTo(controls.target);
+    for (const r of orbitRings) if (r.abs) emitOrbitRing(r, lastRingCamDist);
   }
 
   /**
@@ -1578,16 +1661,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Orbit path rings — shown under the SAME rule as the body's name (updateOrbitRings). A
       // system-level orbiter gets a heliocentric ring at the origin; a moon gets a ring in its
       // parent's local frame (scaled by the parent's radial compression) that tracks the parent.
-      if (node.orbit && node.kind !== 'construct') {
+      //
+      // Constructs get one too. Two of them do not: a ship carrying scheduled journeys is placed by the
+      // transit sampler rather than by its orbit, so a ring drawn from that orbit would be a line it is
+      // not on; and a construct sitting ON a surface has no orbit to draw — that one is decided per
+      // frame in updateOrbitRings, because the surface lock is itself live (a construct can lift off).
+      const isJourneying = node.kind === 'construct' && ((node as any).scheduled_journeys || []).length > 0;
+      if (node.orbit && !isJourneying) {
         if (node.parentId && nodesById.get(node.parentId)?.kind === 'barycenter') {
           // A member orbits the PAIR's common point, not the star. Deferred: the clearance that holds the
           // pair apart needs the PARTNER's rendered radius, and that is only known once every body exists.
           baryRingPending.push(node);
         } else if (systemLevel) {
-          const ring = buildOrbitRing(node, positionToSceneAbs, orbitColor(node));
+          const ring = buildOrbitRing(node, positionToSceneAbs, ringColor(node));
           if (ring) {
             contentGroup.add(ring.loop);
-            orbitRings.push({ id: node.id, obj: ring.loop, abs: ring.abs });
+            orbitRings.push({ id: node.id, obj: ring.loop, abs: ring.abs, node });
             rebaseStaticGeometry(ring.loop, ring.abs, sceneOrigin); // emit into the origin's frame
           }
         } else if (node.parentId) {
@@ -1597,7 +1686,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const parentNode = nodesById.get(node.parentId);
           const parentRad = parentNode ? bodyRadiusScene(parentNode, true) : 0;
           const parentTiltRad = (((parentNode as any)?.axial_tilt_deg || 0) * Math.PI) / 180; // C3: the moon's orbit is in the parent's equator
-          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, bodyRadiusScene(node, false), compression, orbitColor(node), parentTiltRad) : null;
+          // A construct is a fixed-screen-size glyph with no rendered globe, so it contributes no radius
+          // to the clearance — exactly as its own placement does (radiusScene is 0 for one).
+          const selfRad = node.kind === 'construct' ? 0 : bodyRadiusScene(node, false);
+          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, selfRad, compression, ringColor(node), parentTiltRad) : null;
           if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
         }
       }
@@ -1923,7 +2015,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const kHelio = rB > 1e-9 ? compressScalar(rB) / rB : 0;
       if (kHelio <= 0) continue;
       const self = bodyById.get(node.id);
-      const ring = buildBaryMemberRing(node, kHelio, self?.radiusScene ?? 0, baryCoR.get(node.id) ?? 0, orbitColor(node));
+      const ring = buildBaryMemberRing(node, kHelio, self?.radiusScene ?? 0, baryCoR.get(node.id) ?? 0, ringColor(node));
       if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
     }
     visibleSet = getVisibleNodeIds(system, focusedId);
@@ -2035,7 +2127,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Moon rings also track their parent's current scene position.
   function updateOrbitRings() {
     for (const r of orbitRings) {
-      r.obj.visible = visibleSet.has(r.id);
+      // A construct glued to a surface is not on its orbit, so it must not draw one. The lock is live
+      // (updatePositions clears it the moment the thing rises above the globe), so the test is too.
+      r.obj.visible = visibleSet.has(r.id) && !bodyById.get(r.id)?.surfaceLock;
       if (r.obj.visible && r.trackParentId) {
         const p = bodyById.get(r.trackParentId);
         if (p) r.obj.position.copy(p.mesh.position);
@@ -2396,6 +2490,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const dT = camera.position.distanceTo(controls.target);
       const wantNear = Math.min(0.01, Math.max(1e-8, dT * 0.02));
       if (wantNear < camera.near * 0.8 || wantNear > camera.near * 1.25) { camera.near = wantNear; camera.updateProjectionMatrix(); }
+      // The ring sample density is chosen against the working distance, so a real zoom re-chooses it.
+      // Only while rebased: an un-rebased scene is always uniform, and this must not touch it.
+      if (sceneOrigin.lengthSq() > 0 && (dT > lastRingCamDist * 1.6 || dT < lastRingCamDist / 1.6)) emitOrbitRings();
     }
     if (portraitOn) updatePortraitLight(); // AFTER controls.update so the camera basis is current this frame
     updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
