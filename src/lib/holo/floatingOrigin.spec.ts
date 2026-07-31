@@ -6,6 +6,8 @@ import {
   ulp32,
   renderedCameraOffset,
   renderErrorAt,
+  shouldRebase,
+  REBASE_K,
   type RadialMap,
   type Vec3
 } from './floatingOrigin';
@@ -111,6 +113,39 @@ describe('float32 headroom at Pluto (the A19 measurement)', () => {
     expect(sepScene / step).toBeLessThan(2e7);
     // Five orders of magnitude better than the absolute frame, which is the whole claim.
     expect(sepScene / step / (sepScene / ulp32(plutoScene))).toBeGreaterThan(1e5);
+  });
+});
+
+describe('the rebase policy', () => {
+  const DEFAULT_MIN_DIST = 0.05; // the holo controls' zoom floor when nothing tiny is framed
+  const GRID_RADIUS = 12; // and the furthest anything is ever drawn from the centre
+
+  it('never fires at readable scale, so that end of the dial is left exactly as it was', () => {
+    for (let camDist = DEFAULT_MIN_DIST; camDist < GRID_RADIUS * 6; camDist *= 1.3) {
+      for (const drift of [0.001, 0.5, 6, GRID_RADIUS, GRID_RADIUS * 1.5]) {
+        expect(shouldRebase(drift, camDist)).toBe(false);
+      }
+    }
+  });
+
+  it('fires on the shot that provoked A19 — a true-scale world framed at its moon\'s orbit', () => {
+    const charonOrbitScene = auToScene(CHARON_A_AU);
+    expect(shouldRebase(auToScene(PLUTO_BARY_AU), charonOrbitScene * 2)).toBe(true);
+  });
+
+  it('holds the float32 error to a fraction of a pixel at the drift it tolerates', () => {
+    for (let camDist = 1e-7; camDist < DEFAULT_MIN_DIST; camDist *= 2) {
+      const maxDrift = camDist * REBASE_K; // the largest drift the policy will sit on
+      // Measured 1.46e-4 of the view width at worst — a fifth of a pixel across a 1000 px viewport.
+      expect(ulp32(maxDrift) / camDist).toBeLessThan(2e-4);
+    }
+  });
+
+  it('settles instead of thrashing: one rebase takes the drift to zero', () => {
+    const drift = auToScene(PLUTO_BARY_AU);
+    const camDist = auToScene(CHARON_A_AU) * 2;
+    expect(shouldRebase(drift, camDist)).toBe(true);
+    expect(shouldRebase(0, camDist)).toBe(false); // rebasing sets the target to the origin
   });
 });
 

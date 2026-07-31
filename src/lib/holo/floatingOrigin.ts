@@ -11,8 +11,8 @@
  *
  * ORDER MATTERS. `compressRadius` is a RADIAL, nonlinear map, so a translation does not commute with it:
  * compressing a rebased position is NOT the same picture as rebasing a compressed one. The rebase is a
- * pure translation of the RENDERED space and therefore has to come second. `rebaseDoesNotCommute` in the
- * spec pins that down so nobody swaps the two and gets something that looks almost right.
+ * pure translation of the RENDERED space and therefore has to come second. The spec pins that down ("does
+ * NOT commute with a translation") so nobody swaps the two and gets something that looks almost right.
  *
  * Nothing here touches physics or the classifier: the propagated positions are the input, unchanged. This
  * module only decides the FRAME they are drawn in.
@@ -66,6 +66,24 @@ export function toSceneRebased<T extends Vec3>(p: Vec3, m: RadialMap, origin: Ve
   out.y -= origin.y;
   out.z -= origin.z;
   return out;
+}
+
+/**
+ * How far the camera's target is allowed to drift from the origin before the scene is rebased, as a
+ * multiple of the working (camera-to-target) distance — because that distance is what decides whether an
+ * error is visible at all. At K = 2000 the float32 error stays under 1.5e-4 of the view width (measured;
+ * one ULP at the tolerated drift, against a view of drift/K) — about a fifth of a pixel across a 1000 px
+ * viewport — while the origin only has to move again once the followed body has travelled two thousand
+ * camera-distances.
+ *
+ * The consequence that matters most: at readable scale the camera never comes closer than the controls'
+ * 0.05 floor, which puts the threshold at 100 scene units — further than anything the scene draws, whose
+ * outermost body is at 12. So the origin never leaves zero there, and readable mode is untouched.
+ */
+export const REBASE_K = 2000;
+
+export function shouldRebase(drift: number, cameraDistance: number): boolean {
+  return drift > 0 && drift > cameraDistance * REBASE_K;
 }
 
 /** The gap between neighbouring float32 values at |x| — the smallest difference a vertex buffer can hold. */

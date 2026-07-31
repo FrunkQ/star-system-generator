@@ -16,6 +16,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
+import { compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
@@ -305,6 +306,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let gridMode: MapOverlay = 'plain';
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
+  // Absolute float64 masters for the grid's lines and its AU tick labels, so a floating-origin rebase
+  // re-emits them instead of rebuilding (the labels are canvas textures; rebuilding churns them). A grid
+  // ring can run right past the focused body — at true scale the outermost one sits at rMax, which for
+  // Sol is Pluto — so it has to be as steady as the orbit lines are.
+  let gridAbs: { obj: THREE.Object3D; abs: Float64Array }[] = [];
+  let gridLabels: { sprite: THREE.Sprite; abs: [number, number, number] }[] = [];
 
   // Background: 'space' (dark, starfield-friendly) or a flat chroma-key colour for the projector's
   // greenscreen (OBS). Starfield only shows over space (chroma keys need a clean flat background).
@@ -687,7 +694,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const bhDiscInfo = new Map<string, { pivot: THREE.Group; inner: number; outer: number }>();
   // Orbit path rings, keyed by node id so they can follow the SAME visibility rule as the names
   // ("if you show a name, show an orbit"). Moon rings carry trackParentId to follow the parent.
-  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string }[] = [];
+  // `abs` = the ring's vertices in ABSOLUTE scene units, kept in float64. A heliocentric ring is the one
+  // line a body is judged against, and its buffer is float32, so on a rebase it is re-emitted from this
+  // master copy rather than left where it was. See rebaseStaticGeometry.
+  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array }[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -711,21 +721,95 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const tmp = new THREE.Vector3();
   const proj = new THREE.Vector3();
 
+  // The live radial map, as one object for ./floatingOrigin. Mutated in place rather than rebuilt:
+  // positionToScene is called per body per frame, and a fresh object each time is pure garbage.
+  const _radial: RadialMap = { gridRadius: GRID_RADIUS, rMax: 1, r0Au: R0_AU, compression: DEFAULT_COMPRESSION };
+  function radialMap(): RadialMap {
+    _radial.rMax = rMax;
+    _radial.compression = compression;
+    return _radial;
+  }
+
+  // FLOATING ORIGIN (A19). The scene is drawn RELATIVE TO `sceneOrigin` — a point in absolute (already
+  // compressed) scene units that the rebase policy keeps near whatever the camera is looking at. It is
+  // (0,0,0) at readable scale and stays there: nothing below moves until the camera gets close enough to
+  // a body that float32 stops being able to describe what is around it. See `maybeRebase`.
+  //
+  // `originShift` is where the SYSTEM CENTRE is drawn, i.e. -sceneOrigin. Anything that used to mean
+  // "the star / the middle of the system" by writing (0,0,0) has to say originShift instead.
+  const sceneOrigin = new THREE.Vector3();
+  const originShift = new THREE.Vector3();
+
   // Radial compression: blend a linear map (r -> GRID_RADIUS·r/rMax) with a log map, by `compression`.
   // Log spreads packed inner planets out while keeping the whole system on the grid.
   function compressScalar(r: number): number {
-    if (r <= 0) return 0;
-    const lin = (GRID_RADIUS * r) / rMax;
-    const log = (GRID_RADIUS * Math.log10(1 + r / R0_AU)) / Math.log10(1 + rMax / R0_AU);
-    return lin * (1 - compression) + log * compression;
+    return compressRadius(r, radialMap());
   }
 
   // Physics frame: reference plane z=0, in-plane x/y. Map to three's ground (x,z) with out-of-plane
-  // height on three's up (y), applying the radial compression in AU space first.
+  // height on three's up (y), applying the radial compression in AU space first — and THEN the rebase,
+  // which is a pure translation and so composes cleanly with the radial (nonlinear) map. Doing it the
+  // other way round looks almost right on-axis and is wrong everywhere else.
   function positionToScene(p: { x: number; y: number; z: number }, out: THREE.Vector3): THREE.Vector3 {
-    const r = Math.hypot(p.x, p.y, p.z);
-    const k = r > 1e-12 ? compressScalar(r) / r : 0;
-    return out.set(p.x * k, p.z * k, p.y * k);
+    return toSceneRebased(p, radialMap(), sceneOrigin, out);
+  }
+
+  // The same conversion WITHOUT the rebase. Belts are baked host-relative and re-anchored to their host's
+  // rendered position every frame (updateBelts), so they must be built in the absolute frame or the
+  // origin would be counted twice.
+  function positionToSceneAbs(p: { x: number; y: number; z: number }, out: THREE.Vector3): THREE.Vector3 {
+    return toSceneAbsolute(p, radialMap(), out);
+  }
+
+  /**
+   * Move the floating origin by `delta` (expressed in the CURRENT rebased frame), taking the camera with
+   * it so the shot does not cut, and re-emitting everything that holds absolute coordinates.
+   *
+   * What does NOT need touching, and why: bodies, star lights and constructs are recomputed from the
+   * propagator through positionToScene; moon orbit rings are stored in their parent's local frame and
+   * positioned at the parent; planetary rings track their parent; belts are baked host-relative and
+   * re-anchored to the host's rendered position every frame. Only the heliocentric orbit rings and the
+   * grid hold absolute vertices, and both keep a float64 master to re-emit from.
+   */
+  function rebaseOriginBy(delta: THREE.Vector3) {
+    if (delta.x === 0 && delta.y === 0 && delta.z === 0) return;
+    sceneOrigin.add(delta);
+    originShift.copy(sceneOrigin).negate();
+    camera.position.sub(delta);
+    controls.target.sub(delta);
+    for (const r of orbitRings) if (r.abs) rebaseStaticGeometry(r.obj, r.abs, sceneOrigin);
+    rebaseGrid();
+    updatePositions(); // bodies + lights into the new frame (they are only recomputed on a time change)
+    updateSurfaceConstructs(); // and the constructs glued to them
+  }
+
+  /**
+   * The rebase POLICY (the threshold itself lives in ./floatingOrigin, where it is under test): keep the
+   * camera's target near the origin, but only once float32 can no longer describe what is around it.
+   */
+  function maybeRebase() {
+    // Not mid-ease. The target lerps onto the body over ~48 frames while the distance closes at a similar
+    // rate, so the test below would pass on most of those frames and re-emit on each — a hitch, to fix a
+    // rounding error nobody can see on a camera that is still flying. One rebase when it settles is right.
+    if (focusDrive > 0) return;
+    const drift = controls.target.length(); // the target is in rebased units, so this IS the drift
+    if (!shouldRebase(drift, camera.position.distanceTo(controls.target))) return;
+    rebaseOriginBy(_rebaseDelta.copy(controls.target));
+  }
+  const _rebaseDelta = new THREE.Vector3();
+
+  /** Put the origin back at the system centre, leaving the camera looking at the same absolute point. */
+  function resetOrigin() {
+    rebaseOriginBy(_rebaseDelta.copy(originShift));
+  }
+
+  /** The same, for when the content is about to be rebuilt anyway — no point re-emitting what is going. */
+  function resetOriginForRebuild() {
+    if (sceneOrigin.lengthSq() === 0) return;
+    camera.position.add(sceneOrigin);
+    controls.target.add(sceneOrigin);
+    sceneOrigin.set(0, 0, 0);
+    originShift.set(0, 0, 0);
   }
 
   // Round-AU steps for the labelled grid, thinned to ~6 rings spanning the system's extent.
@@ -743,8 +827,28 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return pts;
   }
 
+  // Add a grid line built in ABSOLUTE scene units, keeping the float64 master so a rebase can re-emit it.
+  function addGridLines(pts: THREE.Vector3[], mat: THREE.Material, loop: boolean) {
+    const abs = new Float64Array(pts.length * 3);
+    for (let i = 0; i < pts.length; i++) { abs[3 * i] = pts[i].x; abs[3 * i + 1] = pts[i].y; abs[3 * i + 2] = pts[i].z; }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(abs.length), 3));
+    const obj = loop ? new THREE.LineLoop(geo, mat) : new THREE.LineSegments(geo, mat);
+    gridGroup.add(obj);
+    gridAbs.push({ obj, abs });
+    rebaseStaticGeometry(obj, abs, sceneOrigin);
+  }
+
+  // Re-emit the grid into the current origin's frame (lines from their masters, labels by translation).
+  function rebaseGrid() {
+    for (const g of gridAbs) rebaseStaticGeometry(g.obj, g.abs, sceneOrigin);
+    for (const l of gridLabels) l.sprite.position.set(l.abs[0] - sceneOrigin.x, l.abs[1] - sceneOrigin.y, l.abs[2] - sceneOrigin.z);
+  }
+
   function rebuildGrid() {
     clearGroup(gridGroup);
+    gridAbs = [];
+    gridLabels = [];
     gridGroup.visible = gridMode !== 'off';
     if (gridMode === 'off') return;
     const base = new THREE.Color(HOLO_TINT);
@@ -776,7 +880,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           }
         }
       }
-      gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mat));
+      addGridLines(pts, mat, false);
       return;
     }
     if (gridMode === 'scaled') {
@@ -785,9 +889,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const radius = compressScalar(au);
         if (radius <= 0.02) continue;
         const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.55, depthWrite: false });
-        gridGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ringPoints(radius)), mat));
+        addGridLines(ringPoints(radius), mat, true);
         const label = makeGridLabel(au >= 1 ? `${au} AU` : `${au} AU`);
-        if (label) { label.position.set(radius, 0.02, 0); gridGroup.add(label); }
+        if (label) {
+          gridLabels.push({ sprite: label, abs: [radius, 0.02, 0] });
+          label.position.set(radius - sceneOrigin.x, 0.02 - sceneOrigin.y, -sceneOrigin.z);
+          gridGroup.add(label);
+        }
       }
     } else {
       // Plain: six evenly-spaced polar rings (decorative, system-independent).
@@ -795,7 +903,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const radius = (GRID_RADIUS / 6) * ri;
         const col = base.clone().multiplyScalar(0.45 * (1 - (ri - 1) / 8));
         const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.6, depthWrite: false });
-        gridGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ringPoints(radius)), mat));
+        addGridLines(ringPoints(radius), mat, true);
       }
     }
     // Radial spokes (both modes).
@@ -805,7 +913,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       spokes.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(a) * GRID_RADIUS, 0, Math.sin(a) * GRID_RADIUS));
     }
     const spokeMat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5, depthWrite: false });
-    gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), spokeMat));
+    addGridLines(spokes, spokeMat, false);
   }
 
   function setGrid(raw: MapOverlay) {
@@ -894,6 +1002,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (nextAngle === framingAngleRad && nextWhole === framingWhole && nextFill === frameFillFrac) return;
     framingAngleRad = nextAngle;
     framingWhole = nextWhole;
+    if (framingWhole) resetOrigin(); // the whole system in shot: no body is close enough to need a rebase
     frameFillFrac = nextFill;
     applyPolarLimits();
     applyInteractionLocks();
@@ -1127,7 +1236,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       else outward.set(0, 0, 1); // star at origin: fall back to a fixed azimuth
       dist = frameDistance(b);
     } else if (framingWhole) {
-      desiredTarget.set(0, 0, 0);
+      desiredTarget.copy(originShift); // the system centre, wherever the floating origin has put it
       outward.set(0, 0, 1); // azimuth reference for the whole-system framing
       // Everything the scene draws sits inside a sphere of GRID_RADIUS about the origin, by construction
       // (compressScalar maps the outermost body to exactly that). So the honest fit is the BOUNDING
@@ -1143,7 +1252,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     } else if (focusedId && beltFocus) {
       // A belt/ring-of-debris is centred on the star: keep the star centred and pull back so the
       // whole annulus fits — same overhead-at-angle shot, framed to the ring rather than one body.
-      desiredTarget.set(0, 0, 0);
+      desiredTarget.copy(originShift); // a belt is centred on the star, not on the floating origin
       outward.set(0, 0, 1);
       dist = Math.max(GRID_RADIUS * 0.4, beltFocus.outerScene * 1.9);
     } else {
@@ -1332,6 +1441,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     followEngaged = false;
     lockedHeading = 0; // HOME sits on x=0, azimuth 0
     controls.minDistance = unfocusedMinDist();
+    resetOrigin(); // HOME_CAM and the target below are stated in absolute scene coordinates
     camera.position.copy(HOME_CAM);
     controls.target.set(0, 0, 0);
     visibleSet = getVisibleNodeIds(currentSystem, null);
@@ -1404,6 +1514,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function setSystem(system: System | null) {
     perfCount('holo.setSystem'); // a full scene rebuild — the prime suspect for the random slowdowns
+    resetOriginForRebuild(); // everything absolute is about to be re-emitted; build it about the centre
     clearContent();
     focusedId = null;
     focusDrive = 0;
@@ -1431,8 +1542,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Belts: a debris band on their (compressed) orbit, never a lone sphere.
       if (isBelt(node)) {
         const belt = beltStyle === 'band'
-          ? buildBeltRing(node, positionToScene)
-          : buildBeltBand(node, positionToScene, beltDetail, timeMs, renderStyle !== 'filled', markerScale());
+          ? buildBeltRing(node, positionToSceneAbs)
+          : buildBeltBand(node, positionToSceneAbs, beltDetail, timeMs, renderStyle !== 'filled', markerScale());
         if (belt) { contentGroup.add(belt.group); beltVisuals.push(belt); }
         continue;
       }
@@ -1455,8 +1566,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // parent's local frame (scaled by the parent's radial compression) that tracks the parent.
       if (node.orbit && node.kind !== 'construct') {
         if (systemLevel) {
-          const ring = buildOrbitRing(node, positionToScene, orbitColor(node));
-          if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring }); }
+          const ring = buildOrbitRing(node, positionToSceneAbs, orbitColor(node));
+          if (ring) {
+            contentGroup.add(ring.loop);
+            orbitRings.push({ id: node.id, obj: ring.loop, abs: ring.abs });
+            rebaseStaticGeometry(ring.loop, ring.abs, sceneOrigin); // emit into the origin's frame
+          }
         } else if (node.parentId) {
           const pHelio = pos0.get(node.parentId);
           const rP = pHelio ? Math.hypot(pHelio.x, pHelio.y, pHelio.z) : 0;
@@ -2132,7 +2247,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // (origin for a lone star — no change; a displaced host takes its belt with it, and the Keplerian
       // rock rotation below then spins about the host, not the scene origin).
       const host = bv.parentId ? bodyById.get(bv.parentId) : undefined;
+      // No host mesh (a barycentre, or a belt hung straight off the root): the rocks are baked about the
+      // ABSOLUTE origin, so the group has to sit where that origin is drawn. Under no rebase originShift
+      // is (0,0,0) and this is exactly what it always did.
       if (host) bv.group.position.copy(host.mesh.position);
+      else bv.group.position.copy(originShift);
       const dt = t - bv.t0Sec;
       for (const bk of bv.buckets) {
         const attr = bk.points.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -2205,6 +2324,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
     if (viewInsetCur > 0.5) camera.setViewOffset(viewW, viewH, viewInsetCur / 2, 0, viewW, viewH);
     else if (camera.view && camera.view.enabled) camera.clearViewOffset();
+    maybeRebase(); // A19: keep the origin under the camera before anything reads a scene position
     driveFocus();
     // Turntable, paused during the focus ease — and never when the heading is locked: autoRotate spins the
     // camera independently of enableRotate, so the lock has to kill it too or the map still drifts round.
@@ -2316,20 +2436,48 @@ function orbitPeriodMs(orbit: any): number {
   return Math.abs((2 * Math.PI) / n) * 1000;
 }
 
-function buildOrbitRing(node: any, project: Projector, color: number): THREE.LineLoop | null {
+/**
+ * A heliocentric orbit path. Sampled once into an ABSOLUTE float64 master copy (`abs`) alongside the
+ * float32 buffer the GPU reads: the master is what a rebase re-emits from, so moving the origin costs one
+ * pass over an array instead of re-propagating 1024 samples per ring (A19).
+ */
+function buildOrbitRing(node: any, project: Projector, color: number): { loop: THREE.LineLoop; abs: Float64Array } | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
-  const pts: THREE.Vector3[] = [];
+  const abs = new Float64Array(ORBIT_SAMPLES * 3);
   const v = new THREE.Vector3();
   for (let i = 0; i < ORBIT_SAMPLES; i++) {
     project(propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r, v);
-    pts.push(v.clone());
+    abs[3 * i] = v.x;
+    abs[3 * i + 1] = v.y;
+    abs[3 * i + 2] = v.z;
   }
   // depthWrite OFF: a transparent ring must not write depth, or a body sitting ON its own orbit (which is
   // coincident in depth) loses the test along the line and the orbit cuts straight through the disc.
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45, depthWrite: false });
-  return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ORBIT_SAMPLES * 3), 3));
+  return { loop: new THREE.LineLoop(geo, mat), abs };
+}
+
+/**
+ * Re-emit a static float32 vertex buffer from its absolute float64 master, translated by the current
+ * origin. The subtraction happens in float64 and is rounded ONCE, so a vertex near the origin keeps every
+ * bit it can — which is the whole point: absolutely, a vertex at scene 12 can only be stated to 9.5e-7.
+ */
+function rebaseStaticGeometry(obj: THREE.Object3D, abs: Float64Array, origin: THREE.Vector3) {
+  const attr = (obj as any).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
+  if (!attr) return;
+  const arr = attr.array as Float32Array;
+  const n = Math.min(arr.length, abs.length);
+  for (let i = 0; i < n; i += 3) {
+    arr[i] = abs[i] - origin.x;
+    arr[i + 1] = abs[i + 1] - origin.y;
+    arr[i + 2] = abs[i + 2] - origin.z;
+  }
+  attr.needsUpdate = true;
+  (obj as any).geometry?.computeBoundingSphere?.(); // frustum culling reads this, and the centre just moved
 }
 
 // The magnified "toytown" distance of a moon from its planet, in scene units. It is a FRACTION of the
