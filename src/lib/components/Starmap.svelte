@@ -1382,8 +1382,11 @@
         </text>
         <!-- WS7 DEPTH CUE: the GM map is 2D and cannot show height, so a system that sits off the plane
              says so in words. Without this, editing depth here is editing blind — you would only see the
-             result by switching to the 3D view. Signed, in the campaign's own unit. -->
-        {#if (systemNode.position.z ?? 0) !== 0 && activeScale.pixelsPerUnit > 0}
+             result by switching to the 3D view. Signed, in the campaign's own unit.
+             A12: hidden when the campaign has opted out of counting depth — an annotation of a number
+             that no longer affects any distance is noise. Gated on `zCounts`, the one predicate for
+             that flag, so this can never disagree with what the measure tool is actually doing. -->
+        {#if zCounts(starmap) && (systemNode.position.z ?? 0) !== 0 && activeScale.pixelsPerUnit > 0}
           {@const dz = (systemNode.position.z ?? 0) / activeScale.pixelsPerUnit}
           <text
             x={systemNode.position.x + 15 * labelK}
@@ -1403,7 +1406,7 @@
         <circle class="ghost-ring" cx={placeGhost.x} cy={placeGhost.y} r="9" />
         <circle class="ghost-core" cx={placeGhost.x} cy={placeGhost.y} r="3" />
         <text class="ghost-label" x={placeGhost.x + 14 * labelK} y={placeGhost.y + 5 * labelK} style="font-size:{10 * labelK}px">New system</text>
-        {#if Math.abs(gz) > 1e-6 && activeScale.pixelsPerUnit > 0}
+        {#if zCounts(starmap) && Math.abs(gz) > 1e-6 && activeScale.pixelsPerUnit > 0}
           <text class="depth-label" x={placeGhost.x + 14 * labelK} y={placeGhost.y + 16 * labelK} style="font-size:{9 * labelK}px"
           >{gz > 0 ? '+' : ''}{Math.abs(gz) < 10 ? gz.toFixed(1) : Math.round(gz)} {activeScale.unit}</text>
         {/if}
