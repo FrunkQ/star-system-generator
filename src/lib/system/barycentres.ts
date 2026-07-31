@@ -102,3 +102,20 @@ export function contextPeerIds(system: System | null, nodeId: string, framingPar
 	// framed, and a renderer that can place it gets a sane frame even if the member list is empty.
 	return [framingParentId, ...peers];
 }
+
+/**
+ * The rung BEYOND the pair (the click ladder's level 0). A member of a barycentre gets its PARTNER as its
+ * context, not the thing the pair orbits, so the ladder used to run out of rungs at pair scale — clicking
+ * on from a framed Pluto/Charon wrapped straight back in rather than opening out to the orbit they share.
+ * This is the barycentre's OWN parent: the body the pair as a whole goes round.
+ *
+ * Empty for everything else, so only barycentre members grow the extra rung — a normal planet's level 1
+ * already reaches its star, which IS this shot.
+ */
+export function pairContextIds(system: System | null, nodeId: string, framingParentId: string | null): string[] {
+	if (!system || !framingParentId) return [];
+	const parent = system.nodes.find((n) => n.id === framingParentId);
+	if (!isBarycentre(parent)) return [];
+	const grandparentId = (parent as any).parentId;
+	return grandparentId ? [grandparentId] : [];
+}
