@@ -29,6 +29,9 @@ export interface GuideDocOpts {
   // schematic, body graphic, parent-nav and drill-in lists — for the 2D/3D side panel, where the live
   // map already IS the schematic/body/navigator. One builder → the document AND the 2D/3D info block.
   noHeading?: boolean;                   // panel hosted in a DOM aside that already shows the title bar
+  rulePack?: import('$lib/types').RulePack | null; // names a construct's engines and fuels, and gives them
+  // an Isp and a density — without it a construct's mass, Δv and acceleration cannot be derived and
+  // those rows are simply left out. Optional everywhere: a caller without a pack still gets the rest.
 }
 
 // Resolve a body's tags to display items (label + type colour + group), de-duplicated by label.
@@ -76,8 +79,11 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   const title = bary
     ? `${dominantOf(system, selected)?.name ?? '?'} (${selected.name})`
     : (selected.name ?? '');
+  // The singular `class` is a CONSTRUCT field (bodies carry `classes`), and the construct block now
+  // prints it as a properly separated Type row — so appending it here just gave the panel a subtitle
+  // reading "Ship · Ship/Interstellar/Eridian", the raw slashes and the word twice.
   const sub = ((subject as any)?.roleHint || 'body')
-    + ((subject as any)?.class ? ' · ' + (subject as any).class : '');
+    + ((subject as any)?.class && (subject as any)?.kind !== 'construct' ? ' · ' + (subject as any).class : '');
 
   if (!panel) blocks.push({ kind: 'rule' }); // the panel's frame is its own separator
   if (!opts.noHeading) blocks.push({ kind: 'heading', level: 1, text: title, sub, id: selected.id });
@@ -105,7 +111,11 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // strip. The 'Tags' fact is pulled out and rendered as a styled tags block below (full width).
   if (sliver && opts.image) blocks.push({ kind: 'columnStart', img: opts.image, aspect: opts.imageAspect || 1.6, focus: opts.imageFocus });
   if (subject) {
-    const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C');
+    // A construct's facts want its HOST to describe where it is ("Adrian: Low Orbit"); resolve it the
+    // same way the parent-nav row above does, so the two cannot name different parents.
+    const hostId = (subject as any).parentId || (subject as any).orbit?.hostId;
+    const host = hostId ? (nodeById(system, hostId) as CelestialBody | null) : null;
+    const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C', { rulePack: opts.rulePack, host });
     const rows = facts.filter((f) => f.value && f.label !== 'Tags');
     if (rows.length) blocks.push({ kind: 'spacer', h: 4 });
     for (const f of rows) blocks.push({ kind: 'keyValue', label: f.label, value: f.value });

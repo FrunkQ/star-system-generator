@@ -1,7 +1,8 @@
 // Player-safe "facts" for a body, shared by the catalogue's diagrammatic browser and the
 // interactive console inspector. The snapshot is already redacted, so we just format for reading.
-import type { CelestialBody } from '$lib/types';
+import type { CelestialBody, RulePack } from '$lib/types';
 import { G, AU_KM } from '$lib/constants';
+import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
 
@@ -57,17 +58,112 @@ export function classLabel(b: CelestialBody): string {
   return b.class ? titleCase(b.class) : ''; // legacy singular fallback
 }
 
+// What a construct's facts need beyond the node itself: the rule pack that names its engines and
+// fuels (and gives them an Isp and a density, without which no mass, Δv or acceleration exists), and
+// its host, which is what turns an orbit into "Adrian: Low Orbit". Both OPTIONAL — a caller that has
+// neither still gets every fact the construct carries on its own.
+export interface FactContext { rulePack?: RulePack | null; host?: CelestialBody | null; }
+
+// A CONSTRUCT is not a small planet, and the body block was describing it as one: Blip-A read Type /
+// Orbit distance / Atmosphere while the node carried crew, engines, fuel tanks, cargo and a reactor.
+// Everything here is READ from `calculateFullConstructSpecs`, the same derivation the GM's own
+// Construct Derived Specs panel, the transit planner and the autopilot all use — so the player block
+// and the GM panel cannot print different numbers for one ship. Nothing is recomputed here.
+// Rows that cannot be determined return '' and are dropped by `add`, so a construct with no rule pack
+// shows a shorter honest list rather than a full one padded with zeroes.
+function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactContext): Fact[] {
+  const out: Fact[] = [];
+  const any = b as any;
+  const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
+  const pp = b.physical_parameters ?? {};
+  const engines = ctx.rulePack?.engineDefinitions?.entries ?? [];
+  const fuels = ctx.rulePack?.fuelDefinitions?.entries ?? [];
+  const specs = calculateFullConstructSpecs(b, engines, fuels, ctx.host ?? null);
+  const tonnes = (t: number | undefined) => (typeof t === 'number' && t > 0 ? `${Math.round(t).toLocaleString()} t` : '');
+  // Which of the derived figures we are entitled to PRINT. A tank whose fuel is not in the pack has no
+  // density, so its mass is silently zero — and a "Total mass" that quietly leaves out the fuel is a
+  // wrong number, not a partial one. Same for an unresolved engine: its power draw is missing, so what
+  // is left is the plant's OUTPUT and calling it a surplus would be a claim we cannot make.
+  const fuelKnown = !(b.fuel_tanks?.length) || (b.fuel_tanks ?? []).every((t) => fuels.some((f) => f.id === t.fuel_type_id));
+  const enginesKnown = !(b.engines?.length) || (b.engines ?? []).every((e) => engines.some((d) => d.id === e.engine_id));
+
+  // The authored class ("Ship/Interstellar/Eridian") says far more than the role hint alone; split on
+  // the same separator `classLabel` uses for a body's class list so the two read alike.
+  add('Type', any.class
+    ? String(any.class).split('/').map((s: string) => titleCase(s)).filter(Boolean).join(' · ')
+    : titleCase(b.roleHint || 'construct'));
+  if (any.flight_state) add('Status', String(any.flight_state));
+  // orbit_string is 'N/A' when there is no host to describe the orbit against — don't print that.
+  if (specs.orbit_string && specs.orbit_string !== 'N/A') add('Location', specs.orbit_string);
+  else add('Location', b.placement ? String(b.placement) : '');
+  add('Orbital period', any.orbital_period_days
+    ? `${any.orbital_period_days < 2 ? any.orbital_period_days.toFixed(2) : Math.round(any.orbital_period_days).toLocaleString()} days` : '');
+
+  // --- Complement ---
+  const crew = b.crew ?? {};
+  if (typeof crew.current === 'number' || typeof crew.max === 'number') {
+    const n = (x: number) => x.toLocaleString(); // a colony station's crew runs to seven figures
+    add('Crew', typeof crew.max === 'number' ? `${n(crew.current ?? 0)} of ${n(crew.max)}` : n(crew.current ?? 0));
+  }
+  add('Supplies remaining', typeof specs.endurance_days === 'number'
+    ? `${specs.endurance_days.toLocaleString()} days` : (specs.endurance_days === 'Indefinite' ? 'Indefinite' : ''));
+  if (specs.simulatedG > 0.005) add('Spin gravity', `${specs.simulatedG.toFixed(2)} g`);
+
+  // --- Hull ---
+  const d = pp.dimensionsM;
+  // Ring gates and colony drums run to hundreds of kilometres, so this needs separators (and reads in
+  // km once metres stop being meaningful) — the same courtesy every other figure in the block gets.
+  if (Array.isArray(d) && d.length === 3 && d.some((x) => x > 0)) {
+    const big = Math.max(...d) >= 10000;
+    add('Dimensions', `${d.map((x) => (big ? (x / 1000) : x)).map((x) => fmtNum(x, big ? 1 : 0)).join(' × ')} ${big ? 'km' : 'm'}`);
+  }
+  add('Dry mass', tonnes(specs.dryMass_tonnes));
+  add('Cargo', typeof pp.cargoCapacity_tonnes === 'number' && pp.cargoCapacity_tonnes > 0
+    ? `${Math.round(b.current_cargo_tonnes ?? 0).toLocaleString()} of ${Math.round(pp.cargoCapacity_tonnes).toLocaleString()} t`
+    : tonnes(b.current_cargo_tonnes));
+  if (fuelKnown) add('Total mass', tonnes(specs.totalMass_tonnes));
+
+  // --- Power, fuel and performance. All of this is zero without the rule pack's engine/fuel data,
+  //     which is why each row is gated on a positive figure rather than printed as 0. ---
+  // Keyed on HAVING a plant rather than on a non-zero figure: a surplus of exactly 0 MW is a real
+  // statement about a ship that is drawing everything it makes, not an absence of information.
+  if ((b.systems?.power_plants?.length ?? 0) > 0 && Number.isFinite(specs.powerSurplus_MW)) {
+    add(enginesKnown ? 'Power surplus' : 'Power output',
+      `${specs.powerSurplus_MW.toLocaleString(undefined, { maximumFractionDigits: 1 })} MW`);
+  }
+  if (specs.fuelCapacity_units > 0) {
+    const named = Array.from(new Set((b.fuel_tanks ?? [])
+      .map((t) => fuels.find((f) => f.id === t.fuel_type_id)?.name).filter(Boolean)));
+    add('Fuel', `${Math.round(specs.fuelVolume_units).toLocaleString()} of ${Math.round(specs.fuelCapacity_units).toLocaleString()} m³`
+      + (named.length ? ` ${named.join(', ')}` : ''));
+  }
+  if (specs.maxVacuumG > 0) add('Max acceleration', `${specs.maxVacuumG.toFixed(2)} g`);
+  if (specs.totalVacuumDeltaV_ms > 0) add('Δv (vacuum)', formatSpeedKmS(specs.totalVacuumDeltaV_ms / 1000, units, 1));
+  if (specs.canAerobrake) add('Aerobraking', `up to ${specs.aerobrakeLimit_kms.toFixed(1)} km/s`);
+
+  // Same contract as a body's tags: the row is named 'Tags' so the document can lift it out and
+  // render it as the styled tags block instead of a key/value line.
+  if (Array.isArray(b.tags) && b.tags.length) {
+    const tagLabels = b.tags.map((t: any) => tagContextLabel(String(t.key), t.value)).filter(Boolean);
+    if (tagLabels.length) add('Tags', Array.from(new Set(tagLabels)).join(', '));
+  }
+  return out;
+}
+
 // Full report-parity facts for a body, enriched with the Phase-04 derived data (temperature range,
 // radiation, geology, magnetism, fluids, ascent Δv). Both guide tiers (diagrammatic browser +
 // hi-tech console inspector) render this, so they match the printed report's depth.
-export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', tempUnit: TemperatureUnit = 'C'): Fact[] {
+export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', tempUnit: TemperatureUnit = 'C', ctx: FactContext = {}): Fact[] {
+  // A construct is a different KIND of thing and gets its own facts, not a body block with the
+  // temperature rows missing. It used to fall through here and borrow a world's fields.
+  if (b.kind === 'construct') return constructFacts(b, units, ctx);
+
   const out: Fact[] = [];
   const any = b as any;
   const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
 
-  // Show the scientific CLASSIFICATION (spectral type / planet class), not the kind. Constructs have no
-  // class — their CoI tags below describe them, so they fall back to the role hint.
-  add('Type', b.kind === 'construct' ? titleCase(b.roleHint || 'construct') : (classLabel(b) || titleCase(b.roleHint || 'body')));
+  // Show the scientific CLASSIFICATION (spectral type / planet class), not the kind.
+  add('Type', classLabel(b) || titleCase(b.roleHint || 'body'));
 
   // --- Orbit & rotation ---
   add('Orbit distance', orbitDist(b, units));

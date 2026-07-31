@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.325-beta - 31st Jul 2026
+
+* Constructs get their own information block instead of borrowing a planet's. Selecting Blip-A gave you Type, Orbit distance and Atmosphere -- three rows, one of which said "None" -- while the ship itself carried a crew, a reactor, engines, fuel tanks and a hold. It now reads its class, where it is, crew aboard and berths, supplies remaining, dimensions, dry mass, cargo against capacity, total mass, power surplus, fuel remaining by name, maximum acceleration and total delta-v. Twelve rows where there were three, and every figure comes from the same derivation the GM's own construct panel uses, so the two cannot disagree about one ship.
+* Where a figure cannot honestly be given, it is left out rather than guessed. Engine and fuel definitions are what turn a tank into a mass and an engine into a thrust; without them a total mass would silently omit the fuel and a power surplus would not have subtracted what the engines draw. Both are suppressed in that case rather than printed wrong, and a construct still shows everything it carries on its own.
+
 ## v2.1.324-beta - 31st Jul 2026
 
 * A star's page in the guide document lists its planets, the way every other body lists its moons. The star is the node you land on -- the primary is selected on entry -- so the first page a player saw was the one page in the system with no way down into it, and the only route in was the picker at the top. It is the same block the moons already use, drawing on the same helper the picker and the old Field Guide use, so belts are listed too rather than being pickable only on the chart. Sol now reads Mercury through the Kuiper Belt in orbit order, and you can go star to planet to moon without touching the picker. The heading says what is actually in the list -- planets, belts, or both.

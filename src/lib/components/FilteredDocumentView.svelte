@@ -48,6 +48,9 @@
   export let selectable = false;
   export let units: MeasurementUnits = 'metric';
   export let tempUnit: TemperatureUnit = 'C';
+  // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
+  // Optional: without it the construct block simply omits those rows.
+  export let rulePack: import('$lib/types').RulePack | null = null;
   export let tips: { top?: string; bottom?: string } | null = null;
   export let overlay: HudOverlay | null = null;
   export let companyName = '';
@@ -156,7 +159,7 @@
     const blocks = stage === 'starmap'
       ? buildStarmapDocument(starmap, { selectedId })
       : (system ? buildGuideDocument(system, selectedId, {
-          units, tempUnit, colorful, imagery,
+          units, tempUnit, colorful, imagery, rulePack,
           image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
         }) : []);
     // GENUINE header/footer: reserve a band for the tip banners (and the company/footer stamps) so the

@@ -593,6 +593,14 @@
   } else { starmapOverlayImg = null; }
   // Resolved {img, placement} overlays for the gfx surfaces (null until the image has loaded).
   $: starmapOverlayHud = starmapOverlayImg && activePreset?.starmapOverlay ? { img: starmapOverlayImg, placement: activePreset.starmapOverlay } : null;
+  // A construct's facts want its HOST to describe where it is ("Adrian: Low Orbit"); resolved here so
+  // the HUD card and the DOM fact list read the same figure the document builder produces (A2).
+  $: hostOfSelected = (() => {
+    const hid = (selectedBody as any)?.parentId || (selectedBody as any)?.orbit?.hostId;
+    if (!hid || !displaySystem) return null;
+    const n = (displaySystem.nodes ?? []).find((x) => x.id === hid);
+    return n && n.kind === 'body' ? (n as CelestialBody) : null;
+  })();
   $: systemOverlayHud = overlayImg && activePreset?.systemOverlay ? { img: overlayImg, placement: activePreset.systemOverlay } : null;
   // The info card is desktop-only (phones keep the bottom-sheet DOM inspector); the overlay filters at any size.
   $: hudCardOn = effectiveSystemTier === 'holo' && !!selectedBody && presetFilterActive && hudW >= 720 && !activePreset?.hideInfoPanel;
@@ -608,7 +616,7 @@
           panelW: inspectorWidth,
           title: selectedBody.name,
           sub: selectedBody.roleHint || 'body',
-          facts: bodyFacts(selectedBody, units, tempUnit),
+          facts: bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected }),
           description: selectedBody.description || '',
           accent: presetAccent, font: presetFont, fontScale: infoFontScale,
           mono: activePreset?.bodyStyle === 'white',
@@ -616,7 +624,7 @@
           // graphic is omitted in the HUD (imagery 'none') — a live renderer can't sit inside the
           // filter-composited quad; the unfiltered aside shows it.
           blocks: displaySystem ? buildGuideDocument(displaySystem, docSelectedId ?? selectedBody.id, {
-            panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle
+            panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack
           }) : undefined,
           theme: activePreset ? makeDocTheme({
             font: presetFont, headingFont: activePreset.headingFont, fontScale: infoFontScale,
@@ -878,7 +886,7 @@
           <!-- D6 unify: the SAME document engine renders the info block (facts + tags + description +
                body graphic) with the preset's full appearance. The aside stays as chrome (title, close,
                resize); the legacy skins below keep their original markup. -->
-          <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg
+          <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg {rulePack}
             font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
             fontScale={infoFontScale} listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle}
             tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
@@ -890,7 +898,7 @@
             <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
           {/if}
           <dl class="insp-grid">
-            {#each bodyFacts(selectedBody, units, tempUnit) as f}
+            {#each bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected }) as f}
               <dt>{f.label}</dt><dd>{f.value}</dd>
             {/each}
           </dl>
@@ -1098,7 +1106,7 @@
     <div class="preset-stage preset-doc" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
       {#if displaySystem}
         <FilteredDocumentView
-          system={displaySystem} selectedId={docSelectedId}
+          system={displaySystem} selectedId={docSelectedId} {rulePack}
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
           colorful={docColorful} imagery={docImagery} photoFrame={activePreset.photoFrame} hideInfoBlock={activePreset.hideInfoPanel}
           bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}

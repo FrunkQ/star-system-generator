@@ -636,7 +636,7 @@
                 background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <!-- D9: the starmap DOCUMENT — same engine + theme as the system document, real filter. -->
-              <FilteredDocumentView stage="starmap" starmap={$starmapStore}
+              <FilteredDocumentView stage="starmap" starmap={$starmapStore} {rulePack}
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
                 fontScale={draft.infoFontScale}
@@ -661,7 +661,7 @@
                        players will see. It used to be the raw pixel figure capped at 340, which meant the
                        top half of the slider's travel moved nothing on screen at all. -->
                   <aside class="preview-insp" style="width:{Math.round(draft.inspectorWidthPct * 100)}%; font-family:{draft.font}; font-size:{Math.round(13 * draft.infoFontScale)}px">
-                    <DocPanel system={previewSystem} selectedId={previewInfoId}
+                    <DocPanel system={previewSystem} selectedId={previewInfoId} {rulePack}
                       font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                       fontScale={draft.infoFontScale} listStyle={draft.listStyle} documentStyle={draft.documentStyle}
                       tagStyle={draft.tagStyle} themeColors={draft.themeColors}
@@ -674,7 +674,7 @@
               <!-- The WS2 Guide document, drawn through the real filter exactly as players get it. Tap a
                    world on the schematic (or a navigator row) to drill in — the info block is in-page. -->
               <FilteredDocumentView
-                system={previewSystem} selectedId={previewFocusId}
+                system={previewSystem} selectedId={previewFocusId} {rulePack}
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 colorful={draft.accentColor === 'rainbow'}
                 imagery={draft.bodyGfx} photoFrame={draft.photoFrame}
