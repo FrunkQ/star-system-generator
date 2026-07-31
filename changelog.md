@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.319-beta - 31st Jul 2026
+
+* The 3D player view has a floating origin. At 1:1 scale AND 1:1 distances a small world far out used to jitter -- its orbit line vibrated and its moon would not sit on it -- because the scene was drawn in absolute coordinates. At true scale Pluto lands at scene coordinate 12, where a 32-bit float can only count in steps of 9.5e-7, and the whole Pluto-Charon separation is 41.7 of those steps. The orbit line was quantised to about forty positions per axis, and every camera nudge re-rounded it: over a slow pan it held 148 distinct positions across 600 frames, standing still and then jumping a whole step. The scene is now drawn RELATIVE to whatever the camera is looking at, which gives the same pair 10.9 million steps instead of 42, and the line moves once per frame by exactly the camera's own step.
+* Readable scale is untouched, deliberately. The origin only moves once the camera is closer to its subject than a 32-bit float can describe the space around it, which at readable sizes it never is -- the zoom floor there is twenty times further out than the threshold. Nothing about that end of either dial changes.
+* The moon was never in the wrong place. Body positions are computed in full 64-bit precision and were always right; it was the line drawn under them that moved. Same for the reference grid, whose outermost ring sits at the outermost body's distance and so runs right past the world you are looking at.
+
 ## v2.1.318-beta - 31st Jul 2026
 
 * The body name in the player info panel takes the preset's font colour, rainbow included. It was the one line the colour never reached: the panel mounts the document with its heading suppressed and draws the name itself as chrome, so "Tags", "Moons" and every other heading below it swept through the spectrum while the name above them stayed plain. It now paints the same seven stops the document uses, and is exempt under monochrome skins for the same reason the document exempts them -- they bleach the page on purpose so a tinting filter has one palette.
