@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.320-beta - 31st Jul 2026
+
+* Pluto and Charon orbit their barycentre, visibly. Neither had an orbit ring anywhere near it: a member of a barycentre counts as system-level, so it was drawn the way a planet is -- an orbit around the origin -- and since a member's orbit is measured from its barycentre rather than from the star, that put both rings AT THE SUN, a few hundred-thousandths of a unit across and buried inside the star itself. Each now gets its ring around the barycentre it actually goes round, and the pair sit on their own orbits.
+* That also explains the line that ran past the pair instead of between them. The only line near a framed Pluto was the barycentre's own orbit around the Sun, which the two straddle by design -- and an orbit is drawn as a 1024-sided polygon, so at that distance a single flat edge departs from the true ellipse by more than the whole Pluto-Charon separation. Zoomed in that far you are inside one edge of it. The pair's own orbits are three hundred thousand times smaller, so the same 1024 sides are smooth there.
+* Clicking out from one half of a binary keeps going. The zoom ladder gave a barycentre member its PARTNER as its context, so the widest shot it could reach was the pair itself and a further click wrapped back in. There is now one more rung past the pair -- the orbit the two share -- which is the shot every other object's context step already gives it. The orrery and the 3D view take the same shot from the same click, as before.
+
 ## v2.1.319-beta - 31st Jul 2026
 
 * The 3D player view has a floating origin. At 1:1 scale AND 1:1 distances a small world far out used to jitter -- its orbit line vibrated and its moon would not sit on it -- because the scene was drawn in absolute coordinates. At true scale Pluto lands at scene coordinate 12, where a 32-bit float can only count in steps of 9.5e-7, and the whole Pluto-Charon separation is 41.7 of those steps. The orbit line was quantised to about forty positions per axis, and every camera nudge re-rounded it: over a slow pan it held 148 distinct positions across 600 frames, standing still and then jumping a whole step. The scene is now drawn RELATIVE to whatever the camera is looking at, which gives the same pair 10.9 million steps instead of 42, and the line moves once per frame by exactly the camera's own step.
