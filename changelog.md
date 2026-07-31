@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.311-beta - 31st Jul 2026
+
+* The time transport and the body picker are now the same floating control, not two lookalikes. One shared behaviour drives both: a slim move handle on the left, a lock on the right, and a puck they collapse to. Each puts itself away the moment you touch something else -- unless you lock it open, which is the opt-out from that. The lock replaces the old minimise button and keeps both meanings: locking keeps the control, unlocking puts it away.
+* The time transport defaults to locked open, so it looks and behaves exactly as it did; the picker defaults to a puck. Positions are remembered per control and clamped back on screen when the window changes, so one dragged to the corner of a desktop still opens somewhere reachable on a phone. The move handle stands down while a control is locked -- there is nothing to drag, and on a narrow phone that is 15 px of pill back.
+
 ## v2.1.310-beta - 31st Jul 2026
 
 * The rest of the GM starmap's text holds its size under zoom. Route distances, route names and the measure read-out now divide their font and their offset by the zoom, the same one-line cancellation the system names got. Measured across a 4.9x zoom range: the labels are pixel-identical while the lines they annotate grow with the map. The multi-star "+" is deliberately left alone -- the star discs it sits under are a fixed world-space glyph that scales with everything else, so a constant-size "+" would drift off its own marker.

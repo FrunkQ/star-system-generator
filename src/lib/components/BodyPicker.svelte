@@ -6,6 +6,9 @@
   // systems navigable without hunting on the canvas. Reference: v2 prototype's picker.
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import type { SystemNode } from '$lib/types';
+  import { createFloatingControl } from '$lib/ui/floatingControl';
+  import FloatGrip from './FloatGrip.svelte';
+  import FloatPin from './FloatPin.svelte';
   import { getNodeColor } from '$lib/rendering/colors';
   import { AU_KM } from '$lib/constants';
 
@@ -75,8 +78,11 @@
   let query = '';
   let drill: string | null = null; // active category when drilled in
   let root: HTMLElement;
-  let expanded = false; // floating mode only: is the puck open into the full strip?
+  // Floating mode shares ONE behaviour with the time transport: grip on the left, lock on the
+  // right, puts itself away when something else is touched unless it is locked open.
+  const float = createFloatingControl('sse-body-picker-float', {}, { enabled: floating });
   // A non-floating picker is always shown; a floating one only once its puck is opened.
+  $: expanded = $float.open;
   $: stripShown = !floating || expanded;
 
   // Mirrors the old SystemSummary stat definitions so the picker's counts match 1:1
@@ -186,20 +192,23 @@
     open = false;
     query = '';
     drill = null;
-    expanded = false; // a floating picker's whole point is to leave again
+    // A floating picker's whole point is to leave again — unless it has been locked open.
+    if (floating && !$float.pinned) float.setOpen(false);
     removeOutside();
   }
-  // Puck → full strip with the list already showing, so a jump is still two clicks.
+  // Puck → full strip with the list already showing, so a jump is still two clicks. A drag on the
+  // puck moves it and must not count as that tap.
   function openPuck() {
-    expanded = true;
+    if (float.didDrag()) return;
+    float.setOpen(true);
     open = true;
     drill = null;
     addOutside();
   }
   function collapse() {
-    expanded = false;
     open = false;
     drill = null;
+    if (floating && !$float.pinned) float.setOpen(false);
     removeOutside();
   }
   // Shutting the dropdown must not drop the outside-click listener while a floating strip is
@@ -252,14 +261,20 @@
   onMount(() => { if (startOpen) { open = true; drill = null; } });
 
   // If the host changes the focused body (e.g. canvas tap), collapse the dropdown — and the puck
-  // with it, since the user has just said what they wanted by other means.
+  // with it, since the user has just said what they wanted by other means. A locked-open picker
+  // still keeps its strip; `collapse` honours the lock.
   let lastFocus: string | null = null;
   $: if (focusedId !== lastFocus) { lastFocus = focusedId; if (open || expanded) collapse(); }
 </script>
 
 <div class="body-picker" class:open class:inline class:flow={startOpen} class:floating class:expanded bind:this={root} style={inline ? '' : `top:${top}px`}>
+  <!-- The drag offset lives on an INNER element so each host keeps ownership of where the picker is
+       anchored (the catalogue pins it left; the GM mounts centre it). Putting the translate on the
+       root would fight those rules. `float.root` goes HERE, not on the outer div: the outer box is
+       unaffected by a transformed child, so measuring it would clamp against the wrong rectangle. -->
+  <div class="float-shift" use:float.root style={floating ? `transform: translate(${$float.dx}px, ${$float.dy}px)` : ''}>
   {#if !stripShown}
-    <button class="puck" on:click={openPuck} aria-expanded={false} aria-label={focused ? `Browse — ${focused.name}` : `Browse ${emptyLabel}`} title="Browse & search">
+    <button class="puck" use:float.grip on:click={openPuck} aria-expanded={false} aria-label={focused ? `Browse — ${focused.name}` : `Browse ${emptyLabel}`} title="Tap to browse & search, drag to move">
       <span class="browse-icon" aria-hidden="true">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       </span>
@@ -267,6 +282,7 @@
     </button>
   {:else}
   <div class="strip">
+    {#if floating}<FloatGrip ctl={float} />{/if}
     <button class="browse" on:click={browseClick} aria-expanded={open} title="Browse all">
       <span class="browse-icon" aria-hidden="true">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
@@ -293,6 +309,7 @@
     {#if query}
       <button class="icon-btn" on:click={clearSearch} aria-label="Clear search" title="Clear">×</button>
     {/if}
+    {#if floating}<FloatPin ctl={float} what="the picker" />{/if}
   </div>
 
   {#if open}
@@ -369,6 +386,7 @@
     </div>
   {/if}
   {/if}
+  </div>
 </div>
 
 <style>
@@ -381,9 +399,13 @@
     width: min(420px, calc(100% - 24px));
     font-size: 0.9rem;
   }
+  /* Carries the drag offset, and is the positioning reference for the dropdown so the list still
+     hangs off the strip wherever the strip has been dragged to. */
+  .float-shift { position: relative; }
   /* Collapsed puck: the container must shrink to the button, or a 420px-wide transparent box
      would sit over the map swallowing clicks that never reach a control. */
   .body-picker.floating:not(.expanded) { width: auto; }
+  .body-picker.floating:not(.expanded) .float-shift { display: inline-block; }
   .puck {
     display: flex;
     align-items: center;
@@ -395,6 +417,8 @@
     border-radius: 999px;
     color: var(--accent, #ff5a1f);
     cursor: pointer;
+    touch-action: none; /* the puck doubles as its own drag handle */
+    user-select: none;
     backdrop-filter: blur(6px);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   }
@@ -408,6 +432,13 @@
   }
   /* In a modal: dropdown in normal flow + fills available height (not an overlay). */
   .body-picker.flow {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+  }
+  /* The shift wrapper must not break the modal's fill-height column. */
+  .body-picker.flow .float-shift {
     display: flex;
     flex-direction: column;
     min-height: 0;
