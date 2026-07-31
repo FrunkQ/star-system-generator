@@ -64,11 +64,27 @@ export function createFloatingControl(
   const store = writable<FloatingState>(s);
 
   function set(patch: Partial<FloatingState>, persist = true) {
+    // Opening, or locking (which hides the grip), changes the control's SIZE — so it can now stick
+    // off an edge it fitted inside a moment ago. Re-clamp once the DOM has caught up.
+    const resized =
+      ('open' in patch && patch.open !== s.open) || ('pinned' in patch && patch.pinned !== s.pinned);
     s = { ...s, ...patch };
     store.set(s);
     if (persist && enabled && typeof localStorage !== 'undefined') {
       try { localStorage.setItem(storageKey, JSON.stringify(s)); } catch { /* private mode */ }
     }
+    if (resized) scheduleClamp();
+  }
+
+  let clampTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Re-clamp once the DOM has caught up. A macrotask, NOT requestAnimationFrame: rAF is suspended
+   * while the page is not painting (background tab, minimised window), and a control that opened
+   * off-screen while hidden would then still be off-screen when you came back to it.
+   */
+  function scheduleClamp() {
+    if (clampTimer !== null) clearTimeout(clampTimer);
+    clampTimer = setTimeout(() => { clampTimer = null; clampIntoView(); }, 0);
   }
 
   let rootEl: HTMLElement | null = null;
@@ -108,10 +124,10 @@ export function createFloatingControl(
     // propagation for its own reasons (canvas gestures do exactly that).
     document.addEventListener('pointerdown', onOutside, true);
     window.addEventListener('resize', clampIntoView);
-    const raf = requestAnimationFrame(clampIntoView);
+    scheduleClamp();
     return {
       destroy() {
-        cancelAnimationFrame(raf);
+        if (clampTimer !== null) { clearTimeout(clampTimer); clampTimer = null; }
         document.removeEventListener('pointerdown', onOutside, true);
         window.removeEventListener('resize', clampIntoView);
         if (rootEl === node) rootEl = null;
@@ -151,6 +167,10 @@ export function createFloatingControl(
       if (!dragging) return;
       dragging = false;
       set({}, true);
+      // The in-drag clamp works off a rect that is one frame behind, so it converges during a slow
+      // drag but a flick that ENDS at the edge can stop just past it. One authoritative correction
+      // on release, against a settled rect (and it persists again if it moves anything).
+      scheduleClamp();
     };
 
     node.addEventListener('pointerdown', down);

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.312-beta - 31st Jul 2026
+
+* The picker opens RIGHTWARDS from its puck, the way the time transport does. It was centred, so the bar grew symmetrically and the puck you had just tapped slid out from under the pointer into the middle of the bar. Its left edge is now the anchor: the strip opens from exactly where the puck stood.
+* Any floating control that would open past an edge pushes itself back on screen. Opening changes the control's width, so it can stick off an edge it fitted inside a moment before -- it now re-clamps on open, on lock, and on releasing a drag. On a 375 px phone the picker's 351 px strip opens from a puck near the right edge and lands wholly on screen; so does the time transport.
+* Two things that clamp had been quietly missing: it ran on `requestAnimationFrame`, which is suspended while a window is minimised or in a background tab, so a control opened off-screen while hidden stayed off-screen; and the in-drag clamp works off a rect one frame behind, so a flick that ENDED at the edge could stop just past it.
+
 ## v2.1.311-beta - 31st Jul 2026
 
 * The time transport and the body picker are now the same floating control, not two lookalikes. One shared behaviour drives both: a slim move handle on the left, a lock on the right, and a puck they collapse to. Each puts itself away the moment you touch something else -- unless you lock it open, which is the opt-out from that. The lock replaces the old minimise button and keeps both meanings: locking keeps the control, unlocking puts it away.

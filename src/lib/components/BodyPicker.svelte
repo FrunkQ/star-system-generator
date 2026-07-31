@@ -402,6 +402,11 @@
   /* Carries the drag offset, and is the positioning reference for the dropdown so the list still
      hangs off the strip wherever the strip has been dragged to. */
   .float-shift { position: relative; }
+  /* A floating picker anchors its LEFT edge and grows RIGHTWARDS, the way the time transport does.
+     Centring the container instead made the strip expand symmetrically around the puck, so the thing
+     you had just tapped slid out from under the pointer and ended up mid-bar. The lone puck now sits
+     a puck's-half right of centre, which reads as centred; the strip opens from where it stood. */
+  .body-picker.floating { transform: none; }
   /* Collapsed puck: the container must shrink to the button, or a 420px-wide transparent box
      would sit over the map swallowing clicks that never reach a control. */
   .body-picker.floating:not(.expanded) { width: auto; }
