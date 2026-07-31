@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.318-beta - 31st Jul 2026
+
+* The body name in the player info panel takes the preset's font colour, rainbow included. It was the one line the colour never reached: the panel mounts the document with its heading suppressed and draws the name itself as chrome, so "Tags", "Moons" and every other heading below it swept through the spectrum while the name above them stayed plain. It now paints the same seven stops the document uses, and is exempt under monochrome skins for the same reason the document exempts them -- they bleach the page on purpose so a tinting filter has one palette.
+
 ## v2.1.317-beta - 31st Jul 2026
 
 * Route names on the player starmap are drawn in the route's own blue instead of the star colour. A route name sits at the midpoint of the line, between the two stars it joins, so in the same colour as the stars it just read as a third star name. Matching the line ties the label to the link. Monochrome skins are unaffected -- there the route colour IS the mono grey, so the tint filters still see a single palette.

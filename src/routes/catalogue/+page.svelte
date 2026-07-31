@@ -517,6 +517,9 @@
   // rather than a flat stand-in, and can only do that if the sentinel survives the trip. presetAccent
   // is the flattened form, correct for a CSS variable and wrong for the engine.
   $: presetAccentRaw = activePreset ? (activePreset.accentColor || '#6aa0ff') : '#6aa0ff';
+  // Rainbow on the inspector's body-name heading — same condition renderDocument uses for its own
+  // headings (`rainbow && !theme.mono`), so the name and the headings under it agree.
+  $: inspTitleRainbow = presetAccentRaw === 'rainbow' && activePreset?.bodyStyle !== 'white';
   $: presetFont = activePreset?.font || 'system-ui';
   // Guide tips: the preset picks off / top / bottom / both; the rolled notes fill the chosen edges.
   $: guideTipsMode = activePreset?.guideTips ?? 'off';
@@ -856,7 +859,13 @@
       <div class="insp-resize" on:pointerdown={startInspectorResize} role="separator" aria-orientation="vertical" aria-label="Resize panel"></div>
       <div class="insp-head">
         <button class="insp-title" on:click={() => (bodyExpanded = !bodyExpanded)} aria-expanded={bodyExpanded} title="Show details">
-          <h2>{selectedBody.name}</h2>
+          <!-- The body NAME is panel chrome, not a document heading (DocPanel is mounted with
+               showHeading={false}), so it never saw the preset's font colour — the rainbow reached
+               "Tags" and the other in-document headings and stopped at the one line above them. It now
+               takes the accent, and paints the same spectrum as `rainbowFill` when the accent IS the
+               rainbow. Mono skins are exempt for the same reason the document exempts them: they
+               bleach the page deliberately so a tinting filter has one palette to work on. -->
+          <h2 class:rainbow={inspTitleRainbow} style={inspTitleRainbow ? '' : `color:${presetAccent}`}>{selectedBody.name}</h2>
           <span class="insp-chevron" aria-hidden="true">▾</span>
         </button>
         <!-- Phone: × only MINIMISES back to the name bar (tap the title to reopen) — closing outright
@@ -1391,6 +1400,13 @@
   /* The title button fills the whole row so the toggle target is "anywhere on the title", not just the text. */
   .insp-title { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 8px; background: none; border: none; color: inherit; padding: 0; cursor: pointer; text-align: left; font: inherit; }
   .insp-head h2 { margin: 0; font-size: 20px; }
+  /* Same stops as RAINBOW_STOPS in renderDocument, so the name and the headings below it sweep alike. */
+  .insp-head h2.rainbow {
+    background: linear-gradient(90deg, #ff4d4d, #ff9f43, #ffd93d, #4dff88, #4db8ff, #9d6bff, #ff5ecd);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
   .insp-chevron { display: none; font-size: 13px; opacity: 0.6; transition: transform 0.15s ease; }
   .inspector.expanded .insp-chevron { transform: rotate(180deg); }
   .insp-close { margin-left: auto; background: none; border: none; color: #9fb0c8; font-size: 22px; line-height: 1; cursor: pointer; }
