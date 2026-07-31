@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.322-beta - 31st Jul 2026
+
+* The orbit-line smoothing from the last build was switched off by its own guard. It asked whether an orbit passed near enough to the thing you are looking at to be worth recalculating, and measured that as the distance to the nearest CORNER of the thousand-sided polygon -- which, for an orbit running exactly through what you are watching, is still half a corner-spacing away, forty-six times over the threshold. So it always answered no. It now measures the distance to the nearest EDGE, which is what the question meant, and the line is smooth where you are looking.
+* The smoothing also follows the camera now. It used to be laid down around the point the scene is drawn from, which only moves in large steps, so a body carrying the camera along its orbit walked out of its own smoothed stretch before anything was recalculated. It now re-lays around wherever you are looking as you move, which costs a fifth of a millisecond on one orbit and nothing on the rest.
+
 ## v2.1.321-beta - 31st Jul 2026
 
 * Constructs draw their orbits on the player view. Stations and ships were the one kind of thing excluded from orbit lines. Each now gets one, in its own icon colour lightened toward white so the line reads as belonging to the station rather than to a world -- and neutral grey under the white body-colour setting, where the whole scene is deliberately one palette for a screen filter to tint. A ship with journeys booked is flown by the transit planner rather than by its orbit, so it draws no line it is not on; nor does anything sitting on a surface, which is checked live so a lift-off restores it.
