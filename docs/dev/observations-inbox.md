@@ -115,5 +115,8 @@ _(new observations go here — rough is fine)_
 - `npm run build` must be green before any push — svelte-check alone is not enough (runes-mode issues pass
   dev and fail the vite build).
 - Bump the patch version every push. `beta` auto-pushes on a green build; production needs explicit approval.
-- Stage explicit files, never `git add -A` — parallel sessions share this tree.
+- Stage explicit files, never `git add -A` — parallel sessions share this tree. **The changelog is tracked
+  LOWERCASE as `changelog.md`.** On Windows `git add CHANGELOG.md` matches nothing, reports no error, and
+  the commit goes out without it — four commits shipped that way on 2026-07-31 before it was noticed.
+  Check `git status` after committing, not just the push result.
 - UK English in UI, docs and new code. No emoji in docs. No personal names in shipped files.
