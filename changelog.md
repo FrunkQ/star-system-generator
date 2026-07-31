@@ -2,6 +2,22 @@
 
 All notable changes are listed here:
 
+## v2.1.310-beta - 31st Jul 2026
+
+* The rest of the GM starmap's text holds its size under zoom. Route distances, route names and the measure read-out now divide their font and their offset by the zoom, the same one-line cancellation the system names got. Measured across a 4.9x zoom range: the labels are pixel-identical while the lines they annotate grow with the map. The multi-star "+" is deliberately left alone -- the star discs it sits under are a fixed world-space glyph that scales with everything else, so a constant-size "+" would drift off its own marker.
+
+## v2.1.309-beta - 31st Jul 2026
+
+* A campaign that ignores depth no longer sees depth on the GM starmap. With "Ignore depth when measuring distances" on, the signed above/below-the-plane cue is dropped from both the system markers and the placement ghost -- annotating a number that no longer affects any distance is noise. The cue reads the same `zCounts` predicate the routes, the measure tool and journey duration read, so the map cannot disagree with the maths. The depth EDITORS stay: "Set Depth…" and the placement dialogue's elevation control still work, because the value still exists and the setting can be turned back on -- hiding them would make depth uneditable rather than merely uncounted.
+
+## v2.1.308-beta - 31st Jul 2026
+
+* The body picker floats. Over a map it is now a puck that opens into the full strip on demand and puts itself away on an outside click, a pick or Escape -- the same shape as the player time control. It applies to the GM starmap, the GM system view and the player catalogue; the three mounts that sit inside a panel or a modal (transit planner, find-a-body, find-a-construct) are unchanged, because there the strip is the content, not an overlay. The behaviour lives in the picker behind one opt-in prop, so a new surface cannot reintroduce the permanent strip by accident.
+
+## v2.1.307-beta - 31st Jul 2026
+
+* The starmap info panel really resizes. It is anchored by its top edge and sits at the bottom-right by default, so the old per-textarea grabber grew the panel downward into the canvas's `overflow: hidden` and the extra text was simply cut off. One grip on the panel's own corner now sets a width and a height, the Description and GM Notes fields grow to fill it, and the panel slides up or left rather than growing off the map. The size persists like the position, and both are clamped to the screen it opens on.
+
 ## v2.1.306-beta - 31st Jul 2026
 
 * Header and footer banner text is centred in its band -- the stamp and note as one centred first line, wrapped continuation lines centred individually, like any centred paragraph. It was drawing from the left edge.
