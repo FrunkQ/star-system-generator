@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.306-beta - 31st Jul 2026
+
+* Header and footer banner text is centred in its band -- the stamp and note as one centred first line, wrapped continuation lines centred individually, like any centred paragraph. It was drawing from the left edge.
+
 ## v2.1.305-beta - 31st Jul 2026
 
 * Header and footer banners behave like text on resize: constant font size, centred, re-wrapped -- because the redraw finally reaches the screen. They were ALWAYS being rebuilt correctly at the new size; the rebuild was then swapped into a live WebGL texture, and WebGL2 texture storage is immutable once allocated, so an upload of a different-sized canvas fails silently and the old bitmap stays -- stretched over the new frame by the full-screen quad. The texture is now recreated whenever the banner canvas changes size, in both the system holo and the starmap. Same-size updates keep the cheap path.
