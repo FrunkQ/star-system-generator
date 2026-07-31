@@ -36,7 +36,7 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
 import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep, FRAME_LEVELS } from '$lib/viewport/camera';
-import { contextPeerIds } from '$lib/system/barycentres';
+import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { perfCount, perfFrame } from '$lib/perfTrace';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
@@ -675,6 +675,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // INSIDE Pluto. Each member instead clears its partner (both push outward along their own — mutually
   // opposite — offsets, so the pair's separation always exceeds the sum of the rendered radii).
   let baryCoR = new Map<string, number>();
+  // A barycentre has a ring but no mesh, so its members' rings cannot track it through `bodyById`. This
+  // holds each barycentre's rendered scene point, refreshed with the bodies in updatePositions.
+  let baryScene = new Map<string, THREE.Vector3>();
   let ringVisuals: RingVisual[] = [];
   let beltVisuals: BeltVisual[] = [];
   // Aurora emitters (additive), flickering over time; base opacity scales with strength. Filled bodies
@@ -1141,7 +1144,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return frameLevelsFrom({
       hasParent: contextPeerIds(currentSystem, b.id, pid).some((pid2) => bodyById.has(pid2)),
       hasSatellites: bodies.some((x) => x.framingParentId === id),
-      hasRadius: !b.isConstruct && (b.radiusScene ?? 0) > 0 // a radius-less root keeps whole-system-first
+      hasRadius: !b.isConstruct && (b.radiusScene ?? 0) > 0, // a radius-less root keeps whole-system-first
+      // A barycentre member's context is only its PARTNER, so it gets one rung further out — the orbit
+      // the pair shares — instead of wrapping back in at pair scale.
+      hasPairContext: pairContextIds(currentSystem, b.id, pid).some((gp) => bodyById.has(gp))
     });
   }
 
@@ -1164,8 +1170,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (x.framingParentId !== b.id) continue;
       maxSatelliteDist = Math.max(maxSatelliteDist, x.mesh.position.distanceTo(b.mesh.position));
     }
+    // Level 0 — past the partner, out to whatever the pair as a whole orbits.
+    let pairContextDist = 0;
+    for (const gpId of pairContextIds(currentSystem, b.id, b.framingParentId ?? null)) {
+      const gp = bodyById.get(gpId);
+      if (gp) pairContextDist = Math.max(pairContextDist, b.mesh.position.distanceTo(gp.mesh.position));
+    }
     // 0 = a radius-less construct at level 3: give it a small patch (its glyph is screen-fixed anyway).
-    const half = frameHalfExtent({ level: focusLevel, radius, parentDist, maxSatelliteDist, config: { ...FRAME_LEVELS, fillFrac: frameFillFrac } })
+    const half = frameHalfExtent({ level: focusLevel, radius, parentDist, maxSatelliteDist, pairContextDist, config: { ...FRAME_LEVELS, fillFrac: frameFillFrac } })
       || Math.max(0.35, controls.minDistance * 3);
     const tan = Math.tan((camera.fov * Math.PI) / 360);
     const dist = half / Math.max(1e-6, tan * Math.min(1, camera.aspect));
@@ -1501,6 +1513,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     ringVisuals = [];
     beltVisuals = [];
     orbitRings = [];
+    baryScene = new Map();
     starLights = [];
     starVisuals = [];
     auroraVisuals = [];
@@ -1532,6 +1545,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const rootBaryIds = new Set((system.nodes as any[]).filter((n) => n.kind === 'barycenter' && n.parentId === rootId).map((n) => n.id));
     const isSystemLevel = (n: any) => n.parentId === rootId || rootBaryIds.has(n.parentId);
 
+    const baryRingPending: any[] = [];
     const pos0 = computeWorldPositions3D(system, timeMs);
     rMax = 0;
     for (const p of pos0.values()) rMax = Math.max(rMax, Math.hypot(p.x, p.y, p.z));
@@ -1565,7 +1579,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // system-level orbiter gets a heliocentric ring at the origin; a moon gets a ring in its
       // parent's local frame (scaled by the parent's radial compression) that tracks the parent.
       if (node.orbit && node.kind !== 'construct') {
-        if (systemLevel) {
+        if (node.parentId && nodesById.get(node.parentId)?.kind === 'barycenter') {
+          // A member orbits the PAIR's common point, not the star. Deferred: the clearance that holds the
+          // pair apart needs the PARTNER's rendered radius, and that is only known once every body exists.
+          baryRingPending.push(node);
+        } else if (systemLevel) {
           const ring = buildOrbitRing(node, positionToSceneAbs, orbitColor(node));
           if (ring) {
             contentGroup.add(ring.loop);
@@ -1894,6 +1912,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (m > 0) baryCoR.set(b.id, m);
       }
     }
+    // Barycentre-member orbit rings, now that every partner radius is known. Each is stored in its
+    // barycentre's local frame and positioned at that point every frame, exactly as a moon's ring is.
+    for (const id of (system.nodes as any[]).filter((n) => n.kind === 'barycenter').map((n) => n.id)) {
+      baryScene.set(id, new THREE.Vector3());
+    }
+    for (const node of baryRingPending) {
+      const pBary = pos0.get(node.parentId);
+      const rB = pBary ? Math.hypot(pBary.x, pBary.y, pBary.z) : 0;
+      const kHelio = rB > 1e-9 ? compressScalar(rB) / rB : 0;
+      if (kHelio <= 0) continue;
+      const self = bodyById.get(node.id);
+      const ring = buildBaryMemberRing(node, kHelio, self?.radiusScene ?? 0, baryCoR.get(node.id) ?? 0, orbitColor(node));
+      if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
+    }
     visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
   }
@@ -1986,6 +2018,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         b.mesh.position.copy(positionToScene(p, tmp));
       }
     }
+    // Barycentres carry no mesh but their members' rings hang off them, so their scene points are kept
+    // here alongside the bodies (and so they move with a floating-origin rebase like everything else).
+    for (const [id, out] of baryScene) {
+      const bp = positions.get(id);
+      if (bp) positionToScene(bp, out);
+    }
     // Keep each star's light co-located with the star (matters for binaries; the primary sits at 0).
     for (const s of starLights) {
       const sp = positions.get(s.id);
@@ -2001,6 +2039,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (r.obj.visible && r.trackParentId) {
         const p = bodyById.get(r.trackParentId);
         if (p) r.obj.position.copy(p.mesh.position);
+        else {
+          const bp = baryScene.get(r.trackParentId); // a barycentre parent has no mesh to track
+          if (bp) r.obj.position.copy(bp);
+        }
       }
     }
   }
@@ -2519,30 +2561,61 @@ function toParentEquator(x: number, y: number, z: number, tiltRad: number, out: 
   return out;
 }
 
-function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, parentTiltRad = 0): THREE.LineLoop | null {
+/**
+ * A ring in the PARENT's local scene frame, laid down from a per-sample radial rule. Both callers below
+ * share it because the ring has to be built with EXACTLY the transform the body's own placement uses, or
+ * the body will not sit on it → keeping the two rules beside each other is what stops them drifting.
+ *
+ * Local by construction, so the numbers stay small whatever the parent's distance: a floating-origin
+ * rebase never has to touch these, the object is simply positioned at the parent each frame.
+ */
+function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor: (off: number) => number): THREE.LineLoop | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
   const pts: THREE.Vector3[] = [];
   const _eq = { x: 0, y: 0, z: 0 };
-  const eclipticFramed = String(node?.orbit?.frame ?? '').toLowerCase() === 'ecliptic';
-  const tilt = eclipticFramed ? 0 : parentTiltRad;
   for (let i = 0; i < ORBIT_SAMPLES; i++) {
-    const raw = propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r; // moon relative to parent (AU)
-    const r = toParentEquator(raw.x, raw.y, raw.z, tilt, _eq);
+    const raw = propagateState3D(node, t0 + (i / ORBIT_SAMPLES) * period).r; // relative to the parent (AU)
+    const r = tiltRad ? toParentEquator(raw.x, raw.y, raw.z, tiltRad, _eq) : raw;
     const off = Math.hypot(r.x, r.y, r.z);
     if (off < 1e-12) continue;
-    const spreadDist = moonSpread(off, localScale, parentRadius);
-    const trueDist = off * kHelio;
-    // Same globe-relative clearance as the moon body (updatePositions), so the ring sits under the moon.
-    const clearance = parentRadius * 1.12 + moonRadius + parentRadius * 0.4 * Math.log10(1 + off / 0.0006);
-    const dist = Math.max(clearance, trueDist * (1 - compression) + spreadDist * compression);
-    const k = dist / off;
+    const k = distFor(off) / off;
     pts.push(new THREE.Vector3(r.x * k, r.z * k, r.y * k)); // physics(x,y,z) → scene(x,z,y)
   }
   if (pts.length < 3) return null;
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false }); // see buildOrbitRing
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
+}
+
+function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, parentTiltRad = 0): THREE.LineLoop | null {
+  const eclipticFramed = String(node?.orbit?.frame ?? '').toLowerCase() === 'ecliptic';
+  return buildLocalOrbitRing(node, color, eclipticFramed ? 0 : parentTiltRad, (off) => {
+    const spreadDist = moonSpread(off, localScale, parentRadius);
+    const trueDist = off * kHelio;
+    // Same globe-relative clearance as the moon body (updatePositions), so the ring sits under the moon.
+    const clearance = parentRadius * 1.12 + moonRadius + parentRadius * 0.4 * Math.log10(1 + off / 0.0006);
+    return Math.max(clearance, trueDist * (1 - compression) + spreadDist * compression);
+  });
+}
+
+/**
+ * A barycentre MEMBER's orbit → Pluto and Charon about their common point, rather than about the star.
+ *
+ * These had no ring at all. A member is "system-level" by the naming rule, so it took the heliocentric
+ * branch, which projects a PARENT-relative propagation as if the parent were the origin. For a planet
+ * that is true (its parent IS the star, at the origin); for a member it drew a loop a few times 1e-5
+ * scene units across AT THE SUN, inside the star's own globe. So the only line anywhere near a framed
+ * Pluto was the BARYCENTRE's heliocentric ring → which the pair straddle by design, and which, being a
+ * 1024-gon at 12 scene units, sags a chord 1.4x the whole pair separation off the true ellipse.
+ *
+ * A member takes no equatorial rotation (its elements are system-framed, not quoted in a partner's
+ * equator) and no toytown fan-out. The clearance that holds the pair apart at readable body sizes is the
+ * only departure from physics, and it is the same rule the member's own placement uses.
+ */
+function buildBaryMemberRing(node: any, kHelio: number, memberRadius: number, partnerRadius: number, color: number): THREE.LineLoop | null {
+  const clearance = (memberRadius + partnerRadius) * 0.62;
+  return buildLocalOrbitRing(node, color, 0, (off) => Math.max(clearance, off * kHelio));
 }
 
 // An equirect aurora texture: coloured curtains at the two polar rings (transparent elsewhere). Under
