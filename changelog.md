@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.317-beta - 31st Jul 2026
+
+* Route names on the player starmap are drawn in the route's own blue instead of the star colour. A route name sits at the midpoint of the line, between the two stars it joins, so in the same colour as the stars it just read as a third star name. Matching the line ties the label to the link. Monochrome skins are unaffected -- there the route colour IS the mono grey, so the tint filters still see a single palette.
+
 ## v2.1.316-beta - 31st Jul 2026
 
 * Moons orbit in their planet's equator, where their inclinations were always quoted. The rings already knew this -- both ring builders lay the ring plane on the planet's equator -- but moon orbits were left in the system plane, so Saturn's inner moons sat 26.73 degrees away from the rings they are supposed to be embedded in. They now sit at their own quoted inclinations instead: Enceladus 0.01, Dione 0.02, Rhea 0.34, Titan 0.35, Tethys 1.12, Mimas 1.57 degrees from the ring plane, with Iapetus the one visibly tilted moon at 15.47. Uranus is the dramatic case -- its moons were 97.77 degrees out of place and now sit in its heavily tilted equator, where they belong. Triton reads its true retrograde 157.3 to Neptune's equator.

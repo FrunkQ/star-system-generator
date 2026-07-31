@@ -16,6 +16,8 @@ import { starClusterOffsets } from './systemStars';
 
 const GRID_RADIUS = 12; // scene units the map's extent maps to
 const HOLO_TINT = 0x63b3ff;
+/** 0xRRGGBB → the '#rrggbb' a canvas fillStyle wants. */
+const hexOf = (n: number) => '#' + (n >>> 0).toString(16).padStart(6, '0');
 
 // WS7: `z` is the system's DEPTH in map units (absent/0 = on the reference plane). It is rendered as
 // scene height, multiplied by the DISPLAY-ONLY exaggeration — which never touches distance maths.
@@ -36,6 +38,9 @@ interface LabelSprite {
   text: string;
   aspect: number;      // canvas width / height
   heightRatio: number; // canvas full height / text height — converts labelSizePx to sprite size
+  // Optional own colour, overriding the shared label colour. Route names use it so they read as
+  // belonging to the LINE rather than to the stars they sit between.
+  color?: string;
 }
 
 export interface StarmapSceneOptions {
@@ -474,7 +479,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const setLabelsVisible = (on: boolean) => { labelsVisible = on; };
 
   // A name label as an in-scene sprite (added to `content`, so it warps/tints with the stars).
-  function makeLabelSprite(name: string): LabelSprite | undefined {
+  function makeLabelSprite(name: string, color?: string): LabelSprite | undefined {
     if (!name) return undefined;
     const canvas = document.createElement('canvas');
     const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false });
@@ -482,7 +487,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     sprite.center.set(0.5, -0.35); // anchor below the text so it floats above the star glyph
     sprite.renderOrder = 999;
     sprite.visible = false;
-    const ls: LabelSprite = { sprite, canvas, text: name, aspect: 1, heightRatio: 1 };
+    const ls: LabelSprite = { sprite, canvas, text: name, aspect: 1, heightRatio: 1, color };
     drawLabel(ls);
     content.add(sprite);
     return ls;
@@ -502,7 +507,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     ctx.clearRect(0, 0, cw, ch);
     ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 4;
-    ctx.fillStyle = labelColor;
+    ctx.fillStyle = ls.color || labelColor;
     ctx.fillText(ls.text, cw / 2, ch / 2);
     ls.aspect = cw / ch;
     ls.heightRatio = ch / fontPx;
@@ -600,7 +605,11 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       // not at all here.
       if (r.name && r.name.trim()) {
         const mid = a.clone().add(b).multiplyScalar(0.5).setY(0.03);
-        placed.push({ id: `route:${r.fromId}>${r.toId}`, name: r.name, center: mid, label: makeLabelSprite(r.name) });
+        // Drawn in the ROUTE's own colour, not the shared label colour: a route name sits between the
+        // two stars it joins, so in the star colour it reads as just another star name. Matching the
+        // line ties it to the link instead. In mono `routeColor()` IS the mono grey, so the tint
+        // filters still see one palette.
+        placed.push({ id: `route:${r.fromId}>${r.toId}`, name: r.name, center: mid, label: makeLabelSprite(r.name, hexOf(routeColor())) });
       }
       // Glow band (skipped when the glow is toggled off, or for dashed — the dash reads better plain).
       if (!r.dashed && routeGlowOn) {
