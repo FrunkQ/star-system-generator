@@ -49,6 +49,12 @@
     controller.setHud(hud);
   }
 
+  // A14: `z` is passed through UNCONDITIONALLY, including when the campaign has "ignore depth when
+  // measuring distances" on. That setting governs what is COUNTED, not what is drawn — a 3D view
+  // whose whole point is depth must keep its geometry, or the placement work vanishes. The 2D GM map
+  // drops its depth CUES in that case (A12) because a number affecting no distance is noise; there is
+  // no equivalent here, since this scene's only text is system names, route names and the planar
+  // distance rings. Do not add a depth read-out to this view without revisiting A14.
   $: smSystems = ((starmap?.systems ?? []) as any[]).map<SmSystem>((s) => ({
     id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0, z: s.position?.z ?? 0,
     stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd }))
