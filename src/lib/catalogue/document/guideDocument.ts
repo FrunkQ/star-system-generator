@@ -10,7 +10,8 @@ import { bodyFacts, bodyGlyph } from '../bodyFacts';
 import { describeTag, tagContextLabel } from '$lib/tags/tagPresentation';
 import type { DocBlock, TagItem, TagStyle } from './blocks';
 import {
-  isBary, dominantOf, displayLabel, membersOf, moonsOf, constructsOf, isRinged, type Node
+  isBary, isStar, isBeltish, dominantOf, displayLabel, membersOf, moonsOf, listBodiesOf,
+  constructsOf, isRinged, type Node
 } from './systemTopology';
 
 export interface GuideDocOpts {
@@ -135,6 +136,29 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     blocks.push({ kind: 'spacer', h: 6 });
     blocks.push({ kind: 'heading', level: 3, text: 'Moons' });
     blocks.push({ kind: 'list', items: drillItems(moonRow) });
+  }
+
+  // A star's natural satellites are its PLANETS, and the document never listed them — so the primary
+  // star, which is the node you land on, was the one page in the system with no way down. Same block
+  // shape and same drill items as the moons above; `listBodiesOf` is the helper the picker and the
+  // legacy Guide already use, so belts stay reachable rather than becoming pickable only on the chart.
+  // Keyed on `selected.id`, NOT `subject.id`: in a multi-star system the planets hang off the
+  // BARYCENTRE, and `subject` has already been resolved to its dominant member — so keying on the
+  // subject would leave a circumbinary system's planets listed nowhere. Nothing is listed twice
+  // either, because a body has exactly one host: planets round the pair hang off the barycentre and
+  // planets round one star hang off that star, and the two lists cannot overlap.
+  // The `listed` filter is not defensive padding — `orbiters()` only excludes moons, and Pluto is a
+  // roleHint 'planet' parented to the Pluto-Charon barycentre, so selecting that barycentre would
+  // otherwise offer Pluto as its own satellite.
+  const listed = new Set([subject?.id, ...companions.map((c) => c.id)].filter(Boolean) as string[]);
+  const orbiters = (isStar(selected) || bary)
+    ? listBodiesOf(system, selected.id).filter((n) => !listed.has(n.id))
+    : [];
+  if (orbiters.length) {
+    const belts = orbiters.some(isBeltish), planets = orbiters.some((n) => !isBeltish(n));
+    blocks.push({ kind: 'spacer', h: 6 });
+    blocks.push({ kind: 'heading', level: 3, text: planets && belts ? 'Planets & belts' : belts ? 'Belts' : 'Planets' });
+    blocks.push({ kind: 'list', items: drillItems(orbiters) });
   }
 
   const constructs = subject ? constructsOf(system, subject.id) : { surface: [], orbiting: [] };

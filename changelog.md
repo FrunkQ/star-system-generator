@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.324-beta - 31st Jul 2026
+
+* A star's page in the guide document lists its planets, the way every other body lists its moons. The star is the node you land on -- the primary is selected on entry -- so the first page a player saw was the one page in the system with no way down into it, and the only route in was the picker at the top. It is the same block the moons already use, drawing on the same helper the picker and the old Field Guide use, so belts are listed too rather than being pickable only on the chart. Sol now reads Mercury through the Kuiper Belt in orbit order, and you can go star to planet to moon without touching the picker. The heading says what is actually in the list -- planets, belts, or both.
+* Checked across every star in the campaign rather than on the one that was reported: 33 stars list 92 bodies between them, each list exactly matching what the data says orbits that star, and the 27 stars with nothing in orbit correctly show no list at all.
+
 ## v2.1.323-beta - 31st Jul 2026
 
 * The stat block's temperature range is the SURFACE range, so it agrees with the surface temperature printed above it. The two rows came from different stages of the pipeline: the mean was the composed surface temperature and the range was the EQUILIBRIUM one, which omits the greenhouse and every other heat term. Venus read 480 °C against a range of -44 to -42 °C. Across the Solar System eleven of thirty-four bodies had a mean outside their own quoted range -- Earth, Venus, all four giants, Io, Europa, Titan, Mimas, Luna's neighbours -- and every one of the thirty-four sits inside the surface range instead. It is the same figure the GM's body panel decomposes by cause, so the two views now print the same numbers.
