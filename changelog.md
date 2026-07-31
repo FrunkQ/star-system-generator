@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.315-beta - 31st Jul 2026
+
+* A construct that says it is on the surface is put on the surface. The 3D scene never read the declaration -- it worked surface-lock out from geometry instead, comparing the construct's offset from its parent against the parent's radius, and that test needed a non-zero offset. But the honest way to author a ground station is with no orbit at all, which is exactly what every one in the bundled maps does, so the offset was zero, no branch claimed them, and they were left sitting at the centre of the body, motionless. The scene now uses the same test as the document builder, so the two cannot disagree about which constructs are on the ground.
+* Where a surface construct carries no offset to say WHERE on the surface it sits, it gets a landing site derived from its own id -- the same spot every time you open the map, and far enough apart that two stations on one small moon do not land on top of each other (the two on LV-426 sit 33.8 degrees apart).
+
 ## v2.1.314-beta - 31st Jul 2026
 
 * The measure tool counts depth. It never has: Vega to Zeta Reticuli read 34.17 ly for a pair 51 ly apart in depth alone, while the routes and journey durations for the same pair used the honest figure. It now reads 60.99 ly, and still 34.17 ly for a campaign that has turned depth off. The flag was always wired correctly -- the depth was dropped at the pick, so both ends arrived on the reference plane and the 3D maths could only ever return the planar answer.

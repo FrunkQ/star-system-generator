@@ -139,6 +139,9 @@ interface BodyVisual {
   tiltQuat?: THREE.Quaternion; // fixed axial-tilt rotation, composed with the live spin each frame
   isConstruct?: boolean; // icon sprite: fixed screen size, focus-driven size/dim states
   physRadiusAu?: number; // true physical radius in AU (for detecting surface-locked constructs)
+  // The construct DECLARES it is on the surface (`placement: 'Surface'`), which outranks the geometric
+  // detection below: a declaration is a statement, the radius comparison is only a guess about one.
+  surfaceDeclared?: boolean;
   // A construct sitting AT (or below) its parent's physical surface: glued to a fixed surface point
   // that co-rotates with the planet's spin, instead of following its own (Keplerian) orbit — so it
   // slides over the surface at the planet's rotation rate. dir0 is that point in the parent's local frame.
@@ -1738,7 +1741,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
       const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
+      // Same test the document builder uses (`constructsOf`, systemTopology.ts) so the two cannot
+      // disagree about which constructs are on the ground.
+      const surfaceDeclared = isConstruct && String((node as any).placement ?? '').toLowerCase() === 'surface';
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
     // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
@@ -1795,10 +1801,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // riding its own orbit it glues to a fixed surface point that co-rotates with the planet's spin.
         // Capture that point (in the parent's local frame) once, then leave the per-frame placement to
         // updateSurfaceConstructs. Threshold 3% ≈ keeps genuine LEO orbiters (ISS/Tiangong) orbiting.
-        if (b.isConstruct && off > 1e-12 && pv && pv.physRadiusAu && off <= pv.physRadiusAu * 1.03) {
+        // A DECLARED surface construct locks whatever its offset is. That matters because the honest way
+        // to author one is with no orbit at all — every surface construct in the bundled maps carries
+        // `placement: "Surface"` and no `orbit`, so `off` is 0, and the `off > 1e-12` guard below used to
+        // exclude the very case that most plainly means "on the ground". It then fell past the orbital
+        // branch too (also gated on `off`), so it was never positioned at all and simply rendered at the
+        // parent's centre, motionless. `physRadiusAu` was never the problem — it has a 3000 km fallback
+        // and was always present.
+        const declaredOnSurface = !!(b.isConstruct && b.surfaceDeclared && pv);
+        if (declaredOnSurface || (b.isConstruct && off > 1e-12 && pv && pv.physRadiusAu && off <= pv.physRadiusAu * 1.03)) {
           if (!b.surfaceLock) {
-            const sceneDir = tmp.set(ox, oz, oy).normalize(); // same axis-map as the satellite placement
-            const dir0 = sceneDir.clone().applyQuaternion(pv.mesh.quaternion.clone().invert());
+            // With a real offset the authored direction IS the landing site. With none, pick a stable
+            // point from the construct's id — deterministic so it does not wander between reloads, and
+            // distinct per construct so two stations on one moon (LV-426 has exactly that) do not stack.
+            const sceneDir = off > 1e-12 ? tmp.set(ox, oz, oy).normalize() : surfacePointFromId(b.id, tmp);
+            const dir0 = sceneDir.clone().applyQuaternion(pv!.mesh.quaternion.clone().invert());
             b.surfaceLock = { dir0 };
           }
           continue; // updateSurfaceConstructs positions it each frame from the parent's live spin
@@ -1932,6 +1949,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // rendered radius at any scale, and turning with the planet. Runs AFTER updateSpin (fresh parent
   // quaternion) and reuses the parent's stable scene position (set by updatePositions on time change).
   const _surfDir = new THREE.Vector3();
+  /**
+   * A stable landing site on the unit sphere, derived from the construct's id. Used when a construct
+   * declares it is on the surface but carries no offset to say WHERE — the alternative is the centre of
+   * the body, which is what this replaced. Deterministic (same id, same spot, every reload) and spread
+   * by latitude as well as longitude so two stations on one small moon do not land on each other.
+   */
+  function surfacePointFromId(id: string, out: THREE.Vector3): THREE.Vector3 {
+    let h = 2166136261;
+    for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); }
+    const lon = (((h >>> 0) % 65536) / 65536) * Math.PI * 2;
+    const lat = Math.asin((((h >>> 11) % 65536) / 65536) * 2 - 1); // asin keeps it uniform over the sphere
+    const cl = Math.cos(lat);
+    return out.set(cl * Math.sin(lon), Math.sin(lat), cl * Math.cos(lon));
+  }
+
   function updateSurfaceConstructs() {
     for (const b of bodies) {
       if (!b.surfaceLock || !b.parentId) continue;
