@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.303-beta - 31st Jul 2026
+
+* The Spread and Body size dials say where reality is. Both share a convention nothing on screen stated: the left end is physical truth and the right end is the readable exaggeration. A green pip now marks the actual end of each slider, and the read-out names it -- "actual distances" / "actual size", in green -- when the dial is on it.
+
 ## v2.1.302-beta - 31st Jul 2026
 
 * A true-scale planet sits ON its orbit line. The line is a sampled polygon and the body rides the real ellipse, so the drawn line cut inside the truth by a chord error that at 96 samples came to about fourteen true Saturn radii -- under readable body sizes nobody can see it, at true scale Saturn visibly floated off its own orbit and appeared to drift on and off it as it moved, since the gap oscillates from vertex to mid-chord and back. 1024 samples brings the error under a tenth of a radius, so the line passes through the planet disc at any framing.

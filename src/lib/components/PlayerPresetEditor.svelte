@@ -408,8 +408,16 @@
                     {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                   </select>
                 </label>
-                <label>Spread <span>{Math.round(draft.compression * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></label>
-                <label>Body size <span>{draft.bodySize === 0 ? 'true' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></label>
+                <!-- Both dials share a convention that nothing on screen was saying: the LEFT end is
+                     physical truth (0% spread = true distances; body size "true" = true radii) and the
+                     right end is the readable exaggeration. The green pip marks the ACTUAL end, and the
+                     read-out turns green when the dial is on it. -->
+                <label>Spread <span class:actual-on={draft.compression === 0}>{draft.compression === 0 ? 'actual distances' : Math.round(draft.compression * 100) + '%'}</span>
+                  <div class="range-actual" title="Left end = actual (true) distances"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></div>
+                </label>
+                <label>Body size <span class:actual-on={draft.bodySize === 0}>{draft.bodySize === 0 ? 'actual size' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span>
+                  <div class="range-actual" title="Left end = actual (true) body sizes"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></div>
+                </label>
                 <label>Belts &amp; rings
                   <select bind:value={draft.beltStyle}>
                     <option value="rocks">Rocks</option>
@@ -732,6 +740,11 @@
   label.inline, label.chk { flex-direction: row; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text); }
   input[type=text], select { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; font: inherit; }
   input[type=range] { width: 100%; accent-color: var(--accent, #6aa0ff); }
+  /* "Actual" pip: a green marker pinned at the left (physical-truth) end of a scale dial. */
+  .range-actual { position: relative; display: flex; align-items: center; }
+  .range-actual input { flex: 1; }
+  .actual-pip { position: absolute; left: 1px; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: #35c96b; box-shadow: 0 0 4px rgba(53, 201, 107, 0.8); pointer-events: none; z-index: 1; }
+  .actual-on { color: #35c96b !important; }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4; }
   .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
   .holo-wrap { position: relative; width: 100%; height: 100%; }
