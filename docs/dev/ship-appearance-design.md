@@ -14,11 +14,14 @@ hierarchy. Every loader and decoder needed (GLTFLoader, DRACOLoader + its WASM, 
 decoder, STLLoader, OBJLoader) already ships inside the existing `three@0.169` dependency:
 zero new packages.
 
-**Sourcing: bundled models must be CC0 or public domain, and enough exist.** NASA 3D Resources
-(public domain, 257 GLB files, real spacecraft, many under 500 KB as shipped), Kenney Space Kit
-(CC0, 150 models) and Quaternius Ultimate Space Kit (CC0, 92 models, glTF provided) between
-them cover realistic probes/stations and stylised sci-fi hulls. User-supplied models have no
-licence constraint on our side — a GM may load anything they are entitled to use.
+**The primary use case is user-uploaded science-fiction ships, and the design is weighted
+accordingly (owner steer, 2026-08-01).** The abundant supply of fan SF hulls is printing STLs
+(Thingiverse, Printables, Cults3D) and mixed-quality Sketchfab GLBs — which is precisely why
+the import pipeline (accept STL/OBJ/GLB, convert, simplify, normalise) is the front door of
+this feature, not a Phase 4 nicety. A bundled CC0 starter set (NASA real craft, Kenney,
+Quaternius — all licence-verified below) remains worthwhile so a fresh campaign is not empty,
+but it is the garnish. User-supplied models have no licence constraint on our side — a GM may
+load anything they are entitled to use; their campaign, their files.
 
 **Where it renders: both surfaces, differently — and this is not an F1 violation.** The info
 block gets a model viewer (a lit turntable, exactly the slot the 3D body globe already
@@ -97,12 +100,26 @@ Decoder cost, one-time and lazy-loadable: Draco WASM 188 KB; meshopt decoder ~15
   broken in the wild, multi-file (obj + mtl + textures) so a single-file upload usually loses
   its materials. Accept at upload for completeness; never store.
 
-**Conversion at upload, not storage of foreign formats:** STL/OBJ parse to `BufferGeometry`
-via the vendored loaders; re-export as GLB (GLTFExporter is also in three's examples). A
-high-poly STL should be simplified at import — `meshopt_simplifier` exists in the
-`meshoptimizer` npm package (MIT), which is **not** currently a dependency; adding it is a
-flagged decision, or Phase 4 ships without simplification and rejects meshes over a triangle
-cap instead.
+**Conversion at upload, not storage of foreign formats — and this pipeline is the core of the
+feature, since the primary use case is fan SF ships and those are mostly printing STLs.**
+STL/OBJ parse to `BufferGeometry` via the vendored loaders; re-export as GLB (GLTFExporter is
+also in three's examples). The typical fan STL is 1-10 MB and 100k+ triangles, so
+simplification at import is effectively required, not optional — `meshopt_simplifier` lives in
+the `meshoptimizer` npm package (MIT, ~50 KB), a new dependency this document recommends
+accepting. Target ~20k triangles at import (visually fine at both info-block and marker
+scale), with the original count reported so the GM knows what happened. Without the
+dependency the fallback is a hard triangle cap with a "simplify it yourself in Blender"
+message, which for the primary audience is a poor front door.
+
+Two more import realities of wild files, handled at upload rather than discovered later:
+- **Orientation and units.** STLs carry no units and no agreed axis convention (printing
+  models are usually Z-up, mm; three is Y-up, m). The import preview needs nose-direction and
+  up-axis controls (a six-way toggle, not free rotation) and takes size from the construct's
+  authored `dimensionsM`, so unit chaos is irrelevant by construction.
+- **No materials.** An STL arrives colourless. The default dressing for uploads is therefore
+  the neutral-material path tinted by `icon_color` (section 5) — which for fan ships is
+  exactly right: the GM picked that colour for this ship already, and a Rocinante-shaped hull
+  in the ship's own marker colour reads as intended on every render style.
 
 Compression choice for bundled models: either works; the build step (a script, per the starmap
 build kit precedent) can emit meshopt for cheap decode or Draco for minimum bytes. Draco wins
@@ -333,20 +350,26 @@ work is not thrown away when models arrive.
 
 ## 9. Phasing
 
+Reordered 2026-08-01 for the primary use case (user-uploaded SF ships): the import pipeline
+is Phase 1, the bundled set is last.
+
 - **Phase 0 — A30 interim (independent, do now):** glyph-at-size info-block for constructs.
-- **Phase 1 — the field and the viewer:** `model?: ModelRef` (`{ hash|url, name, credit,
-  license, sourceUrl, custom }` — the ImageRef shape plus hash), GLB-only upload with
-  normalisation + caps, hash-addressed IDB store, info-block turntable viewer, export/import
-  embedding. Info block only; no scene change; broadcast ships models once by hash.
+- **Phase 1 — upload + viewer, all three formats:** `model?: ModelRef` (`{ hash|url, name,
+  credit, license, sourceUrl, custom }` — the ImageRef shape plus hash), upload accepting
+  **GLB, STL and OBJ** with convert-at-import (simplify via `meshopt_simplifier` — the one new
+  dependency, MIT — texture downscale for wild GLBs, orientation/up-axis preview,
+  normalisation, caps), hash-addressed IDB store, info-block turntable viewer, export/import
+  embedding, `icon_color` tint for material-less meshes. Info block only; no scene change;
+  broadcast ships models once by hash.
 - **Phase 2 — the scene marker:** model replaces sprite at marker scale under the focus rule;
   glyph LOD threshold; render styles applied; zero-radius invariants pinned by a test.
-- **Phase 3 — starter set + dressing:** CC0/PD set built by a `scripts/` kit (fetch, simplify,
-  **downscale textures to 512 px webp**, meshopt- or Draco-compress, manifest with licence per
-  model — preferring textured/multi-material sources so the filled render styles have real
-  detail), picker UI, `hull-*` tint convention, `icon_type` decal, tag-driven status dressing
-  when construct tags exist.
-- **Phase 4 — optional:** STL/OBJ import conversion (+ `meshoptimizer` dependency for
-  simplification, MIT — flagged), true-scale rendering, per-model dressing overrides.
+- **Phase 3 — dressing:** `hull-*` tint convention for prepared models, `icon_type` decal,
+  tag-driven status dressing when construct tags exist.
+- **Phase 4 — bundled starter set (optional):** CC0/PD set built by a `scripts/` kit (fetch,
+  simplify, downscale textures to 512 px webp, meshopt- or Draco-compress, manifest with
+  licence per model — preferring textured/multi-material sources so the filled render styles
+  have real detail) + picker UI. Also here: true-scale rendering, per-model dressing
+  overrides.
 
 Each phase ships value alone; the design survives stopping after any of them.
 
@@ -371,11 +394,14 @@ Each phase ships value alone; the design survives stopping after any of them.
 
 1. **Scene marker or info-block only?** Section 6 argues the marker is legitimate and
    severable; it is also the half most likely to surprise. (Recommend: yes, as Phase 2.)
-2. **Starter-set art direction:** NASA real craft, stylised low-poly, or both labelled.
-3. **CC0-only bundling, or CC0 + CC-BY with attribution plumbing?** (Recommend CC0-only.)
-4. **The `meshoptimizer` dependency** (MIT) for import-time simplification in Phase 4 —
-   without it, high-poly STLs are rejected above a triangle cap rather than simplified.
-5. **Upload caps** (proposed: warn 500 KB, hard 2 MB) — cheap to change, worth blessing.
+2. **The `meshoptimizer` dependency** (MIT, ~50 KB) for import-time simplification — now
+   Phase 1, since the primary use case uploads high-poly printing STLs. (Recommend: accept;
+   without it the front door rejects most fan models.)
+3. **Upload caps** (proposed: warn 500 KB, hard 2 MB post-conversion) — cheap to change,
+   worth blessing.
+4. **Starter-set art direction** (Phase 4): NASA real craft, stylised low-poly, or both
+   labelled — and whether the set is wanted at all now that uploads lead.
+5. **CC0-only bundling, or CC0 + CC-BY with attribution plumbing?** (Recommend CC0-only.)
 
 ## Appendix: spike method (throwaway, scratchpad only, nothing in src/)
 
