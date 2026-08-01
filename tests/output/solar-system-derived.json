@@ -1183,39 +1183,81 @@
       },
       "apparentColorHex": "#7b94ad",
       "classification": {
-        "base": "planet/swamp",
-        "baseScore": 2.1,
+        "base": "planet/earth-analogue",
+        "baseScore": 2.17,
         "bands": [
           {
-            "feature": "hasBiosphere",
+            "feature": "mass_Me",
             "value": 1,
-            "band": "1 – 1",
+            "band": "0.8 – 1.3",
+            "fit": 1
+          },
+          {
+            "feature": "radius_Re",
+            "value": 1,
+            "band": "0.9 – 1.15",
+            "fit": 1
+          },
+          {
+            "feature": "atm.composition.O2",
+            "value": 0.20917376363364712,
+            "band": "0.1 – 0.35",
             "fit": 1
           },
           {
             "feature": "SurfaceTemp_K",
             "value": 286.92914272748044,
-            "band": "278 – 300",
-            "fit": 1
-          },
-          {
-            "feature": "hydrosphere.composition",
-            "value": "water",
-            "band": "water",
+            "band": "255 – 300",
             "fit": 1
           },
           {
             "feature": "hydrosphere.liquidCoverage",
             "value": 0.71,
-            "band": "0.6 – 0.95",
+            "band": "0.5 – 0.85",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/jungle",
-          "score": 2.06
+          "class": "planet/swamp",
+          "score": 2.1
         },
         "candidates": [
+          {
+            "class": "planet/earth-analogue",
+            "score": 2.17,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 1,
+                "band": "0.8 – 1.3",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 1,
+                "band": "0.9 – 1.15",
+                "fit": 1
+              },
+              {
+                "feature": "atm.composition.O2",
+                "value": 0.20917376363364712,
+                "band": "0.1 – 0.35",
+                "fit": 1
+              },
+              {
+                "feature": "SurfaceTemp_K",
+                "value": 286.92914272748044,
+                "band": "255 – 300",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.liquidCoverage",
+                "value": 0.71,
+                "band": "0.5 – 0.85",
+                "fit": 1
+              }
+            ]
+          },
           {
             "class": "planet/swamp",
             "score": 2.1,
@@ -1272,42 +1314,6 @@
                 "feature": "hydrosphere.liquidCoverage",
                 "value": 0.71,
                 "band": "0.35 – 0.85",
-                "fit": 1
-              }
-            ]
-          },
-          {
-            "class": "planet/earth-analogue",
-            "score": 1.5,
-            "bands": [
-              {
-                "feature": "mass_Me",
-                "value": 1,
-                "band": "0.8 – 1.3",
-                "fit": 1
-              },
-              {
-                "feature": "radius_Re",
-                "value": 1,
-                "band": "0.9 – 1.15",
-                "fit": 1
-              },
-              {
-                "feature": "atm.composition.O2",
-                "value": 0.20917376363364712,
-                "band": "0.1 – 0.35",
-                "fit": 1
-              },
-              {
-                "feature": "SurfaceTemp_K",
-                "value": 286.92914272748044,
-                "band": "255 – 300",
-                "fit": 1
-              },
-              {
-                "feature": "hydrosphere.liquidCoverage",
-                "value": 0.71,
-                "band": "0.5 – 0.85",
                 "fit": 1
               }
             ]

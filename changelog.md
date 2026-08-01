@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.336-beta - 1st Aug 2026
+
+* Earth classifies as an Earth analogue again, rather than as a swamp world. The type was the only distinctive world type in the whole set carrying no importance weighting at all -- it sat level with plain "terrestrial" while forest, jungle and swamp all carried a boost -- so the most demanding description in the taxonomy lost to a less demanding one. Its five tightly-drawn bands were never the problem. A world now only earns the Earth-twin label when it matches all five; miss any of them and its biome describes it better.
+
 ## v2.1.335-beta - 1st Aug 2026
 
 * Fourteen world types are now judged on the temperature of the ground rather than the temperature the world would have with no atmosphere. Desert, ice, lava, ocean, methane, ammonia, hycean, subsurface ocean, the three Earth-like types and the three life-covered ones all describe a SURFACE, so they now read the surface. A world with a strong greenhouse could previously be called an ammonia world at 73 degrees C, where ammonia cannot exist as a liquid at all, or "habitable Earth-like" at the same temperature.

@@ -1064,6 +1064,7 @@
       {
         "class": "planet/earth-analogue",
         "kind": "base",
+        "weight": 1.45,
         "note": "True Earth twin.",
         "match": {
           "mass_Me": [
