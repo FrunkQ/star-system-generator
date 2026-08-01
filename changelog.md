@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.342-beta - 1st Aug 2026
+
+* The player info panel's width now follows the setting. It was converted to pixels once, when a preset was applied, so a width edited while the player window was shut arrived scaled to whatever screen last opened it -- and the top third of the slider did nothing, because the live view capped the panel at 640 px while the slider offered half the screen. The width is now worked out from the stored proportion and the CURRENT window, every time the window changes size.
+* The info panel's drag handle works again. It was hidden at every width by a stylesheet rule that overrode the one meant to show it.
+
 ## v2.1.341-beta - 1st Aug 2026
 
 * A planet now sits inside its own radiation belt. Jupiter read 11.5 mSv/yr -- less than Mars -- from the centre of the most intense radiation environment in the solar system, because the belt was only ever worked out against a body's HOST, and a planet's host is its star.

@@ -182,18 +182,44 @@
   let isPhone = phoneMq?.matches ?? false;
 
   // Desktop: the right-hand body panel is drag-resizable from its left edge; the width is remembered.
-  // Default is deliberately compact (~2/3 of the old 340px) so the map keeps the room.
-  let inspectorWidth = 230;
-  if (browser) { const s = Number(localStorage.getItem('holo-insp-width')); if (s >= 200 && s <= 640) inspectorWidth = s; }
+  // ONE number owns this width and it is a FRACTION of the viewport, never a pixel count (F10): a
+  // proportion travels from the GM's screen to a player's, a pixel count does not. The pixel width is
+  // DERIVED from that fraction and the CURRENT viewport, so it tracks a resize and is right the first
+  // time a window opens. It used to be converted to pixels ONCE, inside applyPlayerPreset, which is why
+  // a width edited with the player window shut arrived at the proportions of whatever viewport last
+  // applied the preset — and why editing and saving with it open appeared to "fix" it (A32).
+  // The bounds MUST match PlayerPresetEditor's slider range, or the top of its travel moves nothing —
+  // the live view used to clamp at 640 px against a slider that offered half of a 1920 px screen (960).
+  const INSP_MIN_PCT = 0.15, INSP_MAX_PCT = 0.5; // == PlayerPresetEditor.svelte's range
+  const INSP_MIN_PX = 200;                        // readability floor, never more than the max fraction
+  let viewportW = browser ? window.innerWidth : 1280;
+  let inspectorWidthPct = 0.18; // ≈ the old compact 230 px default at 1280, so the map keeps the room
+  // A width this reader dragged for themselves, if any. It survives a reload and outranks the preset's
+  // width on the FIRST application (see below) — but only there, so a GM re-deploying still lands.
+  let storedWidthPct: number | null = null;
+  if (browser) {
+    const s = Number(localStorage.getItem('holo-insp-width-pct'));
+    if (s >= INSP_MIN_PCT && s <= INSP_MAX_PCT) { storedWidthPct = s; inspectorWidthPct = s; }
+  }
+  $: inspectorWidth = (() => {
+    const pct = Math.max(INSP_MIN_PCT, Math.min(INSP_MAX_PCT, inspectorWidthPct));
+    const floor = Math.min(INSP_MIN_PX, viewportW * INSP_MAX_PCT);
+    return Math.round(Math.max(floor, pct * viewportW));
+  })();
   function startInspectorResize(e: PointerEvent) {
     e.preventDefault();
     const startX = e.clientX;
     const startW = inspectorWidth;
-    const onMove = (ev: PointerEvent) => { inspectorWidth = Math.max(200, Math.min(640, startW + (startX - ev.clientX))); };
+    // The drag writes back a FRACTION too, so a width dragged on one screen means the same thing on
+    // the next one. Storing the pixels here is what gave this number two owners that disagreed.
+    const onMove = (ev: PointerEvent) => {
+      const px = startW + (startX - ev.clientX);
+      inspectorWidthPct = Math.max(INSP_MIN_PCT, Math.min(INSP_MAX_PCT, px / Math.max(1, viewportW)));
+    };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      try { localStorage.setItem('holo-insp-width', String(Math.round(inspectorWidth))); } catch { /* private mode */ }
+      try { localStorage.setItem('holo-insp-width-pct', inspectorWidthPct.toFixed(4)); } catch { /* private mode */ }
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -353,8 +379,8 @@
     themeKey = BUILTIN_THEME[p.id] ?? (p.systemView === 'holo3d' ? 'holo' : p.systemView === 'list' ? 'guide' : 'console');
     includeConstructs = true;
     holoStyle = holoStyleOf(p);
-    // The preset stores a FRACTION of the viewport; turn it into this display's pixels. (Mobile ignores it.)
-    if (p.inspectorWidthPct && browser) inspectorWidth = Math.max(200, Math.min(640, Math.round(p.inspectorWidthPct * window.innerWidth)));
+    // (The preset's inspectorWidthPct is adopted by the reactive block that CALLS this — see there for
+    // why it cannot be assigned from inside a function.)
     // Default time: the preset picks the starting rate + play state (ignored while following the GM,
     // whose clock takes over wholesale).
     rateIndex = Math.max(0, Math.min(RATE_STEPS.length - 1, p.defaultRateIndex ?? DEFAULT_RATE_INDEX));
@@ -435,7 +461,19 @@
   // the preset in place (same id) and rides the next SYNC_STARMAP — the open window must refresh live.
   $: pendingPresetJson = pendingPreset ? JSON.stringify(pendingPreset) : null;
   $: if (pendingPreset && pendingPresetJson && appliedPresetJson !== pendingPresetJson) {
+    const firstApply = appliedPresetJson === null;
     appliedPresetJson = pendingPresetJson;
+    // The panel width is adopted HERE, in plain sight, rather than inside applyPlayerPreset. Svelte
+    // orders `$:` statements by the assignments it can SEE: a write buried in a called function cannot
+    // order the derivation that reads it, so `inspectorWidth` would be computed before this ran and
+    // never recomputed — a stale width from a one-way write, which is A32 wearing a different hat.
+    // WHO OWNS THE WIDTH: the preset, unless this reader has dragged one for themselves. On the FIRST
+    // application (window opening) a stored drag wins, so a width dragged here survives a reload; on
+    // every later one — the GM editing or swapping the preset live — the deploy wins, which is the
+    // whole point of deploying it.
+    if (pendingPreset.inspectorWidthPct && !(firstApply && storedWidthPct !== null)) {
+      inspectorWidthPct = pendingPreset.inspectorWidthPct;
+    }
     applyPlayerPreset(pendingPreset);
   }
 
@@ -849,6 +887,9 @@
     if (browser) { cancelAnimationFrame(rafId); window.removeEventListener('popstate', onPopState); }
   });
 </script>
+
+<!-- The info panel's pixel width is a fraction of THIS number, so a resize has to reach it (A32). -->
+<svelte:window bind:innerWidth={viewportW} />
 
 <svelte:head>
   <title>{selectedSystemNode?.name ?? starmap?.name ?? 'Field Guide'} — Catalogue</title>
@@ -1392,7 +1433,11 @@
   }
   @media (min-width: 720px) {
     .inspector { left: auto; width: var(--insp-w, 340px); top: 0; bottom: 0; max-height: none; border-top: none; border-left: 1px solid rgba(120, 180, 255, 0.35); }
-    .insp-resize { display: block; }
+    /* Specific enough to BEAT the `.insp-resize { display: none }` block below it: that rule is later
+       in the sheet at equal specificity, so the handle was hidden at every width and the panel could
+       not be dragged at all. Found while verifying A32, whose third fault is about who owns the width
+       the drag writes. */
+    .inspector .insp-resize { display: block; }
   }
   .insp-resize {
     display: none;
