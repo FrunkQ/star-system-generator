@@ -29,10 +29,18 @@ export type ListStyle =
 // The overall document skin — one renderer, many looks. Each maps to a full base theme in
 // documentStyles.ts (font + colour set + list glyphs); a preset's explicit fields override it.
 export type DocumentStyle =
+  | 'greyscale'  // NO colour at all — the base a tinting filter (CRT / night vision / thermal) wants
   | 'guide'      // dark, illustrated field guide (serif, gold-on-dark, rainbow schematic)
   | 'report'     // monocolour company report (white paper, black ink, bold sans, numbered)
   | 'brochure'   // pretty travel brochure (warm cream, coral/teal, illustrated)
-  | 'terminal';  // green-screen terminal (phosphor mono, '>' log lines) — shines under CRT
+  | 'terminal'   // white-on-black readout (mono, '>' log lines) — shines under a phosphor filter
+  | 'amber'      // amber phosphor on black — the salvaged-freighter terminal
+  | 'blueprint'  // cyan on deep blue drafting paper — schematics and survey plots
+  | 'holotable'  // teal/cyan glow on near-black — a projected table readout
+  | 'hazard'     // industrial black and safety-yellow — a corporate operations manual
+  | 'alert'      // red on black — condition one, and deliberately tiring to read for long
+  | 'cleanroom'  // white and ice-blue — medical, scientific, expensively sterile
+  | 'neon';      // magenta and cyan on black — neon-noir, rain, bad decisions
 
 // How navigator rows + key elements render: plain hanging text, or boxed "buttons".
 // 'plain'  hanging-bullet rows, one per line (the book look)

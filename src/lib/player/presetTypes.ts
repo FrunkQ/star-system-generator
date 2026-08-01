@@ -102,6 +102,13 @@ export interface PlayerPreset {
   // arrangements derives from the text scale — the card grid's column count, the dossier's field
   // columns, the glyph row's disc size — so this is the control that makes them all behave.
   starmapFontScale?: number;
+  // The starmap document gets its OWN colouration and per-slot colours. They used to be inherited from
+  // the System step's Info Block Appearance, which is the wrong place twice over: the two stages are
+  // different documents that a GM will want to look different, and the greyscale a green-screen or CRT
+  // filter needs is a property of the STAGE being filtered, not of the body info block on another page.
+  // Unset = fall back to the system document's, so an existing preset is unchanged.
+  starmapDocumentStyle?: DocumentStyle;
+  starmapThemeColors?: DocColors;
   photoFrame?: 'letterbox' | 'full' | 'sliver'; // document: how a body photo is framed
   themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,

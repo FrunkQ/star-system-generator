@@ -260,7 +260,10 @@ function diagramCatalogue(systems: any[], opts: StarmapDocOpts, full: boolean): 
   const out: DocBlock[] = [];
   systems.forEach((node, i) => {
     out.push({
-      kind: 'heading', level: 3, text: node.name, id: node.id,
+      // The contents line rides as the heading's strap: a diagram shows you the SHAPE of a system but
+      // not how much is in it, and the compact strip drops the names too, so without this an entry
+      // says nothing countable at all.
+      kind: 'heading', level: 3, text: node.name, sub: summary(node), id: node.id,
       selected: node.id === opts.selectedId,
       ...(opts.colorful ? { color: rainbowHue(i) } : {})
     });

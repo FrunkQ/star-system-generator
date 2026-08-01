@@ -52,16 +52,24 @@
     if (m) { const h = (n: string) => parseInt(n).toString(16).padStart(2, '0'); return `#${h(m[1])}${h(m[2])}${h(m[3])}`; }
     return '#888888';
   }
-  function docColour(id: string): string {
-    const seed = (documentStyleBase(draft.documentStyle) as any).colors[id];
-    return toHex((draft.themeColors as any)?.[id] ?? seed);
+  // The SAME control, twice: the system document and the starmap document each have their own
+  // colouration and per-slot colours. `scope` picks which of the two a control is editing; the starmap
+  // falls back to the system's values until it is given its own, so nothing changes for an existing
+  // preset until a GM touches it.
+  type ColourScope = 'system' | 'starmap';
+  const styleOf = (scope: ColourScope) =>
+    scope === 'starmap' ? (draft.starmapDocumentStyle ?? draft.documentStyle) : draft.documentStyle;
+  const colorsOf = (scope: ColourScope) =>
+    scope === 'starmap' ? (draft.starmapThemeColors ?? draft.themeColors) : draft.themeColors;
+  function setDocColour(scope: ColourScope, id: string, hex: string) {
+    const next = { ...(colorsOf(scope) ?? {}), [id]: hex };
+    draft = scope === 'starmap' ? { ...draft, starmapThemeColors: next } : { ...draft, themeColors: next };
   }
-  function setDocColour(id: string, hex: string) {
-    draft = { ...draft, themeColors: { ...(draft.themeColors ?? {}), [id]: hex } };
-  }
-  function applyColouration(style: string) {
+  function applyColouration(scope: ColourScope, style: string) {
     // New colouration → reset any per-slot tweaks so the picked style's colours show cleanly.
-    draft = { ...draft, documentStyle: style as any, themeColors: {} };
+    draft = scope === 'starmap'
+      ? { ...draft, starmapDocumentStyle: style as any, starmapThemeColors: {} }
+      : { ...draft, documentStyle: style as any, themeColors: {} };
   }
 
   export let preset: PlayerPreset;
@@ -73,14 +81,17 @@
   // Colouration swatches — reactive so they refresh when the Colouration style (or a tweak) changes.
   // The swatches must show what is ACTUALLY used, and the preset's accent seeds the accent + heading
   // slots on top of the colouration (see makeDocTheme) — so seed them the same way here.
-  $: docSeedColors = {
-    ...(documentStyleBase(draft.documentStyle) as any).colors,
-    ...(draft.accentColor && draft.accentColor !== 'rainbow' ? { accent: draft.accentColor, heading: draft.accentColor } : {})
+  $: docColoursFor = (scope: ColourScope) => {
+    const seed = {
+      ...(documentStyleBase(styleOf(scope)) as any).colors,
+      ...(draft.accentColor && draft.accentColor !== 'rainbow'
+        ? { accent: draft.accentColor, heading: draft.accentColor } : {})
+    };
+    return DOC_COLOUR_SLOTS.map((s) => ({
+      id: s.id, label: s.label,
+      hex: toHex((colorsOf(scope) as any)?.[s.id] ?? seed[s.id])
+    }));
   };
-  $: docColours = DOC_COLOUR_SLOTS.map((s) => ({
-    id: s.id, label: s.label,
-    hex: toHex((draft.themeColors as any)?.[s.id] ?? docSeedColors[s.id])
-  }));
 
   // ── Wizard tabs ─────────────────────────────────────────────────────────────
   const TABS = [
@@ -190,6 +201,36 @@
 </script>
 
 <svelte:window on:keydown={onKeydown} />
+
+<!-- The two DOCUMENTS — the starmap's and the system's — are configured by the same controls, in the
+     same order, on their own steps. These snippets are that shared pair: pick a colouration, then tweak
+     its slots. `scope` says which document is being edited. Anything genuinely stage-specific (an
+     arrangement, a body graphic) sits ABOVE them on its own step, so the important choice is nearest
+     the top and the fiddly palette is where a reader has learned to expect it. -->
+{#snippet colouration(scope: ColourScope)}
+  <!-- A documentStyle SEEDS the colours; the slots below then override individual ones. Layout is the
+       same across styles — only the palette (and the fonts, set on General) changes. -->
+  <label>Colouration
+    <select value={styleOf(scope)}
+      on:change={(e) => applyColouration(scope, (e.currentTarget as HTMLSelectElement).value)}>
+      {#each DOCUMENT_STYLES as ds}<option value={ds.value}>{ds.label}</option>{/each}
+    </select>
+  </label>
+{/snippet}
+
+{#snippet colourSlots(scope: ColourScope)}
+  <details class="colour-picker">
+    <summary>Colours</summary>
+    <div class="doc-colours">
+      {#each docColoursFor(scope) as slot (slot.id)}
+        <label class="col-row"><span>{slot.label}</span>
+          <input type="color" value={slot.hex}
+            on:input={(e) => setDocColour(scope, slot.id, (e.currentTarget as HTMLInputElement).value)} />
+        </label>
+      {/each}
+    </div>
+  </details>
+{/snippet}
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 <div class="modal-bg" on:click={requestClose}>
@@ -348,6 +389,20 @@
                 </label>
                 <p class="hint">Sizes the type AND the layout: bigger text means fewer, wider columns and
                   larger glyphs; smaller fits more of the map on one screen.</p>
+                <!-- The starmap document's OWN palette, in the same order and with the same controls the
+                     system document uses on its step. It used to inherit the system's, which is the wrong
+                     place twice: the two are different documents a GM will want to look different, and
+                     the greyscale a green-screen or CRT filter needs belongs to the STAGE being filtered,
+                     not to the body info block on another page. -->
+                {@render colouration('starmap')}
+                <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Greyscale (for tinting filters)</label>
+                <p class="hint">Takes the whole page to grey — type, world discs and photos together — so
+                  a green-screen, CRT or night-vision filter can colour it cleanly.</p>
+                {#if !draft.starmapMono}
+                  {@render colourSlots('starmap')}
+                {/if}
+                <p class="hint">List and navigation styles are shared with the system document and are set
+                  on the System step.</p>
               {/if}
               <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
               {#if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
@@ -357,7 +412,7 @@
                   </select>
                 </label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.starmapRouteGlow} /> Glowing routes</label>
-                <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (for tints)</label>
+                <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (bleach — for a tinting filter)</label>
                 {#if draft.starmapView === 'holo3d'}
                   <!-- WS7: stretch DEPTH so it reads on screen. Visual only — journey distances are
                        unaffected (see lib/map/systemDistance.ts). 1x = true depth. -->
@@ -483,29 +538,16 @@
               {#if draft.systemView === 'document'}
                 <!-- Colouration: a documentStyle SEEDS the colours, then tweak each slot. Layout is the
                      same across styles — only the palette (and fonts, set on General) changes. -->
-                <label>Colouration
-                  <select value={draft.documentStyle} on:change={(e) => applyColouration((e.currentTarget as HTMLSelectElement).value)}>
-                    {#each DOCUMENT_STYLES as ds}<option value={ds.value}>{ds.label}</option>{/each}
-                  </select>
-                </label>
+                {@render colouration('system')}
                 <label>Colour
                   <select bind:value={draft.bodyStyle}>
                     <option value="textured">True colour</option>
                     <option value="flat">Flat colour (by type)</option>
-                    <option value="white">Monochrome (bleach — for a tinting filter)</option>
+                    <option value="white">Greyscale (for tinting filters)</option>
                   </select>
                 </label>
                 {#if draft.bodyStyle !== 'white'}
-                  <details class="colour-picker">
-                    <summary>Colours</summary>
-                    <div class="doc-colours">
-                      {#each docColours as slot (slot.id)}
-                        <label class="col-row"><span>{slot.label}</span>
-                          <input type="color" value={slot.hex} on:input={(e) => setDocColour(slot.id, (e.currentTarget as HTMLInputElement).value)} />
-                        </label>
-                      {/each}
-                    </div>
-                  </details>
+                  {@render colourSlots('system')}
                 {/if}
               {/if}
               <!-- "Body graphics" is the per-body PICTURE in the info block — now for EVERY view (D6:
@@ -688,8 +730,10 @@
             {:else}
               <!-- D9: the starmap DOCUMENT — same engine + theme as the system document, real filter. -->
               <FilteredDocumentView stage="starmap" starmap={$starmapStore} {rulePack}
-                font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
-                listStyle={draft.listStyle} documentStyle={draft.documentStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
+                font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.starmapMono}
+                listStyle={draft.listStyle} navStyle={draft.navStyle}
+                documentStyle={draft.starmapDocumentStyle ?? draft.documentStyle}
+                themeColors={draft.starmapThemeColors ?? draft.themeColors}
                 starmapLayout={draft.starmapLayout} starmapFieldIcons={draft.starmapFieldIcons !== false}
                 fontScale={draft.starmapFontScale ?? draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}

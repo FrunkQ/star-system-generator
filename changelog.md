@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.354-beta - 2nd Aug 2026
+
+* The starmap document has its OWN colours. They used to be inherited from the system info block on another step, which is the wrong place twice over: the two are different documents you will want to look different, and the greyscale a green-screen or CRT filter needs belongs to the stage being filtered. Same controls, same order, on the Starmap step.
+* Eight more colourations, with GREYSCALE at the top of the list: Amber terminal, Blueprint, Holotable, Industrial hazard, Red alert, Clean room and Neon noir. Picking Greyscale takes the whole page to grey by itself -- one lever, not a palette plus a checkbox to match it.
+* One word for one thing: what the 3D views called "monochrome/white" is now "Greyscale (for tinting filters)" everywhere, and the starmap's greyscale bleaches the map AND its document together.
+* The diagram arrangements list each system's star, planet and moon counts again -- a diagram shows you the shape of a system but not how much is in it.
+
 ## v2.1.353-beta - 2nd Aug 2026
 
 * Long lists alternate their row shading when there is no rainbow to tell the rows apart. A page of forty-two identically-coloured rows is hard to track across; the wash is faint enough to read as a change of shade rather than a box, and it never appears where the rainbow already does the job.
