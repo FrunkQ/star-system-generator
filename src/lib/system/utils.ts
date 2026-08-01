@@ -73,13 +73,14 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
   playerSystem.nodes = playerSystem.nodes.filter((node: any) => !hiddenIds.has(node.id)).map((node: CelestialBody | Barycenter) => {
       // Remove GM-only fields
       delete (node as any).gmNotes;
-      // A construct's cargo MANIFEST is GM-only. A star catalogue would know what a hold can take, not
-      // what is in it — and unlike `description` this field has no per-node hide flag, so leaving it in
-      // would publish every ship's manifest the moment the ship itself is visible. Nothing has ever
-      // rendered it, but it was crossing the wire regardless, so this closes a real leak rather than
-      // only settling a display question. The A2 construct block still prints cargo TONNAGE, which is
-      // observable from outside; the prose is what stays behind. See A27.
-      delete (node as any).cargoDescription;
+      // A construct's cargo MANIFEST used to be deleted here (A27). REVERSED by decision, 2026-08-01:
+      // it now travels and the "Live readings" toggle governs whether a reader sees it, exactly as it
+      // governs the cargo tonnage the manifest describes. A27's reasoning — "a star catalogue would
+      // not know what is in the hold" — turned out to be the same statement the toggle makes, so the
+      // question was a display one after all rather than a leak.
+      // KNOW THE CONSEQUENCE, which is A29's and was accepted on the same terms: the prose crosses the
+      // wire whatever the preset says, so anyone reading the raw broadcast has it. If that ever needs
+      // to stop being true, the strip belongs back here — but do not reinstate it without being asked.
 
       // Handle Description Hiding
       if ((node as any).description_playerhidden) {

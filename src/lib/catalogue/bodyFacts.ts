@@ -72,6 +72,10 @@ export function classLabel(b: CelestialBody): string {
 export interface FactContext {
   rulePack?: RulePack | null;
   host?: CelestialBody | null;
+  // The system the construct sits in, so an autopilot route can NAME the places its legs point at
+  // instead of printing ids. Optional: without it the route row still lists what the ship does, and
+  // any leg that can only be identified by a place is left out rather than shown as a raw id.
+  system?: { nodes: { id: string; name?: string }[] } | null;
   // A29: print a construct's CURRENT levels as well as its capacity. Off (the default) is the reference
   // -work reading — what a ship can carry, not what is in it. Presentation only; the figures reach the
   // player either way, which is a known and accepted trade-off recorded in A29.
@@ -110,10 +114,18 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
   add('Type', any.class
     ? String(any.class).split('/').map((s: string) => titleCase(s)).filter(Boolean).join(' · ')
     : titleCase(b.roleHint || 'construct'));
-  if (any.flight_state) add('Status', String(any.flight_state));
-  // orbit_string is 'N/A' when there is no host to describe the orbit against — don't print that.
-  if (specs.orbit_string && specs.orbit_string !== 'N/A') add('Location', specs.orbit_string);
-  else add('Location', b.placement ? String(b.placement) : '');
+  // Where the ship IS is a live reading; where it normally sits is not. `flight_state` changes minute
+  // to minute, so it follows the toggle. `Location` stays in capacity mode for a berth — an orbit, a
+  // dock, a landing — because that is a standing assignment a reference work would list; but a ship
+  // under way has no such place, and its orbit_string is telemetry ("Deep Space (v=12.3 km/s)"), so
+  // the row is simply absent rather than quoting a speed under a capacity heading.
+  const underWay = any.flight_state === 'Transit' || any.flight_state === 'Deep Space';
+  if (live && any.flight_state) add('Status', String(any.flight_state));
+  if (live || !underWay) {
+    // orbit_string is 'N/A' when there is no host to describe the orbit against — don't print that.
+    if (specs.orbit_string && specs.orbit_string !== 'N/A') add('Location', specs.orbit_string);
+    else add('Location', b.placement ? String(b.placement) : '');
+  }
   add('Orbital period', any.orbital_period_days
     ? `${any.orbital_period_days < 2 ? any.orbital_period_days.toFixed(2) : Math.round(any.orbital_period_days).toLocaleString()} days` : '');
 
@@ -141,9 +153,17 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
   add('Dry mass', tonnes(specs.dryMass_tonnes));
   const cargoCap = typeof pp.cargoCapacity_tonnes === 'number' && pp.cargoCapacity_tonnes > 0 ? pp.cargoCapacity_tonnes : 0;
   if (!live) add('Cargo capacity', tonnes(cargoCap));
-  else add('Cargo', cargoCap
-    ? `${Math.round(b.current_cargo_tonnes ?? 0).toLocaleString()} of ${Math.round(cargoCap).toLocaleString()} t`
-    : tonnes(b.current_cargo_tonnes));
+  else {
+    add('Cargo', cargoCap
+      ? `${Math.round(b.current_cargo_tonnes ?? 0).toLocaleString()} of ${Math.round(cargoCap).toLocaleString()} t`
+      : tonnes(b.current_cargo_tonnes));
+    // The MANIFEST rides with the tonnage, because it answers the same question: what is in the hold
+    // right now. It was stripped from the snapshot outright under A27, on the reasoning that a
+    // catalogue would not know it — which is true, and is exactly what "Live readings" now expresses.
+    // So it travels again and is shown only on an instrument. Note the consequence, knowingly taken
+    // and identical to A29's: the prose now crosses the wire whatever the toggle says.
+    if (any.cargoDescription) add('Manifest', String(any.cargoDescription));
+  }
   // Total mass is dry + CURRENT cargo + CURRENT fuel, so it restates the reading the other rows just
   // withheld. It follows the toggle rather than quietly leaking it back.
   if (fuelKnown && live) add('Total mass', tonnes(specs.totalMass_tonnes));
@@ -190,6 +210,39 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
     }
   }
   if (specs.canAerobrake) add('Aerobraking', `up to ${specs.aerobrakeLimit_kms.toFixed(1)} km/s`);
+
+  // --- What it is doing (live readings only) ---
+  // A ship's ROUTE is a live reading of its intent, so it belongs with the fuel and the cargo rather
+  // than in a catalogue entry. Only the autopilot PLAN survives to the player: the starmap snapshot
+  // strips `scheduled_journeys` and `draft_transit_plan` (bulk + forward-looking tactical data), so
+  // this is the route it is flying, not the schedule it is flying it on — which is all a watcher
+  // could infer anyway. Place NAMES need the system; without one the leg is described by its verb.
+  if (live && (b as any).autopilot?.legs?.length) {
+    const ap = (b as any).autopilot as import('$lib/types').Autopilot;
+    const placeName = (id?: string) => {
+      if (!id) return '';
+      return ctx.system?.nodes.find((n) => n.id === id)?.name ?? '';
+    };
+    const res = (keys?: string[]) => (keys ?? []).map((k) => k.split('/').pop()!.replace(/-/g, ' ')).join(', ');
+    const whereName = (w?: import('$lib/types').AutopilotWhere) =>
+      !w ? '' : w.kind === 'place' ? placeName(w.placeId) : res(w.resourceKeys);
+    const legText = (l: import('$lib/types').AutopilotLeg): string => {
+      const to = whereName(l.deliverTo);
+      switch (l.action) {
+        case 'mine':      return `Mine ${res(l.resourceKeys) || 'resources'}${to ? ` → ${to}` : ''}`;
+        case 'transport': return `Carry ${res(l.resourceKeys) || 'cargo'}${placeName(l.placeId) ? ` from ${placeName(l.placeId)}` : ''}${to ? ` → ${to}` : ''}`;
+        case 'patrol':    return `Patrol ${placeName(l.placeId) || 'station'}`;
+        case 'explore':   return `Survey ${res(l.resourceKeys) || 'the system'}`;
+        case 'escort':    return `Escort ${placeName(l.placeId) || 'a vessel'}`;
+        default:          return String(l.action);
+      }
+    };
+    const steps = ap.legs.map(legText).filter(Boolean);
+    if (steps.length) {
+      const how = [ap.repeat ? 'looping' : 'one run', ap.enabled ? null : 'not engaged'].filter(Boolean).join(', ');
+      add('Route', `${steps.join(' · ')} (${how})`);
+    }
+  }
 
   // Same contract as a body's tags: the row is named 'Tags' so the document can lift it out and
   // render it as the styled tags block instead of a key/value line.

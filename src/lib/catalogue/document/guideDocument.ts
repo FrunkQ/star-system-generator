@@ -145,7 +145,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     const hostId = (subject as any).parentId || (subject as any).orbit?.hostId;
     const host = hostId ? (nodeById(system, hostId) as CelestialBody | null) : null;
     const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C',
-      { rulePack: opts.rulePack, host, liveReadings: opts.liveReadings });
+      { rulePack: opts.rulePack, host, liveReadings: opts.liveReadings, system });
     const rows = facts.filter((f) => f.value && f.label !== 'Tags');
     if (rows.length) blocks.push({ kind: 'spacer', h: 4 });
     for (const f of rows) blocks.push({ kind: 'keyValue', label: f.label, value: f.value });

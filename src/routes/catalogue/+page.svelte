@@ -654,7 +654,7 @@
           panelW: inspectorWidth,
           title: selectedBody.name,
           sub: selectedBody.roleHint || 'body',
-          facts: bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings }),
+          facts: bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem }),
           description: selectedBody.description || '',
           accent: presetAccent, font: presetFont, fontScale: infoFontScale,
           mono: activePreset?.bodyStyle === 'white',
@@ -939,7 +939,7 @@
             <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
           {/if}
           <dl class="insp-grid">
-            {#each bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings }) as f}
+            {#each bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem }) as f}
               <dt>{f.label}</dt><dd>{f.value}</dd>
             {/each}
           </dl>

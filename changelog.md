@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.346-beta - 1st Aug 2026
+
+* The construct block is gated by one rule now: a row is a live reading if it changes minute to minute, and a specification if it does not. Status is a live reading. A berth -- an orbit, a dock, a landing -- is not, so it stays; a ship under way has no berth and no longer quotes its speed under a capacity heading.
+* A cargo manifest is shown again, with live readings on, beside the tonnage it describes.
+* A ship under autopilot lists the route it is flying, with live readings on.
+
 ## v2.1.345-beta - 1st Aug 2026
 
 * A ship now quotes the performance it is RATED for. With live readings off there was no acceleration or delta-v row at all, because both existing figures describe how loaded and how fuelled the ship happens to be right now. A catalogue entry shows delta-v at full tanks and the acceleration band from full to empty, worked out with an empty hold so it is a property of the ship rather than of today's cargo.

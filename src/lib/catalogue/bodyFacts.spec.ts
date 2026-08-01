@@ -101,3 +101,56 @@ describe('bodyFacts — a construct quotes rated performance in capacity mode', 
     expect(after).toBe(before);
   });
 });
+
+// The gating sweep asked for on 2026-08-01: what belongs on an instrument versus in a reference work.
+describe('bodyFacts — a construct block gates by what changes, not by what is interesting', () => {
+  const pack: any = {
+    engineDefinitions: { entries: [{ id: 'e1', name: 'Drive', type: 'Fusion Torch', thrust_kN: 2000, efficiency_isp: 5000, atmo_efficiency: 1 }] },
+    fuelDefinitions: { entries: [{ id: 'f1', name: 'Deuterium', density_kg_per_m3: 200 }] }
+  };
+  const system: any = { nodes: [{ id: 'ceres', name: 'Ceres' }, { id: 'luna', name: 'Luna' }] };
+  const ship: any = {
+    id: 'roci', name: 'Rocinante', kind: 'construct',
+    physical_parameters: { massKg: 1_000_000, cargoCapacity_tonnes: 200 },
+    engines: [{ engine_id: 'e1', quantity: 1 }],
+    fuel_tanks: [{ fuel_type_id: 'f1', capacity_units: 3500, current_units: 2820 }],
+    current_cargo_tonnes: 40, cargoDescription: 'Ammo & Coffee',
+    flight_state: 'Transit', placement: 'Low Orbit',
+    autopilot: {
+      enabled: true, traversal: 'in-order', repeat: true, planning: 1, drive: 0.5,
+      ignoreFuel: false, ignoreSupplies: false,
+      legs: [{ action: 'mine', resourceKeys: ['volatile/water-ice'], deliverTo: { kind: 'place', placeId: 'luna' } }]
+    }
+  };
+  const get = (live: boolean, label: string) =>
+    bodyFacts(ship, 'metric', 'C', { rulePack: pack, liveReadings: live, system })
+      .find((f) => f.label === label)?.value;
+
+  it('keeps both capacities in capacity mode, as capacities', () => {
+    expect(get(false, 'Cargo capacity')).toBe('200 t');
+    expect(get(false, 'Fuel capacity')).toContain('3,500 m³');
+    expect(get(false, 'Cargo')).toBeUndefined();
+    expect(get(false, 'Fuel')).toBeUndefined();
+  });
+
+  it('shows the manifest and the route only on an instrument', () => {
+    expect(get(true, 'Manifest')).toBe('Ammo & Coffee');
+    expect(get(true, 'Route')).toBe('Mine water ice → Luna (looping)');
+    expect(get(false, 'Manifest')).toBeUndefined();
+    expect(get(false, 'Route')).toBeUndefined();
+  });
+
+  it('withholds a status, and a location that is only a velocity, from the capacity view', () => {
+    expect(get(true, 'Status')).toBe('Transit');
+    expect(get(false, 'Status')).toBeUndefined();
+    expect(get(false, 'Location')).toBeUndefined();   // under way: no berth to quote
+  });
+
+  it('keeps the berth of a construct that is not under way', () => {
+    const docked = { ...ship, flight_state: 'Docked', placement: 'Docked at Tycho' };
+    const at = (live: boolean) => bodyFacts(docked as any, 'metric', 'C', { rulePack: pack, liveReadings: live, system })
+      .find((f) => f.label === 'Location')?.value;
+    expect(at(false)).toBeTruthy();
+    expect(at(true)).toBeTruthy();
+  });
+});
