@@ -326,6 +326,7 @@
                   <select bind:value={draft.starmapLayout}>
                     <option value="list">Index — one row per system</option>
                     <option value="dossier">Dossier — a form per system</option>
+                    <option value="glyphs">Catalogue — name and its worlds, drawn</option>
                   </select>
                 </label>
                 <p class="hint">The shape of the page. The colouration, fonts and list glyphs on the Look
@@ -335,6 +336,16 @@
                   <p class="hint">A glyph before each field — a star for the primary, a disc for planets,
                     a ring for moons. Same shapes the navigator lists use.</p>
                 {/if}
+                <!-- Every width in the arrangements derives from the text scale — the card grid's column
+                     count, the dossier's field columns, the glyph row's disc size — so this one slider is
+                     what sizes the whole page, not just its type. -->
+                <label>Text size <span>{Math.round((draft.starmapFontScale ?? 1) * 100)}%</span>
+                  <input type="range" min="0.7" max="1.8" step="0.05"
+                    value={draft.starmapFontScale ?? 1}
+                    on:input={(e) => (draft = { ...draft, starmapFontScale: Number((e.currentTarget as HTMLInputElement).value) })} />
+                </label>
+                <p class="hint">Sizes the type AND the layout: bigger text means fewer, wider columns and
+                  larger glyphs; smaller fits more of the map on one screen.</p>
               {/if}
               <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
               {#if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
@@ -678,7 +689,7 @@
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
                 starmapLayout={draft.starmapLayout} starmapFieldIcons={draft.starmapFieldIcons !== false}
-                fontScale={draft.infoFontScale}
+                fontScale={draft.starmapFontScale ?? draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
                 companyName={draft.companyName} footerText={draft.footerText}
                 selectable={false} />

@@ -229,3 +229,49 @@ describe('buildStarmapDocument — the index carries a hue per system for rainbo
     expect(list.nav).toBeUndefined();
   });
 });
+
+// G1 arrangement 3 — STAR-GLYPH CATALOGUE. The builder chooses WHICH bodies appear and how big; the
+// colour of every disc comes from the body itself in the renderer, so there is nothing here that could
+// become a class-to-colour table.
+describe('buildStarmapDocument — glyph catalogue', () => {
+  const map: any = {
+    name: 'M', distanceUnit: 'ly', scale: { pixelsPerUnit: 10 }, mapMode: 'scaled',
+    systems: [{ id: 'sol', name: 'Sol', position: { x: 0, y: 0 }, system: { nodes: [
+      { id: 'a', name: 'A', kind: 'body', roleHint: 'star', massKg: 3e30 },
+      { id: 'b', name: 'B', kind: 'body', roleHint: 'star', massKg: 1e30 },
+      { id: 'p2', name: 'Outer', kind: 'body', roleHint: 'planet', parentId: 'a', orbit: { elements: { a_AU: 5 } } },
+      { id: 'p1', name: 'Inner', kind: 'body', roleHint: 'planet', parentId: 'a', orbit: { elements: { a_AU: 1 } } },
+      { id: 'm', name: 'Moon', kind: 'body', roleHint: 'moon', parentId: 'p1' },
+      { id: 'belt', name: 'Belt', kind: 'body', roleHint: 'belt', parentId: 'a' }
+    ] } }]
+  };
+  const row = () => buildStarmapDocument(map, { layout: 'glyphs' }).find((b) => b.kind === 'glyphRow') as any;
+
+  it('puts the primary first and largest, companions smaller, planets in orbital order', () => {
+    const r = row();
+    expect(r.items.map((i: any) => i.body.id)).toEqual(['a', 'b', 'p1', 'p2']);
+    expect(r.items[0].scale).toBe(1);
+    expect(r.items[1].scale).toBeLessThan(1);
+    expect(r.items[2].scale).toBeLessThan(r.items[1].scale);
+  });
+
+  it('leaves moons and belts out — at this size they are specks that make the row unreadable', () => {
+    expect(row().items.some((i: any) => i.body.id === 'm' || i.body.id === 'belt')).toBe(false);
+  });
+
+  it('labels the row with the system and keeps it tappable', () => {
+    expect(row().label).toBe('Sol');
+    expect(row().id).toBe('sol');
+    expect(row().sub).toContain('star');
+  });
+
+  // RAINBOW: the LABEL only. The discs are real derived colours and repainting them across a spectrum
+  // would swap information for decoration — the one thing this arrangement must not do.
+  it('hues the system name and never the discs', () => {
+    const r = buildStarmapDocument(map, { layout: 'glyphs', colorful: true })
+      .find((b) => b.kind === 'glyphRow') as any;
+    expect(r.labelColor).toBeTruthy();
+    expect(r.items.every((i: any) => i.color === undefined)).toBe(true);
+    expect(row().labelColor).toBeUndefined();
+  });
+});

@@ -173,6 +173,23 @@ export interface FieldGridBlock extends DocBlockBase {
   maxCols?: number;  // beyond four a form stops being scannable (default 4)
   rules?: boolean;   // faint fill-in line under each value — the printed-form cue (default true)
 }
+// A ROW of small body discs drawn inline (G1). Deliberately general — N bodies at a given row height,
+// each with its own relative size — so the system document can use it later for a moon run or a
+// companion pair, not only the starmap's star-glyph catalogue.
+//
+// The colours are NOT chosen here and there is no class-to-colour table anywhere near it: each disc is
+// the body's own `getPlanetTexture` canvas, the same procedural 2D image the orrery and PlanetDisc
+// draw, which is generated from the derived `apparentColor` palette. A body with no palette (or no
+// canvas, as in tests) falls back to `deriveAppearance().baseColorHex`, which is derived too — from
+// the composition for a world and from the temperature for a star.
+export interface GlyphRowBlock extends DocBlockBase {
+  kind: 'glyphRow';
+  items: { body: unknown; scale: number }[]; // scale 0..1 of the row height
+  height?: number;      // row height in px at fontScale 1 (default 26)
+  label?: string;       // optional caption in a fixed column to the LEFT of the discs
+  labelColor?: string;  // builder-set (the rainbow walks the labels here — see starmapDocument)
+  sub?: string;         // small trailing caption after the discs
+}
 export interface SpacerBlock extends DocBlockBase { kind: 'spacer'; h?: number; } // gap in px (× scale)
 export interface RuleBlock extends DocBlockBase { kind: 'rule'; }                  // a full-width divider
 
@@ -199,7 +216,7 @@ export interface SchematicBlock extends DocBlockBase {
 
 export type DocBlock =
   | HeadingBlock | TextBlock | KeyValueBlock | ListBlock | TagsBlock
-  | ImageBlock | BodyDiscBlock | ConstructGlyphBlock | FieldGridBlock | SpacerBlock | RuleBlock | SchematicBlock
+  | ImageBlock | BodyDiscBlock | ConstructGlyphBlock | FieldGridBlock | GlyphRowBlock | SpacerBlock | RuleBlock | SchematicBlock
   | ColumnStartBlock | ColumnEndBlock;
 
 // --- Resolved colours -------------------------------------------------------------------------------

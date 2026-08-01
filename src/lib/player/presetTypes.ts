@@ -98,6 +98,10 @@ export interface PlayerPreset {
   // Applies to the STARMAP document only for now; the system document is a deliberate follow-on.
   starmapLayout?: StarmapLayout;
   starmapFieldIcons?: boolean; // dossier arrangement: a glyph before each field label
+  // Text size for the STARMAP document, separate from the system document's. Every width in the
+  // arrangements derives from the text scale — the card grid's column count, the dossier's field
+  // columns, the glyph row's disc size — so this is the control that makes them all behave.
+  starmapFontScale?: number;
   photoFrame?: 'letterbox' | 'full' | 'sliver'; // document: how a body photo is framed
   themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,

@@ -1036,7 +1036,7 @@
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
           listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
           starmapLayout={activePreset.starmapLayout} starmapFieldIcons={activePreset.starmapFieldIcons !== false}
-          fontScale={infoFontScale}
+          fontScale={activePreset.starmapFontScale ?? infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}
           companyName={activePreset.companyName} footerText={activePreset.footerText}

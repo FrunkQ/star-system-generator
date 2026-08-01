@@ -17,7 +17,9 @@ import { rainbowHue } from './systemSchematic';
 
 // 'list'    — one navigator row per system with a contents sub-line (the original, still the default)
 // 'dossier' — a form: a heading per system over a stack of labelled fields, then a rule
-export type StarmapLayout = 'list' | 'dossier';
+// 'glyphs'  — a catalogue: the system's name beside a row of its real bodies, drawn in their own
+//             derived colours (primary large, companions smaller, planets a trailing run)
+export type StarmapLayout = 'list' | 'dossier' | 'glyphs';
 
 export interface StarmapDocOpts {
   selectedId?: string | null;
@@ -83,6 +85,8 @@ export function buildStarmapDocument(starmap: Starmap | null, opts: StarmapDocOp
 
   if (opts.layout === 'dossier') {
     blocks.push(...dossier(starmap, systems, opts));
+  } else if (opts.layout === 'glyphs') {
+    blocks.push(...glyphCatalogue(systems, opts));
   } else {
     // RAINBOW in the index: one part of the spectrum per SYSTEM, walking the list. It reads as an
     // identity — this entry's colour — rather than as decoration, which is why it suits a bounded
@@ -184,6 +188,51 @@ function dossier(starmap: Starmap | null, systems: any[], opts: StarmapDocOpts):
       items: [{ id: node.id, text: 'System data ›', ...(opts.colorful ? { color: rainbowHue(i) } : {}) }]
     });
     out.push({ kind: 'rule' });
+  });
+  return out;
+}
+
+// The STAR-GLYPH CATALOGUE: one row per system — its name, then its actual bodies as small discs,
+// primary largest, companions smaller, planets a trailing run. It reads as a catalogue plate rather
+// than a list, and it is the only arrangement whose CONTENT is the physics rather than a description
+// of it: every disc is that body drawn in its own derived colour.
+//
+// RAINBOW, decided here and different from both other arrangements: the spectrum walks the system
+// NAMES only, and never the discs. The discs already carry meaning — a red dwarf is red because the
+// model says so, a Neptune is blue because its composition is — and repainting them across a spectrum
+// would replace real information with decoration, which is the one thing this arrangement must not do.
+// (The dossier hues its headings for the same "one entry, one identity" cue; cards hue the whole box
+// because a card has no derived colour of its own to lose.)
+function glyphCatalogue(systems: any[], opts: StarmapDocOpts): DocBlock[] {
+  const out: DocBlock[] = [];
+  systems.forEach((node, i) => {
+    const ns: any[] = node.system?.nodes ?? [];
+    const stars = systemVisualStars(node.system);
+    const starIds = new Set(stars.map((s) => s.id));
+    const byId = new Map(ns.map((n) => [n.id, n]));
+    const items: { body: unknown; scale: number }[] = [];
+    // Primary large, companions stepped down — mass order comes from systemVisualStars.
+    stars.forEach((s, si) => {
+      const b = byId.get(s.id);
+      if (b) items.push({ body: b, scale: si === 0 ? 1 : 0.66 });
+    });
+    // Then the planets, in orbital order, as a run of dots. Moons and belts are left out on purpose:
+    // at this size they would be indistinguishable specks and the row would stop being readable.
+    const planets = ns
+      .filter((n) => n.kind === 'body' && !starIds.has(n.id)
+        && (n.roleHint === 'planet' || n.roleHint === 'dwarf-planet'))
+      .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0));
+    for (const p of planets) items.push({ body: p, scale: 0.34 });
+
+    out.push({
+      kind: 'glyphRow',
+      id: node.id,
+      selected: node.id === opts.selectedId,
+      items,
+      label: node.name,
+      sub: summary(node),
+      ...(opts.colorful ? { labelColor: rainbowHue(i) } : {})
+    });
   });
   return out;
 }

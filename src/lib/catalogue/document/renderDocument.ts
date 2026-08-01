@@ -10,6 +10,8 @@ import { wrap, ellipsise } from '../textLayout';
 import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle, type TagsBlock, type TagStyle, type TagItem, type ImageFocus } from './blocks';
 import { drawSystemSchematic, schematicHeight } from './systemSchematic';
 import { traceConstructIcon } from '$lib/constructs/constructIcon';
+import { deriveAppearance } from '$lib/rendering/planetAppearance';
+import { getPlanetTexture } from '$lib/rendering/planetTexture';
 import type { System, CelestialBody } from '$lib/types';
 
 // The content column the document flows within, in CSS px of the logical view.
@@ -285,6 +287,44 @@ export function renderDocument(
         const bandH = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.24);
         if (b.id) regions.push({ id: b.id, x0: x, y0: top, x1: x + w, y1: top + bandH });
         y += bandH + px(GAP, s);
+        break;
+      }
+      case 'glyphRow': {
+        // A run of real body discs. Each is the body's OWN procedural 2D texture — the same canvas the
+        // orrery and PlanetDisc use — so the colours arrive already derived from apparentColor and no
+        // class-to-colour table exists anywhere in this path. A body with no palette falls back to the
+        // appearance model's baseColorHex, which is derived too (composition for a world, temperature
+        // for a star). Under mono the whole row is bleached, like every other mark on the page.
+        const rowH = px(b.height ?? 26, s);
+        const gap = px(5, s);
+        const labW = b.label ? Math.min(w * 0.34, px(190, s)) : 0;
+        if (visible(top, rowH)) {
+          if (b.label) {
+            ctx.textAlign = 'left';
+            ctx.font = `600 ${px(13, s)}px ${theme.headingFont || font}`;
+            ctx.fillStyle = (!theme.mono && b.labelColor) || c.heading;
+            ctx.fillText(ellipsise(ctx, b.label, labW - px(8, s)), x, top + rowH * 0.5 + px(4, s));
+          }
+          let gx = x + labW;
+          const limit = x + w - px(46, s); // keep room for the trailing caption
+          let drawn = 0;
+          for (const it of b.items) {
+            const d = Math.max(px(3, s), rowH * Math.max(0.05, Math.min(1, it.scale)));
+            if (gx + d > limit) break;
+            drawBodyGlyph(ctx, it.body as CelestialBody, gx, top + (rowH - d) / 2, d, theme.mono);
+            gx += d + gap;
+            drawn++;
+          }
+          const hidden = b.items.length - drawn;
+          ctx.textAlign = 'left';
+          ctx.font = `${px(11, s)}px ${font}`;
+          ctx.fillStyle = c.label;
+          // Never silently truncate: say how many did not fit.
+          const tail = [hidden > 0 ? `+${hidden}` : '', b.sub ?? ''].filter(Boolean).join('  ');
+          if (tail) ctx.fillText(ellipsise(ctx, tail, x + w - gx), gx + px(4, s), top + rowH * 0.5 + px(4, s));
+        }
+        if (b.id) regions.push({ id: b.id, x0: x, y0: top, x1: x + w, y1: top + rowH });
+        y += rowH + px(4, s);
         break;
       }
       case 'constructGlyph': {
@@ -662,4 +702,54 @@ function drawImageBlock(
     const sh = Math.min(ih, iw * (dh / dw));
     ctx.drawImage(img, 0, (ih - sh) / 2, iw, sh, dx, dy, dw, dh);
   }
+}
+
+// ONE small body disc, drawn into the document canvas at (x, y, d). Mirrors what PlanetDisc does in
+// SVG: the body's procedural texture clipped to a circle, else a flat fill of its derived base colour,
+// with a soft terminator so a sphere reads as a sphere and a star reads as a light source.
+// NOTHING here decides a colour. `getPlanetTexture` builds its image from the derived apparentColor
+// palette and `deriveAppearance().baseColorHex` is the same value the orrery and the 3D holo use — a
+// class-to-colour lookup added here would be exactly the renderer shortcut that was reverted once.
+function drawBodyGlyph(
+  ctx: CanvasRenderingContext2D, body: CelestialBody, x: number, y: number, d: number, mono: boolean
+): void {
+  const r = d / 2, cx = x + r, cy = y + r;
+  let a: ReturnType<typeof deriveAppearance> | null = null;
+  try { a = deriveAppearance(body); } catch { a = null; }
+  const base = a?.baseColorHex || '#8a8f99';
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+  ctx.clip();
+  let tex: HTMLCanvasElement | null = null;
+  // Stars and belts have no surface texture in this model (the appearance model zeroes their banding);
+  // they take their derived colour flat, with a star given a glow below.
+  if (a && !a.isStar && !a.isBelt && (body as any).apparentColor) {
+    try { tex = getPlanetTexture(body); } catch { tex = null; }
+  }
+  if (tex) ctx.drawImage(tex, cx - r, cy - r, d, d);
+  else { ctx.fillStyle = base; ctx.fillRect(cx - r, cy - r, d, d); }
+  if (mono) { // the bleached page tints from the filter, so wash the disc to its own luminance
+    ctx.globalCompositeOperation = 'saturation';
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(cx - r, cy - r, d, d);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (a?.isStar) {
+    // A light source, not a lit ball: brighten the centre rather than shading one limb.
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.55)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - r, cy - r, d, d);
+  } else {
+    // Soft terminator from the upper left, the same stylised light PlanetDisc uses at this size.
+    const g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.1, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.16)');
+    g.addColorStop(0.6, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.42)');
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - r, cy - r, d, d);
+  }
+  ctx.restore();
 }

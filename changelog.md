@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.351-beta - 1st Aug 2026
+
+* A third starmap arrangement, "Catalogue": each system as its name beside a row of its actual worlds, drawn as small discs -- the primary largest, companions smaller, the planets a run of dots in orbital order. They are the same procedural 2D images the orrery draws, so every colour is the one the physics derived for that body.
+* A text-size slider for the starmap document. It sizes the layout as well as the type: bigger text gives fewer, wider columns and larger glyphs, smaller fits more of the map on a screen.
+
 ## v2.1.350-beta - 1st Aug 2026
 
 * A new list style, "Pickable cards": each entry a bordered box, as many across the page as the width allows, highlighting when picked. On the starmap that turns a forty-two row index into one screen you can take in at a glance. It is a LIST style, so it applies to every navigator list, not only the starmap.
