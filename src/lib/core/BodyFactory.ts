@@ -17,9 +17,15 @@ export class BodyFactory implements IBodyFactory {
             // Default Physical Properties (Avoid NaNs)
             massKg: config.massKg || 0,
             radiusKm: config.radiusKm || 0,
-            axial_tilt_deg: 0,
-            rotation_period_hours: 0,
-            
+
+            // NOT defaulted, deliberately: axial_tilt_deg, rotation_period_hours and magneticField.
+            // A zero in any of those three is a CLAIM, not an absence — "this world does not spin",
+            // "this world stands upright", "this world has no magnetosphere" — and every one of them
+            // is a fact the physics is supposed to derive or the GM to author. Leaving them off means
+            // a derivation sees "unknown" and can say so; stamping 0 made it agree with a value
+            // nobody chose. Readers already guard with ?? / ||, and rotationFactor() in magnetism.ts
+            // has always had an explicit unknown-rotation branch that the placeholder hid.
+
             // Empty Complex Properties
             tags: [],
             classes: [],
@@ -33,10 +39,7 @@ export class BodyFactory implements IBodyFactory {
                 composition: 'water'
             },
             biosphere: null,
-            magneticField: {
-                strengthGauss: 0
-            },
-            
+
             // Orbit defaults (to be populated by placement logic)
             orbit: undefined
         };

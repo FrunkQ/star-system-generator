@@ -7,6 +7,7 @@ import { SeededRNG } from '../rng';
 import { bodyFactory } from '../core/BodyFactory';
 import { systemProcessor } from '../core/SystemProcessor';
 import { _generatePlanetaryBody } from './planet';
+import { starFieldFromPack } from './star';
 import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
 import { drawTypeForSlot, rarityOf, rarityTier } from './typeDraw';
 import { calculateOrbitalSlots } from './placement-strategy';
@@ -46,9 +47,10 @@ function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, kn
     // square and only a violent one tips over, which keeps the tilt meaning something when you see it.
     if (n.kind === 'body' && n.roleHint === 'star') {
       const b = n as CelestialBody;
-      // Falsy, not undefined: BodyFactory stamps every body with axial_tilt_deg 0, so testing for
-      // undefined here never fired and the whole branch was dead. This runs once at generation, on
-      // freshly-made nodes, so there is no authored value to tread on.
+      // Falsy, not undefined: BodyFactory used to stamp every body with axial_tilt_deg 0, so testing
+      // for undefined here never fired and the whole branch was dead. The placeholder is gone (inbox
+      // B9a) but the falsy test stays correct either way. This runs once at generation, on freshly-
+      // made nodes, so there is no authored value to tread on.
       if (!b.axial_tilt_deg) {
         const spread = 4 + dyn * dyn * 60;          // calm ~4 degrees; violent, up to ~64
         b.axial_tilt_deg = Math.round(rng.nextFloat() * spread * 10) / 10;
@@ -111,6 +113,14 @@ function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: st
   star.classes = classes;
   star.starCategory = categoryForClass(classes[0]);
   star.temperatureK = seed.temperatureK;
+  // The field comes from the pack's mag_gauss band for the EVOLVED class, exactly as the legacy
+  // random generator does (inbox B9a). This path used to set nothing at all, so every star the
+  // wizard built kept BodyFactory's placeholder zero and reported "no magnetosphere" — which is a
+  // real claim about a star, and the wrong one. Age matters here: a 13 Gyr G-star has already been
+  // reclassified to star/WD above, so it draws the white-dwarf band rather than the G band.
+  // Its own stream, seeded from the star's id: drawing from the system rng here would shift every
+  // subsequent draw and silently re-roll every planet in every existing seed.
+  star.magneticField = starFieldFromPack(pack, classes[0], new SeededRNG(`${id}-mag`));
   star.radiationOutput = Math.max(0.0001, seed.luminositySolar); // luminosity drives zones + flux
   const img = pack.classifier?.starImages?.[classes[0]] ?? pack.classifier?.starImages?.[`star/${classes[0].split('/')[1][0]}`];
   star.image = img ? { url: img } : undefined;

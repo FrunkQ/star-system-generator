@@ -14,8 +14,11 @@
   let radiusSuns = $state(0);
   let tempK = $state(0);
   let radiation = $state(0);
-  let rotationHours = $state(0);
-  let axialTilt = $state(0);
+  // Rotation and tilt are UNDEFINED when nothing has set them, not 0 (inbox B9a). A star has no
+  // rotation model yet, so a freshly-made one genuinely does not have a spin — and "0 h" reads as a
+  // measurement rather than the gap it is. The boxes stay empty until something fills them in.
+  let rotationHours: number | undefined = $state(undefined);
+  let axialTilt: number | undefined = $state(undefined);
   let magGauss = $state(0);
 
   // --- Mass Slider Config ---
@@ -226,8 +229,8 @@
           radiation = body.radiationOutput;
           radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
       }
-      rotationHours = body.rotation_period_hours || 0;
-      axialTilt = body.axial_tilt_deg || 0;
+      rotationHours = body.rotation_period_hours ?? undefined;
+      axialTilt = body.axial_tilt_deg ?? undefined;
       if (body.magneticField?.strengthGauss !== undefined) {
           magGauss = body.magneticField.strengthGauss;
           magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
@@ -332,13 +335,17 @@
       dispatch('update');
   }
 
+  // Clearing the box removes the field rather than writing 0 — an empty box means "we do not know",
+  // and that has to survive the round trip or the honest state is unreachable once you leave it.
   function updateRotation() {
-      body.rotation_period_hours = rotationHours;
+      if (typeof rotationHours === 'number' && Number.isFinite(rotationHours)) body.rotation_period_hours = rotationHours;
+      else delete body.rotation_period_hours;
       dispatch('update');
   }
 
   function updateTilt() {
-      body.axial_tilt_deg = axialTilt;
+      if (typeof axialTilt === 'number' && Number.isFinite(axialTilt)) body.axial_tilt_deg = axialTilt;
+      else delete body.axial_tilt_deg;
       dispatch('update');
   }
 
@@ -619,6 +626,9 @@
             </svg>
             <input type="range" min="0.1" max="10000" step="0.1" bind:value={rotationHours} on:input={updateRotation} class="full-width-slider overlay" />
         </div>
+        {#if rotationHours === undefined}
+            <div class="sub-label">Not set &mdash; nothing derives a star's spin yet, so this is a gap rather than a still star. Set it if you need one.</div>
+        {/if}
     </div>
 
     <!-- AXIAL TILT. A star's spin axis is not automatically square to the orbits around it: the two
@@ -634,7 +644,9 @@
             <input type="range" min="0" max="180" step="0.5" bind:value={axialTilt} on:input={updateTilt} class="full-width-slider" />
         </div>
         <div class="sub-label">
-            {#if axialTilt < 12}
+            {#if axialTilt === undefined}
+                Not set &mdash; unknown, rather than square to its planets
+            {:else if axialTilt < 12}
                 Aligned with its planets, as a star formed from the same disc should be (the Sun: 7&deg;)
             {:else if axialTilt < 45}
                 Noticeably tilted &mdash; something stirred this system

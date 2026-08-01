@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.332-beta - 1st Aug 2026
+
+* A star created by the generation wizard now carries a magnetic field. It never did: the wizard's star path set no field at all, so every star it built kept a placeholder zero and reported no magnetosphere -- while the older random generator read the strength straight from the rule pack. Both paths now read the same pack data, so a white dwarf draws the white-dwarf band and a magnetar the magnetar band, and an aged star draws from the class it has evolved INTO.
+* A newly created body no longer claims a rotation period, an axial tilt or a magnetic field of zero. Those were placeholders standing in for "we have not worked this out yet", and a zero in any of them is a statement -- this world does not spin, stands upright, has no magnetosphere. They are simply absent now, and a star's editor says "not set" rather than showing a confident 0.
+
 ## v2.1.331-beta - 1st Aug 2026
 
 * In the Guide's rainbow mode each navigation button takes its own colour -- and it is the same colour as that body's marker on the chart above it, not an unrelated spectrum. Mercury's button is Mercury's yellow, Jupiter's is Jupiter's purple, so the eye can go straight from a dot on the diagram to the button that opens it. The "up one level" link is coloured the same way. Moons and stations are not drawn on the chart and so have no dot to match; they take varied colours of their own rather than pretending to. Monochrome skins are exempt, as they are for the rainbow headings -- they bleach the page on purpose.

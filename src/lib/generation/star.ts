@@ -5,20 +5,40 @@ import { weightedChoice, randomFromRange } from '../utils';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
 
+// The stat template for a star class, falling back from the full spectral class to its letter
+// (star/G5V -> star/G). Exported because BOTH star-creation paths need it: the legacy random
+// generator here and the wizard's explicit HR/preset seeds in generateFromConfig. They used to
+// look this up separately and only one of them read `mag_gauss`, which is why a wizard-built star
+// arrived with no magnetic field at all (inbox B9a).
+export function starStatTemplate(pack: RulePack, starClass: string): any | undefined {
+    const direct = pack.statTemplates?.[starClass];
+    if (direct) return direct;
+    if (starClass.startsWith('star/')) {
+        const spectral = starClass.split('/')[1];
+        if (spectral && spectral.length > 1) {
+            const byLetter = pack.statTemplates?.[`star/${spectral[0]}`];
+            if (byLetter) return byLetter;
+        }
+    }
+    return pack.statTemplates?.['star/default'];
+}
+
+// The star's field, straight from the pack's `mag_gauss` band for its class. This is DATA, not a
+// model: the pack carries every class from star/BH (0) through star/magnetar (1e11-1e15 G), and a
+// real stellar rotation/dynamo model is a separate, larger piece of work (inbox B9b). Returns
+// undefined when the class has no band, so "unknown" stays distinguishable from "no field".
+export function starFieldFromPack(pack: RulePack, starClass: string, rng: SeededRNG) {
+    const band = starStatTemplate(pack, starClass)?.mag_gauss;
+    if (!band) return undefined;
+    return { strengthGauss: randomFromRange(rng, band[0], band[1]) };
+}
+
 // Generates a star object, but not its name, which is determined by the system context.
 export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG, starTypeOverride?: string): CelestialBody {
     const starTypeTable = pack.distributions['star_types'];
     const starClass = starTypeOverride ?? (starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V');
-    
-    let starTemplate = pack.statTemplates?.[starClass];
-    if (!starTemplate && starClass.startsWith('star/')) {
-         const spectral = starClass.split('/')[1];
-         if (spectral && spectral.length > 1) {
-             const baseClass = `star/${spectral[0]}`;
-             starTemplate = pack.statTemplates?.[baseClass];
-         }
-    }
-    starTemplate = starTemplate || pack.statTemplates?.['star/default'];
+
+    const starTemplate = starStatTemplate(pack, starClass);
 
     let starMassKg = SOLAR_MASS_KG;
     let starRadiusKm = SOLAR_RADIUS_KM;
@@ -29,9 +49,7 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
         starMassKg = randomFromRange(rng, starTemplate.mass_solar[0], starTemplate.mass_solar[1]) * SOLAR_MASS_KG;
         starRadiusKm = randomFromRange(rng, starTemplate.radius_solar[0], starTemplate.radius_solar[1]) * SOLAR_RADIUS_KM;
         starTemperatureK = randomFromRange(rng, starTemplate.temp_k[0], starTemplate.temp_k[1]);
-        if (starTemplate.mag_gauss) {
-            starMagneticField = { strengthGauss: randomFromRange(rng, starTemplate.mag_gauss[0], starTemplate.mag_gauss[1]) };
-        }
+        starMagneticField = starFieldFromPack(pack, starClass, rng);
     }
 
     const radiationOutput = starTemplate?.radiation_output ? randomFromRange(rng, starTemplate.radiation_output[0], starTemplate.radiation_output[1]) : 1;
