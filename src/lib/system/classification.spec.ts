@@ -121,8 +121,11 @@ describe('ocean classification is phase-gated (liquids L2)', () => {
     fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')
   ).classifier.fingerprints as Fingerprint[];
 
+  // Both temperatures, because a real body always has both — the ocean family keys on the SURFACE
+  // one (inbox B6: its note is about the ground), and a feature that is simply absent scores 0 and
+  // disqualifies the fingerprint outright. 290 K either way: this world has no greenhouse to speak of.
   const oceanState = (liquidCov: number, rawCov: number) => ({
-    mass_Me: 1.2, radius_Re: 1.05, density: 3.2, Teq_K: 290, orbitsStar: 1,
+    mass_Me: 1.2, radius_Re: 1.05, density: 3.2, Teq_K: 290, SurfaceTemp_K: 290, orbitsStar: 1,
     'hydrosphere.composition': 'water',
     'hydrosphere.coverage': rawCov, 'hydrosphere.liquidCoverage': liquidCov,
     'makeup.rock': 0.5, 'makeup.ice': 0.5

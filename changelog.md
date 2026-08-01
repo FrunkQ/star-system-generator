@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.335-beta - 1st Aug 2026
+
+* Fourteen world types are now judged on the temperature of the ground rather than the temperature the world would have with no atmosphere. Desert, ice, lava, ocean, methane, ammonia, hycean, subsurface ocean, the three Earth-like types and the three life-covered ones all describe a SURFACE, so they now read the surface. A world with a strong greenhouse could previously be called an ammonia world at 73 degrees C, where ammonia cannot exist as a liquid at all, or "habitable Earth-like" at the same temperature.
+* The types that describe the radiation a world sits in, or the chemistry of a giant's cloud tops, are unchanged and still read equilibrium temperature: the hot and ultra-hot Jupiters and Neptunes, chthonian worlds, ice giants, ultra-cool dwarfs and all five gas-giant cloud classes.
+* Fixed at the same time: when a type moved to the surface temperature it dropped out of the "what could exist at this orbit" menu the generator uses to place a new body, because that menu only knew about the other temperature. It had quietly been offering eyeball worlds at any temperature since that family moved in an earlier release. The menu now reads whichever temperature a type declares.
+
 ## v2.1.334-beta - 1st Aug 2026
 
 * A world's surface-radiation figure no longer sits outside the range printed beside it. The average dose included the extra dose from a star's flares; the minimum and maximum were worked out by a second sum that had no flare term in it at all, so around an active star the average could land a fifth above its own stated maximum. 105 of the 420 bodies in the bundled maps were affected, worst case Wolf 359's Graveyard at 19.8% -- now none are. The average itself never moved; it was the endpoints that were short.

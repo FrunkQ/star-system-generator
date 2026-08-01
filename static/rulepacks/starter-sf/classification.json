@@ -724,7 +724,7 @@
         "kind": "base",
         "note": "Molten surface.",
         "match": {
-          "Teq_K": [
+          "SurfaceTemp_K": [
             1200,
             6000
           ],
@@ -761,7 +761,7 @@
         "kind": "base",
         "note": "Hot, dry, little surface water.",
         "match": {
-          "Teq_K": [
+          "SurfaceTemp_K": [
             260,
             360
           ],
@@ -821,7 +821,7 @@
         "kind": "base",
         "note": "Frozen surface.",
         "match": {
-          "Teq_K": [
+          "SurfaceTemp_K": [
             0,
             190
           ],
@@ -858,7 +858,7 @@
         "kind": "base",
         "note": "Global liquid-water ocean.",
         "match": {
-          "Teq_K": [
+          "SurfaceTemp_K": [
             255,
             370
           ],
@@ -896,7 +896,7 @@
             1,
             1
           ],
-          "Teq_K": [
+          "SurfaceTemp_K": [
             0,
             273
           ]
@@ -909,7 +909,7 @@
         "note": "Ocean under a thick H2 atmosphere.",
         "match": {
           "atm.main": "H2",
-          "Teq_K": [
+          "SurfaceTemp_K": [
             250,
             500
           ],
@@ -948,7 +948,7 @@
             0.3,
             1
           ],
-          "Teq_K": [
+          "SurfaceTemp_K": [
             0,
             200
           ]
@@ -979,7 +979,7 @@
         "note": "Ammonia-based hydrosphere/atmosphere.",
         "match": {
           "atm.main": "NH3",
-          "Teq_K": [
+          "SurfaceTemp_K": [
             150,
             280
           ]
@@ -1078,7 +1078,7 @@
             0.1,
             0.35
           ],
-          "Teq_K": [
+          "SurfaceTemp_K": [
             255,
             300
           ],
@@ -1101,7 +1101,7 @@
             0.05,
             0.4
           ],
-          "Teq_K": [
+          "SurfaceTemp_K": [
             250,
             315
           ],
@@ -1124,7 +1124,7 @@
             0.1,
             0.4
           ],
-          "Teq_K": [
+          "SurfaceTemp_K": [
             275,
             320
           ],
@@ -2031,7 +2031,7 @@
             1,
             1
           ],
-          "Teq_K": [
+          "SurfaceTemp_K": [
             262,
             292
           ],
@@ -2052,7 +2052,7 @@
             1,
             1
           ],
-          "Teq_K": [
+          "SurfaceTemp_K": [
             290,
             318
           ],
@@ -2073,7 +2073,7 @@
             1,
             1
           ],
-          "Teq_K": [
+          "SurfaceTemp_K": [
             278,
             300
           ],

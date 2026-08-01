@@ -117,7 +117,16 @@ export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprint
       // substantial atmosphere/ocean/biosphere worlds need a giant host.
       if (!hostIsGiant && SUBSTANTIAL_MOON.test(fp.class)) return false;
     }
-    const band = fp.match['Teq_K'];
+    // WHICHEVER temperature band the type declares. Most surface-describing types key on
+    // SurfaceTemp_K (inbox B3, then B6) because that is what their note is about — but this menu is
+    // choosing a type for a body that does not exist yet, so a surface temperature is not available
+    // and cannot be: it depends on the atmosphere the generator has not given it. Reading the band
+    // either way keeps the menu constrained; the cold slack below is exactly the allowance for the
+    // greenhouse that will close the gap, and it was written for this. Without this fallback a
+    // SurfaceTemp_K type falls through as "no temperature constraint" and lava is offered in the
+    // Goldilocks zone — which is what happened to the three eyeball classes at v2.1.283, unnoticed
+    // because nothing covered them.
+    const band = fp.match['Teq_K'] ?? fp.match['SurfaceTemp_K'];
     if (!Array.isArray(band) || typeof band[0] !== 'number') return true; // no temp constraint
     const [lo, hi] = band as [number, number];
     const pad = (hi - lo) * SLACK;

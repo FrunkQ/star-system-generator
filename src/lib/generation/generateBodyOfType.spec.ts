@@ -20,6 +20,28 @@ describe('viableTypesAt — location filters the menu', () => {
     expect(names).toContain('planet/jungle');
     expect(names).not.toContain('planet/lava');
   });
+  // The menu must stay constrained no matter WHICH temperature key a type declares. Most
+  // surface-describing types moved from Teq_K to SurfaceTemp_K (inbox B3, then B6), and this menu
+  // only ever has an equilibrium temperature — so it reads whichever band the type carries. Without
+  // that, a moved type reads as "no temperature constraint" and is offered everywhere. The eyeball
+  // classes are the ones that already moved and went unguarded.
+  it('a type keyed on SurfaceTemp_K is still temperature-constrained here', () => {
+    const fps = fingerprints();
+    const cold = viableTypesAt(80, 'planet', fps).map((f) => f.class);
+    const hot = viableTypesAt(1500, 'planet', fps).map((f) => f.class);
+    // eyeballs (SurfaceTemp_K since v2.1.283)
+    expect(hot).not.toContain('planet/cold-eyeball');
+    expect(cold).not.toContain('planet/hot-eyeball');
+    // the B6 movers
+    expect(cold).not.toContain('planet/desert');
+    expect(cold).not.toContain('planet/jungle');
+    expect(hot).not.toContain('planet/ice');
+    expect(hot).not.toContain('planet/methane');
+    // …and each is still offered where it belongs
+    expect(viableTypesAt(290, 'planet', fps).map((f) => f.class)).toContain('planet/desert');
+    expect(cold).toContain('planet/ice');
+  });
+
   it('a hot close-in orbit offers lava, not ocean', () => {
     const names = viableTypesAt(1500, 'planet', fingerprints()).map((f) => f.class);
     expect(names).toContain('planet/lava');
