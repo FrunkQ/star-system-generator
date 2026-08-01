@@ -25,6 +25,7 @@ framed at the map style's 50% (v2.1.289-beta).
 - **A17 is the one correctness bug on the board.** The measure tool has never counted depth, so a GM is
   told roughly half the distance the routes and journey durations use for the same pair. Small fix, found
   and diagnosed but NOT shipped. Do this before anything cosmetic.
+- **The whole guide-document line is DONE** (v2.1.323-331-beta): A5, A6, A2, then D3, A25, A26, A27, A28, A29, plus two requested features (side-by-side navigation buttons, and rainbow buttons matching their marker on the chart). **Left behind by the closing batch, and the first is the one to read:** [[D4]] — the starmap build kit NO LONGER REPRODUCES the shipped maps and running it reverts twelve hand-applied fixes including C3's `frame: 'ecliptic'`; do not `node scripts/starmap-build/build-starmaps.mjs` and keep the output until that is resolved. Then [[A30]] (what a construct should look like in the info block, now that the wrong picture is gone) and [[A31]] (a construct has no RATED Δv, only its current one, so the capacity view shows none).
 - **A5, A6, A2 are DONE** (v2.1.323-325-beta): the guide-document batch. The stat block's temperature range
   is the surface range and a frozen surface is no longer called liquid; a star's page lists its planets, so
   the page you land on finally has a way down; and a construct has its own block instead of a planet's.
