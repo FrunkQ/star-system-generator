@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.334-beta - 1st Aug 2026
+
+* A world's surface-radiation figure no longer sits outside the range printed beside it. The average dose included the extra dose from a star's flares; the minimum and maximum were worked out by a second sum that had no flare term in it at all, so around an active star the average could land a fifth above its own stated maximum. 105 of the 420 bodies in the bundled maps were affected, worst case Wolf 359's Graveyard at 19.8% -- now none are. The average itself never moved; it was the endpoints that were short.
+
 ## v2.1.333-beta - 1st Aug 2026
 
 * A tidally locked world no longer shows a day length that contradicts the lock. Pandora was labelled "tidally locked" and given a 41.8 hour day on a three-day orbit; a locked body's day IS its orbital period, and it is now set from it. 19 bodies across the bundled maps had a day that disagreed with their own orbit, and every one of them now agrees. The 117 locked bodies that had no day length at all have one for the first time.

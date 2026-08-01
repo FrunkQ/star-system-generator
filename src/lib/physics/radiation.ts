@@ -44,15 +44,30 @@ export function photonParticleSplit(star: CelestialBody): { ph: number; pa: numb
 
 // Sum each star's flux into photon/particle components using its own spectral split.
 // total === photon + particle, so single-G-star systems match the old 90/10 behaviour.
+//
+// `where` picks WHICH distance to each star to evaluate at: the body's current one, or the near /
+// far end of its orbital excursion. All three go through this one function on purpose (inbox B8).
+// The range used to be built by a separate sum that had no flare term, so a flaring star's dose was
+// in the mean but not in the endpoints, and the mean could sit up to 20% ABOVE its own maximum.
+// Because every star's spectral split and flare weight are constants of the star, and flux falls
+// monotonically with distance, going through one function makes min <= mean <= max hold BY
+// CONSTRUCTION rather than by luck.
 export function calculateStellarRadiationComponents(
     body: CelestialBody,
-    allNodes: (CelestialBody | Barycenter)[]
+    allNodes: (CelestialBody | Barycenter)[],
+    where: 'current' | 'near' | 'far' = 'current'
 ): { photon: number; particle: number; total: number } {
     let photon = 0;
     let particle = 0;
     const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
     for (const star of allStars) {
-        const dist_au = calculateDistanceToStar(body, star, allNodes);
+        let dist_au: number;
+        if (where === 'current') {
+            dist_au = calculateDistanceToStar(body, star, allNodes);
+        } else {
+            const d = calculateDistanceRangeToStar(body, star, allNodes);
+            dist_au = where === 'near' ? d.min : d.max;
+        }
         if (dist_au > 0) {
             const flux = (star.radiationOutput || 1) / (dist_au * dist_au);
             const s = photonParticleSplit(star);
@@ -86,24 +101,10 @@ export function calculateTotalStellarRadiation(
     return totalStellarRadiation;
 }
 
-export function calculateTotalStellarRadiationRange(
-    body: CelestialBody,
-    allNodes: (CelestialBody | Barycenter)[]
-): { min: number; max: number } {
-    let min = 0;
-    let max = 0;
-    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
-    for (const star of allStars) {
-        const d = calculateDistanceRangeToStar(body, star, allNodes);
-        if (d.max > 0) {
-            min += (star.radiationOutput || 1) / (d.max * d.max);
-        }
-        if (d.min > 0) {
-            max += (star.radiationOutput || 1) / (d.min * d.min);
-        }
-    }
-    return { min, max };
-}
+// (calculateTotalStellarRadiationRange lived here. It was the SECOND sum of the same quantity — the
+// one with no flare term — and deleting it is the actual fix for B8. The range now comes from
+// calculateStellarRadiationComponents at the near and far distances, so there is one model, and the
+// mean cannot drift outside its own endpoints again.)
 
 export function checkAtmosphereRetention(
     body: CelestialBody,
@@ -132,7 +133,12 @@ export function calculateSurfaceRadiation(
 ): number {
     const components = calculateStellarRadiationComponents(body, allNodes);
     const totalStellarRadiation = components.total;
-    const totalStellarRadiationRange = calculateTotalStellarRadiationRange(body, allNodes);
+    // The SAME component model at the near and far ends of the orbit — not a second sum with a
+    // different set of terms in it (inbox B8).
+    const totalStellarRadiationRange = {
+        min: calculateStellarRadiationComponents(body, allNodes, 'far').total,
+        max: calculateStellarRadiationComponents(body, allNodes, 'near').total
+    };
     body.stellarRadiation = totalStellarRadiation;
     (body as any).stellarRadiationMin = totalStellarRadiationRange.min;
     (body as any).stellarRadiationMax = totalStellarRadiationRange.max;

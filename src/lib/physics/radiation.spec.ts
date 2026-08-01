@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { photonParticleSplit } from './radiation';
+import { photonParticleSplit, calculateStellarRadiationComponents } from './radiation';
 import type { CelestialBody } from '$lib/types';
 
 // Phase 04.4 — spectral-class photon/particle split. Cool dwarfs are wind/flare-dominated,
@@ -34,5 +34,44 @@ describe('photonParticleSplit', () => {
 
   it('falls back to G for missing/odd classes', () => {
     expect(photonParticleSplit({} as CelestialBody).pa).toBeCloseTo(0.1, 5);
+  });
+});
+
+// Inbox B8: the mean dose used to be built from the per-star components (which include a FLARE
+// term) while the endpoints came from a second, flare-less sum — so on an active star the mean
+// could sit up to 20% above its own maximum. All three now come from this one function, and the
+// property that matters is that the ordering holds for a FLARING star, which is where it broke.
+describe('stellar radiation components — one model for mean and endpoints', () => {
+  function flaringSystem(flare: number) {
+    const s = {
+      id: 'star', kind: 'body', name: 'S', roleHint: 'star', classes: ['star/M5V'],
+      massKg: 2e29, radiusKm: 200000, radiationOutput: 0.002, flareActivity: flare
+    } as unknown as CelestialBody;
+    const p = {
+      id: 'p', kind: 'body', name: 'P', roleHint: 'planet', parentId: 'star',
+      massKg: 6e24, radiusKm: 6400,
+      orbit: { elements: { a_AU: 0.1, e: 0.25, i_deg: 0, Omega_deg: 0, w_deg: 0, M0_deg: 0 } }
+    } as unknown as CelestialBody;
+    return { nodes: [s, p] as any[], body: p };
+  }
+
+  it('the flare dose is in the endpoints as well as the mean', () => {
+    const { nodes, body } = flaringSystem(0.8);
+    const quiet = flaringSystem(0);
+    const near = calculateStellarRadiationComponents(body, nodes, 'near').total;
+    const nearQuiet = calculateStellarRadiationComponents(quiet.body, quiet.nodes, 'near').total;
+    expect(near).toBeGreaterThan(nearQuiet); // it used to be identical — the term was missing
+  });
+
+  it('min <= mean <= max holds on an eccentric orbit round an active star', () => {
+    for (const flare of [0, 0.2, 0.5, 0.9]) {
+      const { nodes, body } = flaringSystem(flare);
+      const min = calculateStellarRadiationComponents(body, nodes, 'far').total;
+      const mean = calculateStellarRadiationComponents(body, nodes, 'current').total;
+      const max = calculateStellarRadiationComponents(body, nodes, 'near').total;
+      expect(min).toBeLessThanOrEqual(mean);
+      expect(mean).toBeLessThanOrEqual(max);
+      expect(min).toBeLessThan(max); // e = 0.25, so the range is genuinely wide
+    }
   });
 });
