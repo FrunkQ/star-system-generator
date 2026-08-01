@@ -275,3 +275,42 @@ describe('buildStarmapDocument — glyph catalogue', () => {
     expect(row().labelColor).toBeUndefined();
   });
 });
+
+// G1 arrangement 4 — the SYSTEM-MAP diagram per system. Pure reuse of drawSystemSchematic; the builder
+// only decides the size, whether the names are drawn, and that a tap means the SYSTEM.
+describe('buildStarmapDocument — diagram arrangements', () => {
+  const map: any = {
+    name: 'M', distanceUnit: 'ly', scale: { pixelsPerUnit: 10 },
+    systems: [
+      { id: 'a', name: 'A', position: { x: 0, y: 0 }, system: { nodes: [{ id: 's1', name: 'S1', kind: 'body', roleHint: 'star', massKg: 2e30 }] } },
+      { id: 'b', name: 'B', position: { x: 10, y: 0 }, system: { nodes: [{ id: 's2', name: 'S2', kind: 'body', roleHint: 'star', massKg: 2e30 }] } }
+    ]
+  };
+  const schem = (layout: any) => buildStarmapDocument(map, { layout }).filter((b) => b.kind === 'schematic') as any[];
+
+  it('emits one schematic per system, at a FIXED height rather than a fraction of the view', () => {
+    const s = schem('diagram');
+    expect(s.length).toBe(2);
+    expect(s[0].height).toBeGreaterThan(0);
+    expect(s[0].heightFrac).toBeUndefined(); // a repeating block cannot be sized off the viewport
+  });
+
+  it('drops the names when compact and keeps them when full, and full is taller', () => {
+    expect(schem('diagram')[0].labels).toBe(false);
+    expect(schem('diagram-full')[0].labels).toBe(true);
+    expect(schem('diagram-full')[0].height).toBeGreaterThan(schem('diagram')[0].height);
+  });
+
+  it('makes a tap mean the SYSTEM, not a planet inside the strip', () => {
+    const s = schem('diagram')[0];
+    expect(s.wholeHit).toBe(true);
+    expect(s.id).toBe('a');
+  });
+
+  it('passes the rainbow through to the schematic rather than re-deciding it', () => {
+    const on = buildStarmapDocument(map, { layout: 'diagram', colorful: true })
+      .filter((b) => b.kind === 'schematic') as any[];
+    expect(on[0].colorful).toBe(true);
+    expect(schem('diagram')[0].colorful).toBe(false);
+  });
+});

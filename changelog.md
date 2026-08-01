@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.352-beta - 2nd Aug 2026
+
+* Two more starmap arrangements, both the SAME orbital line-diagram the system page draws. "Compact" gives each system an unlabelled strip -- the shape of the system, read at a glance and compared down the column. "Full" is the same diagram at system-page size with its names.
+* The diagram can now be drawn without its labels, and at a fixed height rather than a fraction of the screen -- forty-two systems at the system page size would have been seventeen screens of diagram.
+
 ## v2.1.351-beta - 1st Aug 2026
 
 * A third starmap arrangement, "Catalogue": each system as its name beside a row of its actual worlds, drawn as small discs -- the primary largest, companions smaller, the planets a run of dots in orbital order. They are the same procedural 2D images the orrery draws, so every colour is the one the physics derived for that body.

@@ -212,6 +212,15 @@ export interface SchematicBlock extends DocBlockBase {
   selectedId?: string | null;
   colorful?: boolean;
   heightFrac?: number; // fraction of the view height to reserve (default 0.42)
+  // A FIXED height in px (at fontScale 1), which wins over heightFrac. A fraction of the view is right
+  // for the one diagram at the top of a system page; it is hopeless when the block repeats — 42 systems
+  // at 0.42 of the view is seventeen screens of diagram. The drawer already fits its virtual box into
+  // whatever rect it is given, fonts and all, so a compact strip costs nothing extra (G1).
+  height?: number;
+  // Push ONE region for the whole diagram (using the block's own id) instead of a region per body.
+  // At starmap level the per-body hits would dispatch a PLANET id where the caller expects a SYSTEM.
+  wholeHit?: boolean;
+  labels?: boolean;    // draw the body NAMES (default true) — off gives the shape of the system alone
 }
 
 export type DocBlock =

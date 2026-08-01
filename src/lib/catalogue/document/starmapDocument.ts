@@ -19,7 +19,10 @@ import { rainbowHue } from './systemSchematic';
 // 'dossier' — a form: a heading per system over a stack of labelled fields, then a rule
 // 'glyphs'  — a catalogue: the system's name beside a row of its real bodies, drawn in their own
 //             derived colours (primary large, companions smaller, planets a trailing run)
-export type StarmapLayout = 'list' | 'dossier' | 'glyphs';
+// 'diagram'     — the SYSTEM-MAP line-diagram per system, compact and UNLABELLED: the shape of the
+//                 system, nothing else. Reuses drawSystemSchematic exactly as the system page does.
+// 'diagram-full'— the same diagram at full size WITH its names, one system after another.
+export type StarmapLayout = 'list' | 'dossier' | 'glyphs' | 'diagram' | 'diagram-full';
 
 export interface StarmapDocOpts {
   selectedId?: string | null;
@@ -87,6 +90,8 @@ export function buildStarmapDocument(starmap: Starmap | null, opts: StarmapDocOp
     blocks.push(...dossier(starmap, systems, opts));
   } else if (opts.layout === 'glyphs') {
     blocks.push(...glyphCatalogue(systems, opts));
+  } else if (opts.layout === 'diagram' || opts.layout === 'diagram-full') {
+    blocks.push(...diagramCatalogue(systems, opts, opts.layout === 'diagram-full'));
   } else {
     // RAINBOW in the index: one part of the spectrum per SYSTEM, walking the list. It reads as an
     // identity — this entry's colour — rather than as decoration, which is why it suits a bounded
@@ -233,6 +238,45 @@ function glyphCatalogue(systems: any[], opts: StarmapDocOpts): DocBlock[] {
       sub: summary(node),
       ...(opts.colorful ? { labelColor: rainbowHue(i) } : {})
     });
+  });
+  return out;
+}
+
+// The DIAGRAM arrangements: the same horizontal orbital line-drawing the system page uses, one per
+// system. Pure reuse — `drawSystemSchematic` already fits its virtual box into whatever rect it is
+// handed, fonts and markers together, so drawing it small needed no change to that file at all.
+//
+// COMPACT drops the names. At a third of full size the labels are unreadable anyway, and without them
+// the block stops being a squashed page of type and becomes what it should be: the SHAPE of the system,
+// read at a glance and compared down the column. FULL is the same diagram at the size the system page
+// gives it, names and all, for a reader who wants the detail rather than the comparison.
+//
+// RAINBOW: the schematic already owns this decision and has since D9 — `colorful` gives every body a
+// stable hue from `rainbowHueIndex`, so a planet's dot here is the same colour as its chip on the
+// system page. Nothing is re-decided here; the arrangement passes the flag through. The system NAME
+// above each diagram takes the walking spectrum, as it does in the dossier.
+function diagramCatalogue(systems: any[], opts: StarmapDocOpts, full: boolean): DocBlock[] {
+  const out: DocBlock[] = [];
+  systems.forEach((node, i) => {
+    out.push({
+      kind: 'heading', level: 3, text: node.name, id: node.id,
+      selected: node.id === opts.selectedId,
+      ...(opts.colorful ? { color: rainbowHue(i) } : {})
+    });
+    out.push({
+      kind: 'schematic',
+      id: node.id,
+      system: node.system,
+      colorful: !!opts.colorful,
+      labels: full,
+      // A fixed height, never a fraction of the view: this block REPEATS, and 42 systems at the system
+      // page's 0.42 of the viewport is seventeen screens of diagram.
+      height: full ? 132 : 54,
+      // One region for the whole strip, carrying the SYSTEM id — the per-body hits would hand a planet
+      // id to a caller that is expecting a system.
+      wholeHit: true
+    });
+    out.push({ kind: 'rule' });
   });
   return out;
 }

@@ -358,15 +358,23 @@ export function renderDocument(
         // The ported orbital line-diagram (systemSchematic.ts). It returns 2D hit boxes (view px) for
         // its bodies, which become full DocRegions so a warp-mapped tap can pick a planet by position.
         // Reserve only the height the diagram needs at this width (capped), not a fixed band of black.
-        const cap = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.55);
+        // A FIXED height wins over the fraction: a repeating strip cannot be sized off the view (see
+        // blocks.ts). The drawer fits its virtual box into whatever rect it gets, so this just works.
+        const cap = b.height !== undefined
+          ? px(b.height, s)
+          : (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.55);
         const natural = schematicHeight(b.system as System, w);
-        const h = natural > 0 ? Math.min(natural, cap) : cap;
+        const h = b.height !== undefined ? cap : (natural > 0 ? Math.min(natural, cap) : cap);
         if (visible(top, h)) {
           const hits = drawSystemSchematic(ctx, {
             system: b.system as System, x, y: top, w, h,
-            theme, selectedId: b.selectedId, colorful: b.colorful
+            theme, selectedId: b.selectedId, colorful: b.colorful, labels: b.labels
           });
-          for (const hit of hits) regions.push({ id: hit.id, x0: hit.x0, y0: hit.y0, x1: hit.x1, y1: hit.y1 });
+          // `wholeHit` keeps the per-body boxes out of the hit map — at starmap level they would
+          // dispatch a planet id to a caller that is expecting a system.
+          if (!b.wholeHit) {
+            for (const hit of hits) regions.push({ id: hit.id, x0: hit.x0, y0: hit.y0, x1: hit.x1, y1: hit.y1 });
+          }
         }
         if (b.id) regions.push({ id: b.id, y0: top, y1: top + h });
         y += h + px(GAP, s);

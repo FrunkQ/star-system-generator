@@ -327,6 +327,8 @@
                     <option value="list">Index — one row per system</option>
                     <option value="dossier">Dossier — a form per system</option>
                     <option value="glyphs">Catalogue — name and its worlds, drawn</option>
+                    <option value="diagram">Diagram — compact system shapes</option>
+                    <option value="diagram-full">Diagram — full, with names</option>
                   </select>
                 </label>
                 <p class="hint">The shape of the page. The colouration, fonts and list glyphs on the Look
