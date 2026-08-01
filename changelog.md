@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.353-beta - 2nd Aug 2026
+
+* Long lists alternate their row shading when there is no rainbow to tell the rows apart. A page of forty-two identically-coloured rows is hard to track across; the wash is faint enough to read as a change of shade rather than a box, and it never appears where the rainbow already does the job.
+* Monochrome is now a property of the whole page rather than of each thing on it. It used to bleach only the text, so pictures and body discs each had to grey themselves out and anything new was liable to be the one coloured thing on a grey page. Everything -- type, procedural world textures, uploaded photos -- now goes to grey together, which is what the CRT and night-vision shaders need to colour it cleanly.
+
 ## v2.1.352-beta - 2nd Aug 2026
 
 * Two more starmap arrangements, both the SAME orbital line-diagram the system page draws. "Compact" gives each system an unlabelled strip -- the shape of the system, read at a glance and compared down the column. "Full" is the same diagram at system-page size with its names.

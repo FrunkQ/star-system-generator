@@ -236,6 +236,7 @@ function glyphCatalogue(systems: any[], opts: StarmapDocOpts): DocBlock[] {
       items,
       label: node.name,
       sub: summary(node),
+      band: i,
       ...(opts.colorful ? { labelColor: rainbowHue(i) } : {})
     });
   });
@@ -269,6 +270,7 @@ function diagramCatalogue(systems: any[], opts: StarmapDocOpts, full: boolean): 
       system: node.system,
       colorful: !!opts.colorful,
       labels: full,
+      band: i,
       // A fixed height, never a fraction of the view: this block REPEATS, and 42 systems at the system
       // page's 0.42 of the viewport is seventeen screens of diagram.
       height: full ? 132 : 54,

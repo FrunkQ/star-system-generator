@@ -75,6 +75,10 @@ export interface DocTheme {
 export interface DocBlockBase {
   id?: string;       // hit-map id (a body id for the navigator; omit for non-interactive content)
   selected?: boolean; // draw the "current" highlight for this block/row
+  // ZEBRA. Set by the BUILDER on a block that is one entry of a long repeating run, as its index: the
+  // renderer washes the odd ones very faintly so the eye can hold its line down the column. Only the
+  // blocks that ARE a row set it — a list draws its own stripes from its item index instead.
+  band?: number;
 }
 
 export interface HeadingBlock extends DocBlockBase {

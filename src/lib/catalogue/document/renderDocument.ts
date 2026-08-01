@@ -68,6 +68,15 @@ export function renderDocument(
     ctx.fillRect(colX, layout.y, colW, (maxY === Infinity ? 0 : maxY - layout.y));
   }
 
+  // MONOCHROME is now a property of the whole SURFACE, not of each thing drawn on it. `mono` used to
+  // bleach the text ramp only, and every image had to desaturate itself: the photo path had its own
+  // grayscale filter, the body glyphs had a composite-op trick, and anything added later would have
+  // needed one too — or would have been the one coloured thing on a grey page. One canvas filter here
+  // takes text, procedural body textures, uploaded photos and every future mark down to grey together,
+  // which is what a tinting shader (CRT / night vision / thermal) needs to colour the result cleanly.
+  const baseFilter = theme.mono ? 'grayscale(1)' : 'none';
+  ctx.filter = baseFilter;
+
   ctx.textBaseline = 'alphabetic';
   let y = layout.y - scroll; // running baseline-ish cursor (top of the next block)
 
@@ -96,9 +105,9 @@ export function renderDocument(
           const minH = colW * 0.5 / (col.aspect || 1);
           const stripH = Math.max(y - col.top, minH);
           if (col.top + stripH > layout.y - 2 && col.top < maxY + 2) {
-            if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)';
+            if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)'; // lift the photo a little under mono
             drawImageBlock(ctx, col.img, 'sliver', colX, col.top, col.stripW, stripH, col.aspect, col.focus);
-            ctx.filter = 'none';
+            ctx.filter = baseFilter; // back to the SURFACE filter, not to none
           }
           y = Math.max(y, col.top + stripH);
         }
@@ -272,9 +281,9 @@ export function renderDocument(
         }
         const dx = x + (w - dw) / 2;
         if (visible(top, dh)) {
-          if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)'; // bleach the photo under mono
+          if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)'; // lift the photo a little under mono
           drawImageBlock(ctx, b.img, frame, dx, top, dw, dh, aspect, b.focus);
-          ctx.filter = 'none';
+          ctx.filter = baseFilter; // back to the SURFACE filter, not to none
         }
         if (b.id) regions.push({ id: b.id, y0: top, y1: top + dh });
         y += dh + px(GAP, s);
@@ -299,6 +308,8 @@ export function renderDocument(
         const gap = px(5, s);
         const labW = b.label ? Math.min(w * 0.34, px(190, s)) : 0;
         if (visible(top, rowH)) {
+          // Same rule as a list row: stripe only when the entry has no hue of its own to tell it apart.
+          if (!b.labelColor && (b.band ?? 0) % 2 === 1) zebra(ctx, c, x, top - px(2, s), w, rowH + px(4, s));
           if (b.label) {
             ctx.textAlign = 'left';
             ctx.font = `600 ${px(13, s)}px ${theme.headingFont || font}`;
@@ -311,7 +322,7 @@ export function renderDocument(
           for (const it of b.items) {
             const d = Math.max(px(3, s), rowH * Math.max(0.05, Math.min(1, it.scale)));
             if (gx + d > limit) break;
-            drawBodyGlyph(ctx, it.body as CelestialBody, gx, top + (rowH - d) / 2, d, theme.mono);
+            drawBodyGlyph(ctx, it.body as CelestialBody, gx, top + (rowH - d) / 2, d);
             gx += d + gap;
             drawn++;
           }
@@ -366,6 +377,9 @@ export function renderDocument(
         const natural = schematicHeight(b.system as System, w);
         const h = b.height !== undefined ? cap : (natural > 0 ? Math.min(natural, cap) : cap);
         if (visible(top, h)) {
+          // A repeated strip is a long list too. The schematic's own rainbow is per BODY rather than
+          // per entry, so it never separates one system's strip from the next — hence no colour guard.
+          if ((b.band ?? 0) % 2 === 1) zebra(ctx, c, x, top, w, h);
           const hits = drawSystemSchematic(ctx, {
             system: b.system as System, x, y: top, w, h,
             theme, selectedId: b.selectedId, colorful: b.colorful, labels: b.labels
@@ -383,6 +397,7 @@ export function renderDocument(
     }
   }
 
+  ctx.filter = 'none'; // leave the context as we found it — the caller may draw chrome after us
   return { regions, contentH: (y + scroll) - layout.y };
 }
 
@@ -422,6 +437,11 @@ function drawList(
       const cy = top + Math.floor(i / cols) * (cardH + gap);
       const sel = !!it.selected || (!!it.id && !!b.selected);
       if (cy + cardH > colTop - 2 && cy < maxY + 2) {
+        // Cards stripe by grid ROW, not by card — alternating individual boxes would be a checkerboard.
+        // Painted once per row, on the first card of it, so the wash spans the full column.
+        if (!it.color && i % cols === 0 && Math.floor(i / cols) % 2 === 1) {
+          zebra(ctx, c, x, cy - px(4, s), w, cardH + px(8, s));
+        }
         // Builder-set hue (the rainbow: one part of the spectrum per card). Ignored under mono, which
         // bleaches the page on purpose — the same exemption the rainbow headings and chips take.
         const own = !theme.mono ? it.color : undefined;
@@ -516,6 +536,10 @@ function drawList(
     // GM switching the navigator to boxed or plain silently lost the colour the builder had chosen.
     // Same fault family as F9 — a builder-set colour that only reached one branch of the renderer.
     const own = !theme.mono ? it.color : undefined;
+    // ZEBRA. A long list where every row is the same colour is hard to track across — the eye loses
+    // its line. Rainbow solves that by giving each row its own hue; without one, alternate rows take a
+    // very faint wash instead. So it appears exactly when it is needed and never fights the rainbow.
+    if (inBand && !own && i % 2 === 1) zebra(ctx, c, x, rowTop, w, lh);
     if (inBand && boxed) {
       // Boxed nav "buttons": a rounded box per row — the selected one coloured (accent), the rest plain.
       const bx = x, bw = w, by = rowTop + px(2, s), bh = lh - px(5, s), r = px(6, s);
@@ -719,7 +743,7 @@ function drawImageBlock(
 // palette and `deriveAppearance().baseColorHex` is the same value the orrery and the 3D holo use — a
 // class-to-colour lookup added here would be exactly the renderer shortcut that was reverted once.
 function drawBodyGlyph(
-  ctx: CanvasRenderingContext2D, body: CelestialBody, x: number, y: number, d: number, mono: boolean
+  ctx: CanvasRenderingContext2D, body: CelestialBody, x: number, y: number, d: number
 ): void {
   const r = d / 2, cx = x + r, cy = y + r;
   let a: ReturnType<typeof deriveAppearance> | null = null;
@@ -737,12 +761,8 @@ function drawBodyGlyph(
   }
   if (tex) ctx.drawImage(tex, cx - r, cy - r, d, d);
   else { ctx.fillStyle = base; ctx.fillRect(cx - r, cy - r, d, d); }
-  if (mono) { // the bleached page tints from the filter, so wash the disc to its own luminance
-    ctx.globalCompositeOperation = 'saturation';
-    ctx.fillStyle = '#808080';
-    ctx.fillRect(cx - r, cy - r, d, d);
-    ctx.globalCompositeOperation = 'source-over';
-  }
+  // (No desaturation here any more: monochrome is a filter on the whole surface, set once in
+  // renderDocument, so a disc greys along with the text and the photos rather than by its own trick.)
   if (a?.isStar) {
     // A light source, not a lit ball: brighten the centre rather than shading one limb.
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
@@ -759,5 +779,19 @@ function drawBodyGlyph(
     ctx.fillStyle = g;
     ctx.fillRect(cx - r, cy - r, d, d);
   }
+  ctx.restore();
+}
+
+// A very faint wash behind alternate rows. Deliberately weaker than the `rule` colour it is derived
+// from — it must read as a change of shade, not as a box; anything stronger competes with the
+// selection highlight and with the boxed navigator's own border.
+function zebra(
+  ctx: CanvasRenderingContext2D, c: Required<import('./blocks').DocColors>,
+  x: number, y: number, w: number, h: number
+): void {
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.fillStyle = c.rule || '#8899aa';
+  ctx.fillRect(x, y, w, h);
   ctx.restore();
 }
