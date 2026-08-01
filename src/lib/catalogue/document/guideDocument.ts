@@ -14,6 +14,7 @@ import {
   constructsOf, isRinged, type Node
 } from './systemTopology';
 import { rainbowHue, rainbowHueIndex } from './systemSchematic';
+import { constructIconShape } from '$lib/constructs/constructIcon';
 
 export interface GuideDocOpts {
   units?: MeasurementUnits;
@@ -119,10 +120,20 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     && subject && subject.kind !== 'construct') {
     // A CONSTRUCT gets no body graphic. The body-graphics setting drew whatever was selected, so a
     // 110 m ship was illustrated with the same featureless sphere a rocky world gets — a picture that
-    // is not merely plain but wrong about what the thing is. Drawing nothing is the honest minimum;
-    // giving it a graphic of its own is a separate question (A30), not something to invent here.
+    // is not merely plain but wrong about what the thing is (A28). It gets its OWN glyph below (A30).
     // '__bodygfx' lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
     blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
+  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
+    && subject && subject.kind === 'construct') {
+    // A30: the construct's authored icon, at info-block size — the picture that already exists in its
+    // data, rather than a world's disc or a blank. Gated on the same imagery modes as the body disc, so
+    // a preset that asks for no graphic still gets none, and a GM photo still wins (branch above).
+    blocks.push({
+      kind: 'constructGlyph',
+      shape: constructIconShape((subject as any).icon_type),
+      color: (subject as any).icon_color || '#ffd24d',
+      heightFrac: 0.24
+    });
   }
 
   // 4) Facts + description. For the sliver frame these flow in a RIGHT column beside the left photo

@@ -54,6 +54,28 @@ describe('buildGuideDocument', () => {
     expect(photoWithImg.some((b) => b.kind === 'image')).toBe(true);
   });
 
+  // A30: a construct is illustrated with its OWN authored glyph, never a world's disc (A28), and never
+  // a blank where a picture belongs. A GM photo still outranks it.
+  it('draws a construct as its icon glyph, not a body disc', () => {
+    const blocks = buildGuideDocument(system, 'iss', { imagery: 'disc' });
+    expect(blocks.some((b) => b.kind === 'bodyDisc')).toBe(false);
+    const glyph = blocks.find((b) => b.kind === 'constructGlyph') as any;
+    expect(glyph).toBeTruthy();
+    expect(glyph.shape).toBe('triangle');   // unset icon_type falls back to the construct default
+
+    const authored: any = { ...system, nodes: system.nodes.map((n: any) =>
+      n.id === 'iss' ? { ...n, icon_type: 'diamond', icon_color: '#ff0000' } : n) };
+    const g2 = buildGuideDocument(authored, 'iss', { imagery: 'flat' }).find((b) => b.kind === 'constructGlyph') as any;
+    expect(g2.shape).toBe('diamond');
+    expect(g2.color).toBe('#ff0000');
+
+    // 'none' means none, for a construct as for a world; a loaded photo wins over the glyph.
+    expect(buildGuideDocument(system, 'iss', { imagery: 'none' }).some((b) => b.kind === 'constructGlyph')).toBe(false);
+    const photo = buildGuideDocument(system, 'iss', { imagery: 'photo', image: {} as any, imageAspect: 1.5 });
+    expect(photo.some((b) => b.kind === 'image')).toBe(true);
+    expect(photo.some((b) => b.kind === 'constructGlyph')).toBe(false);
+  });
+
   it('renders tags as a styled tags block, not a plain fact row', () => {
     const tagged: any = { ...system, nodes: system.nodes.map((n: any) => n.id === 'earth' ? { ...n, tags: [{ key: 'structure/cloud-deck' }] } : n) };
     const blocks = buildGuideDocument(tagged, 'earth', { tagStyle: 'pills' });

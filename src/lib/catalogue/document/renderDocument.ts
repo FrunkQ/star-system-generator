@@ -9,6 +9,7 @@
 import { wrap, ellipsise } from '../textLayout';
 import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle, type TagsBlock, type TagStyle, type TagItem, type ImageFocus } from './blocks';
 import { drawSystemSchematic, schematicHeight } from './systemSchematic';
+import { traceConstructIcon } from '$lib/constructs/constructIcon';
 import type { System, CelestialBody } from '$lib/types';
 
 // The content column the document flows within, in CSS px of the logical view.
@@ -218,6 +219,33 @@ export function renderDocument(
         // caller overlays the REAL renderer here (PlanetDisc for 2D, the holo body scene for 3D, or a
         // photo), positioned via this region. `b.id` (e.g. '__bodygfx') lets the caller find the rect.
         const bandH = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.24);
+        if (b.id) regions.push({ id: b.id, x0: x, y0: top, x1: x + w, y1: top + bandH });
+        y += bandH + px(GAP, s);
+        break;
+      }
+      case 'constructGlyph': {
+        // A30: the construct's own authored icon, centred, at info-block size. Drawn INTO the document
+        // (unlike bodyDisc, which reserves a gap for a live renderer) — it is a flat vector shape, so
+        // it needs no overlay and both consumers get it for free. Under a mono theme it takes the
+        // page's ink rather than its authored colour, like every other mark on a bleached page.
+        const bandH = (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.24);
+        // Capped in absolute px as well as by the band: it is an emblem, not an illustration, and a
+        // 120 px flat square in a full-page document reads as a missing picture rather than a marker.
+        const size = Math.min(bandH * 0.8, w * 0.42, px(84, s));
+        if (visible(top, bandH) && size > 2) {
+          const cx = x + w / 2, cy = top + bandH / 2;
+          ctx.save();
+          traceConstructIcon(ctx, b.shape, cx, cy, size);
+          ctx.fillStyle = theme.mono ? c.heading : b.color;
+          ctx.globalAlpha = 0.92;
+          ctx.fill();
+          // A thin ring of the page's rule colour so a dark glyph still reads against a dark ground.
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = c.rule;
+          ctx.lineWidth = Math.max(1, px(1, s));
+          ctx.stroke();
+          ctx.restore();
+        }
         if (b.id) regions.push({ id: b.id, x0: x, y0: top, x1: x + w, y1: top + bandH });
         y += bandH + px(GAP, s);
         break;

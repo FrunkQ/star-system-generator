@@ -130,6 +130,20 @@ export interface BodyDiscBlock extends DocBlockBase {
   mode?: 'sphere' | 'disc' | 'flat';
   heightFrac?: number; // fraction of the view height to reserve (default 0.2)
 }
+// A CONSTRUCT's picture (inbox A30). Not a body disc: a ship is not a small planet, and illustrating
+// one with a world's sphere was the fault A28 removed. This draws the construct's OWN authored
+// `icon_type` in its `icon_color` — the same glyph the 2D orrery, the starmap and the holo scene all
+// draw it with — so the panel agrees with the marker the reader is looking at, and no new look is
+// invented in code. It is the permanent bottom tier of the ladder in docs/dev/ship-appearance-design.md
+// (photo > 3D model > glyph > nothing), so it is not thrown away when models arrive.
+// Drawn straight into the document canvas, unlike `bodyDisc` — a flat vector shape needs no live
+// renderer overlaid, so both consumers get it with no plumbing of their own.
+export interface ConstructGlyphBlock extends DocBlockBase {
+  kind: 'constructGlyph';
+  shape: import('$lib/constructs/constructIcon').ConstructIconShape;
+  color: string;       // the construct's authored icon_color (ignored under a mono theme)
+  heightFrac?: number; // fraction of the view height to reserve (default 0.24 — the body-disc slot)
+}
 export interface SpacerBlock extends DocBlockBase { kind: 'spacer'; h?: number; } // gap in px (× scale)
 export interface RuleBlock extends DocBlockBase { kind: 'rule'; }                  // a full-width divider
 
@@ -156,7 +170,7 @@ export interface SchematicBlock extends DocBlockBase {
 
 export type DocBlock =
   | HeadingBlock | TextBlock | KeyValueBlock | ListBlock | TagsBlock
-  | ImageBlock | BodyDiscBlock | SpacerBlock | RuleBlock | SchematicBlock
+  | ImageBlock | BodyDiscBlock | ConstructGlyphBlock | SpacerBlock | RuleBlock | SchematicBlock
   | ColumnStartBlock | ColumnEndBlock;
 
 // --- Resolved colours -------------------------------------------------------------------------------

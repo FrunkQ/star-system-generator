@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.343-beta - 1st Aug 2026
+
+* A construct has a picture again. Since the sphere a planet gets was removed from it -- a 110 m ship illustrated as a rocky world -- a ship or station has shown a blank where every world shows something. It now draws its own icon, in its own colour, at info-block size, so the entry agrees with the marker on the map.
+
 ## v2.1.342-beta - 1st Aug 2026
 
 * The player info panel's width now follows the setting. It was converted to pixels once, when a preset was applied, so a width edited while the player window was shut arrived scaled to whatever screen last opened it -- and the top third of the slider did nothing, because the live view capped the panel at 640 px while the slider offered half the screen. The width is now worked out from the stored proportion and the CURRENT window, every time the window changes size.
