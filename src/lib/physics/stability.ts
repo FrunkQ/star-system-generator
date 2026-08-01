@@ -7,6 +7,12 @@ interface StabilityAssessment {
   severity: 0 | 1 | 2 | 3;
   reasons: string[];
   fate?: Fate;
+  // Which node the FATE belongs to, when it belongs to only one of a pair (inbox B19). An
+  // ejection is asymmetric: the light body is scattered and the heavy one is what scatters it, so
+  // "Mars is flung out by a 16 km asteroid" is the wrong half of a correct verdict. A COLLISION
+  // between comparable masses is symmetric and leaves this unset, so both members keep it.
+  // Severity and reasons are never directional -- both bodies really are in a risky pair.
+  fateNodeId?: string;
 }
 
 const FATE_TEXT: Record<Fate, string> = {
@@ -57,12 +63,14 @@ function severityDescription(severity: number): string | null {
   return null;
 }
 
-function mergeAssessment(target: StabilityAssessment, incoming: StabilityAssessment) {
+function mergeAssessment(target: StabilityAssessment, incoming: StabilityAssessment, targetId?: string) {
+  // A directional fate only lands on the node it names (B19).
+  const fateApplies = incoming.fate && (!incoming.fateNodeId || !targetId || incoming.fateNodeId === targetId);
   // The dominant (most-severe) driver owns the predicted fate.
   if (incoming.severity > target.severity) {
     target.severity = incoming.severity as 0 | 1 | 2 | 3;
-    if (incoming.fate) target.fate = incoming.fate;
-  } else if (!target.fate && incoming.fate) {
+    if (fateApplies) target.fate = incoming.fate;
+  } else if (!target.fate && fateApplies) {
     target.fate = incoming.fate;
   }
   for (const reason of incoming.reasons) {
@@ -122,8 +130,10 @@ function assessPairStability(
       } else {
         out.reasons.push(`Orbit overlap in pair ${inner.name}/${outer.name}`);
       }
-      // Comparable masses collide; a lightweight crosser is scattered out.
+      // Comparable masses collide; a lightweight crosser is scattered out. A collision is mutual,
+      // an ejection is not -- name the body that actually gets thrown (B19).
       out.fate = massRatio >= 1e-2 ? 'collision' : 'eject';
+      if (out.fate === 'eject') out.fateNodeId = (m1 <= m2 ? inner : outer).id;
     }
     if (adjustedSeverity > out.severity) out.severity = adjustedSeverity;
   }
@@ -143,7 +153,12 @@ function assessPairStability(
       const delta = (a2 - a1) / mutualHill;
       // Packed systems shed their lighter member by scattering it out (Hill-spacing instability →
       // ejection), unless a resonance is holding the pair.
-      if (delta < 5.5 && !isResonanceProtected(inner) && !isResonanceProtected(outer)) out.fate = out.fate ?? 'eject';
+      if (delta < 5.5 && !isResonanceProtected(inner) && !isResonanceProtected(outer)) {
+        if (!out.fate) {
+          out.fate = 'eject';
+          out.fateNodeId = (m1 <= m2 ? inner : outer).id; // it is the lighter member that is shed
+        }
+      }
       if (delta < 3.5) {
         if (out.severity < 3) out.severity = 3;
         out.reasons.push(`Critical Hill spacing (Delta=${delta.toFixed(2)})`);
@@ -442,8 +457,8 @@ export function annotateGravitationalStability(system: System): System {
         }
         if (pairAssessment.severity === 0) continue;
 
-        mergeAssessment(assessments.get(inner.id)!, pairAssessment);
-        mergeAssessment(assessments.get(outer.id)!, pairAssessment);
+        mergeAssessment(assessments.get(inner.id)!, pairAssessment, inner.id);
+        mergeAssessment(assessments.get(outer.id)!, pairAssessment, outer.id);
       }
     }
 

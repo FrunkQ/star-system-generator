@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.338-beta - 1st Aug 2026
+
+* Mars is no longer predicted to be flung out of the Solar System. It shares a crossing orbit with 433 Eros, a sixteen-kilometre asteroid carried as a planet in the bundled map, and the engine was applying the pair's verdict to both bodies -- so a rock a hundred million times lighter than Mars was throwing it out of the system. An ejection is one-sided: the light body is scattered and the heavy one is what scatters it. The verdict now names which body is thrown. A collision between comparable masses is genuinely mutual and still applies to both.
+* Seven bodies across the bundled maps lose an ejection they should never have had, and in every case it was the heavier half of the pair keeping it.
+
 ## v2.1.337-beta - 1st Aug 2026
 
 * The Testion example system demonstrates four of its world types again. Its ammonia world carried a bar and a half of pure ammonia, which is a powerful greenhouse gas, and sat at 73 degrees C -- a temperature at which ammonia is a gas and cannot form the seas the type is named for. Its Earth-like and superhabitable worlds each carried twenty-five times Earth's carbon dioxide and ran at 73 and 98 degrees C. Its swamp world was, to two decimal places, Earth. In every case the authored data was wrong and the type's temperature band was right, so the data was corrected rather than the band widened.

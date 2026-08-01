@@ -36,3 +36,45 @@ describe('belt does not destabilise neighbours', () => {
     expect(stabilityTags(belt).length).toBe(0);
   });
 });
+
+// Inbox B19: an ejection is ASYMMETRIC. Mars was tagged "flung out" because it shares a crossing
+// pair with 433 Eros, a 16 km asteroid carried as a planet in the starmap Sol — and the verdict was
+// merged onto BOTH members. The Hill delta there is 9.28, nowhere near the 5.5 threshold, so the
+// threshold was never involved; and belts were already excluded from the pairing, so that was not
+// it either. The light body is the one that gets thrown.
+describe('an ejection verdict names the body that is thrown (B19)', () => {
+  const SUN = 1.989e30;
+  const mk = (id: string, name: string, aAU: number, massKg: number, e = 0) => ({
+    id, name, kind: 'body', roleHint: 'planet', parentId: 'star', massKg, radiusKm: 100,
+    orbit: { hostId: 'star', elements: { a_AU: aAU, e, i_deg: 0, Omega_deg: 0, w_deg: 0, M0_deg: 0 } }
+  }) as any;
+
+  function fatesFor(nodes: any[]) {
+    const sys: any = { id: 's', name: 's', seed: 's', epochT0: 0, age_Gyr: 4.6, nodes: [
+      { id: 'star', name: 'S', kind: 'body', roleHint: 'star', massKg: SUN, radiusKm: 696340 }, ...nodes
+    ], tags: [] };
+    annotateGravitationalStability(sys);
+    const out: Record<string, string | undefined> = {};
+    for (const n of sys.nodes) out[n.name] = (n.tags || []).find((t: any) => t.key.startsWith('fate/'))?.key;
+    return out;
+  }
+
+  it('a planet is NOT flung out by a crossing asteroid — the asteroid is', () => {
+    // Eros: a = 1.458, e = 0.223, 6.7e15 kg. Mars: a = 1.524, 6.42e23 kg. Their orbits cross.
+    const f = fatesFor([mk('eros', 'Eros', 1.458, 6.687e15, 0.223), mk('mars', 'Mars', 1.5237, 6.417e23)]);
+    expect(f['Mars']).toBeUndefined();
+    expect(f['Eros']).toBe('fate/eject');
+  });
+
+  it('the threshold is innocent: that pair is at delta 9.28, far outside the 5.5 test', () => {
+    const a1 = 1.458, a2 = 1.5237, m1 = 6.687e15, m2 = 6.417e23;
+    const mutualHill = 0.5 * (a1 + a2) * Math.cbrt((m1 + m2) / (3 * SUN));
+    expect((a2 - a1) / mutualHill).toBeGreaterThan(5.5);
+  });
+
+  it('comparable masses still BOTH get the (mutual) collision verdict', () => {
+    const f = fatesFor([mk('a', 'A', 1.0, 5.97e24, 0.30), mk('b', 'B', 1.3, 5.97e24)]);
+    expect(f['A']).toBe('fate/collision');
+    expect(f['B']).toBe('fate/collision');
+  });
+});
