@@ -13,6 +13,7 @@ import {
   isBary, isStar, isBeltish, dominantOf, displayLabel, membersOf, moonsOf, listBodiesOf,
   constructsOf, isRinged, type Node
 } from './systemTopology';
+import { rainbowHue, rainbowHueIndex } from './systemSchematic';
 
 export interface GuideDocOpts {
   units?: MeasurementUnits;
@@ -60,6 +61,15 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   const colorful = !!opts.colorful;
   const panel = !!opts.panel; // 2D/3D info block: no schematic/nav — the live map is the navigator
 
+  // In rainbow mode a navigator button takes the hue the SCHEMATIC gives that body, so a planet's chip
+  // matches its dot on the chart above rather than being an unrelated spectrum — ONE index, shared, so
+  // the two cannot drift. Moons and constructs are not drawn on the schematic and so have no index;
+  // they fall back to their position in their own list, which keeps them varied without pretending to
+  // match something that is not there.
+  const hues = colorful ? rainbowHueIndex(system) : null;
+  const hueOf = (id: string, fallbackIdx: number) =>
+    hues ? { color: rainbowHue(hues.get(id) ?? (hues.size + fallbackIdx)) } : {};
+
   // 1) The orbital schematic — the interactive map + the "simple system drawing."
   if (!panel) blocks.push({ kind: 'schematic', system, selectedId, colorful });
 
@@ -94,7 +104,8 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   if (!bary && !panel) {
     const pid = (selected as any).ui_parentId || selected.parentId || (selected as any).orbit?.hostId;
     const parent = pid ? nodeById(system, pid) : null;
-    if (parent) blocks.push({ kind: 'list', items: [{ id: parent.id, text: `↑ ${displayLabel(system, parent)}` }] });
+    // The "up one level" link points at a body that IS on the chart, so it takes the same hue.
+    if (parent) blocks.push({ kind: 'list', items: [{ id: parent.id, text: `↑ ${displayLabel(system, parent)}`, ...hueOf(parent.id, 0) }] });
   }
 
   // 3) Imagery — driven by the preset's Body-graphics choice. 'photo' shows a GM/stock picture (only
@@ -145,7 +156,9 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // 5) Drill-in navigator lists: companion members (for a barycentre), moons, constructs. Not in the
   // side panel — tapping the live map does the drilling there.
   if (panel) { blocks.push({ kind: 'spacer', h: 12 }); return blocks; }
-  const drillItems = (nodes: Node[]) => nodes.map((n) => ({ id: n.id, text: `${bodyGlyph(n as any)} ${displayLabel(system, n)}` }));
+  const drillItems = (nodes: Node[]) => nodes.map((n, i) => ({
+    id: n.id, text: `${bodyGlyph(n as any)} ${displayLabel(system, n)}`, ...hueOf(n.id, i)
+  }));
 
   // A barycentre's MEMBERS and a body's MOONS are different relationships — a co-orbiting peer versus
   // a satellite — and merging them under one heading called them all moons: the Alpha Centauri AB

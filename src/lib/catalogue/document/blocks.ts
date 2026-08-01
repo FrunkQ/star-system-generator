@@ -102,7 +102,9 @@ export interface TagsBlock extends DocBlockBase {
   style?: TagStyle; // overrides the theme/preset default
 }
 
-export interface ListItem { id?: string; text: string; selected?: boolean; sub?: string; }
+// `color` is set by the BUILDER, not chosen by the renderer: in the Guide's rainbow mode each drill-in
+// button takes the same hue as that body's marker on the chart above, so a chip and its dot match.
+export interface ListItem { id?: string; text: string; selected?: boolean; sub?: string; color?: string; }
 export interface ListBlock extends DocBlockBase {
   kind: 'list';
   items: ListItem[];

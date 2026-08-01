@@ -271,12 +271,28 @@ function drawList(
       const chipW = Math.min(w, ctx.measureText(label).width + padX * 2);
       if (cx > x && cx + chipW > x + w) { cx = x; cy += chipH + gap; } // wrap
       if (cy + chipH > colTop - 2 && cy < maxY + 2) {
+        // The builder may hand each item its own colour (the Guide's rainbow: a chip takes the hue of
+        // that body's marker on the chart above). Monochrome bleaches the page on purpose, so it is
+        // ignored there — the same exemption the rainbow headings take.
+        const own = !theme.mono ? it.color : undefined;
         roundRectPath(ctx, cx, cy, chipW, chipH, r);
-        ctx.fillStyle = sel ? hexA(c.accent, 0.16) : hexA(c.rule || '#8899aa', 0.08);
-        ctx.fill();
-        ctx.strokeStyle = sel ? c.accent : c.rule; ctx.lineWidth = 1; ctx.stroke();
+        // The item colour is an hsl() string (the schematic's hue), which `hexA` cannot take an alpha
+        // from — it only parses #rrggbb and would hand back a fully opaque fill. Canvas alpha works
+        // whatever the colour format, so the tint goes through globalAlpha instead.
+        if (own) {
+          const a0 = ctx.globalAlpha;
+          ctx.globalAlpha = a0 * (sel ? 0.3 : 0.14);
+          ctx.fillStyle = own;
+          ctx.fill();
+          ctx.globalAlpha = a0;
+        } else {
+          ctx.fillStyle = sel ? hexA(c.accent, 0.16) : hexA(c.rule || '#8899aa', 0.08);
+          ctx.fill();
+        }
+        ctx.strokeStyle = own ?? (sel ? c.accent : c.rule);
+        ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
         ctx.textAlign = 'left';
-        ctx.fillStyle = sel ? c.value : c.body;
+        ctx.fillStyle = own ?? (sel ? c.value : c.body);
         ctx.fillText(ellipsise(ctx, label, chipW - padX * 2), cx + padX, cy + chipH - px(7, s));
       }
       // x-bounded region: side-by-side chips share a y band, so a tap has to be resolved by column

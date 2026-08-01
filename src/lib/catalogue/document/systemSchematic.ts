@@ -23,7 +23,23 @@ export interface SchematicOpts {
 const VB_W = 600, ROW_H = 88, INNER = 86, OUTER = VB_W - 26;
 
 // The Guide's rainbow: a stable bright hue per body, index-driven.
-const hue = (i: number) => `hsl(${(i * 47 + 8) % 360}, 95%, 66%)`;
+export const rainbowHue = (i: number) => `hsl(${(i * 47 + 8) % 360}, 95%, 66%)`;
+const hue = rainbowHue;
+
+// The hue INDEX (star, then its bodies, then rogues). Exported so the drill-in navigator can colour a
+// body's button with the same hue as its marker on the chart above — one source, so a planet's chip and
+// its dot cannot drift apart. Moons and constructs are not in the schematic and so are not in this map;
+// callers fall back for them.
+export function rainbowHueIndex(system: System): Map<string, number> {
+  const idx = new Map<string, number>();
+  let i = 0;
+  for (const s of starsOf(system)) {
+    idx.set(s.id, i++);
+    for (const b of listBodiesOf(system, s.id)) idx.set(b.id, i++);
+  }
+  for (const r of roguesOf(system)) idx.set(r.id, i++);
+  return idx;
+}
 
 interface Row {
   planets: { id: string; x: number; label: string; hasMoons: boolean; color?: string }[];
@@ -70,8 +86,7 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
   const font = theme.font;
 
   // Stable hue index (star, then its bodies, then rogues) — only used in `colorful`.
-  const hueIndex = new Map<string, number>();
-  { let i = 0; for (const s of stars) { hueIndex.set(s.id, i++); for (const b of listBodiesOf(system, s.id)) hueIndex.set(b.id, i++); } for (const r of roguesOf(system)) hueIndex.set(r.id, i++); }
+  const hueIndex = rainbowHueIndex(system);
   // Monochrome bleaches everything: the schematic drops its rainbow and uses the grey ramp too.
   const colorfulEff = colorful && !theme.mono;
   // Marker fill: rainbow hue (colorful), a bleached grey (mono), else the body's TRUE colour (its

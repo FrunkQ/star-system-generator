@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.331-beta - 1st Aug 2026
+
+* In the Guide's rainbow mode each navigation button takes its own colour -- and it is the same colour as that body's marker on the chart above it, not an unrelated spectrum. Mercury's button is Mercury's yellow, Jupiter's is Jupiter's purple, so the eye can go straight from a dot on the diagram to the button that opens it. The "up one level" link is coloured the same way. Moons and stations are not drawn on the chart and so have no dot to match; they take varied colours of their own rather than pretending to. Monochrome skins are exempt, as they are for the rainbow headings -- they bleach the page on purpose.
+
 ## v2.1.330-beta - 1st Aug 2026
 
 * Navigation links in the system document sit side by side across the page and wrap, instead of one per line. A star's planet list runs to thirteen entries in Sol alone, so a page of facts was ending in a long column of links; it is now a single wrapping row of buttons. Every drill-in list gets it -- planets, moons, rings, companions, constructs and the "up one level" link. This is the new default; the old arrangements are still there as "Buttons -- one per row" and "Plain text" under Navigation.
