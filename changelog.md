@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.355-beta - 2nd Aug 2026
+
+* Greyscale is offered once, not twice. It was in the colouration list AND as a checkbox beside it; the list keeps it, since picking it already turns the page monochrome on its own. The 2D/3D map keeps its checkbox, having no palette list of its own.
+* Less prose under the starmap controls.
+
 ## v2.1.354-beta - 2nd Aug 2026
 
 * The starmap document has its OWN colours. They used to be inherited from the system info block on another step, which is the wrong place twice over: the two are different documents you will want to look different, and the greyscale a green-screen or CRT filter needs belongs to the stage being filtered. Same controls, same order, on the Starmap step.

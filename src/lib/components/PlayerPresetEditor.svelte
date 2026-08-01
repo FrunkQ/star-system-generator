@@ -372,12 +372,9 @@
                     <option value="diagram-full">Diagram — full, with names</option>
                   </select>
                 </label>
-                <p class="hint">The shape of the page. The colouration, fonts and list glyphs on the Look
-                  step still apply on top of whichever you pick.</p>
+                <p class="hint">The shape of the page. Colouration and fonts apply on top.</p>
                 {#if draft.starmapLayout === 'dossier'}
                   <label class="chk"><input type="checkbox" bind:checked={draft.starmapFieldIcons} /> Field icons</label>
-                  <p class="hint">A glyph before each field — a star for the primary, a disc for planets,
-                    a ring for moons. Same shapes the navigator lists use.</p>
                 {/if}
                 <!-- Every width in the arrangements derives from the text scale — the card grid's column
                      count, the dossier's field columns, the glyph row's disc size — so this one slider is
@@ -387,22 +384,15 @@
                     value={draft.starmapFontScale ?? 1}
                     on:input={(e) => (draft = { ...draft, starmapFontScale: Number((e.currentTarget as HTMLInputElement).value) })} />
                 </label>
-                <p class="hint">Sizes the type AND the layout: bigger text means fewer, wider columns and
-                  larger glyphs; smaller fits more of the map on one screen.</p>
-                <!-- The starmap document's OWN palette, in the same order and with the same controls the
-                     system document uses on its step. It used to inherit the system's, which is the wrong
-                     place twice: the two are different documents a GM will want to look different, and
-                     the greyscale a green-screen or CRT filter needs belongs to the STAGE being filtered,
-                     not to the body info block on another page. -->
+                <p class="hint">Sizes the layout as well as the type.</p>
+                <!-- The starmap document's OWN palette, same controls and same order as the system
+                     document's. No greyscale CHECKBOX here: the colouration list already offers it, and
+                     picking it sets monochrome by itself (makeDocTheme) — one lever, not two that have
+                     to agree. The 2D/3D map branch below keeps its checkbox, having no palette list. -->
                 {@render colouration('starmap')}
-                <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Greyscale (for tinting filters)</label>
-                <p class="hint">Takes the whole page to grey — type, world discs and photos together — so
-                  a green-screen, CRT or night-vision filter can colour it cleanly.</p>
-                {#if !draft.starmapMono}
+                {#if styleOf('starmap') !== 'greyscale'}
                   {@render colourSlots('starmap')}
                 {/if}
-                <p class="hint">List and navigation styles are shared with the system document and are set
-                  on the System step.</p>
               {/if}
               <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
               {#if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
@@ -546,7 +536,7 @@
                     <option value="white">Greyscale (for tinting filters)</option>
                   </select>
                 </label>
-                {#if draft.bodyStyle !== 'white'}
+                {#if draft.bodyStyle !== 'white' && draft.documentStyle !== 'greyscale'}
                   {@render colourSlots('system')}
                 {/if}
               {/if}
