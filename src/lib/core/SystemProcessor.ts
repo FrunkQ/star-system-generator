@@ -1085,6 +1085,41 @@ export class SystemProcessor implements ISystemProcessor {
             radiation: 0,
             gravity: 0
         };
+
+        // --- THIS AXIS IS A SURFACE MODEL, so a body with no surface does not score on it (inbox
+        //     B18). Every factor below is a surface condition — `surfaceScore` says so by name, and
+        //     isEarthLike / isHumanHabitable all test what it is like to stand there. The proof that
+        //     the model means "surface" is the SUBSURFACE NICHE further down: non-surface
+        //     habitability is handled by ADDING an explicitly named niche with its own floor and its
+        //     own tier, precisely because these factors cannot express it.
+        //     A gas giant has no surface, and left to run it TRIVIALLY MAXIMISED the three factors
+        //     that survive: its atmosphere.pressure_bar is pinned at the 1-bar cloud-top reference
+        //     level (a deliberate simplification — see ARCHITECTURE.md), its "surface" radiation and
+        //     "surface" gravity are evaluated at that same notional level, and its radius is the
+        //     1-bar radius. Uranus, Neptune and Saturn each scored exactly 18 + 17 + 15 = 50 while
+        //     scoring ZERO on temperature and solvent — the two factors worth half the total and the
+        //     two that decide the question — putting them above Mars (8) and Enceladus (35).
+        //     That is a category error, not a weighting problem; tuning the weights would have
+        //     hidden it. Whether a giant's ENVELOPE deserves an aerial niche of its own, the way the
+        //     subsurface ocean has one, is a separate design question and deliberately not answered
+        //     here. Same gas test the geology model already uses, so the two agree on what a surface is.
+        const habMakeup = makeupFractions(planet);
+        const hasSolidSurface = habMakeup.gas <= 0.5;
+        if (!hasSolidSurface) {
+            planet.habitabilityScore = 0;
+            planet.tags = planet.tags?.filter(t => !t.key.startsWith('habitability/')) || [];
+            planet.tags.push({ key: 'habitability/none' });
+            // The Bio tab still needs something to render, and "no surface to score" is a better
+            // answer than a blank panel or a silent 50.
+            planet.habitabilityBreakdown = {
+                factors: [],
+                surfaceScore: 0,
+                modifiers: [{ label: 'No solid surface — surface habitability does not apply', delta: 0 }],
+                finalScore: 0,
+                tier: 'habitability/none'
+            };
+            return;
+        }
     
         // REBALANCED weights (toward current astrobiology thinking): a liquid SOLVENT is the master
         // variable for life, with temperature gating it; atmosphere/radiation are retention/shielding

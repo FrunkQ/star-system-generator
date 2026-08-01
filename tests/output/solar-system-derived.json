@@ -3496,80 +3496,17 @@
         ],
         "fallback": false
       },
-      "habitabilityScore": 29.50429126970473,
+      "habitabilityScore": 0,
       "habitabilityBreakdown": {
-        "factors": [
+        "factors": [],
+        "surfaceScore": 0,
+        "modifiers": [
           {
-            "label": "Temperature",
-            "points": 0,
-            "max": 25,
-            "value": "159 K (-114 °C)",
-            "ideal": "10–25 °C",
-            "range": {
-              "value": 159,
-              "lo": 243,
-              "idealLo": 283,
-              "idealHi": 298,
-              "hi": 338,
-              "unit": "K"
-            }
-          },
-          {
-            "label": "Liquid solvent",
-            "points": 0,
-            "max": 25,
-            "value": "no surface liquid (frozen?)",
-            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
-          },
-          {
-            "label": "Pressure",
-            "points": 18,
-            "max": 18,
-            "value": "1.00 bar",
-            "ideal": "0.5–2 bar",
-            "range": {
-              "value": 1,
-              "lo": 0,
-              "idealLo": 0.5,
-              "idealHi": 2,
-              "hi": 4,
-              "unit": "bar"
-            }
-          },
-          {
-            "label": "Radiation",
-            "points": 11.5,
-            "max": 17,
-            "value": "11.47 mSv",
-            "ideal": "< 5 mSv",
-            "range": {
-              "value": 11.47,
-              "lo": 0,
-              "idealLo": 0,
-              "idealHi": 5,
-              "hi": 25,
-              "unit": "mSv"
-            }
-          },
-          {
-            "label": "Gravity",
-            "points": 0,
-            "max": 15,
-            "value": "2.64 g",
-            "ideal": "0.5–1.5 g",
-            "range": {
-              "value": 2.64,
-              "lo": 0,
-              "idealLo": 0.5,
-              "idealHi": 1.5,
-              "hi": 2.1,
-              "unit": "g"
-            }
+            "label": "No solid surface — surface habitability does not apply",
+            "delta": 0
           }
         ],
-        "surfaceScore": 30,
-        "modifiers": [],
-        "finalScore": 30,
+        "finalScore": 0,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
@@ -5767,80 +5704,17 @@
         ],
         "fallback": false
       },
-      "habitabilityScore": 49.92100226003761,
+      "habitabilityScore": 0,
       "habitabilityBreakdown": {
-        "factors": [
+        "factors": [],
+        "surfaceScore": 0,
+        "modifiers": [
           {
-            "label": "Temperature",
-            "points": 0,
-            "max": 25,
-            "value": "135 K (-139 °C)",
-            "ideal": "10–25 °C",
-            "range": {
-              "value": 135,
-              "lo": 243,
-              "idealLo": 283,
-              "idealHi": 298,
-              "hi": 338,
-              "unit": "K"
-            }
-          },
-          {
-            "label": "Liquid solvent",
-            "points": 0,
-            "max": 25,
-            "value": "no surface liquid (frozen?)",
-            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
-          },
-          {
-            "label": "Pressure",
-            "points": 18,
-            "max": 18,
-            "value": "1.00 bar",
-            "ideal": "0.5–2 bar",
-            "range": {
-              "value": 1,
-              "lo": 0,
-              "idealLo": 0.5,
-              "idealHi": 2,
-              "hi": 4,
-              "unit": "bar"
-            }
-          },
-          {
-            "label": "Radiation",
-            "points": 16.9,
-            "max": 17,
-            "value": "5.09 mSv",
-            "ideal": "< 5 mSv",
-            "range": {
-              "value": 5.09,
-              "lo": 0,
-              "idealLo": 0,
-              "idealHi": 5,
-              "hi": 25,
-              "unit": "mSv"
-            }
-          },
-          {
-            "label": "Gravity",
-            "points": 15,
-            "max": 15,
-            "value": "1.14 g",
-            "ideal": "0.5–1.5 g",
-            "range": {
-              "value": 1.14,
-              "lo": 0,
-              "idealLo": 0.5,
-              "idealHi": 1.5,
-              "hi": 2.1,
-              "unit": "g"
-            }
+            "label": "No solid surface — surface habitability does not apply",
+            "delta": 0
           }
         ],
-        "surfaceScore": 50,
-        "modifiers": [],
-        "finalScore": 50,
+        "finalScore": 0,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
@@ -9166,80 +9040,17 @@
         ],
         "fallback": false
       },
-      "habitabilityScore": 50,
+      "habitabilityScore": 0,
       "habitabilityBreakdown": {
-        "factors": [
+        "factors": [],
+        "surfaceScore": 0,
+        "modifiers": [
           {
-            "label": "Temperature",
-            "points": 0,
-            "max": 25,
-            "value": "84 K (-189 °C)",
-            "ideal": "10–25 °C",
-            "range": {
-              "value": 84,
-              "lo": 243,
-              "idealLo": 283,
-              "idealHi": 298,
-              "hi": 338,
-              "unit": "K"
-            }
-          },
-          {
-            "label": "Liquid solvent",
-            "points": 0,
-            "max": 25,
-            "value": "no surface liquid (frozen?)",
-            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
-          },
-          {
-            "label": "Pressure",
-            "points": 18,
-            "max": 18,
-            "value": "1.00 bar",
-            "ideal": "0.5–2 bar",
-            "range": {
-              "value": 1,
-              "lo": 0,
-              "idealLo": 0.5,
-              "idealHi": 2,
-              "hi": 4,
-              "unit": "bar"
-            }
-          },
-          {
-            "label": "Radiation",
-            "points": 17,
-            "max": 17,
-            "value": "2.66 mSv",
-            "ideal": "< 5 mSv",
-            "range": {
-              "value": 2.66,
-              "lo": 0,
-              "idealLo": 0,
-              "idealHi": 5,
-              "hi": 25,
-              "unit": "mSv"
-            }
-          },
-          {
-            "label": "Gravity",
-            "points": 15,
-            "max": 15,
-            "value": "0.92 g",
-            "ideal": "0.5–1.5 g",
-            "range": {
-              "value": 0.92,
-              "lo": 0,
-              "idealLo": 0.5,
-              "idealHi": 1.5,
-              "hi": 2.1,
-              "unit": "g"
-            }
+            "label": "No solid surface — surface habitability does not apply",
+            "delta": 0
           }
         ],
-        "surfaceScore": 50,
-        "modifiers": [],
-        "finalScore": 50,
+        "finalScore": 0,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
@@ -10807,80 +10618,17 @@
         ],
         "fallback": false
       },
-      "habitabilityScore": 50,
+      "habitabilityScore": 0,
       "habitabilityBreakdown": {
-        "factors": [
+        "factors": [],
+        "surfaceScore": 0,
+        "modifiers": [
           {
-            "label": "Temperature",
-            "points": 0,
-            "max": 25,
-            "value": "72 K (-201 °C)",
-            "ideal": "10–25 °C",
-            "range": {
-              "value": 72,
-              "lo": 243,
-              "idealLo": 283,
-              "idealHi": 298,
-              "hi": 338,
-              "unit": "K"
-            }
-          },
-          {
-            "label": "Liquid solvent",
-            "points": 0,
-            "max": 25,
-            "value": "no surface liquid (frozen?)",
-            "ideal": "any surface liquid is high-value — presence matters more than amount; water scores best"
-          },
-          {
-            "label": "Pressure",
-            "points": 18,
-            "max": 18,
-            "value": "1.00 bar",
-            "ideal": "0.5–2 bar",
-            "range": {
-              "value": 1,
-              "lo": 0,
-              "idealLo": 0.5,
-              "idealHi": 2,
-              "hi": 4,
-              "unit": "bar"
-            }
-          },
-          {
-            "label": "Radiation",
-            "points": 17,
-            "max": 17,
-            "value": "2.28 mSv",
-            "ideal": "< 5 mSv",
-            "range": {
-              "value": 2.28,
-              "lo": 0,
-              "idealLo": 0,
-              "idealHi": 5,
-              "hi": 25,
-              "unit": "mSv"
-            }
-          },
-          {
-            "label": "Gravity",
-            "points": 15,
-            "max": 15,
-            "value": "1.15 g",
-            "ideal": "0.5–1.5 g",
-            "range": {
-              "value": 1.15,
-              "lo": 0,
-              "idealLo": 0.5,
-              "idealHi": 1.5,
-              "hi": 2.1,
-              "unit": "g"
-            }
+            "label": "No solid surface — surface habitability does not apply",
+            "delta": 0
           }
         ],
-        "surfaceScore": 50,
-        "modifiers": [],
-        "finalScore": 50,
+        "finalScore": 0,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.339-beta - 1st Aug 2026
+
+* Gas giants no longer score for habitability. Uranus, Neptune and Saturn each read 50%, above Mars at 8% and Enceladus at 35%, which was never a weighting problem: habitability here is a SURFACE measure, and a giant has no surface. It scored zero on the two things that matter -- temperature and a liquid solvent, half the total between them -- and then collected full marks on atmospheric pressure, surface radiation and surface gravity, all three of which are measured at the notional one-bar cloud-top level a giant is defined by. A body with no solid surface now scores zero and says why.
+* The subsurface-ocean niche is untouched, so Europa and Enceladus keep their scores; nothing with a real surface liquid was affected.
+
 ## v2.1.338-beta - 1st Aug 2026
 
 * Mars is no longer predicted to be flung out of the Solar System. It shares a crossing orbit with 433 Eros, a sixteen-kilometre asteroid carried as a planet in the bundled map, and the engine was applying the pair's verdict to both bodies -- so a rock a hundred million times lighter than Mars was throwing it out of the system. An ejection is one-sided: the light body is scattered and the heavy one is what scatters it. The verdict now names which body is thrown. A collision between comparable masses is genuinely mutual and still applies to both.
