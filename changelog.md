@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.340-beta - 1st Aug 2026
+
+* Moons of giant planets now take radiation from their host's magnetic field, not just from the sun. Io reads about 35 sieverts a DAY instead of 21 millisieverts a year -- it sits deep inside Jupiter's particle belt and is one of the most violently irradiated surfaces in the solar system. The old figures gave Io and Europa the same dose to four significant figures, because how far they sit from the sun was the only thing either calculation knew about.
+* The belt is derived from the host's magnetic field and spin, both of which the engine already worked out, so it applies to any world anywhere without anything being written by hand. It falls away sharply with distance: Io 35 sieverts a day, Europa 3.9, Ganymede 0.11, Callisto 0.00015. Saturn's field is far weaker and its moons come out far quieter -- Enceladus around ten thousand times below Io, and Titan sees essentially nothing.
+* Worlds with no magnetised host are untouched, which is nearly all of them. The Moon, Earth and Triton are unchanged.
+
 ## v2.1.339-beta - 1st Aug 2026
 
 * Gas giants no longer score for habitability. Uranus, Neptune and Saturn each read 50%, above Mars at 8% and Enceladus at 35%, which was never a weighting problem: habitability here is a SURFACE measure, and a giant has no surface. It scored zero on the two things that matter -- temperature and a liquid solvent, half the total between them -- and then collected full marks on atmospheric pressure, surface radiation and surface gravity, all three of which are measured at the notional one-bar cloud-top level a giant is defined by. A body with no solid surface now scores zero and says why.
