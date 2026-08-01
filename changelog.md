@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.337-beta - 1st Aug 2026
+
+* The Testion example system demonstrates four of its world types again. Its ammonia world carried a bar and a half of pure ammonia, which is a powerful greenhouse gas, and sat at 73 degrees C -- a temperature at which ammonia is a gas and cannot form the seas the type is named for. Its Earth-like and superhabitable worlds each carried twenty-five times Earth's carbon dioxide and ran at 73 and 98 degrees C. Its swamp world was, to two decimal places, Earth. In every case the authored data was wrong and the type's temperature band was right, so the data was corrected rather than the band widened.
+
 ## v2.1.336-beta - 1st Aug 2026
 
 * Earth classifies as an Earth analogue again, rather than as a swamp world. The type was the only distinctive world type in the whole set carrying no importance weighting at all -- it sat level with plain "terrestrial" while forest, jungle and swamp all carried a boost -- so the most demanding description in the taxonomy lost to a less demanding one. Its five tightly-drawn bands were never the problem. A world now only earns the Earth-twin label when it matches all five; miss any of them and its biome describes it better.
