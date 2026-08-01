@@ -128,6 +128,20 @@ Bundled and user-supplied are different worlds and the design must serve both.
   Draco-compressed: ISS (A) 39 KB, MRO 16 KB, Voyager 279 KB, Juno 256 KB, Cassini-Huygens
   404 KB. There is even a "Satellite Kit" of 3-9 KB mix-and-match parts. Real spacecraft fit
   SSE's Local Neighbourhood campaign naturally.
+  **Texture reality, measured across seven GLBs rather than assumed: the collection spans a
+  spectrum, and none of it is bare geometry.** Fully textured PBR: Hubble (A) (5 materials, 10
+  embedded textures, 1.5 MB of webp/png), InSight (11 materials, 22 textures, 2.6 MB). Mixed:
+  Cassini-Huygens (A) (4 textured / 4 flat), Apollo Lunar Module (3 / 9, only 90 KB of
+  textures). Flat-colour: ISS (B), Voyager, Juno — zero textures but 16-24 **per-part coloured
+  materials** each (gold foil, white body, dark panels), so they light and shade properly
+  rather than rendering as a grey STL-style blob. The textured craft as shipped run 1.6-3.9 MB
+  — over the per-model ceiling — but the build kit closes that: **textures downscaled to
+  512 px (webp) + Draco re-encode measured Hubble 1,655 KB → 128 KB and Cassini 1,622 KB →
+  231 KB**, comfortably inside budget with textures intact. InSight stays at 1.8 MB even at
+  512 px (22 textures) — outliers like it are skipped or taken to 256 px. This is the same
+  knob `fileToDownscaledDataUrl` already applies to photos: bounded fidelity as a matter of
+  policy. Note the webp textures arrive via `EXT_texture_webp`, which three's GLTFLoader
+  supports natively.
 - **Kenney Space Kit** (kenney.nl/assets/space-kit): CC0, 150 models, stylised low-poly.
 - **Quaternius Ultimate Space Kit** (quaternius.com): CC0, 92 models, glTF provided,
   spaceships and stations.
@@ -150,6 +164,18 @@ hulls read game-y in the filled render style — but the holo scene's wireframe/
 flatten the difference (a wireframe of a low-poly hull looks deliberate). The starter set
 should pick a lane (recommend: NASA real craft + a small stylised set clearly labelled) —
 owner's call, flagged below.
+
+**Matching the planet render regimes.** Planets render under the scene's style dial (filled /
+wireframe / wire-glow, true colour, and so on) and constructs must follow the same dial — the
+F6 lesson, restated in section 6. The texture findings above say the realistic end is
+genuinely available, not aspirational: in the **filled** styles a textured NASA craft sits
+next to a textured planet as an equal (real PBR materials, downscaled the same way photos
+are), a flat-colour-material craft reads as a clean CAD render (lit, shaded, per-part
+colours — respectable, not a blob), and in the **wireframe** styles materials are discarded
+anyway so every model — textured, flat or low-poly — lands on exactly the planets' look. So
+the regime match costs nothing beyond applying the existing style switch to the model's
+materials, and the starter-set build should simply prefer textured or multi-material source
+models so the filled end has something to show.
 
 ## 4. Budget (Question 3)
 
@@ -315,8 +341,10 @@ work is not thrown away when models arrive.
 - **Phase 2 — the scene marker:** model replaces sprite at marker scale under the focus rule;
   glyph LOD threshold; render styles applied; zero-radius invariants pinned by a test.
 - **Phase 3 — starter set + dressing:** CC0/PD set built by a `scripts/` kit (fetch, simplify,
-  meshopt-compress, manifest with licence per model), picker UI, `hull-*` tint convention,
-  `icon_type` decal, tag-driven status dressing when construct tags exist.
+  **downscale textures to 512 px webp**, meshopt- or Draco-compress, manifest with licence per
+  model — preferring textured/multi-material sources so the filled render styles have real
+  detail), picker UI, `hull-*` tint convention, `icon_type` decal, tag-driven status dressing
+  when construct tags exist.
 - **Phase 4 — optional:** STL/OBJ import conversion (+ `meshoptimizer` dependency for
   simplification, MIT — flagged), true-scale rendering, per-model dressing overrides.
 
@@ -353,7 +381,12 @@ Each phase ships value alone; the design survives stopping after any of them.
 
 NASA models `Voyager Probe (A).glb` and `Juno (B).glb` (public domain) fetched from
 github.com/nasa/NASA-3D-Resources; sizes measured with `@gltf-transform/core@4` +
-`draco3dgltf` + `meshoptimizer` in the session scratchpad. Both shipped GLBs arrive
+`draco3dgltf` + `meshoptimizer` in the session scratchpad. Texture census: Hubble (A),
+InSight (arm deployed), Cassini-Huygens (A), Apollo Lunar Module and ISS (B) additionally
+fetched and their materials/textures listed via gltf-transform; all 219 model directories in
+the repo tree carry image files alongside their GLB (previews and/or texture sources).
+Texture downscale figures from `textureCompress({ targetFormat: 'webp', resize: [512, 512] })`
+(sharp encoder) followed by a Draco re-encode. Both shipped GLBs arrive
 Draco-compressed (`KHR_draco_mesh_compression`) — the extension was stripped and the geometry
 re-exported plain, Draco and meshopt; the binary STL figure is the same triangle soup written
 by the format's fixed 84 + 50n layout and confirmed by writing the actual file; gzip figures
