@@ -68,43 +68,83 @@ export function photonParticleSplit(star: CelestialBody): { ph: number; pa: numb
 // host has no meaningful field, which is almost every host, and 0 when the host's SPIN is unknown —
 // an absent rotation is not a claim of a stationary host, and inventing a hazard from a missing
 // input is worse than omitting one (see B9a).
+// The belt profile itself, shared by the host case and the self case below.
+function beltConstants(rulePack: RulePack) {
+    const gp: any = (rulePack as any).generation_parameters ?? {};
+    return {
+        B_REF: gp.belt_ref_field_gauss ?? 4.32,
+        OM_REF_H: gp.belt_ref_rotation_hours ?? 9.925,
+        D0_SV_DAY: gp.belt_peak_dose_sv_per_day ?? 1451.1,
+        LAMBDA_REF: gp.belt_scale_length_host_radii ?? 1.6324,
+        MIN_B: gp.belt_min_host_field_gauss ?? 0.01,
+        INNER_H: gp.belt_inner_edge_scale_heights ?? 150
+    };
+}
+
+function beltDoseSvPerDay(fieldGauss: number, spinHours: number, rHostRadii: number, c: ReturnType<typeof beltConstants>): number {
+    if (!(fieldGauss >= c.MIN_B) || !(spinHours > 0) || !(rHostRadii > 0)) return 0;
+    const fieldRel = fieldGauss / c.B_REF;
+    const lambda = c.LAMBDA_REF * Math.cbrt(fieldRel);
+    if (!(lambda > 0)) return 0;
+    const d = c.D0_SV_DAY * fieldRel * fieldRel * (c.OM_REF_H / spinHours) * Math.exp(-rHostRadii / lambda);
+    return Number.isFinite(d) ? Math.max(0, d) : 0;
+}
+
+const svPerDayToFlux = (svDay: number) => (svDay * 365 * 1000) / RADIATION_UNSHIELDED_DOSE_MSV_YR;
+
+// --- THE BELT'S INNER EDGE (inbox B22) ----------------------------------------------------------
+// A bare exp(-r/lambda) has no lower boundary, so asked about a body's OWN belt it reports the belt
+// PEAK at the centre of the planet. Run on Earth that gives 2.31 Sv/day at the ground — about 300x
+// the real background, on the best-calibrated body in the engine.
+// Real belts stop well above the surface because the ATMOSPHERE absorbs trapped particles into the
+// loss cone: a particle whose mirror point lies in dense air is gone within one bounce, not merely
+// attenuated. So the boundary is a property of the atmosphere, and the engine already derives the
+// only quantity it needs — `atmosphere.scaleHeightKm` (H = RT/gM). The inner edge sits a fixed
+// number of SCALE HEIGHTS above the reference level, which makes it scale with the atmosphere
+// rather than with the planet: a puffy hot atmosphere pushes its belt further out, a thin one lets
+// it come closer, and an AIRLESS body has no absorber at all so its belt reaches the ground (which
+// is why Ganymede's poles are scoured by precipitating particles).
+// The scale-height count is calibrated on the one inner edge that is well measured — Earth's inner
+// belt begins near 1.2 R_E — and is rule-pack DATA. Jupiter is then a check rather than a fit:
+// 150 H puts its edge at 1.048 R_J and the dose there at 764 Sv/day, about 21x Io, which is the
+// right region for the harshest environment in the Solar System.
+export function beltInnerEdgeRadii(body: CelestialBody, rulePack: RulePack): number {
+    const c = beltConstants(rulePack);
+    const R = body.radiusKm ?? 0;
+    const H = body.atmosphere?.scaleHeightKm ?? 0;
+    if (!(R > 0) || !(H > 0)) return 1; // no atmosphere, no absorber: the belt reaches the surface
+    return 1 + (c.INNER_H * H) / R;
+}
+
+// Belt dose from the body's HOST, at the body's own orbital distance in HOST radii.
 export function beltParticleFlux(
     body: CelestialBody,
     allNodes: (CelestialBody | Barycenter)[],
     rulePack: RulePack,
     where: 'current' | 'near' | 'far' = 'current'
 ): number {
-    const gp: any = (rulePack as any).generation_parameters ?? {};
-    const B_REF = gp.belt_ref_field_gauss ?? 4.32;
-    const OM_REF_H = gp.belt_ref_rotation_hours ?? 9.925;
-    const D0_SV_DAY = gp.belt_peak_dose_sv_per_day ?? 1451.1;
-    const LAMBDA_REF = gp.belt_scale_length_host_radii ?? 1.6324;
-    const MIN_B = gp.belt_min_host_field_gauss ?? 0.01;
-
+    const c = beltConstants(rulePack);
     const host = allNodes.find((n) => n.id === body.parentId);
     if (!host || host.kind !== 'body') return 0;
     const h = host as CelestialBody;
-    const B = h.magneticField?.strengthGauss ?? 0;
-    if (!(B >= MIN_B)) return 0;                       // no field worth trapping with
     const hostRadiusKm = h.radiusKm ?? 0;
     if (!(hostRadiusKm > 0)) return 0;
-    const spinH = Math.abs(h.rotation_period_hours ?? 0);
-    if (!(spinH > 0)) return 0;                        // unknown spin — no claim either way
-
     const e = body.orbit?.elements.e ?? 0;
     const aAU = body.orbit?.elements.a_AU ?? 0;
     if (!(aAU > 0)) return 0;
     const distAU = where === 'near' ? aAU * (1 - e) : where === 'far' ? aAU * (1 + e) : aAU;
-    const rHostRadii = (distAU * AU_KM) / hostRadiusKm;
-    if (!(rHostRadii > 0)) return 0;
+    const r = (distAU * AU_KM) / hostRadiusKm;
+    // A body orbiting inside its host's inner edge is inside the absorbing atmosphere, not the belt.
+    if (r < beltInnerEdgeRadii(h, rulePack)) return 0;
+    return svPerDayToFlux(beltDoseSvPerDay(h.magneticField?.strengthGauss ?? 0, Math.abs(h.rotation_period_hours ?? 0), r, c));
+}
 
-    const fieldRel = B / B_REF;
-    const lambda = LAMBDA_REF * Math.cbrt(fieldRel);
-    if (!(lambda > 0)) return 0;
-    const doseSvPerDay = D0_SV_DAY * fieldRel * fieldRel * (OM_REF_H / spinH) * Math.exp(-rHostRadii / lambda);
-    // Sv/day -> mSv/yr -> the engine's flux unit (1 flux = RADIATION_UNSHIELDED_DOSE_MSV_YR mSv/yr).
-    const fluxUnits = (doseSvPerDay * 365 * 1000) / RADIATION_UNSHIELDED_DOSE_MSV_YR;
-    return Number.isFinite(fluxUnits) ? Math.max(0, fluxUnits) : 0;
+// Belt dose from the body's OWN field, at `atRadii` of its own radii — 1 for the reference surface
+// / 1-bar level, the inner edge for the cloud-top and orbital environment. Absorbed below the edge.
+export function selfBeltParticleFlux(body: CelestialBody, rulePack: RulePack, atRadii: number): number {
+    const c = beltConstants(rulePack);
+    if (atRadii < beltInnerEdgeRadii(body, rulePack)) return 0;
+    return svPerDayToFlux(beltDoseSvPerDay(body.magneticField?.strengthGauss ?? 0, Math.abs(body.rotation_period_hours ?? 0), atRadii, c));
 }
 
 // Sum each star's flux into photon/particle components using its own spectral split.
@@ -146,7 +186,12 @@ export function calculateStellarRadiationComponents(
     }
     // A trapped-particle belt is a PURE particle-channel source with no photon component, so it
     // lands in the machinery the receiver's magnetosphere and atmosphere already attenuate.
-    if (rulePack) particle += beltParticleFlux(body, allNodes, rulePack, where);
+    if (rulePack) {
+        particle += beltParticleFlux(body, allNodes, rulePack, where);
+        // The body's OWN belt, at its reference surface / 1-bar level. Zero for anything with an
+        // atmosphere, because the reference level is below its own belt's inner edge (B22).
+        particle += selfBeltParticleFlux(body, rulePack, 1);
+    }
     return { photon, particle, total: photon + particle };
 }
 
@@ -275,6 +320,29 @@ export function calculateSurfaceRadiation(
 
     (body as any).surfaceRadiationMin = fluxToDose(totalStellarRadiationRange.min);
     (body as any).surfaceRadiationMax = fluxToDose(totalStellarRadiationRange.max);
+
+    // --- THE SECOND FIGURE: the environment ABOVE the atmosphere (inbox B22) ---------------------
+    // One number cannot answer both "what does the ground take" and "what does a ship take", and
+    // collapsing them is what let Jupiter read 11.5 mSv/yr — a correct figure for its 1-bar
+    // reference level, and a badly wrong one for the place anything actually goes. Both are now
+    // reported and both are named. This is the general two-figure shape, not a giant special case:
+    // EVERY body gets it, and it is just as true of Earth, whose orbital space contains the Van
+    // Allen belts while its surface does not.
+    // Above the atmosphere there is no atmospheric attenuation, and a body's own field does not
+    // shield it from its own trapped belt — you are inside both. The magnetosphere still deflects
+    // the incoming STELLAR particle component, so that term keeps its deflection.
+    // `components.particle` ALREADY carries the belt terms, so they must be taken back out before
+    // the stellar part is deflected and the orbital belt added — otherwise the host belt is counted
+    // twice and every Galilean reads exactly double.
+    const hostBelt = beltParticleFlux(body, allNodes, rulePack);
+    const selfBeltAtSurface = selfBeltParticleFlux(body, rulePack, 1);
+    const selfBeltAtEdge = selfBeltParticleFlux(body, rulePack, beltInnerEdgeRadii(body, rulePack));
+    const stellarParticleOnly = Math.max(0, components.particle - hostBelt - selfBeltAtSurface);
+    // A magnetosphere deflects the incoming STELLAR particle flux. It does not shield a body from
+    // the belt its own field is holding in place, nor from the host belt it is orbiting inside.
+    const orbitalFlux = components.photon + stellarParticleOnly * (1 - magDeflection) + hostBelt + selfBeltAtEdge;
+    (body as any).orbitalRadiation = Math.max(0, orbitalFlux * RADIATION_UNSHIELDED_DOSE_MSV_YR);
+    (body as any).beltInnerEdgeRadii = +beltInnerEdgeRadii(body, rulePack).toFixed(4);
 
     return Math.max(0, body.surfaceRadiation);
 }

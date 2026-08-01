@@ -41,7 +41,8 @@
     "belt_ref_rotation_hours": 9.925,
     "belt_peak_dose_sv_per_day": 1451.1,
     "belt_scale_length_host_radii": 1.6324,
-    "belt_min_host_field_gauss": 0.01
+    "belt_min_host_field_gauss": 0.01,
+    "belt_inner_edge_scale_heights": 150
   },
   "distributions": {
     "star_types": {

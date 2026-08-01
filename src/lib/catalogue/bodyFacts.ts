@@ -40,6 +40,13 @@ export function atmosphere(b: CelestialBody): string {
   return `${b.atmosphere.name || 'Unknown'} (${p < 0.001 ? '<0.001' : p.toFixed(2)} bar)`;
 }
 
+// Same question the physics asks (inbox B18/B22): is there anywhere to stand? Reads the stored
+// makeup rather than re-deriving it, so the LABEL can never disagree with the model that produced
+// the number it labels.
+export function hasSolidSurface(n: any): boolean {
+  return !((n?.makeup?.gas ?? 0) > 0.5 || /gas-giant|jupiter|neptune|puff|brown-dwarf/.test((n?.classes ?? []).join(' ')));
+}
+
 export interface Fact { label: string; value: string; }
 
 const EARTH_DENSITY = 5514;
@@ -250,11 +257,22 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   }
 
   // --- Hazards / interior ---
+  // Radiation is TWO named figures, because one number cannot answer both "what does the ground
+  // take" and "what does a ship take" (inbox B22). A surfaceless body has no ground at all, so its
+  // first figure is labelled for the 1-bar reference level it actually describes — the same
+  // reasoning B18 applied to habitability. The second is only worth a row when it genuinely differs.
+  const radDose = (v: number) => v >= 3.65e6 ? `${(v / 365000).toPrecision(3)} Sv/day`
+    : v >= 10000 ? `${(v / 1000).toPrecision(3)} Sv/y` : `${v.toFixed(1)} mSv/y`;
   if (typeof any.surfaceRadiation === 'number') {
     const band = any.surfaceRadiation < 5 ? 'low' : any.surfaceRadiation < 100 ? 'moderate' : 'high';
     const range = (typeof any.surfaceRadiationMin === 'number' && typeof any.surfaceRadiationMax === 'number')
-      ? ` (${any.surfaceRadiationMin.toFixed(1)}–${any.surfaceRadiationMax.toFixed(1)} mSv/y)` : ` (${any.surfaceRadiation.toFixed(1)} mSv/y)`;
-    add('Radiation', `${band}${range}`);
+      ? ` (${any.surfaceRadiationMin.toFixed(1)}–${any.surfaceRadiationMax.toFixed(1)} mSv/y)` : ` (${radDose(any.surfaceRadiation)})`;
+    add(hasSolidSurface(b) ? 'Radiation (surface)' : 'Radiation (at 1 bar)', `${band}${range}`);
+  }
+  if (typeof any.orbitalRadiation === 'number' && typeof any.surfaceRadiation === 'number'
+      && any.orbitalRadiation > any.surfaceRadiation * 1.5) {
+    const band = any.orbitalRadiation < 5 ? 'low' : any.orbitalRadiation < 100 ? 'moderate' : 'high';
+    add('Radiation (in orbit)', `${band} (${radDose(any.orbitalRadiation)})`);
   }
   if (any.magneticField?.strengthGauss) add('Magnetosphere', `${any.magneticField.strengthGauss.toFixed(2)} G`);
   if (any.geoActivity?.regime) add('Geology', titleCase(String(any.geoActivity.regime)));

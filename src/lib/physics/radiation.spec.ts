@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { photonParticleSplit, calculateStellarRadiationComponents, beltParticleFlux } from './radiation';
+import { photonParticleSplit, calculateStellarRadiationComponents, beltParticleFlux, selfBeltParticleFlux, beltInnerEdgeRadii } from './radiation';
 import type { CelestialBody, RulePack } from '$lib/types';
 
 // Phase 04.4 — spectral-class photon/particle split. Cool dwarfs are wind/flare-dominated,
@@ -138,5 +138,62 @@ describe('magnetospheric belt dose (B17)', () => {
     const enceladus = doseAt(0.00159, sat);   // 3.95 R_S
     expect(doseAt(0.00282) / enceladus).toBeGreaterThan(1000); // field ratio alone is only ~18
     expect(doseAt(0.00816, sat)).toBeLessThan(1e-4);           // Titan, 20 R_S — effectively nothing
+  });
+});
+
+// Inbox B22: a body was never inside its OWN belt, because beltParticleFlux resolves the host as
+// parentId — so a planet's host is its star. The fix needs an INNER EDGE, or the same law asked
+// about a body's own field reports the belt peak at the centre of the planet.
+describe('belt inner edge and the two-figure report (B22)', () => {
+  const pack = {
+    generation_parameters: {
+      belt_ref_field_gauss: 4.32, belt_ref_rotation_hours: 9.925,
+      belt_peak_dose_sv_per_day: 1451.1, belt_scale_length_host_radii: 1.6324,
+      belt_min_host_field_gauss: 0.01, belt_inner_edge_scale_heights: 150
+    }
+  } as unknown as RulePack;
+  const svDay = (flux: number) => (flux * 500) / 1000 / 365;
+  const body = (gauss: number, rotH: number, radiusKm: number, scaleHeightKm: number) => ({
+    id: 'b', name: 'B', kind: 'body', roleHint: 'planet', radiusKm,
+    magneticField: { strengthGauss: gauss }, rotation_period_hours: rotH,
+    atmosphere: { name: 'a', composition: {}, pressure_bar: 1, scaleHeightKm }
+  }) as unknown as CelestialBody;
+
+  const EARTH = body(0.5014, 23.934, 6371, 8.401107);
+  const JUPITER = body(4.32, 9.925, 69911, 22.257789);
+  const SATURN = body(0.2396, 10.656, 58232, 47.302433);
+
+  it('EARTH IS NOT LETHAL: its own belt does not reach its own surface', () => {
+    // Without an inner edge this law gives 2.31 Sv/day at the ground — ~300x the real background
+    // of 2.4 mSv/yr, on the best-calibrated body in the engine.
+    expect(selfBeltParticleFlux(EARTH, pack, 1)).toBe(0);
+    expect(beltInnerEdgeRadii(EARTH, pack)).toBeGreaterThan(1.15); // ~1.2 R_E, the measured edge
+    expect(beltInnerEdgeRadii(EARTH, pack)).toBeLessThan(1.25);
+  });
+
+  it('no giant reaches its own 1-bar level either', () => {
+    for (const g of [JUPITER, SATURN]) expect(selfBeltParticleFlux(g, pack, 1)).toBe(0);
+  });
+
+  it('but the belt IS there just above the atmosphere, and Jupiter dominates', () => {
+    const jup = svDay(selfBeltParticleFlux(JUPITER, pack, beltInnerEdgeRadii(JUPITER, pack)));
+    expect(jup).toBeGreaterThan(500);   // ~764 Sv/day, about 21x Io's 36
+    expect(jup).toBeLessThan(1100);
+    const sat = svDay(selfBeltParticleFlux(SATURN, pack, beltInnerEdgeRadii(SATURN, pack)));
+    // Saturn's field is ~18x weaker; its cloud tops must be FAR quieter, not 18x quieter.
+    expect(jup / sat).toBeGreaterThan(500);
+  });
+
+  it('the edge scales with the ATMOSPHERE, not with the planet', () => {
+    // Same planet, ten times the scale height -> a belt held ten times further out.
+    const puffy = body(0.5014, 23.934, 6371, 84.01107);
+    expect(beltInnerEdgeRadii(puffy, pack) - 1).toBeCloseTo((beltInnerEdgeRadii(EARTH, pack) - 1) * 10, 6);
+  });
+
+  it('an AIRLESS body has no absorber, so its belt reaches the ground', () => {
+    const airless = { id: 'a', name: 'A', kind: 'body', roleHint: 'moon', radiusKm: 2634,
+      magneticField: { strengthGauss: 0.5 }, rotation_period_hours: 171.6 } as unknown as CelestialBody;
+    expect(beltInnerEdgeRadii(airless, pack)).toBe(1);
+    expect(selfBeltParticleFlux(airless, pack, 1)).toBeGreaterThan(0);
   });
 });

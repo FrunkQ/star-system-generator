@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.341-beta - 1st Aug 2026
+
+* A planet now sits inside its own radiation belt. Jupiter read 11.5 mSv/yr -- less than Mars -- from the centre of the most intense radiation environment in the solar system, because the belt was only ever worked out against a body's HOST, and a planet's host is its star.
+* Radiation is now reported as two named figures, because one number cannot answer both "what does the ground take" and "what does a ship take". Every body gets both: the surface (or, for a world with no surface, the one-bar reference level) and the environment above the atmosphere. Jupiter reads 11.5 mSv/yr at one bar and about 750 sieverts a DAY at its cloud tops -- roughly twenty times Io. That is the figure that matters for anything flying there.
+* Belts do not reach the ground, and now the model knows it: an atmosphere absorbs trapped particles, so the belt begins a set number of scale heights up. That boundary is what keeps Earth's surface at its correct 2.3 mSv/yr while its orbital space correctly reads as the Van Allen belts. A world with no atmosphere has nothing to absorb them, so its belt does reach the surface.
+* Saturn, Uranus and Neptune gain cloud-top figures far below Jupiter's rather than merely proportionally below. Nothing else moved: Earth, Mars and all four Galilean moons are unchanged to the last decimal.
+
 ## v2.1.340-beta - 1st Aug 2026
 
 * Moons of giant planets now take radiation from their host's magnetic field, not just from the sun. Io reads about 35 sieverts a DAY instead of 21 millisieverts a year -- it sits deep inside Jupiter's particle belt and is one of the most violently irradiated surfaces in the solar system. The old figures gave Io and Europa the same dose to four significant figures, because how far they sit from the sun was the only thing either calculation knew about.

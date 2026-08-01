@@ -245,6 +245,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
   volatiles?: VolatileRetention; // derived surface-ice retention per species (see deriveVolatileRetention)
   irradiationDose?: number;    // derived cumulative space-weathering dose (relative) — drives tholins
+  // Radiation is reported as TWO named figures because one number cannot answer both questions
+  // (inbox B22): `surfaceRadiation` is the ground, or for a surfaceless body the 1-bar reference
+  // level; `orbitalRadiation` is the environment above the atmosphere, which for a magnetised body
+  // means inside its own trapped belt. `beltInnerEdgeRadii` is where that belt begins, in body radii.
+  orbitalRadiation?: number;
+  beltInnerEdgeRadii?: number;
   habitabilityBreakdown?: {    // the AUTHORITATIVE habitability breakdown the Bio tab renders
     factors: {
       label: string; points: number; max: number; value: string; ideal: string;

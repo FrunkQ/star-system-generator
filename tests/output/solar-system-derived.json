@@ -163,6 +163,8 @@
       "greenhouseTempK": 4.326640157213818e-9,
       "temperatureK": 429.8787897155452,
       "surfaceRadiation": 3499.876774278839,
+      "orbitalRadiation": 3497.876774845495,
+      "beltInnerEdgeRadii": 3.0758,
       "starTidallyLocked": true,
       "temperatureProfile": {
         "meanK": 430,
@@ -597,6 +599,8 @@
       "greenhouseTempK": 523.6099227125275,
       "temperatureK": 753.619571106314,
       "surfaceRadiation": 2,
+      "orbitalRadiation": 980.3911956508407,
+      "beltInnerEdgeRadii": 1.3919,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 754,
@@ -1065,6 +1069,8 @@
       "greenhouseTempK": 32.80114380821948,
       "temperatureK": 286.92914272748044,
       "surfaceRadiation": 2.298990432085668,
+      "orbitalRadiation": 652964.6905382528,
+      "beltInnerEdgeRadii": 1.1982,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 287,
@@ -1561,6 +1567,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 267.19206115251916,
       "surfaceRadiation": 512.3836279632528,
+      "orbitalRadiation": 510.38362796325276,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -1981,6 +1989,8 @@
       "greenhouseTempK": 5.827087004296242,
       "temperatureK": 222.5387049605521,
       "surfaceRadiation": 213.69225217706742,
+      "orbitalRadiation": 221.91153366168902,
+      "beltInnerEdgeRadii": 1.4975,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 223,
@@ -2384,6 +2394,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 206.3342426978193,
       "surfaceRadiation": 223.89323317583214,
+      "orbitalRadiation": 221.89323317583214,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -2782,6 +2794,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 200.01352688297754,
       "surfaceRadiation": 223.86590122376526,
+      "orbitalRadiation": 221.86590122376526,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -3159,6 +3173,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 161.89530157466643,
       "surfaceRadiation": 70.53487638711071,
+      "orbitalRadiation": 70.53487638711071,
+      "beltInnerEdgeRadii": 1,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 162,
@@ -3341,6 +3357,8 @@
       "greenhouseTempK": 12.120628381859543,
       "temperatureK": 159.24582711886114,
       "surfaceRadiation": 11.465539682700319,
+      "orbitalRadiation": 272718936.3129421,
+      "beltInnerEdgeRadii": 1.0499,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 159,
@@ -3580,6 +3598,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 116.56004482844226,
       "surfaceRadiation": 128515648.5645232,
+      "orbitalRadiation": 128515648.5645232,
+      "beltInnerEdgeRadii": 1,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 117,
@@ -3740,6 +3760,8 @@
       "greenhouseTempK": 0.0000017588038194784582,
       "temperatureK": 121.27546549359587,
       "surfaceRadiation": 12750061.89106943,
+      "orbitalRadiation": 12750061.306326156,
+      "beltInnerEdgeRadii": 1.7723,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -4225,6 +4247,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 99.46841494675006,
       "surfaceRadiation": 1437317.8012321338,
+      "orbitalRadiation": 1437315.8013399323,
+      "beltInnerEdgeRadii": 3.3156,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -4687,6 +4711,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 95.85237968671684,
       "surfaceRadiation": 39657.2468669186,
+      "orbitalRadiation": 42953.32381556639,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -5091,6 +5117,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 95.80244283934795,
       "surfaceRadiation": 54.90439657186713,
+      "orbitalRadiation": 52.90439657186713,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -5537,6 +5565,8 @@
       "greenhouseTempK": 6.28888876998089,
       "temperatureK": 134.6176176081641,
       "surfaceRadiation": 5.092938517602812,
+      "orbitalRadiation": 177338.67625627754,
+      "beltInnerEdgeRadii": 1.1219,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 135,
@@ -5788,6 +5818,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 85.9661103740463,
       "surfaceRadiation": 58949.16815516949,
+      "orbitalRadiation": 58949.16815516949,
+      "beltInnerEdgeRadii": 1,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 86,
@@ -5990,6 +6022,8 @@
       "greenhouseTempK": 14.121409521806326,
       "temperatureK": 96.88403577262818,
       "surfaceRadiation": 2.000191553296207,
+      "orbitalRadiation": 5.585376732091662,
+      "beltInnerEdgeRadii": 2.2593,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -6404,6 +6438,8 @@
       "greenhouseTempK": 2.4862693013985017e-8,
       "temperatureK": 73.72135410139691,
       "surfaceRadiation": 1234.8895366460995,
+      "orbitalRadiation": 1232.8895465652563,
+      "beltInnerEdgeRadii": 214.8409,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -6822,6 +6858,8 @@
       "surfaceRadiation": 246.60587805555818,
       "surfaceRadiationMin": 245.81292283907902,
       "surfaceRadiationMax": 247.48861974352053,
+      "orbitalRadiation": 244.60587805555818,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -7250,6 +7288,8 @@
       "surfaceRadiation": 29.579744181994478,
       "surfaceRadiationMin": 28.46980151673287,
       "surfaceRadiationMax": 30.79187631099095,
+      "orbitalRadiation": 27.579744181994478,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -7658,6 +7698,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 79.55685729853637,
       "surfaceRadiation": 5559.045951937907,
+      "orbitalRadiation": 5557.045951937907,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -8082,6 +8124,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 76.84869268124385,
       "surfaceRadiation": 7.889029989056844,
+      "orbitalRadiation": 5.889029989056844,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -8463,6 +8507,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 74.14197330317803,
       "surfaceRadiation": 7.567190044330053,
+      "orbitalRadiation": 5.567190044330053,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -8881,6 +8927,8 @@
       "greenhouseTempK": 4.653907828228229,
       "temperatureK": 84.25793910013844,
       "surfaceRadiation": 2.6641166837308505,
+      "orbitalRadiation": 127765.36721637574,
+      "beltInnerEdgeRadii": 1.174,
       "tidallyLocked": false,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -9122,6 +9170,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 60.66002987010062,
       "surfaceRadiation": 10979.818803135595,
+      "orbitalRadiation": 10979.818803135595,
+      "beltInnerEdgeRadii": 1,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 61,
@@ -9251,6 +9301,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 57.317413140429025,
       "surfaceRadiation": 3.389845490869348,
+      "orbitalRadiation": 1.3898454908693483,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -9635,6 +9687,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 57.141721023777,
       "surfaceRadiation": 3.389701558681252,
+      "orbitalRadiation": 1.3897015586812522,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -10023,6 +10077,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 56.96979976867991,
       "surfaceRadiation": 7.744757359196937,
+      "orbitalRadiation": 5.744757359196937,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -10445,6 +10501,8 @@
       "greenhouseTempK": 4.042315311579525,
       "temperatureK": 71.92350645773193,
       "surfaceRadiation": 2.2773358307251583,
+      "orbitalRadiation": 39532.05589580096,
+      "beltInnerEdgeRadii": 1.124,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 72,
@@ -10700,6 +10758,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 48.45052591890719,
       "surfaceRadiation": 5735.245246471227,
+      "orbitalRadiation": 5735.245246471227,
+      "beltInnerEdgeRadii": 1,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 48,
@@ -10886,6 +10946,8 @@
       "greenhouseTempK": 0.000020408335639210383,
       "temperatureK": 39.89116902256783,
       "surfaceRadiation": 2.5656647809549633,
+      "orbitalRadiation": 0.5657217854145069,
+      "beltInnerEdgeRadii": 3.0764,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -11248,6 +11310,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 42.0886574693289,
       "surfaceRadiation": 0.3222012500736142,
+      "orbitalRadiation": 0.3222012500736142,
+      "beltInnerEdgeRadii": 1,
       "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 42,
@@ -11433,6 +11497,8 @@
       "greenhouseTempK": 0.00005526266059632093,
       "temperatureK": 40.885209208128956,
       "surfaceRadiation": 2.339746346658621,
+      "orbitalRadiation": 0.3397707345266541,
+      "beltInnerEdgeRadii": 3.6251,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
@@ -11848,6 +11914,8 @@
       "greenhouseTempK": 0,
       "temperatureK": 40.439825009162014,
       "surfaceRadiation": 2.3397689809061775,
+      "orbitalRadiation": 0.3397689809061773,
+      "beltInnerEdgeRadii": 1,
       "tidallyLocked": true,
       "starTidallyLocked": false,
       "temperatureProfile": {
