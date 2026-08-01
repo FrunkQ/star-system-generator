@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.333-beta - 1st Aug 2026
+
+* A tidally locked world no longer shows a day length that contradicts the lock. Pandora was labelled "tidally locked" and given a 41.8 hour day on a three-day orbit; a locked body's day IS its orbital period, and it is now set from it. 19 bodies across the bundled maps had a day that disagreed with their own orbit, and every one of them now agrees. The 117 locked bodies that had no day length at all have one for the first time.
+* Mercury is the exception, and it keeps its own day. It turns three times for every two orbits -- a real spin-orbit resonance its eccentric orbit holds it in -- so forcing it to a permanent sunward face would have replaced a measured number with a wrong one. Bodies like it now say which resonance they are in instead of claiming to be locked.
+* A knock-on worth knowing about: 53 worlds lost their magnetosphere. They were tidally locked planets with no recorded spin, and the dynamo model had been treating "we don't know how fast it turns" as "about a day and a half". Given their real rotation -- nine to fifty days -- the same model says what it has always said about a slow rotator, which is that it cannot organise an ordered field. Proxima b, Ross 128 b, Luyten b and the outer TRAPPIST-1 worlds are among them.
+
 ## v2.1.332-beta - 1st Aug 2026
 
 * A star created by the generation wizard now carries a magnetic field. It never did: the wizard's star path set no field at all, so every star it built kept a placeholder zero and reported no magnetosphere -- while the older random generator read the strength straight from the rule pack. Both paths now read the same pack data, so a white dwarf draws the white-dwarf band and a magnetar the magnetar band, and an aged star draws from the class it has evolved INTO.

@@ -229,6 +229,16 @@ describe('Solar System Physics Baseline', () => {
         const mercury = processedSystem.nodes.find(n => n.name === 'Mercury') as CelestialBody;
         expect(mercury.starTidallyLocked).toBe(true);
         expect(mercury.tags?.some(t => t.key === 'orbit/locked-star')).toBe(true);
+        // …but "locked" does not mean synchronous everywhere, and Mercury is the body that proves it
+        // (inbox B7). Its eccentric orbit holds it in a 3:2 spin-orbit resonance, so its 1407.6 h day
+        // is MEASURED and must survive the lock-reconciliation that gives every other locked body its
+        // orbital period. A test of a value that must NOT move.
+        expect(mercury.rotation_period_hours).toBeCloseTo(1407.6, 3);
+        expect(mercury.tags?.find(t => t.key === 'orbit/spin-orbit-resonance')?.value).toBe('3:2');
+        // Every other locked body's sidereal day IS its orbital period, to the last decimal.
+        expect(moon.rotation_period_hours).toBeCloseTo(moon.orbital_period_days! * 24, 9);
+        expect(io.rotation_period_hours).toBeCloseTo(io.orbital_period_days! * 24, 9);
+        expect(io.tags?.some(t => t.key === 'orbit/spin-orbit-resonance')).toBeFalsy();
         expect(moon.starTidallyLocked).toBeFalsy();
         expect(moon.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(true);
         expect(io.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(true);

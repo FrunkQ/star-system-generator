@@ -20,7 +20,7 @@ import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } f
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
-import { predictTidalLock } from '../physics/tidalLock';
+import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
 import { brownDwarfThermal } from '../physics/substellar';
 
 // Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
@@ -483,7 +483,26 @@ export class SystemProcessor implements ISystemProcessor {
             );
         }
         body.starTidallyLocked = !!body.tidallyLocked && orbitsStar;
-        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked' && t.key !== 'orbit/locked-star' && t.key !== 'orbit/locked-planet');
+        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked' && t.key !== 'orbit/locked-star' && t.key !== 'orbit/locked-planet' && t.key !== 'orbit/spin-orbit-resonance');
+
+        // B7: reconcile the SPIN with the lock, so the two cannot contradict each other. A locked
+        // body's sidereal rotation period is its orbital period — surfaceTempProfile below has
+        // always assumed exactly that (it uses orbitalPeriodHours for a locked body and ignores the
+        // stored spin), while the stat block, the dynamo's rotation factor and the oblateness model
+        // all read the stored number. One question, two answers. The lock now sets the number, and
+        // because the assessment above is DERIVED every pass, a hand-pinned lock reconciles too.
+        // The exception is a captured spin-orbit resonance — Mercury's 3:2 — which keeps its own
+        // measured period and says which resonance it is instead of claiming to be synchronous.
+        if (body.tidallyLocked && (body.orbital_period_days ?? 0) > 0) {
+            const spin = lockedSpin(
+                (body.orbital_period_days as number) * 24,
+                body.rotation_period_hours,
+                body.orbit?.elements.e ?? 0
+            );
+            body.rotation_period_hours = spin.rotationHours;
+            body.calculatedRotationPeriod_s = Math.abs(spin.rotationHours) * 3600;
+            if (spin.kind === 'resonant') body.tags.push({ key: 'orbit/spin-orbit-resonance', value: spin.ratio as string });
+        }
         // Surface the lock TARGET as its own tag (both are registered so they survive tag sanitising):
         // locked-star = a permanent substellar face (eyeball candidate); locked-planet = a moon whose
         // whole surface still cycles through stellar day/night.

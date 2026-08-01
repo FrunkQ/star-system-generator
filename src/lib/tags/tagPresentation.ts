@@ -169,7 +169,11 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   // --- Orbit ---
   'orbit/tidally-locked': {
     label: 'Tidally locked',
-    description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, Mercury, most close-in worlds). Pin it by hand in the body editor to override.'
+    description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, and most close-in worlds). Its day length is therefore its orbital period, and is set from it. Pin it by hand in the body editor to override.'
+  },
+  'orbit/spin-orbit-resonance': {
+    label: 'Spin–orbit resonance',
+    description: 'Despun by tides, but NOT to a permanent face: an eccentric orbit captured the spin into a whole-number ratio with the year instead. Mercury is the real example — it turns 3 times for every 2 orbits, so its day is its own number rather than its year, and the whole surface still sees the star.'
   },
   'orbit/locked-star': {
     label: 'Locked to its star',

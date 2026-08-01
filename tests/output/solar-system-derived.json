@@ -72,6 +72,10 @@
       "radiusKm": 2439.7,
       "tags": [
         {
+          "key": "orbit/spin-orbit-resonance",
+          "value": "3:2"
+        },
+        {
           "key": "orbit/tidally-locked"
         },
         {
@@ -1540,7 +1544,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 6.68,
-      "rotation_period_hours": 655.7,
+      "rotation_period_hours": 659.0257883336021,
       "description": "Earth's only natural satellite and the largest relative to its host planet in the Solar System. It is tidally locked, always showing the same face to Earth. Its cratered, airless surface is composed of dark volcanic 'maria' and bright, ancient highlands.",
       "image": {
         "url": "/images/planet_types/web20dwarf20planet.jpg"
@@ -1559,7 +1563,7 @@
       "equilibriumTempMaxK": 269.45653137224366,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 1.623381040294872,
-      "calculatedRotationPeriod_s": 2360520,
+      "calculatedRotationPeriod_s": 2372492.8380009676,
       "orbital_period_days": 27.45940784723342,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -1625,7 +1629,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.000009478371541712931,
+      "oblateness": 0.000009382947304466435,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2339,7 +2343,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 7.66,
+      "rotation_period_hours": 7.65902865849815,
       "description": "The larger and innermost of Mars's two moons. It is a small, lumpy, and heavily cratered body, thought to be a captured asteroid. Phobos orbits so close to Mars that it will either crash into the planet or be torn apart into a ring in about 50 million years.",
       "image": {
         "url": "/images/planet_types/web20ultra-short20period20planet.jpg"
@@ -2358,7 +2362,7 @@
       "equilibriumTempMaxK": 216.20858094412566,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.005639953762755102,
-      "calculatedRotationPeriod_s": 27576,
+      "calculatedRotationPeriod_s": 27572.50317059334,
       "orbital_period_days": 0.3191261941040896,
       "isSelfLuminous": false,
       "tidalHeatK": 0.24412215742011018,
@@ -2431,7 +2435,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.12886936484042955,
+      "oblateness": 0.12890205412926253,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2737,7 +2741,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 30.35,
+      "rotation_period_hours": 30.129997267216815,
       "description": "The smaller and outer of Mars's two moons. Like its sibling Phobos, Deimos is a small, dark, and irregularly shaped body, likely a captured C-type asteroid. Its surface is smoother than Phobos's, as many of its craters are filled with fine dust (regolith).",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -2756,7 +2760,7 @@
       "equilibriumTempMaxK": 209.83294402839414,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.0025523467741935483,
-      "calculatedRotationPeriod_s": 109260,
+      "calculatedRotationPeriod_s": 108467.99016198053,
       "orbital_period_days": 1.2554165528007006,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -2822,7 +2826,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.010041517915863664,
+      "oblateness": 0.010188695280187085,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -3755,7 +3759,7 @@
         "molarMassKg": 0.06080000000000001
       },
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 42.48,
+      "rotation_period_hours": 42.49014197855141,
       "description": "The innermost Galilean moon, Io is the most volcanically active body in the Solar System. It is caught in a tidal 'tug-of-war' between Jupiter and the other moons, which flexes its interior and powers hundreds of volcanoes that erupt sulfur and lava.",
       "image": {
         "url": "/images/planet_types/web20dwarf20planet.jpg"
@@ -3774,7 +3778,7 @@
       "equilibriumTempMaxK": 120.1047254019107,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 1.796185339436256,
-      "calculatedRotationPeriod_s": 152928,
+      "calculatedRotationPeriod_s": 152964.51112278507,
       "orbital_period_days": 1.770422582439642,
       "resonanceNote": "Laplace resonance chain (1:2:4) with Io/Europa/Ganymede — locked and tidally heated.",
       "resonanceTidal": true,
@@ -3850,7 +3854,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0021399203182074344,
+      "oblateness": 0.002138898884302571,
       "auroraEmitters": [
         {
           "gas": "mixed gases",
@@ -4228,7 +4232,7 @@
         "molarMassKg": 0.032
       },
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 85.2,
+      "rotation_period_hours": 85.08079528582061,
       "description": "A smooth, ice-covered world with a young surface crisscrossed by cracks and streaks. It is a prime candidate for life, as evidence strongly suggests a deep, liquid saltwater ocean exists beneath its 15-25 km thick ice shell, kept warm by tidal heating.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -4259,7 +4263,7 @@
         ]
       },
       "calculatedGravity_ms2": 1.3150808335748123,
-      "calculatedRotationPeriod_s": 306720,
+      "calculatedRotationPeriod_s": 306290.8630289542,
       "orbital_period_days": 3.545033136909192,
       "resonanceNote": "Laplace resonance chain (1:2:4) with Io/Europa/Ganymede — locked and tidally heated.",
       "resonanceTidal": true,
@@ -4332,7 +4336,7 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
-      "oblateness": 0.00062255878629147,
+      "oblateness": 0.00062430451352026,
       "auroraEmitters": [
         {
           "gas": "atomic oxygen",
@@ -4698,7 +4702,7 @@
         "strengthGauss": 0
       },
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 171.6,
+      "rotation_period_hours": 171.5432297256096,
       "description": "The largest moon in the Solar System, even larger than the planet Mercury. Ganymede is a differentiated icy world and is the only moon known to have its own magnetic field. Its surface has both dark, ancient, cratered regions and lighter, younger, grooved terrain.",
       "image": {
         "url": "/images/planet_types/web20dwarf20planet.jpg"
@@ -4722,7 +4726,7 @@
         "layers": []
       },
       "calculatedGravity_ms2": 1.4236489835736867,
-      "calculatedRotationPeriod_s": 617760,
+      "calculatedRotationPeriod_s": 617555.6270121945,
       "orbital_period_days": 7.147634571900399,
       "resonanceNote": "Laplace resonance chain (1:2:4) with Io/Europa/Ganymede — locked and tidally heated.",
       "resonanceProtective": true,
@@ -4784,7 +4788,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
-      "oblateness": 0.00023925417066642297,
+      "oblateness": 0.00023941255374490794,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -5104,7 +5108,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 400.5,
+      "rotation_period_hours": 400.34598873085633,
       "description": "The outermost Galilean moon, Callisto has the oldest and most heavily cratered surface in the Solar System, indicating a lack of geological activity. It is a geologically 'dead' world, composed of roughly equal parts rock and ice. It may also hide a subsurface ocean.",
       "image": {
         "url": "/images/planet_types/web20dwarf20planet.jpg"
@@ -5128,7 +5132,7 @@
         "layers": []
       },
       "calculatedGravity_ms2": 1.2292700478429286,
-      "calculatedRotationPeriod_s": 1441800,
+      "calculatedRotationPeriod_s": 1441245.5594310828,
       "orbital_period_days": 16.68108286378568,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -5191,7 +5195,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.00004654612251557393,
+      "oblateness": 0.00004658194156446283,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -6055,7 +6059,7 @@
         "molarMassKg": 0.0274000336
       },
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 382.6,
+      "rotation_period_hours": 382.216150295998,
       "description": "Saturn's largest moon and the only moon with a thick, Earth-like atmosphere (though it's 95% nitrogen and toxic). Its surface is -179°C, cold enough for liquid methane and ethane to form rivers, lakes, and seas in a 'hydrological' cycle similar to Earth's water cycle.",
       "image": {
         "url": "/images/planet_types/web20dwarf20planet.jpg"
@@ -6089,7 +6093,7 @@
         ]
       },
       "calculatedGravity_ms2": 1.3491407372632904,
-      "calculatedRotationPeriod_s": 1377360,
+      "calculatedRotationPeriod_s": 1375978.1410655926,
       "orbital_period_days": 15.925672928999916,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -6150,7 +6154,7 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
-      "oblateness": 0.00004964141974468107,
+      "oblateness": 0.0000497411769757759,
       "auroraEmitters": [
         {
           "gas": "nitrogen",
@@ -6471,7 +6475,7 @@
         "molarMassKg": 0.017779999999999997
       },
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 32.88,
+      "rotation_period_hours": 32.875281655724464,
       "description": "A small, bright white icy moon that is one of the most compelling places to search for life. It ejects massive plumes of water, ice, and organic molecules from 'tiger stripes' near its south pole, revealing a global subsurface ocean of liquid saltwater.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -6502,7 +6506,7 @@
         ]
       },
       "calculatedGravity_ms2": 0.113418470881879,
-      "calculatedRotationPeriod_s": 118368.00000000001,
+      "calculatedRotationPeriod_s": 118351.01396060808,
       "orbital_period_days": 1.3698034023218526,
       "resonanceNote": "2:1 mean-motion resonance with Dione — pumps eccentricity.",
       "resonanceTidal": true,
@@ -6567,7 +6571,7 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
-      "oblateness": 0.007828709686467344,
+      "oblateness": 0.007830957040493275,
       "auroraEmitters": [
         {
           "gas": "hydrogen/helium",
@@ -6902,14 +6906,14 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 45.31,
+      "rotation_period_hours": 45.3186333266561,
       "description": "A mid-sized moon of almost pure water ice — one of the most reflective bodies in the solar system. Scarred by the enormous Odysseus crater and the vast Ithaca Chasma canyon. It holds Mimas in a 2:1 orbital resonance.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
       "calculatedGravity_ms2": 0.14608975002801636,
-      "calculatedRotationPeriod_s": 163116,
+      "calculatedRotationPeriod_s": 163147.07997596194,
       "orbital_period_days": 1.8882763886106706,
       "resonanceNote": "2:1 mean-motion resonance with Mimas — pumps eccentricity.",
       "isSelfLuminous": false,
@@ -6988,7 +6992,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.006742689784954953,
+      "oblateness": 0.006740121027054645,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7330,14 +7334,14 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 65.69,
+      "rotation_period_hours": 65.70245794458509,
       "description": "An ice moon streaked with bright wispy chasms over a possible deep internal ocean. Its 2:1 orbital resonance with Enceladus is the engine that keeps pumping that smaller moon's eccentricity — and so its famous geysers.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
       "calculatedGravity_ms2": 0.23199214956907696,
-      "calculatedRotationPeriod_s": 236484,
+      "calculatedRotationPeriod_s": 236528.84860050632,
       "orbital_period_days": 2.7376024143577125,
       "resonanceNote": "2:1 mean-motion resonance with Enceladus — pumps eccentricity.",
       "isSelfLuminous": false,
@@ -7416,7 +7420,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0021353316822122527,
+      "oblateness": 0.0021345219919025886,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7737,7 +7741,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 22.56,
+      "rotation_period_hours": 22.64155881037024,
       "description": "The smallest and innermost of Saturn's major moons, Mimas is nicknamed the 'Death Star' moon. It is dominated by the Herschel crater, a massive impact basin 139 km wide—nearly a third of the moon's own diameter—that almost shattered the icy body.",
       "image": {
         "url": "/images/planet_types/web20ultra-short20period20planet.jpg"
@@ -7756,7 +7760,7 @@
       "equilibriumTempMaxK": 77.71776571114988,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.06371324004842778,
-      "calculatedRotationPeriod_s": 81216,
+      "calculatedRotationPeriod_s": 81509.61171733285,
       "orbital_period_days": 0.9433982837654266,
       "resonanceNote": "2:1 mean-motion resonance with Tethys — pumps eccentricity.",
       "resonanceTidal": true,
@@ -7831,7 +7835,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.023273436592320042,
+      "oblateness": 0.0231060686934541,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -8163,7 +8167,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 108.2,
+      "rotation_period_hours": 108.28985969547858,
       "description": "Saturn's second-largest moon, Rhea is a heavily cratered, airless body of ice and rock. Its surface is ancient, with one hemisphere being brighter and more cratered than the other. Its surface also features bright, 'wispy' streaks, which are exposed ice cliffs.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -8182,7 +8186,7 @@
       "equilibriumTempMaxK": 79.0837751102909,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.2631323543800272,
-      "calculatedRotationPeriod_s": 389520,
+      "calculatedRotationPeriod_s": 389843.4949037229,
       "orbital_period_days": 4.512077487311608,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -8248,7 +8252,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0009440948510978029,
+      "oblateness": 0.0009425286679432292,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -8544,7 +8548,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 1903.6,
+      "rotation_period_hours": 1903.8785082127733,
       "description": "Saturn's 'yin-yang' moon, Iapetus is famous for its dramatic two-tone coloration. Its leading hemisphere is as dark as coal, while its trailing hemisphere is as bright as fresh snow. It also possesses a massive, 20-km-high equatorial ridge.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -8563,7 +8567,7 @@
       "equilibriumTempMaxK": 76.2963856372624,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.22268687895657055,
-      "calculatedRotationPeriod_s": 6852960,
+      "calculatedRotationPeriod_s": 6853962.629565984,
       "orbital_period_days": 79.32827117553222,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -8629,7 +8633,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.000003465856103310481,
+      "oblateness": 0.000003464842174340908,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9395,7 +9399,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 208.8,
+      "rotation_period_hours": 208.26545007110235,
       "description": "The largest of Uranus's moons. This icy, rocky world shows signs of past geological activity. Its surface is cut by a system of enormous canyons and fault valleys, some stretching for 1,000 miles, indicating its interior expanded and cracked the crust long ago.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -9414,7 +9418,7 @@
       "equilibriumTempMaxK": 58.678729224214266,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.3650828309318193,
-      "calculatedRotationPeriod_s": 751680,
+      "calculatedRotationPeriod_s": 749755.6202559684,
       "orbital_period_days": 8.677727086295931,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -9480,7 +9484,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.00018860750309831472,
+      "oblateness": 0.00018957693430868684,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9779,7 +9783,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 323,
+      "rotation_period_hours": 323.128047399108,
       "description": "The outermost and second-largest of the major Uranian moons. Oberon has the most ancient and heavily cratered surface of Uranus's moons, showing little sign of past geological activity. Its dark, reddish surface is covered in impact craters, some with bright rays of ice.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -9798,7 +9802,7 @@
       "equilibriumTempMaxK": 58.498796227170914,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.3453832194561757,
-      "calculatedRotationPeriod_s": 1162800,
+      "calculatedRotationPeriod_s": 1163260.970636789,
       "orbital_period_days": 13.463668641629502,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -9864,7 +9868,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.00008045839086046679,
+      "oblateness": 0.0000803946362810514,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -10167,7 +10171,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 60.48,
+      "rotation_period_hours": 60.04589564572417,
       "description": "The brightest and youngest-surfaced of Uranus's moons. Ariel shows clear signs of geologic activity, with vast, interconnected canyons and fault valleys. Smooth plains suggest that 'cryovolcanism' (ice volcanoes) may have once resurfaced parts of the moon.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -10186,7 +10190,7 @@
       "equilibriumTempMaxK": 58.32297558310345,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.25691433360086513,
-      "calculatedRotationPeriod_s": 217728,
+      "calculatedRotationPeriod_s": 216165.22432460703,
       "orbital_period_days": 2.5019123185718404,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -10252,7 +10256,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0023456132052674552,
+      "oblateness": 0.0023796512224479416,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -11087,7 +11091,7 @@
         "molarMassKg": 0.027988
       },
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 140.8,
+      "rotation_period_hours": 140.94029121870955,
       "description": "Neptune's largest moon and likely a captured Kuiper Belt Object. It is one of the coldest worlds known (-235°C), yet it is geologically active, with geysers of nitrogen gas erupting from its icy surface. It orbits Neptune 'backwards' in a retrograde orbit.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -11111,7 +11115,7 @@
         "layers": []
       },
       "calculatedGravity_ms2": 0.7797711313361076,
-      "calculatedRotationPeriod_s": 506880.00000000006,
+      "calculatedRotationPeriod_s": 507385.04838735436,
       "orbital_period_days": 5.872512134112898,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
@@ -11175,7 +11179,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.00033336381537566677,
+      "oblateness": 0.0003327004885269573,
       "auroraEmitters": [
         {
           "gas": "nitrogen",
@@ -11637,7 +11641,7 @@
         "molarMassKg": 0.02788
       },
       "axial_tilt_deg": 119.5,
-      "rotation_period_hours": -153.3,
+      "rotation_period_hours": -151.58371423678875,
       "description": "A dwarf planet in the Kuiper Belt, formerly classified as the ninth planet. It is a complex world of ice mountains and frozen nitrogen plains. Its highly eccentric orbit sometimes brings it closer to the Sun than Neptune. It has five known moons.",
       "image": {
         "url": "/images/planet_types/web20ultra-short20period20planet.jpg"
@@ -11656,7 +11660,7 @@
       "equilibriumTempMaxK": 46.813800590628404,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.615882615041098,
-      "calculatedRotationPeriod_s": -551880,
+      "calculatedRotationPeriod_s": 545701.3712524395,
       "orbital_period_days": 6.315988093199532,
       "resonanceNote": "3:2 mean-motion resonance with Neptune — protects against close approaches.",
       "resonanceProtective": true,
@@ -11725,7 +11729,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0003126141202576074,
+      "oblateness": 0.0003197332568945029,
       "auroraEmitters": [
         {
           "gas": "nitrogen",
@@ -12053,7 +12057,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 0,
-      "rotation_period_hours": 153.3,
+      "rotation_period_hours": 151.58371423678875,
       "description": "Pluto's largest moon, so large (half of Pluto's diameter) that the two are considered a binary dwarf planet system. They orbit a common barycenter located in the space between them. Charon is tidally locked to Pluto, so they both always show the same face to each other.",
       "image": {
         "url": "/images/planet_types/web20sub-earth.jpg"
@@ -12072,7 +12076,7 @@
       "equilibriumTempMaxK": 46.28737334213813,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.28715577993442903,
-      "calculatedRotationPeriod_s": 551880,
+      "calculatedRotationPeriod_s": 545701.3712524395,
       "orbital_period_days": 6.315988093199532,
       "resonanceNote": "3:2 mean-motion resonance with Neptune — protects against close approaches.",
       "resonanceProtective": true,
@@ -12140,7 +12144,7 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0003419286569030933,
+      "oblateness": 0.00034971537116461603,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",

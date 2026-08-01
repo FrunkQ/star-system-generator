@@ -195,7 +195,13 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   add('Orbital period', b.orbital_period_days ? `${b.orbital_period_days < 2 ? b.orbital_period_days.toFixed(2) : Math.round(b.orbital_period_days).toLocaleString()} days` : '');
   add('Day length', b.rotation_period_hours ? `${b.rotation_period_hours.toFixed(1)} h` : '');
   if (typeof any.axial_tilt_deg === 'number') add('Axial tilt', `${any.axial_tilt_deg.toFixed(1)}°`);
-  if (b.tidallyLocked) add('Rotation', 'tidally locked');
+  // A despun body is either synchronous or caught in a spin-orbit resonance, and the two want
+  // different words: "tidally locked" beside Mercury's 1,407 h day reads as a contradiction, because
+  // Mercury turns 3 times per 2 orbits rather than keeping one face sunward (inbox B7). The day
+  // length above is now the orbital period for a synchronous body, so the two rows agree either way.
+  const resonance = b.tags?.find((t) => t.key === 'orbit/spin-orbit-resonance')?.value;
+  if (resonance) add('Rotation', `${resonance} spin–orbit resonance`);
+  else if (b.tidallyLocked) add('Rotation', 'tidally locked');
 
   // --- Bulk ---
   add('Mass', massRel(b));
