@@ -546,6 +546,22 @@
                   </select>
                 </label>
               {/if}
+              <!-- The list GLYPHS are normally seeded by the colouration; this overrides them for both
+                   stages. 'cards' is the one that changes the shape rather than the bullet. -->
+              <label>Lists
+                <select value={draft.listStyle ?? ''}
+                  on:change={(e) => { const v = (e.currentTarget as HTMLSelectElement).value;
+                    draft = { ...draft, listStyle: (v || undefined) as any }; }}>
+                  <option value="">From the colouration</option>
+                  <option value="plain">Plain bullets</option>
+                  <option value="illustrated-bullets">Illustrated bullets</option>
+                  <option value="numbered-dossier">Numbered</option>
+                  <option value="terminal-log">Terminal log</option>
+                  <option value="ledger">Ruled rows</option>
+                  <option value="manifest">Manifest</option>
+                  <option value="cards">Pickable cards</option>
+                </select>
+              </label>
               <!-- A29: a star catalogue holds what a ship CAN carry; only an instrument knows what is in
                    the tanks now. Off = capacity alone, on = current-of-capacity. -->
               <label class="chk"><input type="checkbox" bind:checked={draft.liveReadings} /> Live readings</label>

@@ -84,11 +84,16 @@ export function buildStarmapDocument(starmap: Starmap | null, opts: StarmapDocOp
   if (opts.layout === 'dossier') {
     blocks.push(...dossier(starmap, systems, opts));
   } else {
-    const items: ListItem[] = systems.map((node) => ({
+    // RAINBOW in the index: one part of the spectrum per SYSTEM, walking the list. It reads as an
+    // identity — this entry's colour — rather than as decoration, which is why it suits a bounded
+    // object (a chip, a card) where a dense form's field labels would have been confetti. The colour
+    // is resolved here, in the builder, and every list style honours it.
+    const items: ListItem[] = systems.map((node, i) => ({
       id: node.id,
       text: node.name,
       sub: summary(node),
-      selected: node.id === opts.selectedId
+      selected: node.id === opts.selectedId,
+      ...(opts.colorful ? { color: rainbowHue(i) } : {})
     }));
     blocks.push({ kind: 'list', items });
   }

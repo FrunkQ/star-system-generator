@@ -204,3 +204,28 @@ describe('buildStarmapDocument — the dossier offers an explicit way in', () =>
     expect(btn.items[0].color).toBe(head.color);
   });
 });
+
+// G1 arrangement 2 — CARDS is a ListStyle, not a layout, so it is the renderer that boxes the items.
+// The builder's only job is to give each system its own hue when the accent is rainbow, which every
+// list style then honours (chips, boxed, plain and cards alike).
+describe('buildStarmapDocument — the index carries a hue per system for rainbow', () => {
+  const map: any = {
+    name: 'M', distanceUnit: 'ly', scale: { pixelsPerUnit: 10 }, mapMode: 'scaled',
+    systems: [
+      { id: 'a', name: 'A', position: { x: 0, y: 0 }, system: { nodes: [{ id: 's1', name: 'S1', kind: 'body', roleHint: 'star', massKg: 2e30 }] } },
+      { id: 'b', name: 'B', position: { x: 10, y: 0 }, system: { nodes: [{ id: 's2', name: 'S2', kind: 'body', roleHint: 'star', massKg: 2e30 }] } }
+    ]
+  };
+  it('gives each index item its own part of the spectrum, and none without rainbow', () => {
+    const on = (buildStarmapDocument(map, { colorful: true }).find((b) => b.kind === 'list') as any).items;
+    expect(on[0].color).toBeTruthy();
+    expect(on[1].color).not.toBe(on[0].color);
+    const off = (buildStarmapDocument(map, {}).find((b) => b.kind === 'list') as any).items;
+    expect(off[0].color).toBeUndefined();
+  });
+  it('leaves the list block free of a style, so the preset picks it (cards included)', () => {
+    const list = buildStarmapDocument(map, {}).find((b) => b.kind === 'list') as any;
+    expect(list.style).toBeUndefined();
+    expect(list.nav).toBeUndefined();
+  });
+});

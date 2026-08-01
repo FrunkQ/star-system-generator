@@ -23,7 +23,8 @@ export type ListStyle =
   | 'numbered-dossier'     // report: 1. 2. 3. numbered
   | 'terminal-log'         // terminal: '>' prefixed, monospace feel, tight
   | 'ledger'               // ruled table rows
-  | 'manifest';            // ticker / cargo-manifest columns
+  | 'manifest'             // ticker / cargo-manifest columns
+  | 'cards';               // pickable bordered boxes, several across the page — width picks how many
 
 // The overall document skin — one renderer, many looks. Each maps to a full base theme in
 // documentStyles.ts (font + colour set + list glyphs); a preset's explicit fields override it.

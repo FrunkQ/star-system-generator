@@ -352,6 +352,61 @@ function drawList(
   // row) gets it at once and none of them has to know.
   // A block may override the theme's navigator style (blocks.ts ListBlock.nav) — see there for why.
   const navStyle = b.nav ?? theme.navStyle;
+
+  // CARDS: a pickable bordered box per item, as many across the page as fit. It is a LIST STYLE, not a
+  // layout, so it composes with whichever arrangement the starmap document is in and reaches every
+  // other navigator list for free.
+  // The column placement is the fieldGrid technique — derive the count from the width, then place —
+  // NOT columnStart/columnEnd, which is the image-strip machinery and is no use as a general grid.
+  // A block that overrode `nav` is asking to be an ACTION rather than a navigator (the dossier's
+  // "System data" button), so it keeps its own shape rather than becoming a card.
+  if (style === 'cards' && b.nav === undefined) {
+    ctx.textBaseline = 'alphabetic';
+    const gap = px(10, s);
+    const minCard = px(190, s);
+    const cols = Math.max(1, Math.min(6, Math.floor((w + gap) / (minCard + gap))));
+    const cardW = (w - gap * (cols - 1)) / cols;
+    const anySub = b.items.some((it) => it.sub);
+    const cardH = px(anySub ? 46 : 32, s);
+    const r = px(8, s);
+    b.items.forEach((it, i) => {
+      const cx = x + (i % cols) * (cardW + gap);
+      const cy = top + Math.floor(i / cols) * (cardH + gap);
+      const sel = !!it.selected || (!!it.id && !!b.selected);
+      if (cy + cardH > colTop - 2 && cy < maxY + 2) {
+        // Builder-set hue (the rainbow: one part of the spectrum per card). Ignored under mono, which
+        // bleaches the page on purpose — the same exemption the rainbow headings and chips take.
+        const own = !theme.mono ? it.color : undefined;
+        roundRectPath(ctx, cx, cy, cardW, cardH, r);
+        if (own) {
+          const a0 = ctx.globalAlpha;
+          ctx.globalAlpha = a0 * (sel ? 0.28 : 0.12);
+          ctx.fillStyle = own; ctx.fill();
+          ctx.globalAlpha = a0;
+        } else {
+          ctx.fillStyle = sel ? hexA(c.accent, 0.16) : hexA(c.rule || '#8899aa', 0.07);
+          ctx.fill();
+        }
+        ctx.strokeStyle = own ?? (sel ? c.accent : c.rule);
+        ctx.lineWidth = sel ? 2 : 1;
+        ctx.stroke();
+        const padX = px(11, s);
+        ctx.textAlign = 'left';
+        ctx.font = `600 ${px(14, s)}px ${theme.headingFont || font}`;
+        ctx.fillStyle = own ?? (sel ? c.value : c.heading);
+        ctx.fillText(ellipsise(ctx, it.text, cardW - padX * 2), cx + padX, cy + px(anySub ? 20 : 21, s));
+        if (it.sub) {
+          ctx.font = `${px(11, s)}px ${font}`;
+          ctx.fillStyle = c.label;
+          ctx.fillText(ellipsise(ctx, it.sub, cardW - padX * 2), cx + padX, cy + px(37, s));
+        }
+      }
+      // x-bounded, like chips: cards share a y band, so a tap has to be resolved by column too.
+      if (it.id) regions.push({ id: it.id, x0: cx, x1: cx + cardW, y0: cy, y1: cy + cardH });
+    });
+    const rows = Math.ceil(b.items.length / cols);
+    return top + rows * (cardH + gap) + px(2, s);
+  }
   if (navStyle === 'chips') {
     ctx.font = `${px(13, s)}px ${font}`;
     ctx.textBaseline = 'alphabetic';

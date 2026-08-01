@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.350-beta - 1st Aug 2026
+
+* A new list style, "Pickable cards": each entry a bordered box, as many across the page as the width allows, highlighting when picked. On the starmap that turns a forty-two row index into one screen you can take in at a glance. It is a LIST style, so it applies to every navigator list, not only the starmap.
+* Lists now have their own control on the System step. They were previously fixed by whichever colouration you picked.
+
 ## v2.1.349-beta - 1st Aug 2026
 
 * A navigator button keeps the colour the page gave it whichever navigator style is set. Only the side-by-side chips honoured it, so switching the navigation to one-button-per-row or plain text silently threw away the per-entry colours -- The Guide's rainbow drill-ins included.
