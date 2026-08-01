@@ -149,6 +149,24 @@ export interface ConstructGlyphBlock extends DocBlockBase {
   color: string;       // the construct's authored icon_color (ignored under a mono theme)
   heightFrac?: number; // fraction of the view height to reserve (default 0.24 — the body-disc slot)
 }
+// A FORM of labelled fields laid out in a dynamic number of COLUMNS (G1). It exists because a stack of
+// `keyValue` rows right-aligns each value to the far edge of the content column: on a full-width page
+// the label sits at one side and its value at the other, a foot and a half away, and the pair stops
+// reading as a pair. Here the renderer divides the width into cells of a readable size and puts each
+// label and value inside one, so they stay together whatever the page is doing.
+// The COLUMN COUNT is derived from the available width, not authored — the same block is a single
+// column in a narrow side panel and three or four across a desktop document.
+// Not to be confused with columnStart/columnEnd, which is the image-and-text-beside-it layout and is
+// not a general grid.
+export interface FieldGridBlock extends DocBlockBase {
+  kind: 'fieldGrid';
+  // `icon` is an optional single glyph drawn before the label, in the accent colour. Chosen by the
+  // BUILDER (it knows what the field means); the renderer only places it. Absent = no icon column.
+  fields: { label: string; value: string; icon?: string }[];
+  minColPx?: number; // narrowest a column may get before dropping one, at scale 1 (default 300)
+  maxCols?: number;  // beyond four a form stops being scannable (default 4)
+  rules?: boolean;   // faint fill-in line under each value — the printed-form cue (default true)
+}
 export interface SpacerBlock extends DocBlockBase { kind: 'spacer'; h?: number; } // gap in px (× scale)
 export interface RuleBlock extends DocBlockBase { kind: 'rule'; }                  // a full-width divider
 
@@ -175,7 +193,7 @@ export interface SchematicBlock extends DocBlockBase {
 
 export type DocBlock =
   | HeadingBlock | TextBlock | KeyValueBlock | ListBlock | TagsBlock
-  | ImageBlock | BodyDiscBlock | ConstructGlyphBlock | SpacerBlock | RuleBlock | SchematicBlock
+  | ImageBlock | BodyDiscBlock | ConstructGlyphBlock | FieldGridBlock | SpacerBlock | RuleBlock | SchematicBlock
   | ColumnStartBlock | ColumnEndBlock;
 
 // --- Resolved colours -------------------------------------------------------------------------------

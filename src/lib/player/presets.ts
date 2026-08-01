@@ -48,6 +48,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   tagStyle: 'pills',
   navStyle: 'chips', // side-by-side buttons that wrap — a 13-planet list is 2 rows, not 13
   starmapLayout: 'list', // G1: the shipped arrangement stays the default; 'dossier' is opt-in
+  starmapFieldIcons: true,
   photoFrame: 'letterbox',
   transition: 'none',
   transitionParams: {},

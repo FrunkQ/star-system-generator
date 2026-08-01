@@ -330,6 +330,11 @@
                 </label>
                 <p class="hint">The shape of the page. The colouration, fonts and list glyphs on the Look
                   step still apply on top of whichever you pick.</p>
+                {#if draft.starmapLayout === 'dossier'}
+                  <label class="chk"><input type="checkbox" bind:checked={draft.starmapFieldIcons} /> Field icons</label>
+                  <p class="hint">A glyph before each field — a star for the primary, a disc for planets,
+                    a ring for moons. Same shapes the navigator lists use.</p>
+                {/if}
               {/if}
               <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
               {#if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
@@ -656,7 +661,7 @@
               <FilteredDocumentView stage="starmap" starmap={$starmapStore} {rulePack}
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
-                starmapLayout={draft.starmapLayout}
+                starmapLayout={draft.starmapLayout} starmapFieldIcons={draft.starmapFieldIcons !== false}
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
                 companyName={draft.companyName} footerText={draft.footerText}

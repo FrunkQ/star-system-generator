@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.348-beta - 1st Aug 2026
+
+* The starmap dossier reads as a proper form. Its fields flow in as many COLUMNS as the page is wide -- one on a phone, three or four on a desktop -- with the label right against its value and a faint fill-in line under each, instead of the label at one edge of the page and its value at the other.
+* Field icons: a star for the primary, a disc for planets, a ring for moons. On by default, and a checkbox on the Starmap step.
+* Every companion star has its own numbered field, with its spectral class. A trinary used to have its third star quietly cut off the end of a joined list.
+* Each entry now says how to open it -- a "System data" button in the entry's own colour -- and the whole entry is clickable, not just its title line. A page of fields gives no clue that it is a door.
+
 ## v2.1.347-beta - 1st Aug 2026
 
 * The starmap document has ARRANGEMENTS. "Dossier" gives each system a heading over a form -- primary, companions, planets, moons, depth, and its distance from wherever you are -- instead of one row in an index. It is a new option on the Starmap step, and the colouration, fonts and list glyphs you already picked still apply on top of it.

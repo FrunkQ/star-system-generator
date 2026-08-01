@@ -37,6 +37,7 @@
   export let navStyle: import('$lib/catalogue/document/blocks').NavStyle | undefined = undefined;
   // G1: the starmap document's ARRANGEMENT (shape), composing with documentStyle and listStyle.
   export let starmapLayout: import('$lib/catalogue/document/starmapDocument').StarmapLayout | undefined = undefined;
+  export let starmapFieldIcons = true;
   export let tagStyle: import('$lib/catalogue/document/blocks').TagStyle | undefined = undefined;
   export let themeColors: DocColors | undefined = undefined;
   export let fontScale = 1;
@@ -161,7 +162,7 @@
 
     // One engine, two stages: the starmap document (systems index) or the system Guide document.
     const blocks = stage === 'starmap'
-      ? buildStarmapDocument(starmap, { selectedId, layout: starmapLayout, colorful: accent === 'rainbow' })
+      ? buildStarmapDocument(starmap, { selectedId, layout: starmapLayout, colorful: accent === 'rainbow', fieldIcons: starmapFieldIcons })
       : (system ? buildGuideDocument(system, selectedId, {
           units, tempUnit, colorful, imagery, rulePack, liveReadings,
           image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
@@ -250,7 +251,7 @@
 
   // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
   // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
-  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; starmapLayout; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
+  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; starmapLayout; starmapFieldIcons; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
   $: if (ctrl) handleSelection(selectedId);
   $: ctrl?.setFilter(filterId, filterParams);
 

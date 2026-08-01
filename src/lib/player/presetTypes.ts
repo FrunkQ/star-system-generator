@@ -97,6 +97,7 @@ export interface PlayerPreset {
   // and listStyle's glyphs. It composes with both rather than replacing them, so the looks multiply.
   // Applies to the STARMAP document only for now; the system document is a deliberate follow-on.
   starmapLayout?: StarmapLayout;
+  starmapFieldIcons?: boolean; // dossier arrangement: a glyph before each field label
   photoFrame?: 'letterbox' | 'full' | 'sliver'; // document: how a body photo is framed
   themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,

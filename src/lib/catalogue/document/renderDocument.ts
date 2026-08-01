@@ -184,6 +184,66 @@ export function renderDocument(
         y += lh;
         break;
       }
+      case 'fieldGrid': {
+        // Columns are DERIVED from the width, not authored: as many as fit at a readable cell size,
+        // capped, minimum one. Each label and its value live inside one cell, so they stay together —
+        // which is the whole point, since a full-width keyValue row puts them at opposite edges of a
+        // desktop page and they stop reading as a pair.
+        const gut = px(26, s);
+        const minCol = px(b.minColPx ?? 300, s);
+        const cols = Math.max(1, Math.min(b.maxCols ?? 4, Math.floor((w + gut) / (minCol + gut))));
+        const cellW = (w - gut * (cols - 1)) / cols;
+        // A printed form: an optional glyph, then the label RIGHT-aligned hard against the field, then
+        // the value starting on a fixed line with a faint rule under it. Right-aligning the label is
+        // what keeps the pair together whatever the label's length — left-aligning it leaves a ragged
+        // gap after every short word, and right-aligning the VALUE instead reintroduces the very fault
+        // this block exists to fix, in miniature: a "9" a whole cell away from the "Planets" it answers.
+        const hasIcons = b.fields.some((f) => f.icon);
+        const iconW = hasIcons ? px(15, s) : 0;
+        const labW = (cellW - iconW) * 0.42;
+        const valX0 = iconW + labW;              // the field line, shared down the whole column
+        const lh = px(19, s);
+        const rows = Math.ceil(b.fields.length / cols);
+        const h = rows * lh;
+        if (visible(top, h)) {
+          b.fields.forEach((f, i) => {
+            // Row-major, so the fields read left to right in the same direction as the rest of the page
+            // and a short final row simply leaves a gap at the end rather than an unbalanced column.
+            const cx = x + (i % cols) * (cellW + gut);
+            const cy = top + Math.floor(i / cols) * lh + px(13, s);
+            ctx.font = `${px(12, s)}px ${font}`;
+            // Icon and label travel together, right-aligned as ONE group against the field line. Parking
+            // the icon in a left gutter instead leaves it stranded a whole column away from the short
+            // word it belongs to, which is the same "pair that stopped being a pair" fault again.
+            const labEnd = cx + valX0 - px(9, s);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = c.label;
+            const lab = ellipsise(ctx, f.label, labW - px(9, s) - iconW);
+            ctx.fillText(lab, labEnd, cy);
+            if (f.icon) {
+              ctx.fillStyle = c.accent;
+              ctx.fillText(f.icon, labEnd - ctx.measureText(lab).width - px(5, s), cy);
+            }
+            ctx.textAlign = 'left';
+            ctx.fillStyle = c.value;
+            ctx.fillText(ellipsise(ctx, f.value, cellW - valX0), cx + valX0, cy);
+            if (b.rules !== false) {
+              ctx.save();
+              ctx.globalAlpha = 0.35;
+              ctx.strokeStyle = c.rule;
+              ctx.lineWidth = 1;
+              const ry = Math.round(cy + px(4, s)) + 0.5;
+              ctx.beginPath();
+              ctx.moveTo(cx + valX0 - px(4, s), ry); ctx.lineTo(cx + cellW, ry);
+              ctx.stroke();
+              ctx.restore();
+            }
+          });
+        }
+        if (b.id) regions.push({ id: b.id, x0: x, y0: top, x1: x + w, y1: top + h });
+        y += h;
+        break;
+      }
       case 'list': {
         y = drawList(ctx, b, theme, c, font, s, x, w, top, layout.y, maxY, regions);
         break;
