@@ -261,25 +261,49 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   // take" and "what does a ship take" (inbox B22). A surfaceless body has no ground at all, so its
   // first figure is labelled for the 1-bar reference level it actually describes — the same
   // reasoning B18 applied to habitability. The second is only worth a row when it genuinely differs.
-  const radDose = (v: number) => v >= 3.65e6 ? `${(v / 365000).toPrecision(3)} Sv/day`
-    : v >= 10000 ? `${(v / 1000).toPrecision(3)} Sv/y` : `${v.toFixed(1)} mSv/y`;
+  //
+  // EVERY radiation figure states its unit next to the figure, and a row's range is printed on the
+  // SAME scale as its mean (inbox A33). It used to quote the range as raw mSv/y whatever its size
+  // while the mean-only fallback auto-scaled, so Earth read "high (229.6–229.6 mSv/y)" on one line
+  // and "high (843 Sv/y)" on the next: two doses a thousandfold apart, told apart only by a suffix
+  // on one of them, with no absolute figure on the first row at all. The unit is chosen ONCE from
+  // the mean so the endpoints cannot end up in different ones, and the mean is printed inside its
+  // own range, which is the A5 rule.
+  const radScale = (v: number) => v >= 3.65e6 ? { div: 365000, unit: 'Sv/day' }
+    : v >= 10000 ? { div: 1000, unit: 'Sv/y' } : { div: 1, unit: 'mSv/y' };
+  const radBand = (v: number) => v < 5 ? 'low' : v < 100 ? 'moderate' : 'high';
+  function radRow(mean: number, min?: number, max?: number): string {
+    const { div, unit } = radScale(mean);
+    const f = (x: number) => {
+      const n = x / div;
+      return n.toLocaleString(undefined, { maximumFractionDigits: n < 10 ? 1 : 0 });
+    };
+    // A range whose ends round to the same figure is noise, not information — Earth's orbit is
+    // near-circular, so it would otherwise read "2.3 mSv/y (2.3–2.3)".
+    const lo = typeof min === 'number' ? f(min) : null;
+    const hi = typeof max === 'number' ? f(max) : null;
+    const range = lo !== null && hi !== null && lo !== hi ? ` (${lo}–${hi})` : '';
+    return `${radBand(mean)} · ${f(mean)} ${unit}${range}`;
+  }
   if (typeof any.surfaceRadiation === 'number') {
-    const band = any.surfaceRadiation < 5 ? 'low' : any.surfaceRadiation < 100 ? 'moderate' : 'high';
-    const range = (typeof any.surfaceRadiationMin === 'number' && typeof any.surfaceRadiationMax === 'number')
-      ? ` (${any.surfaceRadiationMin.toFixed(1)}–${any.surfaceRadiationMax.toFixed(1)} mSv/y)` : ` (${radDose(any.surfaceRadiation)})`;
-    add(hasSolidSurface(b) ? 'Radiation (surface)' : 'Radiation (at 1 bar)', `${band}${range}`);
+    add(hasSolidSurface(b) ? 'Radiation (surface)' : 'Radiation (at 1 bar)',
+      radRow(any.surfaceRadiation, any.surfaceRadiationMin, any.surfaceRadiationMax));
   }
   if (typeof any.orbitalRadiation === 'number' && typeof any.surfaceRadiation === 'number'
       && any.orbitalRadiation > any.surfaceRadiation * 1.5) {
-    const band = any.orbitalRadiation < 5 ? 'low' : any.orbitalRadiation < 100 ? 'moderate' : 'high';
-    add('Radiation (in orbit)', `${band} (${radDose(any.orbitalRadiation)})`);
+    add('Radiation (in orbit)', radRow(any.orbitalRadiation));
   }
   if (any.magneticField?.strengthGauss) add('Magnetosphere', `${any.magneticField.strengthGauss.toFixed(2)} G`);
   if (any.geoActivity?.regime) add('Geology', titleCase(String(any.geoActivity.regime)));
   if (any.loDeltaVBudget_ms) add('Ascent Δv', formatSpeedKmS(any.loDeltaVBudget_ms / 1000, units, 1));
 
   // --- Life ---
-  if (typeof b.habitabilityScore === 'number') add('Habitability', `${Math.round(b.habitabilityScore)}%`);
+  // The A33 sweep's second find: an INDEX printed as a percentage, one row above a real coverage
+  // percentage. Earth read "Habitability 83%" against "Native life present (cover 80%)", and nothing
+  // said the first was a score out of a hundred rather than a fraction of the surface. Same fault
+  // class as the radiation rows — a ratio wearing a measurement's clothes — so it is named a score
+  // and given its denominator instead of a per-cent sign.
+  if (typeof b.habitabilityScore === 'number') add('Habitability score', `${Math.round(b.habitabilityScore)} / 100`);
   if (b.biosphere) add('Native life', `present (cover ${Math.round((b.biosphere.coverage || 0) * 100)}%)`);
 
   // --- GM-surfaced narrative/feature tags --- (contextual labels so "Oblate"/"Dynamo" keep their

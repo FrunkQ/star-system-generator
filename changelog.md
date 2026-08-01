@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.344-beta - 1st Aug 2026
+
+* Radiation now says what it is. A body could show its surface dose in millisieverts a year and its orbital dose in sieverts a year on the next line down, a thousandfold apart, with only a suffix to tell them apart -- and the surface row printed a range with no actual figure in it. Each row now carries one unit, chosen to suit the number, with the mean and its range in that same unit.
+* The "Irradiation" tag is now called "Space weathering". It is a cumulative total relative to a young unshielded Earth, not a dose per year, and sitting beside two dose figures under that name made it read as a third one that disagreed with them. Io is the case in point: constantly resurfaced, so it weathers very little, while its radiation environment is among the fiercest in the solar system.
+* Habitability is now shown as a score out of 100 rather than a percentage, so it is not read as a fraction of the surface next to the biosphere coverage that is one.
+
 ## v2.1.343-beta - 1st Aug 2026
 
 * A construct has a picture again. Since the sphere a planet gets was removed from it -- a 110 m ship illustrated as a rocky world -- a ship or station has shown a blank where every world shows something. It now draws its own icon, in its own colour, at info-block size, so the entry agrees with the marker on the map.
