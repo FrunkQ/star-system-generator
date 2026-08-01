@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.356-beta - 2nd Aug 2026
+
+* Measured how far the physics moves when a system is processed more than once, and wrote the curve into the inbox (B13). It settles after the second pass rather than compounding, but the first pass can be wildly out: an imported world reads its own radiation belt at ground level, which is what put Earth at 230 mSv/yr instead of 2.3.
+
 ## v2.1.355-beta - 2nd Aug 2026
 
 * Greyscale is offered once, not twice. It was in the colouration list AND as a checkbox beside it; the list keeps it, since picking it already turns the page monochrome on its own. The 2D/3D map keeps its checkbox, having no palette list of its own.
