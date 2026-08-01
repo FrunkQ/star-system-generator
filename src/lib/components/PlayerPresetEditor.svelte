@@ -319,6 +319,18 @@
                   <option value="holo3d">3D map</option>
                 </select>
               </label>
+              {#if draft.starmapView === 'list'}
+                <!-- G1: the ARRANGEMENT — the shape the same content takes. It composes with the document
+                     colouration and list style rather than replacing them, so the looks multiply. -->
+                <label>Arrangement
+                  <select bind:value={draft.starmapLayout}>
+                    <option value="list">Index — one row per system</option>
+                    <option value="dossier">Dossier — a form per system</option>
+                  </select>
+                </label>
+                <p class="hint">The shape of the page. The colouration, fonts and list glyphs on the Look
+                  step still apply on top of whichever you pick.</p>
+              {/if}
               <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
               {#if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
                 <label>Overlay
@@ -644,6 +656,7 @@
               <FilteredDocumentView stage="starmap" starmap={$starmapStore} {rulePack}
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.bodyStyle === 'white'}
                 listStyle={draft.listStyle} documentStyle={draft.documentStyle} navStyle={draft.navStyle} themeColors={draft.themeColors}
+                starmapLayout={draft.starmapLayout}
                 fontScale={draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
                 companyName={draft.companyName} footerText={draft.footerText}

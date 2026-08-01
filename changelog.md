@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.347-beta - 1st Aug 2026
+
+* The starmap document has ARRANGEMENTS. "Dossier" gives each system a heading over a form -- primary, companions, planets, moons, depth, and its distance from wherever you are -- instead of one row in an index. It is a new option on the Starmap step, and the colouration, fonts and list glyphs you already picked still apply on top of it.
+
 ## v2.1.346-beta - 1st Aug 2026
 
 * The construct block is gated by one rule now: a row is a live reading if it changes minute to minute, and a specification if it does not. Status is a live reading. A berth -- an orbit, a dock, a landing -- is not, so it stays; a ship under way has no berth and no longer quotes its speed under a capacity heading.

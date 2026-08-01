@@ -79,8 +79,13 @@ export interface DocBlockBase {
 export interface HeadingBlock extends DocBlockBase {
   kind: 'heading';
   text: string;
-  level?: 1 | 2 | 3; // 1 = title, 2 = section, 3 = minor; default 1
+  level?: 1 | 2 | 3; // 1 = level 1 = title, 2 = section, 3 = minor; default 1
   sub?: string;      // small uppercase strap under the heading (e.g. the body's role)
+  // Set by the BUILDER, like ListItem.color: a specific hue for THIS heading, which wins over the
+  // theme's heading colour and over the rainbow gradient. It exists so a repeated heading — one per
+  // system in the starmap dossier — can walk the spectrum an entry at a time instead of every heading
+  // carrying the whole sweep. A mono theme still bleaches it, as it bleaches everything.
+  color?: string;
 }
 export interface TextBlock extends DocBlockBase {
   kind: 'text';

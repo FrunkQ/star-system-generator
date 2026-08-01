@@ -131,7 +131,11 @@ export function renderDocument(
           // Rainbow accent → paint the heading across the spectrum (never under mono, which deliberately
           // bleaches the whole page for a tinting filter). The gradient spans the heading's own width so
           // every heading shows the full sweep rather than a slice of a page-wide ramp.
-          if (rainbow && !theme.mono) {
+          // A builder-set colour wins: it is a deliberate per-heading choice (the starmap dossier gives
+          // each system its own hue), and the page-wide rainbow sweep would flatten that back out.
+          if (b.color && !theme.mono) {
+            ctx.fillStyle = b.color;
+          } else if (rainbow && !theme.mono) {
             ctx.fillStyle = rainbowFill(ctx, x, ctx.measureText(b.text).width);
           } else {
             ctx.fillStyle = level === 1 ? c.heading : c.body;

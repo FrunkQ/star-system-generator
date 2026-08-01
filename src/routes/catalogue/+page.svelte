@@ -1035,6 +1035,7 @@
         <FilteredDocumentView stage="starmap" {starmap}
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
           listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
+          starmapLayout={activePreset.starmapLayout}
           fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}

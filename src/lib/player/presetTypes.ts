@@ -12,7 +12,9 @@ export type ViewModule = 'list' | 'diagram2d' | 'holo3d' | 'document';
 // WS2 document look (see catalogue/document/blocks.ts — the engine owns these). Re-exported here so a
 // preset can carry them; type-only, so no runtime coupling between presets and the renderer.
 export type { ListStyle, DocumentStyle, DocColors, TagStyle, NavStyle } from '$lib/catalogue/document/blocks';
+export type { StarmapLayout } from '$lib/catalogue/document/starmapDocument';
 import type { ListStyle, DocumentStyle, DocColors, TagStyle, NavStyle } from '$lib/catalogue/document/blocks';
+import type { StarmapLayout } from '$lib/catalogue/document/starmapDocument';
 
 // A 9-point anchor for placing a graphic on the cover or as a map overlay.
 export type PinPosition =
@@ -91,6 +93,10 @@ export interface PlayerPreset {
   listStyle?: ListStyle;
   tagStyle?: TagStyle;
   navStyle?: NavStyle;
+  // G1: the ARRANGEMENT the starmap document takes — the shape, as against documentStyle's colouration
+  // and listStyle's glyphs. It composes with both rather than replacing them, so the looks multiply.
+  // Applies to the STARMAP document only for now; the system document is a deliberate follow-on.
+  starmapLayout?: StarmapLayout;
   photoFrame?: 'letterbox' | 'full' | 'sliver'; // document: how a body photo is framed
   themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,
