@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.349-beta - 1st Aug 2026
+
+* A navigator button keeps the colour the page gave it whichever navigator style is set. Only the side-by-side chips honoured it, so switching the navigation to one-button-per-row or plain text silently threw away the per-entry colours -- The Guide's rainbow drill-ins included.
+* The dossier's "System data" button stays a compact chip whatever the navigator style is. It is a single action, and a full-width bar under each of forty-two entries is the wrong shape for one button.
+
 ## v2.1.348-beta - 1st Aug 2026
 
 * The starmap dossier reads as a proper form. Its fields flow in as many COLUMNS as the page is wide -- one on a phone, three or four on a desktop -- with the label right against its value and a faint fill-in line under each, instead of the label at one edge of the page and its value at the other.

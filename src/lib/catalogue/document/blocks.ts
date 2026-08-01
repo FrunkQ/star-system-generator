@@ -114,6 +114,11 @@ export interface ListBlock extends DocBlockBase {
   kind: 'list';
   items: ListItem[];
   style?: ListStyle; // overrides the theme's listStyle for this block
+  // Overrides the theme's navStyle for this block, the same way `style` overrides its listStyle. It
+  // exists for a list that is a single ACTION rather than a navigator: the starmap dossier's "System
+  // data" button is one item, and a full-width bar is the wrong shape for it however the reader's
+  // multi-item lists are set. A navigator list should NOT set this — those compose with the preset.
+  nav?: NavStyle;
 }
 export type PhotoFrame = 'letterbox' | 'full' | 'sliver';
 // Auto-centre box of the SUBJECT within a photo (see imageFocus.ts): frame to the body's edge, not the pic's.

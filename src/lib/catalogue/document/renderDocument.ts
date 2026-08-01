@@ -350,7 +350,9 @@ function drawList(
   // of links. Laid out here rather than as a new block kind because it is the same list — only its
   // arrangement changes — so every drill-in list (moons, rings, companions, constructs, the parent
   // row) gets it at once and none of them has to know.
-  if (theme.navStyle === 'chips') {
+  // A block may override the theme's navigator style (blocks.ts ListBlock.nav) — see there for why.
+  const navStyle = b.nav ?? theme.navStyle;
+  if (navStyle === 'chips') {
     ctx.font = `${px(13, s)}px ${font}`;
     ctx.textBaseline = 'alphabetic';
     const padX = px(10, s), gap = px(6, s), chipH = px(23, s), r = px(6, s);
@@ -395,7 +397,7 @@ function drawList(
     return cy + chipH + px(4, s);
   }
 
-  const boxed = theme.navStyle === 'boxed';
+  const boxed = navStyle === 'boxed';
   const lh = px(boxed ? 24 : 20, s);
   const indent = px(boxed ? 12 : 18, s);
   ctx.font = `${px(13, s)}px ${font}`;
@@ -406,15 +408,28 @@ function drawList(
     const rowTop = y;
     const sel = !!it.selected || (!!it.id && !!b.selected);
     const inBand = rowTop + lh > colTop - 2 && rowTop < maxY + 2;
+    // The builder may hand an item its own colour. Every nav style must honour it, not just chips:
+    // it went in for the Guide's rainbow, where a drill-in takes the hue of that body's marker, and a
+    // GM switching the navigator to boxed or plain silently lost the colour the builder had chosen.
+    // Same fault family as F9 — a builder-set colour that only reached one branch of the renderer.
+    const own = !theme.mono ? it.color : undefined;
     if (inBand && boxed) {
       // Boxed nav "buttons": a rounded box per row — the selected one coloured (accent), the rest plain.
       const bx = x, bw = w, by = rowTop + px(2, s), bh = lh - px(5, s), r = px(6, s);
       roundRectPath(ctx, bx, by, bw, bh, r);
-      ctx.fillStyle = sel ? hexA(c.accent, 0.16) : hexA(c.rule || '#8899aa', 0.08);
-      ctx.fill();
-      ctx.strokeStyle = sel ? c.accent : c.rule; ctx.lineWidth = 1; ctx.stroke();
+      // hsl() item colours carry no alpha for hexA to work from, so the tint goes through globalAlpha.
+      if (own) {
+        const a0 = ctx.globalAlpha;
+        ctx.globalAlpha = a0 * (sel ? 0.3 : 0.14);
+        ctx.fillStyle = own; ctx.fill();
+        ctx.globalAlpha = a0;
+      } else {
+        ctx.fillStyle = sel ? hexA(c.accent, 0.16) : hexA(c.rule || '#8899aa', 0.08);
+        ctx.fill();
+      }
+      ctx.strokeStyle = own ?? (sel ? c.accent : c.rule); ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
       ctx.textAlign = 'left';
-      ctx.fillStyle = sel ? c.value : c.body;
+      ctx.fillStyle = own ?? (sel ? c.value : c.body);
       ctx.font = `${px(13, s)}px ${font}`;
       ctx.fillText(ellipsise(ctx, it.text, bw - indent * 2 - (it.sub ? px(56, s) : 0)), bx + indent, by + bh - px(6, s));
       if (it.sub) { ctx.textAlign = 'right'; ctx.fillStyle = c.label; ctx.fillText(it.sub, bx + bw - indent, by + bh - px(6, s)); }
@@ -425,10 +440,10 @@ function drawList(
       }
       const baseY = rowTop + px(13, s);
       ctx.textAlign = 'left';
-      ctx.fillStyle = c.accent;
+      ctx.fillStyle = own ?? c.accent;
       ctx.font = `${px(13, s)}px ${font}`;
       ctx.fillText(bullet(style, i), x, baseY);
-      ctx.fillStyle = sel ? c.value : c.body;
+      ctx.fillStyle = own ?? (sel ? c.value : c.body);
       const tw = it.sub ? w - indent - px(60, s) : w - indent;
       ctx.fillText(ellipsise(ctx, it.text, tw), x + indent, baseY);
       if (it.sub) {

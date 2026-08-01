@@ -172,6 +172,10 @@ function dossier(starmap: Starmap | null, systems: any[], opts: StarmapDocOpts):
     out.push({ kind: 'spacer', h: 4 }); // the button needs air, or it crowds the last row of fields
     out.push({
       kind: 'list',
+      // A single ACTION, so it is a chip whatever the preset's navigator style is: a full-width bar
+      // under every one of forty-two entries is the wrong shape for one button. Multi-item navigator
+      // lists elsewhere still compose with the preset — this override is deliberately narrow.
+      nav: 'chips',
       items: [{ id: node.id, text: 'System data ›', ...(opts.colorful ? { color: rainbowHue(i) } : {}) }]
     });
     out.push({ kind: 'rule' });
