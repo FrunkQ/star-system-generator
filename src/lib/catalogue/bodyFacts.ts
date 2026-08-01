@@ -163,12 +163,32 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
     if (!live) add('Fuel capacity', `${Math.round(specs.fuelCapacity_units).toLocaleString()} m³${suffix}`);
     else add('Fuel', `${Math.round(specs.fuelVolume_units).toLocaleString()} of ${Math.round(specs.fuelCapacity_units).toLocaleString()} m³${suffix}`);
   }
-  // Both are computed from the CURRENT wet mass — acceleration divides by it, and Δv is the log of the
-  // wet/dry ratio, i.e. how much fuel is left. So they are readings, not specifications, and they follow
-  // the toggle for the same reason Total mass does. The RATED figures a catalogue would want (full tanks)
-  // are a derivation that does not exist yet — see A31 rather than inventing one here.
-  if (live && specs.maxVacuumG > 0) add('Max acceleration', `${specs.maxVacuumG.toFixed(2)} g`);
-  if (live && specs.totalVacuumDeltaV_ms > 0) add('Δv (vacuum)', formatSpeedKmS(specs.totalVacuumDeltaV_ms / 1000, units, 1));
+  // Performance comes in two flavours and the LABEL says which is on show (A31).
+  // With live readings ON: what the ship can do RIGHT NOW. Acceleration divides thrust by the current
+  // wet mass and Δv is the log of the current wet/dry ratio — i.e. how much fuel is left — so both are
+  // readings, and they follow the toggle for the same reason Total mass does.
+  // With it OFF: the RATED figures, full tanks and empty hold, which is what a reference work quotes and
+  // is a property of the ship rather than of today's loadout. Both are read from `ConstructSpecs`, never
+  // recomputed here — this layer reads derived values (A2's rule), and one quantity gets one derivation.
+  // Significant digits below 1 g rather than fixed decimals: a heavy tanker's full-tanks figure and its
+  // dry figure can be two orders apart, so any single decimal count rounds one of the pair to "0".
+  const gFmt = (ref: number) => (x: number) => x.toLocaleString(undefined,
+    ref >= 1 ? { maximumFractionDigits: 1 } : { maximumSignificantDigits: 2 });
+  if (live) {
+    if (specs.maxVacuumG > 0) add('Max acceleration', `${gFmt(specs.maxVacuumG)(specs.maxVacuumG)} g`);
+    if (specs.totalVacuumDeltaV_ms > 0) add('Δv (vacuum)', formatSpeedKmS(specs.totalVacuumDeltaV_ms / 1000, units, 1));
+  } else {
+    if (specs.ratedAccelFullG > 0 && specs.ratedAccelEmptyG > 0) {
+      // Keyed on the SMALLER end (full tanks) so the low figure keeps its digits.
+      const g = gFmt(specs.ratedAccelFullG);
+      add('Acceleration (rated)', g(specs.ratedAccelEmptyG) !== g(specs.ratedAccelFullG)
+        ? `${g(specs.ratedAccelFullG)}–${g(specs.ratedAccelEmptyG)} g, full to empty`
+        : `${g(specs.ratedAccelFullG)} g`);
+    }
+    if (specs.ratedVacuumDeltaV_ms > 0) {
+      add('Δv (rated, full tanks)', formatSpeedKmS(specs.ratedVacuumDeltaV_ms / 1000, units, 1));
+    }
+  }
   if (specs.canAerobrake) add('Aerobraking', `up to ${specs.aerobrakeLimit_kms.toFixed(1)} km/s`);
 
   // Same contract as a body's tags: the row is named 'Tags' so the document can lift it out and

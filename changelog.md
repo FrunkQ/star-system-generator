@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.345-beta - 1st Aug 2026
+
+* A ship now quotes the performance it is RATED for. With live readings off there was no acceleration or delta-v row at all, because both existing figures describe how loaded and how fuelled the ship happens to be right now. A catalogue entry shows delta-v at full tanks and the acceleration band from full to empty, worked out with an empty hold so it is a property of the ship rather than of today's cargo.
+* The GM construct panel reads that same band instead of working out its own, and gains a rated delta-v row beside the current one. Its band now means the ship's rated envelope rather than one carrying the current cargo.
+* Very low accelerations read properly. An ion-drive station showed its whole acceleration band as "0.00-0.00 g".
+
 ## v2.1.344-beta - 1st Aug 2026
 
 * Radiation now says what it is. A body could show its surface dose in millisieverts a year and its orbital dose in sieverts a year on the next line down, a thousandfold apart, with only a suffix to tell them apart -- and the surface row printed a range with no actual figure in it. Each row now carries one unit, chosen to suit the number, with the mean and its range in that same unit.

@@ -60,3 +60,44 @@ describe('bodyFacts — a score is named as one', () => {
     expect(val(b, 'Native life')).toBe('present (cover 80%)'); // a genuine fraction keeps its %
   });
 });
+
+// A31: with "Live readings" off there was no acceleration or Δv row at all — honest, but a catalogue
+// entry for a ship would quote a Δv. The capacity view prints the RATED figures instead: full tanks,
+// empty hold, so the row is a property of the ship rather than a restatement of today's fuel and cargo.
+describe('bodyFacts — a construct quotes rated performance in capacity mode', () => {
+  const pack: any = {
+    engineDefinitions: { entries: [{ id: 'e1', name: 'Drive', type: 'Fusion Torch', thrust_kN: 2000, efficiency_isp: 5000, atmo_efficiency: 1 }] },
+    fuelDefinitions: { entries: [{ id: 'f1', name: 'Deuterium', density_kg_per_m3: 200 }] }
+  };
+  const ship: any = {
+    id: 'roci', name: 'Rocinante', kind: 'construct', class: 'Ship/Frigate',
+    physical_parameters: { massKg: 1_000_000, cargoCapacity_tonnes: 200 },
+    engines: [{ engine_id: 'e1', quantity: 1 }],
+    fuel_tanks: [{ fuel_type_id: 'f1', capacity_units: 3500, current_units: 2820 }],
+    current_cargo_tonnes: 40,
+    crew: { current: 4, max: 6 }
+  };
+  const facts = (live: boolean) => bodyFacts(ship, 'metric', 'C', { rulePack: pack, liveReadings: live });
+  const get = (live: boolean, label: string) => facts(live).find((f) => f.label === label)?.value;
+
+  it('shows rated figures with live readings OFF and current ones with it ON', () => {
+    expect(get(false, 'Δv (rated, full tanks)')).toBeTruthy();
+    expect(get(false, 'Acceleration (rated)')).toMatch(/g, full to empty$/);
+    expect(get(false, 'Δv (vacuum)')).toBeUndefined();
+    expect(get(false, 'Max acceleration')).toBeUndefined();
+
+    expect(get(true, 'Δv (vacuum)')).toBeTruthy();
+    expect(get(true, 'Max acceleration')).toBeTruthy();
+    expect(get(true, 'Δv (rated, full tanks)')).toBeUndefined();
+  });
+
+  // The whole reason the rated figures use an EMPTY hold: dry mass and fuel capacity are both printed
+  // in capacity mode, so a cargo-laden rated Δv would let a reader solve back to the cargo A29 withheld.
+  it('does not move with the cargo, so it cannot leak the load A29 withheld', () => {
+    const laden = { ...ship, current_cargo_tonnes: 200 };
+    const before = get(false, 'Δv (rated, full tanks)');
+    const after = bodyFacts(laden as any, 'metric', 'C', { rulePack: pack, liveReadings: false })
+      .find((f) => f.label === 'Δv (rated, full tanks)')?.value;
+    expect(after).toBe(before);
+  });
+});
