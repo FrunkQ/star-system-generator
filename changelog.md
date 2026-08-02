@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.367-beta - 2nd Aug 2026
+
+* **The body picture in a player document is now part of the picture.** On a green CRT page the 3D globe sat on top of the phosphor as a plain white ball, because it was drawn over the filtered page rather than into it. It now goes through the same shader as everything else -- scanlines, warp and all -- and still spins, and you can still grab it.
+* Checking that turned up more than was reported: the simple disc and the flat shape were not being filtered either. They looked right only because they already borrow the page's colours. A photo always was filtered.
+* **The collapsed play button pauses.** It has been showing a pause icon and only opening the speed panel, which is worse than showing no icon at all.
+* **A construct with no chosen icon is the same shape everywhere.** It drew as a diamond on the starmap and a triangle everywhere else -- the five glyph shapes lived in four places, and one had already drifted. They now come from one.
+
 ## v2.1.366-beta - 2nd Aug 2026
 
 * **Generated moons now sit in the right plane.** A close-in moon rides its planet's tilted equator, the way Jupiter's big four do; one far enough out follows the system plane instead, the way our own Moon does. Where the changeover happens is worked out per planet from its spin, mass and distance from its star, so a fast-spinning giant holds its moons in line much further out than a small slow world does.
