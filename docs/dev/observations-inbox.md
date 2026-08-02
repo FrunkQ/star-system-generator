@@ -254,6 +254,9 @@ _(new observations go here — rough is fine)_
 
 - **Physics and data drive tags; tags drive the image.** Do not add rendering code to make something look a
   particular way. If a look needs a new lever, the lever is rule-pack DATA.
+- **REPORT YOUR REMAINING CONTEXT WHEN YOU HAND BACK.** One line at the end of your report — "about
+  N% of context remaining". The coordinator uses it to decide whether to hand you the next item or
+  start a fresh session, and guessing it wastes a batch either way. Say it even when you stop early.
 - **WHEN YOU CHANGE A DERIVED QUANTITY, CHASE ITS TAGS.** Physics driving tags is the rule, but nothing
   enforces the follow-through, and it has now failed repeatedly. Before you close a physics item, grep for
   every tag bucketed off the quantity you changed — AND off any older proxy for it, which is the case that
