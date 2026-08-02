@@ -21,7 +21,7 @@
 // (43.30127 px per light year, unchanged from the previous map). Sol stays at
 // pixel (400, 300), z = 0.
 
-import { readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { EPOCH, PIXELS_PER_LY, MAP_CENTRE, systems, MAP_A } from './data/systems-real.mjs';
@@ -29,7 +29,14 @@ import { MAP_B, fiction } from './data/systems-fiction.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..', '..');
-const outDir = join(repo, 'static', 'example-starmaps');
+
+// `--out <dir>` builds somewhere other than the shipped location. Only the
+// reproducibility test uses it (buildKit.spec.mjs), which rebuilds into a temp
+// directory and compares byte for byte against what ships; a build with no
+// argument still writes the real files, so the documented usage is unchanged.
+const outFlag = process.argv.indexOf('--out');
+const outDir = outFlag > -1 ? resolve(process.argv[outFlag + 1]) : join(repo, 'static', 'example-starmaps');
+mkdirSync(outDir, { recursive: true });
 
 const G = 6.6743e-11;
 const SOLAR_MASS_KG = 1.989e30;

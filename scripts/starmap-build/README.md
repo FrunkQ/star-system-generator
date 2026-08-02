@@ -22,6 +22,29 @@ node scripts/starmap-build/fetch-sources.mjs    # refresh the data caches (netwo
 node scripts/starmap-build/build-starmaps.mjs   # regenerate the three output files
 ```
 
+`build-starmaps.mjs --out <dir>` builds somewhere else instead; only the test
+below uses it.
+
+## The kit and the shipped maps are pinned to each other
+
+`buildKit.spec.mjs` rebuilds into a temp directory and compares byte for byte
+with the three files in `static/example-starmaps/`. If they differ it names the
+values that moved. Line endings and the `appVersion` stamp are normalised;
+everything else, including the indentation, is compared exactly.
+
+This exists because the two drifted for a month without anyone noticing (D4).
+Twelve fixes were applied straight to the JSON and never brought back here, so
+running the build would have succeeded, printed its usual two lines, and silently
+reverted C3's ecliptic frame flags, Adrian's radius, both Project Hail Mary
+ships' Astrophage drives and a re-parenting.
+
+**So: a correction to a bundled map belongs HERE, in the roster or the overlay or
+the generator, and reaches the JSON by rebuilding.** Editing the JSON directly is
+not a shortcut; it is the thing that broke. The one legitimate exception is a
+stable-id rename, which cannot be regenerated without moving every id that
+depends on it — and even then, note that ids feed the phase-angle hash, so the
+elements move with them.
+
 `fetch-sources.mjs` queries the NASA Exoplanet Archive TAP service (pscomppars,
 all confirmed planets within 12.7 pc) and the SIMBAD TAP service (ICRS RA/Dec,
 parallax, spectral types for the whole roster) and caches the raw responses
