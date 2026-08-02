@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.363-beta - 2nd Aug 2026
+
+* **Generated worlds have seasons.** Not one planet or moon the generator made had an axial tilt, so every generated world reported a flat year — a world's summer and winter were identical everywhere. Now they all lean, and three times as many worlds show a real seasonal temperature swing.
+* Most worlds lean modestly, the way a planet does when it forms from its star's disc and is nudged from there. A few got hit hard enough to be knocked right over — the Solar System has two of those, Uranus on its side and Venus turning backwards — and those are called out as "Tipped over".
+* **A tilt the engine guessed says so.** A generated world's tilt is marked "Spin axis inferred", so it cannot be mistaken for a measured figure like Earth's 23.4 degrees when the two sit side by side on the same starmap.
+* The "violent past" setting in the generation wizard still tips stars further than a calm one — it now overrides the new baseline rather than being silently switched off by it.
+
 ## v2.1.362-beta - 2nd Aug 2026
 
 * **The physics pages have a chapter on radiation belts and the giants**, which is the part of the model most likely to be assumed wrong. A belt is not a light source and does not thin out with the square of distance -- Io and Callisto sit four times apart and forty thousand times apart in dose. It stops above the atmosphere, and without that cut-off Earth would read as lethal at ground level. A giant sits inside its own belt, which is why it honestly needs two figures rather than one.
