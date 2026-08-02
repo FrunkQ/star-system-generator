@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { classifyByFingerprint } from './classification';
+import { classifyByFingerprint, explainClassification } from './classification';
 import type { Fingerprint } from '$lib/types';
 
 // Phase 04 — fingerprint classifier. Each type is parameter bands; best base wins, modifiers
@@ -241,5 +241,52 @@ describe('an eyeball needs a surface to have a dayside on (B25)', () => {
     };
     const cls = classifyByFingerprint(temperate, realFps, 4);
     expect(cls).not.toContain('planet/cold-eyeball');
+  });
+});
+
+// B16 — a PARTIAL match of a more-specific type could still out-score a PERFECT match of a
+// less-specific one. The score is `mean fit x (1 + 0.1 x bands) x weight`, reshaped so partial fits
+// drag a score down — but that only holds while weights are equal. B15 hit it for real: at weight
+// 1.5, earth-analogue with ONE band at fit 0.689 scored 2.11 against a perfect jungle at 2.10, and
+// the workaround was to pick 1.45 instead. A weight chosen so the bug cannot happen means every
+// future weight change has to re-derive the same inequality by hand.
+describe('a complete match outranks a partial one whatever the weight says (B16)', () => {
+  // Deliberately rigged: the specific type is heavily weighted AND has more bands, so on score
+  // alone it wins comfortably. The body sits outside one of its bands.
+  const RIGGED: Fingerprint[] = [
+    { class: 'planet/generic', kind: 'base', match: { mass_Me: [0.5, 2], density: [3, 8] } },
+    { class: 'planet/fancy', kind: 'base', weight: 3,
+      match: { mass_Me: [0.5, 2], density: [3, 8], Teq_K: [250, 300] } }
+  ];
+
+  it('the perfect generic beats the near-miss specific', () => {
+    // 310 K against a 250-300 band: outside, but close enough to keep a high partial fit.
+    const body = { mass_Me: 1, density: 5.5, Teq_K: 310 };
+    expect(classifyByFingerprint(body, RIGGED, 4)[0]).toBe('planet/generic');
+  });
+
+  it('and the weight still decides when BOTH fit completely', () => {
+    // The rule must not neuter weights — they are how a specific type outranks a generic one when
+    // the body genuinely is both. Same body, now inside every band.
+    const body = { mass_Me: 1, density: 5.5, Teq_K: 275 };
+    expect(classifyByFingerprint(body, RIGGED, 4)[0]).toBe('planet/fancy');
+  });
+
+  it('scores alone would have gone the other way — the fixture really is rigged', () => {
+    // Guard the guard: if the specific type stopped out-scoring the generic, the first test would
+    // pass without the tier rule doing anything.
+    const body = { mass_Me: 1, density: 5.5, Teq_K: 310 };
+    const partialFit = 1 - ((310 - 300) / 300) / 0.15;          // bandFit's relative soft edge
+    const fancy = ((1 + 1 + partialFit) / 3) * (1 + 0.1 * 3) * 3;
+    const generic = ((1 + 1) / 2) * (1 + 0.1 * 2);
+    expect(fancy).toBeGreaterThan(generic);
+  });
+
+  it('the explanation names the same winner the body is classified as', () => {
+    // The two used to sort independently; if they disagreed the "why this type" block would
+    // explain a type the body does not carry.
+    const body = { mass_Me: 1, density: 5.5, Teq_K: 310 };
+    const cls = classifyByFingerprint(body, RIGGED, 4)[0];
+    expect(explainClassification(body, RIGGED).base).toBe(cls);
   });
 });

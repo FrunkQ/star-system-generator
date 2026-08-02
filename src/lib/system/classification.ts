@@ -83,6 +83,38 @@ export interface ClassExplanation {
 // How close the runner-up must be (fraction of the winner's score) to call a classification borderline.
 export const BORDERLINE_RATIO = 0.9;
 
+// Does this body fall INSIDE every band the type defines, with nothing on a soft edge?
+function isCleanMatch(features: Record<string, number | string>, fp: Fingerprint): boolean {
+  for (const [feat, band] of Object.entries(fp.match)) {
+    if (bandFit(features[feat], band) < 1) return false;
+  }
+  return true;
+}
+
+// B16 — A PERFECT MATCH BEATS A PARTIAL ONE, whatever the arithmetic says.
+//
+// The score is `mean fit x (1 + 0.1 x bands) x weight`, reshaped so that "partial fits drag the
+// score down instead of padding it up". That holds only while WEIGHTS ARE EQUAL. Give one type a
+// heavy enough weight and a single band on a soft edge can still beat a type the body sits cleanly
+// inside: at weight 1.5, earth-analogue with one band at fit 0.689 (Testion's jungle body, 314 K
+// against a 255-300 K band) scored 2.11 against a PERFECT jungle at 2.10. B15 worked around that by
+// picking 1.45 instead — a weight chosen so it could not happen, which means every future weight
+// change has to re-derive the same inequality by hand or quietly reintroduce the bug.
+//
+// So the rule is stated once, as an ordering rather than a number: a type the body matches
+// COMPLETELY outranks a type it matches partially, and score only decides within a tier. Weights
+// keep doing what they are for — ranking types that all fit — and can no longer buy a type past a
+// better-fitting rival.
+function compareBases(
+  features: Record<string, number | string>,
+  a: { fp: Fingerprint; score: number },
+  b: { fp: Fingerprint; score: number }
+): number {
+  const ca = isCleanMatch(features, a.fp), cb = isCleanMatch(features, b.fp);
+  if (ca !== cb) return ca ? -1 : 1;
+  return b.score - a.score;
+}
+
 // Explain WHY a body classified as it did: the winning base type, the defining bands it matched
 // (with the body's value + fit), the runner-up it beat, and any stacked modifiers.
 export function explainClassification(
@@ -93,7 +125,9 @@ export function explainClassification(
     .map((fp) => ({ fp, score: fingerprintScore(features, fp) }))
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score);
-  const bases = scored.filter((s) => s.fp.kind === 'base');
+  // Same ordering classifyByFingerprint uses, or the explanation would name a different winner
+  // than the class the body actually carries.
+  const bases = scored.filter((s) => s.fp.kind === 'base').sort((a, b) => compareBases(features, a, b));
   const base = bases[0];
 
   if (!base) {
@@ -142,8 +176,10 @@ export function classifyByFingerprint(
     .sort((a, b) => b.score - a.score);
 
   const out: string[] = [];
-  // Best base archetype first (mutually exclusive).
-  const base = scored.find((s) => s.fp.kind === 'base');
+  // Best base archetype first (mutually exclusive) — a complete match outranks a partial one (B16),
+  // and score decides only within a tier. Modifiers below are chosen by threshold, not by rank, so
+  // they keep the plain score ordering.
+  const base = [...scored].filter((s) => s.fp.kind === 'base').sort((a, b) => compareBases(features, a, b))[0];
   if (base) out.push(base.fp.class);
   // Then stack modifiers that are a real match (not a margin sliver).
   for (const s of scored) {

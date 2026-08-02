@@ -58,12 +58,19 @@ set) is described by a **fingerprint**: the parameter bands that DEFINE it. See
 - A body's fit to a band is `1` inside, decaying over a **relative** soft edge (15% of the
   boundary — never an absolute band‑width margin, or a tiny moon would half‑match a giant), `0`
   beyond. Fully outside any band → that type is **disqualified**.
-- Type score = **mean band fit × (1 + 0.1 × band count) × weight**. Among clean matches more
-  matched bands still wins (specific beats generic), but a band‑rich catch‑all whose extra bands
-  are barely‑true edge slivers can no longer out‑score a perfect match on fewer bands. (It used to
-  be the *sum* of band fits, which let padding win; changed with B15.) The best **base** archetype
-  wins (mutually exclusive); **modifiers** (`ringed`, `ultra-short-period`, `toroidal`,
-  `ellipsoid`, `disrupted`) stack.
+- **A type the body matches COMPLETELY outranks one it matches partially — score only decides
+  within a tier.** If the body sits inside every band a type defines, no type it falls outside of
+  can beat it, however that type is weighted. This is an ordering, not a number, and it exists
+  because the alternative was hand‑derived: B15 had to pick weight 1.45 rather than 1.5 purely
+  because 1.5 let a *partial* `earth-analogue` (one band at fit 0.689) beat a *perfect* `jungle`,
+  which would have meant re‑deriving the same inequality on every future weight change.
+- Type score = **mean band fit × (1 + 0.1 × band count) × weight**, applied within a tier. Among
+  clean matches more matched bands still wins (specific beats generic), but a band‑rich catch‑all
+  whose extra bands are barely‑true edge slivers can no longer out‑score a perfect match on fewer
+  bands. (It used to be the *sum* of band fits, which let padding win; changed with B15.) The best
+  **base** archetype wins (mutually exclusive); **modifiers** (`ringed`, `ultra-short-period`,
+  `toroidal`, `ellipsoid`, `disrupted`) stack — they are chosen by a score threshold, not by rank,
+  so the tier rule does not apply to them.
 - A fingerprint may also carry a **`gate`** block: preconditions that must hold or the type scores
   0, but which contribute **nothing** — no fit, no band count. Use `gate` for eligibility ("does
   this body have a surface at all") and `match` for the traits that define the type. **The two are
