@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.369-beta - 2nd Aug 2026
+
+* **Info text size goes to 250%.** It stopped at 160%, which was not big enough for a table across the room.
+* The document engine was capping it at 180% regardless, so the top of the slider would have moved the panel's own text and nothing written inside it. Both ends now agree, and a test fails the build if they ever stop agreeing.
+
 ## v2.1.368-beta - 2nd Aug 2026
 
 * **A gas giant is no longer described as an eyeball world.** An eyeball is a world with a permanently-lit face — molten on one side, iced over on the other — which is a statement about ground. Fifteen gas giants were being called one. They now read as the ice giants, sub-Neptunes and cloud-type giants they are, including three in the Testion example that now match the names they were given.

@@ -164,5 +164,5 @@ export interface PlayerPreset {
                              // A proportion, not a pixel count: the GM authors on one screen and players
                              // read on another, so 28% of the display is a promise that travels and
                              // "340px" is not. Mobile ignores it and does its own layout.
-  infoFontScale: number;  // body info-panel font-size multiplier (~0.8..1.6)
+  infoFontScale: number;  // body info-panel font-size multiplier (0.8..2.5; renderDocument clamps to the same range)
 }

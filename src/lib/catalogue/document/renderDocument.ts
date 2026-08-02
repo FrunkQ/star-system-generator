@@ -53,7 +53,12 @@ export function renderDocument(
   theme: DocTheme,
   layout: DocLayout
 ): DocResult {
-  const s = Math.max(0.7, Math.min(1.8, theme.fontScale || 1));
+  // The ceiling MUST match the Info-text-size control's range, or the top of its travel moves the
+  // panel's CSS base font and nothing inside the document — the exact fault A32 found one control
+  // along, where the width slider ran to 0.50 against a live clamp of 640 px and the top third of
+  // the travel did nothing. The control is 0.8-2.5 (inbox A40); this is the only clamp between it
+  // and every surface that reads it, so raising one without the other splits the two apart.
+  const s = Math.max(0.7, Math.min(2.5, theme.fontScale || 1));
   const c = resolveDocColors(theme);
   const font = theme.font;
   const headingFont = theme.headingFont || theme.font;

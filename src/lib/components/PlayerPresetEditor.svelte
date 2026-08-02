@@ -619,7 +619,7 @@
                   <label>Info panel width (desktop) <span>{Math.round(draft.inspectorWidthPct * 100)}% of screen</span><input type="range" min="0.15" max="0.5" step="0.01" bind:value={draft.inspectorWidthPct} /></label>
                 {/if}
                 {#if draft.systemView !== 'list'}
-                  <label>Info text size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="1.6" step="0.05" bind:value={draft.infoFontScale} /></label>
+                  <label>Info text size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="2.5" step="0.05" bind:value={draft.infoFontScale} /></label>
                 {/if}
               {/if}
             </fieldset>
