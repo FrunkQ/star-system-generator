@@ -244,6 +244,7 @@
         "planet/sub-earth"
       ],
       "orbit": {
+        "frame": "ecliptic",
         "hostId": "solar-system-earth",
         "hostMu": 398600441800000,
         "t0": 1762339146908,
