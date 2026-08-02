@@ -52,6 +52,7 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   weather:      { group: 'Weather',      color: '#7fb6cc' },
   surface:      { group: 'Surface',      color: '#a98a63' },
   hazard:       { group: 'Hazard',       color: '#cc5555' },
+  flight:       { group: 'Flight',       color: '#5a9fd4' },
   habitability: { group: 'Habitability', color: '#5bbf6a' },
   biodiversity: { group: 'Biosphere',    color: '#4fa86a' },
   // RPG "reasons to visit" categories (poi: re-derived by a PoI RULE the user can change).
@@ -82,6 +83,7 @@ const NAMESPACE_DESC: Record<string, string> = {
   weather:      'Weather derived from the body\'s cloud decks and the energy driving them.',
   surface:      'A property of the surface itself — its age, what the sky and the star have done to it.',
   hazard:       'An environmental or stellar hazard to visitors or the atmosphere.',
+  flight:       'What it costs to get to or from this world.',
   aurora:       'A polar auroral glow from ionising particles funnelled into the atmosphere by the magnetic field.',
   habitability: 'The body\'s habitability tier under the current model.',
   biodiversity: 'A property of the body\'s biosphere.',
@@ -215,7 +217,17 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   },
   'hazard/radiation': {
     label: 'Radiation hazard',
-    description: 'How dangerous a YEAR standing on this surface is, after the magnetosphere and the atmosphere have taken what they can: background (under 10 mSv/yr — Earth sits at about 2.4), elevated (past the 20 mSv/yr occupational limit), high (a real mission dose — Mars is about 214), severe (a lethal total in weeks to months), lethal (100 Sv/yr and up — days or less). This is the annual DOSE, and it is not the same reading as "Space weathering" beside it, which is a cumulative total and can read low on the fiercest surface in a system.'
+    description: 'HOW LONG a character standing on this surface survives it, which is what sieverts per year will not tell you: hours, days, weeks, months or years to a median lethal dose. Past fifty years the acute model stops meaning anything, so it says chronic instead (a real long-term cancer risk, above the 20 mSv/yr occupational limit) or background (Earth sits here). The exact figure is beside the dose in the data block. Not the same reading as "Space weathering", which is a cumulative total and reads low on the fiercest surface in a system.'
+  },
+  'hazard/orbital-radiation': {
+    label: 'Orbital radiation',
+    description: 'The same survival-time reading for the space ABOVE the atmosphere, where a ship parks - shown only when it differs materially from the surface. Earth is the case that makes the point: its ground is background while the orbital space around it, inside the Van Allen belts, would give a lethal dose in a few days.'
+  },
+
+  // --- Flight ---
+  'flight/ascent': {
+    label: 'Ascent cost',
+    description: 'What it takes to get off this world and into a low orbit - trivial (under 2 km/s, a small craft hops off, like Luna), moderate (under 5, Mars), hard (under 15, Earth), extreme (Venus at 29 km/s). The figure itself is the Ascent Delta-v row in the data block.'
   },
 
   // --- Rings (derived from ring-child geometry) ---

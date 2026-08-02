@@ -5,7 +5,7 @@ import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
-import { radiationHazardBucket } from '$lib/physics/radiation';
+import { radiationHazardBucket, lethalDosePhrase } from '$lib/physics/radiation';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -366,7 +366,7 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   // the tag beside it were two answers to one question, and the old three-band split put Mars (214
   // mSv/yr) in the same bucket as Io (13 million), a range of sixty thousand described by one word
   // (inbox B28).
-  const radBand = radiationHazardBucket;
+  const radBand = (v: number) => radiationHazardBucket(v, ctx.rulePack);
   function radRow(mean: number, min?: number, max?: number): string {
     const { div, unit } = radScale(mean);
     const f = (x: number) => {
@@ -378,7 +378,11 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
     const lo = typeof min === 'number' ? f(min) : null;
     const hi = typeof max === 'number' ? f(max) : null;
     const range = lo !== null && hi !== null && lo !== hi ? ` (${lo}–${hi})` : '';
-    return `${radBand(mean)} · ${f(mean)} ${unit}${range}`;
+    // The bucket word is the survival time; the sentence spells it out once, in round figures, for
+    // whoever has not learned the ladder yet (inbox B30). Dropped entirely once the acute model
+    // stops meaning anything, rather than quoting two thousand years at a reader.
+    const phrase = lethalDosePhrase(mean, ctx.rulePack);
+    return `${radBand(mean)} · ${f(mean)} ${unit}${range}${phrase ? ` · ${phrase}` : ''}`;
   }
   if (typeof any.surfaceRadiation === 'number') {
     add(`Radiation (${radiationPlace(b)})`,

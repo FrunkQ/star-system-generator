@@ -97,10 +97,14 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "severe"
+          "value": "years"
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "moderate"
         },
         {
           "key": "resource/platinum-group",
@@ -532,6 +536,10 @@
           "value": "background"
         },
         {
+          "key": "hazard/orbital-radiation",
+          "value": "years"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "sulfuric-acid veil"
         },
@@ -549,6 +557,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "extreme"
         },
         {
           "key": "resource/volatiles",
@@ -950,6 +962,10 @@
           "value": "background"
         },
         {
+          "key": "hazard/orbital-radiation",
+          "value": "days"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "water overcast"
         },
@@ -971,6 +987,10 @@
         },
         {
           "key": "habitability/earth-like"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "hard"
         },
         {
           "key": "resource/deuterium",
@@ -1494,6 +1514,7 @@
         "planet/sub-earth"
       ],
       "orbit": {
+        "frame": "ecliptic",
         "hostId": "solar-system-earth",
         "hostMu": 398600441800000,
         "t0": 1762339146908,
@@ -1532,10 +1553,14 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "high"
+          "value": "years"
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/fissiles",
@@ -1937,7 +1962,7 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "high"
+          "value": "years"
         },
         {
           "key": "weather/dust-storms",
@@ -1949,6 +1974,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "moderate"
         },
         {
           "key": "resource/volatiles",
@@ -2364,13 +2393,17 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "high"
+          "value": "years"
         },
         {
           "key": "shape/oblate"
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/fissiles",
@@ -2767,10 +2800,14 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "high"
+          "value": "years"
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/water-ice",
@@ -3723,7 +3760,7 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "lethal"
+          "value": "hours"
         },
         {
           "key": "volatiles/ices",
@@ -3731,6 +3768,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "moderate"
         },
         {
           "key": "resource/volatiles",
@@ -4183,7 +4224,7 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "lethal"
+          "value": "days"
         },
         {
           "key": "volatiles/ices",
@@ -4191,6 +4232,10 @@
         },
         {
           "key": "habitability/subsurface"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/fissiles",
@@ -4670,7 +4715,7 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "severe"
+          "value": "months"
         },
         {
           "key": "volatiles/ices",
@@ -4678,6 +4723,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "moderate"
         },
         {
           "key": "resource/fissiles",
@@ -5101,7 +5150,7 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "elevated"
+          "value": "chronic"
         },
         {
           "key": "volatiles/ices",
@@ -5109,6 +5158,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/water-ice",
@@ -5985,6 +6038,10 @@
           "key": "habitability/alien"
         },
         {
+          "key": "flight/ascent",
+          "value": "moderate"
+        },
+        {
           "key": "resource/water-ice",
           "source": "rule:d7"
         },
@@ -6392,10 +6449,14 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "severe"
+          "value": "years"
         },
         {
           "key": "habitability/subsurface"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/deuterium",
@@ -6862,10 +6923,14 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "high"
+          "value": "years"
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/helium-3",
@@ -7292,10 +7357,14 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "elevated"
+          "value": "chronic"
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/helium-3",
@@ -7697,10 +7766,14 @@
         },
         {
           "key": "hazard/radiation",
-          "value": "severe"
+          "value": "months"
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/helium-3",
@@ -8147,6 +8220,10 @@
           "key": "habitability/none"
         },
         {
+          "key": "flight/ascent",
+          "value": "trivial"
+        },
+        {
           "key": "resource/water-ice",
           "source": "rule:d7"
         },
@@ -8532,6 +8609,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/water-ice",
@@ -9336,6 +9417,10 @@
           "key": "habitability/none"
         },
         {
+          "key": "flight/ascent",
+          "value": "trivial"
+        },
+        {
           "key": "resource/water-ice",
           "source": "rule:d7"
         }
@@ -9720,6 +9805,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/water-ice",
@@ -10110,6 +10199,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "resource/water-ice",
@@ -10956,6 +11049,10 @@
           "key": "habitability/subsurface"
         },
         {
+          "key": "flight/ascent",
+          "value": "trivial"
+        },
+        {
           "key": "resource/fissiles",
           "source": "rule:d3"
         },
@@ -11518,6 +11615,10 @@
           "key": "habitability/none"
         },
         {
+          "key": "flight/ascent",
+          "value": "trivial"
+        },
+        {
           "key": "stability/marginal"
         },
         {
@@ -11946,6 +12047,10 @@
         },
         {
           "key": "habitability/none"
+        },
+        {
+          "key": "flight/ascent",
+          "value": "trivial"
         },
         {
           "key": "stability/marginal"

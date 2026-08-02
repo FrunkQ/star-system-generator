@@ -5,6 +5,8 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEqui
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket } from '../physics/radiation';
 // The annual-dose hazard tag. Its key is serialised, so it lives beside the other tag constants.
 const RADIATION_HAZARD_TAG = 'hazard/radiation';
+const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
+const ASCENT_TAG = 'flight/ascent';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
@@ -945,9 +947,30 @@ export class SystemProcessor implements ISystemProcessor {
             // and B22 about the row label: a giant has no ground, so its figure is a 1-bar reading
             // and a "surface hazard" tag would be the same category error. Giants are already
             // excluded by the branch this sits in.
+            // The VALUE is a time word — how long a character standing here survives — because
+            // sieverts per year are unreadable at a table and "hours" is not (inbox B30). It is
+            // derived (LD50 / dose rate) rather than tabulated, and bucketed rather than left as a
+            // raw float, which is the architecture doc's idiom and closes the tension [[A35]] flags.
             body.tags = body.tags.filter((t) => t.key !== RADIATION_HAZARD_TAG || t.manual);
             if (!body.tags.some((t) => t.key === RADIATION_HAZARD_TAG)) {
-                body.tags.push({ key: RADIATION_HAZARD_TAG, value: radiationHazardBucket(body.surfaceRadiation ?? 0) });
+                body.tags.push({ key: RADIATION_HAZARD_TAG, value: radiationHazardBucket(body.surfaceRadiation ?? 0, pack) });
+            }
+            // ORBITAL radiation gets its own tag, but ONLY when it is news (inbox B31). Where do we
+            // park is a real decision and nothing surfaced it: Earth's ground is background while the
+            // space around it, inside the Van Allen belts, is days-to-lethal. Same gate the info
+            // block uses for the second row, so a body whose two figures agree does not carry two
+            // tags saying the same thing.
+            body.tags = body.tags.filter((t) => t.key !== ORBITAL_RADIATION_TAG || t.manual);
+            const orbitalDose = (body as any).orbitalRadiation;
+            const orbitalBand = typeof orbitalDose === 'number' ? radiationHazardBucket(orbitalDose, pack) : null;
+            // News means a DIFFERENT WORD, not merely a bigger number. Titan's orbital dose is 2.8x
+            // its surface one and both are background — a second tag saying "background" beside the
+            // first is noise. Earth is the case worth carrying: background on the ground, days in the
+            // space above it.
+            if (orbitalBand && orbitalBand !== radiationHazardBucket(body.surfaceRadiation ?? 0, pack)
+                && (orbitalDose as number) > (body.surfaceRadiation ?? 0)
+                && !body.tags.some((t) => t.key === ORBITAL_RADIATION_TAG)) {
+                body.tags.push({ key: ORBITAL_RADIATION_TAG, value: orbitalBand });
             }
             features['geoActive'] = body.geoActivity.active ? 1 : 0;
             features['plateTectonics'] = body.geoActivity.regime === 'plate-tectonics' ? 1 : 0;
@@ -1158,6 +1181,22 @@ export class SystemProcessor implements ISystemProcessor {
 
         // Calculate Delta-V Budgets
         calculateDeltaVBudgets(body);
+
+        // ASCENT COST, bucketed (inbox B31). It is arguably the single most actionable figure on a
+        // rocky world — it decides whether a party can leave — and it had no tag, so it could not be
+        // filtered or scanned for. Emitted HERE, in pass 4, because that is where the budget is
+        // written; a tag in pass 3 would read the previous run's number, which is the whole of B13.
+        // Solid surfaces only, for B18's reason: there is nothing to ascend FROM on a giant, and its
+        // figure is measured from a notional 1-bar level.
+        // Anchors: Luna 1.9 km/s trivial, Mars 4.1 moderate, Earth 10.4 hard, Venus 29.5 extreme.
+        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && makeupFractions(body).gas <= 0.5) {
+            body.tags = (body.tags || []).filter((t) => t.key !== ASCENT_TAG || t.manual);
+            const dv = body.loDeltaVBudget_ms ?? 0;
+            if (dv > 0 && !body.tags.some((t) => t.key === ASCENT_TAG)) {
+                const band = dv < 2000 ? 'trivial' : dv < 5000 ? 'moderate' : dv < 15000 ? 'hard' : 'extreme';
+                body.tags.push({ key: ASCENT_TAG, value: band });
+            }
+        }
     }
 
     // ... existing private methods ...

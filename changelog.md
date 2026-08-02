@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.359-beta - 2nd Aug 2026
+
+* **Radiation now tells you how long you last, not how many sieverts you take.** The hazard reads hours, days, weeks, months or years -- the time to a lethal dose, worked out from the dose rate rather than looked up in a table. Io is hours. Europa is days. Mars is years, which is the honest framing for a place you plan a mission to.
+* Past fifty years the arithmetic stops meaning anything -- radiation sickness is not what a background dose does to you -- so it stops quoting a number and says "chronic" (a real long-term risk) or "background" (Earth). No world is told it dies in two thousand years.
+* The data block spells it out once beside the figure: "lethal dose in ~3.4 h". It says nothing at all where saying something would be nonsense.
+* How lethal a lethal dose is now lives in the rule pack, so a campaign with tougher characters can change it.
+* **Two things the engine already worked out but never told you.** A world now carries what it costs to LEAVE it -- trivial, moderate, hard or extreme -- which is often the first thing a party needs to know. Luna is trivial, Mars moderate, Earth hard, Venus extreme.
+* And where a ship parks gets its own hazard, but only when it is genuinely different news. In the whole solar system that is Earth and Venus: Earth's ground is background while the space just above it, inside the Van Allen belts, is a lethal dose in days.
+
 ## v2.1.358-beta - 2nd Aug 2026
 
 * **A ring no longer reports a "surface" dose.** It has no surface -- but unlike a gas giant, which has nowhere to stand at all, a ring is countless small bodies that each do have one, so the number is real and useful: it is what a fragment takes and what a ship crossing the ring takes. It now says so -- "Radiation (in the ring plane)". Jupiter's rings read 360 sieverts a day, above Io, which is right: the main ring sits inside Io and close to the belt peak.

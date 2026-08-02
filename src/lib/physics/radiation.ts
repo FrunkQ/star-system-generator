@@ -22,28 +22,71 @@ export function deriveIrradiationDose(teqK: number, magShield: number, surfaceAg
 }
 
 
-// THE HAZARD BUCKET — how dangerous the annual dose actually is, in mSv per year, at the level the
-// figure describes (a solid surface, or a giant's 1-bar reference). This is the bucketed form of
-// `surfaceRadiation`, and it is a DIFFERENT QUESTION from `deriveIrradiationDose` above: that one is
-// a cumulative space-weathering total driving tholins, and Io reads 0 on it because volcanism
-// resurfaces it faster than anything can accumulate. Zero is the right answer to that question and
-// a lethal answer to this one, which is exactly why they need separate names and separate tags
-// (inbox B28). ONE function so the tag and the info-block band cannot disagree.
+// THE HAZARD BUCKET — expressed as TIME TO HARM, because that is what a GM can act on. Sieverts per
+// year are unreadable at a table; "hours" is not (inbox B30).
 //
-// The boundaries are real reference points rather than round numbers:
-//   background  < 10       Earth's natural background is ~2.4 mSv/yr; Venus, Titan and Triton sit here
-//   elevated    10-100     past the 20 mSv/yr occupational limit for radiation workers
-//   high        100-1000   a real mission dose — Mars's surface is ~214 (Curiosity RAD), Luna ~512
-//   severe      1e3-1e5    a lethal cumulative dose in weeks to months — Mercury 3,484, Ganymede 45,054
-//   lethal      >= 1e5     100 Sv/yr and up: lethal in days or less — Europa ~1.3 days, Io ~3 hours
-export type RadiationHazard = 'background' | 'elevated' | 'high' | 'severe' | 'lethal';
-export function radiationHazardBucket(mSvPerYear: number): RadiationHazard {
-  const v = mSvPerYear || 0;
-  if (v < 10) return 'background';
-  if (v < 100) return 'elevated';
-  if (v < 1000) return 'high';
-  if (v < 100000) return 'severe';
-  return 'lethal';
+// It is DERIVED, not a table. A median lethal acute dose is about 5 Sv, so the time to accumulate one
+// at a given rate is simply LD50 / dose rate. The constant is rule-pack DATA, so a campaign that
+// wants tougher or softer characters can argue with it.
+//
+// THE HONESTY LIMIT, and it is the reason the ladder does not simply run out of time words. This is
+// an ACUTE model: it describes radiation sickness, which is a thing that happens over a short
+// exposure. At Earth's 2.3 mSv/yr the arithmetic says two thousand years, and that is arithmetic
+// rather than a prediction — chronic low-level exposure kills by cancer risk, not by acute syndrome,
+// and nobody lives to test the figure. So past 50 years the ladder STOPS quoting time and changes
+// framing: `chronic` for a rate above the 20 mSv/yr occupational limit (a real long-term risk, no
+// acute threat) and `background` for anything at or below it. That keeps B28's two measured anchors
+// — the occupational limit and Curiosity's Mars figure — landing where they should.
+//
+//   hours       under a day        Io's surface: ~3 hours
+//   days        under a week       Europa ~1.3 days; Earth ORBIT ~2.8 days, inside the Van Allen belts
+//   weeks       under a month
+//   months      under a year       Ganymede ~40 days
+//   years       under 50 years     Mars ~23 years — a mission-planning problem, which is the real framing
+//   chronic     past that, but above the 20 mSv/yr occupational limit — cancer risk, not acute
+//   background  at or below the occupational limit — Earth, Venus, Titan, Triton, Pluto
+export type RadiationHazard = 'hours' | 'days' | 'weeks' | 'months' | 'years' | 'chronic' | 'background';
+
+const LD50_SV_DEFAULT = 5;            // median lethal acute whole-body dose
+const OCCUPATIONAL_MSV_YR = 20;       // ICRP annual limit for radiation workers — the chronic/background line
+const ACUTE_MODEL_LIMIT_YEARS = 50;   // past this the acute model means nothing; say so instead of quoting it
+
+export function radiationLd50Sv(rulePack?: RulePack | null): number {
+    const v = (rulePack as any)?.generation_parameters?.radiation_ld50_sv;
+    return typeof v === 'number' && v > 0 ? v : LD50_SV_DEFAULT;
+}
+
+// YEARS to accumulate a median lethal dose at this rate. Infinite at zero, by construction.
+export function yearsToLethalDose(mSvPerYear: number, rulePack?: RulePack | null): number {
+    const rate = mSvPerYear || 0;
+    if (!(rate > 0)) return Infinity;
+    return (radiationLd50Sv(rulePack) * 1000) / rate;
+}
+
+export function radiationHazardBucket(mSvPerYear: number, rulePack?: RulePack | null): RadiationHazard {
+    const years = yearsToLethalDose(mSvPerYear, rulePack);
+    if (years > ACUTE_MODEL_LIMIT_YEARS) return (mSvPerYear || 0) > OCCUPATIONAL_MSV_YR ? 'chronic' : 'background';
+    const days = years * 365;
+    if (days < 1) return 'hours';
+    if (days < 7) return 'days';
+    if (days < 30) return 'weeks';
+    if (days < 365) return 'months';
+    return 'years';
+}
+
+// A short, round phrase for the same figure — the legibility aid the bucket word summarises. Returns
+// null once the acute model stops meaning anything, rather than quoting a number nobody lives to
+// test. Deliberately coarse: this is a guide, not an engineering figure.
+export function lethalDosePhrase(mSvPerYear: number, rulePack?: RulePack | null): string | null {
+    const years = yearsToLethalDose(mSvPerYear, rulePack);
+    if (!Number.isFinite(years) || years > ACUTE_MODEL_LIMIT_YEARS) return null;
+    const hours = years * 365 * 24;
+    const round = (v: number) => (v < 10 ? Math.round(v * 10) / 10 : Math.round(v));
+    if (hours < 48) return `lethal dose in ~${round(hours)} h`;
+    const days = hours / 24;
+    if (days < 60) return `lethal dose in ~${round(days)} days`;
+    if (years < 2) return `lethal dose in ~${round(days / 30.44)} months`;
+    return `lethal dose in ~${round(years)} years`;
 }
 
 // Photon (UV/visible/IR) vs particle (stellar wind / protons / flares) split by spectral
