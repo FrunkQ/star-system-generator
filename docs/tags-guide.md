@@ -8,6 +8,20 @@ Tags are how Star System Explorer records *what a place or a ship is like* — b
 
 **Hand-added tags** are yours: add them to any body or construct for any purpose, and remove them freely. They survive re-processing, so the engine's auto-retagging never wipes your work.
 
+### Tags a crew would actually act on
+
+Most physics tags describe a world; a handful decide what you *do* about it, and those are the ones worth knowing by name.
+
+| Tag | Reads | What it settles |
+|---|---|---|
+| **Radiation hazard** | `hours` · `days` · `weeks` · `months` · `years` · `chronic` · `background` | **How long a character standing there survives.** Not sieverts — the time to a lethal dose. Io is *hours*, Europa *days*, Mars *years*, Earth *background*. Past fifty years the acute model stops meaning anything, so it says *chronic* (a real long-term cancer risk) rather than quoting a number nobody lives to test. |
+| **Orbital radiation** | the same words | The reading for the space a **ship parks in**, shown only when it is genuinely different news. In the whole Solar System that is Earth and Venus — Earth's ground is *background* while the orbital space around it, inside the Van Allen belts, is a lethal dose in *days*. |
+| **Ascent cost** | `trivial` · `moderate` · `hard` · `extreme` | **Whether the party can leave.** Luna is trivial, Mars moderate, Earth hard, Venus extreme. |
+| **Magnetosphere** | `dynamo` · `induced` · `tenuous` · `unshielded` | Why the radiation figure is what it is. |
+| **Space weathering** | `low` · `moderate` · `high` | **Not a dose.** How much radiation the *visible surface has accumulated over its lifetime* — it drives tholin reddening and regolith greying. A constantly resurfaced world like Io reads *low* here while its radiation hazard reads *hours*. Both are correct; they answer different questions. |
+
+That last pairing catches people out, and it is worth reading twice: a world can be the most violently irradiated surface in a system and still be lightly weathered, because volcanism repaints it faster than anything can build up.
+
 Tags live in tidy namespaces — `resource/*`, `science/*`, `atmosphere/*`, `geology/*`, `orbit/*` and so on — so related tags group together in the finder and in reports.
 
 ## Points of Interest (PoI)

@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.362-beta - 2nd Aug 2026
+
+* **The physics pages have a chapter on radiation belts and the giants**, which is the part of the model most likely to be assumed wrong. A belt is not a light source and does not thin out with the square of distance -- Io and Callisto sit four times apart and forty thousand times apart in dose. It stops above the atmosphere, and without that cut-off Earth would read as lethal at ground level. A giant sits inside its own belt, which is why it honestly needs two figures rather than one.
+* And the bit a GM will otherwise get backwards: Jupiter's moons are savaged not because Jupiter shines on them but because it spins a magnetic field. A brown dwarf, from about thirteen Jupiter masses, genuinely does shine on its moons. Jupiter's own excess heat is infrared -- warm, not dangerous.
+* Radiation now explains its two figures and its survival-time vocabulary on the page, not only in the tags.
+* The tag guide has a short table of the tags a crew would actually act on, including why a world can be the most irradiated surface in a system and still read lightly weathered.
+* The architecture notes described a processing order that stopped being true six versions ago. Corrected, with the rule that caused the change.
+
 ## v2.1.361-beta - 2nd Aug 2026
 
 * **The Newton explainer shows the radiation working, which it never has.** It had fourteen layers explaining a world and not one of them mentioned the dose -- so for Io, where a trapped belt is the entire story, the panel that promises to show the working showed everything except the answer. It now walks the whole chain: incident flux, whether you are inside your host's belt and how far in, where your own belt starts, what your magnetosphere deflects and your air absorbs, and what reaches the ground -- with the time to a lethal dose beside it.

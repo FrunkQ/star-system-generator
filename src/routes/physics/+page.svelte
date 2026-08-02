@@ -15,6 +15,7 @@
     ['temp-range', 'Temperature range & tidal heat'],
     ['radiation', 'Surface radiation'],
     ['radiation-split', 'Spectral photon/particle split'],
+    ['belts', 'Trapped belts & the giants'],
     ['fluids', 'Fluid layers'],
     ['clouds', 'Clouds & weather'],
     ['magnetism', 'Magnetism'],
@@ -240,6 +241,22 @@
         convection + fast rotation), declining as the star spins down with age. It rides the particle channel, so a
         magnetosphere + atmosphere shield against it; an unshielded close-in world around a flare star bears the
         brunt. (The old "flaring" tag keyed on luminosity is retired — it now tracks real activity.)</p>
+      <p><strong>Every body reports TWO figures, and the difference is the point.</strong> One number cannot answer
+        both "what does the ground take" and "what does a ship take". The first is quoted at the surface — or, for a
+        world that has no surface, at its <strong>1&nbsp;bar reference level</strong>; for a <strong>ring</strong>,
+        in the <strong>ring plane</strong>, which is simultaneously what a fragment takes and what a ship crossing
+        takes. The second is the environment <strong>above the atmosphere</strong>, where there is no air to absorb
+        anything and a body's own field does not shield it from its own trapped belt — you are inside both. Jupiter
+        is the extreme case: about <strong>11&nbsp;mSv/yr</strong> at 1&nbsp;bar and roughly
+        <strong>764&nbsp;Sv/day</strong> just above the cloud tops.</p>
+      <p><strong>The hazard is reported as TIME TO HARM, not as a number of sieverts.</strong> A median lethal acute
+        dose is about 5&nbsp;Sv (rule-pack data — <code>radiation_ld50_sv</code>), so the survival time is simply
+        <code>LD50 ÷ dose rate</code>: <em>hours</em> (Io ≈ 3), <em>days</em> (Europa ≈ 1.3), <em>weeks</em>,
+        <em>months</em> (Ganymede ≈ 40 days), <em>years</em> (Mars ≈ 23). Past <strong>50 years</strong> the acute
+        model stops meaning anything — chronic low-level exposure kills by cancer risk, not by radiation sickness —
+        so the vocabulary changes rather than quoting a figure nobody lives to test: <em>chronic</em> above the
+        20&nbsp;mSv/yr occupational limit, <em>background</em> at or below it (Earth sits here, at 2.3&nbsp;mSv/yr
+        against a real background of about 2.4).</p>
     </section>
 
     <section id="radiation-split">
@@ -257,6 +274,73 @@
           <tr><td>M</td><td>78%</td><td>22%</td></tr>
         </tbody>
       </table>
+    </section>
+
+    <section id="belts">
+      <h2>Trapped belts &amp; the giants</h2>
+      <p><strong>Every step of a giant's radiation story is counter-intuitive, so read this before assuming any of it
+        works like the stellar model above.</strong> A close-in moon of a strong-field giant is not <em>lit</em> by
+        its host — it is <strong>bombarded</strong> by charged particles the host's magnetic field has trapped and
+        its rotation has accelerated. For Io that is not a correction to the sunlight figure, it is the entire
+        answer: the stellar model alone gave Io 21&nbsp;mSv/<em>year</em> where the real surface takes about
+        36&nbsp;Sv/<strong>day</strong>. The giveaway was Io and Europa agreeing to four significant figures,
+        because distance from the Sun was the only term either of them had.</p>
+
+      <h3>A belt is not a light source, and it does not obey inverse square</h3>
+      <p>This is the part most likely to be got wrong. An emitter at a distance falls off as <code>1/r²</code>. The
+        Galilean moons flatly refuse that: Io to Europa is <strong>1.6× the distance for 6.7× less dose</strong>
+        (<code>r⁻⁴</code>), and Io to Callisto is <strong>4.4× the distance for 360,000× less</strong>
+        (<code>r⁻⁸·⁶</code>). No single power law fits both. A belt is not a point source — it is a
+        <em>population confined by a field</em> — so it falls off <strong>exponentially in HOST RADII</strong>, and
+        that one change fits the whole family:</p>
+      <p class="formula"><code>dose(r) = D₀ · (B/B_ref)² · (Ω/Ω_ref) · exp(−r / λ)</code>, &nbsp;
+        <code>λ = λ_ref · (B/B_ref)<sup>1/3</sup></code>, &nbsp; r in <strong>host radii</strong></p>
+      <p>The exponents are <strong>reasoned, not fitted</strong> — there is only one calibrated system, so fitting
+        them would be overfitting. <code>B²</code> is the magnetic energy density available to trap; <code>Ω</code>
+        is the corotation drive that energises the particles; and a dipole's magnetopause standoff goes as
+        <code>B<sup>1/3</sup></code>, so a weaker host holds a <em>tighter</em> belt as well as a fainter one. That
+        compounding is why <strong>Saturn is not merely 18× below Jupiter</strong>: Enceladus takes about
+        0.0034&nbsp;Sv/day against Io's 36, roughly ten thousand times less. Only <strong>Io and Callisto</strong>
+        were used to calibrate it — the two Galileans with no field of their own, so no self-shielding is baked into
+        the law. Europa and Ganymede were held out as <strong>predictions</strong>: Europa lands at 0.71× its
+        measured dose, and Ganymede comes out <strong>1.54× HIGH</strong>, which is the right direction, because
+        Ganymede is the only moon in the Solar System with its own dynamo and the law does not model that shield.</p>
+
+      <h3>The belt has an INNER EDGE, and without it Earth reads lethal</h3>
+      <p>A bare <code>exp(−r/λ)</code> has no lower boundary, so asked about a body's <em>own</em> belt it reports
+        the belt peak at the centre of the planet. Run on Earth that gives 2.31&nbsp;Sv/day at the ground — about
+        three hundred times the real background, on the best-calibrated body in the model. Real belts stop well
+        above the surface because the <strong>atmosphere absorbs trapped particles into the loss cone</strong>: a
+        particle whose mirror point lies in dense air is gone within one bounce, not merely attenuated. So the
+        boundary is a property of the <em>air</em>, and it sits a fixed number of <strong>scale heights</strong>
+        above the reference level — which makes it scale with the atmosphere rather than with the planet. A puffy
+        hot atmosphere pushes its belt further out; a thin one lets it come closer; and an <strong>airless body has
+        no absorber at all</strong>, so its belt reaches the ground (which is why Ganymede's poles are scoured by
+        precipitating particles). Calibrated on the one inner edge that is well measured — Earth's inner belt
+        begins near 1.2&nbsp;R⊕ — and the scale-height count is rule-pack data.</p>
+      <p><strong>A giant is inside its own belt.</strong> That is new, and it is why a giant needs the two figures
+        described above: at Jupiter's 1&nbsp;bar level the belt is absorbed and the dose is a few mSv/yr, while just
+        above the cloud tops — past the inner edge — it is hundreds of Sv/day. Both are honest answers to different
+        questions, and quoting either alone is misleading.</p>
+
+      <h3>The brown-dwarf boundary — and why Jupiter is correctly excluded</h3>
+      <p>Three things are easily conflated here and only one of them is a belt. <strong>Self-luminous bodies really
+        do irradiate their moons</strong>, and they always have: from about <strong>13&nbsp;M<sub>jup</sub></strong>
+        — the deuterium-burning limit — a substellar object joins the same <code>L/d²</code> sum as the stars, so a
+        moon of a brown dwarf takes a genuine dose from its host. Measured on a synthetic system: at
+        1&nbsp;M<sub>jup</sub> a moon sees 2&nbsp;mSv/yr; at 13 it sees <strong>104</strong>, and at 40 it sees
+        2,626.</p>
+      <p><strong>Jupiter is an order of magnitude under that floor and does not qualify, and this is not an
+        oversight.</strong> Jupiter's real excess output — about 1.67× the sunlight it absorbs, from
+        Kelvin–Helmholtz contraction — is <strong>infrared and non-ionising</strong>. It is a heat source, not a
+        dose source. So a GM should expect the opposite of the intuitive answer: Jupiter's moons are savaged not
+        because Jupiter <em>shines</em> on them but because it <em>spins a magnetic field</em>, while a brown
+        dwarf's moons are irradiated because it genuinely shines. The belt is a separate term from the luminous sum
+        and sits beside it; a host with no meaningful field contributes nothing, which is almost every host.</p>
+      <p>The belt is a <strong>pure particle-channel</strong> source with no photon component, so it lands in the
+        machinery the receiver's magnetosphere and atmosphere already attenuate. It returns zero when the host's
+        <strong>spin is unknown</strong> as well as when its field is — an absent rotation is not a claim of a
+        stationary host, and inventing a hazard out of a missing input is worse than omitting one.</p>
     </section>
 
     <section id="fluids">
@@ -787,6 +871,9 @@
   code { background: var(--bg-panel, #14161c); border: 1px solid var(--border, #2a2d36); border-radius: 4px; padding: 1px 5px; font-size: 0.9em; }
   table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.9rem; }
   table.mini { width: auto; }
+  /* A displayed formula: set apart from the prose so the law is readable as a law. */
+  p.formula { text-align: center; margin: 1.1rem 0; padding: 0.6rem 0.4rem;
+    background: rgba(255,255,255,0.04); border-radius: 6px; line-height: 1.9; }
   th, td { text-align: left; padding: 6px 12px; border-bottom: 1px solid var(--border, #2a2d36); }
   th { color: var(--text-faint, #8a8f9a); font-weight: 600; }
   td.sym { color: var(--accent, #ff5a1f); font-weight: 600; }
