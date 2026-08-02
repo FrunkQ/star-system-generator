@@ -2,7 +2,7 @@
  "id": "starmap-local-neighbourhood-scifi",
  "name": "Local Neighbourhood (Science Fiction)",
  "description": "The same real stars as the Local Neighbourhood map, at their true positions — but populated with the famous science fiction set among them. Sol runs on The Expanse; Pandora circles Alpha Centauri A; Reach guards Epsilon Eridani; the Nostromo is still answering that beacon at Zeta Reticuli. This map is deliberately fictional: the planets, stations and ships come from the novels, films and games, not from the catalogues. Stars without a famous fictional tenant keep their real confirmed planets.",
- "appVersion": "2.1.273-beta",
+ "appVersion": "2.1.359-beta",
  "baseMapVersion": 2,
  "distanceUnit": "ly",
  "unitIsPrefix": false,
@@ -6548,10 +6548,10 @@
        "elements": {
         "a_AU": 0.068,
         "e": 0,
-        "i_deg": 0.46,
-        "omega_deg": 297.9,
-        "Omega_deg": 238.5,
-        "M0_rad": 2.0084
+        "i_deg": 0.23,
+        "omega_deg": 40.5,
+        "Omega_deg": 341,
+        "M0_rad": 2.8607
        }
       },
       "tags": [],
@@ -6682,10 +6682,10 @@
        "elements": {
         "a_AU": 0.072,
         "e": 0.094,
-        "i_deg": 0.75,
-        "omega_deg": 235.4,
-        "Omega_deg": 177.1,
-        "M0_rad": 3.5693
+        "i_deg": 1,
+        "omega_deg": 78.6,
+        "Omega_deg": 138.1,
+        "M0_rad": 3.5468
        }
       },
       "tags": [],
