@@ -78,3 +78,70 @@ describe('an ejection verdict names the body that is thrown (B19)', () => {
     expect(f['B']).toBe('fate/collision');
   });
 });
+
+// B24 — a verdict that printed a reason contradicting itself. `reasons` collects every test that
+// looked at the body and the most severe one owns the fate, so a body could read "...a locked
+// mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable"
+// and then "Predicted outcome: flung out". Both halves were right about their own mechanism — the
+// crossing test spared the pair, the host-binding test failed it — and nothing said so.
+describe('a stability verdict does not contradict its own reasons (B24)', () => {
+  // Two resonance-locked crossing MOONS, both beyond their host planet's Hill sphere. Moons rather
+  // than planets on purpose: a body orbiting a star has no meaningful outer binding limit, so a
+  // star-level fixture produces the sparing reason and no fate at all and the assertion below never
+  // fires — which is how the first version of this test passed while proving nothing. This shape
+  // reproduces Bergamen and Hades in the Uggi example, the two bodies B24 was reported on.
+  function contradictorySys(): System {
+    const star = { id: 'star', kind: 'body', roleHint: 'star', name: 'S', massKg: 2e30 } as CelestialBody;
+    const host = {
+      id: 'h', kind: 'body', roleHint: 'planet', name: 'Host', parentId: 'star', massKg: 1.9e27,
+      orbit: { hostId: 'star', elements: { a_AU: 5.2, e: 0.05 } }
+    } as unknown as CelestialBody;
+    const near = {
+      id: 'm1', kind: 'body', roleHint: 'moon', name: 'Near', parentId: 'h', massKg: 9e22,
+      resonanceProtective: true,
+      orbit: { hostId: 'h', elements: { a_AU: 0.30, e: 0.05 } }
+    } as unknown as CelestialBody;
+    const far = {
+      id: 'm2', kind: 'body', roleHint: 'moon', name: 'Far', parentId: 'h', massKg: 5e21,
+      resonanceProtective: true,
+      orbit: { hostId: 'h', elements: { a_AU: 0.40, e: 0.30 } }
+    } as unknown as CelestialBody;
+    return { id: 's', name: 'T', nodes: [star, host, near, far] } as unknown as System;
+  }
+
+  it('the fixture really does produce both a sparing reason and a fate', () => {
+    // Guard the guard. The assertion below is inside an `if`, so a fixture that stopped producing
+    // the contradiction would make it vacuously green — which it silently was until this was added.
+    const s = contradictorySys();
+    annotateGravitationalStability(s);
+    const withBoth = s.nodes.filter((n) => {
+      const d = (n as any).orbitalStabilityDetails as string | undefined;
+      // Either wording — this guards the SHAPE (a sparing reason beside a fate), not the phrasing.
+      return !!d && /survivable|stays stable/.test(d) && /Predicted outcome/.test(d);
+    });
+    expect(withBoth.length, 'fixture no longer reproduces the B24 shape').toBeGreaterThan(0);
+  });
+
+  it('never claims stability and predicts a fate without naming which driver won', () => {
+    const s = contradictorySys();
+    annotateGravitationalStability(s);
+    for (const n of s.nodes) {
+      const d = (n as any).orbitalStabilityDetails as string | undefined;
+      if (!d || !/Predicted outcome/.test(d)) continue;
+      // If a sparing reason and a fate share one string, the string must say which produced it.
+      if (/survivable|stays stable/.test(d)) {
+        expect(d, `${n.name}: a fate printed beside a "survivable" reason with no attribution`).toMatch(/Driven by:/);
+      }
+    }
+  });
+
+  it('the resonance note scopes its claim to the crossing it is about', () => {
+    const s = contradictorySys();
+    annotateGravitationalStability(s);
+    const all = s.nodes.map((n) => (n as any).orbitalStabilityDetails).filter(Boolean).join(' ');
+    // The note is doing real work and must survive; it just must not claim the whole body is safe.
+    if (/mean-motion resonance/.test(all)) {
+      expect(all).not.toMatch(/so it stays stable/);
+    }
+  });
+});

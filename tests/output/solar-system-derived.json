@@ -12021,7 +12021,7 @@
       "propulsiveLandBudget_ms": 983.8068938552108,
       "aerobrakeLandBudget_ms": -1,
       "orbitalStability": "Marginal",
-      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: its orbit crosses Neptune's — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable."
+      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: its orbit crosses Neptune's — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so this crossing on its own is survivable."
     },
     {
       "id": "solar-system-charon",
@@ -12438,7 +12438,7 @@
       "propulsiveLandBudget_ms": 479.7256429374493,
       "aerobrakeLandBudget_ms": -1,
       "orbitalStability": "Marginal",
-      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: its orbit crosses Neptune's — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable."
+      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: its orbit crosses Neptune's — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so this crossing on its own is survivable."
     },
     {
       "id": "construct-iss",
