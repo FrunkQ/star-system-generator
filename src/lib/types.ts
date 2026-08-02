@@ -65,6 +65,12 @@ export interface Orbit {
   isRetrogradeOrbit?: boolean;
   resonance?: { numerator: number; denominator: number } | null;
   lastEditedT0?: number; // Timestamp of last manual edit
+  // C3: the plane this orbit's inclination is quoted in. Absent = the parent's EQUATOR for a
+  // satellite (the usual convention for a regular moon) and the system plane for anything else;
+  // 'ecliptic' = the system plane, for a satellite far enough out that the Laplace plane has handed
+  // over from the bulge to the star's tide (Luna, Phoebe). The field already ships in the bundled
+  // maps and holo/scene.ts already reads it — through `as any`, which is why it drifted untyped.
+  frame?: 'ecliptic';
 }
 
 export interface DeltaVCapability {

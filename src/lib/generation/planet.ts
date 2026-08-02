@@ -17,6 +17,40 @@ function densityProxyMassKg(rng: SeededRNG, fracLo: number, fracHi: number): num
     return EARTH_MASS_KG * Math.exp(lo + frac * (hi - lo));
 }
 
+// C3(c) / C5: the LAPLACE RADIUS — the distance at which a satellite's orbital reference plane
+// hands over from its host's EQUATOR (held there by the host's oblateness) to the SYSTEM plane
+// (held there by the star's tide). Close in, a moon follows the bulge; far out, it follows the
+// ecliptic, which is why Luna's 5.145 degrees is quoted to the ecliptic and Io's 0.05 to Jupiter's
+// equator. A catalogue records which; a GENERATOR has to decide, and this is that decision.
+//
+//   r_L^5 = 2 * J2 * R_p^2 * a_p^3 * (M_p / M_star)
+//
+// J2 is not in the data model and never will be for an invented planet, so it is estimated from
+// the rotation the generator already rolled: the flattening parameter q = w^2 R^3 / GM, times a
+// structure factor. Measured against the Solar System, J2/q is 0.10 for Saturn, 0.12 Uranus,
+// 0.13 Neptune, 0.17 Jupiter, 0.31 Earth, 0.43 Mars — centrally-condensed giants low, rocky
+// bodies high — so two constants cover the range. THE ERROR TOLERANCE IS WHY THIS IS WORTH DOING
+// AT ALL: r_L goes as J2^(1/5), so being wrong about J2 by a factor of three moves the handover
+// radius by 25%. A crude J2 is entirely good enough to place a switch.
+//
+// Returns AU, or null when an input is missing — in which case the caller leaves the frame alone
+// rather than guessing, since equatorial is the safe default for the close-in majority.
+function laplaceRadiusAU(planet: CelestialBody, aPlanetAU: number, perturberMassKg: number, isGiant: boolean, pack: RulePack): number | null {
+    const R = (planet.radiusKm ?? 0) * 1000;
+    const M = planet.massKg ?? 0;
+    const rotHours = Math.abs(planet.rotation_period_hours ?? 0);
+    if (!(R > 0 && M > 0 && rotHours > 0 && aPlanetAU > 0 && perturberMassKg > 0)) return null;
+    const omega = (2 * Math.PI) / (rotHours * 3600);
+    const q = (omega * omega * R * R * R) / (G * M);
+    const k = isGiant
+        ? (pack.generation_parameters?.j2_over_q_giant ?? 0.15)
+        : (pack.generation_parameters?.j2_over_q_solid ?? 0.30);
+    const J2 = k * q;
+    const aP = aPlanetAU * AU_KM * 1000;
+    const rL = Math.pow(2 * J2 * R * R * aP * aP * aP * (M / perturberMassKg), 1 / 5);
+    return rL / (AU_KM * 1000);
+}
+
 export function _generatePlanetaryBody(
     rng: SeededRNG,
     pack: RulePack,
@@ -398,6 +432,9 @@ export function _generatePlanetaryBody(
         
         // Calculate Hill Sphere (SOI) - Stable region is roughly 1/2 Hill Sphere
         let stableLimitAU = 0;
+        // C3(c): the handover distance for this host, computed once for all its moons. Shares the
+        // star mass the Hill-sphere calculation below already needs, so the two agree by construction.
+        let laplaceAU: number | null = null;
         if (orbit && (orbit.hostMu > 0 || host.kind === 'barycenter')) {
             let starMass = orbit.hostMu / G;
             if (starMass <= 0 && host.kind === 'barycenter') {
@@ -408,14 +445,15 @@ export function _generatePlanetaryBody(
             const a_planet = orbit.elements.a_AU;
             const e_planet = orbit.elements.e;
             const perihelion = a_planet * (1 - e_planet);
-            
+
             if (starMass > 0) {
                 const rHill = perihelion * Math.pow(planetMass / (3 * starMass), 1/3);
                 stableLimitAU = rHill * 0.5; // Conservative stability limit
+                laplaceAU = laplaceRadiusAU(planet, a_planet, starMass, isGiant, pack);
             }
         }
 
-        let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5; 
+        let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5;
 
         for (let j = 0; j < numMoons; j++) {
             const moonMass = moonMasses[j];
@@ -449,6 +487,14 @@ export function _generatePlanetaryBody(
                 t0: Date.now(),
                 elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: Math.pow(rng.nextFloat(), 2) * 10, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
             };
+
+            // C3(c): beyond the Laplace radius the star's tide beats the host's bulge, so this
+            // moon's inclination is quoted in the SYSTEM plane and the renderer must not rotate it
+            // into the host's equator. Inside it, no flag: equatorial is both the default and the
+            // right answer for the close-in majority. The inclination DISTRIBUTION is unchanged --
+            // the drawn 0-10 degrees is plausible in either frame (Luna is 5.1 to the ecliptic,
+            // Io 0.05 to Jupiter's equator); it is the reference plane that was wrong, not the angle.
+            if (laplaceAU != null && newMoonA_AU > laplaceAU) moonOrbit.frame = 'ecliptic';
 
             if (weightedChoice<boolean>(rng, pack.distributions['retrograde_orbit_chance_moon'])) {
                 moonOrbit.isRetrogradeOrbit = true;
