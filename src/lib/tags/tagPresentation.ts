@@ -213,6 +213,10 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Flare hazard',
     description: 'The host star flares — episodic flares and coronal mass ejections spike radiation and can erode an unshielded atmosphere (common on active M-dwarfs).'
   },
+  'hazard/radiation': {
+    label: 'Radiation hazard',
+    description: 'How dangerous a YEAR standing on this surface is, after the magnetosphere and the atmosphere have taken what they can: background (under 10 mSv/yr — Earth sits at about 2.4), elevated (past the 20 mSv/yr occupational limit), high (a real mission dose — Mars is about 214), severe (a lethal total in weeks to months), lethal (100 Sv/yr and up — days or less). This is the annual DOSE, and it is not the same reading as "Space weathering" beside it, which is a cumulative total and can read low on the fiercest surface in a system.'
+  },
 
   // --- Rings (derived from ring-child geometry) ---
   'ring/system':   { label: 'Ringed',         description: 'Hosts a ring system — orbiting ice/rock debris — derived from a ring child in the geometry, not hand-tagged.' },

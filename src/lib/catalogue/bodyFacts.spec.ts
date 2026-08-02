@@ -39,7 +39,18 @@ describe('bodyFacts — radiation rows say what they are', () => {
 
   it('drops a range whose ends round to the same figure, rather than printing 2.3-2.3', () => {
     const earth: any = { ...mars, surfaceRadiation: 2.3, surfaceRadiationMin: 2.29, surfaceRadiationMax: 2.31, orbitalRadiation: 2.3 };
-    expect(val(earth, 'Radiation (surface)')).toBe('low · 2.3 mSv/y');
+    expect(val(earth, 'Radiation (surface)')).toBe('background · 2.3 mSv/y');
+  });
+
+  // B28: the band is the same bucketing the `hazard/radiation` tag uses, and it has to SEPARATE a
+  // real mission dose from a lethal one. The old three-band split called Mars and Io both "high",
+  // sixty thousand times apart.
+  it('does not describe Mars and Io with the same word', () => {
+    const io: any = { ...mars, name: 'Io', surfaceRadiation: 13139475 };
+    const marsBand = val(mars, 'Radiation (surface)')!.split(' ·')[0];
+    const ioBand = val(io, 'Radiation (surface)')!.split(' ·')[0];
+    expect(marsBand).toBe('high');
+    expect(ioBand).toBe('lethal');
   });
 
   // The orbital row only appears when the two genuinely differ — B22's rule, unchanged here.

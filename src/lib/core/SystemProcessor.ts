@@ -2,7 +2,9 @@ import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
-import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose } from '../physics/radiation';
+import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket } from '../physics/radiation';
+// The annual-dose hazard tag. Its key is serialised, so it lives beside the other tag constants.
+const RADIATION_HAZARD_TAG = 'hazard/radiation';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
 import { surfaceTempProfile } from '../physics/surfaceTemperature';
@@ -933,6 +935,20 @@ export class SystemProcessor implements ISystemProcessor {
             );
             const doseBucket = body.irradiationDose < 0.05 ? 'low' : body.irradiationDose < 0.2 ? 'moderate' : 'high';
             body.tags.push({ key: 'surface/irradiation', value: doseBucket });
+            // RADIATION HAZARD — the bucketed ANNUAL DOSE, which is a different question from the
+            // space-weathering total above and had no tag of its own at all. So a GM scanning or
+            // filtering tags saw "Space weathering: low" on Io and nothing to say its surface takes
+            // 36 Sv a DAY: an appearance driver standing in for a hazard reading (inbox B28). The
+            // weathering figure is NOT changed — Io's 0 is correct for what it measures, because
+            // volcanism resurfaces the world faster than anything can accumulate on it.
+            // Only a body with a SOLID SURFACE gets this, for the reason B18 gave about habitability
+            // and B22 about the row label: a giant has no ground, so its figure is a 1-bar reading
+            // and a "surface hazard" tag would be the same category error. Giants are already
+            // excluded by the branch this sits in.
+            body.tags = body.tags.filter((t) => t.key !== RADIATION_HAZARD_TAG || t.manual);
+            if (!body.tags.some((t) => t.key === RADIATION_HAZARD_TAG)) {
+                body.tags.push({ key: RADIATION_HAZARD_TAG, value: radiationHazardBucket(body.surfaceRadiation ?? 0) });
+            }
             features['geoActive'] = body.geoActivity.active ? 1 : 0;
             features['plateTectonics'] = body.geoActivity.regime === 'plate-tectonics' ? 1 : 0;
         } else {

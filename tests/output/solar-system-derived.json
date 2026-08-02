@@ -96,6 +96,10 @@
           "value": "high"
         },
         {
+          "key": "hazard/radiation",
+          "value": "severe"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -524,6 +528,10 @@
           "value": "moderate"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "sulfuric-acid veil"
         },
@@ -936,6 +944,10 @@
         {
           "key": "surface/irradiation",
           "value": "low"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "background"
         },
         {
           "key": "structure/cloud-deck",
@@ -1519,6 +1531,10 @@
           "value": "high"
         },
         {
+          "key": "hazard/radiation",
+          "value": "high"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -1917,6 +1933,10 @@
         },
         {
           "key": "surface/irradiation",
+          "value": "high"
+        },
+        {
+          "key": "hazard/radiation",
           "value": "high"
         },
         {
@@ -2343,6 +2363,10 @@
           "value": "high"
         },
         {
+          "key": "hazard/radiation",
+          "value": "high"
+        },
+        {
           "key": "shape/oblate"
         },
         {
@@ -2739,6 +2763,10 @@
         },
         {
           "key": "surface/irradiation",
+          "value": "high"
+        },
+        {
+          "key": "hazard/radiation",
           "value": "high"
         },
         {
@@ -3694,6 +3722,10 @@
           "value": "low"
         },
         {
+          "key": "hazard/radiation",
+          "value": "lethal"
+        },
+        {
           "key": "volatiles/ices",
           "value": "sulfur-dioxide"
         },
@@ -4148,6 +4180,10 @@
         {
           "key": "surface/irradiation",
           "value": "low"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "lethal"
         },
         {
           "key": "volatiles/ices",
@@ -4633,6 +4669,10 @@
           "value": "moderate"
         },
         {
+          "key": "hazard/radiation",
+          "value": "severe"
+        },
+        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide+water"
         },
@@ -5058,6 +5098,10 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "elevated"
         },
         {
           "key": "volatiles/ices",
@@ -5922,6 +5966,10 @@
           "value": "moderate"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "methane overcast"
         },
@@ -6341,6 +6389,10 @@
         {
           "key": "surface/irradiation",
           "value": "low"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "severe"
         },
         {
           "key": "habitability/subsurface"
@@ -6809,6 +6861,10 @@
           "value": "moderate"
         },
         {
+          "key": "hazard/radiation",
+          "value": "high"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -7235,6 +7291,10 @@
           "value": "moderate"
         },
         {
+          "key": "hazard/radiation",
+          "value": "elevated"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -7634,6 +7694,10 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "severe"
         },
         {
           "key": "habitability/none"
@@ -8076,6 +8140,10 @@
           "value": "moderate"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -8457,6 +8525,10 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "background"
         },
         {
           "key": "habitability/none"
@@ -9257,6 +9329,10 @@
           "value": "moderate"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "habitability/none"
         },
         {
@@ -9637,6 +9713,10 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "background"
         },
         {
           "key": "habitability/none"
@@ -10023,6 +10103,10 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "background"
         },
         {
           "key": "habitability/none"
@@ -10853,6 +10937,10 @@
           "value": "low"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "methane wisps"
         },
@@ -11411,6 +11499,10 @@
           "value": "moderate"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "methane wisps"
         },
@@ -11847,6 +11939,10 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "hazard/radiation",
+          "value": "background"
         },
         {
           "key": "habitability/none"

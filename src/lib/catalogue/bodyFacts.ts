@@ -5,6 +5,7 @@ import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
+import { radiationHazardBucket } from '$lib/physics/radiation';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -344,7 +345,11 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   // own range, which is the A5 rule.
   const radScale = (v: number) => v >= 3.65e6 ? { div: 365000, unit: 'Sv/day' }
     : v >= 10000 ? { div: 1000, unit: 'Sv/y' } : { div: 1, unit: 'mSv/y' };
-  const radBand = (v: number) => v < 5 ? 'low' : v < 100 ? 'moderate' : 'high';
+  // The band comes from the SAME function the `hazard/radiation` tag is bucketed with — the row and
+  // the tag beside it were two answers to one question, and the old three-band split put Mars (214
+  // mSv/yr) in the same bucket as Io (13 million), a range of sixty thousand described by one word
+  // (inbox B28).
+  const radBand = radiationHazardBucket;
   function radRow(mean: number, min?: number, max?: number): string {
     const { div, unit } = radScale(mean);
     const f = (x: number) => {

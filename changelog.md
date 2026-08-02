@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.357-beta - 2nd Aug 2026
+
+* **A world now carries a radiation hazard you can see and filter on.** Io's tags said "Space weathering: low" -- true, because volcanism repaints its surface faster than anything can build up on it -- and nothing anywhere in the tag list mentioned that standing there costs you 36 sieverts a day. There is now a separate "Radiation hazard" tag reading background, elevated, high, severe or lethal, next to the weathering one, and the two say plainly that they are different readings. Io and Europa read lethal.
+* The radiation row in the info block uses the same five words, so a world and its tag cannot disagree. It used to call Mars and Io both "high" -- sixty thousand times apart.
+* A giant gets no surface hazard tag, having no surface to stand on. Its radiation row already says which level it describes.
+
 ## v2.1.356-beta - 2nd Aug 2026
 
 * Measured how far the physics moves when a system is processed more than once, and wrote the curve into the inbox (B13). It settles after the second pass rather than compounding, but the first pass can be wildly out: an imported world reads its own radiation belt at ground level, which is what put Earth at 230 mSv/yr instead of 2.3.

@@ -22,6 +22,30 @@ export function deriveIrradiationDose(teqK: number, magShield: number, surfaceAg
 }
 
 
+// THE HAZARD BUCKET — how dangerous the annual dose actually is, in mSv per year, at the level the
+// figure describes (a solid surface, or a giant's 1-bar reference). This is the bucketed form of
+// `surfaceRadiation`, and it is a DIFFERENT QUESTION from `deriveIrradiationDose` above: that one is
+// a cumulative space-weathering total driving tholins, and Io reads 0 on it because volcanism
+// resurfaces it faster than anything can accumulate. Zero is the right answer to that question and
+// a lethal answer to this one, which is exactly why they need separate names and separate tags
+// (inbox B28). ONE function so the tag and the info-block band cannot disagree.
+//
+// The boundaries are real reference points rather than round numbers:
+//   background  < 10       Earth's natural background is ~2.4 mSv/yr; Venus, Titan and Triton sit here
+//   elevated    10-100     past the 20 mSv/yr occupational limit for radiation workers
+//   high        100-1000   a real mission dose — Mars's surface is ~214 (Curiosity RAD), Luna ~512
+//   severe      1e3-1e5    a lethal cumulative dose in weeks to months — Mercury 3,484, Ganymede 45,054
+//   lethal      >= 1e5     100 Sv/yr and up: lethal in days or less — Europa ~1.3 days, Io ~3 hours
+export type RadiationHazard = 'background' | 'elevated' | 'high' | 'severe' | 'lethal';
+export function radiationHazardBucket(mSvPerYear: number): RadiationHazard {
+  const v = mSvPerYear || 0;
+  if (v < 10) return 'background';
+  if (v < 100) return 'elevated';
+  if (v < 1000) return 'high';
+  if (v < 100000) return 'severe';
+  return 'lethal';
+}
+
 // Photon (UV/visible/IR) vs particle (stellar wind / protons / flares) split by spectral
 // class. Cool dwarfs are wind/flare-dominated, so their particle fraction is much higher —
 // which matters because magnetospheres shield particles but not photons. (Phase 04.4)
