@@ -22,6 +22,7 @@
     ['aurora', 'Auroras'],
     ['geology', 'Geological activity'],
     ['resonance', 'Resonances & stability'],
+    ['ejection', 'Who gets ejected'],
     ['colour', 'Apparent colour & visualisation'],
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
@@ -171,6 +172,17 @@
         mass term that had quietly cost Saturn 23 K. Above 8 Jupiter masses the
         <a href="#temp-range">brown-dwarf model</a> takes over with its own cooling tracks, and the two are
         matched at the boundary so a giant never gets colder by gaining mass.</p>
+      <p><strong>Gas giant or ice giant is a COMPOSITION question, and it is asked of the mass — never of the
+        type name.</strong> The two get different reference figures (about 52&nbsp;K of excess for a gas giant
+        against 24&nbsp;K for an ice giant at 4.6&nbsp;Gyr), and the split is the same one the interior model
+        already uses to decide whether hydrogen is compressed into its metallic phase: above roughly 50 Earth
+        masses it is, below it the conductive layer is superionic water instead. That matters because the
+        obvious alternative is a trap — asking whether the body's <em>class</em> contains the words "ice giant"
+        reads a name the classifier assigns a whole pass LATER, from a temperature this very figure produces.
+        A freshly imported Neptune came out at +52&nbsp;K on its first pass and +24&nbsp;K on its second because
+        of exactly that. It also mislabelled a whole family: a mini-Neptune or a hycean world was being handed
+        Jupiter's formation heat purely because its type name did not happen to contain the characters
+        "ice-giant".</p>
       <p><strong>Rocky worlds work differently and deliberately get none of this.</strong> A planet is not
         contracting, so its internal heat is radioactive decay plus whatever tides are kneading it — and on
         Earth that reaches the surface as about 0.09 W/m² against roughly 340 W/m² of sunlight, moving the
@@ -559,6 +571,25 @@
         tags plus the Orbital Stability and Resonance rows in the body panel.</p>
     </section>
 
+    <section id="ejection">
+      <h2>Who gets ejected — the asymmetry</h2>
+      <p>When two orbits genuinely cross, or sit too close in mutual Hill radii to be stable, the outcome is
+        <strong>not symmetric</strong>: a packed system sheds its <em>lighter</em> member, and a lightweight
+        crosser is scattered out by the heavier body rather than the other way round. The model always meant
+        that — the code's own comments said so — but for a long time it recorded the verdict against
+        <strong>both</strong> members of the pair, so a 16&nbsp;km asteroid on a Mars-crossing orbit put
+        "fated: flung out" on <strong>Mars</strong>.</p>
+      <p>Two things are worth taking from that, because both were assumed and both were wrong. The
+        <strong>threshold was innocent</strong>: the mutual-Hill test fires below 5.5, and the pair in question
+        sat at 9.28, so it never ran. And <strong>debris was already excluded</strong> — belts and rings are
+        filtered out before any pairing, because their mass is a density proxy rather than a point mass. The
+        fault was one branch below where anyone was looking: the crossing test fired correctly, and the fate was
+        then copied onto the wrong body. The assessment now names <em>which</em> body it means.</p>
+      <p>The practical reading for a GM: a "fated" tag on a large planet is a claim about its <em>neighbourhood</em>
+        only if that planet is the lighter of the pair. Check what it is paired with before rewriting a campaign
+        around it.</p>
+    </section>
+
     <section id="colour">
       <h2>Apparent colour &amp; visualisation <span class="phase">§2e</span></h2>
       <p>Instead of one swatch per class, a body's <strong>true colour</strong> is composed: a surface base from
@@ -649,6 +680,17 @@
         <li>A body's fit to a band is <code>1</code> inside, decaying over a <em>relative</em> 15% soft edge, <code>0</code> beyond — so a tiny moon can't half-match a giant.</li>
         <li>A type's score is the <strong>mean of its band fits × a mild specificity bonus</strong> for band count. Among clean matches more matched bands still wins (specific beats generic), but a band-rich catch-all whose extra bands are barely-true edge slivers can't out-score a perfect match on fewer bands (summing fits used to let <em>barren</em>/<em>desert</em> steal Venus-class and dwarf-planet-class worlds). Falling fully outside any defining band disqualifies the type.</li>
         <li>The best <strong>base</strong> archetype wins (mutually exclusive); <strong>modifiers</strong> (ringed, eyeball, ultra-short-period, toroidal, ellipsoid, disrupted) stack on top.</li>
+        <li><strong>Which TEMPERATURE a fingerprint keys on is a deliberate split, and it moved.</strong> Fourteen
+          types whose definition describes a <em>surface</em> — desert, ice, lava, ocean, methane, ammonia, hycean,
+          subsurface-ocean, earth-analogue, earth-like, superhabitable, forest, jungle, swamp — key on the
+          <strong>surface temperature</strong>. Twelve that describe a <em>radiation environment</em> or a giant's
+          cloud-top chemistry — the hot and ultra-hot Jupiters and Neptunes, chthonian, ice-giant, ultra-cool-dwarf
+          and the five gas-giant cloud classes — correctly still key on <strong>equilibrium temperature</strong>.
+          The giveaway that the bands were authored as surface temperatures all along: <em>earth-analogue</em> asks
+          for 255–300&nbsp;K, and Earth's equilibrium temperature is 254.1&nbsp;— just outside its own band, while
+          its surface at 287&nbsp;K sits mid-band. This matters beyond tidiness: the stat block prints Type and
+          Surface temp two rows apart, so a type keyed on the wrong temperature puts a visible contradiction on the
+          page.</li>
         <li><code>gas-giant</code> is a weighted-down fallback, so the specific giant types (hot-jupiter, the cloud-types, …) win when they apply.</li>
         <li>Classification reads raw physics features, <em>not</em> tags — so there's no circularity.</li>
       </ul>

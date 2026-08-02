@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.365-beta - 2nd Aug 2026
+
+* **Three more of the physics pages caught up with the engine.** Which temperature decides a world's type is now explained -- fourteen types are judged on the surface you would stand on, twelve on the radiation environment, and the tell is that Earth's equilibrium temperature falls just outside the band of its own type while its surface sits comfortably inside it.
+* Why a giant's leftover formation heat depends on its mass rather than on what its type is called -- and why the obvious shortcut of reading the type name was quietly handing mini-Neptunes Jupiter's heat.
+* A new section on who gets ejected when two orbits cross, because it is not symmetric: the lighter body goes. That page also records the two things everyone assumed when a 16 km asteroid put "fated: flung out" on Mars, both of which turned out to be innocent.
+
 ## v2.1.364-beta - 2nd Aug 2026
 
 * **Audited every tag the engine can produce, asking one question of each: does it report the thing its name claims?** The table is written down, clean entries included, so nobody has to work it out again.
