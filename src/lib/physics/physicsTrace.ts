@@ -11,6 +11,7 @@ import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
 import { auroraEmitter } from './aurora';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
+import { beltInnerEdgeRadii, radiationHazardBucket, lethalDosePhrase } from './radiation';
 
 export interface TraceField { label: string; value: string; }
 export interface TraceLayer {
@@ -31,6 +32,26 @@ const AU_KM = 1.495978707e8;
 const n = (v: number | undefined | null, d = 2, unit = ''): string =>
   v == null || !isFinite(v) ? '—' : `${(+v).toFixed(d)}${unit ? ' ' + unit : ''}`;
 const pct = (v: number): string => `${Math.round(v * 100)}%`;
+// A blocking fraction, kept honest at the top of its range: Earth's air stops 99.937% of what
+// reaches it and rounding that to '100%' reads as total, which it is not.
+const pctFine = (v: number): string => (v > 0.99 && v < 1 ? `${(v * 100).toFixed(v > 0.999 ? 3 : 1)}%` : pct(v));
+
+// A dose in mSv/yr, scaled ONCE to a unit a reader can hold. Same three-step scale the info block
+// uses (A33) — a figure that runs to eight millisievert digits is not a figure anybody reads.
+// A photon/particle PAIR on one scale, picked from whichever dominates.
+const dosePair = (a: number, b: number): string => {
+  const big = Math.max(a, b);
+  const [div, unit] = big >= 3.65e6 ? [365000, 'Sv/day'] : big >= 10000 ? [1000, 'Sv/yr'] : [1, 'mSv/yr'];
+  const f = (x: number) => (x / div).toLocaleString(undefined, { maximumFractionDigits: x / div < 10 ? 2 : 0 });
+  return `${f(a)} / ${f(b)} ${unit}`;
+};
+const dose = (mSvYr: number | undefined | null): string => {
+  const v = mSvYr ?? 0;
+  if (!isFinite(v) || v <= 0) return '—';
+  if (v >= 3.65e6) return `${(v / 365000).toLocaleString(undefined, { maximumFractionDigits: 1 })} Sv/day`;
+  if (v >= 10000) return `${(v / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} Sv/yr`;
+  return `${v.toLocaleString(undefined, { maximumFractionDigits: v < 10 ? 2 : 0 })} mSv/yr`;
+};
 
 // Which gases in this air COULD form a cloud at all — the data's answer, before any temperature is
 // considered. A gas with no `cloud` block simply is not cloud-forming, and saying so is half the
@@ -250,6 +271,80 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         { label: 'Implied field', value: `${m.estimatedRangeGauss.min}–${m.estimatedRangeGauss.max} G` }
       ],
       notes: m.notes.slice(0, 1)
+    });
+  }
+
+  // 5a. RADIATION — the whole quantity was MISSING from this trace (inbox D5). Fourteen layers
+  //     explained a body and not one of them mentioned the dose a GM actually reads on the card, so
+  //     for a Galilean moon the panel that claims to show the working showed everything EXCEPT the
+  //     term that dominates the answer. Read post-hoc from the committed fields, like every other
+  //     layer here, so it cannot disagree with what is displayed.
+  if (body.roleHint !== 'star' && typeof body.surfaceRadiation === 'number') {
+    const shieldMag = body.radiationShieldingMag ?? 0;
+    const shieldAtmo = body.radiationShieldingAtmo ?? 0;
+    const ph = (body as any).photonRadiation ?? 0;
+    const pa = (body as any).particleRadiation ?? 0;
+    const orbital = (body as any).orbitalRadiation as number | undefined;
+    const ownEdge = (body as any).beltInnerEdgeRadii as number | undefined;
+    const hostBody = ctx.host && ctx.host.kind === 'body' ? (ctx.host as CelestialBody) : null;
+    const hostField = hostBody?.magneticField?.strengthGauss ?? 0;
+    const hostRadiusKm = hostBody?.radiusKm ?? 0;
+    const aAU = body.orbit?.elements.a_AU ?? 0;
+    const rHost = hostRadiusKm > 0 && aAU > 0 ? (aAU * AU_KM) / hostRadiusKm : 0;
+
+    const hostFieldPresent = !!hostBody && hostField >= 0.01 && rHost > 0;
+    const inputs: TraceField[] = [
+      // NOT starlight, despite the field name. `stellarRadiation` is set from components.total in
+      // calculateSurfaceRadiation, and since B17 that total carries the trapped-belt term — Io reads
+      // 26,279 where the sunlight on it is 0.037. Labelling it 'incident starlight' would be the A33
+      // fault exactly: a quantity that is right for its purpose, published under a name that lies.
+      { label: 'Total incident flux (Earth = 1)', value: n(body.stellarRadiation, 3) + (hostFieldPresent ? ' — starlight AND the trapped belt' : '') }
+    ];
+    // The host's trapped belt — the dominant term for a close-in moon of a strong-field giant, and
+    // the one this trace used to omit entirely.
+    if (hostFieldPresent && hostBody) {
+      // Falls back to the model's own constants when no pack is supplied — beltConstants reads
+      // generation_parameters unguarded, and a trace must never be the thing that throws.
+      const edge = beltInnerEdgeRadii(hostBody, (ctx.pack ?? {}) as RulePack);
+      inputs.push({ label: `Inside ${hostBody.name ?? 'host'}'s belt`, value: `${n(rHost, 2)} host radii — belt starts at ${n(edge, 2)}` });
+      inputs.push({ label: 'Host field × spin', value: `${n(hostField, 3, 'G')} · ${n(Math.abs(hostBody.rotation_period_hours ?? 0), 1, 'h')}` });
+    }
+    // A body inside its OWN belt. The inner edge comes from the atmosphere's scale height, and an
+    // airless body has no absorber at all, so its belt reaches the ground.
+    if (typeof ownEdge === 'number') {
+      inputs.push({
+        label: 'Own belt starts at',
+        value: ownEdge <= 1.0001
+          ? '1.00 body radii — airless, so nothing absorbs it before the ground'
+          : `${n(ownEdge, 3)} body radii — 150 scale heights (${n(150 * (body.atmosphere?.scaleHeightKm ?? 0), 0, 'km')}) of absorbing air below it`
+      });
+    }
+    inputs.push({ label: 'Magnetosphere deflects', value: `${pctFine(shieldMag)} of the particle channel` });
+    inputs.push({ label: 'Atmosphere blocks', value: `${pctFine(shieldAtmo)} of what reaches it` });
+
+    const band = radiationHazardBucket(body.surfaceRadiation, ctx.pack);
+    const phrase = lethalDosePhrase(body.surfaceRadiation, ctx.pack);
+    const where = body.roleHint === 'ring' ? 'In the ring plane'
+      : mk.gas > 0.5 ? 'At the 1-bar level' : 'At the surface';
+    const outputs: TraceField[] = [
+      { label: where, value: `${dose(body.surfaceRadiation)} — ${band}` },
+      { label: 'Time to a lethal dose', value: phrase ? phrase.replace('lethal dose in ~', '~') : 'past 50 years — the acute model says nothing here; this is a chronic cancer risk, not radiation sickness' },
+      // ONE unit for the pair, chosen from the larger — the A33 rule. Printing '17 mSv/yr / 36 Sv/day'
+      // side by side is two figures a million-fold apart told apart by a suffix.
+      { label: 'Photon / particle', value: dosePair(ph, pa) }
+    ];
+    if (typeof orbital === 'number' && orbital > body.surfaceRadiation * 1.5) {
+      outputs.push({ label: 'Above the atmosphere', value: `${dose(orbital)} — ${radiationHazardBucket(orbital, ctx.pack)}` });
+    }
+
+    layers.push({
+      id: 'radiation', title: 'Radiation', link: '/physics#radiation',
+      inputs, outputs,
+      notes: [
+        'Two channels, shielded differently. PHOTONS (UV, X-ray) are stopped by air alone; PARTICLES (stellar wind, flares, trapped belts) are deflected by a magnetosphere first and then absorbed by whatever air is left. That is why an airless world with a field and a world with air and no field fail in different ways.',
+        'A TRAPPED BELT is not a light source and does not obey inverse square. Particles caught by the field of a giant and accelerated by its rotation form a population confined near the planet, so the dose falls off EXPONENTIALLY in host radii: Io and Callisto sit 4.4x apart in distance and five orders of magnitude apart in dose, which no power law fits. The belt is also cut off below an INNER EDGE, because a particle whose mirror point lies in dense air is absorbed within one bounce — without that edge the Van Allen belt around Earth would read at ground level and its surface would come out lethal.',
+        'A body with no surface reports TWO figures rather than one, and the difference is the point: Jupiter is a few mSv/yr at its 1-bar reference level and hundreds of Sv/day in the space above it. One number cannot answer both "what does the ground take" and "what does a ship take".'
+      ]
     });
   }
 

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.361-beta - 2nd Aug 2026
+
+* **The Newton explainer shows the radiation working, which it never has.** It had fourteen layers explaining a world and not one of them mentioned the dose -- so for Io, where a trapped belt is the entire story, the panel that promises to show the working showed everything except the answer. It now walks the whole chain: incident flux, whether you are inside your host's belt and how far in, where your own belt starts, what your magnetosphere deflects and your air absorbs, and what reaches the ground -- with the time to a lethal dose beside it.
+* It says out loud the three things about a giant that catch people out: a belt is not a light source and falls off exponentially rather than by inverse square, it stops above the atmosphere or Earth would read lethal at ground level, and a world with no surface honestly needs two figures rather than one.
+
 ## v2.1.360-beta - 2nd Aug 2026
 
 * **The Moon sits in the right plane in the standalone Sol example**, as it already did in the two bundled starmaps. Its 5.1 degree tilt is quoted to the ecliptic, not to Earth's equator, and only the starmaps had been told.
