@@ -4,7 +4,11 @@ import { GIANT_METALLIC_HYDROGEN_MIN_MASS_ME } from './fluidLayers';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
 import { deriveAlbedo, type AlbedoBreakdown } from './albedo';
-import { deriveCloudDecks, type CloudDeck } from './cloudDecks';
+import { deriveCloudDecks, deriveOxidation, type CloudDeck } from './cloudDecks';
+import { deriveFluidLayers } from './fluidLayers';
+import { deriveGeoActivity } from './geoActivity';
+import { makeupFractions } from './makeup';
+import { EARTH_RADIUS_KM } from '../constants';
 import { calculateGreenhouseEffect } from './atmosphere';
 
 const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
@@ -254,10 +258,55 @@ export interface ThermalSolution {
  * term other than the greenhouse (tidal, radiogenic, internal, self-luminous) is read off the body
  * as already-committed, so commit those BEFORE calling this.
  */
+/**
+ * How long this body's visible surface has been exposed, evaluated for a CANDIDATE thermal state
+ * (inbox B5). Returns null for a body with no solid surface, which cannot rust.
+ *
+ * The whole point is that it takes a probe rather than the body: it must answer for the temperature
+ * currently being tried, not for whatever a previous process() left behind. Everything it calls is
+ * a pure function, so nothing here writes to the body.
+ *
+ * The tidal and resonance signals come from tags the earlier passes have already committed, and are
+ * NOT thermal — tidal forcing is orbit and mass. `teqK` is passed through because deriveGeoActivity
+ * takes it, but it drives one branch (the Triton solar-seasonal geyser at teqK < 60) and measurably
+ * moves two bodies out of 366.
+ */
+function surfaceAgeOnProbe(
+    probe: CelestialBody,
+    systemAgeGyr: number,
+    pack?: RulePack | null
+): number | null {
+    const mk = makeupFractions(probe);
+    if (mk.gas > 0.5) return null;
+    if (probe.roleHint !== 'planet' && probe.roleHint !== 'moon') return null;
+    const layers = deriveFluidLayers(probe, pack ?? undefined);
+    const tagKeys = (probe.tags ?? []).map((t) => t.key);
+    return deriveGeoActivity({
+        makeup: mk,
+        massMe: (probe.massKg ?? 0) / EARTH_MASS_KG,
+        radiusRe: (probe.radiusKm ?? 0) / EARTH_RADIUS_KM,
+        ageGyr: systemAgeGyr,
+        hasSurfaceWater: layers.some((l) => l.location === 'surface' && /water/.test(l.liquid)),
+        hasSubsurfaceOcean: layers.some((l) => l.location === 'subsurface'),
+        icyShell: tagKeys.includes('structure/icy-shell'),
+        tidalHotspots: tagKeys.includes('tidal/hotspots') || tagKeys.includes('tidal/volcanism'),
+        tidalLavaFlows: tagKeys.includes('tidal/lava-flows'),
+        resonanceTidal: !!(probe as any).resonanceTidal,
+        surfaceIce: (probe.hydrosphere?.coverage ?? 0) > 0.3,
+        teqK: probe.equilibriumTempK,
+        radiogenicOverrideK: probe.radiogenicHeatK ?? 0
+    }).surfaceAgeGyr;
+}
+
 export function solveThermalState(
     body: CelestialBody,
     allNodes: (CelestialBody | Barycenter)[],
-    pack?: RulePack | null
+    pack?: RulePack | null,
+    // The system's age, for the surface-age evaluation inside the loop (B5). It MUST be the same
+    // figure the processor uses when it commits geology, or the albedo would be computed against a
+    // different surface age than the one the body ends up carrying. Defaulted so the single-body UI
+    // refresh and the existing specs keep their signatures.
+    systemAgeGyr = 4.6
 ): ThermalSolution {
     // One full evaluation of the loop at a given albedo.
     const evaluate = (albedo: number) => {
@@ -282,7 +331,22 @@ export function solveThermalState(
         // THE cloud evaluation — the same one the processor publishes as tags. Nothing here decides
         // for itself whether this world has clouds.
         const decks = deriveCloudDecks(probe, pack);
-        const albedoInfo = deriveAlbedo(probe, equilibriumTempK, decks, pack);
+        // THE RUST EVALUATION (inbox B5), and the reason it is HERE. Oxide dust brightens a surface,
+        // so albedo needs the rust grade; grading it needs the surface age; the surface age needs the
+        // tectonic regime; and the regime turns on whether there is LIQUID water on the surface,
+        // which is this solve's own output. Measured across all 366 bundled bodies, that one input
+        // is the entire coupling — flipping it moves the surface age on 136 bodies — while teqK,
+        // the input the ordering gate was written around, moves TWO.
+        //
+        // Nothing is dragged backwards across the solve to do this. All three derivations are PURE
+        // (they return values; the processor is what assigns them), so they run against the same
+        // shallow probe deriveCloudDecks and deriveAlbedo already use. The processor still COMMITS
+        // geology in its own pass, from the converged temperature, and gets this same answer back —
+        // which is what makes it idempotent rather than one pass behind.
+        const geoAgeGyr = surfaceAgeOnProbe(probe, systemAgeGyr, pack);
+        const oxidation = geoAgeGyr == null ? null
+          : deriveOxidation({ ...probe, geoActivity: { surfaceAgeGyr: geoAgeGyr } } as CelestialBody);
+        const albedoInfo = deriveAlbedo(probe, equilibriumTempK, decks, pack, oxidation);
         return { equilibriumTempK, albedoInfo, greenhouseTempK, surfaceTempK, decks };
     };
 

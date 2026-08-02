@@ -555,7 +555,7 @@ export class SystemProcessor implements ISystemProcessor {
         //     can no longer disagree about what is in this world's sky. A manually-pinned
         //     body.albedo / overrides.albedo short-circuits the albedo half of it.
         const commitThermal = () => {
-            const solved = solveThermalState(body, allNodes, pack);
+            const solved = solveThermalState(body, allNodes, pack, this.systemAgeGyr);
             equilibriumTempK = solved.equilibriumTempK;
             body.equilibriumTempK = equilibriumTempK;
             body.albedoBreakdown = solved.albedoInfo;

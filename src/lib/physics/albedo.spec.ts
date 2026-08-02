@@ -76,7 +76,11 @@ describe('deriveAlbedo — optics only; the decks are handed to it', () => {
       atmosphere: { main: 'N2', pressure_bar: 0.5, composition: { N2: 1 } } as any,
       temperatureK: 700
     }), 600, [], pack);
-    expect(a.surfaceAlbedo).toBeCloseTo(0.15, 2);
+    // Bare rock, which is the pack's `surface_albedo.rock`. It was 0.15 until B5 lowered it to 0.11:
+    // the two anchors that measure bare ground are Mercury at 0.088 and Luna at 0.11, and 0.15 was
+    // too bright for both. The assertion here is still "the ground shows, not a sea" — 0.11 is the
+    // ground and 0.06 would be the ocean.
+    expect(a.surfaceAlbedo).toBeCloseTo(0.11, 2);
   });
 
   // --- Giants -----------------------------------------------------------------------------------

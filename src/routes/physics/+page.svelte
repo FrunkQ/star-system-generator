@@ -123,7 +123,7 @@
         source is the hierarchical path (a moon's distance to a star = its orbit around its planet + the planet's
         orbit around the star).</p>
       <p><code>A</code>, the Bond albedo, is <strong>derived</strong>, not dialled in: a surface reflectivity from
-        the makeup (dark ocean ~0.06, rock ~0.15, bright frost ~0.62) seen through the world's
+        the makeup (dark ocean ~0.06, bare rock ~0.11, metal darker still at ~0.075, bright frost ~0.62) seen through the world's
         <a href="#clouds">cloud decks</a>, each reflecting what its own condensate reflects — water 0.42,
         sulphuric acid 0.76, ammonia 0.51, methane haze 0.28, all rule-pack data you can edit. The decks are
         composited bottom-up, so the top one has the largest say: Jupiter's bright ammonia veil, not the brown
@@ -140,6 +140,34 @@
         the cover is marginal. Against measured Bond albedos: Venus 0.76 (model 0.757), Earth 0.306 (0.308),
         Saturn 0.342 (0.343), Neptune 0.290 (0.288), Jupiter 0.503 (0.490). A manually-pinned albedo still wins,
         but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
+      <p><strong>Bare rock is DARK, and what makes a world bright is what has settled on it.</strong> The three
+        measurements that pin this point in different directions: Mercury reflects 0.088 and Luna 0.11 — darker
+        than a single flat "rock" value used to allow — while Mars reflects 0.25 and Io 0.63, far brighter than
+        their rock could ever be. So the ground is dark (metal darker than rock: a space-weathered iron regolith
+        is about the darkest natural surface there is, which is why Mercury, at 62% metal, is the darkest rocky
+        body in the Solar System), and brightness is added by two <em>deposits</em> the engine already works out
+        for other reasons:</p>
+      <ul>
+        <li><strong>Oxide dust</strong> — the ferric fines that make Mars orange. Graded from the iron fraction,
+          how oxidising the air is, and how long the surface has sat there without being repaved; the same
+          <code>surface/oxidised</code> the world already carries. It is why Mars is bright without any frost:
+          at about 210&nbsp;K its CO₂ is still well above its own 195&nbsp;K freezing point.</li>
+        <li><strong>Volatile frost</strong> — if the atmosphere's dominant gas is below <em>its own</em> freezing
+          point at the surface, it is not really an atmosphere any more, it is lying on the ground. Io's sulphur
+          dioxide freezes at 198&nbsp;K and Io's surface is at about 100, which is the whole of its 0.63; Pluto's
+          and Triton's nitrogen is the same story. Earth's nitrogen never comes close.</li>
+      </ul>
+      <p>Model against measurement, from one set of constants with no per-world special cases: Mercury
+        <strong>0.088</strong> (measured 0.088), Luna <strong>0.110</strong> (0.11), Mars <strong>0.256</strong>
+        (0.25), Io <strong>0.569</strong> (0.63). And because Mars is now correctly darker in equilibrium
+        — 209.8&nbsp;K rather than 216.7 — <strong>its thin water-ice wisps condense again</strong>, which is a
+        cloud deck returning from an albedo change with no cloud code touched at all.</p>
+      <p>The rust term is worked out <em>inside</em> the fixed point, not before it, because it has to be: a
+        surface is repaved quickly where there is liquid water and slowly where there is not, so how rusty a
+        world is depends on its temperature, which depends on how rusty it is. That closes a genuine feedback —
+        colder, water freezes, the lid stops moving, the surface ages, more rust, brighter, colder again, which
+        is the same loop that gives Earth its snowball states — so the solve reports any world where it fails to
+        settle rather than presenting a marginal answer as a firm one.</p>
     </section>
 
     <section id="eccentric-flux">

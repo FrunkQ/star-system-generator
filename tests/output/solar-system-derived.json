@@ -128,7 +128,7 @@
         },
         "main": "Na",
         "pressure_bar": 1e-11,
-        "scaleHeightKm": 33.003841306788686,
+        "scaleHeightKm": 33.7802565719989,
         "molarMassKg": 0.029400000000000003
       },
       "axial_tilt_deg": 0.034,
@@ -147,8 +147,8 @@
       "stellarRadiationMax": 10.84943876737011,
       "surfaceRadiationMin": 2346.046236052519,
       "surfaceRadiationMax": 5401.438481303582,
-      "equilibriumTempMinK": 389.3978994827125,
-      "equilibriumTempMaxK": 479.721530273115,
+      "equilibriumTempMinK": 398.55848387020393,
+      "equilibriumTempMaxK": 491.0069777971033,
       "tidallyLocked": true,
       "magneticField": {
         "strengthGauss": 0.003
@@ -161,52 +161,52 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": true,
-      "equilibriumTempK": 429.8787897112186,
+      "equilibriumTempK": 439.9916869168111,
       "albedoBreakdown": {
-        "albedo": 0.169,
-        "surfaceAlbedo": 0.169,
+        "albedo": 0.088,
+        "surfaceAlbedo": 0.088,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 4.326640157213818e-9,
-      "temperatureK": 429.8787897155452,
+      "temperatureK": 439.9916869211377,
       "temperatureProfile": {
-        "meanK": 430,
-        "totalMinK": 135,
-        "totalMaxK": 654,
+        "meanK": 440,
+        "totalMinK": 138,
+        "totalMaxK": 669,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 335,
-            "highK": 524
+            "lowK": 343,
+            "highK": 537
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 322,
-            "highK": 537
+            "lowK": 330,
+            "highK": 550
           },
           {
             "source": "locked-day",
             "label": "Day side (locked)",
-            "lowK": 430,
-            "highK": 602,
+            "lowK": 440,
+            "highK": 616,
             "note": "Permanent sub-stellar face."
           },
           {
             "source": "locked-night",
             "label": "Night side (locked)",
-            "lowK": 172,
-            "highK": 430,
+            "lowK": 176,
+            "highK": 440,
             "note": "Permanent dark face."
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 135,
-        "max": 654
+        "min": 138,
+        "max": 669
       },
       "hydrosphere": {
         "layers": []
@@ -226,7 +226,7 @@
       },
       "surfaceRadiation": 3483.575566426633,
       "orbitalRadiation": 3481.575566990648,
-      "beltInnerEdgeRadii": 3.0292,
+      "beltInnerEdgeRadii": 3.0769,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -241,7 +241,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.10 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 8.095,
+      "irradiationDose": 8.87,
       "oblateness": 0.000001272841752605334,
       "auroraEmitters": [
         {
@@ -255,11 +255,11 @@
       "volatiles": {
         "retained": [],
         "lambda": {
-          "nitrogen": 35.2,
-          "methane": 20.1,
-          "carbon-dioxide": 55.3,
-          "water": 22.6,
-          "sulfur-dioxide": 80.5
+          "nitrogen": 34.4,
+          "methane": 19.7,
+          "carbon-dioxide": 54,
+          "water": 22.1,
+          "sulfur-dioxide": 78.6
         }
       },
       "apparentColor": {
@@ -293,7 +293,7 @@
           },
           {
             "feature": "SurfaceTemp_K",
-            "value": 429.8787897155452,
+            "value": 439.9916869211377,
             "band": "320 – 1200",
             "fit": 1
           }
@@ -315,7 +315,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 429.8787897155452,
+                "value": 439.9916869211377,
                 "band": "320 – 1200",
                 "fit": 1
               }
@@ -393,10 +393,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "430 K (157 °C)",
+            "value": "440 K (167 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 430,
+              "value": 440,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -611,11 +611,11 @@
       "equilibriumTempK": 230.0096483937865,
       "albedoBreakdown": {
         "albedo": 0.757,
-        "surfaceAlbedo": 0.155,
+        "surfaceAlbedo": 0.178,
         "cloudAlbedo": 0.76,
         "cloudCover": 1,
         "cloudSpecies": "sulfuric-acid",
-        "note": "Sulphuric Acid cloud deck over a mid-tone surface."
+        "note": "Sulphuric Acid cloud deck over a surface under light oxide dust."
       },
       "greenhouseTempK": 523.6099227125275,
       "temperatureK": 753.619571106314,
@@ -1032,7 +1032,7 @@
         },
         "pressure_bar": 1.013,
         "main": "N2",
-        "scaleHeightKm": 8.401107022072377,
+        "scaleHeightKm": 8.41451134574206,
         "molarMassKg": 0.028917575576472936
       },
       "hydrosphere": {
@@ -1080,8 +1080,8 @@
       "stellarRadiationMax": 1.0610364782246675,
       "surfaceRadiationMin": 2.2891884407656002,
       "surfaceRadiationMax": 2.3091786114197395,
-      "equilibriumTempMinK": 252.02238106117372,
-      "equilibriumTempMaxK": 256.26909697349384,
+      "equilibriumTempMinK": 252.4763954775228,
+      "equilibriumTempMaxK": 256.73076178278905,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 9.819973426224687,
       "calculatedRotationPeriod_s": 86162.40000000001,
@@ -1090,20 +1090,20 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 254.12799891926093,
+      "equilibriumTempK": 254.58580657357115,
       "albedoBreakdown": {
-        "albedo": 0.308,
-        "surfaceAlbedo": 0.088,
+        "albedo": 0.303,
+        "surfaceAlbedo": 0.072,
         "cloudAlbedo": 0.42,
         "cloudCover": 0.66,
         "cloudSpecies": "water",
         "note": "Water cloud deck over a dark surface."
       },
       "greenhouseTempK": 32.80114380821948,
-      "temperatureK": 286.92914272748044,
+      "temperatureK": 287.3869503817906,
       "temperatureProfile": {
         "meanK": 287,
-        "totalMinK": 259,
+        "totalMinK": 260,
         "totalMaxK": 315,
         "components": [
           {
@@ -1115,7 +1115,7 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 273,
+            "lowK": 274,
             "highK": 301
           },
           {
@@ -1127,7 +1127,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 259,
+        "min": 260,
         "max": 315
       },
       "magnetism": {
@@ -1144,8 +1144,8 @@
         ]
       },
       "surfaceRadiation": 2.29897477998165,
-      "orbitalRadiation": 657853.9448633195,
-      "beltInnerEdgeRadii": 1.1978,
+      "orbitalRadiation": 657593.4514475134,
+      "beltInnerEdgeRadii": 1.1981,
       "geoActivity": {
         "regime": "plate-tectonics",
         "volcanism": "arc-effusive",
@@ -1188,11 +1188,11 @@
       "volatiles": {
         "retained": [],
         "lambda": {
-          "nitrogen": 414.5,
-          "methane": 236.9,
-          "carbon-dioxide": 651.4,
-          "water": 266.5,
-          "sulfur-dioxide": 947.5
+          "nitrogen": 413.8,
+          "methane": 236.5,
+          "carbon-dioxide": 650.2,
+          "water": 266,
+          "sulfur-dioxide": 945.8
         }
       },
       "apparentColor": {
@@ -1244,7 +1244,7 @@
           },
           {
             "feature": "SurfaceTemp_K",
-            "value": 286.92914272748044,
+            "value": 287.3869503817906,
             "band": "255 – 300",
             "fit": 1
           },
@@ -1284,7 +1284,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 286.92914272748044,
+                "value": 287.3869503817906,
                 "band": "255 – 300",
                 "fit": 1
               },
@@ -1308,7 +1308,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 286.92914272748044,
+                "value": 287.3869503817906,
                 "band": "278 – 300",
                 "fit": 1
               },
@@ -1344,7 +1344,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 286.92914272748044,
+                "value": 287.3869503817906,
                 "band": "250 – 315",
                 "fit": 1
               },
@@ -1480,7 +1480,7 @@
         "tier": "habitability/earth-like"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 174.19724668553943,
+        "minLeoKm": 174.47518580365875,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 35792.2216003442,
         "heoUpperBoundaryKm": 1490025.4381473116,
@@ -1576,8 +1576,8 @@
       "stellarRadiationMax": 1.0558139344043669,
       "surfaceRadiationMin": 495.5813745243718,
       "surfaceRadiationMax": 529.9069672021834,
-      "equilibriumTempMinK": 264.9653335902805,
-      "equilibriumTempMaxK": 269.45653137224366,
+      "equilibriumTempMinK": 268.02902559330516,
+      "equilibriumTempMaxK": 272.57215336377726,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 1.623381040294872,
       "calculatedRotationPeriod_s": 2372492.8380009676,
@@ -1587,44 +1587,44 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 267.19206115251916,
+      "equilibriumTempK": 270.2814999478993,
       "albedoBreakdown": {
-        "albedo": 0.15,
-        "surfaceAlbedo": 0.15,
+        "albedo": 0.11,
+        "surfaceAlbedo": 0.11,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 267.19206115251916,
+      "temperatureK": 270.2814999478993,
       "temperatureProfile": {
-        "meanK": 267,
-        "totalMinK": 54,
-        "totalMaxK": 480,
+        "meanK": 270,
+        "totalMinK": 55,
+        "totalMaxK": 486,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 208,
-            "highK": 326
+            "lowK": 211,
+            "highK": 330
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 225,
-            "highK": 310
+            "lowK": 227,
+            "highK": 313
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 67,
-            "highK": 468
+            "lowK": 68,
+            "highK": 473
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 54,
-        "max": 480
+        "min": 55,
+        "max": 486
       },
       "hydrosphere": {
         "layers": []
@@ -1662,16 +1662,16 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 1.386,
+      "irradiationDose": 1.444,
       "oblateness": 0.000009382947304466435,
       "volatiles": {
         "retained": [],
         "lambda": {
-          "nitrogen": 17.8,
-          "methane": 10.2,
-          "carbon-dioxide": 27.9,
-          "water": 11.4,
-          "sulfur-dioxide": 40.6
+          "nitrogen": 17.6,
+          "methane": 10,
+          "carbon-dioxide": 27.6,
+          "water": 11.3,
+          "sulfur-dioxide": 40.2
         }
       },
       "apparentColor": {
@@ -1804,17 +1804,17 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 3.757094897936277,
+      "habitabilityScore": 5.687994145048869,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
-            "points": 15.1,
+            "points": 17.1,
             "max": 25,
-            "value": "267 K (-6 °C)",
+            "value": "270 K (-3 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 267,
+              "value": 270,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -1875,7 +1875,7 @@
             }
           }
         ],
-        "surfaceScore": 22,
+        "surfaceScore": 24,
         "modifiers": [
           {
             "label": "Geologically inactive (no recycling)",
@@ -1886,7 +1886,7 @@
             "delta": -8
           }
         ],
-        "finalScore": 4,
+        "finalScore": 6,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
@@ -1953,6 +1953,14 @@
           "value": "years"
         },
         {
+          "key": "structure/cloud-deck",
+          "value": "water wisps"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "water virga"
+        },
+        {
           "key": "weather/dust-storms",
           "value": "seasonal"
         },
@@ -1983,7 +1991,7 @@
         },
         "main": "CO2",
         "pressure_bar": 0.006,
-        "scaleHeightKm": 11.589301835043294,
+        "scaleHeightKm": 11.228890880571482,
         "molarMassKg": 0.043007779999999995
       },
       "axial_tilt_deg": 25.19,
@@ -2002,8 +2010,8 @@
       "stellarRadiationMax": 0.5376205158715462,
       "surfaceRadiationMin": 178.29671353189838,
       "surfaceRadiationMax": 258.4312362307212,
-      "equilibriumTempMinK": 207.02224211617067,
-      "equilibriumTempMaxK": 227.3519509068317,
+      "equilibriumTempMinK": 200.4784292430642,
+      "equilibriumTempMaxK": 220.1655316706071,
       "tidallyLocked": false,
       "magneticField": {
         "strengthGauss": 0
@@ -2016,44 +2024,45 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 216.71161795625588,
+      "equilibriumTempK": 209.79097785184237,
       "albedoBreakdown": {
-        "albedo": 0.154,
-        "surfaceAlbedo": 0.154,
-        "cloudAlbedo": 0,
-        "cloudCover": 0,
-        "note": "Cloud-free surface."
+        "albedo": 0.256,
+        "surfaceAlbedo": 0.252,
+        "cloudAlbedo": 0.42,
+        "cloudCover": 0.02,
+        "cloudSpecies": "water",
+        "note": "Water cloud deck over a surface under moderate oxide dust."
       },
       "greenhouseTempK": 5.827087004296242,
-      "temperatureK": 222.5387049605521,
+      "temperatureK": 215.6180648561386,
       "temperatureProfile": {
-        "meanK": 223,
-        "totalMinK": 132,
-        "totalMaxK": 313,
+        "meanK": 216,
+        "totalMinK": 128,
+        "totalMaxK": 303,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 175,
-            "highK": 270
+            "lowK": 170,
+            "highK": 261
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 183,
-            "highK": 262
+            "lowK": 178,
+            "highK": 254
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 157,
-            "highK": 288
+            "lowK": 152,
+            "highK": 279
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 132,
-        "max": 313
+        "min": 128,
+        "max": 303
       },
       "hydrosphere": {
         "layers": []
@@ -2073,7 +2082,7 @@
       },
       "surfaceRadiation": 213.69225217706742,
       "orbitalRadiation": 221.91153366168902,
-      "beltInnerEdgeRadii": 1.5129,
+      "beltInnerEdgeRadii": 1.4969,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2088,7 +2097,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.13 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 0.574,
+      "irradiationDose": 0.52,
       "oblateness": 0.005745063944604033,
       "auroraEmitters": [
         {
@@ -2109,26 +2118,32 @@
       "volatiles": {
         "retained": [],
         "lambda": {
-          "nitrogen": 97.8,
-          "methane": 55.9,
-          "carbon-dioxide": 153.6,
-          "water": 62.8,
-          "sulfur-dioxide": 223.5
+          "nitrogen": 101,
+          "methane": 57.7,
+          "carbon-dioxide": 158.7,
+          "water": 64.9,
+          "sulfur-dioxide": 230.8
         }
       },
       "apparentColor": {
-        "hex": "#9c6444",
+        "hex": "#9e684a",
         "palette": [
           {
             "hex": "#9c6444",
             "role": "surface",
             "weight": 1,
             "label": "oxidised rock surface"
+          },
+          {
+            "hex": "#c3d5e9",
+            "role": "cloud",
+            "weight": 0.036000000000000004,
+            "label": "water clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#9c6444",
+      "apparentColorHex": "#9e684a",
       "classification": {
         "base": "planet/sub-earth",
         "baseScore": 1.3,
@@ -2198,30 +2213,6 @@
                 "fit": 1
               }
             ]
-          },
-          {
-            "class": "planet/desert",
-            "score": 0.88,
-            "bands": [
-              {
-                "feature": "SurfaceTemp_K",
-                "value": 222.5387049605521,
-                "band": "260 – 360",
-                "fit": 0.04
-              },
-              {
-                "feature": "hydrosphere.coverage",
-                "value": 0,
-                "band": "0 – 0.15",
-                "fit": 1
-              },
-              {
-                "feature": "radius_Re",
-                "value": 0.5320200910375137,
-                "band": "0.4 – 1.8",
-                "fit": 1
-              }
-            ]
           }
         ],
         "borderline": true,
@@ -2235,10 +2226,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "223 K (-51 °C)",
+            "value": "216 K (-58 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 223,
+              "value": 216,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -2314,7 +2305,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 180.86735607164184,
+        "minLeoKm": 175.2426361909787,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 16996.90684070823,
         "heoUpperBoundaryKm": 1079042.9061374362,
@@ -2419,8 +2410,8 @@
       "stellarRadiationMax": 0.5375725277508187,
       "surfaceRadiationMin": 186.79320521700714,
       "surfaceRadiationMax": 270.7862638754093,
-      "equilibriumTempMinK": 196.87594614708848,
-      "equilibriumTempMaxK": 216.20858094412566,
+      "equilibriumTempMinK": 198.69971569918994,
+      "equilibriumTempMaxK": 218.211439264534,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.005639953762755102,
       "calculatedRotationPeriod_s": 27572.50317059334,
@@ -2430,51 +2421,51 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 206.09012054039917,
+      "equilibriumTempK": 207.99924602873938,
       "albedoBreakdown": {
-        "albedo": 0.308,
-        "surfaceAlbedo": 0.308,
+        "albedo": 0.282,
+        "surfaceAlbedo": 0.282,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 206.3342426978193,
+      "temperatureK": 208.2433681861595,
       "temperatureProfile": {
-        "meanK": 206,
-        "totalMinK": 145,
-        "totalMaxK": 268,
+        "meanK": 208,
+        "totalMinK": 146,
+        "totalMaxK": 270,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 161,
-            "highK": 252
+            "lowK": 162,
+            "highK": 254
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 178,
-            "highK": 234
+            "lowK": 180,
+            "highK": 236
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 175,
-            "highK": 237
+            "lowK": 177,
+            "highK": 239
           },
           {
             "source": "tidal-hotspot",
             "label": "Tidal hotspots",
-            "lowK": 206,
-            "highK": 243,
+            "lowK": 208,
+            "highK": 245,
             "note": "Localized volcanic vents — far hotter than the average."
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 145,
-        "max": 268
+        "min": 146,
+        "max": 270
       },
       "hydrosphere": {
         "layers": []
@@ -2512,7 +2503,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 0.59,
+      "irradiationDose": 0.606,
       "oblateness": 0.12890205412926253,
       "volatiles": {
         "retained": [],
@@ -2643,10 +2634,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "206 K (-67 °C)",
+            "value": "208 K (-65 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 206,
+              "value": 208,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -2827,8 +2818,8 @@
       "stellarRadiationMax": 0.5374991479078146,
       "surfaceRadiationMin": 186.772685972894,
       "surfaceRadiationMax": 270.7495739539073,
-      "equilibriumTempMinK": 191.07161343936673,
-      "equilibriumTempMaxK": 209.83294402839414,
+      "equilibriumTempMinK": 192.60891844470785,
+      "equilibriumTempMaxK": 211.52119708353817,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.0025523467741935483,
       "calculatedRotationPeriod_s": 108467.99016198053,
@@ -2838,44 +2829,44 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 200.01352688297754,
+      "equilibriumTempK": 201.62277584716608,
       "albedoBreakdown": {
-        "albedo": 0.386,
-        "surfaceAlbedo": 0.386,
+        "albedo": 0.366,
+        "surfaceAlbedo": 0.366,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 200.01352688297754,
+      "temperatureK": 201.62277584716608,
       "temperatureProfile": {
-        "meanK": 200,
-        "totalMinK": 109,
-        "totalMaxK": 291,
+        "meanK": 202,
+        "totalMinK": 110,
+        "totalMaxK": 293,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 156,
-            "highK": 244
+            "lowK": 157,
+            "highK": 246
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 175,
-            "highK": 225
+            "lowK": 176,
+            "highK": 227
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 125,
-            "highK": 275
+            "lowK": 126,
+            "highK": 278
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 109,
-        "max": 291
+        "min": 110,
+        "max": 293
       },
       "hydrosphere": {
         "layers": []
@@ -2913,7 +2904,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 0.541,
+      "irradiationDose": 0.553,
       "oblateness": 0.010188695280187085,
       "volatiles": {
         "retained": [],
@@ -3074,10 +3065,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "200 K (-73 °C)",
+            "value": "202 K (-72 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 200,
+              "value": 202,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -3207,8 +3198,8 @@
       "stellarRadiationMax": 0.1627051768457009,
       "surfaceRadiationMin": 61.456768038189665,
       "surfaceRadiationMax": 81.35258842285046,
-      "equilibriumTempMinK": 156.41402686715054,
-      "equilibriumTempMaxK": 167.77456119362515,
+      "equilibriumTempMinK": 160.2778888462612,
+      "equilibriumTempMaxK": 171.91906000260101,
       "internalHeatK": 0,
       "massKg": 3e+21,
       "orbital_period_days": 1620.2410710761592,
@@ -3216,44 +3207,44 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 161.89530157466643,
+      "equilibriumTempK": 165.89456630098354,
       "albedoBreakdown": {
-        "albedo": 0.171,
-        "surfaceAlbedo": 0.171,
+        "albedo": 0.086,
+        "surfaceAlbedo": 0.086,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 161.89530157466643,
+      "temperatureK": 165.89456630098354,
       "temperatureProfile": {
-        "meanK": 162,
-        "totalMinK": 96,
-        "totalMaxK": 228,
+        "meanK": 166,
+        "totalMinK": 98,
+        "totalMaxK": 234,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 126,
-            "highK": 198
+            "lowK": 129,
+            "highK": 202
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 135,
-            "highK": 189
+            "lowK": 138,
+            "highK": 194
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 113,
-            "highK": 210
+            "lowK": 116,
+            "highK": 216
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 96,
-        "max": 228
+        "min": 98,
+        "max": 234
       },
       "surfaceRadiation": 70.53487638711071,
       "orbitalRadiation": 70.53487638711071,
@@ -3632,8 +3623,8 @@
       "stellarRadiationMax": 262993.54921708803,
       "surfaceRadiationMin": 131496770.88886997,
       "surfaceRadiationMax": 131496774.60854399,
-      "equilibriumTempMinK": 113.77708861120925,
-      "equilibriumTempMaxK": 119.48253326556062,
+      "equilibriumTempMinK": 116.58769949812252,
+      "equilibriumTempMaxK": 122.43408452154061,
       "internalHeatK": 0,
       "massKg": 150000000000000000000,
       "orbital_period_days": 0.40964800718269356,
@@ -3641,44 +3632,44 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 116.56004482844226,
+      "equilibriumTempK": 119.43940248271821,
       "albedoBreakdown": {
-        "albedo": 0.171,
-        "surfaceAlbedo": 0.171,
+        "albedo": 0.086,
+        "surfaceAlbedo": 0.086,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 116.56004482844226,
+      "temperatureK": 119.43940248271821,
       "temperatureProfile": {
-        "meanK": 117,
-        "totalMinK": 71,
-        "totalMaxK": 162,
+        "meanK": 119,
+        "totalMinK": 72,
+        "totalMaxK": 166,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 91,
-            "highK": 142
+            "lowK": 93,
+            "highK": 146
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 102,
-            "highK": 131
+            "lowK": 104,
+            "highK": 135
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 82,
-            "highK": 152
+            "lowK": 84,
+            "highK": 155
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 71,
-        "max": 162
+        "min": 72,
+        "max": 166
       },
       "surfaceRadiation": 131496772.63508841,
       "orbitalRadiation": 131496772.63508841,
@@ -3779,7 +3770,7 @@
         },
         "main": "SO2",
         "pressure_bar": 1e-8,
-        "scaleHeightKm": 9.233200617921803,
+        "scaleHeightKm": 7.846913746178111,
         "molarMassKg": 0.06080000000000001
       },
       "axial_tilt_deg": 0,
@@ -3798,8 +3789,8 @@
       "stellarRadiationMax": 26680.271133467875,
       "surfaceRadiationMin": 12941832.44883301,
       "surfaceRadiationMax": 13340136.085978972,
-      "equilibriumTempMinK": 114.37120708606217,
-      "equilibriumTempMaxK": 120.1047254019107,
+      "equilibriumTempMinK": 96.5973405034848,
+      "equilibriumTempMaxK": 101.43984094699441,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 1.796185339436256,
       "calculatedRotationPeriod_s": 152964.51112278507,
@@ -3812,51 +3803,51 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 117.16787734201642,
+      "equilibriumTempK": 98.9593939946847,
       "albedoBreakdown": {
-        "albedo": 0.153,
-        "surfaceAlbedo": 0.153,
+        "albedo": 0.569,
+        "surfaceAlbedo": 0.569,
         "cloudAlbedo": 0,
         "cloudCover": 0,
-        "note": "Cloud-free surface."
+        "note": "Cloud-free SO2 frost over bare ground."
       },
-      "greenhouseTempK": 0.0000017588038194784582,
-      "temperatureK": 121.27546549359587,
+      "greenhouseTempK": 0.000001059650893179513,
+      "temperatureK": 103.06698149812759,
       "temperatureProfile": {
-        "meanK": 121,
-        "totalMinK": 52,
-        "totalMaxK": 1240,
+        "meanK": 103,
+        "totalMinK": 45,
+        "totalMaxK": 1237,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 95,
-            "highK": 147
+            "lowK": 81,
+            "highK": 125
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 106,
-            "highK": 136
+            "lowK": 90,
+            "highK": 116
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 59,
-            "highK": 184
+            "lowK": 51,
+            "highK": 156
           },
           {
             "source": "tidal-hotspot",
             "label": "Tidal hotspots",
-            "lowK": 121,
-            "highK": 1240,
+            "lowK": 103,
+            "highK": 1237,
             "note": "Localized volcanic vents — far hotter than the average."
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 52,
-        "max": 1240
+        "min": 45,
+        "max": 1237
       },
       "hydrosphere": {
         "layers": []
@@ -3879,7 +3870,7 @@
       },
       "surfaceRadiation": 13139475.018579457,
       "orbitalRadiation": 13139474.47706104,
-      "beltInnerEdgeRadii": 1.7603,
+      "beltInnerEdgeRadii": 1.6462,
       "geoActivity": {
         "regime": "tidal-volcanic",
         "volcanism": "silicate-tidal",
@@ -3910,11 +3901,11 @@
           "sulfur-dioxide"
         ],
         "lambda": {
-          "nitrogen": 47,
-          "methane": 26.9,
-          "carbon-dioxide": 73.9,
-          "water": 30.2,
-          "sulfur-dioxide": 107.5
+          "nitrogen": 55.7,
+          "methane": 31.8,
+          "carbon-dioxide": 87.5,
+          "water": 35.8,
+          "sulfur-dioxide": 127.3
         }
       },
       "apparentColor": {
@@ -4048,10 +4039,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "121 K (-152 °C)",
+            "value": "103 K (-170 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 121,
+              "value": 103,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -5892,8 +5883,8 @@
       "stellarRadiationMax": 174.49011691434552,
       "surfaceRadiationMin": 87243.78820716408,
       "surfaceRadiationMax": 87245.05845717278,
-      "equilibriumTempMinK": 83.60260614598552,
-      "equilibriumTempMaxK": 88.46710925745766,
+      "equilibriumTempMinK": 85.56935719839717,
+      "equilibriumTempMaxK": 90.54829773060284,
       "internalHeatK": 0,
       "massKg": 5e+23,
       "orbital_period_days": 0.39340210282772653,
@@ -5901,44 +5892,44 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 85.9661103740463,
+      "equilibriumTempK": 87.98846285615262,
       "albedoBreakdown": {
-        "albedo": 0.169,
-        "surfaceAlbedo": 0.169,
+        "albedo": 0.088,
+        "surfaceAlbedo": 0.088,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 85.9661103740463,
+      "temperatureK": 87.98846285615262,
       "temperatureProfile": {
-        "meanK": 86,
-        "totalMinK": 52,
-        "totalMaxK": 120,
+        "meanK": 88,
+        "totalMinK": 53,
+        "totalMaxK": 123,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 67,
-            "highK": 105
+            "lowK": 69,
+            "highK": 107
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 75,
-            "highK": 97
+            "lowK": 77,
+            "highK": 99
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 60,
-            "highK": 112
+            "lowK": 62,
+            "highK": 114
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 52,
-        "max": 120
+        "min": 53,
+        "max": 123
       },
       "surfaceRadiation": 87244.37850118992,
       "orbitalRadiation": 87244.37850118992,
@@ -6072,7 +6063,7 @@
         },
         "main": "N2",
         "pressure_bar": 1.45,
-        "scaleHeightKm": 21.791038012338234,
+        "scaleHeightKm": 21.858936006040636,
         "molarMassKg": 0.0274000336
       },
       "axial_tilt_deg": 0,
@@ -6091,8 +6082,8 @@
       "stellarRadiationMax": 0.012528043293330385,
       "surfaceRadiationMin": 2.0001713469135716,
       "surfaceRadiationMax": 2.0002148277639065,
-      "equilibriumTempMinK": 80.48796135320936,
-      "equilibriumTempMaxK": 85.16957063162589,
+      "equilibriumTempMinK": 80.68424071658066,
+      "equilibriumTempMaxK": 85.37726665002573,
       "internalHeatK": 0,
       "magneticField": {
         "strengthGauss": 0
@@ -6117,17 +6108,17 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 82.76262625082185,
+      "equilibriumTempK": 82.96445265216603,
       "albedoBreakdown": {
-        "albedo": 0.285,
-        "surfaceAlbedo": 0.301,
+        "albedo": 0.278,
+        "surfaceAlbedo": 0.274,
         "cloudAlbedo": 0.28,
         "cloudCover": 0.76,
         "cloudSpecies": "methane",
         "note": "Methane cloud deck over a mid-tone surface."
       },
-      "greenhouseTempK": 14.121409521806326,
-      "temperatureK": 96.88403577262818,
+      "greenhouseTempK": 14.221460967998754,
+      "temperatureK": 97.18591362016478,
       "temperatureProfile": {
         "meanK": 97,
         "totalMinK": 78,
@@ -6172,7 +6163,7 @@
       },
       "surfaceRadiation": 2.0001915532963097,
       "orbitalRadiation": 5.585376735085806,
-      "beltInnerEdgeRadii": 2.2695,
+      "beltInnerEdgeRadii": 2.2735,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -6211,11 +6202,11 @@
           "water"
         ],
         "lambda": {
-          "nitrogen": 70.7,
-          "methane": 40.4,
-          "carbon-dioxide": 111.1,
-          "water": 45.4,
-          "sulfur-dioxide": 161.5
+          "nitrogen": 70.5,
+          "methane": 40.3,
+          "carbon-dioxide": 110.8,
+          "water": 45.3,
+          "sulfur-dioxide": 161.1
         }
       },
       "apparentColor": {
@@ -6278,12 +6269,12 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 46.84154035400792,
+      "habitabilityScore": 47.09310522695509,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
-            "points": 13.2,
+            "points": 13.5,
             "max": 25,
             "value": "97 K (-176 °C)",
             "ideal": "−162 °C ±30",
@@ -6364,7 +6355,7 @@
         "tier": "habitability/alien"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 459.6527973386361,
+        "minLeoKm": 461.08501468970127,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 49715.16653476396,
         "heoUpperBoundaryKm": 49715.16653476396,
@@ -6548,7 +6539,7 @@
         "surfaceAlbedo": 0.62,
         "cloudAlbedo": 0,
         "cloudCover": 0,
-        "note": "Cloud-free surface."
+        "note": "Cloud-free H2O frost over bare ground."
       },
       "greenhouseTempK": 2.4862693013985017e-8,
       "temperatureK": 73.72135410139691,
@@ -6959,18 +6950,18 @@
       "internalHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 71.73387579592591,
+      "equilibriumTempK": 71.82271048722752,
       "albedoBreakdown": {
-        "albedo": 0.597,
-        "surfaceAlbedo": 0.597,
+        "albedo": 0.595,
+        "surfaceAlbedo": 0.595,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 71.73387579592591,
-      "equilibriumTempMinK": 69.76191999246143,
-      "equilibriumTempMaxK": 73.82053258193893,
+      "temperatureK": 71.82271048722752,
+      "equilibriumTempMinK": 69.84831262855388,
+      "equilibriumTempMaxK": 73.91195137328228,
       "temperatureProfile": {
         "meanK": 72,
         "totalMinK": 27,
@@ -6992,7 +6983,7 @@
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 31,
-            "highK": 112
+            "highK": 113
           }
         ]
       },
@@ -7391,46 +7382,46 @@
       "internalHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 79.75917635626027,
+      "equilibriumTempK": 80.39883604481513,
       "albedoBreakdown": {
-        "albedo": 0.384,
-        "surfaceAlbedo": 0.384,
+        "albedo": 0.364,
+        "surfaceAlbedo": 0.364,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 79.75917635626027,
-      "equilibriumTempMinK": 77.56670816203976,
-      "equilibriumTempMaxK": 82.07916559320891,
+      "temperatureK": 80.39883604481513,
+      "equilibriumTempMinK": 78.18878450048557,
+      "equilibriumTempMaxK": 82.73743133639664,
       "temperatureProfile": {
         "meanK": 80,
         "totalMinK": 17,
-        "totalMaxK": 143,
+        "totalMaxK": 144,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 62,
-            "highK": 97
+            "lowK": 63,
+            "highK": 98
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
             "lowK": 70,
-            "highK": 90
+            "highK": 91
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 20,
-            "highK": 140
+            "highK": 141
           }
         ]
       },
       "temperatureRangeK": {
         "min": 17,
-        "max": 143
+        "max": 144
       },
       "hydrosphere": {
         "layers": []
@@ -7477,7 +7468,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 0.163,
+      "irradiationDose": 0.164,
       "oblateness": 0.0021345219919025886,
       "volatiles": {
         "retained": [],
@@ -7486,7 +7477,7 @@
           "methane": 1.6,
           "carbon-dioxide": 4.3,
           "water": 1.8,
-          "sulfur-dioxide": 6.3
+          "sulfur-dioxide": 6.2
         }
       },
       "apparentColor": {
@@ -7807,8 +7798,8 @@
       "stellarRadiationMax": 20.121489825735704,
       "surfaceRadiationMin": 8234.048235337465,
       "surfaceRadiationMax": 10062.744912867853,
-      "equilibriumTempMinK": 73.44438327297418,
-      "equilibriumTempMaxK": 77.71776571114988,
+      "equilibriumTempMinK": 73.77596905333446,
+      "equilibriumTempMaxK": 78.0686449049394,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.06371324004842778,
       "calculatedRotationPeriod_s": 81509.61171733285,
@@ -7820,16 +7811,16 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 75.52068188790528,
+      "equilibriumTempK": 75.86164171520846,
       "albedoBreakdown": {
-        "albedo": 0.505,
-        "surfaceAlbedo": 0.505,
+        "albedo": 0.496,
+        "surfaceAlbedo": 0.496,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 79.55685729853637,
+      "temperatureK": 79.89781712583955,
       "temperatureProfile": {
         "meanK": 80,
         "totalMinK": 51,
@@ -7839,7 +7830,7 @@
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 63,
-            "highK": 96
+            "highK": 97
           },
           {
             "source": "seasonal",
@@ -8063,7 +8054,7 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "80 K (-194 °C)",
+            "value": "80 K (-193 °C)",
             "ideal": "10–25 °C",
             "range": {
               "value": 80,
@@ -8243,8 +8234,8 @@
       "stellarRadiationMax": 0.014053535979072747,
       "surfaceRadiationMin": 7.735972653701432,
       "surfaceRadiationMax": 9.026767989536374,
-      "equilibriumTempMinK": 74.73645139558938,
-      "equilibriumTempMaxK": 79.0837751102909,
+      "equilibriumTempMinK": 75.18973733346263,
+      "equilibriumTempMaxK": 79.56342811096228,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.2631323543800272,
       "calculatedRotationPeriod_s": 389843.4949037229,
@@ -8254,20 +8245,20 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 76.84869268124385,
+      "equilibriumTempK": 77.31478962705638,
       "albedoBreakdown": {
-        "albedo": 0.469,
-        "surfaceAlbedo": 0.469,
+        "albedo": 0.456,
+        "surfaceAlbedo": 0.456,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 76.84869268124385,
+      "temperatureK": 77.31478962705638,
       "temperatureProfile": {
         "meanK": 77,
         "totalMinK": 16,
-        "totalMaxK": 138,
+        "totalMaxK": 139,
         "components": [
           {
             "source": "latitude",
@@ -8285,13 +8276,13 @@
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 19,
-            "highK": 134
+            "highK": 135
           }
         ]
       },
       "temperatureRangeK": {
         "min": 16,
-        "max": 138
+        "max": 139
       },
       "hydrosphere": {
         "layers": []
@@ -8338,7 +8329,7 @@
           "methane": 2.5,
           "carbon-dioxide": 6.9,
           "water": 2.8,
-          "sulfur-dioxide": 10.1
+          "sulfur-dioxide": 10
         }
       },
       "apparentColor": {
@@ -8634,8 +8625,8 @@
       "stellarRadiationMax": 0.012486057736797593,
       "surfaceRadiationMin": 6.980373425436709,
       "surfaceRadiationMax": 8.243028868398797,
-      "equilibriumTempMinK": 72.10586742863183,
-      "equilibriumTempMaxK": 76.2963856372624,
+      "equilibriumTempMinK": 72.37745742379697,
+      "equilibriumTempMaxK": 76.58375940787616,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.22268687895657055,
       "calculatedRotationPeriod_s": 6853962.629565984,
@@ -8645,31 +8636,31 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 74.14197330317803,
+      "equilibriumTempK": 74.42123238276507,
       "albedoBreakdown": {
-        "albedo": 0.538,
-        "surfaceAlbedo": 0.538,
+        "albedo": 0.531,
+        "surfaceAlbedo": 0.531,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 74.14197330317803,
+      "temperatureK": 74.42123238276507,
       "temperatureProfile": {
         "meanK": 74,
         "totalMinK": 15,
-        "totalMaxK": 133,
+        "totalMaxK": 134,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 58,
-            "highK": 90
+            "highK": 91
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 63,
+            "lowK": 64,
             "highK": 85
           },
           {
@@ -8682,7 +8673,7 @@
       },
       "temperatureRangeK": {
         "min": 15,
-        "max": 133
+        "max": 134
       },
       "hydrosphere": {
         "layers": []
@@ -9298,8 +9289,8 @@
       "stellarRadiationMax": 15.687152511737418,
       "surfaceRadiationMin": 7843.3175120051865,
       "surfaceRadiationMax": 7843.576255868709,
-      "equilibriumTempMinK": 59.28448110262566,
-      "equilibriumTempMaxK": 62.10091804480925,
+      "equilibriumTempMinK": 60.74897285615808,
+      "equilibriumTempMaxK": 63.63498363283357,
       "internalHeatK": 0,
       "massKg": 400000000000000000000,
       "orbital_period_days": 0.5357248044609155,
@@ -9307,44 +9298,44 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 60.66002987010062,
+      "equilibriumTempK": 62.15850150823491,
       "albedoBreakdown": {
-        "albedo": 0.171,
-        "surfaceAlbedo": 0.171,
+        "albedo": 0.086,
+        "surfaceAlbedo": 0.086,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 60.66002987010062,
+      "temperatureK": 62.15850150823491,
       "temperatureProfile": {
-        "meanK": 61,
-        "totalMinK": 37,
-        "totalMaxK": 85,
+        "meanK": 62,
+        "totalMinK": 38,
+        "totalMaxK": 87,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 47,
-            "highK": 74
+            "lowK": 48,
+            "highK": 76
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 53,
-            "highK": 68
+            "lowK": 54,
+            "highK": 70
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 42,
-            "highK": 79
+            "lowK": 44,
+            "highK": 81
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 37,
-        "max": 85
+        "min": 38,
+        "max": 87
       },
       "surfaceRadiation": 7843.43938603584,
       "orbitalRadiation": 7843.43938603584,
@@ -9436,8 +9427,8 @@
       "stellarRadiationMax": 0.00305332375511211,
       "surfaceRadiationMin": 3.2680164968629626,
       "surfaceRadiationMax": 3.526661877556055,
-      "equilibriumTempMinK": 56.017820642027374,
-      "equilibriumTempMaxK": 58.678729224214266,
+      "equilibriumTempMinK": 56.51952284032839,
+      "equilibriumTempMaxK": 59.20426283312463,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.3650828309318193,
       "calculatedRotationPeriod_s": 749755.6202559684,
@@ -9447,26 +9438,26 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 57.317413140429025,
+      "equilibriumTempK": 57.830754642185106,
       "albedoBreakdown": {
-        "albedo": 0.339,
-        "surfaceAlbedo": 0.339,
+        "albedo": 0.315,
+        "surfaceAlbedo": 0.315,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 57.317413140429025,
+      "temperatureK": 57.830754642185106,
       "temperatureProfile": {
-        "meanK": 57,
+        "meanK": 58,
         "totalMinK": 12,
-        "totalMaxK": 103,
+        "totalMaxK": 104,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 45,
-            "highK": 70
+            "highK": 71
           },
           {
             "source": "seasonal",
@@ -9478,13 +9469,13 @@
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 14,
-            "highK": 100
+            "highK": 101
           }
         ]
       },
       "temperatureRangeK": {
         "min": 12,
-        "max": 103
+        "max": 104
       },
       "hydrosphere": {
         "layers": []
@@ -9527,11 +9518,11 @@
       "volatiles": {
         "retained": [],
         "lambda": {
-          "nitrogen": 8.5,
+          "nitrogen": 8.4,
           "methane": 4.8,
-          "carbon-dioxide": 13.3,
+          "carbon-dioxide": 13.2,
           "water": 5.4,
-          "sulfur-dioxide": 19.3
+          "sulfur-dioxide": 19.2
         }
       },
       "apparentColor": {
@@ -9653,10 +9644,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "57 K (-216 °C)",
+            "value": "58 K (-215 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 57,
+              "value": 58,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -9830,8 +9821,8 @@
       "stellarRadiationMax": 0.0030529942867841267,
       "surfaceRadiationMin": 3.2678911903677834,
       "surfaceRadiationMax": 3.5264971433920635,
-      "equilibriumTempMinK": 55.8461741723628,
-      "equilibriumTempMaxK": 58.498796227170914,
+      "equilibriumTempMinK": 56.352384599558576,
+      "equilibriumTempMaxK": 59.029051004108695,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.3453832194561757,
       "calculatedRotationPeriod_s": 1163260.970636789,
@@ -9841,20 +9832,20 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 57.141721023777,
+      "equilibriumTempK": 57.65967476794705,
       "albedoBreakdown": {
-        "albedo": 0.347,
-        "surfaceAlbedo": 0.347,
+        "albedo": 0.323,
+        "surfaceAlbedo": 0.323,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 57.141721023777,
+      "temperatureK": 57.65967476794705,
       "temperatureProfile": {
-        "meanK": 57,
+        "meanK": 58,
         "totalMinK": 12,
-        "totalMaxK": 102,
+        "totalMaxK": 103,
         "components": [
           {
             "source": "latitude",
@@ -9866,19 +9857,19 @@
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
             "lowK": 50,
-            "highK": 64
+            "highK": 65
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 14,
-            "highK": 100
+            "highK": 101
           }
         ]
       },
       "temperatureRangeK": {
         "min": 12,
-        "max": 102
+        "max": 103
       },
       "hydrosphere": {
         "layers": []
@@ -9923,9 +9914,9 @@
         "lambda": {
           "nitrogen": 7.7,
           "methane": 4.4,
-          "carbon-dioxide": 12.2,
-          "water": 5,
-          "sulfur-dioxide": 17.7
+          "carbon-dioxide": 12.1,
+          "water": 4.9,
+          "sulfur-dioxide": 17.6
         }
       },
       "apparentColor": {
@@ -10047,10 +10038,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "57 K (-216 °C)",
+            "value": "58 K (-215 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 57,
+              "value": 58,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -10228,8 +10219,8 @@
       "stellarRadiationMax": 0.007940472994449178,
       "surfaceRadiationMin": 5.638756808361764,
       "surfaceRadiationMax": 5.9702364972245885,
-      "equilibriumTempMinK": 55.67798345862838,
-      "equilibriumTempMaxK": 58.32297558310345,
+      "equilibriumTempMinK": 56.146802339928485,
+      "equilibriumTempMaxK": 58.81406578552215,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.25691433360086513,
       "calculatedRotationPeriod_s": 216165.22432460703,
@@ -10239,44 +10230,44 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 56.96979976867991,
+      "equilibriumTempK": 57.44949598137212,
       "albedoBreakdown": {
-        "albedo": 0.355,
-        "surfaceAlbedo": 0.355,
+        "albedo": 0.333,
+        "surfaceAlbedo": 0.333,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 56.96979976867991,
+      "temperatureK": 57.44949598137212,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 12,
-        "totalMaxK": 102,
+        "totalMaxK": 103,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 44,
+            "lowK": 45,
             "highK": 70
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
             "lowK": 50,
-            "highK": 64
+            "highK": 65
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 14,
-            "highK": 100
+            "highK": 101
           }
         ]
       },
       "temperatureRangeK": {
         "min": 12,
-        "max": 102
+        "max": 103
       },
       "hydrosphere": {
         "layers": []
@@ -10910,8 +10901,8 @@
       "stellarRadiationMax": 52.76135495200808,
       "surfaceRadiationMin": 26380.65189736233,
       "surfaceRadiationMax": 26380.67747600404,
-      "equilibriumTempMinK": 48.17831291627537,
-      "equilibriumTempMaxK": 48.725832444945304,
+      "equilibriumTempMinK": 49.368451391854684,
+      "equilibriumTempMaxK": 49.92949617738311,
       "internalHeatK": 0,
       "massKg": 200000000000000000000,
       "orbital_period_days": 0.33380794636185507,
@@ -10919,44 +10910,44 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 48.45052591890719,
+      "equilibriumTempK": 49.647388813594915,
       "albedoBreakdown": {
-        "albedo": 0.171,
-        "surfaceAlbedo": 0.171,
+        "albedo": 0.086,
+        "surfaceAlbedo": 0.086,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 48.45052591890719,
+      "temperatureK": 49.647388813594915,
       "temperatureProfile": {
-        "meanK": 48,
-        "totalMinK": 29,
-        "totalMaxK": 67,
+        "meanK": 50,
+        "totalMinK": 30,
+        "totalMaxK": 69,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 38,
-            "highK": 59
+            "lowK": 39,
+            "highK": 61
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 42,
-            "highK": 55
+            "lowK": 43,
+            "highK": 56
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 34,
-            "highK": 63
+            "lowK": 35,
+            "highK": 65
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 29,
-        "max": 67
+        "min": 30,
+        "max": 69
       },
       "surfaceRadiation": 26380.66450603959,
       "orbitalRadiation": 26380.66450603959,
@@ -11134,7 +11125,7 @@
         "cloudAlbedo": 0.28,
         "cloudCover": 0.01,
         "cloudSpecies": "methane",
-        "note": "Methane cloud deck over a bright surface."
+        "note": "Methane cloud deck over a surface under N2 frost."
       },
       "greenhouseTempK": 0.000020408335639210383,
       "temperatureK": 39.89116902256783,
@@ -11482,8 +11473,8 @@
       "stellarRadiationMax": 0.0007915708544278877,
       "surfaceRadiationMin": 0.2649472694572682,
       "surfaceRadiationMax": 0.3957854272139439,
-      "equilibriumTempMinK": 40.07957703588079,
-      "equilibriumTempMaxK": 44.30963959472041,
+      "equilibriumTempMinK": 41.069654185287014,
+      "equilibriumTempMaxK": 45.40421106741544,
       "internalHeatK": 0,
       "massKg": 1e+22,
       "orbital_period_days": 92389.78948522548,
@@ -11491,44 +11482,44 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 42.0886574693289,
+      "equilibriumTempK": 43.128364499477016,
       "albedoBreakdown": {
-        "albedo": 0.171,
-        "surfaceAlbedo": 0.171,
+        "albedo": 0.086,
+        "surfaceAlbedo": 0.086,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 42.0886574693289,
+      "temperatureK": 43.128364499477016,
       "temperatureProfile": {
-        "meanK": 42,
+        "meanK": 43,
         "totalMinK": 25,
-        "totalMaxK": 60,
+        "totalMaxK": 61,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 33,
-            "highK": 51
+            "lowK": 34,
+            "highK": 53
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 34,
-            "highK": 50
+            "lowK": 35,
+            "highK": 51
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 29,
-            "highK": 55
+            "lowK": 30,
+            "highK": 56
           }
         ]
       },
       "temperatureRangeK": {
         "min": 25,
-        "max": 60
+        "max": 61
       },
       "surfaceRadiation": 0.3222012500736142,
       "orbitalRadiation": 0.3222012500736142,
@@ -11606,14 +11597,6 @@
           "value": "background"
         },
         {
-          "key": "structure/cloud-deck",
-          "value": "methane wisps"
-        },
-        {
-          "key": "weather/precipitation",
-          "value": "methane virga"
-        },
-        {
           "key": "volatiles/ices",
           "value": "carbon-dioxide"
         },
@@ -11666,7 +11649,7 @@
         },
         "main": "N2",
         "pressure_bar": 0.00001,
-        "scaleHeightKm": 19.797463827294333,
+        "scaleHeightKm": 17.44468934872547,
         "molarMassKg": 0.02788
       },
       "axial_tilt_deg": 119.5,
@@ -11685,8 +11668,8 @@
       "stellarRadiationMax": 0.0011663503952202667,
       "surfaceRadiationMin": 2.2110052445960107,
       "surfaceRadiationMax": 2.5831333387967796,
-      "equilibriumTempMinK": 36.30824401058234,
-      "equilibriumTempMaxK": 46.813800590628404,
+      "equilibriumTempMinK": 31.962906541931044,
+      "equilibriumTempMaxK": 41.211167709315305,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.615882615041098,
       "calculatedRotationPeriod_s": 545701.3712524395,
@@ -11698,45 +11681,44 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 40.88515394546836,
+      "equilibriumTempK": 36.02626506884294,
       "albedoBreakdown": {
-        "albedo": 0.299,
-        "surfaceAlbedo": 0.299,
-        "cloudAlbedo": 0.28,
-        "cloudCover": 0.01,
-        "cloudSpecies": "methane",
-        "note": "Methane cloud deck over a mid-tone surface."
+        "albedo": 0.579,
+        "surfaceAlbedo": 0.579,
+        "cloudAlbedo": 0,
+        "cloudCover": 0,
+        "note": "Cloud-free N2 frost over bare ground."
       },
       "greenhouseTempK": 0.00005526266059632093,
-      "temperatureK": 40.885209208128956,
+      "temperatureK": 36.026320331503534,
       "temperatureProfile": {
-        "meanK": 41,
-        "totalMinK": 7,
-        "totalMaxK": 75,
+        "meanK": 36,
+        "totalMinK": 6,
+        "totalMaxK": 66,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 32,
-            "highK": 50
+            "lowK": 28,
+            "highK": 44
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 30,
-            "highK": 52
+            "lowK": 26,
+            "highK": 46
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 10,
-            "highK": 72
+            "lowK": 9,
+            "highK": 63
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 7,
-        "max": 75
+        "min": 6,
+        "max": 66
       },
       "hydrosphere": {
         "layers": []
@@ -11759,7 +11741,7 @@
       },
       "surfaceRadiation": 2.339746346658621,
       "orbitalRadiation": 0.3397707345266541,
-      "beltInnerEdgeRadii": 3.499,
+      "beltInnerEdgeRadii": 3.2021,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -11793,32 +11775,26 @@
           "methane"
         ],
         "lambda": {
-          "nitrogen": 30.1,
-          "methane": 17.2,
-          "carbon-dioxide": 47.4,
-          "water": 19.4,
-          "sulfur-dioxide": 68.9
+          "nitrogen": 34.2,
+          "methane": 19.5,
+          "carbon-dioxide": 53.8,
+          "water": 22,
+          "sulfur-dioxide": 78.2
         }
       },
       "apparentColor": {
-        "hex": "#d7ebfe",
+        "hex": "#d8ecff",
         "palette": [
           {
             "hex": "#d8ecff",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
-          },
-          {
-            "hex": "#c3d1df",
-            "role": "cloud",
-            "weight": 0.027999999999999997,
-            "label": "methane clouds"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d7ebfe",
+      "apparentColorHex": "#d8ecff",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -11913,10 +11889,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "41 K (-232 °C)",
+            "value": "36 K (-237 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 41,
+              "value": 36,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -11992,7 +11968,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 182.3312922595616,
+        "minLeoKm": 160.66263738462024,
         "leoMoeBoundaryKm": 215.37516817319738,
         "meoHeoBoundaryKm": 215.37516817319738,
         "heoUpperBoundaryKm": 215.37516817319738,
@@ -12111,8 +12087,8 @@
       "stellarRadiationMax": 0.0011663443754671558,
       "surfaceRadiationMin": 2.211019301980259,
       "surfaceRadiationMax": 2.583172187733578,
-      "equilibriumTempMinK": 35.89995310595901,
-      "equilibriumTempMaxK": 46.28737334213813,
+      "equilibriumTempMinK": 36.230254250012614,
+      "equilibriumTempMaxK": 46.713244995090434,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.28715577993442903,
       "calculatedRotationPeriod_s": 545701.3712524395,
@@ -12124,31 +12100,31 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 40.439825009162014,
+      "equilibriumTempK": 40.811895703138404,
       "albedoBreakdown": {
-        "albedo": 0.33,
-        "surfaceAlbedo": 0.33,
+        "albedo": 0.305,
+        "surfaceAlbedo": 0.305,
         "cloudAlbedo": 0,
         "cloudCover": 0,
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 40.439825009162014,
+      "temperatureK": 40.811895703138404,
       "temperatureProfile": {
-        "meanK": 40,
+        "meanK": 41,
         "totalMinK": 7,
-        "totalMaxK": 74,
+        "totalMaxK": 75,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 32,
-            "highK": 49
+            "highK": 50
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 29,
+            "lowK": 30,
             "highK": 52
           },
           {
@@ -12161,7 +12137,7 @@
       },
       "temperatureRangeK": {
         "min": 7,
-        "max": 74
+        "max": 75
       },
       "hydrosphere": {
         "layers": []
@@ -12206,9 +12182,9 @@
         "lambda": {
           "nitrogen": 7.2,
           "methane": 4.1,
-          "carbon-dioxide": 11.4,
-          "water": 4.7,
-          "sulfur-dioxide": 16.6
+          "carbon-dioxide": 11.3,
+          "water": 4.6,
+          "sulfur-dioxide": 16.4
         }
       },
       "apparentColor": {
@@ -12330,10 +12306,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "40 K (-233 °C)",
+            "value": "41 K (-232 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 40,
+              "value": 41,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,

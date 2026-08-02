@@ -120,6 +120,17 @@ envelope with `earth-like` — so auto‑assigning is guessing. They stay in the
 | `magnetic/*` | dynamo / induced / tenuous / unshielded | processor (**interior, pass 2b**) |
 | `geology/*` | tectonic + volcanic regime | processor (classification) |
 | `surface/*` | `surface/age`, `surface/irradiation` (space weathering), `surface/oxidised` | processor (classification) |
+
+**`surface/oxidised` also feeds the ALBEDO, and that makes it load-bearing rather than flavour.**
+Ferric dust is what makes Mars bright — 0.25 measured against 0.105 for its bare rock — so the rust
+grade sets how much of the ground is covered by bright oxide fines. Two consequences worth knowing
+before touching either end. First, it is graded and read *inside* the thermal solve, not after it: a
+surface is repaved quickly where there is liquid water and slowly where there is not, so the rust
+depends on the temperature and the temperature depends on the rust. Second, that is a real feedback
+(colder → water freezes → the lid stops moving → the surface ages → more rust → brighter → colder),
+so the solve reports any world where it does not settle instead of presenting a marginal answer as a
+firm one. A world whose dominant atmospheric gas is below **its own** freezing point brightens the
+same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Triton's nitrogen.
 | `structure/*` | icy shell, subsurface ocean, cloud decks | processor (classification) |
 | `volatiles/*` | which ices survive on the surface | processor (classification) |
 | `weather/*` | lightning, dust storms, monsoon, precipitation | processor (classification) |
