@@ -114,11 +114,11 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       : c.bands.map((b) => ({ label: b.feature, value: `${b.value} ∈ [${b.band}] · fit ${b.fit}` }));
     const outputs: TraceField[] = [
       { label: 'Type', value: c.base.replace('planet/', '').replace(/-/g, ' ') },
-      { label: 'Score (Σ band fits × weight)', value: n(c.baseScore, 2) }
+      { label: 'Score (mean fit × specificity × weight)', value: n(c.baseScore, 2) }
     ];
     if (c.modifiers.length) outputs.push({ label: 'Modifiers', value: c.modifiers.map((m) => m.class.replace('planet/', '')).join(', ') });
     const notes: string[] = [];
-    if (c.runnerUp) notes.push(`Beat the runner-up ${c.runnerUp.class.replace('planet/', '')} (${c.runnerUp.score}) by matching more defining bands — a type's score is the sum of its band fits, so more-specific types win.`);
+    if (c.runnerUp) notes.push(`Beat the runner-up ${c.runnerUp.class.replace('planet/', '')} (${c.runnerUp.score}) — a type scores its MEAN band fit times a mild bonus for how many bands it defines, so a specific type wins when it fits cleanly, but padding a claim with barely-true bands no longer helps it.`);
     else if (!c.fallback) notes.push('The only type whose defining bands this body fell within.');
     layers.push({ id: 'classification', title: 'Classification — why this type', link: '/physics#classification', inputs, outputs, notes });
   }

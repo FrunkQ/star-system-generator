@@ -35,6 +35,15 @@ export function bandFit(value: number | string | undefined, band: FingerprintBan
 }
 
 function fingerprintScore(features: Record<string, number | string>, fp: Fingerprint): number {
+  // GATES first, and they are scored differently on purpose (see Fingerprint.gate). A gate is a
+  // precondition — "does this body have a surface at all" — not a defining trait, so failing one
+  // rules the type out entirely while passing one earns nothing. Expressing a gate as a match band
+  // instead would make it always-true for every survivor, and an always-true band pulls a poor
+  // defining band UP by averaging: fit 0.11 gains 37%, fit 1.0 gains 8%. That inverts the whole
+  // point of the scoring redesign in the header, which was to stop weak bands padding a score.
+  for (const [feat, band] of Object.entries(fp.gate ?? {})) {
+    if (bandFit(features[feat], band) <= 0) return 0;
+  }
   let sum = 0;
   let n = 0;
   for (const [feat, band] of Object.entries(fp.match)) {

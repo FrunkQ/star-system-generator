@@ -58,12 +58,24 @@ set) is described by a **fingerprint**: the parameter bands that DEFINE it. See
 - A body's fit to a band is `1` inside, decaying over a **relative** soft edge (15% of the
   boundary — never an absolute band‑width margin, or a tiny moon would half‑match a giant), `0`
   beyond. Fully outside any band → that type is **disqualified**.
-- Type score = **sum of band fits** → more‑specific types (more matched bands) outrank generic
-  ones automatically. The best **base** archetype wins (mutually exclusive); **modifiers**
-  (`ringed`, `ultra-short-period`, `toroidal`, `ellipsoid`, `disrupted`) stack.
-- `eyeball` (and `hot-eyeball` / `cold-eyeball`) are **base** types, gated on tidal-lock to the
+- Type score = **mean band fit × (1 + 0.1 × band count) × weight**. Among clean matches more
+  matched bands still wins (specific beats generic), but a band‑rich catch‑all whose extra bands
+  are barely‑true edge slivers can no longer out‑score a perfect match on fewer bands. (It used to
+  be the *sum* of band fits, which let padding win; changed with B15.) The best **base** archetype
+  wins (mutually exclusive); **modifiers** (`ringed`, `ultra-short-period`, `toroidal`,
+  `ellipsoid`, `disrupted`) stack.
+- A fingerprint may also carry a **`gate`** block: preconditions that must hold or the type scores
+  0, but which contribute **nothing** — no fit, no band count. Use `gate` for eligibility ("does
+  this body have a surface at all") and `match` for the traits that define the type. **The two are
+  not interchangeable.** A gate written as a match band is always‑true for every body that gets
+  past it, and averaging an always‑1 band in *raises* a poor defining band: fit 0.11 gains 37%,
+  fit 1.0 gains only 8%. It rewards the worst matches most, which is the opposite of what the
+  scoring above is for.
+- `eyeball` (and `hot-eyeball` / `cold-eyeball`) are **base** types, matched on tidal-lock to the
   **star** (`starTidallyLocked`) — a moon locked to its planet still turns relative to its star, so it
-  is not an eyeball.
+  is not an eyeball — and **gated on `makeup.gas` ≤ 0.5**. The eyeball notes are all about ground
+  ("molten/dry dayside", "icy except the substellar point", "temperate oasis"), so a body with no
+  surface cannot have one; the same test the geology and habitability models use (B18, B25).
 - `gas-giant` is the explicit fallback (`weight 0.9`) so specific giant types win when they fit;
   it only fills the temperature gaps between the cloud‑type giants.
 

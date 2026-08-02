@@ -14,7 +14,12 @@ function loadFingerprints(): Fingerprint[] {
 
 function prototype(fp: Fingerprint): Record<string, number | string> {
   const f: Record<string, number | string> = { orbitsStar: 1, parentId: 'star-x' };
-  for (const [feat, band] of Object.entries(fp.match)) {
+  // GATES as well as match bands. A gate is a precondition, so a type's own prototype must satisfy
+  // it or the type scores 0 against itself and this audit reports it as shadowed by whatever it
+  // was gated away from — which is what happened the moment the eyeballs gained their surface gate
+  // (B25). The prototype is "the most typical body of this type", and being eligible at all is
+  // part of being typical.
+  for (const [feat, band] of Object.entries({ ...(fp.gate ?? {}), ...fp.match })) {
     if (typeof band === 'string') f[feat] = band;
     else if (Array.isArray(band) && typeof band[0] === 'string') f[feat] = band[0] as string;
     else { const [lo, hi] = band as [number, number]; f[feat] = (lo + hi) / 2; }

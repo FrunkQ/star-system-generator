@@ -150,8 +150,12 @@ describe('eyeball classes require star-lock, not planet-lock (E2)', () => {
 
   // A cold, tidally-locked terrestrial: icy except the substellar point. Airless, so its surface
   // sits at its equilibrium temperature.
+  // `makeup.gas` is stated, not incidental: the eyeball fingerprints GATE on having a solid
+  // surface (B25), and a gate treats a missing feature as a failure exactly as a match band does.
+  // A rocky eyeball has no envelope, so 0 is the honest value — and saying it here is the point,
+  // because the fixture now has to declare that this body has ground to have a dayside on.
   const coldEyeball = {
-    tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1,
+    tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1, 'makeup.gas': 0,
     Teq_K: 200, SurfaceTemp_K: 200, radius_Re: 0.9, density: 4, mass_Me: 0.8
   };
 
@@ -187,5 +191,55 @@ describe('eyeball classes require star-lock, not planet-lock (E2)', () => {
     expect(classifyByFingerprint(coldEyeball, realFps, 4)[0]).toBe('planet/cold-eyeball');
     const hot = { ...coldEyeball, Teq_K: 700, SurfaceTemp_K: 700 };
     expect(classifyByFingerprint(hot, realFps, 4)[0]).toBe('planet/hot-eyeball');
+  });
+});
+
+// B25 — an eyeball is a statement about GROUND: "molten/dry dayside", "icy except the substellar
+// point", "temperate oasis". A tidally locked gas giant has no ground, and used to match anyway
+// because the fingerprints keyed on lock plus a temperature band and nothing else. Fifteen bundled
+// bodies were affected, including three in the Testion example whose own names are "hot neptune",
+// "puffy" and "alkali metal clouds gas giant".
+describe('an eyeball needs a surface to have a dayside on (B25)', () => {
+  const realFps = JSON.parse(
+    fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')
+  ).classifier.fingerprints as Fingerprint[];
+
+  // GJ 876 b's real numbers: star-locked, cold, and 85% gas by mass.
+  const lockedGiant = {
+    tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1, 'makeup.gas': 0.85,
+    Teq_K: 174, SurfaceTemp_K: 174, radius_Re: 12, density: 1.2, mass_Me: 700
+  };
+
+  it('a star-locked GAS GIANT is not a cold eyeball', () => {
+    const cls = classifyByFingerprint(lockedGiant, realFps, 4);
+    expect(cls).not.toContain('planet/cold-eyeball');
+    expect(cls).not.toContain('planet/eyeball');
+    expect(cls).not.toContain('planet/hot-eyeball');
+  });
+
+  it('nor a hot one, however hot it gets', () => {
+    const cls = classifyByFingerprint({ ...lockedGiant, Teq_K: 1000, SurfaceTemp_K: 1000 }, realFps, 4);
+    expect(cls).not.toContain('planet/hot-eyeball');
+  });
+
+  it('the same body under the gas threshold still classifies as an eyeball', () => {
+    // The gate must be the thing doing the work — if a rocky body at the same temperature also
+    // failed, this test would pass for the wrong reason and the gate could be excluding everything.
+    const rocky = { ...lockedGiant, 'makeup.gas': 0.2, radius_Re: 0.9, density: 4, mass_Me: 0.8 };
+    expect(classifyByFingerprint(rocky, realFps, 4)[0]).toBe('planet/cold-eyeball');
+  });
+
+  // The reason the surface test is a `gate` and not another `match` band. An always-true band is
+  // averaged in with the defining ones, which drags a POOR fit upward — fit 0.11 gains 37%, a
+  // perfect fit only 8% — so it rewards the worst matches most. As a match band this turned six
+  // temperate rocky worlds at 278-303 K into "cold eyeballs" ("icy except the substellar point").
+  it('does not inflate a body whose temperature barely misses the band', () => {
+    // 289 K against cold-eyeball's 120-255: a 34 K miss, fit ~0.11. It must not win.
+    const temperate = {
+      tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1, 'makeup.gas': 0,
+      Teq_K: 289, SurfaceTemp_K: 289, radius_Re: 1.1, density: 5.5, mass_Me: 1.4
+    };
+    const cls = classifyByFingerprint(temperate, realFps, 4);
+    expect(cls).not.toContain('planet/cold-eyeball');
   });
 });

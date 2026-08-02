@@ -1892,7 +1892,13 @@
             1
           ]
         },
-        "weight": 1.3
+        "weight": 1.3,
+        "gate": {
+          "makeup.gas": [
+            0,
+            0.5
+          ]
+        }
       },
       {
         "class": "planet/hot-eyeball",
@@ -1908,7 +1914,13 @@
             1200
           ]
         },
-        "weight": 1.3
+        "weight": 1.3,
+        "gate": {
+          "makeup.gas": [
+            0,
+            0.5
+          ]
+        }
       },
       {
         "class": "planet/cold-eyeball",
@@ -1924,7 +1936,13 @@
             255
           ]
         },
-        "weight": 1.5
+        "weight": 1.5,
+        "gate": {
+          "makeup.gas": [
+            0,
+            0.5
+          ]
+        }
       },
       {
         "class": "planet/mesoplanet",

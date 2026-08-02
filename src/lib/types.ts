@@ -396,6 +396,15 @@ export interface Fingerprint {
   class: string;                         // e.g. "planet/ocean"
   kind: 'base' | 'modifier';             // base archetypes are mutually exclusive; modifiers stack
   match: Record<string, FingerprintBand>;// feature → defining band
+  // PRECONDITIONS. Every gate band must hold or the type scores 0, but a gate contributes
+  // NOTHING to the score — no fit, no band count. Use it for "is this body eligible to be this
+  // kind of thing at all" (a gas giant has no surface, so it cannot be an eyeball), as opposed to
+  // `match`, which is for traits that DEFINE the type and should make it more specific.
+  // The distinction is not cosmetic: a gate expressed as a match band is always-true for every
+  // body that survives it, and averaging an always-1 band in DILUTES a poor defining band —
+  // lifting a 0.11-fit match by 37% while lifting a perfect one by only 8%. It rewards the worst
+  // matches most, which is how a 289 K world briefly classified as a cold eyeball (B25).
+  gate?: Record<string, FingerprintBand>;
   weight?: number;                       // optional score multiplier (default 1)
   note?: string;                         // human note on the type's defining traits
 }
