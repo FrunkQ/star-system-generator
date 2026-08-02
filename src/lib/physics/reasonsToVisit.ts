@@ -78,6 +78,30 @@ export const REASONS_DEFAULTS: ReasonsConfig = {
 // --- The built-in default pack (the original rules, as data). Order preserved so the seeded roll
 //     sequence — and therefore which tags appear — is identical to the hardcoded version. ---
 let _rid = 0; const R = (tag: string, category: string, chance: number, when: PoIExpr, appliesTo?: PoIRole[]): PoIRule => ({ id: `d${_rid++}`, tag, category, chance, when, appliesTo });
+
+// SURFACE-ACCESS rules: the same rule, plus "and there is a surface to get it off".
+//
+// B33. A rule that says you can mine, refuel or resupply here is a claim about reaching material
+// and lifting it — but these rules were all written against BULK COMPOSITION, which a giant
+// trivially satisfies. A 751 C helium giant offered "Life-support resupply", "Water/ice refuelling"
+// and "Water ice", because a planet-sized envelope contains plenty of water by mass. It is
+// supercritical vapour spread through an atmosphere, not ice, and there is no ground to stand on.
+//
+// GATED ON makeup.gas, NOT on `isGiant`, and not on the delta-v budget. Both were considered:
+//  - `isGiant` already exists and reads well, but it is `classes include a giant type OR gas >= 0.4`,
+//    and the bundled data has bodies carrying BOTH a rocky and a giant class — "planet/desert +
+//    planet/cloudless-gas-giant" at gas 0.00, "planet/ice + planet/ice-giant" at gas 0.00. Gating on
+//    it would strip surface resources from bodies whose composition says they have a surface.
+//  - the surface-to-low-orbit budget is the better IDEA — accessibility is the concept these rules
+//    are missing — but it cannot do this particular job, because for a body with no surface the
+//    figure is derived at the notional 1-bar radius and is as fictional as the surface gravity B18
+//    found there. Measured across the 366 bundled bodies, the giants' budgets run 9.1 to 1163 km/s:
+//    the low end is Earth's, so no threshold excludes giants without excluding Earth too.
+// makeup.gas is what B18 and B25 already use, so habitability, classification and now the reasons
+// to visit all answer "does this body have a surface" the same way.
+const SURFACE = (when: PoIExpr): PoIExpr => ({ all: [{ lt: ['makeup.gas', 0.5] }, when] });
+const RS = (tag: string, category: string, chance: number, when: PoIExpr, appliesTo?: PoIRole[]): PoIRule =>
+  R(tag, category, chance, SURFACE(when), appliesTo);
 export const DEFAULT_POI_PACK: PoIPack = {
   id: 'default', name: 'Reasons to Visit (default)', description: 'The built-in physics-driven PoI hooks.', enabled: true,
   categories: [
@@ -88,19 +112,19 @@ export const DEFAULT_POI_PACK: PoIPack = {
   ],
   rules: [
     // Rocky/solid-world resources — planets & moons (belts have their own ore/rare-metals hooks).
-    R('resource/heavy-metals', 'resource', 0.7, { gte: ['makeup.metal', 0.3] }, ['planet', 'moon']),
-    R('resource/platinum-group', 'resource', 0.45, { gte: ['makeup.metal', 0.5] }, ['planet', 'moon']),
-    R('resource/rare-earths', 'resource', 0.4, { all: [{ gte: ['makeup.metal', 0.2] }, { gte: ['makeup.rock', 0.3] }] }, ['planet', 'moon']),
-    R('resource/fissiles', 'resource', 0.3, { all: [{ gte: ['makeup.rockMetal', 0.6] }, { between: ['ageGyr', 0.5, 9] }] }, ['planet', 'moon']),
+    RS('resource/heavy-metals', 'resource', 0.7, { gte: ['makeup.metal', 0.3] }, ['planet', 'moon']),
+    RS('resource/platinum-group', 'resource', 0.45, { gte: ['makeup.metal', 0.5] }, ['planet', 'moon']),
+    RS('resource/rare-earths', 'resource', 0.4, { all: [{ gte: ['makeup.metal', 0.2] }, { gte: ['makeup.rock', 0.3] }] }, ['planet', 'moon']),
+    RS('resource/fissiles', 'resource', 0.3, { all: [{ gte: ['makeup.rockMetal', 0.6] }, { between: ['ageGyr', 0.5, 9] }] }, ['planet', 'moon']),
     R('resource/helium-3', 'resource', 1.0, { eq: ['isGiant', true] }, ['planet']),  // He in a giant's atmosphere — deterministic
     R('resource/helium-3', 'resource', 0.3, { all: [{ eq: ['hasAtmo', false] }, { gte: ['ageGyr', 3] }, { gt: ['makeup.rockIce', 0.5] }] }, ['moon']),  // airless-moon regolith (solar-wind implanted) — a prospect, semi-random
     R('resource/deuterium', 'resource', 0.4, { any: [{ gte: ['makeup.gas', 0.4] }, { gte: ['hydroCover', 0.3] }] }, ['planet', 'moon']),
-    R('resource/water-ice', 'resource', 1.0, { any: [{ eq: ['hydro', 'water'] }, { gte: ['hydroCover', 0.1] }, { gte: ['makeup.ice', 0.3] }, { hasTag: 'structure/icy-shell' }] }, ['planet', 'moon']),  // any liquid water OR ice → water-ice (deterministic; was wrongly capped to frozen worlds <250K)
+    RS('resource/water-ice', 'resource', 1.0, { any: [{ eq: ['hydro', 'water'] }, { gte: ['hydroCover', 0.1] }, { gte: ['makeup.ice', 0.3] }, { hasTag: 'structure/icy-shell' }] }, ['planet', 'moon']),  // any liquid water OR ice → water-ice (deterministic; was wrongly capped to frozen worlds <250K)
     R('resource/volatiles', 'resource', 0.5, { any: [{ all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 160] }] }, { gte: ['makeup.ice', 0.5] }] }, ['belt', 'moon']),
     R('resource/hydrocarbons', 'resource', 1.0, { any: [{ eq: ['atmMain', 'CH4'] }, { eq: ['hydro', 'methane'] }] }, ['planet', 'moon']),  // methane atmosphere OR surface lakes — deterministic
-    R('resource/exotic-crystals', 'resource', 0.25, { all: [{ gte: ['massMe', 2] }, { gte: ['makeup.rockMetal', 0.7] }] }, ['planet', 'moon']),
-    R('resource/diamonds', 'resource', 0.4, { all: [{ gte: ['makeup.carbon', 0.3] }, { gte: ['massMe', 0.8] }] }, ['planet', 'moon']),
-    R('resource/organics', 'resource', 0.5, { any: [{ eq: ['hasBio', true] }, { hasTag: 'prebiotic-precursor' }, { all: [{ eq: ['hydro', 'water'] }, { between: ['teqK', 250, 330] }] }] }, ['planet', 'moon']),
+    RS('resource/exotic-crystals', 'resource', 0.25, { all: [{ gte: ['massMe', 2] }, { gte: ['makeup.rockMetal', 0.7] }] }, ['planet', 'moon']),
+    RS('resource/diamonds', 'resource', 0.4, { all: [{ gte: ['makeup.carbon', 0.3] }, { gte: ['massMe', 0.8] }] }, ['planet', 'moon']),
+    RS('resource/organics', 'resource', 0.5, { any: [{ eq: ['hasBio', true] }, { hasTag: 'prebiotic-precursor' }, { all: [{ eq: ['hydro', 'water'] }, { between: ['teqK', 250, 330] }] }] }, ['planet', 'moon']),
     R('resource/ore-belt', 'resource', 0.8, true, ['belt']),
     // Atmosphere-present resources — DETERMINISTIC (the gas is measurably there, so the resource is): chance 1.0.
     R('resource/oxidizer', 'resource', 1.0, { eq: ['hasO2', true] }, ['planet', 'moon']),
@@ -116,9 +140,9 @@ export const DEFAULT_POI_PACK: PoIPack = {
     R('science/rare-world-type', 'science', 0.6, { eq: ['isRareType', true] }, ['planet', 'moon']),
     R('science/exotic-chemistry', 'science', 0.4, { any: [{ hasTag: 'highly-corrosive' }, { hasTag: 'corrosive' }, { hasTag: 'technosignature' }] }, ['planet', 'moon']),
     R('science/runaway-greenhouse', 'science', 0.5, { any: [{ eq: ['regime', 'stagnant-lid'] }, { hasTag: 'climate/runaway-greenhouse' }] }, ['planet']),
-    R('frontier/fuel-depot', 'frontier', 0.6, { any: [{ gte: ['makeup.ice', 0.2] }, { eq: ['hydro', 'water'] }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { hasTag: 'structure/icy-shell' }] }] }, ['planet', 'moon']),
+    RS('frontier/fuel-depot', 'frontier', 0.6, { any: [{ gte: ['makeup.ice', 0.2] }, { eq: ['hydro', 'water'] }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { hasTag: 'structure/icy-shell' }] }] }, ['planet', 'moon']),
     R('frontier/gas-skimming', 'frontier', 0.92, { eq: ['isGiant', true] }, ['planet']),
-    R('frontier/life-support', 'frontier', 0.6, { any: [{ eq: ['hasO2', true] }, { all: [{ eq: ['hydro', 'water'] }, { eq: ['hasAtmo', true] }] }] }, ['planet', 'moon']),
+    RS('frontier/life-support', 'frontier', 0.6, { any: [{ eq: ['hasO2', true] }, { all: [{ eq: ['hydro', 'water'] }, { eq: ['hasAtmo', true] }] }] }, ['planet', 'moon']),
     R('frontier/aerobraking', 'frontier', 0.3, { all: [{ eq: ['hasAtmo', true] }, { gte: ['pressure', 0.1] }] }, ['planet', 'moon']),
     R('frontier/gravity-assist', 'frontier', 0.3, { gte: ['massMe', 50] }, ['planet']),
     R('frontier/waystation', 'frontier', 0.2, { gt: ['makeup.rockMetal', 0.4] }, ['moon']),

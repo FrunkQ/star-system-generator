@@ -39,6 +39,8 @@ Each candidate PoI has a physics **condition** (what must be true of the body) *
 
 These are scientifically plausible (helium-3 on old airless regolith, diamonds on carbon-rich high-pressure worlds, refuelling at hydrogen giants) but deliberately a **hook generator**, not a first-principles resource model — grist for your plots.
 
+**Surface hooks need a surface.** Anything that means "land, dig it up and lift it" — the metals, fissiles, water ice, diamonds, organics, fuel depots and life-support resupply — is gated on the body having solid ground (`makeup.gas` under 0.5, the same test the world classifier and the habitability score use). A gas giant contains plenty of water and metal by mass, but it is spread through a planet-sized envelope with nothing to stand on, so it no longer offers to resupply you. What a giant *does* keep is everything you can do from orbit or the upper atmosphere: **helium-3, gas skimming, deuterium, aerobraking and gravity assists**.
+
 ## Constructs of Interest (CoI)
 
 A **Construct of Interest** is the same idea applied to *ships and stations*: a tag describing a capability or role. Six categories are always on — Status, Owner, Purpose, Resources, Hull class and FTL drive. Universe and Tech & origin are on by default but can be switched off; Disposition is off by default. All are editable under Settings → CoIs.

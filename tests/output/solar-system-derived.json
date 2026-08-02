@@ -5601,10 +5601,6 @@
           "source": "rule:d4"
         },
         {
-          "key": "frontier/fuel-depot",
-          "source": "rule:d27"
-        },
-        {
           "key": "frontier/gas-skimming",
           "source": "rule:d28"
         },

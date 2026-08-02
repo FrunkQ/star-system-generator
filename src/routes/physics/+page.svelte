@@ -748,6 +748,15 @@
         (helium-3 on giants and old airless regolith; diamonds on carbon-rich high-pressure worlds; fissiles on
         radiogenic crusts; refuelling on hydrogen giants and ice), but deliberately a hook generator, not a
         first-principles resource model.</p>
+      <p><strong>A rule that means "you can get this off the ground" now checks that there IS ground.</strong>
+        Mining, refuelling and resupply hooks test bulk composition — and a giant satisfies bulk tests trivially,
+        because a planet-sized envelope contains a great deal of water and metal by mass. A 751&nbsp;°C helium
+        giant was offering life-support resupply, water/ice refuelling and water ice; the water is supercritical
+        vapour spread through an atmosphere with no surface under it. Those rules are gated on the same
+        <code>makeup.gas &lt; 0.5</code> test the classifier and the habitability score use, so all three agree
+        about what a surface is. <em>What a giant keeps</em> is everything you can do from orbit or the upper
+        envelope: helium-3, gas skimming, deuterium, aerobraking and gravity assists. Across the bundled maps this
+        removed 34 false claims from 59 surfaceless bodies and left all 159 legitimate water-ice tags alone.</p>
     </section>
 
     <section id="generation">
