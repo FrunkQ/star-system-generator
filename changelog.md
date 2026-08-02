@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.372-beta - 3rd Aug 2026
+
+* **Worlds are the brightness they actually measure.** Bare rock was one flat value for everything, which made airless rock too bright and dusty or frosted worlds far too dark. Now the ground is dark — Mercury reflects 0.088 and Luna 0.11, matching the real figures — and what makes a world bright is what has settled on top of it.
+* **Mars is orange and bright because of its rust**, which the engine already worked out and had never used for anything you could see. It now reflects 0.256 against a measured 0.25.
+* **Io is brilliant because its sulphur dioxide is frozen onto the ground.** Any world whose main atmospheric gas is below its own freezing point gets the same treatment, so Pluto and Triton brighten too, and Earth's nitrogen never comes close.
+* **Mars has its thin water-ice clouds back.** They were lost when a bogus carbon-dioxide deck was removed a while ago — that deck had been keeping Mars cold for the wrong reason. A correctly darker, colder Mars now condenses the real wisps on its own, with nothing in the cloud model changed.
+* Pluto is much brighter and correspondingly colder, and has lost its methane wisps as a result. Its overall reflectivity is far closer to reality than it was; the thin haze is a separate question and is written down.
+
 ## v2.1.371-beta - 2nd Aug 2026
 
 * **Square grids draw on the starmap.** They always had a full implementation; every line was being thrown away before it reached the screen, because the grid fades out with distance and a square line runs the whole width of the map -- so both of its ends were in the faded zone and the whole line went. Hexes never hit it, being one hex across, which is why hexes looked fine and squares looked missing.
