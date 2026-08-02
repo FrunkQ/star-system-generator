@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.368-beta - 2nd Aug 2026
+
+* **A gas giant is no longer described as an eyeball world.** An eyeball is a world with a permanently-lit face — molten on one side, iced over on the other — which is a statement about ground. Fifteen gas giants were being called one. They now read as the ice giants, sub-Neptunes and cloud-type giants they are, including three in the Testion example that now match the names they were given.
+* **A giant no longer offers to resupply you.** It was advertising life-support resupply, water/ice refuelling and water ice, because a planet-sized atmosphere does contain a lot of water by weight — as supercritical vapour, with nothing underneath to land on. Giants keep what you can actually take from orbit: helium-3, gas skimming, deuterium, aerobraking and gravity assists.
+* **A stability verdict no longer argues with itself.** Worlds could read "a locked resonance keeps their conjunctions away from the crossing point, so it stays stable" and then "Predicted outcome: flung out". Both halves were true of different things; the verdict now names which one produced it, and the resonance note says what it actually established.
+* **A world is classified as what it fully matches, not what it nearly matches.** A type the world sits inside every band of now beats one it falls outside of, however specific that type is. Wolf 1061 d stops being an ice giant at 7.7 Earth masses when the band starts at 8, and TRAPPIST-1 d stops being "icy except the substellar point" at 15 °C.
+* The "why this type" panel lists the types a world genuinely fits before the ones that merely scored well.
+
 ## v2.1.367-beta - 2nd Aug 2026
 
 * **The body picture in a player document is now part of the picture.** On a green CRT page the 3D globe sat on top of the phosphor as a plain white ball, because it was drawn over the filtered page rather than into it. It now goes through the same shader as everything else -- scanlines, warp and all -- and still spins, and you can still grab it.
