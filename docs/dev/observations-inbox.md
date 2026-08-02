@@ -265,12 +265,19 @@ _(new observations go here — rough is fine)_
 
 - **Physics and data drive tags; tags drive the image.** Do not add rendering code to make something look a
   particular way. If a look needs a new lever, the lever is rule-pack DATA.
-- **REPORT YOUR REMAINING CONTEXT WHEN YOU HAND BACK** — one line, "about N% of context remaining",
-  even when you stop early. **But say it as an ESTIMATE and expect to be overruled:** a self-report of
-  "4% remaining" has already come back against a harness reading of 41% USED, so the two do not agree
-  and the operator's displayed figure is the authoritative one. Report it anyway — a session that
-  believes it is nearly out will behave differently, and that is worth knowing — but never treat your
-  own estimate as a reason to leave work undone. Say what you would do next if you had room.
+- **NEVER STOP, SHORTEN OR SKIP WORK BECAUSE YOU THINK YOU ARE RUNNING OUT OF CONTEXT. YOUR ESTIMATE
+  HAS BEEN WRONG EVERY TIME IT HAS BEEN CHECKED.** Sessions reporting "2%" and "4%" remaining were
+  measured at 32% and 42% USED — they had roughly two thirds left and truncated their work for no
+  reason. This has now cost real output three times. Work the item to completion; if you genuinely run
+  out, the harness will stop you and that is fine. Report a one-line estimate at the end if you like,
+  clearly labelled a guess, and say what you would do next given room — but never ACT on it.
+- **THE BROWSER PANE IS OFTEN UNAVAILABLE TO WORKER SESSIONS — screenshots time out and the pane does
+  not display. That has happened repeatedly.** When it does, do NOT quietly drop the check. Do the
+  strongest thing available instead — reproduce the renderer's own transform in a script and compare
+  the NUMBERS, which is what C5 did to verify every moon's orbit normal against the ring plane — and
+  then hand back an explicit SHORT LIST of what still needs a human eye and what it should look like
+  ("open Saturn: the inner six should sit in the ring plane, Iapetus should be the visible outlier").
+  A precise list someone can action in thirty seconds is worth far more than an apology.
 - **"VERIFY IN THE BROWSER" IS NOT OPTIONAL, AND SAYING YOU SKIPPED IT IS NOT THE SAME AS DOING IT.**
   Honest omission is much better than a false claim, and it is what the standing rules ask for — but a
   visual change covered only by unit tests and a green build is NOT finished, and it should be reported
