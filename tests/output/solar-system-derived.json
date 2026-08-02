@@ -132,13 +132,13 @@
       "isNameUserDefined": true,
       "stellarRadiation": 6.99575354969099,
       "radiationShieldingAtmo": 1.6199996899501912e-10,
-      "radiationShieldingMag": 0,
+      "radiationShieldingMag": 0.03798111743561224,
       "photonRadiation": 3068.6843504424196,
-      "particleRadiation": 429.19242383641927,
+      "particleRadiation": 412.89121598421315,
       "stellarRadiationMin": 4.710042756111976,
       "stellarRadiationMax": 10.84943876737011,
-      "surfaceRadiationMin": 2357.021377674475,
-      "surfaceRadiationMax": 5426.71938280625,
+      "surfaceRadiationMin": 2346.046236052519,
+      "surfaceRadiationMax": 5401.438481303582,
       "equilibriumTempMinK": 389.3978994827125,
       "equilibriumTempMaxK": 479.721530273115,
       "tidallyLocked": true,
@@ -152,6 +152,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": true,
       "equilibriumTempK": 429.8787897112186,
       "albedoBreakdown": {
         "albedo": 0.169,
@@ -162,10 +163,6 @@
       },
       "greenhouseTempK": 4.326640157213818e-9,
       "temperatureK": 429.8787897155452,
-      "surfaceRadiation": 3499.876774278839,
-      "orbitalRadiation": 3497.876774845495,
-      "beltInnerEdgeRadii": 3.0758,
-      "starTidallyLocked": true,
       "temperatureProfile": {
         "meanK": 430,
         "totalMinK": 135,
@@ -219,16 +216,9 @@
           "A large iron core keeps a weak, disordered field despite very slow rotation (Mercury-like)."
         ]
       },
-      "oblateness": 0.000001272841752605334,
-      "auroraEmitters": [
-        {
-          "gas": "mixed gases",
-          "colour": "green",
-          "hex": "#57e39a",
-          "weight": 1,
-          "altitude": 1
-        }
-      ],
+      "surfaceRadiation": 3483.575566426633,
+      "orbitalRadiation": 3481.575566990648,
+      "beltInnerEdgeRadii": 3.0292,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -243,7 +233,17 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.10 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 8.415,
+      "irradiationDose": 8.095,
+      "oblateness": 0.000001272841752605334,
+      "auroraEmitters": [
+        {
+          "gas": "mixed gases",
+          "colour": "green",
+          "hex": "#57e39a",
+          "weight": 1,
+          "altitude": 1
+        }
+      ],
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -422,10 +422,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "3499.88 mSv",
+            "value": "3483.58 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 3499.88,
+              "value": 3483.58,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -510,18 +510,6 @@
           "key": "inert"
         },
         {
-          "key": "structure/cloud-deck",
-          "value": "sulfuric-acid veil"
-        },
-        {
-          "key": "weather/precipitation",
-          "value": "sulfuric-acid virga"
-        },
-        {
-          "key": "weather/lightning",
-          "value": "constant"
-        },
-        {
           "key": "magnetic/unshielded"
         },
         {
@@ -534,6 +522,18 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "structure/cloud-deck",
+          "value": "sulfuric-acid veil"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "sulfuric-acid virga"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "constant"
         },
         {
           "key": "surface/oxidised",
@@ -587,6 +587,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 230.0096483937865,
       "albedoBreakdown": {
         "albedo": 0.757,
@@ -598,10 +599,6 @@
       },
       "greenhouseTempK": 523.6099227125275,
       "temperatureK": 753.619571106314,
-      "surfaceRadiation": 2,
-      "orbitalRadiation": 980.3911956508407,
-      "beltInnerEdgeRadii": 1.3919,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 754,
         "totalMinK": 736,
@@ -650,6 +647,24 @@
       "magneticField": {
         "strengthGauss": 0
       },
+      "surfaceRadiation": 2,
+      "orbitalRadiation": 980.3911956508407,
+      "beltInnerEdgeRadii": 1.403,
+      "geoActivity": {
+        "regime": "episodic",
+        "volcanism": "resurfacing",
+        "vigor": 0.803,
+        "active": true,
+        "driver": "radiogenic (dry, heat-trapping)",
+        "surfaceAgeGyr": 0.7,
+        "tags": [
+          "geology/episodic"
+        ],
+        "notes": [
+          "Vigorous interior but a DRY, rigid lithosphere traps heat until it overturns in periodic catastrophic global resurfacing (Venus-like); no carbonate–silicate drawdown → runaway greenhouse."
+        ]
+      },
+      "irradiationDose": 0.126,
       "oblateness": 7.637335768889923e-8,
       "auroraEmitters": [
         {
@@ -667,21 +682,6 @@
           "altitude": 0
         }
       ],
-      "geoActivity": {
-        "regime": "episodic",
-        "volcanism": "resurfacing",
-        "vigor": 0.803,
-        "active": true,
-        "driver": "radiogenic (dry, heat-trapping)",
-        "surfaceAgeGyr": 0.7,
-        "tags": [
-          "geology/episodic"
-        ],
-        "notes": [
-          "Vigorous interior but a DRY, rigid lithosphere traps heat until it overturns in periodic catastrophic global resurfacing (Venus-like); no carbonate–silicate drawdown → runaway greenhouse."
-        ]
-      },
-      "irradiationDose": 0.126,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -916,35 +916,15 @@
           "key": "breathable-human"
         },
         {
+          "key": "magnetic/dynamo"
+        },
+        {
           "key": "hydrosphere/ocean",
           "value": "water"
         },
         {
           "key": "climate/polar-ice",
           "value": "water"
-        },
-        {
-          "key": "structure/cloud-deck",
-          "value": "water overcast"
-        },
-        {
-          "key": "weather/precipitation",
-          "value": "water rain"
-        },
-        {
-          "key": "weather/lightning",
-          "value": "frequent"
-        },
-        {
-          "key": "weather/monsoon",
-          "value": "water"
-        },
-        {
-          "key": "magnetic/dynamo"
-        },
-        {
-          "key": "aurora/strong",
-          "value": "0.37"
         },
         {
           "key": "geology/plate-tectonics"
@@ -956,6 +936,26 @@
         {
           "key": "surface/irradiation",
           "value": "low"
+        },
+        {
+          "key": "structure/cloud-deck",
+          "value": "water overcast"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "water rain"
+        },
+        {
+          "key": "weather/lightning",
+          "value": "constant"
+        },
+        {
+          "key": "weather/monsoon",
+          "value": "water"
+        },
+        {
+          "key": "aurora/strong",
+          "value": "0.37"
         },
         {
           "key": "habitability/earth-like"
@@ -1040,14 +1040,14 @@
       "isNameUserDefined": true,
       "stellarRadiation": 1.0260190579582613,
       "radiationShieldingAtmo": 0.9993734232934868,
-      "radiationShieldingMag": 0.569190058699312,
+      "radiationShieldingMag": 0.5695869078967722,
       "photonRadiation": 0.2819988845242642,
-      "particleRadiation": 0.01699154756140381,
+      "particleRadiation": 0.016975895457385527,
       "tidallyLocked": false,
       "stellarRadiationMin": 0.9924343838799752,
       "stellarRadiationMax": 1.0610364782246675,
-      "surfaceRadiationMin": 2.2892035805294157,
-      "surfaceRadiationMax": 2.3091947977207594,
+      "surfaceRadiationMin": 2.2891884407656002,
+      "surfaceRadiationMax": 2.3091786114197395,
       "equilibriumTempMinK": 252.02238106117372,
       "equilibriumTempMaxK": 256.26909697349384,
       "internalHeatK": 0,
@@ -1057,6 +1057,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 254.12799891926093,
       "albedoBreakdown": {
         "albedo": 0.308,
@@ -1068,10 +1069,6 @@
       },
       "greenhouseTempK": 32.80114380821948,
       "temperatureK": 286.92914272748044,
-      "surfaceRadiation": 2.298990432085668,
-      "orbitalRadiation": 652964.6905382528,
-      "beltInnerEdgeRadii": 1.1982,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 287,
         "totalMinK": 259,
@@ -1114,6 +1111,24 @@
           "Molten iron core → Earth-like dipolar field; shields the atmosphere from stellar wind."
         ]
       },
+      "surfaceRadiation": 2.29897477998165,
+      "orbitalRadiation": 657853.9448633195,
+      "beltInnerEdgeRadii": 1.1978,
+      "geoActivity": {
+        "regime": "plate-tectonics",
+        "volcanism": "arc-effusive",
+        "vigor": 0.975,
+        "active": true,
+        "driver": "radiogenic + water",
+        "surfaceAgeGyr": 0.2,
+        "tags": [
+          "geology/plate-tectonics"
+        ],
+        "notes": [
+          "Vigorous interior with surface water hydrating the lithosphere → mobile-lid plate tectonics → the carbonate–silicate cycle regulates climate."
+        ]
+      },
+      "irradiationDose": 0.022,
       "oblateness": 0.004312523427243434,
       "auroraEmitters": [
         {
@@ -1138,21 +1153,6 @@
           "altitude": 2
         }
       ],
-      "geoActivity": {
-        "regime": "plate-tectonics",
-        "volcanism": "arc-effusive",
-        "vigor": 0.975,
-        "active": true,
-        "driver": "radiogenic + water",
-        "surfaceAgeGyr": 0.2,
-        "tags": [
-          "geology/plate-tectonics"
-        ],
-        "notes": [
-          "Vigorous interior with surface water hydrating the lithosphere → mobile-lid plate tectonics → the carbonate–silicate cycle regulates climate."
-        ]
-      },
-      "irradiationDose": 0.022,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -1556,6 +1556,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 267.19206115251916,
       "albedoBreakdown": {
         "albedo": 0.15,
@@ -1566,11 +1568,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 267.19206115251916,
-      "surfaceRadiation": 512.3836279632528,
-      "orbitalRadiation": 510.38362796325276,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 267,
         "totalMinK": 54,
@@ -1619,7 +1616,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.000009382947304466435,
+      "surfaceRadiation": 512.3836279632528,
+      "orbitalRadiation": 510.38362796325276,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -1635,6 +1634,7 @@
         ]
       },
       "irradiationDose": 1.386,
+      "oblateness": 0.000009382947304466435,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -1906,10 +1906,6 @@
           "key": "inert"
         },
         {
-          "key": "weather/dust-storms",
-          "value": "seasonal"
-        },
-        {
           "key": "magnetic/unshielded"
         },
         {
@@ -1922,6 +1918,10 @@
         {
           "key": "surface/irradiation",
           "value": "high"
+        },
+        {
+          "key": "weather/dust-storms",
+          "value": "seasonal"
         },
         {
           "key": "surface/oxidised",
@@ -1978,6 +1978,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 216.71161795625588,
       "albedoBreakdown": {
         "albedo": 0.154,
@@ -1988,10 +1989,6 @@
       },
       "greenhouseTempK": 5.827087004296242,
       "temperatureK": 222.5387049605521,
-      "surfaceRadiation": 213.69225217706742,
-      "orbitalRadiation": 221.91153366168902,
-      "beltInnerEdgeRadii": 1.4975,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 223,
         "totalMinK": 132,
@@ -2037,6 +2034,24 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "surfaceRadiation": 213.69225217706742,
+      "orbitalRadiation": 221.91153366168902,
+      "beltInnerEdgeRadii": 1.5129,
+      "geoActivity": {
+        "regime": "inactive",
+        "volcanism": "none",
+        "vigor": 0.135,
+        "active": false,
+        "driver": "cooled interior",
+        "surfaceAgeGyr": 3.8483074413881933,
+        "tags": [
+          "geology/inactive"
+        ],
+        "notes": [
+          "Radiogenic heat has decayed below the convection threshold (vigor 0.13 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
+        ]
+      },
+      "irradiationDose": 0.574,
       "oblateness": 0.005745063944604033,
       "auroraEmitters": [
         {
@@ -2054,21 +2069,6 @@
           "altitude": 0
         }
       ],
-      "geoActivity": {
-        "regime": "inactive",
-        "volcanism": "none",
-        "vigor": 0.135,
-        "active": false,
-        "driver": "cooled interior",
-        "surfaceAgeGyr": 3.8483074413881933,
-        "tags": [
-          "geology/inactive"
-        ],
-        "notes": [
-          "Radiogenic heat has decayed below the convection threshold (vigor 0.13 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
-        ]
-      },
-      "irradiationDose": 0.574,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -2322,17 +2322,14 @@
           "key": "orbit/locked-planet"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
         {
           "key": "activity/sublimating"
-        },
-        {
-          "key": "magnetic/unshielded"
-        },
-        {
-          "key": "shape/oblate"
         },
         {
           "key": "geology/inactive"
@@ -2344,6 +2341,9 @@
         {
           "key": "surface/irradiation",
           "value": "high"
+        },
+        {
+          "key": "shape/oblate"
         },
         {
           "key": "habitability/none"
@@ -2383,6 +2383,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0.24412215742011018,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 206.09012054039917,
       "albedoBreakdown": {
         "albedo": 0.308,
@@ -2393,11 +2395,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 206.3342426978193,
-      "surfaceRadiation": 223.89323317583214,
-      "orbitalRadiation": 221.89323317583214,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 206,
         "totalMinK": 145,
@@ -2453,7 +2450,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.12890205412926253,
+      "surfaceRadiation": 223.89323317583214,
+      "orbitalRadiation": 221.89323317583214,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2469,6 +2468,7 @@
         ]
       },
       "irradiationDose": 0.59,
+      "oblateness": 0.12890205412926253,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -2721,14 +2721,14 @@
           "key": "orbit/locked-planet"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
         {
           "key": "activity/sublimating"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -2783,6 +2783,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 200.01352688297754,
       "albedoBreakdown": {
         "albedo": 0.386,
@@ -2793,11 +2795,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 200.01352688297754,
-      "surfaceRadiation": 223.86590122376526,
-      "orbitalRadiation": 221.86590122376526,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 200,
         "totalMinK": 109,
@@ -2846,7 +2843,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.010188695280187085,
+      "surfaceRadiation": 223.86590122376526,
+      "orbitalRadiation": 221.86590122376526,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2862,6 +2861,7 @@
         ]
       },
       "irradiationDose": 0.541,
+      "oblateness": 0.010188695280187085,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -3162,6 +3162,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 161.89530157466643,
       "albedoBreakdown": {
         "albedo": 0.171,
@@ -3172,10 +3173,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 161.89530157466643,
-      "surfaceRadiation": 70.53487638711071,
-      "orbitalRadiation": 70.53487638711071,
-      "beltInnerEdgeRadii": 1,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 162,
         "totalMinK": 96,
@@ -3205,6 +3202,9 @@
         "min": 96,
         "max": 228
       },
+      "surfaceRadiation": 70.53487638711071,
+      "orbitalRadiation": 70.53487638711071,
+      "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1
@@ -3246,6 +3246,9 @@
           "key": "reducing"
         },
         {
+          "key": "magnetic/dynamo"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "ammonium-hydrosulfide broken"
         },
@@ -3270,9 +3273,6 @@
         },
         {
           "key": "ring/light"
-        },
-        {
-          "key": "magnetic/dynamo"
         },
         {
           "key": "shape/oblate"
@@ -3327,13 +3327,13 @@
       "isNameUserDefined": true,
       "stellarRadiation": 0.03792043640459048,
       "radiationShieldingAtmo": 0.4405314223603839,
-      "radiationShieldingMag": 0.8774857640615746,
+      "radiationShieldingMag": 0.8788292987844551,
       "photonRadiation": 9.306079180367396,
-      "particleRadiation": 0.15946050233292125,
+      "particleRadiation": 0.1577118017009398,
       "stellarRadiationMin": 0.03442589893595116,
       "stellarRadiationMax": 0.041869820297813644,
-      "surfaceRadiationMin": 10.593247952479505,
-      "surfaceRadiationMax": 12.45136826243143,
+      "surfaceRadiationMin": 10.591660402415906,
+      "surfaceRadiationMax": 12.449437435991708,
       "equilibriumTempMinK": 100.77458133207016,
       "equilibriumTempMaxK": 105.82906384746603,
       "tidallyLocked": false,
@@ -3345,6 +3345,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 103.18302282139474,
       "albedoBreakdown": {
         "albedo": 0.49,
@@ -3356,10 +3357,6 @@
       },
       "greenhouseTempK": 12.120628381859543,
       "temperatureK": 159.24582711886114,
-      "surfaceRadiation": 11.465539682700319,
-      "orbitalRadiation": 272718936.3129421,
-      "beltInnerEdgeRadii": 1.0499,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 159,
         "totalMinK": 144,
@@ -3411,6 +3408,9 @@
           "Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class)."
         ]
       },
+      "surfaceRadiation": 11.463790982068335,
+      "orbitalRadiation": 278765040.6455722,
+      "beltInnerEdgeRadii": 1.0478,
       "oblateness": 0.10426494738447482,
       "auroraEmitters": [
         {
@@ -3570,15 +3570,15 @@
         },
         "resonance": null
       },
-      "stellarRadiation": 257031.2971290464,
+      "stellarRadiation": 262993.54527017684,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 16.62698347115784,
-      "particleRadiation": 128515631.93753973,
-      "stellarRadiationMin": 257031.2936366095,
-      "stellarRadiationMax": 257031.30107595754,
-      "surfaceRadiationMin": 128515646.81830475,
-      "surfaceRadiationMax": 128515650.53797875,
+      "particleRadiation": 131496756.00810495,
+      "stellarRadiationMin": 262993.54177773994,
+      "stellarRadiationMax": 262993.54921708803,
+      "surfaceRadiationMin": 131496770.88886997,
+      "surfaceRadiationMax": 131496774.60854399,
       "equilibriumTempMinK": 113.77708861120925,
       "equilibriumTempMaxK": 119.48253326556062,
       "internalHeatK": 0,
@@ -3587,6 +3587,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 116.56004482844226,
       "albedoBreakdown": {
         "albedo": 0.171,
@@ -3597,10 +3598,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 116.56004482844226,
-      "surfaceRadiation": 128515648.5645232,
-      "orbitalRadiation": 128515648.5645232,
-      "beltInnerEdgeRadii": 1,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 117,
         "totalMinK": 71,
@@ -3630,6 +3627,9 @@
         "min": 71,
         "max": 162
       },
+      "surfaceRadiation": 131496772.63508841,
+      "orbitalRadiation": 131496772.63508841,
+      "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1
@@ -3728,15 +3728,15 @@
         "url": "/images/planet_types/web20dwarf20planet.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 25500.122612652314,
+      "stellarRadiation": 26278.948954122083,
       "radiationShieldingAtmo": 1.1099999386310344e-7,
       "radiationShieldingMag": 0,
       "photonRadiation": 16.615750509169487,
-      "particleRadiation": 12750043.275318922,
-      "stellarRadiationMin": 25115.37018987031,
-      "stellarRadiationMax": 25890.76956708692,
-      "surfaceRadiationMin": 12557685.70103219,
-      "surfaceRadiationMax": 12945385.34660583,
+      "particleRadiation": 13139456.402828947,
+      "stellarRadiationMin": 25883.663770752537,
+      "stellarRadiationMax": 26680.271133467875,
+      "surfaceRadiationMin": 12941832.44883301,
+      "surfaceRadiationMax": 13340136.085978972,
       "equilibriumTempMinK": 114.37120708606217,
       "equilibriumTempMaxK": 120.1047254019107,
       "internalHeatK": 0,
@@ -3749,6 +3749,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 4.107586565502499,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 117.16787734201642,
       "albedoBreakdown": {
         "albedo": 0.153,
@@ -3759,11 +3761,6 @@
       },
       "greenhouseTempK": 0.0000017588038194784582,
       "temperatureK": 121.27546549359587,
-      "surfaceRadiation": 12750061.89106943,
-      "orbitalRadiation": 12750061.306326156,
-      "beltInnerEdgeRadii": 1.7723,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 121,
         "totalMinK": 52,
@@ -3819,16 +3816,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.002138898884302571,
-      "auroraEmitters": [
-        {
-          "gas": "mixed gases",
-          "colour": "green",
-          "hex": "#57e39a",
-          "weight": 1,
-          "altitude": 1
-        }
-      ],
+      "surfaceRadiation": 13139475.018579457,
+      "orbitalRadiation": 13139474.47706104,
+      "beltInnerEdgeRadii": 1.7603,
       "geoActivity": {
         "regime": "tidal-volcanic",
         "volcanism": "silicate-tidal",
@@ -3844,6 +3834,16 @@
         ]
       },
       "irradiationDose": 0,
+      "oblateness": 0.002138898884302571,
+      "auroraEmitters": [
+        {
+          "gas": "mixed gases",
+          "colour": "green",
+          "hex": "#57e39a",
+          "weight": 1,
+          "altitude": 1
+        }
+      ],
       "volatiles": {
         "retained": [
           "sulfur-dioxide"
@@ -4024,10 +4024,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "12750061.89 mSv",
+            "value": "13139475.02 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 12750061.89,
+              "value": 13139475.02,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -4125,6 +4125,9 @@
           "key": "oxidizer"
         },
         {
+          "key": "magnetic/induced"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -4134,9 +4137,6 @@
         {
           "key": "hydrosphere/frozen",
           "value": "water"
-        },
-        {
-          "key": "magnetic/induced"
         },
         {
           "key": "geology/cryovolcanic"
@@ -4203,15 +4203,15 @@
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 2874.6316026798645,
+      "stellarRadiation": 2982.514927796222,
       "radiationShieldingAtmo": 7.500000620552782e-11,
-      "radiationShieldingMag": 0,
+      "radiationShieldingMag": 0.05869708635189371,
       "photonRadiation": 16.60515542688316,
-      "particleRadiation": 1437299.1960767068,
-      "stellarRadiationMin": 2726.193499112891,
-      "stellarRadiationMax": 3031.152166104559,
-      "surfaceRadiationMin": 1363098.7494542133,
-      "surfaceRadiationMax": 1515578.0829386113,
+      "particleRadiation": 1403709.3651803131,
+      "stellarRadiationMin": 2828.970392454444,
+      "stellarRadiationMax": 3144.3933866624147,
+      "surfaceRadiationMin": 1331461.9609174249,
+      "surfaceRadiationMax": 1479916.3557250812,
       "equilibriumTempMinK": 93.5889597458292,
       "equilibriumTempMaxK": 98.27965712136631,
       "internalHeatK": 0,
@@ -4236,6 +4236,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 3.5914357329356754,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 95.87697921381438,
       "albedoBreakdown": {
         "albedo": 0.62,
@@ -4246,11 +4248,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 99.46841494675006,
-      "surfaceRadiation": 1437317.8012321338,
-      "orbitalRadiation": 1437315.8013399323,
-      "beltInnerEdgeRadii": 3.3156,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 99,
         "totalMinK": 23,
@@ -4303,6 +4300,24 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
+      "surfaceRadiation": 1403727.9703357401,
+      "orbitalRadiation": 1491257.3275781923,
+      "beltInnerEdgeRadii": 2.8887,
+      "geoActivity": {
+        "regime": "cryovolcanic",
+        "volcanism": "cryo",
+        "vigor": 0.014,
+        "active": true,
+        "driver": "tidal flexing (icy)",
+        "surfaceAgeGyr": 0.05,
+        "tags": [
+          "geology/cryovolcanic"
+        ],
+        "notes": [
+          "Tidal flexing keeps a subsurface ocean liquid; cryovolcanic plumes vent water/ice (Europa/Enceladus-like)."
+        ]
+      },
+      "irradiationDose": 0.002,
       "oblateness": 0.00062430451352026,
       "auroraEmitters": [
         {
@@ -4320,21 +4335,6 @@
           "altitude": 2
         }
       ],
-      "geoActivity": {
-        "regime": "cryovolcanic",
-        "volcanism": "cryo",
-        "vigor": 0.014,
-        "active": true,
-        "driver": "tidal flexing (icy)",
-        "surfaceAgeGyr": 0.05,
-        "tags": [
-          "geology/cryovolcanic"
-        ],
-        "notes": [
-          "Tidal flexing keeps a subsurface ocean liquid; cryovolcanic plumes vent water/ice (Europa/Enceladus-like)."
-        ]
-      },
-      "irradiationDose": 0.002,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -4516,10 +4516,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "1437317.80 mSv",
+            "value": "1403727.97 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 1437317.8,
+              "value": 1403727.97,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -4608,6 +4608,9 @@
           "key": "orbit/locked-planet"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -4617,9 +4620,6 @@
         },
         {
           "key": "activity/sublimating"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -4675,15 +4675,15 @@
         "url": "/images/planet_types/web20dwarf20planet.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 85.90700406619833,
+      "stellarRadiation": 90.10333963267594,
       "radiationShieldingAtmo": 0,
-      "radiationShieldingMag": 0.07681630712609129,
+      "radiationShieldingMag": 0,
       "photonRadiation": 16.58812019011385,
-      "particleRadiation": 39638.658746728484,
-      "stellarRadiationMin": 84.86040078405298,
-      "stellarRadiationMax": 86.96688721575933,
-      "surfaceRadiationMin": 39174.12780140888,
-      "surfaceRadiationMax": 40146.49600792626,
+      "particleRadiation": 45035.081696147856,
+      "stellarRadiationMin": 89.00912678697196,
+      "stellarRadiationMax": 91.21137602999606,
+      "surfaceRadiationMin": 44506.56339348598,
+      "surfaceRadiationMax": 45607.68801499803,
       "equilibriumTempMinK": 93.5663649524343,
       "equilibriumTempMaxK": 98.2528778655461,
       "internalHeatK": 0,
@@ -4700,6 +4700,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 95.85237968671684,
       "albedoBreakdown": {
         "albedo": 0.62,
@@ -4710,11 +4712,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 95.85237968671684,
-      "surfaceRadiation": 39657.2468669186,
-      "orbitalRadiation": 42953.32381556639,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 96,
         "totalMinK": 20,
@@ -4757,7 +4754,9 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
-      "oblateness": 0.00023941255374490794,
+      "surfaceRadiation": 45053.66981633797,
+      "orbitalRadiation": 45051.66981633797,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -4772,7 +4771,8 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 0.16,
+      "irradiationDose": 0.174,
+      "oblateness": 0.00023941255374490794,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -4948,10 +4948,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "39657.25 mSv",
+            "value": "45053.67 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 39657.25,
+              "value": 45053.67,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -5035,6 +5035,9 @@
           "key": "orbit/locked-planet"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -5044,9 +5047,6 @@
         },
         {
           "key": "activity/sublimating"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -5083,15 +5083,15 @@
         "url": "/images/planet_types/web20dwarf20planet.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.10580879314373426,
+      "stellarRadiation": 0.11073121598580982,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 16.55357910430938,
-      "particleRadiation": 36.35081746755775,
-      "stellarRadiationMin": 0.09449510195442015,
-      "stellarRadiationMax": 0.11859452667671891,
-      "surfaceRadiationMin": 49.247550977210075,
-      "surfaceRadiationMax": 61.29726333835946,
+      "particleRadiation": 38.81202888859553,
+      "stellarRadiationMin": 0.09887487646570894,
+      "stellarRadiationMax": 0.12412666832991437,
+      "surfaceRadiationMin": 51.437438232854475,
+      "surfaceRadiationMax": 64.06333416495718,
       "equilibriumTempMinK": 93.51920882131753,
       "equilibriumTempMaxK": 98.19993752849543,
       "internalHeatK": 0,
@@ -5106,6 +5106,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 95.80244283934795,
       "albedoBreakdown": {
         "albedo": 0.62,
@@ -5116,11 +5118,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 95.80244283934795,
-      "surfaceRadiation": 54.90439657186713,
-      "orbitalRadiation": 52.90439657186713,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 96,
         "totalMinK": 20,
@@ -5166,7 +5163,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.00004658194156446283,
+      "surfaceRadiation": 57.365607992904906,
+      "orbitalRadiation": 55.365607992904906,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -5182,6 +5181,7 @@
         ]
       },
       "irradiationDose": 0.174,
+      "oblateness": 0.00004658194156446283,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -5357,10 +5357,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "54.90 mSv",
+            "value": "57.37 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 54.9,
+              "value": 57.37,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -5450,6 +5450,9 @@
           "key": "reducing"
         },
         {
+          "key": "magnetic/dynamo"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "ammonium-hydrosulfide broken"
         },
@@ -5472,14 +5475,11 @@
           "key": "ring/heavy"
         },
         {
-          "key": "magnetic/dynamo"
-        },
-        {
           "key": "shape/oblate"
         },
         {
           "key": "aurora/moderate",
-          "value": "0.25"
+          "value": "0.26"
         },
         {
           "key": "habitability/none"
@@ -5535,13 +5535,13 @@
       "isNameUserDefined": true,
       "stellarRadiation": 0.011189801271060016,
       "radiationShieldingAtmo": 0.4150703222086807,
-      "radiationShieldingMag": 0.4474742269407354,
+      "radiationShieldingMag": 0.4657481936701288,
       "photonRadiation": 2.871069777572149,
-      "particleRadiation": 0.22186874003066262,
+      "particleRadiation": 0.2145307620189512,
       "stellarRadiationMin": 0.010008962768785818,
       "stellarRadiationMax": 0.012550015654547959,
-      "surfaceRadiationMin": 4.76654658281501,
-      "surfaceRadiationMax": 5.468911187445293,
+      "surfaceRadiationMin": 4.759982967703513,
+      "surfaceRadiationMax": 5.460681216537956,
       "equilibriumTempMinK": 78.83621169063838,
       "equilibriumTempMaxK": 83.42371876999309,
       "tidallyLocked": false,
@@ -5553,6 +5553,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 81.06512784582517,
       "albedoBreakdown": {
         "albedo": 0.343,
@@ -5564,10 +5565,6 @@
       },
       "greenhouseTempK": 6.28888876998089,
       "temperatureK": 134.6176176081641,
-      "surfaceRadiation": 5.092938517602812,
-      "orbitalRadiation": 177338.67625627754,
-      "beltInnerEdgeRadii": 1.1219,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 135,
         "totalMinK": 122,
@@ -5619,6 +5616,9 @@
           "A cool interior lets helium rain out and throttle the metallic-hydrogen dynamo → a weak, axisymmetric field (Saturn-like)."
         ]
       },
+      "surfaceRadiation": 5.0856005395911,
+      "orbitalRadiation": 250329.03897937777,
+      "beltInnerEdgeRadii": 1.1218,
       "oblateness": 0.17457339743332512,
       "auroraEmitters": [
         {
@@ -5790,15 +5790,15 @@
         },
         "resonance": null
       },
-      "stellarRadiation": 117.89833631033899,
+      "stellarRadiation": 174.48875700237983,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.907691522990484,
-      "particleRadiation": 58944.26046364651,
-      "stellarRadiationMin": 117.8971557222873,
-      "stellarRadiationMax": 117.89969622230467,
-      "surfaceRadiationMin": 58948.57786114365,
-      "surfaceRadiationMax": 58949.848111152336,
+      "particleRadiation": 87239.47080966692,
+      "stellarRadiationMin": 174.48757641432815,
+      "stellarRadiationMax": 174.49011691434552,
+      "surfaceRadiationMin": 87243.78820716408,
+      "surfaceRadiationMax": 87245.05845717278,
       "equilibriumTempMinK": 83.60260614598552,
       "equilibriumTempMaxK": 88.46710925745766,
       "internalHeatK": 0,
@@ -5807,6 +5807,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 85.9661103740463,
       "albedoBreakdown": {
         "albedo": 0.169,
@@ -5817,10 +5818,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 85.9661103740463,
-      "surfaceRadiation": 58949.16815516949,
-      "orbitalRadiation": 58949.16815516949,
-      "beltInnerEdgeRadii": 1,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 86,
         "totalMinK": 52,
@@ -5850,6 +5847,9 @@
         "min": 52,
         "max": 120
       },
+      "surfaceRadiation": 87244.37850118992,
+      "orbitalRadiation": 87244.37850118992,
+      "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1
@@ -5900,23 +5900,15 @@
           "key": "prebiotic-precursor"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
         {
           "key": "hydrosphere/ocean",
           "value": "methane"
-        },
-        {
-          "key": "structure/cloud-deck",
-          "value": "methane overcast"
-        },
-        {
-          "key": "weather/precipitation",
-          "value": "methane virga"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -5928,6 +5920,14 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "structure/cloud-deck",
+          "value": "methane overcast"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane virga"
         },
         {
           "key": "volatiles/ices",
@@ -5977,15 +5977,15 @@
         "url": "/images/planet_types/web20dwarf20planet.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.011170753464183324,
+      "stellarRadiation": 0.011170753470171612,
       "radiationShieldingAtmo": 0.9999657044984797,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.00016804954554273108,
-      "particleRadiation": 0.00002350375066430541,
-      "stellarRadiationMin": 0.009992384186651056,
-      "stellarRadiationMax": 0.012528043277679897,
-      "surfaceRadiationMin": 2.0001713469135325,
-      "surfaceRadiationMax": 2.0002148277636382,
+      "particleRadiation": 0.000023503750766991092,
+      "stellarRadiationMin": 0.009992384188941267,
+      "stellarRadiationMax": 0.012528043293330385,
+      "surfaceRadiationMin": 2.0001713469135716,
+      "surfaceRadiationMax": 2.0002148277639065,
       "equilibriumTempMinK": 80.48796135320936,
       "equilibriumTempMaxK": 85.16957063162589,
       "internalHeatK": 0,
@@ -6010,6 +6010,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 82.76262625082185,
       "albedoBreakdown": {
         "albedo": 0.285,
@@ -6021,11 +6023,6 @@
       },
       "greenhouseTempK": 14.121409521806326,
       "temperatureK": 96.88403577262818,
-      "surfaceRadiation": 2.000191553296207,
-      "orbitalRadiation": 5.585376732091662,
-      "beltInnerEdgeRadii": 2.2593,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 97,
         "totalMinK": 78,
@@ -6068,6 +6065,24 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "surfaceRadiation": 2.0001915532963097,
+      "orbitalRadiation": 5.585376735085806,
+      "beltInnerEdgeRadii": 2.2695,
+      "geoActivity": {
+        "regime": "inactive",
+        "volcanism": "none",
+        "vigor": 0.016,
+        "active": false,
+        "driver": "cooled interior",
+        "surfaceAgeGyr": 4.603,
+        "tags": [
+          "geology/inactive"
+        ],
+        "notes": [
+          "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
+        ]
+      },
+      "irradiationDose": 0.165,
       "oblateness": 0.0000497411769757759,
       "auroraEmitters": [
         {
@@ -6085,21 +6100,6 @@
           "altitude": 0
         }
       ],
-      "geoActivity": {
-        "regime": "inactive",
-        "volcanism": "none",
-        "vigor": 0.016,
-        "active": false,
-        "driver": "cooled interior",
-        "surfaceAgeGyr": 4.603,
-        "tags": [
-          "geology/inactive"
-        ],
-        "notes": [
-          "Radiogenic heat has decayed below the convection threshold (vigor 0.02 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
-        ]
-      },
-      "irradiationDose": 0.165,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -6315,6 +6315,9 @@
           "key": "reducing"
         },
         {
+          "key": "magnetic/induced"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -6327,9 +6330,6 @@
         },
         {
           "key": "activity/cryovolcanism"
-        },
-        {
-          "key": "magnetic/induced"
         },
         {
           "key": "geology/cryovolcanic"
@@ -6395,15 +6395,15 @@
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 2.4657790931305126,
+      "stellarRadiation": 4.3022075581941825,
       "radiationShieldingAtmo": 8.045454524818751e-9,
-      "radiationShieldingMag": 0,
+      "radiationShieldingMag": 0.05869708635189371,
       "photonRadiation": 4.906770734810531,
-      "particleRadiation": 1227.9827659112889,
-      "stellarRadiationMin": 2.386761520511233,
-      "stellarRadiationMax": 2.5475250509658998,
-      "surfaceRadiationMin": 1195.380750654326,
-      "surfaceRadiationMax": 1275.7625152349515,
+      "particleRadiation": 2020.221480943504,
+      "stellarRadiationMin": 4.170716879350727,
+      "stellarRadiationMax": 4.437958724113025,
+      "surfaceRadiationMin": 1965.2331699194012,
+      "surfaceRadiationMax": 2091.0288230900546,
       "equilibriumTempMinK": 68.74577981105429,
       "equilibriumTempMaxK": 72.74549394085852,
       "internalHeatK": 0,
@@ -6427,6 +6427,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 3.032238426788762,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 70.6891156526889,
       "albedoBreakdown": {
         "albedo": 0.62,
@@ -6437,11 +6439,6 @@
       },
       "greenhouseTempK": 2.4862693013985017e-8,
       "temperatureK": 73.72135410139691,
-      "surfaceRadiation": 1234.8895366460995,
-      "orbitalRadiation": 1232.8895465652563,
-      "beltInnerEdgeRadii": 214.8409,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 74,
         "totalMinK": 40,
@@ -6487,6 +6484,24 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
+      "surfaceRadiation": 2027.1282516783147,
+      "orbitalRadiation": 2151.0634969934586,
+      "beltInnerEdgeRadii": 181.8549,
+      "geoActivity": {
+        "regime": "cryovolcanic",
+        "volcanism": "cryo",
+        "vigor": 0.4,
+        "active": true,
+        "driver": "resonance-pumped tidal flexing (icy)",
+        "surfaceAgeGyr": 0.05,
+        "tags": [
+          "geology/cryovolcanic"
+        ],
+        "notes": [
+          "A mean-motion resonance continually pumps the orbital eccentricity; the resulting tidal flexing is modest by silicate standards but ample to melt ICE (~273 K vs ~1000 K) — geysers vent a subsurface ocean (Enceladus-like)."
+        ]
+      },
+      "irradiationDose": 0.002,
       "oblateness": 0.007830957040493275,
       "auroraEmitters": [
         {
@@ -6504,21 +6519,6 @@
           "altitude": 0
         }
       ],
-      "geoActivity": {
-        "regime": "cryovolcanic",
-        "volcanism": "cryo",
-        "vigor": 0.4,
-        "active": true,
-        "driver": "resonance-pumped tidal flexing (icy)",
-        "surfaceAgeGyr": 0.05,
-        "tags": [
-          "geology/cryovolcanic"
-        ],
-        "notes": [
-          "A mean-motion resonance continually pumps the orbital eccentricity; the resulting tidal flexing is modest by silicate standards but ample to melt ICE (~273 K vs ~1000 K) — geysers vent a subsurface ocean (Enceladus-like)."
-        ]
-      },
-      "irradiationDose": 0.002,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -6703,10 +6703,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "1234.89 mSv",
+            "value": "2027.13 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 1234.89,
+              "value": 2027.13,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -6791,11 +6791,11 @@
           "key": "orbit/locked-planet"
         },
         {
-          "key": "structure/icy-shell",
-          "value": "water"
+          "key": "magnetic/unshielded"
         },
         {
-          "key": "magnetic/unshielded"
+          "key": "structure/icy-shell",
+          "value": "water"
         },
         {
           "key": "geology/inactive"
@@ -6836,6 +6836,8 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "internalHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 71.73387579592591,
       "albedoBreakdown": {
         "albedo": 0.597,
@@ -6848,20 +6850,6 @@
       "temperatureK": 71.73387579592591,
       "equilibriumTempMinK": 69.76191999246143,
       "equilibriumTempMaxK": 73.82053258193893,
-      "stellarRadiation": 0.48921175611111634,
-      "stellarRadiationMin": 0.48762584567815803,
-      "stellarRadiationMax": 0.49097723948704114,
-      "radiationShieldingAtmo": 0,
-      "radiationShieldingMag": 0,
-      "photonRadiation": 4.906381478856848,
-      "particleRadiation": 239.6994965767013,
-      "surfaceRadiation": 246.60587805555818,
-      "surfaceRadiationMin": 245.81292283907902,
-      "surfaceRadiationMax": 247.48861974352053,
-      "orbitalRadiation": 244.60587805555818,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 72,
         "totalMinK": 27,
@@ -6910,7 +6898,18 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.006740121027054645,
+      "stellarRadiation": 0.9077622971394854,
+      "stellarRadiationMin": 0.9058538053434966,
+      "stellarRadiationMax": 0.9098506093204114,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 4.906381478856848,
+      "particleRadiation": 448.97476709088585,
+      "surfaceRadiation": 455.8811485697427,
+      "surfaceRadiationMin": 454.9269026717483,
+      "surfaceRadiationMax": 456.9253046602057,
+      "orbitalRadiation": 453.8811485697427,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -6926,6 +6925,7 @@
         ]
       },
       "irradiationDose": 0.16,
+      "oblateness": 0.006740121027054645,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -7122,10 +7122,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "246.61 mSv",
+            "value": "455.88 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 246.61,
+              "value": 455.88,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -7214,14 +7214,14 @@
           "key": "orbit/locked-planet"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
         {
           "key": "activity/sublimating"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -7266,6 +7266,8 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "internalHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 79.75917635626027,
       "albedoBreakdown": {
         "albedo": 0.384,
@@ -7278,20 +7280,6 @@
       "temperatureK": 79.75917635626027,
       "equilibriumTempMinK": 77.56670816203976,
       "equilibriumTempMaxK": 82.07916559320891,
-      "stellarRadiation": 0.05515948836398896,
-      "stellarRadiationMin": 0.05293960303346573,
-      "stellarRadiationMax": 0.05758375262198189,
-      "radiationShieldingAtmo": 0,
-      "radiationShieldingMag": 0,
-      "photonRadiation": 4.90581427262545,
-      "particleRadiation": 22.673929909369026,
-      "surfaceRadiation": 29.579744181994478,
-      "surfaceRadiationMin": 28.46980151673287,
-      "surfaceRadiationMax": 30.79187631099095,
-      "orbitalRadiation": 27.579744181994478,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 80,
         "totalMinK": 17,
@@ -7340,7 +7328,18 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0021345219919025886,
+      "stellarRadiation": 0.10257588974883353,
+      "stellarRadiationMin": 0.09932656620738078,
+      "stellarRadiationMax": 0.10605234615977283,
+      "radiationShieldingAtmo": 0,
+      "radiationShieldingMag": 0,
+      "photonRadiation": 4.90581427262545,
+      "particleRadiation": 46.38213060179131,
+      "surfaceRadiation": 53.287944874416766,
+      "surfaceRadiationMin": 51.66328310369038,
+      "surfaceRadiationMax": 55.026173079886405,
+      "orbitalRadiation": 51.287944874416766,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7356,6 +7355,7 @@
         ]
       },
       "irradiationDose": 0.163,
+      "oblateness": 0.0021345219919025886,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -7522,10 +7522,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "29.58 mSv",
+            "value": "53.29 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 29.58,
+              "value": 53.29,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -7615,14 +7615,14 @@
           "key": "orbit/locked-planet"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
         {
           "key": "activity/sublimating"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -7667,15 +7667,15 @@
         "url": "/images/planet_types/web20ultra-short20period20planet.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 11.114091903875815,
+      "stellarRadiation": 18.20113910477544,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.907130231648317,
-      "particleRadiation": 5552.1388217062595,
-      "stellarRadiationMin": 10.008203258448358,
-      "stellarRadiationMax": 12.342219880236286,
-      "surfaceRadiationMin": 5006.101629224179,
-      "surfaceRadiationMax": 6173.109940118144,
+      "particleRadiation": 9095.66242215607,
+      "stellarRadiationMin": 16.464096470674928,
+      "stellarRadiationMax": 20.121489825735704,
+      "surfaceRadiationMin": 8234.048235337465,
+      "surfaceRadiationMax": 10062.744912867853,
       "equilibriumTempMinK": 73.44438327297418,
       "equilibriumTempMaxK": 77.71776571114988,
       "internalHeatK": 0,
@@ -7687,6 +7687,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 4.0361754106310945,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 75.52068188790528,
       "albedoBreakdown": {
         "albedo": 0.505,
@@ -7697,11 +7699,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 79.55685729853637,
-      "surfaceRadiation": 5559.045951937907,
-      "orbitalRadiation": 5557.045951937907,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 80,
         "totalMinK": 51,
@@ -7757,7 +7754,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0231060686934541,
+      "surfaceRadiation": 9102.56955238772,
+      "orbitalRadiation": 9100.56955238772,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7773,6 +7772,7 @@
         ]
       },
       "irradiationDose": 0.161,
+      "oblateness": 0.0231060686934541,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -7969,10 +7969,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "5559.05 mSv",
+            "value": "9102.57 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 5559.05,
+              "value": 9102.57,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -8055,14 +8055,14 @@
           "key": "orbit/locked-planet"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
         {
           "key": "activity/sublimating"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -8095,15 +8095,15 @@
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.011778059978113688,
+      "stellarRadiation": 0.01267302622690001,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.904791910031834,
-      "particleRadiation": 0.9842380790250095,
-      "stellarRadiationMin": 0.010589501754339752,
-      "stellarRadiationMax": 0.013145869755366904,
-      "surfaceRadiationMin": 7.294750877169876,
-      "surfaceRadiationMax": 8.572934877683451,
+      "particleRadiation": 1.4317212034181706,
+      "stellarRadiationMin": 0.011471945307402864,
+      "stellarRadiationMax": 0.014053535979072747,
+      "surfaceRadiationMin": 7.735972653701432,
+      "surfaceRadiationMax": 9.026767989536374,
       "equilibriumTempMinK": 74.73645139558938,
       "equilibriumTempMaxK": 79.0837751102909,
       "internalHeatK": 0,
@@ -8113,6 +8113,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 76.84869268124385,
       "albedoBreakdown": {
         "albedo": 0.469,
@@ -8123,11 +8125,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 76.84869268124385,
-      "surfaceRadiation": 7.889029989056844,
-      "orbitalRadiation": 5.889029989056844,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 77,
         "totalMinK": 16,
@@ -8176,7 +8173,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0009425286679432292,
+      "surfaceRadiation": 8.336513113450005,
+      "orbitalRadiation": 6.336513113450005,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -8192,6 +8191,7 @@
         ]
       },
       "irradiationDose": 0.162,
+      "oblateness": 0.0009425286679432292,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -8350,12 +8350,12 @@
           },
           {
             "label": "Radiation",
-            "points": 14.5,
+            "points": 14.2,
             "max": 17,
-            "value": "7.89 mSv",
+            "value": "8.34 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 7.89,
+              "value": 8.34,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -8379,7 +8379,7 @@
             }
           }
         ],
-        "surfaceScore": 18,
+        "surfaceScore": 17,
         "modifiers": [
           {
             "label": "Geologically inactive (no recycling)",
@@ -8438,14 +8438,14 @@
           "key": "orbit/locked-planet"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
         {
           "key": "activity/sublimating"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -8496,6 +8496,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 74.14197330317803,
       "albedoBreakdown": {
         "albedo": 0.538,
@@ -8506,11 +8508,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 74.14197330317803,
-      "surfaceRadiation": 7.567190044330053,
-      "orbitalRadiation": 5.567190044330053,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 74,
         "totalMinK": 15,
@@ -8559,7 +8556,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.000003464842174340908,
+      "surfaceRadiation": 7.567190044330053,
+      "orbitalRadiation": 5.567190044330053,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -8575,6 +8574,7 @@
         ]
       },
       "irradiationDose": 0.161,
+      "oblateness": 0.000003464842174340908,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -8825,6 +8825,9 @@
           "key": "greenhouse"
         },
         {
+          "key": "magnetic/dynamo"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "methane overcast"
         },
@@ -8847,11 +8850,8 @@
           "key": "ring/light"
         },
         {
-          "key": "magnetic/dynamo"
-        },
-        {
           "key": "aurora/moderate",
-          "value": "0.26"
+          "value": "0.25"
         },
         {
           "key": "habitability/none"
@@ -8899,13 +8899,13 @@
       "isNameUserDefined": true,
       "stellarRadiation": 0.00278053246256072,
       "radiationShieldingAtmo": 0.49373025999865516,
-      "radiationShieldingMag": 0.46007041390386866,
+      "radiationShieldingMag": 0.4466824392204644,
       "photonRadiation": 0.6174867700529375,
-      "particleRadiation": 0.04662991367791288,
+      "particleRadiation": 0.04778613871148249,
       "stellarRadiationMin": 0.0025367674102790855,
       "stellarRadiationMax": 0.0030542919624662783,
-      "surfaceRadiationMin": 2.6058945840752807,
-      "surfaceRadiationMax": 2.7295028116272535,
+      "surfaceRadiationMin": 2.6069494446185764,
+      "surfaceRadiationMax": 2.730772873701473,
       "equilibriumTempMinK": 57.132576396865964,
       "equilibriumTempMaxK": 59.846848263832655,
       "internalHeatK": 23.99249058042815,
@@ -8915,6 +8915,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": false,
+      "starTidallyLocked": false,
       "equilibriumTempK": 58.45822696132984,
       "albedoBreakdown": {
         "albedo": 0.285,
@@ -8926,11 +8928,6 @@
       },
       "greenhouseTempK": 4.653907828228229,
       "temperatureK": 84.25793910013844,
-      "surfaceRadiation": 2.6641166837308505,
-      "orbitalRadiation": 127765.36721637574,
-      "beltInnerEdgeRadii": 1.174,
-      "tidallyLocked": false,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 84,
         "totalMinK": 75,
@@ -8982,6 +8979,9 @@
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
       },
+      "surfaceRadiation": 2.66527290876442,
+      "orbitalRadiation": 98885.79746889538,
+      "beltInnerEdgeRadii": 1.1741,
       "oblateness": 0.036071586176023455,
       "auroraEmitters": [
         {
@@ -9142,15 +9142,15 @@
         },
         "resonance": null
       },
-      "stellarRadiation": 21.95963760627119,
+      "stellarRadiation": 15.68687877207168,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 1.2196216390852301,
-      "particleRadiation": 10978.59918149651,
-      "stellarRadiationMin": 21.959393858209882,
-      "stellarRadiationMax": 21.959911345936927,
-      "surfaceRadiationMin": 10979.69692910494,
-      "surfaceRadiationMax": 10979.955672968463,
+      "particleRadiation": 7842.219764396755,
+      "stellarRadiationMin": 15.686635024010373,
+      "stellarRadiationMax": 15.687152511737418,
+      "surfaceRadiationMin": 7843.3175120051865,
+      "surfaceRadiationMax": 7843.576255868709,
       "equilibriumTempMinK": 59.28448110262566,
       "equilibriumTempMaxK": 62.10091804480925,
       "internalHeatK": 0,
@@ -9159,6 +9159,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 60.66002987010062,
       "albedoBreakdown": {
         "albedo": 0.171,
@@ -9169,10 +9170,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 60.66002987010062,
-      "surfaceRadiation": 10979.818803135595,
-      "orbitalRadiation": 10979.818803135595,
-      "beltInnerEdgeRadii": 1,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 61,
         "totalMinK": 37,
@@ -9202,6 +9199,9 @@
         "min": 37,
         "max": 85
       },
+      "surfaceRadiation": 7843.43938603584,
+      "orbitalRadiation": 7843.43938603584,
+      "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1
@@ -9239,11 +9239,11 @@
           "key": "orbit/locked-planet"
         },
         {
-          "key": "structure/icy-shell",
-          "value": "water"
+          "key": "magnetic/unshielded"
         },
         {
-          "key": "magnetic/unshielded"
+          "key": "structure/icy-shell",
+          "value": "water"
         },
         {
           "key": "geology/inactive"
@@ -9272,15 +9272,15 @@
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.002779690981738696,
+      "stellarRadiation": 0.0027796901403456175,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 1.2193097287623902,
-      "particleRadiation": 0.170535762106958,
-      "stellarRadiationMin": 0.002536033810047642,
-      "stellarRadiationMax": 0.0030533246223459105,
-      "surfaceRadiationMin": 3.268016905023821,
-      "surfaceRadiationMax": 3.5266623111729554,
+      "particleRadiation": 0.17053534141041876,
+      "stellarRadiationMin": 0.002536032993725925,
+      "stellarRadiationMax": 0.00305332375511211,
+      "surfaceRadiationMin": 3.2680164968629626,
+      "surfaceRadiationMax": 3.526661877556055,
       "equilibriumTempMinK": 56.017820642027374,
       "equilibriumTempMaxK": 58.678729224214266,
       "internalHeatK": 0,
@@ -9290,6 +9290,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 57.317413140429025,
       "albedoBreakdown": {
         "albedo": 0.339,
@@ -9300,11 +9302,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 57.317413140429025,
-      "surfaceRadiation": 3.389845490869348,
-      "orbitalRadiation": 1.3898454908693483,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 12,
@@ -9353,7 +9350,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.00018957693430868684,
+      "surfaceRadiation": 3.3898450701728087,
+      "orbitalRadiation": 1.389845070172809,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9369,6 +9368,7 @@
         ]
       },
       "irradiationDose": 0.156,
+      "oblateness": 0.00018957693430868684,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -9621,11 +9621,11 @@
           "key": "orbit/locked-planet"
         },
         {
-          "key": "structure/icy-shell",
-          "value": "water"
+          "key": "magnetic/unshielded"
         },
         {
-          "key": "magnetic/unshielded"
+          "key": "structure/icy-shell",
+          "value": "water"
         },
         {
           "key": "geology/inactive"
@@ -9658,15 +9658,15 @@
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.002779403117362504,
+      "stellarRadiation": 0.0027794031172918665,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 1.2191840078891627,
-      "particleRadiation": 0.1705175507920893,
-      "stellarRadiationMin": 0.002535782380802632,
-      "stellarRadiationMax": 0.003052994286858527,
-      "surfaceRadiationMin": 3.2678911904013157,
-      "surfaceRadiationMax": 3.526497143429263,
+      "particleRadiation": 0.17051755075677053,
+      "stellarRadiationMin": 0.002535782380735567,
+      "stellarRadiationMax": 0.0030529942867841267,
+      "surfaceRadiationMin": 3.2678911903677834,
+      "surfaceRadiationMax": 3.5264971433920635,
       "equilibriumTempMinK": 55.8461741723628,
       "equilibriumTempMaxK": 58.498796227170914,
       "internalHeatK": 0,
@@ -9676,6 +9676,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 57.141721023777,
       "albedoBreakdown": {
         "albedo": 0.347,
@@ -9686,11 +9688,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 57.141721023777,
-      "surfaceRadiation": 3.389701558681252,
-      "orbitalRadiation": 1.3897015586812522,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 12,
@@ -9739,7 +9736,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0000803946362810514,
+      "surfaceRadiation": 3.389701558645933,
+      "orbitalRadiation": 1.3897015586459334,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9755,6 +9754,7 @@
         ]
       },
       "irradiationDose": 0.156,
+      "oblateness": 0.0000803946362810514,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -10007,11 +10007,11 @@
           "key": "orbit/locked-planet"
         },
         {
-          "key": "structure/icy-shell",
-          "value": "water"
+          "key": "magnetic/unshielded"
         },
         {
-          "key": "magnetic/unshielded"
+          "key": "structure/icy-shell",
+          "value": "water"
         },
         {
           "key": "geology/inactive"
@@ -10048,15 +10048,15 @@
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.011489514718393873,
+      "stellarRadiation": 0.007593449968053669,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 1.2195180425411463,
-      "particleRadiation": 4.5252393166557905,
-      "stellarRadiationMin": 0.011119236702133778,
-      "stellarRadiationMax": 0.011891645570290512,
-      "surfaceRadiationMin": 7.559618351066888,
-      "surfaceRadiationMax": 7.945822785145256,
+      "particleRadiation": 2.5772069414856884,
+      "stellarRadiationMin": 0.0072775136167235275,
+      "stellarRadiationMax": 0.007940472994449178,
+      "surfaceRadiationMin": 5.638756808361764,
+      "surfaceRadiationMax": 5.9702364972245885,
       "equilibriumTempMinK": 55.67798345862838,
       "equilibriumTempMaxK": 58.32297558310345,
       "internalHeatK": 0,
@@ -10066,6 +10066,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 56.96979976867991,
       "albedoBreakdown": {
         "albedo": 0.355,
@@ -10076,11 +10078,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 56.96979976867991,
-      "surfaceRadiation": 7.744757359196937,
-      "orbitalRadiation": 5.744757359196937,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 12,
@@ -10129,7 +10126,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0023796512224479416,
+      "surfaceRadiation": 5.7967249840268344,
+      "orbitalRadiation": 3.7967249840268344,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -10145,6 +10144,7 @@
         ]
       },
       "irradiationDose": 0.156,
+      "oblateness": 0.0023796512224479416,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -10267,7 +10267,7 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 0,
+      "habitabilityScore": 1.4775093843744997,
       "habitabilityBreakdown": {
         "factors": [
           {
@@ -10309,12 +10309,12 @@
           },
           {
             "label": "Radiation",
-            "points": 14.7,
+            "points": 16.3,
             "max": 17,
-            "value": "7.74 mSv",
+            "value": "5.80 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 7.74,
+              "value": 5.8,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -10338,7 +10338,7 @@
             }
           }
         ],
-        "surfaceScore": 18,
+        "surfaceScore": 19,
         "modifiers": [
           {
             "label": "Geologically inactive (no recycling)",
@@ -10349,7 +10349,7 @@
             "delta": -8
           }
         ],
-        "finalScore": 0,
+        "finalScore": 1,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
@@ -10404,6 +10404,9 @@
           "key": "greenhouse"
         },
         {
+          "key": "magnetic/dynamo"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "methane overcast"
         },
@@ -10422,11 +10425,8 @@
           "key": "ring/light"
         },
         {
-          "key": "magnetic/dynamo"
-        },
-        {
           "key": "aurora/moderate",
-          "value": "0.22"
+          "value": "0.26"
         },
         {
           "key": "habitability/none"
@@ -10470,13 +10470,13 @@
       "isNameUserDefined": true,
       "stellarRadiation": 0.0011316210435023915,
       "radiationShieldingAtmo": 0.4850740727461397,
-      "radiationShieldingMag": 0.3920304196852271,
+      "radiationShieldingMag": 0.4560956283007103,
       "photonRadiation": 0.2556015550992416,
-      "particleRadiation": 0.021734275625916784,
+      "particleRadiation": 0.019444011528558725,
       "stellarRadiationMin": 0.0011064028127080179,
       "stellarRadiationMax": 0.0011575618823139158,
-      "surfaceRadiationMin": 2.2711553880522914,
-      "surfaceRadiationMax": 2.283693368986585,
+      "surfaceRadiationMin": 2.2689161626033565,
+      "surfaceRadiationMax": 2.2813506037695923,
       "equilibriumTempMinK": 46.38050279508887,
       "equilibriumTempMaxK": 46.90759738783671,
       "tidallyLocked": false,
@@ -10489,6 +10489,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 46.64256101358554,
       "albedoBreakdown": {
         "albedo": 0.288,
@@ -10500,10 +10501,6 @@
       },
       "greenhouseTempK": 4.042315311579525,
       "temperatureK": 71.92350645773193,
-      "surfaceRadiation": 2.2773358307251583,
-      "orbitalRadiation": 39532.05589580096,
-      "beltInnerEdgeRadii": 1.124,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 72,
         "totalMinK": 65,
@@ -10555,6 +10552,9 @@
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
       },
+      "surfaceRadiation": 2.2750455666278,
+      "orbitalRadiation": 137665.992482148,
+      "beltInnerEdgeRadii": 1.1238,
       "oblateness": 0.0320433540207409,
       "auroraEmitters": [
         {
@@ -10730,15 +10730,15 @@
         },
         "resonance": null
       },
-      "stellarRadiation": 11.470490492942453,
+      "stellarRadiation": 52.76132901207918,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.4963735417476327,
-      "particleRadiation": 5734.748872929478,
-      "stellarRadiationMin": 11.470465275587934,
-      "stellarRadiationMax": 11.470516432871353,
-      "surfaceRadiationMin": 5735.232637793967,
-      "surfaceRadiationMax": 5735.258216435676,
+      "particleRadiation": 26380.16813249784,
+      "stellarRadiationMin": 52.76130379472466,
+      "stellarRadiationMax": 52.76135495200808,
+      "surfaceRadiationMin": 26380.65189736233,
+      "surfaceRadiationMax": 26380.67747600404,
       "equilibriumTempMinK": 48.17831291627537,
       "equilibriumTempMaxK": 48.725832444945304,
       "internalHeatK": 0,
@@ -10747,6 +10747,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 48.45052591890719,
       "albedoBreakdown": {
         "albedo": 0.171,
@@ -10757,10 +10758,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 48.45052591890719,
-      "surfaceRadiation": 5735.245246471227,
-      "orbitalRadiation": 5735.245246471227,
-      "beltInnerEdgeRadii": 1,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 48,
         "totalMinK": 29,
@@ -10790,6 +10787,9 @@
         "min": 29,
         "max": 67
       },
+      "surfaceRadiation": 26380.66450603959,
+      "orbitalRadiation": 26380.66450603959,
+      "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1
@@ -10831,23 +10831,15 @@
           "key": "inert"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
         {
           "key": "hydrosphere/frozen",
           "value": "water"
-        },
-        {
-          "key": "structure/cloud-deck",
-          "value": "methane wisps"
-        },
-        {
-          "key": "weather/precipitation",
-          "value": "methane virga"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/cryovolcanic"
@@ -10859,6 +10851,14 @@
         {
           "key": "surface/irradiation",
           "value": "low"
+        },
+        {
+          "key": "structure/cloud-deck",
+          "value": "methane wisps"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane virga"
         },
         {
           "key": "volatiles/ices",
@@ -10911,15 +10911,15 @@
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.0011314435708290138,
+      "stellarRadiation": 0.0011315343317673766,
       "radiationShieldingAtmo": 0.0001007641229546774,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.49625694655394714,
-      "particleRadiation": 0.06940783440101614,
-      "stellarRadiationMin": 0.0011062312665683551,
-      "stellarRadiationMax": 0.0011573782556147916,
-      "surfaceRadiationMin": 2.553059899072497,
-      "surfaceRadiationMax": 2.578630816704969,
+      "particleRadiation": 0.0694532102974744,
+      "stellarRadiationMin": 0.001106322027506718,
+      "stellarRadiationMax": 0.0011574690165531544,
+      "surfaceRadiationMin": 2.5531052749689556,
+      "surfaceRadiationMax": 2.578676192601427,
       "equilibriumTempMinK": 39.69304297489874,
       "equilibriumTempMaxK": 40.1441017373095,
       "internalHeatK": 0,
@@ -10934,6 +10934,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 39.89114861423219,
       "albedoBreakdown": {
         "albedo": 0.618,
@@ -10945,11 +10947,6 @@
       },
       "greenhouseTempK": 0.000020408335639210383,
       "temperatureK": 39.89116902256783,
-      "surfaceRadiation": 2.5656647809549633,
-      "orbitalRadiation": 0.5657217854145069,
-      "beltInnerEdgeRadii": 3.0764,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 40,
         "totalMinK": 8,
@@ -10995,16 +10992,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0003327004885269573,
-      "auroraEmitters": [
-        {
-          "gas": "nitrogen",
-          "colour": "purple",
-          "hex": "#9a6bff",
-          "weight": 1,
-          "altitude": 0
-        }
-      ],
+      "surfaceRadiation": 2.5657101568514213,
+      "orbitalRadiation": 0.5657671658836884,
+      "beltInnerEdgeRadii": 2.6844,
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -11020,6 +11010,16 @@
         ]
       },
       "irradiationDose": 0.002,
+      "oblateness": 0.0003327004885269573,
+      "auroraEmitters": [
+        {
+          "gas": "nitrogen",
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "weight": 1,
+          "altitude": 0
+        }
+      ],
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -11299,6 +11299,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "starTidallyLocked": false,
       "equilibriumTempK": 42.0886574693289,
       "albedoBreakdown": {
         "albedo": 0.171,
@@ -11309,10 +11310,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 42.0886574693289,
-      "surfaceRadiation": 0.3222012500736142,
-      "orbitalRadiation": 0.3222012500736142,
-      "beltInnerEdgeRadii": 1,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 42,
         "totalMinK": 25,
@@ -11342,6 +11339,9 @@
         "min": 25,
         "max": 60
       },
+      "surfaceRadiation": 0.3222012500736142,
+      "orbitalRadiation": 0.3222012500736142,
+      "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1
@@ -11393,19 +11393,11 @@
           "key": "reducing"
         },
         {
+          "key": "magnetic/unshielded"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
-        },
-        {
-          "key": "structure/cloud-deck",
-          "value": "methane wisps"
-        },
-        {
-          "key": "weather/precipitation",
-          "value": "methane virga"
-        },
-        {
-          "key": "magnetic/unshielded"
         },
         {
           "key": "geology/inactive"
@@ -11417,6 +11409,14 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
+        },
+        {
+          "key": "structure/cloud-deck",
+          "value": "methane wisps"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "methane virga"
         },
         {
           "key": "volatiles/ices",
@@ -11485,6 +11485,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 40.88515394546836,
       "albedoBreakdown": {
         "albedo": 0.299,
@@ -11496,11 +11498,6 @@
       },
       "greenhouseTempK": 0.00005526266059632093,
       "temperatureK": 40.885209208128956,
-      "surfaceRadiation": 2.339746346658621,
-      "orbitalRadiation": 0.3397707345266541,
-      "beltInnerEdgeRadii": 3.6251,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 41,
         "totalMinK": 7,
@@ -11549,16 +11546,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.0003197332568945029,
-      "auroraEmitters": [
-        {
-          "gas": "nitrogen",
-          "colour": "purple",
-          "hex": "#9a6bff",
-          "weight": 1,
-          "altitude": 0
-        }
-      ],
+      "surfaceRadiation": 2.339746346658621,
+      "orbitalRadiation": 0.3397707345266541,
+      "beltInnerEdgeRadii": 3.499,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -11574,6 +11564,16 @@
         ]
       },
       "irradiationDose": 0.154,
+      "oblateness": 0.0003197332568945029,
+      "auroraEmitters": [
+        {
+          "gas": "nitrogen",
+          "colour": "purple",
+          "hex": "#9a6bff",
+          "weight": 1,
+          "altitude": 0
+        }
+      ],
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -11831,11 +11831,11 @@
           "key": "orbit/locked-planet"
         },
         {
-          "key": "structure/icy-shell",
-          "value": "water"
+          "key": "magnetic/unshielded"
         },
         {
-          "key": "magnetic/unshielded"
+          "key": "structure/icy-shell",
+          "value": "water"
         },
         {
           "key": "geology/inactive"
@@ -11903,6 +11903,8 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
+      "tidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 40.439825009162014,
       "albedoBreakdown": {
         "albedo": 0.33,
@@ -11913,11 +11915,6 @@
       },
       "greenhouseTempK": 0,
       "temperatureK": 40.439825009162014,
-      "surfaceRadiation": 2.3397689809061775,
-      "orbitalRadiation": 0.3397689809061773,
-      "beltInnerEdgeRadii": 1,
-      "tidallyLocked": true,
-      "starTidallyLocked": false,
       "temperatureProfile": {
         "meanK": 40,
         "totalMinK": 7,
@@ -11966,7 +11963,9 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "oblateness": 0.00034971537116461603,
+      "surfaceRadiation": 2.3397689809061775,
+      "orbitalRadiation": 0.3397689809061773,
+      "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -11982,6 +11981,7 @@
         ]
       },
       "irradiationDose": 0.154,
+      "oblateness": 0.00034971537116461603,
       "volatiles": {
         "retained": [],
         "lambda": {

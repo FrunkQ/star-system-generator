@@ -121,6 +121,31 @@ export class SystemProcessor implements ISystemProcessor {
             }
         }
 
+        // 2b. Interior fluid layers + MAGNETISM. Split out of the classification pass, where it used
+        //     to sit, for one reason: radiation reads a body's field and used to run a whole pass
+        //     BEFORE that field was derived, so the dose a GM saw depended on how many times the
+        //     system had been through process() (inbox B13). Everything this needs — makeup, mass,
+        //     the reconciled spin, the solved temperatures — is committed by the end of 2a.
+        //     PARENT BEFORE CHILD, because a moon's induced field asks whether it sits inside its
+        //     host's magnetosphere, and the belt term in 2c asks the host for its field and spin.
+        //     Iterating in node order made both answers depend on the order bodies happen to appear
+        //     in the file.
+        for (const node of this.parentFirstOrder(allNodes)) {
+            if (node.kind === 'body') {
+                this.processInterior(node as CelestialBody, allNodes, rulePack);
+            }
+        }
+
+        // 2c. Radiation — its own pass, after EVERY body has its field, its spin and its atmospheric
+        //     scale height. A body's dose depends on its host's magnetosphere as well as its own, so
+        //     there is no per-body order that can satisfy it; it has to follow the whole of 2b.
+        for (const node of allNodes) {
+            if (node.kind === 'body' && (node as CelestialBody).roleHint !== 'star') {
+                const b = node as CelestialBody;
+                b.surfaceRadiation = calculateSurfaceRadiation(b, allNodes, rulePack);
+            }
+        }
+
         // 3. Third Pass: Life & Classification (Habitability, Tags, Classes)
         // Requires environment to be set
         for (const node of allNodes) {
@@ -151,12 +176,43 @@ export class SystemProcessor implements ISystemProcessor {
         const barycenters = system.nodes.filter(n => n.kind === 'barycenter') as Barycenter[];
         const nodesById = new Map(system.nodes.map(n => [n.id, n]));
 
+        // EFFECTIVE MASSES FIRST, DEEPEST BARYCENTRE FIRST — a nested barycentre is a member of the
+        // one above it, so the outer one's total is only right once the inner one's is. The single
+        // loop below used to do this in file order, and Alpha Centauri lists the OUTER barycentre
+        // first: on a fresh load the system barycentre summed Proxima plus a stale AB total (2.43e29
+        // against the true 4.20e30), which then moved every orbit in the system and flipped both
+        // primaries from no stability verdict at all to "Very Unstable" on the second pass. Splitting
+        // the masses out also breaks the genuine circularity in doing it in one pass: an inner
+        // barycentre needs its PARENT's mass for its own orbit, while the parent needs the inner
+        // one's mass for its total. (inbox B13)
+        for (const bary of this.parentFirstOrder(barycenters).reverse() as Barycenter[]) {
+            if (!bary.memberIds || bary.memberIds.length < 2) continue;
+            let totalMass = 0;
+            for (const id of bary.memberIds) {
+                const member = nodesById.get(id);
+                if (!member) continue;
+                totalMass += (member.kind === 'body'
+                    ? (member as CelestialBody).massKg
+                    : (member as Barycenter).effectiveMassKg) || 0;
+            }
+            bary.effectiveMassKg = totalMass;
+        }
+
         for (const bary of barycenters) {
             if (!bary.memberIds || bary.memberIds.length < 2) continue;
 
             // Keep barycenter parent-orbit dynamics consistent with current parent mass.
-            if (bary.orbit && bary.parentId) {
-                const parent = nodesById.get(bary.parentId) as CelestialBody | Barycenter | undefined;
+            // NOT when this barycentre is itself a MEMBER of another one: that parent's own member
+            // loop and binary coupling below already own this orbit, and they derive the mean motion
+            // from the pair's SEPARATION rather than from this member's semi-major axis alone. Two
+            // writers, two formulas, one field — mathematically the same answer, one unit in the last
+            // place apart, and whichever ran last won. Algol's inner barycentre changed its mean
+            // motion between the first process() and the second for exactly that reason (inbox B13).
+            const parentNode = bary.parentId ? nodesById.get(bary.parentId) : undefined;
+            const ownedByParentPair = parentNode?.kind === 'barycenter'
+                && ((parentNode as Barycenter).memberIds || []).includes(bary.id);
+            if (bary.orbit && bary.parentId && !ownedByParentPair) {
+                const parent = parentNode as CelestialBody | Barycenter | undefined;
                 const parentMass = parent?.kind === 'barycenter'
                     ? (parent.effectiveMassKg || 0)
                     : ((parent as CelestialBody | undefined)?.massKg || 0);
@@ -164,7 +220,7 @@ export class SystemProcessor implements ISystemProcessor {
                     bary.orbit.hostMu = G * parentMass;
                     const aMeters = (bary.orbit.elements.a_AU || 0) * AU_KM * 1000;
                     if (aMeters > 0) {
-                        bary.orbit.n_rad_per_s = Math.sqrt((G * parentMass) / Math.pow(aMeters, 3));
+                        bary.orbit.n_rad_per_s = this.settled(bary.orbit.n_rad_per_s, Math.sqrt((G * parentMass) / Math.pow(aMeters, 3)));
                     }
                 }
             }
@@ -216,13 +272,15 @@ export class SystemProcessor implements ISystemProcessor {
                     const otherMass = otherMember.kind === 'body' ? (otherMember as CelestialBody).massKg : (otherMember as Barycenter).effectiveMassKg;
                     
                     if (totalMass > 0) {
-                        member.orbit.elements.a_AU = separationAU * ((otherMass || 0) / totalMass);
+                        member.orbit.elements.a_AU = this.settled(
+                            member.orbit.elements.a_AU, separationAU * ((otherMass || 0) / totalMass)
+                        );
                     }
                 }
 
                 // Update Physics
                 member.orbit.hostMu = G * totalMass;
-                member.orbit.n_rad_per_s = n_rad_per_s;
+                member.orbit.n_rad_per_s = this.settled(member.orbit.n_rad_per_s, n_rad_per_s);
             }
 
             // 4. Binary coupling: keep paired orbits physically reciprocal.
@@ -260,8 +318,8 @@ export class SystemProcessor implements ISystemProcessor {
                     const a0 = denom > 0 ? sepAU * (mass1 / denom) : (m0.orbit.elements.a_AU || 0);
                     const a1 = denom > 0 ? sepAU * (mass0 / denom) : (m1.orbit.elements.a_AU || 0);
 
-                    m0.orbit.elements.a_AU = a0;
-                    m1.orbit.elements.a_AU = a1;
+                    m0.orbit.elements.a_AU = this.settled(m0.orbit.elements.a_AU, a0);
+                    m1.orbit.elements.a_AU = this.settled(m1.orbit.elements.a_AU, a1);
 
                     m0.orbit.elements.e = coupledE;
                     m1.orbit.elements.e = coupledE;
@@ -274,19 +332,39 @@ export class SystemProcessor implements ISystemProcessor {
                     // argument of periapsis flipped by 180°. Offsetting M0 by π instead (the old way)
                     // only lines them up for circular orbits — for an eccentric pair the nonlinear
                     // mean→true map drifts them onto the SAME side away from periapsis/apoapsis.
-                    m0.orbit.elements.omega_deg = coupledArgPeri;
-                    m1.orbit.elements.omega_deg = (coupledArgPeri + 180) % 360;
+                    // The REFERENCE member keeps its own argument of periapsis and the OTHER one is
+                    // put opposite it. Assigning the flip to m1 unconditionally meant that whenever
+                    // m1 WAS the reference (heavier, or more recently edited) it flipped its own
+                    // angle by 180 degrees on every pass — a period-2 limit cycle that never
+                    // settles, so process() could never be idempotent on a binary. Zeta Reticuli
+                    // oscillated 0 / 180 / 0 / 180 forever (inbox B13).
+                    const refIsM0 = reference === m0.orbit;
+                    const oppositeArgPeri = (coupledArgPeri + 180) % 360;
+                    m0.orbit.elements.omega_deg = refIsM0 ? coupledArgPeri : oppositeArgPeri;
+                    m1.orbit.elements.omega_deg = refIsM0 ? oppositeArgPeri : coupledArgPeri;
 
                     m0.orbit.elements.M0_rad = refM0;
                     m1.orbit.elements.M0_rad = refM0;
 
                     m0.orbit.hostMu = G * totalMass;
                     m1.orbit.hostMu = G * totalMass;
-                    m0.orbit.n_rad_per_s = n_rad_per_s;
-                    m1.orbit.n_rad_per_s = n_rad_per_s;
+                    m0.orbit.n_rad_per_s = this.settled(m0.orbit.n_rad_per_s, n_rad_per_s);
+                    m1.orbit.n_rad_per_s = this.settled(m1.orbit.n_rad_per_s, n_rad_per_s);
                 }
             }
         }
+    }
+
+    // Keep the stored value when the newly computed one is the same number to within double
+    // precision. The barycentre split is a ROUND TRIP — the separation is the SUM of the members'
+    // semi-major axes, and each member's axis is then re-derived from that sum — and in floating
+    // point that trip lands one unit in the last place away from where it started, on every pass,
+    // for ever. Nothing physical moves; the number simply never settles, and never settling is
+    // enough on its own to make process() non-idempotent (Luyten 726-8, inbox B13). A relative
+    // change of a part in 1e-12 is not a change.
+    private settled(current: number | undefined, next: number): number {
+        if (current === undefined || !Number.isFinite(current) || current === 0) return next;
+        return Math.abs(next - current) <= Math.abs(current) * 1e-12 ? current : next;
     }
 
     private normalizeAngle(rad: number): number {
@@ -407,6 +485,65 @@ export class SystemProcessor implements ISystemProcessor {
         body.radiogenicHeatK = radiogenicHeatK;
         body.internalHeatK = estimateInternalHeatK(body, pack, this.systemAgeGyr);
 
+        // Tidal locking — derived from the despinning timescale vs the system age (a moon locks to
+        // its planet, a planet to its star/barycentre). DYNAMIC by default; the body editor's
+        // checkbox pins it (tidalLockManual) and skips this assessment.
+        // WHAT it locks to matters for the renderer, and the renderer (a pure function of one body)
+        // can't see the parent chain — so we surface it here as tags: orbit/locked-star (a planet with a
+        // PERMANENT substellar face → an eyeball world) vs orbit/locked-planet (a moon; its whole surface
+        // still cycles through stellar day/night, so NO eyeball — but its cratering still skews to its
+        // orbital leading face).
+        // RUNS BEFORE THE THERMAL SOLVE, and that is deliberate: the solve's surface-temperature
+        // profile reads `tidallyLocked` and the rotation period, so under the old placement — after
+        // the solve — it was reading whatever the PREVIOUS process() left behind, or nothing at all
+        // on a fresh import. Nothing here is thermal (despinning is mass, radius, distance and age),
+        // so there is no circularity in moving it up, only a stale read removed. Same rule as the
+        // v2.1.282 thermal unification: anything the solve reads is committed before it runs.
+        const lockParent = allNodes.find((n) => n.id === body.parentId);
+        const orbitsStar = !!lockParent && (
+            (lockParent.kind === 'body' && (lockParent as CelestialBody).roleHint === 'star') ||
+            (lockParent.kind === 'barycenter' && ((lockParent as Barycenter).memberIds || []).some((mid) => {
+                const m = allNodes.find((n) => n.id === mid); return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
+            }))
+        );
+        if (!(body as any).tidalLockManual && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
+            const lockHostMass = lockParent
+                ? (lockParent.kind === 'barycenter' ? (lockParent as Barycenter).effectiveMassKg : (lockParent as CelestialBody).massKg)
+                : 0;
+            body.tidallyLocked = predictTidalLock(
+                body.orbit?.elements.a_AU || 0, body.radiusKm || 0, body.massKg || 0,
+                lockHostMass || 0, this.systemAgeGyr
+            );
+        }
+        body.starTidallyLocked = !!body.tidallyLocked && orbitsStar;
+        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked' && t.key !== 'orbit/locked-star' && t.key !== 'orbit/locked-planet' && t.key !== 'orbit/spin-orbit-resonance');
+
+        // B7: reconcile the SPIN with the lock, so the two cannot contradict each other. A locked
+        // body's sidereal rotation period is its orbital period — surfaceTempProfile below has
+        // always assumed exactly that (it uses orbitalPeriodHours for a locked body and ignores the
+        // stored spin), while the stat block, the dynamo's rotation factor and the oblateness model
+        // all read the stored number. One question, two answers. The lock now sets the number, and
+        // because the assessment above is DERIVED every pass, a hand-pinned lock reconciles too.
+        // The exception is a captured spin-orbit resonance — Mercury's 3:2 — which keeps its own
+        // measured period and says which resonance it is instead of claiming to be synchronous.
+        if (body.tidallyLocked && (body.orbital_period_days ?? 0) > 0) {
+            const spin = lockedSpin(
+                (body.orbital_period_days as number) * 24,
+                body.rotation_period_hours,
+                body.orbit?.elements.e ?? 0
+            );
+            body.rotation_period_hours = spin.rotationHours;
+            body.calculatedRotationPeriod_s = Math.abs(spin.rotationHours) * 3600;
+            if (spin.kind === 'resonant') body.tags.push({ key: 'orbit/spin-orbit-resonance', value: spin.ratio as string });
+        }
+        // Surface the lock TARGET as its own tag (both are registered so they survive tag sanitising):
+        // locked-star = a permanent substellar face (eyeball candidate); locked-planet = a moon whose
+        // whole surface still cycles through stellar day/night.
+        if (body.tidallyLocked) {
+            body.tags.push({ key: 'orbit/tidally-locked' });
+            body.tags.push({ key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
+        }
+
         // --- THE thermal fixed point: albedo ⇄ equilibrium temp ⇄ greenhouse ⇄ surface temp ⇄
         //     cloud decks ⇄ albedo (physics/temperature.ts solveThermalState, which explains why it
         //     terminates). The clouds it reads are deriveCloudDecks' — the same single evaluation
@@ -455,61 +592,10 @@ export class SystemProcessor implements ISystemProcessor {
             if (allStars.length > 0 && (body.atmosphere?.pressure_bar ?? 0) !== pressureBefore) commitThermal();
         }
 
-        // Radiation (after escape, so shielding reflects any thinned/stripped atmosphere).
-        body.surfaceRadiation = calculateSurfaceRadiation(body, allNodes, pack);
-
-        // Tidal locking — derived from the despinning timescale vs the system age (a moon locks to
-        // its planet, a planet to its star/barycentre). DYNAMIC by default; the body editor's
-        // checkbox pins it (tidalLockManual) and skips this assessment.
-        // WHAT it locks to matters for the renderer, and the renderer (a pure function of one body)
-        // can't see the parent chain — so we surface it here as tags: orbit/locked-star (a planet with a
-        // PERMANENT substellar face → an eyeball world) vs orbit/locked-planet (a moon; its whole surface
-        // still cycles through stellar day/night, so NO eyeball — but its cratering still skews to its
-        // orbital leading face).
-        const lockParent = allNodes.find((n) => n.id === body.parentId);
-        const orbitsStar = !!lockParent && (
-            (lockParent.kind === 'body' && (lockParent as CelestialBody).roleHint === 'star') ||
-            (lockParent.kind === 'barycenter' && ((lockParent as Barycenter).memberIds || []).some((mid) => {
-                const m = allNodes.find((n) => n.id === mid); return m?.kind === 'body' && (m as CelestialBody).roleHint === 'star';
-            }))
-        );
-        if (!(body as any).tidalLockManual && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
-            const lockHostMass = lockParent
-                ? (lockParent.kind === 'barycenter' ? (lockParent as Barycenter).effectiveMassKg : (lockParent as CelestialBody).massKg)
-                : 0;
-            body.tidallyLocked = predictTidalLock(
-                body.orbit?.elements.a_AU || 0, body.radiusKm || 0, body.massKg || 0,
-                lockHostMass || 0, this.systemAgeGyr
-            );
-        }
-        body.starTidallyLocked = !!body.tidallyLocked && orbitsStar;
-        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked' && t.key !== 'orbit/locked-star' && t.key !== 'orbit/locked-planet' && t.key !== 'orbit/spin-orbit-resonance');
-
-        // B7: reconcile the SPIN with the lock, so the two cannot contradict each other. A locked
-        // body's sidereal rotation period is its orbital period — surfaceTempProfile below has
-        // always assumed exactly that (it uses orbitalPeriodHours for a locked body and ignores the
-        // stored spin), while the stat block, the dynamo's rotation factor and the oblateness model
-        // all read the stored number. One question, two answers. The lock now sets the number, and
-        // because the assessment above is DERIVED every pass, a hand-pinned lock reconciles too.
-        // The exception is a captured spin-orbit resonance — Mercury's 3:2 — which keeps its own
-        // measured period and says which resonance it is instead of claiming to be synchronous.
-        if (body.tidallyLocked && (body.orbital_period_days ?? 0) > 0) {
-            const spin = lockedSpin(
-                (body.orbital_period_days as number) * 24,
-                body.rotation_period_hours,
-                body.orbit?.elements.e ?? 0
-            );
-            body.rotation_period_hours = spin.rotationHours;
-            body.calculatedRotationPeriod_s = Math.abs(spin.rotationHours) * 3600;
-            if (spin.kind === 'resonant') body.tags.push({ key: 'orbit/spin-orbit-resonance', value: spin.ratio as string });
-        }
-        // Surface the lock TARGET as its own tag (both are registered so they survive tag sanitising):
-        // locked-star = a permanent substellar face (eyeball candidate); locked-planet = a moon whose
-        // whole surface still cycles through stellar day/night.
-        if (body.tidallyLocked) {
-            body.tags.push({ key: 'orbit/tidally-locked' });
-            body.tags.push({ key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
-        }
+        // (Radiation used to sit here, and that was the whole of inbox B13: it read this body's
+        //  magnetic field a full pass before the field was derived, and its belt inner edge read an
+        //  atmospheric scale height written 58 lines further down this same method. It is now its
+        //  own pass, 2c, after every body's field, spin and scale height are committed.)
 
         // V1.4.0 Unified Atmospheric Physics — molar mass, scale height and the gas tags, plus a
         // recompute of the greenhouse the thermal solve already committed (idempotent: it lands on
@@ -550,6 +636,75 @@ export class SystemProcessor implements ISystemProcessor {
         const magneticFieldStrength = body.magneticField?.strengthGauss || 0;
         const atmosphereRetentionFactor = pack.generation_parameters?.atmosphere_retention_factor || 100;
         const retainsAtmosphere = (magneticFieldStrength * atmosphereRetentionFactor) > totalStellarRadiation;
+    }
+
+    // Nodes ordered so that a parent always comes before its children. Used by pass 2b, where a
+    // moon asks its host whether it sits inside a magnetosphere — a question that must not be
+    // answered from the host's PREVIOUS field. Depth is capped so a malformed parent cycle in
+    // imported data degrades to "order unchanged" rather than recursing forever.
+    private parentFirstOrder(nodes: (CelestialBody | Barycenter)[]): (CelestialBody | Barycenter)[] {
+        const byId = new Map(nodes.map((n) => [n.id, n]));
+        const cache = new Map<string, number>();
+        const depthOf = (node: CelestialBody | Barycenter, guard: number): number => {
+            const seen = cache.get(node.id);
+            if (seen !== undefined) return seen;
+            const parent = node.parentId ? byId.get(node.parentId) : undefined;
+            const d = !parent || guard >= 24 ? 0 : depthOf(parent, guard + 1) + 1;
+            cache.set(node.id, d);
+            return d;
+        };
+        // Stable sort, so bodies at the same depth keep their file order.
+        return [...nodes].sort((a, b) => depthOf(a, 0) - depthOf(b, 0));
+    }
+
+    // PASS 2b — interior fluid layers and the magnetism they drive.
+    //
+    // This used to live inside processClassification (pass 3), one whole pass after the radiation
+    // model that reads its output. That was inbox B13: the first process() shielded a body with
+    // whatever field was authored or left over, every later one shielded it with the derived field,
+    // and since process() runs on load AND after every edit the dose a GM read depended on how many
+    // times the system had been through.
+    //
+    // It is safe HERE and nowhere earlier. deriveFluidLayers reads the composed surface temperature
+    // and the heat terms, and deriveMagnetism reads the reconciled spin and the equilibrium
+    // temperature (the giant helium-rain factor) — all of them committed by the end of pass 2a, none
+    // of them written later. It is NOT safe before the thermal solve: the solve produces the
+    // temperature the layers are judged at, so moving it up would be a circular read, not an
+    // ordering tweak. See the entry for the one edge that remains (atmospheric escape).
+    private processInterior(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack) {
+        if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return;
+
+        // Fluid layers (surface/subsurface oceans, interior conductive) — feed classification
+        // (subsurface-ocean), apparent colour and the §2d dynamo below.
+        // Write the derived layers ALWAYS, including an empty set. Guarding on `.length` meant that
+        // when a body stopped having any fluid layer, the previous pass's layers were left on it.
+        body.hydrosphere = { ...(body.hydrosphere || {}), layers: deriveFluidLayers(body, pack) };
+
+        // Magnetism profile (§2d) — descriptive read of the dynamo from interior conductive layers
+        // + rotation. A salty subsurface ocean only induces a field when the moon sits inside a
+        // giant host's magnetosphere, so this asks the host — hence the parent-first iteration.
+        let insideHostMagnetosphere = false;
+        if (body.roleHint === 'moon' && body.parentId) {
+            const host = allNodes.find((n) => n.id === body.parentId) as CelestialBody | undefined;
+            if (host && host.kind === 'body') {
+                const hostMassMe = (host.massKg ?? 0) / EARTH_MASS_KG;
+                insideHostMagnetosphere =
+                    hostMassMe > 50 || makeupFractions(host).gas > 0.5 || (host.magneticField?.strengthGauss ?? 0) >= 1;
+            }
+        }
+        body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
+        // The field STRENGTH derives from the model (rotation + composition + core size) unless the GM
+        // has set it manually (F-OVR). So spinning a world up or making it metal-rich changes its field,
+        // and a small iron-cored world like Mercury gets a tenuous field instead of nothing. A manual
+        // value is left untouched and still overrides the tag below.
+        if (!body.magneticField?.manual) {
+            body.magneticField = { strengthGauss: +body.magnetism.nominalGauss.toFixed(4) };
+        }
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('magnetic/'));
+        // The shielding tag reconciles with the field the GM sees: 0 → unshielded, a whisker → tenuous
+        // (Mercury), induced ocean → induced, a manual field with no interior source → anomalous, else a
+        // dynamo. A manual value overrides the derived one.
+        body.tags.push({ key: magneticShieldingTag(body.magnetism, body.magneticField) });
     }
 
     private processClassification(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG) {
@@ -652,15 +807,11 @@ export class SystemProcessor implements ISystemProcessor {
         // the rubble-pile modifier key on actual void fraction, not a proxy density band.
         features['porosity'] = derivedPorosity(body);
 
-        // Fluid layers (surface/subsurface oceans, cloud decks, interior conductive) — feed
-        // classification (subsurface-ocean), apparent colour (clouds) and §2d magnetism.
-        const fluidLayers = deriveFluidLayers(body, pack);
-        // Write the derived layers ALWAYS, including an empty set. Guarding on `.length` meant that when
-        // a body stopped having any fluid layer, the previous pass's layers were left on it — so the
-        // TAGS (re-derived from this array every pass) said "no cloud deck" while the saved layers still
-        // said there was one. Apparent colour reads the layers, the disc renderer reads the tag, and the
-        // two then disagree: a cloud deck that tints the world but is never drawn.
-        body.hydrosphere = { ...(body.hydrosphere || {}), layers: fluidLayers };
+        // Fluid layers (surface/subsurface oceans, interior conductive) — derived and committed in
+        // pass 2b, because the radiation pass needs the magnetism they drive. Read, not re-derived:
+        // a second evaluation of one question is exactly what the architecture rule forbids, and the
+        // TAGS below are re-derived from this array every pass either way.
+        const fluidLayers = body.hydrosphere?.layers ?? [];
         features['hasSubsurfaceOcean'] = fluidLayers.some((l) => l.location === 'subsurface') ? 1 : 0;
 
         // Structural tags (surfaced for GMs): a frozen icy shell, polar ice, a subsurface ocean, a
@@ -735,90 +886,6 @@ export class SystemProcessor implements ISystemProcessor {
         if (surfacePhase === 'liquid' && hydroCov > 0.1 && (body.temperatureRangeK?.min ?? surfTForStruct) < meltK) {
             body.tags.push({ key: 'climate/polar-ice', value: hydroComp as string }); // the surface liquid, frozen at the poles
         }
-        // CLOUD DECKS + PRECIPITATION — the single evaluation (physics→tags→visuals; see
-        // docs/dev/cloud-decks-design.md). Which gases condense, what they condense into, and what
-        // reacts to form what is all rule-pack DATA. Renderers read only the tags emitted here.
-        // Gas giants keep their legacy look for now (E6 — they join the deck stack in their own
-        // change), but their tags are still emitted so the data is ready.
-        const cloudDecks = deriveCloudDecks(body, pack);
-        body.tags = applyCloudDeckTags(body.tags, cloudDecks, deriveWeather(body, cloudDecks, pack));
-
-        // POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Too emergent to
-        // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8
-        // (6 = the Saturn hexagon, the commonest). Deterministic on the body id so it's stable across
-        // re-runs. Re-derived → strip any prior auto copy but keep a user's manual one.
-        body.tags = body.tags.filter((t) => t.key !== 'feature/polar-vortex' || t.manual);
-        if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex') && hash01(`${body.id}|vortex`) < 0.7) {
-            const sides = [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|vsides`) * 6) % 6];
-            body.tags.push({ key: 'feature/polar-vortex', value: String(sides) });
-        }
-
-        // Ring system — DERIVED from geometry (does the body host ring children?), not hand-tagged.
-        // One ring → "ringed"; more than one → "multiple rings". Each ring's debris mass sorts it into
-        // a light / medium / heavy tier (log scale, same as the orrery disc); the DISTINCT tiers present
-        // are surfaced, so a heavy ring beside a faint one reads as both.
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('ring/'));
-        const ringChildren = allNodes.filter(
-            (n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'ring' && n.parentId === body.id
-        ) as CelestialBody[];
-        if (ringChildren.length) {
-            body.tags.push({ key: 'ring/system' });
-            if (ringChildren.length > 1) body.tags.push({ key: 'ring/multiple' });
-            const tiers = new Set<string>();
-            for (const r of ringChildren) {
-                const me = (r.massKg ?? 0) / EARTH_MASS_KG;
-                const d = me > 0 ? Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (Math.log(1) - Math.log(1e-5)))) : 0.5;
-                tiers.add(d < 1 / 3 ? 'light' : d < 2 / 3 ? 'medium' : 'heavy');
-            }
-            for (const tier of ['light', 'medium', 'heavy']) if (tiers.has(tier)) body.tags.push({ key: `ring/${tier}` });
-        }
-
-        // Magnetism profile (§2d) — descriptive read of the dynamo from interior conductive layers
-        // + rotation; does NOT override the editable field strength. A salty subsurface ocean only
-        // induces a field when the moon sits inside a giant host's magnetosphere.
-        let insideHostMagnetosphere = false;
-        if (body.roleHint === 'moon' && body.parentId) {
-            const host = allNodes.find(n => n.id === body.parentId) as CelestialBody | undefined;
-            if (host && host.kind === 'body') {
-                const hostMassMe = (host.massKg ?? 0) / EARTH_MASS_KG;
-                insideHostMagnetosphere =
-                    hostMassMe > 50 || makeupFractions(host).gas > 0.5 || (host.magneticField?.strengthGauss ?? 0) >= 1;
-            }
-        }
-        body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
-        // The field STRENGTH derives from the model (rotation + composition + core size) unless the GM
-        // has set it manually (F-OVR). So spinning a world up or making it metal-rich changes its field,
-        // and a small iron-cored world like Mercury gets a tenuous field instead of nothing. A manual
-        // value is left untouched and still overrides the tag below.
-        if (!body.magneticField?.manual) {
-            body.magneticField = { strengthGauss: +body.magnetism.nominalGauss.toFixed(4) };
-        }
-        body.tags = (body.tags || []).filter(t => !t.key.startsWith('magnetic/'));
-        // The shielding tag reconciles with the field the GM sees: 0 → unshielded, a whisker → tenuous
-        // (Mercury), induced ocean → induced, a manual field with no interior source → anomalous, else a
-        // dynamo. A manual value overrides the derived one.
-        body.tags.push({ key: magneticShieldingTag(body.magnetism, body.magneticField) });
-
-        // Rotational deformation (E4). A spinning body flattens; past the density-set breakup spin it
-        // would shed mass into a ring. DERIVED dynamically from the bulk density (composition) + rotation
-        // period, so it tracks either changing. Stored (renderers draw the oblate shape) + surfaced as
-        // progressive shape/* tags, and the ellipsoid/toroidal classes key on the spin fraction below.
-        const deform = rotationalDeform(body.rotation_period_hours ?? 0, density_gcc);
-        body.oblateness = deform.oblateness;
-        features['spinFraction'] = deform.fraction;
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('shape/'));
-        if (deform.shape !== 'spherical') body.tags.push({ key: `shape/${deform.shape}` });
-
-        // Auroras (Phase G viz driver): atmosphere + magnetosphere + incident ionising flux → a polar
-        // glow, graded faint→brilliant. Derived here (after magnetism + radiation + atmosphere are all
-        // final); the numeric strength rides on the tag value so the renderer can scale the curtain.
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('aurora/'));
-        const aurora = deriveAurora(body);
-        if (aurora.tier) body.tags.push({ key: `aurora/${aurora.tier}`, value: aurora.strength.toFixed(2) });
-        // Resolve the emission-colour bands from the pack's gas data (data-driven, editable) onto the
-        // body so every renderer reads the same colours without needing the rule pack.
-        body.auroraEmitters = body.atmosphere ? resolveAuroraEmitters(body, pack) : undefined;
-
         // Geological activity (tectonics + volcanism by MECHANISM) — the biosphere keystone. Uses
         // makeup (radiogenic budget + iron core), mass/radius (cooling rate), system AGE (radiogenic
         // decay), surface water (mobile vs stagnant lid) and tidal tags (Io/Europa). Adds a
@@ -873,6 +940,74 @@ export class SystemProcessor implements ISystemProcessor {
             features['geoActive'] = 0;
             features['plateTectonics'] = 0;
         }
+
+        // GEOLOGY RUNS BEFORE THE WEATHER, and that ordering is load-bearing: deriveWeather's
+        // lightning term reads geology/plate-tectonics and tidal/volcanism as its convection driver,
+        // and those tags are emitted HERE. With geology below the weather it was reading the
+        // PREVIOUS process() run's tags, so Earth's sky went from frequent lightning on a fresh
+        // load to constant on the next pass (inbox B13).
+
+        // CLOUD DECKS + PRECIPITATION — the single evaluation (physics→tags→visuals; see
+        // docs/dev/cloud-decks-design.md). Which gases condense, what they condense into, and what
+        // reacts to form what is all rule-pack DATA. Renderers read only the tags emitted here.
+        // Gas giants keep their legacy look for now (E6 — they join the deck stack in their own
+        // change), but their tags are still emitted so the data is ready.
+        const cloudDecks = deriveCloudDecks(body, pack);
+        body.tags = applyCloudDeckTags(body.tags, cloudDecks, deriveWeather(body, cloudDecks, pack));
+
+        // POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Too emergent to
+        // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8
+        // (6 = the Saturn hexagon, the commonest). Deterministic on the body id so it's stable across
+        // re-runs. Re-derived → strip any prior auto copy but keep a user's manual one.
+        body.tags = body.tags.filter((t) => t.key !== 'feature/polar-vortex' || t.manual);
+        if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex') && hash01(`${body.id}|vortex`) < 0.7) {
+            const sides = [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|vsides`) * 6) % 6];
+            body.tags.push({ key: 'feature/polar-vortex', value: String(sides) });
+        }
+
+        // Ring system — DERIVED from geometry (does the body host ring children?), not hand-tagged.
+        // One ring → "ringed"; more than one → "multiple rings". Each ring's debris mass sorts it into
+        // a light / medium / heavy tier (log scale, same as the orrery disc); the DISTINCT tiers present
+        // are surfaced, so a heavy ring beside a faint one reads as both.
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('ring/'));
+        const ringChildren = allNodes.filter(
+            (n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'ring' && n.parentId === body.id
+        ) as CelestialBody[];
+        if (ringChildren.length) {
+            body.tags.push({ key: 'ring/system' });
+            if (ringChildren.length > 1) body.tags.push({ key: 'ring/multiple' });
+            const tiers = new Set<string>();
+            for (const r of ringChildren) {
+                const me = (r.massKg ?? 0) / EARTH_MASS_KG;
+                const d = me > 0 ? Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (Math.log(1) - Math.log(1e-5)))) : 0.5;
+                tiers.add(d < 1 / 3 ? 'light' : d < 2 / 3 ? 'medium' : 'heavy');
+            }
+            for (const tier of ['light', 'medium', 'heavy']) if (tiers.has(tier)) body.tags.push({ key: `ring/${tier}` });
+        }
+
+        // (Magnetism used to be derived HERE, a whole pass after the radiation model that reads it.
+        //  It now lands in pass 2b — see processInterior. Inbox B13.)
+
+        // Rotational deformation (E4). A spinning body flattens; past the density-set breakup spin it
+        // would shed mass into a ring. DERIVED dynamically from the bulk density (composition) + rotation
+        // period, so it tracks either changing. Stored (renderers draw the oblate shape) + surfaced as
+        // progressive shape/* tags, and the ellipsoid/toroidal classes key on the spin fraction below.
+        const deform = rotationalDeform(body.rotation_period_hours ?? 0, density_gcc);
+        body.oblateness = deform.oblateness;
+        features['spinFraction'] = deform.fraction;
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('shape/'));
+        if (deform.shape !== 'spherical') body.tags.push({ key: `shape/${deform.shape}` });
+
+        // Auroras (Phase G viz driver): atmosphere + magnetosphere + incident ionising flux → a polar
+        // glow, graded faint→brilliant. Derived here (after magnetism + radiation + atmosphere are all
+        // final); the numeric strength rides on the tag value so the renderer can scale the curtain.
+        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('aurora/'));
+        const aurora = deriveAurora(body);
+        if (aurora.tier) body.tags.push({ key: `aurora/${aurora.tier}`, value: aurora.strength.toFixed(2) });
+        // Resolve the emission-colour bands from the pack's gas data (data-driven, editable) onto the
+        // body so every renderer reads the same colours without needing the rule pack.
+        body.auroraEmitters = body.atmosphere ? resolveAuroraEmitters(body, pack) : undefined;
+
 
         // Volatile-ice retention (which ices survive on the surface as frost/bright ice) — the physics
         // base for frost/tholin/bright-ice visuals. Cold trap (surface below the ice's melt point) +

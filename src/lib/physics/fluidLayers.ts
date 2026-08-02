@@ -6,6 +6,17 @@ import { EARTH_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '$lib/constants';
 import { makeupFractions } from './makeup';
 import { isLiquidAtP, liquidDef } from './liquids';
 
+// GAS GIANT vs ICE GIANT, as one physics judgement with one home. Above this mass a volatile-rich
+// world compresses hydrogen into the METALLIC phase and gets a Jupiter-class dynamo; below it the
+// conductive layer is superionic water instead (Uranus/Neptune). The same split decides how much
+// formation heat the body is still radiating (physics/temperature.ts estimateInternalHeatK), which
+// used to ask `body.classes` for the word "ice-giant" — a class the classifier derives a whole pass
+// LATER, so a freshly imported Neptune was heated as a gas giant on its first pass and as an ice
+// giant on every one after it (inbox B13). A class name is downstream of physics and must never be
+// a physics input.
+// TODO: this belongs in rule-pack data with the rest of the giant-interior constants.
+export const GIANT_METALLIC_HYDROGEN_MIN_MASS_ME = 50;
+
 // NOTE: cloud decks moved OUT of this module — `physics/cloudDecks.ts` is the single evaluation,
 // driven by rule-pack data (a gas's `cloud` block names its condensate; the liquid carries the
 // look). The old GAS_CLOUD / CLOUD_COLOUR tables that lived here are that data now.
@@ -55,7 +66,7 @@ export function deriveFluidLayers(body: CelestialBody, pack?: RulePack): FluidLa
 
   // --- Deep interior conductive fluid (the dynamo source for §2d) ---
   if (mk.gas > 0.5) {
-    layers.push(massMe > 50
+    layers.push(massMe > GIANT_METALLIC_HYDROGEN_MIN_MASS_ME
       ? { liquid: 'metallic-hydrogen', location: 'interior', conductive: true }   // gas giant
       : { liquid: 'superionic-water', location: 'interior', conductive: true });  // ice giant
   } else if (mk.metal > 0.1 && massMe > 0.3) {

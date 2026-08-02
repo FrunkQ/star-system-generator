@@ -1,5 +1,6 @@
 import type { CelestialBody, Barycenter, System, RulePack } from '../types';
-import { SOLAR_RADIUS_KM, AU_KM } from '../constants';
+import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG } from '../constants';
+import { GIANT_METALLIC_HYDROGEN_MIN_MASS_ME } from './fluidLayers';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
 import { deriveAlbedo, type AlbedoBreakdown } from './albedo';
@@ -360,7 +361,13 @@ export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack, 
     // where the reference is TODAY'S solar system. That calibration is the point — whatever the
     // curve does when young, it has to still produce Jupiter's +52 K and Neptune's +24 K at 4.6 Gyr,
     // which pins it to something we can check rather than leaving it free.
-    const isIceGiant = body.classes?.some((c) => c.includes('ice-giant')) || false;
+    // WHICH KIND of giant is a COMPOSITION question, answered by the same mass split the interior
+    // model uses (fluidLayers: metallic hydrogen above it, superionic water below). It used to read
+    // `body.classes` for the word "ice-giant" — but the classifier runs a whole pass AFTER this, and
+    // this feeds the temperature the classifier then reads. A freshly imported Neptune therefore
+    // came out at +52 K on its first process() and +24 K on its second, taking its surface
+    // temperature from 99 K to 72 K with it (inbox B13). A derived class is never a physics input.
+    const isIceGiant = (body.massKg ?? 0) / EARTH_MASS_KG <= GIANT_METALLIC_HYDROGEN_MIN_MASS_ME;
     const referenceK = isIceGiant ? (cfg?.iceGiantHeatK ?? 24) : (cfg?.gasGiantHeatK ?? 52);
     const alpha = cfg?.coolingExponent ?? 0.62;
     const age = Math.max(cfg?.minAgeGyr ?? 0.005, ageGyr || 4.6);

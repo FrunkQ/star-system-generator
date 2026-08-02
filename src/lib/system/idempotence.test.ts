@@ -123,10 +123,23 @@ describe('process() is idempotent', () => {
 
     // The other bundled map, whose systems mostly carry no atmosphere, rotation period or authored
     // field — a different shape of input entirely, and the one B13 was first measured on.
-    it('the Local Neighbourhood, every system', () => {
-        const map = JSON.parse(fs.readFileSync(path.resolve('static/example-starmaps/Local_Neighbourhood-Starmap.json'), 'utf-8'));
-        for (const entry of map.systems) {
-            expectIdempotent(`Local Neighbourhood / ${entry.name}`, entry.system as System, pack);
+    for (const file of ['Local_Neighbourhood-Starmap.json', 'Local_Neighbourhood_SciFi-Starmap.json']) {
+        it(`${file}, every system`, () => {
+            const map = JSON.parse(fs.readFileSync(path.resolve('static/example-starmaps', file), 'utf-8'));
+            for (const entry of map.systems) {
+                expectIdempotent(`${file} / ${entry.name}`, entry.system as System, pack);
+            }
+        });
+    }
+
+    // Every shipped example system too — these are the inputs an import actually starts from, and
+    // they carry shapes the two starmaps do not (binaries, authored classes, trace exospheres).
+    it('every bundled example system', () => {
+        for (const file of fs.readdirSync(path.resolve('static/examples'))) {
+            if (!file.endsWith('.json')) continue;
+            const sys = JSON.parse(fs.readFileSync(path.resolve('static/examples', file), 'utf-8')) as System;
+            if (!Array.isArray(sys.nodes)) continue;
+            expectIdempotent(file, sys, pack);
         }
     });
 });
