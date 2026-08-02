@@ -2,6 +2,7 @@
   // Thin wrapper around the imperative 3D starmap scene. Lazy-imports starmapScene so three lands in
   // its own chunk. Feeds it systems (map x/y + multi-star colours) + routes, and the theme/look props.
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import type { MapOverlay } from '$lib/map/mapOverlay';
   import type { Starmap } from '$lib/types';
   import type { StarmapController, SmSystem, SmRoute } from './starmapScene';
   import { systemVisualStars } from './systemStars';
@@ -10,10 +11,15 @@
   export let starmap: Starmap | null = null;
   export let accentColor = '#6aa0ff';
   export let font = 'system-ui';
-  export let grid: 'off' | 'plain' | 'scaled' | 'hex' = 'plain';
+  // THE shared overlay vocabulary. This used to be the legacy four ('off'|'plain'|'scaled'|'hex'),
+  // which excluded the two lattice types the preset can actually hold — a preset saying 'square'
+  // was being passed to a prop whose type said that value did not exist (inbox A37).
+  export let grid: MapOverlay = 'plain';
   export let routeGlow = true; // emissive glow on the transit routes
   export let mono = false; // monochrome palette (white/grey) for tinting filters
-  export let mapGrid: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null = null; // GM's snap-grid
+  // The GM's snap-grid, in ITS OWN persisted spelling ('grid'/'none'). Kept verbatim rather than
+  // migrated: it is what is already saved in campaigns. normaliseOverlay folds it in the scene.
+  export let mapGrid: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null = null;
   // WS7: DISPLAY-ONLY depth stretch. 1 = true depth. Never reaches the distance maths.
   export let zExaggeration = 1;
   export let flat = false;         // 2D starmap: tilt pinned top-down — never becomes a 3D view

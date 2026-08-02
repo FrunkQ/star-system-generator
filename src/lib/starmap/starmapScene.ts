@@ -28,7 +28,7 @@ export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?
 // WS3: the shared overlay vocabulary (see lib/map/mapOverlay.ts). Re-exported under the historic name
 // so existing importers keep working.
 export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
-import { isLattice as isLatticeMode, type MapOverlay } from '$lib/map/mapOverlay';
+import { isLattice as isLatticeMode, normaliseOverlay, type MapOverlay } from '$lib/map/mapOverlay';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -300,11 +300,21 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     gridGroup.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide })));
   }
 
-  function renderMapGrid(base: THREE.Color, typeOverride?: string, sizeOverride?: number) {
+  // Speaks the SHARED overlay vocabulary (MapOverlay) rather than the 2D snap-grid's legacy spelling.
+  // It used to take 'grid' and the one caller translated 'square' -> 'grid' inline, which is two
+  // vocabularies for one concept with a translation in exactly one place — the shape a type falls
+  // silently through (inbox A37). `normaliseOverlay` already folds every persisted spelling
+  // ('grid', 'none', 'travellerHex') into the canonical set, so a stored snap-grid config is accepted
+  // here without anyone translating it by hand.
+  function renderMapGrid(base: THREE.Color, typeOverride?: MapOverlay, sizeOverride?: number) {
     // A lattice OVERLAY renders as the map-aligned grid at the GM's own cell size, so the player's
     // hexes/squares are the same scale as the GM's map — they used to be an arbitrary GRID_RADIUS/7,
     // which made them several times too big.
-    const cfg = { type: (typeOverride ?? mapGridCfg?.type ?? 'none'), size: (sizeOverride ?? mapGridCfg?.size ?? DEFAULT_MAP_CELL) };
+    const cfg = {
+      type: normaliseOverlay(typeOverride ?? mapGridCfg?.type ?? 'off'),
+      size: (sizeOverride ?? mapGridCfg?.size ?? DEFAULT_MAP_CELL)
+    };
+    if (!isLatticeMode(cfg.type)) return;   // 'off'/polar reach here only through a stale config
     const cell0 = cfg.size * mapK;
     if (cell0 <= 1e-4) return;
     const half = GRID_RADIUS * 2.4;   // well past the map so the lattice fills the view; it fades out below
@@ -314,7 +324,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const edges: [number, number, number, number][] = [];
     let hexLabels = 0;
     const HEX_LABEL_CAP = 400;
-    if (cfg.type === 'grid') {
+    if (cfg.type === 'square') {
       for (let n = Math.ceil((-half - originX) / cell); n <= Math.floor((half - originX) / cell); n++) {
         const x = originX + n * cell; edges.push([x, -half, x, half]);
       }
@@ -377,7 +387,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // A LATTICE overlay is the map-aligned grid at the GM's cell size (see renderMapGrid) — never an
     // invented size, so the player's hexes match the GM's map exactly.
     if (isLatticeMode(gridMode)) {
-      renderMapGrid(base, gridMode === 'square' ? 'grid' : gridMode, mapGridCfg?.size ?? DEFAULT_MAP_CELL);
+      renderMapGrid(base, gridMode, mapGridCfg?.size ?? DEFAULT_MAP_CELL);
       return;
     }
     for (let ri = 1; ri <= 6; ri++) {
