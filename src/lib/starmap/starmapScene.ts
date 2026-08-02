@@ -29,6 +29,7 @@ export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?
 // so existing importers keep working.
 export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
 import { isLattice as isLatticeMode, normaliseOverlay, type MapOverlay } from '$lib/map/mapOverlay';
+import { latticeFor, hexCentres, travellerHexLabel } from '$lib/map/latticeGeometry';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -318,55 +319,44 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const cell0 = cfg.size * mapK;
     if (cell0 <= 1e-4) return;
     const half = GRID_RADIUS * 2.4;   // well past the map so the lattice fills the view; it fades out below
+    const HEX_LABEL_CAP = 400;
     const originX = -mapCx * mapK, originZ = -mapCy * mapK; // scene coords of map (0,0)
     const draw = Math.max(1, Math.ceil(0.22 / cell0)); // thin out if the cells are tiny on screen
     const cell = cell0 * draw;
-    const edges: [number, number, number, number][] = [];
-    let hexLabels = 0;
-    const HEX_LABEL_CAP = 400;
-    if (cfg.type === 'square') {
-      for (let n = Math.ceil((-half - originX) / cell); n <= Math.floor((half - originX) / cell); n++) {
-        const x = originX + n * cell; edges.push([x, -half, x, half]);
-      }
-      for (let n = Math.ceil((-half - originZ) / cell); n <= Math.floor((half - originZ) / cell); n++) {
-        const z = originZ + n * cell; edges.push([-half, z, half, z]);
-      }
-    } else {
-      // hex / traveller-hex: replicate the GM's FLAT-TOPPED lattice EXACTLY (Grid.svelte geometry) so
-      // snapped systems land dead-centre in their hex. size = cell/2; centres at col·horizDist,
-      // row·hexHeight + (col odd ? hexHeight/2 : 0), origin (0,0) — all transformed by the fit.
-      const sizeS = (cfg.size / 2) * mapK;      // hex "radius" (centre→L/R vertex) in scene units
-      const hd = 1.5 * sizeS;                   // column spacing
-      const hh = Math.sqrt(3) * sizeS;          // row spacing = hex height
-      if (hd < 0.06 || hh < 0.06) return;       // too dense on screen to be useful
-      // vertices relative to a centre (flat-top): R, top-R, top-L, L, bot-L, bot-R
-      const V: [number, number][] = [[sizeS, 0], [sizeS / 2, hh / 2], [-sizeS / 2, hh / 2], [-sizeS, 0], [-sizeS / 2, -hh / 2], [sizeS / 2, -hh / 2]];
-      const clampRange = (lo: number, hiV: number) => ({ a: Math.max(lo, hiV - 200), b: hiV }); // safety cap
-      const colLo = Math.floor((-half - originX) / hd) - 1, colHi = Math.ceil((half - originX) / hd) + 1;
-      const rowLo = Math.floor((-half - originZ) / hh) - 1, rowHi = Math.ceil((half - originZ) / hh) + 1;
-      const cR = clampRange(colLo, colHi), rR = clampRange(rowLo, rowHi);
-      for (let col = cR.a; col <= cR.b; col++) {
-        const cxp = originX + col * hd;
-        const zBase = originZ + (Math.abs(col) % 2) * (hh / 2);
-        for (let row = rR.a; row <= rR.b; row++) {
-          const czp = zBase + row * hh;
-          if (Math.abs(cxp) > half + sizeS || Math.abs(czp) > half + hh) continue;
-          for (let i = 0; i < 6; i++) {
-            const a = V[i], b = V[(i + 1) % 6];
-            edges.push([cxp + a[0], czp + a[1], cxp + b[0], czp + b[1]]);
-          }
-          // TRAVELLER NUMBERING (WS3 [Q5]) — the CCRR hex address, matching Grid.svelte exactly: 1-based
-          // col/row, wrapping at the 32×40 sector, zero-padded. Only drawn when the hexes are big enough
-          // on screen to read, and capped, so a zoomed-out sector doesn't spawn thousands of sprites.
-          if (cfg.type === 'traveller-hex' && hd >= 0.5 && hexLabels < HEX_LABEL_CAP) {
-            let dCol = (col + 1) % 32; if (dCol <= 0) dCol += 32;
-            let dRow = (row + 1) % 40; if (dRow <= 0) dRow += 40;
-            const sp = makeHexNumber(`${String(dCol).padStart(2, '0')}${String(dRow).padStart(2, '0')}`, hh * 0.22);
-            if (sp) { sp.position.set(cxp, 0.03, czp - hh * 0.3); gridGroup.add(sp); hexLabels++; }
-          }
+
+    // THE LATTICE ITSELF comes from the shared generator (map/latticeGeometry), which the 2D starmap
+    // also consumes — so the two views cannot draw different grids for the same settings. Called in
+    // SCENE units here (the generator is unit-agnostic); the 2D view calls it in map units.
+    //
+    // maxSegment is what fixes squares (inbox A37). `addLattice` fades PER VERTEX and drops a segment
+    // whose both ends have faded out; an unsegmented square line spans the whole lattice, so both of
+    // its endpoints lay beyond the fade radius and EVERY line was culled — the branch ran, built its
+    // geometry and drew nothing. Hex edges are one hex wide and never hit it. One cell per segment
+    // makes the square path fade exactly as the hex one does.
+    // Squares take the THINNED cell (they are drawn per grid line, so a dense map is skipped through);
+    // hexes take the true cell, exactly as before — a hex lattice cannot be thinned without moving the
+    // centres a system is snapped to. Keeping those separate is what makes hex render unchanged.
+    const isHex = cfg.type === 'hex' || cfg.type === 'traveller-hex';
+    const sizeS = (cfg.size / 2) * mapK;                      // hex radius, centre to L/R vertex
+    if (isHex && (1.5 * sizeS < 0.06 || Math.sqrt(3) * sizeS < 0.06)) return;  // too dense to be useful
+    const geo = { cell: isHex ? cfg.size * mapK : cell, originX, originY: originZ, half, maxSegment: cell };
+    const edges: [number, number, number, number][] = latticeFor(cfg.type, geo) as [number, number, number, number][];
+
+    // TRAVELLER NUMBERING (WS3 [Q5]) — the CCRR hex address, from the same centres the edges came
+    // from, so a label can never sit in a hex the lattice did not draw. Only when the hexes are big
+    // enough on screen to read, and capped, so a zoomed-out sector does not spawn thousands of sprites.
+    if (cfg.type === 'traveller-hex') {
+      const hd = 1.5 * sizeS, hh = Math.sqrt(3) * sizeS;
+      if (hd >= 0.5) {
+        let hexLabels = 0;
+        for (const c of hexCentres(geo)) {
+          if (hexLabels >= HEX_LABEL_CAP) break;
+          const sp = makeHexNumber(travellerHexLabel(c.col, c.row), hh * 0.22);
+          if (sp) { sp.position.set(c.x, 0.03, c.y - hh * 0.3); gridGroup.add(sp); hexLabels++; }
         }
       }
     }
+
     // Fade from the map's own radius out to the generous span, so the lattice covers the view but
     // dissolves rather than ending in a hard ragged edge.
     // Fade in world space from a little past the map out to the span: viewed top-down the visible area
