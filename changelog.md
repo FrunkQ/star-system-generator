@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.360-beta - 2nd Aug 2026
+
+* **The Moon sits in the right plane in the standalone Sol example**, as it already did in the two bundled starmaps. Its 5.1 degree tilt is quoted to the ecliptic, not to Earth's equator, and only the starmaps had been told.
+* Two planets — one in Struve 2398, one in Groombridge 34 — start at a different point in their orbits. Housekeeping from the duplicate-id fix a few releases back; nothing about either world changes.
+* Under the bonnet: the build kit that generates the two bundled starmaps reproduces them exactly again, and a test now rebuilds and compares on every run so the two cannot drift apart unnoticed. The science-fiction map also ships 75 KB smaller for no visible difference.
+
 ## v2.1.359-beta - 2nd Aug 2026
 
 * **Radiation now tells you how long you last, not how many sieverts you take.** The hazard reads hours, days, weeks, months or years -- the time to a lethal dose, worked out from the dose rate rather than looked up in a table. Io is hours. Europa is days. Mars is years, which is the honest framing for a place you plan a mission to.
