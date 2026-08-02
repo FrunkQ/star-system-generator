@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.366-beta - 2nd Aug 2026
+
+* **Generated moons now sit in the right plane.** A close-in moon rides its planet's tilted equator, the way Jupiter's big four do; one far enough out follows the system plane instead, the way our own Moon does. Where the changeover happens is worked out per planet from its spin, mass and distance from its star, so a fast-spinning giant holds its moons in line much further out than a small slow world does.
+* Moons of a tilted planet visibly lean with it now — that only started working once every generated world got an axial tilt in the last release, because before that there was no tilt to inherit.
+* **Adding a body by hand gets the same treatment.** A world added through the Add Body button now marks its invented tilt and spin the same way a generated one does, and its moons get the same choice of plane. Those were only ever applied on the generated path.
+* The Moon sits in the right plane in the Expanse Sol example too, which had been missed when the other examples were fixed.
+
 ## v2.1.365-beta - 2nd Aug 2026
 
 * **Three more of the physics pages caught up with the engine.** Which temperature decides a world's type is now explained -- fourteen types are judged on the surface you would stand on, twelve on the radiation environment, and the tell is that Earth's equilibrium temperature falls just outside the band of its own type while its surface sits comfortably inside it.
