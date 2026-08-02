@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.371-beta - 2nd Aug 2026
+
+* **Square grids draw on the starmap.** They always had a full implementation; every line was being thrown away before it reached the screen, because the grid fades out with distance and a square line runs the whole width of the map -- so both of its ends were in the faded zone and the whole line went. Hexes never hit it, being one hex across, which is why hexes looked fine and squares looked missing.
+* The square, hex and Traveller-hex lattices now come from one piece of geometry rather than three. Hex and Traveller hex look exactly as they did.
+* And the 2D starmap already shows the same grid, because it turns out to BE the 3D one locked overhead -- so there was nothing to bring into line.
+
 ## v2.1.369-beta - 2nd Aug 2026
 
 * **Info text size goes to 250%.** It stopped at 160%, which was not big enough for a table across the room.
