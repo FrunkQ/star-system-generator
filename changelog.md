@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.364-beta - 2nd Aug 2026
+
+* **Audited every tag the engine can produce, asking one question of each: does it report the thing its name claims?** The table is written down, clean entries included, so nobody has to work it out again.
+* Tags no longer show you bare numbers. "Brilliant aurora: 0.78" was a figure on a scale nothing stated -- the strength is what the renderer needs, and the word "brilliant" is already in the name, so the number has gone. A self-luminous world says 1,500 K rather than 1500, and a polar vortex says 6-sided.
+* A world that keeps four different ices now carries four tags rather than one reading "carbon-dioxide+nitrogen+water+methane".
+* Three tags were reaching you with no explanation at all, because nothing had ever described them -- and two of them were the same observation shown twice under different names. Named and explained.
+* Behind all of that: a set of checks that fail the build if a tag ever again shows a number with no unit, packs a list into one value, contradicts the figure it describes, or ships without a description. A corrected label drifts the moment the physics moves; a check does not.
+
 ## v2.1.363-beta - 2nd Aug 2026
 
 * **Generated worlds have seasons.** Not one planet or moon the generator made had an axial tilt, so every generated world reported a flat year — a world's summer and winter were identical everywhere. Now they all lean, and three times as many worlds show a real seasonal temperature swing.

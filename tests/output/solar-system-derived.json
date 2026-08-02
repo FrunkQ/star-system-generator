@@ -4228,7 +4228,11 @@
         },
         {
           "key": "volatiles/ices",
-          "value": "carbon-dioxide+water"
+          "value": "carbon-dioxide"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "water"
         },
         {
           "key": "habitability/subsurface"
@@ -4719,7 +4723,11 @@
         },
         {
           "key": "volatiles/ices",
-          "value": "carbon-dioxide+water"
+          "value": "carbon-dioxide"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "water"
         },
         {
           "key": "habitability/none"
@@ -5154,7 +5162,11 @@
         },
         {
           "key": "volatiles/ices",
-          "value": "carbon-dioxide+water"
+          "value": "carbon-dioxide"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "water"
         },
         {
           "key": "habitability/none"
@@ -6032,7 +6044,11 @@
         },
         {
           "key": "volatiles/ices",
-          "value": "carbon-dioxide+water"
+          "value": "carbon-dioxide"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "water"
         },
         {
           "key": "habitability/alien"
@@ -11043,7 +11059,19 @@
         },
         {
           "key": "volatiles/ices",
-          "value": "carbon-dioxide+nitrogen+water+methane"
+          "value": "carbon-dioxide"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "nitrogen"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "water"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "methane"
         },
         {
           "key": "habitability/subsurface"
@@ -11609,7 +11637,19 @@
         },
         {
           "key": "volatiles/ices",
-          "value": "carbon-dioxide+nitrogen+water+methane"
+          "value": "carbon-dioxide"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "nitrogen"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "water"
+        },
+        {
+          "key": "volatiles/ices",
+          "value": "methane"
         },
         {
           "key": "habitability/none"

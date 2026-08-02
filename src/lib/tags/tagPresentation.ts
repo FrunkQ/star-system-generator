@@ -320,6 +320,14 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   // the proof it is a different quantity: constantly resurfaced, so it reads LOW here while its
   // radiation rows read among the highest in the solar system. The name now says which one it is.
   'surface/irradiation':        { label: 'Space weathering',  description: 'How much starlight and cosmic radiation the unshielded surface has accumulated over its exposed lifetime — low, moderate or high. This is a total relative to a young unshielded Earth, NOT a dose per year, so it does not compare with the radiation figures above: a constantly resurfaced world reads low here however fierce its radiation environment. It is what darkens and reddens icy worlds, turning retained organics into tholins.' },
+  // --- Rulepack ATMOSPHERE tags that had no entry (inbox B29). They are emitted from gasPhysics
+  // triggers and were reaching a reader as bare title-cased words with no explanation at all —
+  // "Biosignature" beside "Exotic Biology" on the same world, with nothing to say they are the same
+  // gas seen twice. Registered here, where every other built-in pack tag is described.
+  'high-humidity':              { label: 'High humidity',   description: 'Water vapour is a substantial fraction of the air (partial pressure above 0.05 bar) — muggy, and enough airborne water to matter for weather, corrosion and life support.' },
+  'biosignature':               { label: 'Biosignature',    description: 'A gas present that is hard to produce without life, at a concentration no known geology accounts for. Evidence worth investigating, not proof.' },
+  'exotic-biology':             { label: 'Exotic biology',  description: 'The biosignature gas here is one that points AWAY from water-carbon life as we know it — chemistry that would need a different biochemistry to explain.' },
+  'volatiles/ices':             { label: 'Retained ice',      description: 'A volatile that survives ON THE SURFACE as frost or bright ice, rather than being lost to space. It needs both traps: cold enough for the species to stay solid, and gravity enough to hold the vapour it sublimates (the Jeans parameter above the retention floor). A body emits one of these per species it keeps.' },
   'surface/oxidised':           { label: 'Oxidised surface', description: 'Iron at the surface has RUSTED — this is why Mars is red. It takes iron, an oxidiser to react with (free oxygen, or the carbon dioxide and water that did the job on early Mars) and long exposure: the Moon has the iron and the age but no atmosphere, so it stays grey.' },
   'stellar/activity':           { label: 'Magnetic activity', description: 'How tangled this star\'s magnetic field is — the one thing behind its starspots, its bright faculae and its flares. Young, fast-spinning and low-mass stars run active or flare constantly; an old sun-like star shows a handful of small spots.' },
   'weather/lightning':          { label: 'Lightning',        description: 'Charge separation in a deep convecting cloud deck — driven by a warm, thick atmosphere, or by ash where the world is volcanically active. The value is how often it fires.' },
@@ -452,6 +460,32 @@ export function describeTag(key: string): TagPresentation {
 // loses its category. Prepends the group when it adds meaning — "Shape · Oblate", "Magnetism · Intrinsic
 // dynamo" — but skips it when the label already conveys the category (e.g. "Brilliant aurora", "Inert
 // atmosphere") to avoid "Aurora · Brilliant aurora". Appends the tag value when present ("… : 0.62").
+// HOW A TAG'S VALUE IS SHOWN TO A READER (inbox B29 / A35).
+//
+// Most values are already words — `hours`, `moderate`, `water rain` — and pass straight through.
+// A few are raw NUMBERS, and a bare number in a chip is a float on a scale nothing states: "Brilliant
+// aurora: 0.78" tells a player nothing, and sat beside "Surface age: moderate" it is not even
+// obviously a number rather than a grade. Every numeric value therefore needs one of two answers
+// here — a unit, or suppression — and `tagConsistency.spec.ts` fails if a new one appears with
+// neither.
+//
+// Returns null to show the label ALONE. That is the right answer whenever the number is a renderer
+// input rather than a reading: the aurora tier is already in the key (`aurora/brilliant` → "Brilliant
+// aurora"), so the strength adds precision the curtain needs and nothing a reader can use.
+export function formatTagValue(key: string, value?: string): string | null {
+  if (value == null || value === '') return null;
+  if (key.startsWith('aurora/')) return null;                          // tier is in the key; strength is for the renderer
+  if (key === 'thermal/self-luminous') {
+    const k = Number(value);
+    return Number.isFinite(k) ? `${k.toLocaleString()} K` : value;     // it is an effective temperature
+  }
+  if (key === 'feature/polar-vortex') {
+    const n = Number(value);
+    return Number.isFinite(n) ? `${n}-sided` : value;                  // it is a side count
+  }
+  return value;
+}
+
 export function tagContextLabel(key: string, value?: string): string {
   const { label, group } = describeTag(key);
   const gl = group.toLowerCase();
@@ -459,5 +493,6 @@ export function tagContextLabel(key: string, value?: string): string {
   const known = !!group && group !== 'Other';
   const redundant = known && (label.toLowerCase().includes(gl) || label.toLowerCase().includes(glSingular));
   const base = known && !redundant ? `${group} · ${label}` : label;
-  return value ? `${base}: ${value}` : base;
+  const shown = formatTagValue(key, value);
+  return shown ? `${base}: ${shown}` : base;
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
-  import { describeTag, tagSource } from '$lib/tags/tagPresentation';
+  import { describeTag, tagSource, formatTagValue } from '$lib/tags/tagPresentation';
   import { poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
   import { customTagVocabulary } from '$lib/tags/customTags';
 
@@ -110,7 +110,7 @@
         <div class="tags-list">
           {#each groups.manual as t (t.key)}
             <button class="tag-chip active" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Your tag — click to remove'} on:click={() => removeTag(t.key)}>
-              {t.label}{#if t.value}: {t.value}{/if} <span class="x">×</span>
+              {t.label}{#if formatTagValue(t.key, t.value)}: {formatTagValue(t.key, t.value)}{/if} <span class="x">×</span>
             </button>
           {/each}
         </div>
@@ -124,7 +124,7 @@
         <div class="tags-list">
           {#each groups.poi[g] as t (t.key)}
             <button class="tag-chip locked" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + provenance(t.source)}>
-              {t.label}{#if t.value}: {t.value}{/if}
+              {t.label}{#if formatTagValue(t.key, t.value)}: {formatTagValue(t.key, t.value)}{/if}
               <svg class="lock poi" viewBox="0 0 24 24" width="11" height="11"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="#111" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
             </button>
           {/each}
@@ -139,7 +139,7 @@
         <div class="tags-list">
           {#each groups.physics[g] as t (t.key)}
             <button class="tag-chip locked" style="background-color:{t.color}" title={(t.desc || t.label) + '\n\nDerived from the physics — fixed, recomputed every run.'}>
-              {t.label}{#if t.value}: {t.value}{/if}
+              {t.label}{#if formatTagValue(t.key, t.value)}: {formatTagValue(t.key, t.value)}{/if}
               <svg class="lock physics" viewBox="0 0 24 24" width="11" height="11"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="#111" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
             </button>
           {/each}

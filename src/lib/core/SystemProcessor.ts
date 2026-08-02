@@ -1063,8 +1063,13 @@ export class SystemProcessor implements ISystemProcessor {
                 iceBearing: mk.ice > 0.05 || icyShell || (body.hydrosphere?.coverage ?? 0) > 0.05,
                 volcanic: body.geoActivity?.regime === 'tidal-volcanic'
             }, pack);
-            if (body.volatiles.retained.length) {
-                body.tags.push({ key: 'volatiles/ices', value: body.volatiles.retained.join('+') });
+            // ONE TAG PER SPECIES, not a delimited list in one value. "One tag, one value; no
+            // delimited mini-formats" is the architecture doc's idiom, and a body legitimately
+            // having several of a thing is exactly the case it sanctions emitting the key more than
+            // once (structure/cloud-deck already does). A chip reading
+            // "carbon-dioxide+nitrogen+water+methane" is also simply unreadable. (inbox B29)
+            for (const species of body.volatiles.retained) {
+                body.tags.push({ key: 'volatiles/ices', value: species });
             }
         } else {
             body.volatiles = undefined;
