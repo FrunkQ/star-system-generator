@@ -1,4 +1,18 @@
 <script lang="ts">
+  // NOT THE PLAYER'S 2D STARMAP, and nothing mounts this component (inbox A37).
+  //
+  // The player's "2D starmap" (`starmapView === 'diagram2d'`) is Starmap3DView with `flat` set — the
+  // SAME renderer locked overhead, as catalogue/+page.svelte:1021 says in as many words. So this file
+  // is imported nowhere and rendered nowhere.
+  //
+  // That matters because it misled a triage: A37 recorded that "Starmap2DView has NO grid handling of
+  // any kind" and asked for every grid style to be added here. Adding them would have been work that
+  // could never appear on screen — the same trap the item itself warned about one level up, where
+  // fixing the wrong square branch "will look like a fix and change nothing".
+  //
+  // Left in place rather than deleted: whether it is a discarded prototype or an intended lighter
+  // renderer is a call for whoever owns the starmap tiers, and it is recorded in the inbox.
+
   // Starmap as a read-only 2D diagram — the player-view module. Multi-star systems render as MULTIPLE
   // star glyphs (the binaries-as-single fix), with route lines and name labels. Themeable.
   import { createEventDispatcher } from 'svelte';

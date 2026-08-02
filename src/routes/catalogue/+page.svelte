@@ -76,7 +76,6 @@
   import { cssFilterApprox } from '$lib/player/cssFilterApprox';
   import FilterFrame from '$lib/components/FilterFrame.svelte';
   import GraphicLayer from '$lib/components/GraphicLayer.svelte';
-  import Starmap2DView from '$lib/starmap/Starmap2DView.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import FilteredListView from '$lib/components/FilteredListView.svelte';
   import QuoteInterstitial from '$lib/catalogue/QuoteInterstitial.svelte';
