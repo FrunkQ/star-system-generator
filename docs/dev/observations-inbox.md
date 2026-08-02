@@ -180,6 +180,7 @@ re-frames when it should not", F2/F3 are both "true-scale mode breaks proportion
 
 | # | Observation | Status |
 |---|---|---|
+| D5 | **The user-facing physics pages, the Newton explainer and the tag docs have drifted badly behind the engine.** Raised 2026-08-02: "we need to ensure we are always updating the Newton apple and physics pages, and documentation is kept up to date". **MEASURED, and the gap is large.** `src/routes/physics/+page.svelte` was last touched at **v2.1.282** (2026-07-30, the albedo/cloud unification) — seventy-eight versions ago. `src/lib/physics/physicsTrace.ts`, which is what the Newton explainer reads, dates from 2026-07-28. `docs/tags-guide.md` and `docs/classification-and-tags.md` have not moved since **2026-07-07**, roughly a hundred and twenty versions. **None of the three mentions `hazard/radiation` or `flight/ascent`** — a grep returns zero across all of them. **What is undocumented, as a starting list rather than the whole of it:** the trapped-particle belt model and its calibration ([[B17]]); a body being inside its own belt, the inner edge derived from scale height, and the two named figures a surfaceless body reports ([[B22]]); `process()` idempotence and the pass reordering ([[B13]]); the radiation hazard tag, the weathering tag keeping its own meaning, and the unified bucketing ([[B28]]); time-to-harm vocabulary and the ascent and orbital-dose tags ([[B30]], [[B31]]); fourteen classification fingerprints moving from equilibrium to surface temperature ([[B6]]); a gas giant no longer scoring on a surface axis ([[B18]]); the ejection asymmetry ([[B19]]); and the ice-giant formation-heat split from B13's sweep. **The Newton explainer matters most of the three**, because it is the surface that claims to SHOW THE WORKING — a trace that omits the dominant term for a Galilean moon is not merely incomplete, it explains the number wrongly. Check `physicsTrace.ts` covers every term that now feeds a figure it explains. **This is a catch-up pass AND a standing habit** — the rule added at the foot of this file is the habit; this item is the backlog. Do not treat it as done until the physics page, the Newton trace and both tag docs each reflect the engine as it stands, and say plainly which parts you verified against the code rather than against the changelog. | captured |
 | E1 | `src/routes/page.spec.ts` — 4 failures (jsdom cannot fetch a relative URL). Verified failing at 255768a via a detached worktree, so NOT from the v2.1.277 work despite being attributed there. Likely origin `371f649`. | triaged |
 
 ---
@@ -271,6 +272,15 @@ _(new observations go here — rough is fine)_
   visual change covered only by unit tests and a green build is NOT finished, and it should be reported
   as unfinished rather than as done-with-a-caveat. If the browser is genuinely unavailable, say so and
   say what remains unseen, so the next session knows exactly what to look at first.
+- **A PHYSICS CHANGE IS NOT FINISHED UNTIL THE USER-FACING EXPLANATIONS FOLLOW IT.** Four surfaces
+  explain this engine to people and all four drift silently, because nothing breaks when they go
+  stale: `src/routes/physics/+page.svelte` (the physics page), `src/lib/physics/physicsTrace.ts` (the
+  Newton explainer, which claims to SHOW THE WORKING and so is the worst one to leave wrong),
+  `docs/tags-guide.md` and `docs/classification-and-tags.md`. If you add a term, a tag or a
+  threshold, update whichever of those describe it, in the same batch — not as a follow-up item. If
+  you decide a change does not need documenting, say so in the inbox entry rather than staying silent,
+  because silence is indistinguishable from forgetting. See [[D5]] for how far this drifted when it
+  was left to memory: a hundred and twenty versions on the tag docs.
 - **WHEN YOU CHANGE A DERIVED QUANTITY, CHASE ITS TAGS.** Physics driving tags is the rule, but nothing
   enforces the follow-through, and it has now failed repeatedly. Before you close a physics item, grep for
   every tag bucketed off the quantity you changed — AND off any older proxy for it, which is the case that
