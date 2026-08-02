@@ -7,7 +7,7 @@ import { SeededRNG } from '../rng';
 import { bodyFactory } from '../core/BodyFactory';
 import { systemProcessor } from '../core/SystemProcessor';
 import { _generatePlanetaryBody } from './planet';
-import { starFieldFromPack } from './star';
+import { starFieldFromPack, starTiltFromPack } from './star';
 import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
 import { drawTypeForSlot, rarityOf, rarityTier } from './typeDraw';
 import { calculateOrbitalSlots } from './placement-strategy';
@@ -47,14 +47,14 @@ function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, kn
     // square and only a violent one tips over, which keeps the tilt meaning something when you see it.
     if (n.kind === 'body' && n.roleHint === 'star') {
       const b = n as CelestialBody;
-      // Falsy, not undefined: BodyFactory used to stamp every body with axial_tilt_deg 0, so testing
-      // for undefined here never fired and the whole branch was dead. The placeholder is gone (inbox
-      // B9a) but the falsy test stays correct either way. This runs once at generation, on freshly-
-      // made nodes, so there is no authored value to tread on.
-      if (!b.axial_tilt_deg) {
-        const spread = 4 + dyn * dyn * 60;          // calm ~4 degrees; violent, up to ~64
-        b.axial_tilt_deg = Math.round(rng.nextFloat() * spread * 10) / 10;
-      }
+      // UNCONDITIONAL, and it has to be. This used to be guarded on `!b.axial_tilt_deg`, which was
+      // right when nothing else set one; starSeedToBody now gives every star a baseline tilt (inbox
+      // B10), so the guard would never fire again and the dynamical-history knob would quietly stop
+      // doing anything. The knob is the more specific statement — a system the GM has declared
+      // violent — so it OVERRIDES the baseline rather than deferring to it. Still safe to overwrite:
+      // this runs once at generation on freshly-made nodes, so there is no authored value to tread on.
+      const spread = 4 + dyn * dyn * 60;          // calm ~4 degrees; violent, up to ~64
+      b.axial_tilt_deg = Math.round(rng.nextFloat() * spread * 10) / 10;
       continue;
     }
     if (n.kind !== 'body' || (n.roleHint !== 'planet' && n.roleHint !== 'moon')) continue;
@@ -121,6 +121,10 @@ function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: st
   // Its own stream, seeded from the star's id: drawing from the system rng here would shift every
   // subsequent draw and silently re-roll every planet in every existing seed.
   star.magneticField = starFieldFromPack(pack, classes[0], new SeededRNG(`${id}-mag`));
+  // Same story as the field, and the same fix: this path set no spin axis, so a wizard run without
+  // knobs produced stars with none at all (inbox B10) — applyKnobBias is the ONLY other site and it
+  // runs only when knobs are supplied. Its own stream for the reason above.
+  star.axial_tilt_deg = starTiltFromPack(pack, new SeededRNG(`${id}-tilt`));
   star.radiationOutput = Math.max(0.0001, seed.luminositySolar); // luminosity drives zones + flux
   const img = pack.classifier?.starImages?.[classes[0]] ?? pack.classifier?.starImages?.[`star/${classes[0].split('/')[1][0]}`];
   star.image = img ? { url: img } : undefined;

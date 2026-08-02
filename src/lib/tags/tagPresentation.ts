@@ -47,6 +47,7 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   thermal:      { group: 'Thermal',      color: '#e0955a' },
   aurora:       { group: 'Aurora',       color: '#57d69a' },
   shape:        { group: 'Shape',        color: '#c9a0e0' },
+  spin:         { group: 'Spin',         color: '#c9a0e0' },
   atmosphere:   { group: 'Atmosphere',   color: '#8aa0b0' },
   climate:      { group: 'Climate',      color: '#6fae8f' },
   weather:      { group: 'Weather',      color: '#7fb6cc' },
@@ -87,7 +88,8 @@ const NAMESPACE_DESC: Record<string, string> = {
   aurora:       'A polar auroral glow from ionising particles funnelled into the atmosphere by the magnetic field.',
   habitability: 'The body\'s habitability tier under the current model.',
   biodiversity: 'A property of the body\'s biosphere.',
-  shape:        'The body\'s rotational shape — how far its spin has deformed it from a sphere.'
+  shape:        'The body\'s rotational shape — how far its spin has deformed it from a sphere.',
+  spin:         'The body\'s spin AXIS — which way it leans, and where that lean came from.'
 };
 
 // Friendly label + physics description, keyed by exact tag.
@@ -202,6 +204,16 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'origin/migrated': {
     label: 'Migrated',
     description: 'Formed at a different distance and migrated to its present orbit — the classic history of a hot Jupiter that spiralled inward through the disc.'
+  },
+
+  // --- Spin (the axis, as opposed to shape/ which is what the spin does to the body) ---
+  'spin/axis-inferred': {
+    label: 'Spin axis inferred',
+    description: 'This world\'s axial tilt is a plausible value from the formation model, not a measurement. A body condenses aligned with its disc and is tipped from there, so the figure shown is typical rather than known — unlike Earth\'s 23.4 degrees or Uranus\'s 97.8, which have been observed.'
+  },
+  'spin/tipped': {
+    label: 'Tipped over',
+    description: 'Hit hard enough to re-point its axis. A late giant impact does not nudge a spin axis, it replaces it, leaving an obliquity unrelated to the disc the world formed in — Uranus lies on its side at 97.8 degrees and Venus turns backwards at 177.4.'
   },
 
   // --- Barycentre ---

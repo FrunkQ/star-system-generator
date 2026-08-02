@@ -33,6 +33,25 @@ export function starFieldFromPack(pack: RulePack, starClass: string, rng: Seeded
     return { strengthGauss: randomFromRange(rng, band[0], band[1]) };
 }
 
+// The star's spin axis, in degrees from the system plane. Exported for the same reason as
+// starFieldFromPack above: there are TWO star-creation paths and a value set in only one of them is
+// the B9a bug repeating (inbox B10 — the legacy generator gave no body a tilt at all).
+//
+// The number is not decoration. A star and its planets condense out of one disc, so they start
+// ALIGNED and stay aligned unless something moves them — the Sun is about 7 degrees off after four
+// and a half billion years. Misalignment is therefore evidence of a violent past, which is why the
+// baseline here is small and the WIZARD's dynamical-history knob is what opens it up
+// (applyKnobBias, generateFromConfig.ts, which overrides this for a knob-driven run).
+//
+// CALLERS MUST PASS THEIR OWN STREAM, seeded from the body's id — never the system rng. Adding a
+// draw to the shared stream shifts every subsequent draw, so every planet in every saved seed would
+// silently re-roll and a written-down seed would stop reproducing its system. B9a's field draw is
+// separated for exactly this reason.
+export function starTiltFromPack(pack: RulePack, rng: SeededRNG): number {
+    const spread = pack.generation_parameters?.star_axial_tilt_baseline_deg ?? 8;
+    return Math.round(rng.nextFloat() * spread * 10) / 10;
+}
+
 // Generates a star object, but not its name, which is determined by the system context.
 export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG, starTypeOverride?: string): CelestialBody {
     const starTypeTable = pack.distributions['star_types'];
@@ -92,6 +111,7 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     });
 
     star.id = id; // Override ID
+    star.axial_tilt_deg = starTiltFromPack(pack, new SeededRNG(`${id}-tilt`));
     star.starCategory = starCategory;
     
     // Ensure base spectral class is present (e.g., star/G5V -> ['star/G', 'star/G5V'])

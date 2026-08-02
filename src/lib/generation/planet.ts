@@ -210,6 +210,48 @@ export function _generatePlanetaryBody(
         }
     }
 
+    // --- Spin Axis (inbox B10) ---
+    // Every generated planet and moon used to arrive with axial_tilt_deg undefined — 0 of 40 bodies
+    // across three seeds — so no generated world had seasons at all. This is the ONE site that fixes
+    // both generators: _generatePlanetaryBody is called by planet-generation.ts (the legacy Generate
+    // button) and by generateFromConfig.ts (the wizard), and it recurses into itself for moons.
+    //
+    // Two populations, because obliquity has two causes and they do not blend:
+    //  - the DISC population. A planet condenses from the same disc as its star, so it starts near
+    //    the disc normal and is nudged from there. Drawn Rayleigh, which is what a random walk of the
+    //    spin vector in a plane gives: peak at sigma, a tail, and no bodies at exactly zero. At the
+    //    default 15 deg that puts Earth (23.4), Mars (25.2), Saturn (26.7) and Neptune (28.3) in the
+    //    meat of the distribution.
+    //  - the CATASTROPHE population. A late giant impact does not nudge an axis, it re-points it, so
+    //    the outcome is an ISOTROPIC direction — uniform in cos(obliquity), not uniform in the angle
+    //    — which is why it produces Uranus (97.8) and Venus (177.4) at the right rate rather than a
+    //    smear of 90 deg worlds. Rolled per body: it is an accident, not a system-wide property, so
+    //    it deliberately does NOT reuse the star's dynamical-history spread.
+    //
+    // Its own rng stream, keyed on the body id: drawing from the shared stream would shift every
+    // subsequent draw and silently re-roll every planet in every saved seed (the B9a precedent).
+    if (planet.axial_tilt_deg == null) {
+        const tiltRng = new SeededRNG(`${planet.id}-tilt`);
+        const sigma = pack.generation_parameters?.axial_tilt_disc_sigma_deg ?? 15;
+        const catastropheChance = pack.generation_parameters?.axial_tilt_catastrophe_chance ?? 0.1;
+        let tilt: number;
+        let tipped = false;
+        if (tiltRng.nextFloat() < catastropheChance) {
+            tilt = Math.acos(2 * tiltRng.nextFloat() - 1) * (180 / Math.PI);
+            tipped = true;
+        } else {
+            tilt = Math.min(89.9, sigma * Math.sqrt(-2 * Math.log(1 - tiltRng.nextFloat())));
+        }
+        planet.axial_tilt_deg = Math.round(tilt * 10) / 10;
+        planet.obliquity_deg = planet.axial_tilt_deg;
+        // D2a's constraint: an INVENTED number must be distinguishable from a MEASURED one, or a
+        // generated world sitting in the same starmap as Earth asserts its obliquity just as firmly.
+        planet.tags.push({ key: 'spin/axis-inferred' });
+        // The interesting half, as a tag rather than a float the reader has to interpret: this world
+        // was hit hard enough to re-point its axis. Uranus and Venus are the Solar System's two.
+        if (tipped) planet.tags.push({ key: 'spin/tipped' });
+    }
+
     if (planet.orbit?.isRetrogradeOrbit) {
         planet.tags.push({ key: 'origin/captured' });
         planet.tags.push({ key: 'orbit/retrograde' });
