@@ -1,5 +1,6 @@
 <script lang="ts">
   import { forSystemScale } from '$lib/map/mapOverlay';
+  import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
@@ -646,25 +647,11 @@
   // world-space pass (sizePx = 8 / zoom) and the screen-space overlay (sizePx = 8),
   // which had drifted apart. Screen-space sizing (8px) is the canonical default.
   function drawConstructGlyph(ctx: CanvasRenderingContext2D, node: CelestialBody, x: number, y: number, sizePx: number): void {
-      const size = sizePx;
+      // The ONE glyph vocabulary (inbox A34) — this was a private copy of the same five shapes.
       const c = node as any;
       ctx.fillStyle = c.icon_color || '#ffd24d';
-      if (c.icon_type === 'circle') {
-          ctx.beginPath(); ctx.arc(x, y, size / 2, 0, 2 * Math.PI); ctx.fill();
-      } else if (c.icon_type === 'diamond') {
-          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y);
-          ctx.lineTo(x, y + size / 2); ctx.lineTo(x - size / 2, y); ctx.closePath(); ctx.fill();
-      } else if (c.icon_type === 'cross') {
-          const thickness = size / 3;
-          ctx.fillRect(x - thickness / 2, y - size / 2, thickness, size);
-          ctx.fillRect(x - size / 2, y - thickness / 2, size, thickness);
-      } else if (c.icon_type === 'square') {
-          ctx.fillRect(x - size / 2, y - size / 2, size, size);
-      } else {
-          // Default: triangle (bodies are circles/spheres, so constructs read as triangles)
-          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y + size / 2);
-          ctx.lineTo(x - size / 2, y + size / 2); ctx.closePath(); ctx.fill();
-      }
+      traceConstructIcon(ctx, constructIconShape(c.icon_type), x, y, sizePx);
+      ctx.fill();
   }
 
   // Hit-test the canvas at screen coords (relative to the canvas element) and

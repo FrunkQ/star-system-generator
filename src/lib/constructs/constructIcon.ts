@@ -6,9 +6,11 @@
 // Path-only: the caller owns fill, stroke and colour, because the surfaces disagree about those
 // (the document bleaches to grey under a mono theme; a marker keeps its authored colour).
 //
-// NOTE for whoever unifies the rest: three older copies of this vocabulary still exist —
-// `holo/scene.ts` (getConstructIconTexture), `components/Starmap.svelte` (iconPath, as SVG) and
-// `components/SystemVisualizer.svelte`. They were out of bounds for the session that wrote this.
+// UNIFIED at v2.1.367 (inbox A34): `holo/scene.ts`, `components/Starmap.svelte` and
+// `components/SystemVisualizer.svelte` all read this module now. They were said to "agree today";
+// one did not — the starmap's SVG copy fell back to a DIAMOND where every other surface falls back
+// to a triangle, so a construct with no authored icon_type drew as a different shape on the starmap
+// than on the orrery, the holo scene and in its own info block.
 
 export type ConstructIconShape = 'triangle' | 'circle' | 'diamond' | 'cross' | 'square';
 
@@ -46,4 +48,24 @@ export function traceConstructIcon(
     ctx.moveTo(cx, cy - h); ctx.lineTo(cx + h, cy + h); ctx.lineTo(cx - h, cy + h);
     ctx.closePath();
   }
+}
+
+
+// The same geometry as an SVG path string, for the surfaces that draw vectors rather than pixels.
+// A second EMITTER of one shape table, not a second table — which is the whole point: add a shape
+// to CONSTRUCT_ICON_SHAPES and both the canvas tracer above and this fall out of the same case.
+export function constructIconPath(shape: ConstructIconShape, cx = 0, cy = 0, size = 10): string {
+  const h = size / 2;
+  if (shape === 'circle') {
+    // Two arcs, so a caller with no <circle> element still gets a round glyph.
+    return `M${cx - h},${cy} a${h},${h} 0 1,0 ${size},0 a${h},${h} 0 1,0 ${-size},0 Z`;
+  }
+  if (shape === 'diamond') return `M${cx},${cy - h} L${cx + h},${cy} L${cx},${cy + h} L${cx - h},${cy} Z`;
+  if (shape === 'square') return `M${cx - h},${cy - h} H${cx + h} V${cy + h} H${cx - h} Z`;
+  if (shape === 'cross') {
+    const t = size / 3, q = t / 2;
+    return `M${cx - q},${cy - h} H${cx + q} V${cy - q} H${cx + h} V${cy + q} H${cx + q} V${cy + h} `
+         + `H${cx - q} V${cy + q} H${cx - h} V${cy - q} H${cx - q} Z`;
+  }
+  return `M${cx},${cy - h} L${cx + h},${cy + h} L${cx - h},${cy + h} Z`;   // triangle
 }

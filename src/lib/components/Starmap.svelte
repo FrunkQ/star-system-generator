@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { constructIconPath, constructIconShape } from '$lib/constructs/constructIcon';
   import { gestures } from '$lib/input/gestures';
   import { getPlanetColor as getStarColor } from '$lib/rendering/colors';
   import AppShell from './AppShell.svelte';
@@ -322,15 +323,11 @@
     for (const s of starmap.systems) { const n = (s.system?.nodes ?? []).find((x: any) => x.id === j.shipId); if (n) return n; }
     return null;
   };
-  // SVG path for a construct's icon_type (circle is rendered as a <circle> separately).
-  const iconPath = (type?: string): string => {
-    switch (type) {
-      case 'square': return 'M-4,-4 H4 V4 H-4 Z';
-      case 'triangle': return 'M0,-5 L5,4.5 L-5,4.5 Z';
-      case 'cross': return 'M-5,-1.6 H-1.6 V-5 H1.6 V-1.6 H5 V1.6 H1.6 V5 H-1.6 V1.6 H-5 Z';
-      default: return 'M0,-5 L5,0 L0,5 L-5,0 Z';   // diamond (and fallback)
-    }
-  };
+  // SVG path for a construct's icon_type, from the ONE glyph vocabulary (inbox A34). The private copy
+  // this replaces had already drifted: it fell back to a DIAMOND where every other surface falls back
+  // to a triangle, so a construct with no authored icon_type drew as a different shape here than on
+  // the orrery, in the holo scene and in its own info block. Circle still renders as a <circle>.
+  const iconPath = (type?: string): string => constructIconPath(constructIconShape(type), 0, 0, 10);
   // Edge colour by journey state: black under way, red stranded, green arrived.
   const EDGE_TRANSIT = '#111', EDGE_STRANDED = '#d04545', EDGE_ARRIVED = '#2f9e57';
 
