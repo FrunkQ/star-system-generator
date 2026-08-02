@@ -11,6 +11,7 @@ import { generateSystemFromConfig } from './generateFromConfig';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import type { RulePack } from '$lib/types';
 import type { StarSeed } from '../physics/stellar-evolution';
+import { spinProvenanceTags } from './spinProvenance';
 
 function deepMerge(t: any, s: any): any {
 	if (typeof t !== 'object' || t === null || Array.isArray(t)) return s;
@@ -79,6 +80,82 @@ describe('B10 — every generated body has a spin axis', () => {
 				const keys = (b.tags ?? []).map((t: any) => t.key);
 				expect(keys, `${p}: ${b.name} states a tilt with nothing saying it was inferred`).toContain('spin/axis-inferred');
 			}
+		}
+	});
+
+	// The same rule for the rotation period, which is the other value nothing re-derives. A locked
+	// body is exempt because SystemProcessor's lockedSpin replaces the roll before anyone sees it.
+	it('marks an inferred rotation period too, except where the lock overrides it', () => {
+		for (const { path: p, nodes } of runs()) {
+			for (const b of nodes.filter((n: any) => (n.roleHint === 'planet' || n.roleHint === 'moon') && n.rotation_period_hours && !n.tidallyLocked)) {
+				const keys = (b.tags ?? []).map((t: any) => t.key);
+				expect(keys, `${p}: ${b.name} states a rotation period with nothing saying it was inferred`).toContain('spin/period-inferred');
+			}
+		}
+	});
+
+	// C3(c): a satellite's reference plane is a DECISION the generator makes, so check it was made
+	// on the physics rather than left at the default. Both regimes must appear across these seeds --
+	// all-equatorial would mean the switch never fires, all-ecliptic that it always does.
+	// Its own, wider seed list: measured across eight seeds and both generators, 24% of moons land
+	// beyond their host's Laplace radius, and on the legacy path it is nearer 8% — so three seeds can
+	// legitimately contain none and the test would flap. Sized to the phenomenon, not trimmed to fit.
+	it('frames distant moons to the system plane and close ones to the host equator', () => {
+		const wide = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'];
+		const wideRuns = [
+			...wide.map((s) => ({ path: `legacy:${s}`, nodes: generateSystem(s, pack()).nodes as any[] })),
+			...wide.map((s) => ({ path: `wizard:${s}`, nodes: generateSystemFromConfig(s, pack(), { seeds: [sun()], ageGyr: 4.6 }).nodes as any[] }))
+		];
+		let ecliptic = 0, equatorial = 0;
+		for (const { path: p, nodes } of wideRuns) {
+			const byId = new Map(nodes.map((n: any) => [n.id, n]));
+			for (const m of nodes.filter((n: any) => n.roleHint === 'moon')) {
+				const host: any = byId.get(m.parentId);
+				expect(host, `${p}: ${m.name} has no host`).toBeTruthy();
+				if (m.orbit?.frame === 'ecliptic') ecliptic++;
+				else equatorial++;
+			}
+		}
+		expect(equatorial + ecliptic, 'no moons generated to check').toBeGreaterThan(20);
+		expect(ecliptic, 'no moon was framed to the system plane — the Laplace switch never fired').toBeGreaterThan(0);
+		expect(equatorial, 'every moon was framed to the system plane — the switch fires unconditionally').toBeGreaterThan(0);
+	});
+});
+
+// The rule above is only enforced on the routes these tests can DRIVE. There is a third
+// (docs/dev/generation-duplication-map.md §2): SystemView's inline literal, which builds its body by
+// hand inside an event handler and touches neither BodyFactory nor _generatePlanetaryBody. It is not
+// callable from a unit test until the V2.3 tidy-up folds it into the factory, and "not testable yet"
+// is exactly the gap that let B9a ship — a rule enforced on two of three routes reads as enforced.
+//
+// So the DECISION was extracted into spinProvenance.ts and is tested directly, and the routes are
+// checked structurally for calling it. The structural half is a weaker guarantee than behaviour and
+// is not pretending otherwise: it cannot tell you the tag came out right, only that the site did not
+// quietly grow its own copy of the rule again.
+describe('B10/D2a — the provenance rule reaches every body-creation route', () => {
+	it('decides on re-derivation, not on which field it is', () => {
+		expect(spinProvenanceTags({ axial_tilt_deg: 23.4, rotation_period_hours: 24 }).map((t) => t.key))
+			.toEqual(['spin/axis-inferred', 'spin/period-inferred']);
+		// A locked body's period is replaced by SystemProcessor's lockedSpin, so the roll never
+		// reaches the reader and claiming it was inferred would be noise.
+		expect(spinProvenanceTags({ axial_tilt_deg: 5, rotation_period_hours: 0, tidallyLocked: true }).map((t) => t.key))
+			.toEqual(['spin/axis-inferred']);
+		// Nothing invented, nothing claimed.
+		expect(spinProvenanceTags({})).toEqual([]);
+		// A tilt of exactly zero is still a stated tilt — guard the null check, not a falsy one.
+		expect(spinProvenanceTags({ axial_tilt_deg: 0 }).map((t) => t.key)).toEqual(['spin/axis-inferred']);
+	});
+
+	it('is called by every site that invents a spin value, including the one no test can drive', () => {
+		const sites = [
+			'src/lib/generation/planet.ts',            // both system generators reach this
+			'src/lib/components/SystemView.svelte'     // the manual add-a-body route
+		];
+		for (const rel of sites) {
+			const src = fs.readFileSync(path.resolve(rel), 'utf-8');
+			expect(src, `${rel} invents a spin value without calling the shared provenance rule`).toContain('spinProvenanceTags');
+			// And it must not have grown a private copy of the rule alongside the shared one.
+			expect(src.includes("{ key: 'spin/axis-inferred' }"), `${rel} pushes the tag directly instead of using the helper`).toBe(false);
 		}
 	});
 });

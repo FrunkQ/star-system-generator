@@ -51,6 +51,8 @@
   import PhysicsTraceModal from './PhysicsTraceModal.svelte';
   import AddBodyTypeModal from './AddBodyTypeModal.svelte';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
+  import { laplaceRadiusAU } from '$lib/generation/planet';
+  import { spinProvenanceTags } from '$lib/generation/spinProvenance';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
@@ -534,6 +536,24 @@
               M0_rad: startAngle
           }
       };
+
+      // 4.2 PROVENANCE — the same invariant the two generators carry (inbox B10, D2a). This route
+      // builds its body inline and touches neither BodyFactory nor _generatePlanetaryBody, so
+      // nothing it invented was ever marked: a hand-added world stated its tilt exactly as firmly
+      // as Earth does. The rule EXISTED and simply did not reach here, which is how B9a happened.
+      // Which values qualify — and why the die-rolled magnetic field does not, since the processor
+      // always replaces it — lives in spinProvenance.ts. One rule, three routes.
+      newPlanet.tags.push(...spinProvenanceTags(newPlanet));
+
+      // 4.3 C3(c): a moon far enough out follows the SYSTEM plane rather than its host's equator.
+      // Same helper the generators call, imported rather than copied — this block having its own
+      // private copy of everything is the fault, not the pattern to follow.
+      if (newPlanet.roleHint === 'moon' && (host as CelestialBody).orbit) {
+          const hostOrbit = (host as CelestialBody).orbit!;
+          const isGiantHost = ((host as CelestialBody).classes || []).some((c) => c.includes('gas-giant') || c.includes('ice-giant'));
+          const rL = laplaceRadiusAU(host as CelestialBody, hostOrbit.elements.a_AU, hostOrbit.hostMu / G, isGiantHost, rulePack);
+          if (rL != null && newPlanet.orbit.elements.a_AU > rL) newPlanet.orbit.frame = 'ecliptic';
+      }
 
       // 4.5 Calculate Temperature (Fix for 0K issue)
       // We need to pass the new planet as if it were in the system to check relationships

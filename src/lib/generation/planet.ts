@@ -7,6 +7,7 @@ import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
 import { gasThermalInflationFactor } from '../physics/makeup';
 import { giantComposition, GIANT_ANCHOR_BAR } from '../physics/giantTraces';
+import { spinProvenanceTags } from './spinProvenance';
 
 // Debris-density proxy for belts/rings: a massKg drawn so its log maps to a density fraction in
 // [fracLo, fracHi] on the 1e-5..1.0 Earth-mass scale the orrery/telemetry read (see
@@ -35,7 +36,7 @@ function densityProxyMassKg(rng: SeededRNG, fracLo: number, fracHi: number): num
 //
 // Returns AU, or null when an input is missing — in which case the caller leaves the frame alone
 // rather than guessing, since equatorial is the safe default for the close-in majority.
-function laplaceRadiusAU(planet: CelestialBody, aPlanetAU: number, perturberMassKg: number, isGiant: boolean, pack: RulePack): number | null {
+export function laplaceRadiusAU(planet: CelestialBody, aPlanetAU: number, perturberMassKg: number, isGiant: boolean, pack: RulePack): number | null {
     const R = (planet.radiusKm ?? 0) * 1000;
     const M = planet.massKg ?? 0;
     const rotHours = Math.abs(planet.rotation_period_hours ?? 0);
@@ -280,7 +281,10 @@ export function _generatePlanetaryBody(
         planet.obliquity_deg = planet.axial_tilt_deg;
         // D2a's constraint: an INVENTED number must be distinguishable from a MEASURED one, or a
         // generated world sitting in the same starmap as Earth asserts its obliquity just as firmly.
-        planet.tags.push({ key: 'spin/axis-inferred' });
+        // Shared with SystemView's manual route — spinProvenance.ts holds which values qualify and
+        // why the die-rolled magnetic field does not. It also covers the rotation period rolled
+        // earlier, which is in the same category and which B10 missed.
+        planet.tags.push(...spinProvenanceTags(planet));
         // The interesting half, as a tag rather than a float the reader has to interpret: this world
         // was hit hard enough to re-point its axis. Uranus and Venus are the Solar System's two.
         if (tipped) planet.tags.push({ key: 'spin/tipped' });
