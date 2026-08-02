@@ -1132,7 +1132,13 @@
             <input class="tc-slider" type="range" min="0" max={RATE_STEPS.length - 1} step="1" bind:value={rateIndex} aria-label="Time rate" />
             <span class="tc-rate">1 s ≈ {RATE_STEPS[rateIndex].label}</span>
           {:else}
-            <button class="tc-btn tc-icon" on:click={() => (timeExpanded = true)} aria-label="Time controls" title="Time controls">{isPlaying ? '❚❚' : '▶'}</button>
+            <!-- Collapsed: this button SHOWS a pause glyph while running, so it must actually pause.
+                 It used only to expand the panel, which meant a control that looked like pause and did
+                 not pause — worse than showing no icon (inbox A36). It now does both, and the expanded
+                 button beside it toggles back, so the pair stays consistent. -->
+            <button class="tc-btn tc-icon" on:click={() => { isPlaying = !isPlaying; timeExpanded = true; }}
+              aria-label={isPlaying ? 'Pause and show time controls' : 'Play and show time controls'}
+              title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
           {/if}
         </div>
       {/if}
