@@ -5,6 +5,11 @@ All notable changes are listed here:
 ## v2.1.356-beta - 2nd Aug 2026
 
 * Measured how far the physics moves when a system is processed more than once, and wrote the curve into the inbox (B13). It settles after the second pass rather than compounding, but the first pass can be wildly out: an imported world reads its own radiation belt at ground level, which is what put Earth at 230 mSv/yr instead of 2.3.
+* **A world now reads the same on the day you import it as it does after your first edit.** Processing a system used to give different answers depending on how many times it had been through -- radiation was worked out before the magnetic field that shields it and before the atmosphere that absorbs it, so a freshly imported Earth reported a hundred times its real surface dose, and Jupiter a million times its own. Radiation is now the last thing worked out, after every world has its field, its spin and its air.
+* Io's radiation lands exactly on the 36 sieverts a day it was calibrated against, having quietly read 34.9; Ganymede's now matches the figure its own model predicts. Earth, Mars, Venus, Luna, Titan and Triton do not move at all.
+* A binary pair's orbit no longer flips its periapsis by 180 degrees on every load, and a nested barycentre no longer starts life with the wrong total mass -- which had Alpha Centauri's two primaries declaring themselves unstable on the second load and not the first.
+* Lightning is judged after the geology that drives it rather than before, so a tectonically active world's storms do not change on a reload.
+* A mini-Neptune is no longer given Jupiter's leftover formation heat. Whether a giant is a gas or an ice giant is now decided by its mass, as the interior model already decided it, rather than by whether its type name happened to contain the words. Twelve worlds in the example systems get cooler, by 4 to 28 K; nothing in the bundled starmaps or in Sol changes.
 
 ## v2.1.355-beta - 2nd Aug 2026
 
