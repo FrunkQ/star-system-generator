@@ -209,7 +209,13 @@ function planetNodes(st, sysDef, hostNode) {
 
 // Hand-authored planet/moon (used by the fiction overlay; also available to the
 // real roster for special cases). spec: { id, name, role, massMe|massKg, radiusRe|radiusKm,
-// aAU, e, i_deg, makeup, atmosphere, hydrosphere, desc, rotationHours, tilt, classes, autoClassify }
+// aAU, e, i_deg, frame, makeup, atmosphere, hydrosphere, desc, rotationHours, tilt, classes, autoClassify }
+//
+// `frame: 'ecliptic'` declares that this body's inclination is quoted in the
+// SYSTEM plane rather than its parent's equator (C3). Satellites are normally
+// equatorial and need no flag; a moon far enough out that the Laplace plane has
+// handed over to the system plane does. It is written FIRST inside orbit to
+// match the shipped maps.
 function manualPlanetNode(spec, sysDef, hostNode) {
   const massKg = spec.massKg ?? spec.massMe * EARTH_MASS_KG;
   const radiusKm = spec.radiusKm ?? Math.round((spec.radiusRe ?? estimateRadiusRe(massKg / EARTH_MASS_KG)) * EARTH_RADIUS_KM);
@@ -225,6 +231,7 @@ function manualPlanetNode(spec, sysDef, hostNode) {
     ...(spec.rotationHours != null ? { rotation_period_hours: spec.rotationHours } : {}),
     ...(spec.tilt != null ? { axial_tilt_deg: spec.tilt, obliquity_deg: spec.tilt } : {}),
     orbit: {
+      ...(spec.frame ? { frame: spec.frame } : {}),
       hostId: hostNode.id, hostMu: G * hostNode.massKg, t0: EPOCH,
       elements: {
         a_AU: spec.aAU, e: spec.e ?? 0, i_deg: spec.i_deg ?? round(hash01(spec.id + '|i') * 1.2, 2),
