@@ -53,6 +53,17 @@ describe('bodyFacts — radiation rows say what they are', () => {
     expect(ioBand).toBe('lethal');
   });
 
+  // B26: three kinds of body, not two. A ring has no surface to stand on, but unlike a giant's
+  // envelope it is made of small bodies that each do — so the figure is real and only its name was
+  // wrong. It is the dose in the ring plane.
+  it('names the ring-plane figure for the ring plane, not for a surface it has not got', () => {
+    const ring: any = { ...mars, name: "Jupiter's Rings", roleHint: 'ring', classes: ['ring/planetary'], surfaceRadiation: 131496772.6, orbitalRadiation: 131496772.6 };
+    expect(val(ring, 'Radiation (in the ring plane)')).toBeDefined();
+    expect(val(ring, 'Radiation (surface)')).toBeUndefined();
+    // The two places coincide for a ring, so it gets ONE row rather than the same number twice.
+    expect(val(ring, 'Radiation (in orbit)')).toBeUndefined();
+  });
+
   // The orbital row only appears when the two genuinely differ — B22's rule, unchanged here.
   it('leaves out the orbital row when it barely differs from the surface', () => {
     expect(val(mars, 'Radiation (in orbit)')).toBeUndefined();

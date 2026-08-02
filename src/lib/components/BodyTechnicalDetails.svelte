@@ -13,6 +13,7 @@
   import { phaseAtP } from '$lib/physics/liquids';
   import { formatGauss } from '$lib/physics/magnetism';
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
+  import { radiationPlace } from '$lib/catalogue/bodyFacts';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
   export let body: CelestialBody | Barycenter | null;
@@ -716,7 +717,7 @@
 
       {#if surfaceRadiationText && body.roleHint !== 'star'}
           <div class="detail-item" title={surfaceRadiationTooltip}>
-              <span class="label">Surface Radiation</span>
+              <span class="label">Radiation ({radiationPlace(body)})</span>
               <span class="value">{surfaceRadiationText} ({displayedSurfaceRadiation?.toFixed(2)})</span>
               {#if minSurfaceRadiation !== null && maxSurfaceRadiation !== null}
                   <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 2px;">

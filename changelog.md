@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.358-beta - 2nd Aug 2026
+
+* **A ring no longer reports a "surface" dose.** It has no surface -- but unlike a gas giant, which has nowhere to stand at all, a ring is countless small bodies that each do have one, so the number is real and useful: it is what a fragment takes and what a ship crossing the ring takes. It now says so -- "Radiation (in the ring plane)". Jupiter's rings read 360 sieverts a day, above Io, which is right: the main ring sits inside Io and close to the belt peak.
+* The GM panel names the same place the player's does. It had been calling everything "Surface Radiation", including gas giants and rings.
+
 ## v2.1.357-beta - 2nd Aug 2026
 
 * **A world now carries a radiation hazard you can see and filter on.** Io's tags said "Space weathering: low" -- true, because volcanism repaints its surface faster than anything can build up on it -- and nothing anywhere in the tag list mentioned that standing there costs you 36 sieverts a day. There is now a separate "Radiation hazard" tag reading background, elevated, high, severe or lethal, next to the weathering one, and the two say plainly that they are different readings. Io and Europa read lethal.
