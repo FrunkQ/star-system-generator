@@ -141,14 +141,22 @@
     });
   }
 
+  // The document's own offscreen canvas. Module-scoped rather than local to render(), because the
+  // body-graphic capture loop composites ON TOP of it every frame and needs the same pixels render()
+  // last produced (A38). Reused across renders, so the loop never holds a stale canvas.
+  let off: HTMLCanvasElement = typeof document !== 'undefined' ? document.createElement('canvas') : (null as any);
+
   function render() {
     if (!ctrl || vw <= 0 || vh <= 0) return;
     const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
-    const off = document.createElement('canvas');
+    if (!off) off = document.createElement('canvas');
     off.width = Math.max(2, Math.round(vw * dpr));
     off.height = Math.max(2, Math.round(vh * dpr));
     const ctx = off.getContext('2d');
     if (!ctx) return;
+    // Reused canvas: reset the transform and wipe, or successive renders stack on stale pixels.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, off.width, off.height);
     ctx.scale(dpr, dpr);
 
     const c = resolveDocColors(theme);
@@ -205,7 +213,61 @@
       if (footerText) { ctx.textAlign = 'right'; ctx.fillText(footerText, vw - mx, stampY); }
     }
 
-    ctrl.setSource(off);
+    // The document is now complete EXCEPT the body graphic, which lives in the reserved gap. Hand the
+    // filter whichever canvas the capture loop is maintaining, so the two paths agree on the source.
+    ctrl.setSource(gfxCapturable ? compositeFrame() : off);
+  }
+
+  // --- A38: the body graphic goes INSIDE the filter pass -------------------------------------------
+  //
+  // `renderDocument` reserves a transparent GAP for it and the real renderer used to be positioned over
+  // the filtered canvas as a sibling div — so a green CRT page carried a plain white sphere sitting on
+  // top of the phosphor, outside the shader entirely. The fix is to draw the renderer's own pixels INTO
+  // the texture the filter reads, not to re-tint it: a second implementation of the filter is exactly
+  // the drift F9 was.
+  //
+  // Only for the canvas-backed modes. `sphere` is HoloView's WebGL canvas (which needs
+  // preserveDrawingBuffer, set in holo/scene.ts) and `flat` is PlanetDisc's 2D one. The simple `disc`
+  // mode is an inline SVG with no canvas to capture, so it keeps the overlay — see the inbox note.
+  let gfxComp: BodyGraphic | null = null;
+  let composite: HTMLCanvasElement | null = null;
+  let gfxRaf = 0;
+  $: gfxCapturable = gfxOn && !!gfxRect && !!subjectBody && filterId !== 'none' && imagery !== 'disc';
+
+  function compositeFrame(): HTMLCanvasElement {
+    const src = gfxComp?.getCanvas() ?? null;
+    if (!composite) composite = document.createElement('canvas');
+    if (composite.width !== off.width || composite.height !== off.height) {
+      composite.width = off.width; composite.height = off.height;
+    }
+    const cx = composite.getContext('2d');
+    if (!cx) return off;
+    cx.clearRect(0, 0, composite.width, composite.height);
+    cx.drawImage(off, 0, 0);
+    // The gap is in CSS px and the offscreen canvas is in device px — same scale `render()` used.
+    if (src && src.width > 0 && src.height > 0 && gfxRect) {
+      const dpr = off.width / Math.max(1, vw);
+      // Fit inside the reserved rect, centred, preserving the renderer's own aspect.
+      const rw = gfxRect.w * dpr, rh = gfxRect.h * dpr;
+      const scale = Math.min(rw / src.width, rh / src.height);
+      const dw = src.width * scale, dh = src.height * scale;
+      try {
+        cx.drawImage(src, gfxRect.x * dpr + (rw - dw) / 2, gfxRect.y * dpr + (rh - dh) / 2, dw, dh);
+      } catch { /* a tainted or not-yet-ready source: show the document without it rather than throw */ }
+    }
+    return composite;
+  }
+
+  // Re-upload every frame, because a 3D body SPINS and a static texture would freeze it mid-turn. Only
+  // runs while a capturable graphic is actually on screen; `setSource` with the same canvas just flags
+  // the texture dirty, so this is one drawImage pair per frame and no allocation.
+  function gfxLoop() {
+    if (ctrl && gfxCapturable) ctrl.setSource(compositeFrame());
+    gfxRaf = requestAnimationFrame(gfxLoop);
+  }
+  $: if (typeof requestAnimationFrame !== 'undefined') {
+    if (gfxCapturable && !gfxRaf) gfxRaf = requestAnimationFrame(gfxLoop);
+    else if (!gfxCapturable && gfxRaf) { cancelAnimationFrame(gfxRaf); gfxRaf = 0; if (ctrl && off) ctrl.setSource(off); }
   }
 
   onMount(() => {
@@ -247,7 +309,7 @@
       document.removeEventListener('visibilitychange', remeasure);
     };
   });
-  onDestroy(() => { ro?.disconnect(); engine?.cancel(); engine = null; ctrl?.dispose(); ctrl = null; });
+  onDestroy(() => { if (gfxRaf) cancelAnimationFrame(gfxRaf); gfxRaf = 0; ro?.disconnect(); engine?.cancel(); engine = null; ctrl?.dispose(); ctrl = null; });
 
   // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
   // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
@@ -310,9 +372,13 @@
   <canvas bind:this={canvas}></canvas>
   <!-- Body graphic: the REAL renderers (PlanetDisc 2D / holo 3D spin), overlaid in the reserved gap. -->
   {#if gfxOn && gfxRect && subjectBody}
-    <div class="fd-bodygfx" class:interactive={selectable && imagery === 'sphere'}
+    <!-- While its pixels are being captured INTO the filtered canvas this stays mounted, live and
+         pointer-accepting (so a player can still spin the globe) but is not itself drawn — otherwise
+         the same graphic would appear twice, once filtered and once not. Same trick the holo HUD card
+         uses to keep the inspector's buttons while the shader draws the card. -->
+    <div class="fd-bodygfx" class:interactive={selectable && imagery === 'sphere'} class:captured={gfxCapturable}
          style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
-      <BodyGraphic body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
+      <BodyGraphic bind:this={gfxComp} body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
         ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex}
         interactive={selectable && imagery === 'sphere'} />
     </div>
@@ -331,4 +397,6 @@
   /* Interactive 3D thumbnail: capture drags so the player can spin the body by hand (grab cursor). */
   .fd-bodygfx.interactive { pointer-events: auto; cursor: grab; }
   .fd-bodygfx.interactive:active { cursor: grabbing; }
+  /* Captured into the filtered canvas: invisible here, but still rendering and still hit-testable. */
+  .fd-bodygfx.captured { opacity: 0; }
 </style>

@@ -24,6 +24,14 @@
   export let starHex: string | null = null;              // 3D: colour of the system's star (lights the portrait)
   export let interactive = false;                        // 3D: let the player drag to spin the body by hand
 
+  // The pixels, for a caller that needs to draw this graphic INTO its own canvas rather than layer it
+  // over one — the document's filter can only wreck what is in the texture it reads (inbox A38).
+  // Works for both routes because both end in a canvas: HoloView's WebGL one and PlanetDisc's 2D one.
+  let root: HTMLDivElement | undefined;
+  export function getCanvas(): HTMLCanvasElement | null {
+    return root?.querySelector('canvas') ?? null;
+  }
+
   $: is3D = mode === 'sphere';
   // Simple disc = a plain coloured circle BY TYPE (the schematic's flat class colour — brown/red/blue),
   // as opposed to 'flat' which reuses the full 2D-gallery render (PlanetDisc). Kept stable regardless of
@@ -66,6 +74,7 @@
   };
 </script>
 
+<div class="bg-root" bind:this={root}>
 {#if is3D && system}
   <div class="bg-3d" class:mono><HoloView {system} style={holoStyle} focusedBodyId={body?.id ?? null} labelsVisible={false} userSpin={interactive} /></div>
 {:else if mode === 'flat' && body}
@@ -94,8 +103,11 @@
     </svg>
   </div>
 {/if}
+</div>
 
 <style>
+  /* Pure wrapper — a handle for getCanvas(), never a layout box. */
+  .bg-root { width: 100%; height: 100%; display: contents; }
   .bg-3d { width: 100%; height: 100%; }
   .bg-2d { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
   /* FILL the space the info block gives it. The svg carries a 220px width/height attribute as its

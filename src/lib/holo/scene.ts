@@ -8,6 +8,7 @@
 // tunable log "toytown" compression (slider-ready per docs §A10) so packed inner systems don't
 // collapse into a blob. Textured/lit spheroids, skins and GPU filters arrive in later increments.
 import * as THREE from 'three';
+import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -248,24 +249,10 @@ function getConstructIconTexture(iconType: string | undefined, color: string): T
   ctx.fillStyle = color;
   const m = S * 0.14; // margin
   const size = S - 2 * m;
-  const cx = S / 2;
-  const cy = S / 2;
-  if (shape === 'circle') {
-    ctx.beginPath(); ctx.arc(cx, cy, size / 2, 0, 2 * Math.PI); ctx.fill();
-  } else if (shape === 'diamond') {
-    ctx.beginPath(); ctx.moveTo(cx, cy - size / 2); ctx.lineTo(cx + size / 2, cy);
-    ctx.lineTo(cx, cy + size / 2); ctx.lineTo(cx - size / 2, cy); ctx.closePath(); ctx.fill();
-  } else if (shape === 'cross') {
-    const t = size / 3;
-    ctx.fillRect(cx - t / 2, cy - size / 2, t, size);
-    ctx.fillRect(cx - size / 2, cy - t / 2, size, t);
-  } else if (shape === 'square') {
-    ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
-  } else {
-    // triangle (default) — bodies are spheres, constructs read as triangles
-    ctx.beginPath(); ctx.moveTo(cx, cy - size / 2); ctx.lineTo(cx + size / 2, cy + size / 2);
-    ctx.lineTo(cx - size / 2, cy + size / 2); ctx.closePath(); ctx.fill();
-  }
+  // The ONE glyph vocabulary (inbox A34). This used to be a private copy of the same five shapes;
+  // it agreed with the canonical one only because nobody had added a sixth shape yet.
+  traceConstructIcon(ctx, constructIconShape(shape), S / 2, S / 2, size);
+  ctx.fill();
   tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   iconCache.set(key, tex);
@@ -273,7 +260,11 @@ function getConstructIconTexture(iconType: string | undefined, color: string): T
 }
 
 export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {}): HoloController {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  // preserveDrawingBuffer keeps the last frame readable after it is presented, which is what lets a
+  // caller drawImage() this canvas into another one. Without it a WebGL canvas captured outside its
+  // own render callback comes back BLANK — and that capture is how the body graphic gets INSIDE the
+  // document's filter pass rather than being composited, unfiltered, on top of it (inbox A38).
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setClearColor(0x05070c, 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
