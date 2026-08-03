@@ -9,6 +9,7 @@
     ['constants', 'Constants'],
     ['gravity', 'Gravity, size & density'],
     ['makeup', 'Interior makeup'],
+    ['albedo', 'Albedo — bare ground & its deposits'],
     ['temperature', 'Equilibrium temperature'],
     ['eccentric-flux', 'Eccentric flux distance'],
     ['greenhouse', 'Greenhouse & surface temp'],
@@ -20,10 +21,14 @@
     ['clouds', 'Clouds & weather'],
     ['magnetism', 'Magnetism'],
     ['aurora', 'Auroras'],
+    ['spin', 'Spin axis, seasons & satellite planes'],
     ['geology', 'Geological activity'],
+    ['surface', 'Resurfacing & surface features'],
     ['resonance', 'Resonances & stability'],
+    ['eclipses', 'Eclipses'],
     ['ejection', 'Who gets ejected'],
     ['colour', 'Apparent colour & visualisation'],
+    ['views', 'Spatial views: grids & routes'],
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
     ['tags', 'Tags'],
@@ -140,6 +145,10 @@
         the cover is marginal. Against measured Bond albedos: Venus 0.76 (model 0.757), Earth 0.306 (0.308),
         Saturn 0.342 (0.343), Neptune 0.290 (0.288), Jupiter 0.503 (0.490). A manually-pinned albedo still wins,
         but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
+    </section>
+
+    <section id="albedo">
+      <h2>Albedo — bare ground and its deposits <span class="phase">B5</span></h2>
       <p><strong>Bare rock is DARK, and what makes a world bright is what has settled on it.</strong> The three
         measurements that pin this point in different directions: Mercury reflects 0.088 and Luna 0.11 — darker
         than a single flat "rock" value used to allow — while Mars reflects 0.25 and Io 0.63, far brighter than
@@ -527,6 +536,39 @@
         <em>Aurora</em> layer names the gas and the colour for any world that has one.</p>
     </section>
 
+    <section id="spin">
+      <h2>Spin axis, seasons and satellite planes <span class="phase">B10 · C3(c)</span></h2>
+      <p>A world's <strong>axial tilt</strong> is what gives it seasons: the engine's temperature range carries a
+        seasonal component driven by it, and below about 12° there is nothing worth calling a season. Until
+        recently no generated world had a tilt at all — not zero, but absent — so every generated world reported a
+        flat year. They all lean now, and so do their moons.</p>
+      <p><strong>Two things set an obliquity, and they do not blend.</strong> A planet condenses from the same
+        disc as its star, so it starts near the disc's normal and is nudged from there — most worlds sit modestly
+        tilted for the same reason Earth, Mars, Saturn and Neptune all sit between 23° and 29°. A late
+        <strong>giant impact</strong> does not nudge an axis, it re-points it, and the result is a direction with
+        no memory of the disc at all. That second population is drawn isotropically rather than from a wider
+        spread, which is why it lands where Uranus (on its side, 97.8°) and Venus (turning backwards, 177.4°)
+        actually are instead of smearing every tipped world toward 90°. A world in that group is tagged
+        <code>spin/tipped</code>.</p>
+      <p><strong>An inferred figure says so, and that is a promise rather than a disclaimer.</strong> A generated
+        world's tilt and rotation period are plausible values from the formation model, not measurements, so they
+        carry <code>spin/axis-inferred</code> and <code>spin/period-inferred</code>. The point of the mark is what
+        its <em>absence</em> means: Earth's 23.4° and Uranus's 97.8° are observed, and a generated neighbour
+        sitting beside them in the same starmap must not read as though somebody had been there. A body whose
+        rotation is set by a tidal lock is not marked either — that period is derived from the orbit, not guessed.</p>
+      <p><strong>Which plane does a moon orbit in?</strong> Close in, a host's equatorial bulge governs and the
+        moon rides its host's tilt — which is why Saturn's inner moons sit in the ring plane, the rings being in
+        that same equator. Far out, the star's tide wins and the orbit follows the system plane instead. The
+        changeover is the <strong>Laplace radius</strong>, and it is computed per host rather than assumed:
+        <code>r_L⁵ = 2·J₂·R²·a_p³·(M_p/M_star)</code>. Our own Moon is the case that shows why it matters — at 60
+        Earth radii it is well outside, so its 5.1° is quoted to the ecliptic, and to Earth's equator it wanders
+        between 18.3° and 28.6° with no single number to give. Generated moons past their host's Laplace radius
+        are declared in the system plane; the ones inside it keep their host's equator.</p>
+      <p>J₂ is not something an invented planet has, so it is estimated from the rotation the generator already
+        rolled. That is coarser than it sounds and still good enough: the handover radius goes as the fifth root
+        of J₂, so being wrong about it by a factor of three moves the boundary by a quarter.</p>
+    </section>
+
     <section id="geology">
       <h2>Geological activity</h2>
       <p>"Volcanic" is not one thing — Earth, Venus and Io are active for mechanically different reasons, with
@@ -636,9 +678,50 @@
         filtered out before any pairing, because their mass is a density proxy rather than a point mass. The
         fault was one branch below where anyone was looking: the crossing test fired correctly, and the fate was
         then copied onto the wrong body. The assessment now names <em>which</em> body it means.</p>
+      <p><strong>A verdict also says which of its reasons produced it</strong>, because several tests look at each
+        body and the most severe one owns the outcome. That could read as a contradiction: a world could be told
+        "a locked mean-motion resonance keeps their conjunctions away from the crossing point" and then
+        "predicted outcome: flung out", with nothing to say those came from different mechanisms. Both halves were
+        true — the crossing test really had spared the pair, and a <em>different</em> test had found the body
+        outside its host's Hill sphere. So the resonance note now scopes its claim to the crossing it is about,
+        and the outcome is printed beside its own cause ("driven by: orbit exceeds host's stable Hill sphere").
+        Only when there is more than one driver; with a single reason the cause is already unambiguous.</p>
       <p>The practical reading for a GM: a "fated" tag on a large planet is a claim about its <em>neighbourhood</em>
         only if that planet is the lighter of the pair. Check what it is paired with before rewriting a campaign
         around it.</p>
+    </section>
+
+    <section id="eclipses">
+      <h2>Eclipses <span class="phase">G8</span></h2>
+      <p><strong>When does something next cover this world's star, and how dark does it get?</strong> An eclipse
+        happens <em>somewhere</em>, and the answer is meaningless without saying where — so the observer is
+        standing <strong>on the body whose data is open, at the point directly under the occulter</strong>. From
+        there exactly three things can pass in front of your star: one of your own satellites, the world you orbit
+        if you are a moon, or the partner you share a barycentre with. That third case is not an afterthought:
+        Pluto and Charon eclipsed each other every few days through the late eighties, and that is how Charon's
+        radius was measured.</p>
+      <p>Standing on the <em>surface</em> rather than at the centre is not a detail. It shortens the distance to a
+        close occulter by a whole body radius, and for our Moon that 1.7% is the difference between an eclipse
+        that just covers the Sun and one that just fails to — which is the entire reason totality exists at all.</p>
+      <p><strong>The kind comes from the geometry, not from a threshold.</strong> Comparing the two discs'
+        angular radii against their separation gives <strong>total</strong> (the star vanishes behind the
+        occulter), <strong>annular</strong> (the occulter sits entirely inside the star's disc and leaves a ring),
+        or <strong>partial</strong>. The depth quoted alongside is the fraction of the star's disc <em>area</em>
+        covered, from the circle-circle overlap.</p>
+      <p>Below a quarter of the disc the sky does not noticeably darken and nobody at the table would look up, so
+        those are filtered out rather than reported — that line is also the natural one between an eclipse and a
+        mere <strong>transit</strong>, a dot crossing a disc. Deimos from Mars manages about 1% and never appears;
+        Phobos manages about 38% and does. And when a shadow simply cannot miss, there is no date to give: the
+        answer becomes a recurrence ("every 18 hours"), because that is a day/night cycle rather than an event.</p>
+      <p><strong>What is predicted, and what is not.</strong> Real eclipse seasons drift because an orbit's nodes
+        precess. The engine holds orbital elements fixed, so the honest description is "when these elements next
+        line up", not an ephemeris — every prediction is flagged approximate for that reason. It is exactly right
+        for a game and it should say so rather than implying observatory precision.</p>
+      <p>None of this runs during a derivation pass. A forward search over the propagator is not free, so it is
+        computed on demand for a reader and cached against the clock — the whole reason being that a per-pass cost
+        which also broke repeatability has bitten this engine before. The cheap half is the pre-filter: how dark
+        an occulter could <em>ever</em> manage is pure arithmetic on orbital radii, so one that could never reach
+        the floor is dismissed without a single propagation.</p>
     </section>
 
     <section id="colour">
@@ -685,6 +768,27 @@
         auroras and rings all stay locked to the same tilted body, while the star-lit terminator is compensated to
         keep pointing at the star. A gallery of the renderer across compositions, tilts and stellar light lives at
         <code>/discgallery</code>.</p>
+    </section>
+
+    <section id="views">
+      <h2>Spatial views: grids and routes <span class="phase">G4 · A37 · A41</span></h2>
+      <p><strong>One grid vocabulary, and one generator behind it.</strong> The 3D starmap, the flat starmap and
+        the system view's ground plate all draw their lattice from the same code, so a system snapped to your hex
+        in one view lands dead-centre in it in the others. The hex convention is <strong>flat-topped</strong>
+        everywhere — the system view used to carry a pointy-topped copy of its own, which was both unreachable and
+        already wrong by the time it was found. Square and hex are the two lattices; the caller supplies the cell
+        size, the origin and how far to fill, and applies its own pan, zoom or 3D fit on top. Nothing in the
+        generator knows which view is asking.</p>
+      <p>Grids <strong>fade with distance</strong> rather than being drawn to the horizon at full strength, which
+        is what stops a large map turning into a wall of lines and lets the eye keep the bodies rather than the
+        graticule. The style is chosen in the preset editor and travels with a player view, so what you set up is
+        what your table sees.</p>
+      <p><strong>Routes run to the stars, not to their shadows.</strong> Systems in this engine carry a real
+        depth — the bundled maps use true 3D positions from astrometry, not a flattened chart — so a route drawn
+        on the ground plane ends at a system's <em>projection</em> rather than at the star. Routes are direct
+        lines between the systems themselves, through the air. In the flat plan view every system is on the plane
+        by definition, so the same code draws the same flat lines and there is no second implementation for the
+        2D case.</p>
     </section>
 
     <section id="habitability">
