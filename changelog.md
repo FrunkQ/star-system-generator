@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.403-beta - 3rd Aug 2026
+
+* Import from the Real Sky: build a starmap straight from the astronomy catalogues. The New Starmap screen (now reorganised into example / bring-in / start-empty groups) gains an import dialogue with worked presets -- the Local Neighbourhood, an extended 30-light-year shell, a region around TRAPPIST-1, and Sagittarius A* imported as a single system with the ten best-measured S-stars swinging round the black hole on their real published orbits (S2: 16 years, e 0.884). Any SIMBAD name works as a custom centre. Only confirmed planets import, positions are true 3D positions, systems the bundled maps already curate are skipped and say so, and hosts missing catalogue data are skipped by name rather than invented. Live queries fall back to a bundled snapshot when offline, with the coverage limit stated.
+* Optionally fill imported systems out with plausible generated worlds: the generator runs around each real star tuned to its measured mass and light, confirmed planets stay exactly where the catalogue puts them (with a dynamical exclusion zone around each), and every generated body is tagged origin/generated. Deterministic by star -- one person's import is everyone's, so a strange world reproduces on every machine.
+* Right-click empty starmap space: "Import Real Stars Here…" drops a real-sky region centred on the clicked point, alongside whatever the map already holds. The dialogue docks to the side while a dashed ring on the map shows the true footprint as the radius slides, existing systems inside the footprint are listed, and anything already on the map is skipped as a duplicate.
+* Imported stars are completed with the rule pack's magnetic-field band and a spin-axis tilt (the catalogues carry neither), using the same functions and per-star seeding as the generator's own stars.
+
 ## v2.1.402-beta - 3rd Aug 2026
 
 * G3 style round. (1) Hull models follow the map's render style: a wireframe scene renders a wireframe ship, exactly as it does the planets (F6 parity). (2) The design's procedural finish menu is live under the Filled style - Flat + panel lines / Cel shaded / Brushed metal (generated matcap) / Blueprint (bright edges over a ghost hull) - picked per construct from a Shading dropdown beside the model buttons; a chosen finish dresses even an authored GLB. (3) Focusing a ship no longer fights the mouse: the wheel releases the focus ease immediately, and the hull close-up frames at about a quarter of the view instead of half with room for the plume.

@@ -317,11 +317,14 @@ New Starmap modal gains a third card: **"Real sky…"** →
    plain dependency-free ESM consumed by the kit; pin test byte-green.
 2. **Confirmed-only import**: planet-hosts preset + SIMBAD name-resolve centre, browser-side
    TAP fetch with the download-fallback, preview + import. This alone is shippable and useful.
-   **LIBRARY DONE 2026-08-03** — `query.mjs` (ADQL builders, count-first region queries,
-   cone+shell bounds with the exact sphere cut, injectable transport) and `convert.mjs`
-   (archive rows → systems, bundled-host collisions, named skips), 21 tests. **UI NOT wired**:
-   the New Starmap modal and `routes/+page.svelte` are outside the importer territory — see
-   the inbox entry of 2026-08-03 for the scoping ask and the integration surface.
+   **DONE 2026-08-03** — library (`query.mjs`, `convert.mjs`) plus the UI, wired under the
+   owner's direction: `RealSkyImportModal.svelte` from the restructured New Starmap screen
+   (presets incl. the Sagittarius A* cluster demo, SIMBAD custom centres, live counts,
+   collision/skip reporting, bundled-snapshot fallback), and the map's right-click
+   "Import Real Stars Here…" append mode with a live footprint ring and overlap listing.
+   Fill-out mode (§5) shipped alongside: generator around each real star, anchors fixed,
+   `origin/generated` tags, deterministic per catalogue slug. Stars are completed with
+   pack-band field/tilt (`stardefaults.ts`).
 3. **Population presets**: Gaia cone queries (builder exists in query.mjs), magnitude cuts,
    binary merging heuristic, caps.
 4. **Fill-out mode**: generator integration with anchors/constraints/priors + origin tags.
@@ -330,8 +333,9 @@ New Starmap modal gains a third card: **"Real sky…"** →
    (`clusterGate.mjs`: tripwire + t_dyn decision + period tiers, S2/red-dwarf calibration
    pinned by test); the conversion itself remains. Sgr A* makes a spectacular flagship example
    map for this phase.
-6. **Later**: CNS5/WDS via VizieR (census + real binary orbits), "add real systems near here",
-   region re-import/refresh against a newer catalogue (WS8-style report before applying).
+6. **Later**: CNS5/WDS via VizieR (census + real binary orbits), region re-import/refresh
+   against a newer catalogue (WS8-style report before applying). ("Add real systems near
+   here" shipped 2026-08-03 as the map's right-click append mode.)
 
 ## 8. Open questions
 
