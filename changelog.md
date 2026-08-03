@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.390-beta - 3rd Aug 2026
+
+* Real-sky import, the library half: the starmap build kit's core (position mathematics, spectral classification, mass-radius estimation) now lives in `src/lib/import/realsky/` and is shared with a new importer library — TAP query builders for the NASA Exoplanet Archive, SIMBAD and Gaia DR3 with count-before-fetch region queries; a mass-aware cluster gate (dynamical time, not density, decides — S2's 16-year orbit around Sgr A* offers a system, a bound red-dwarf knot stays a starmap); and a confirmed-only converter that turns archive rows into starmap systems at true 3D positions, refuses to overwrite the curated bundled systems, and names every host it skips rather than inventing data. 32 tests; the bundled maps are byte-identical throughout. No UI yet — the New Starmap wiring is scoped separately (see the observations inbox).
+
 ## v2.1.389-beta - 3rd Aug 2026
 
 * VTT integration 1A: starmaps now carry a persistent, human-readable broadcast session id (name slug + two SF words + three digits, crypto RNG) minted on load and saved with the map, so player links and QR codes survive GM reloads and PC moves. Hosting collisions prompt the owner instead of silently regenerating.

@@ -52,6 +52,18 @@ under `data/cache/`. It only fetches SIMBAD rows it does not already have, so
 adding a star to the roster is cheap. `build-starmaps.mjs` is fully offline and
 deterministic (orbital phase angles are hashed from node ids, never random).
 
+## Shared core: `src/lib/import/realsky/`
+
+The kit's position mathematics (RA/Dec/parallax to equatorial Cartesian to map
+pixels), spectral-type classification, mass-radius estimation, makeup defaults
+and the catalogue description composer live in `src/lib/import/realsky/` as
+plain dependency-free ESM, imported by BOTH this kit and the in-app real-sky
+importer (see `docs/dev/starmap-data-import-design.md`). A change to any of
+them changes generator output, so the pin test will demand the shipped maps be
+regenerated in the same commit. The importer's `BUNDLED_ARCHIVE_HOSTS`
+(convert.mjs) mirrors this roster's `planetsFrom` entries and a test fails if
+they disagree — adding a planet host here means teaching the converter too.
+
 ## Data files
 
 - `data/systems-real.mjs` — the curated roster: system list and hierarchy

@@ -313,13 +313,23 @@ New Starmap modal gains a third card: **"Real sky…"** →
 ## 7. Phases
 
 1. **Extract the library** from `scripts/starmap-build/` (no behaviour change; kit rewired).
-2. **Confirmed-only import UI**: planet-hosts preset + SIMBAD name-resolve centre, browser-side
+   **DONE 2026-08-03** — `src/lib/import/realsky/{constants,positions,stars,planets}.mjs`,
+   plain dependency-free ESM consumed by the kit; pin test byte-green.
+2. **Confirmed-only import**: planet-hosts preset + SIMBAD name-resolve centre, browser-side
    TAP fetch with the download-fallback, preview + import. This alone is shippable and useful.
-3. **Population presets**: Gaia cone queries, magnitude cuts, binary merging heuristic, caps.
+   **LIBRARY DONE 2026-08-03** — `query.mjs` (ADQL builders, count-first region queries,
+   cone+shell bounds with the exact sphere cut, injectable transport) and `convert.mjs`
+   (archive rows → systems, bundled-host collisions, named skips), 21 tests. **UI NOT wired**:
+   the New Starmap modal and `routes/+page.svelte` are outside the importer territory — see
+   the inbox entry of 2026-08-03 for the scoping ask and the integration surface.
+3. **Population presets**: Gaia cone queries (builder exists in query.mjs), magnitude cuts,
+   binary merging heuristic, caps.
 4. **Fill-out mode**: generator integration with anchors/constraints/priors + origin tags.
 5. **Cluster gate**: dense-region detection + cluster-as-system conversion (S-star elements
-   hand-curated first, generated virial orbits after) — see 5c. Sgr A* makes a spectacular
-   flagship example map for this phase.
+   hand-curated first, generated virial orbits after) — see 5c. **GATE MATHS DONE 2026-08-03**
+   (`clusterGate.mjs`: tripwire + t_dyn decision + period tiers, S2/red-dwarf calibration
+   pinned by test); the conversion itself remains. Sgr A* makes a spectacular flagship example
+   map for this phase.
 6. **Later**: CNS5/WDS via VizieR (census + real binary orbits), "add real systems near here",
    region re-import/refresh against a newer catalogue (WS8-style report before applying).
 
