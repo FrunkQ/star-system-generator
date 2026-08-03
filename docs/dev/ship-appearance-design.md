@@ -436,18 +436,29 @@ Each phase ships value alone; the design survives stopping after any of them.
 - **A parallel appearance system.** Constructs stay "authored look-data + tags"; the model is
   one more authored field. `deriveAppearance` is not touched.
 
-## 11. Decisions needed from the project owner
+## 11. Owner decisions — ALL FIVE TAKEN, 2026-08-02
 
-1. **Scene marker or info-block only?** Section 6 argues the marker is legitimate and
-   severable; it is also the half most likely to surprise. (Recommend: yes, as Phase 2.)
-2. **The `meshoptimizer` dependency** (MIT, ~50 KB) for import-time simplification — now
-   Phase 1, since the primary use case uploads high-poly printing STLs. (Recommend: accept;
-   without it the front door rejects most fan models.)
-3. **Upload caps** (proposed: warn 500 KB, hard 2 MB post-conversion) — cheap to change,
-   worth blessing.
-4. **Starter-set art direction** (Phase 4): NASA real craft, stylised low-poly, or both
-   labelled — and whether the set is wanted at all now that uploads lead.
-5. **CC0-only bundling, or CC0 + CC-BY with attribution plumbing?** (Recommend CC0-only.)
+1. **Scene marker: YES, as Phase 2 — not now.** Severable as designed. Before Phase 2 starts,
+   re-read the standing rule that body graphics belong to the info block and never the map
+   (F1) — the marker is the half most likely to surprise, and `holo/scene.ts` is another
+   session's territory until then.
+2. **`meshoptimizer` (MIT, ~50 KB): ACCEPTED**, Phase 1.
+3. **Upload caps: ACCEPTED as proposed** — warn 500 KB, hard 2 MB post-conversion.
+4. **Starter set: a SMALL NASA-ONLY set** of real public-domain craft (Phase 4, not now).
+   Stylised low-poly libraries are NOT wanted — real craft match the engine's
+   physically-derived tone and sidestep the low-poly-reads-game-y tension entirely.
+5. **Licensing: CC0 AND CC-BY, not CC0-only.** The doc's recommendation was overruled, so
+   **attribution plumbing is in scope** and did not previously exist. Interaction to note:
+   the starter set is NASA public-domain and needs no attribution, so the plumbing serves
+   USER-SUPPLIED and SHARED models. Where attribution lives: `ModelRef` carries
+   `title`/`credit`/`license`/`sourceUrl` (the ImageRef precedent); it is DISPLAYED as a
+   small credit line under the info-block viewer wherever the model is shown (GM panel and
+   player document alike) and in the construct editor beside the model controls; it SURVIVES
+   export because the ref rides on the node and the binary's store entry carries the same
+   metadata, and it survives a share/broadcast because the ref crosses inside the snapshot
+   while the binary crosses keyed by hash with metadata attached. A model whose `license`
+   says CC-BY with no `credit` is flagged in the editor at import time, not silently
+   accepted.
 
 ## Appendix: spike method (throwaway, scratchpad only, nothing in src/)
 

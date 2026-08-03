@@ -14,7 +14,10 @@ export interface Visibility {
   fields?: Record<string, boolean>;
 }
 
-export interface Tag { key: string; value?: string; ns?: string; manual?: boolean; coi?: boolean; inherited?: boolean; source?: string; }
+// `origin` states where a tag came from and therefore what may delete it — see tags/tagLifecycle.ts,
+// which is the only place that interprets it. It is OPTIONAL and inferred from the flags below when
+// absent, so the existing writers did not have to change; set it explicitly on new ones.
+export interface Tag { key: string; value?: string; ns?: string; origin?: 'physics' | 'rule' | 'authored' | 'manual' | 'inherited' | 'derived'; manual?: boolean; coi?: boolean; inherited?: boolean; source?: string; }
 
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;
@@ -49,6 +52,20 @@ export interface ApparentColor { hex: string; palette: ApparentColorStop[]; band
 // Bulk interior makeup (mass fractions, normalised). Density + radius derive from it (§2a).
 export interface Makeup { metal?: number; rock?: number; carbon?: number; ice?: number; gas?: number; }
 export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; custom?: boolean; }
+// A construct's 3D model (G3). The binary is a normalised GLB in the hash-addressed model store
+// (src/lib/constructs/modelStore.ts) — never inline here, because the whole node JSON rides every
+// broadcast snapshot resend. Attribution fields mirror ImageRef: CC-BY models are allowed
+// (owner decision 5), so credit/license/sourceUrl must survive export and share with the ref.
+export interface ModelRef {
+  hash: string;            // content hash (SHA-256 hex) of the stored GLB — the store key
+  name?: string;           // display name (source filename or model title)
+  sourceFormat?: 'glb' | 'stl' | 'obj'; // what the GM uploaded, before conversion
+  triangles?: number;      // triangle count of the stored (post-simplify) mesh
+  bytes?: number;          // stored GLB size in bytes
+  hadMaterials?: boolean;  // false = source carried no materials (every STL): tint applies by default
+  title?: string; credit?: string; license?: string; sourceUrl?: string;
+  custom?: boolean;        // GM-uploaded — the processor must never overwrite
+}
 
 export interface Area {
   id: ID; name: string;
@@ -276,6 +293,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   systems?: Systems;
   crew?: { current?: number; max?: number };
   IsTemplate?: boolean;
+  model?: ModelRef; // construct 3D model (G3) — sibling of `image`; photo wins in the info block, model next, glyph last
 
   engines?: Engine[]; // Array of engines attached to the construct
   fuel_tanks?: FuelTank[]; // Array of fuel tanks attached to the construct
@@ -752,6 +770,11 @@ export interface Starmap {
   name: string;
   description?: string;
   gmNotes?: string;
+  // Persistent broadcast session identity (docs/dev/vtt-integration-design.md 9.1/1A): minted once
+  // by ensure-on-load in the GM route, saved with the map, FROZEN across renames so player links/QRs
+  // and VTT configs survive GM restarts and PC moves. Human-readable: name slug + 2 words + 3 digits.
+  // Regeneration is a deliberate revocation action, never automatic.
+  broadcastId?: string;
   systems: StarSystemNode[];
   routes: Route[];
   activeJourneys?: ActiveJourney[];

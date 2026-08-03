@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.387-beta - 3rd Aug 2026
+
+* G3 phase 1, stage 1: construct 3D-model groundwork - ModelRef on the node, hash-addressed model store (own IndexedDB), GLB/STL/OBJ parsing with Draco + meshopt decoding wired (decoder vendored to static/draco/, Apache-2.0 from three's own distribution). No UI yet.
+
 ## v2.1.386-beta - 3rd Aug 2026
 
 * **The 3D system view's grid is a distance now, not a decoration.** It used to be a fraction of the view, so it meant nothing and changed size as you moved. It is a real number of AU, and it steps by decade as you zoom -- brightening and subdividing into ten on the way in, coarsening on the way out -- with the two levels crossfading so it reads as one grid rather than jumping.
