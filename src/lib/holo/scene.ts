@@ -1571,7 +1571,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const readable = Math.min(0.7, Math.max(0.14, 0.16 + 0.1 * (Math.log10(lengthM) - 1)));
     if (bodySize >= 0.999) return readable;
     const trueScene = ((lengthM / 1000) / AU_KM) * (GRID_RADIUS / rMax);
-    return Math.max(1e-10, trueScene * (1 - bodySize) + readable * bodySize);
+    // SQUARED dial weight, deliberately steeper than the bodies' linear blend: a ship's readable
+    // marker is planet-comparable by design (legibility), so a linear blend kept hulls absurdly
+    // large deep into the dial - at 5% a 110 m station read half an Earth. Squaring means ships
+    // shed their readability boost faster than planets ("constructs shrink smaller than planets"),
+    // sitting near reality by 5% and honestly 1:1 at 0; the icon takes over whenever that leaves
+    // them under the pixel threshold.
+    const k = bodySize * bodySize;
+    return Math.max(1e-10, trueScene * (1 - k) + readable * k);
   }
   const SHIP_MODEL_MIN_PX = 10; // below this the model IS the icon's job
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
@@ -1594,6 +1601,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
       v.shipFx = attachDrivePlume(g);
+      // The plume light's reach scales with the hull (light params ignore parent scale): a burning
+      // ship glows over a few hull-lengths, never across the system - at true scale the old fixed
+      // 3.2-unit reach would have lit planets from a 100 m exhaust.
+      v.shipFx.light.distance = Math.max(1e-9, sceneLen * 8);
       contentGroup.add(g);
       v.shipModel = g;
       v.shipLen = sceneLen;
@@ -2948,7 +2959,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // projection matrix is not rebuilt every frame; zoomed out it returns to the usual 0.01.
     {
       const dT = camera.position.distanceTo(controls.target);
-      const wantNear = Math.min(0.01, Math.max(1e-8, dT * 0.02));
+      // Floor 1e-11, not 1e-8: "floored well below any body" was written when the smallest framed
+      // thing WAS a body (~1e-7 scene units). A true-scale SHIP is ~1e-9, and a floor above 2% of
+      // the framing distance puts the whole scene inside the near plane - the G3 true-scale
+      // blackout: focus a construct at 0% and everything clipped to black.
+      const wantNear = Math.min(0.01, Math.max(1e-11, dT * 0.02));
       if (wantNear < camera.near * 0.8 || wantNear > camera.near * 1.25) { camera.near = wantNear; camera.updateProjectionMatrix(); }
       // The ring sample density is chosen against the working distance, and the dense arc is laid down
       // around where the camera was looking — so a real zoom re-chooses the one, and a body carrying the

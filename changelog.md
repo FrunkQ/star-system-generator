@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.399-beta - 3rd Aug 2026
+
+* G3 scale corrections from live testing: constructs now shrink FASTER than planets down the body-size dial (squared blend weight - at 5% a station reads near its real size instead of half an Earth, handing to its icon when too small), and the true-scale blackout is fixed - the camera near-plane floor (1e-8) sat ABOVE the framing distance of a 100 m ship, clipping the whole scene; it now follows the framing all the way down (1e-11). The drive plume's light reach also scales with the hull, so a burning shuttle no longer lights planets.
+
 ## v2.1.398-beta - 3rd Aug 2026
 
 * G3 ship scale: a construct model's size now follows the SAME body-size dial blend as planets - at the readable end a log-mapped marker length derived from the authored dimensions (a 1 km cruiser visibly dwarfs a 110 m frigate), at the true end genuinely 1:1 (metres through the same conversion body radii use, renderable because the floating origin puts the focused ship at the origin). Below ~10 px the ICON stands in and above it the hull draws, at every dial position; focusing a modelled ship frames the hull itself, and the min-zoom floor comes down so a true-scale ship can fill the screen.
