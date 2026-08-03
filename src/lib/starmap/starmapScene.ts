@@ -1,6 +1,8 @@
 // Imperative three.js controller for the 3D starmap (galaxy) view — the starmap sibling of the holo
 // system scene. Systems are billboard stars laid on a ground plane at their map (x,y); multi-star
-// systems render as a small cluster (binaries are not one dot). Routes are lines on the plane. A
+// systems render as a small cluster (binaries are not one dot). Routes are direct lines BETWEEN THE
+// SYSTEMS — through the air, not across the floor (A41): they were plane lines until WS7 gave systems
+// a depth, and a route that ignores it ends at a system's projection instead of at its star. A
 // fading polar grid (optional, plain or LY-labelled), HTML name labels, orbit/tilt camera, and the
 // same GPU filter chain as the system holo. Plain module so the wrapper lazy-loads three into its own
 // chunk. Deliberately independent of scene.ts (no orbits/rings/belts) — shares only the filter package.
@@ -695,21 +697,39 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       }
       placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name) });
     }
-    // Routes: an emissively-GLOWING filament — a soft additive ground-quad halo + a bright additive
-    // core line — so the link reads like a lit hyperlane in both the 2D (overhead) and 3D starmap.
+    // Routes: an emissively-GLOWING filament — a soft additive halo quad + a bright additive core
+    // line — so the link reads like a lit hyperlane in both the 2D (overhead) and 3D starmap.
+    //
+    // A41: an endpoint is the system's `center` STRAIGHT OUT OF `centers` — the very vector the star
+    // sprite was placed at, so the route cannot miss the star it joins. It must not be recomputed from
+    // the system's raw z: `toScene` folds in the display-only `effZ` exaggeration, and a route rebuilt
+    // from raw depth would leave both stars behind the moment the slider is not at 1x. (Losing a
+    // coordinate by recomputing it is exactly how A17 went wrong.) The endpoints used to be flattened
+    // with `.setY(0.02)`, which is what put routes on the floor.
+    //
+    // In the 2D plan view (`flatMode`) `effZ` is 0, so every centre is already on the plane and routes
+    // stay planar with no special case. THAT IS DELIBERATE AND CORRECT — 2D is the plan view by
+    // standing rule, so the SVG `Starmap2DView` and this scene legitimately differ. Do not "fix" 2D.
     const routePts: THREE.Vector3[] = [];
     const routePtsDash: THREE.Vector3[] = [];
     const glowW = GRID_RADIUS * 0.02; // filament half-width in scene units
+    // Clearance above the reference plane, so a route between two on-plane systems does not z-fight the
+    // grid. Applied as an OFFSET to the true height rather than as an absolute y, so it translates a
+    // sloped line instead of flattening it.
+    const LIFT = new THREE.Vector3(0, 0.02, 0);
     for (const r of routes) {
-      const a = centers.get(r.fromId), b = centers.get(r.toId);
-      if (!a || !b) continue;
-      (r.dashed ? routePtsDash : routePts).push(a.clone().setY(0.02), b.clone().setY(0.02));
+      const ca = centers.get(r.fromId), cb = centers.get(r.toId);
+      if (!ca || !cb) continue;
+      const a = ca.clone().add(LIFT), b = cb.clone().add(LIFT);
+      (r.dashed ? routePtsDash : routePts).push(a.clone(), b.clone());
       // Route NAME at the midpoint. Pushed into `placed` so it inherits the whole label pipeline —
       // constant on-screen size, colour/font redraws, and crucially the labelsVisible (Hide labels)
       // gate that system names already obey. Route names used to render unconditionally in 2D and
       // not at all here.
       if (r.name && r.name.trim()) {
-        const mid = a.clone().add(b).multiplyScalar(0.5).setY(0.03);
+        // A41: the midpoint of the LINE, not of its shadow. A midpoint pinned to a fixed height floats
+        // off the route as soon as the route has any.
+        const mid = a.clone().add(b).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.01, 0));
         // Drawn in the ROUTE's own colour, not the shared label colour: a route name sits between the
         // two stars it joins, so in the star colour it reads as just another star name. Matching the
         // line ties it to the link instead. In mono `routeColor()` IS the mono grey, so the tint
@@ -718,12 +738,29 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       }
       // Glow band (skipped when the glow is toggled off, or for dashed — the dash reads better plain).
       if (!r.dashed && routeGlowOn) {
-        const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz);
+        // A41, and this is the half that is NOT a one-liner. The band used to be oriented with
+        // `quad.rotation.y = -atan2(dz, dx)` — a YAW, and a quad that can only yaw can only lie flat.
+        // Feeding 3D endpoints to the core line alone would have left the halo on the floor beneath it.
+        // So orient it with a full basis: local X along the route, local Y (the quad's normal) the part
+        // of world-up left after removing the route direction — i.e. the band is as face-up as a sloped
+        // line permits, and for a horizontal route it is EXACTLY the old flat quad. `len` is the true
+        // 3D length; the old `hypot(dx, dz)` was the length of the shadow and fell short of the stars.
+        const dir = b.clone().sub(a);
+        const len = dir.length();
         if (len > 1e-4) {
+          dir.divideScalar(len);
+          const nrm = new THREE.Vector3(0, 1, 0).addScaledVector(dir, -dir.y);
+          // A near-vertical route has no horizontal-facing normal to prefer; any perpendicular reads the
+          // same, since the band is then edge-on to the plane whatever we choose.
+          if (nrm.lengthSq() < 1e-8) nrm.set(1, 0, 0).addScaledVector(dir, -dir.x);
+          nrm.normalize();
+          const side = new THREE.Vector3().crossVectors(dir, nrm); // right-handed: Z = X × Y
           const mat = new THREE.MeshBasicMaterial({ map: routeGlow(), color: routeColor(), transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
           const quad = new THREE.Mesh(ROUTE_QUAD.clone(), mat); // clone: clearContent disposes per-route geometry
-          quad.position.set((a.x + b.x) / 2, 0.015, (a.z + b.z) / 2);
-          quad.rotation.y = -Math.atan2(dz, dx);
+          quad.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(dir, nrm, side));
+          // Sat 0.005 under the core line before; keep that separation ALONG THE NORMAL rather than in
+          // world y, or a steep route's halo and line would land in the same plane and z-fight.
+          quad.position.copy(a).add(b).multiplyScalar(0.5).addScaledVector(nrm, -0.005);
           quad.scale.set(len, 1, glowW * 2);
           quad.renderOrder = 1;
           content.add(quad);

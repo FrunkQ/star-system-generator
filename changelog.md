@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.381-beta - 3rd Aug 2026
+
+* **Routes on the 3D starmap go to the stars now, not to the floor beneath them.** They were lines on the plane, which was right until systems were given a depth -- since then a route has ended at a system's shadow rather than at the system. The glow band follows the line up with it, and a route's name rides the line instead of hovering under it. The 2D starmap is the plan view and stays flat, which is the point of it.
+
 ## v2.1.380-beta - 2nd Aug 2026
 
 * **The radiation rows fit again.** They read "weeks - 213 Sv/y - lethal dose in ~8.6 days", which was long enough to be cut off and looked like it disagreed with itself -- the word at the front and the figure at the end are two ways of saying the same thing at different resolutions. The row now carries the measurement and a skull marking the time: "213 Sv/y - 8.6 d". The word is still on the radiation tag, where a bucket is useful because you can filter on it.
