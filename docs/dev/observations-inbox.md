@@ -316,6 +316,23 @@ _(new observations go here — rough is fine)_
   (B27), and an appearance driver published as a hazard reading (B28). Whenever you add a derived field or
   a tag, state WHAT it measures, WHERE, and IN WHAT UNITS — and check that its name and its neighbours in
   the block agree with that answer.
+- **DUPLICATED FUNCTIONALITY IS THIS CODEBASE'S MOST RECURRING FAULT. WHEN YOU FIND A SECOND COPY OF
+  ANYTHING, REPORT IT UP — and unify it at the source if that is cheap and in scope.** Seven instances
+  so far, and in every case the copies had ALREADY drifted or were about to: `albedo.ts` ran a rival
+  cloud model against the documented single evaluation ([[B1]]); two sums of one quantity disagreed and
+  put 105 of 420 bodies outside their own stated range ([[B8]]); of two live system generators only one
+  read the pack's `mag_gauss` ([[B9]]a); `bodyFacts` bucketed radiation separately and called Mars and
+  Io both "high" sixty thousand times apart ([[B28]]); the construct glyph existed FOUR times and one
+  copy had already fallen back to the wrong shape ([[A34]]); one grid concept lived under two names
+  translated in exactly one place ([[A37]]); and `docs/dev/generation-duplication-map.md` records two
+  generators, three body-creation routes and five places that invent a magnetic field. **THE TEST IS
+  NOT "is this duplicated code" BUT "could these two answer the same question differently".** Two
+  spellings of one idea, two functions computing one quantity, two thresholds for one concept, a value
+  derived in a component that is also derived in the engine — all the same fault. **What to do:**
+  if unifying is a few lines and inside your item, do it and say so. If it is larger, DO NOT wander off
+  and refactor mid-item — write it up as a finding with every copy located by file and line, and let it
+  be scoped. Either way it must reach the board; a second copy noticed and not recorded is one that
+  drifts next month. Prefer removing the copy over syncing it: syncing preserves the fault.
 - **NOTHING MAY READ A VALUE A LATER PASS WRITES, and `src/lib/system/idempotence.test.ts` is what
   enforces it.** Process, process the result, process that, and nothing on any body may change. Seven
   such edges were found at once in B13 and one of them put a hundredfold error on Earth's radiation
