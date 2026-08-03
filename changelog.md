@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.388-beta - 3rd Aug 2026
+
+* G3 stage 2: model conversion and caps - STL/OBJ convert to GLB, meshopt simplification for high-poly printing meshes (30k+ triangles down to ~20k), texture resampling on re-encode, warn 500 KB / hard 2 MB. A compliant GLB stores byte-identical, keeping its compression. New dependency: meshoptimizer (MIT).
+
 ## v2.1.387-beta - 3rd Aug 2026
 
 * G3 phase 1, stage 1: construct 3D-model groundwork - ModelRef on the node, hash-addressed model store (own IndexedDB), GLB/STL/OBJ parsing with Draco + meshopt decoding wired (decoder vendored to static/draco/, Apache-2.0 from three's own distribution). No UI yet.

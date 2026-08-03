@@ -63,6 +63,9 @@ export interface ModelRef {
   triangles?: number;      // triangle count of the stored (post-simplify) mesh
   bytes?: number;          // stored GLB size in bytes
   hadMaterials?: boolean;  // false = source carried no materials (every STL): tint applies by default
+  // Orientation fix from the import preview (unit quaternion x,y,z,w), applied at VIEW time rather
+  // than baked into the binary — so a compliant GLB stores byte-identical and keeps its compression.
+  orient?: [number, number, number, number];
   title?: string; credit?: string; license?: string; sourceUrl?: string;
   custom?: boolean;        // GM-uploaded — the processor must never overwrite
 }

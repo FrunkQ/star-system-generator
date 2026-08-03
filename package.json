@@ -1,6 +1,6 @@
 {
   "name": "star-system-generator",
-  "version": "2.1.387-beta",
+  "version": "2.1.388-beta",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -43,6 +43,7 @@
     "@types/qrcode": "^1.5.6",
     "@vercel/analytics": "^2.0.1",
     "fflate": "^0.8.3",
+    "meshoptimizer": "^1.2.0",
     "peerjs": "^1.5.5",
     "qrcode": "^1.5.4",
     "three": "^0.169.0"
