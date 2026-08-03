@@ -74,7 +74,7 @@ export class SystemProcessor implements ISystemProcessor {
             if (!b.tags || !b.tags.length) continue;
             // Strip friendly-label duplicates AND the broader legacy set (classes-as-tags, retired
             // atmosphere flavour, V1 display-name physics) — but NEVER a hand-added (manual) tag.
-            b.tags = b.tags.filter((t) => t.manual || (!LEGACY_DUPLICATE_TAGS.has(t.key) && !isLegacyTag(t.key)));
+            b.tags = b.tags.filter((t) => survivesRederive(t) || (!LEGACY_DUPLICATE_TAGS.has(t.key) && !isLegacyTag(t.key)));
         }
 
         // Stellar flare activity (drives the flare particle dose on planets) — derived for every star
