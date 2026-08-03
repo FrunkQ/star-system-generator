@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.389-beta - 3rd Aug 2026
+
+* VTT integration 1A: starmaps now carry a persistent, human-readable broadcast session id (name slug + two SF words + three digits, crypto RNG) minted on load and saved with the map, so player links and QR codes survive GM reloads and PC moves. Hosting collisions prompt the owner instead of silently regenerating.
+
 ## v2.1.388-beta - 3rd Aug 2026
 
 * G3 stage 2: model conversion and caps - STL/OBJ convert to GLB, meshopt simplification for high-poly printing meshes (30k+ triangles down to ~20k), texture resampling on re-encode, warn 500 KB / hard 2 MB. A compliant GLB stores byte-identical, keeping its compression. New dependency: meshoptimizer (MIT).

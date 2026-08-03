@@ -98,7 +98,19 @@ class BroadcastService {
         conn.on('close', () => { this.peerConns = this.peerConns.filter((c) => c !== conn); });
         conn.on('error', () => { /* per-connection; ignore */ });
       });
-      this.peer.on('error', (e: any) => { console.warn('[peer host]', e?.type || e); });
+      this.peer.on('error', (e: any) => {
+        if (e?.type === 'unavailable-id') {
+          // Another LIVE session already hosts this id — a stale tab on another PC, or a
+          // copied starmap file at another table. Surface it to the owner; never silently
+          // regenerate (that would break every stored player link on an innocent PC move).
+          try { this.peer?.destroy(); } catch { /* already gone */ }
+          this.peer = null;
+          this.peerConns = [];
+          this.onHostIdUnavailable?.();
+          return;
+        }
+        console.warn('[peer host]', e?.type || e);
+      });
     } catch (e) {
       console.warn('PeerJS host init failed (cross-device sharing unavailable)', e);
     }
@@ -172,19 +184,35 @@ class BroadcastService {
     }
   }
 
-  // Setup for GM Mode (Sender)
+  // Setup for GM Mode (Sender). Safe to call again when the session id changes (a different
+  // starmap loads, or the owner regenerates a leaked id): if remote hosting was requested, the
+  // old peer registration is dropped and re-hosted under the new id so guests dial the id the
+  // GM is actually broadcasting as.
   public initSender(sessionId: string) {
+    const changed = this.isSender && this.sessionId !== null && this.sessionId !== sessionId;
     this.isSender = true;
     this.sessionId = sessionId;
+    if (changed && this.peer) {
+      try { this.peer.destroy(); } catch { /* already gone */ }
+      this.peer = null;
+      this.peerConns = [];
+    }
+    if (this.hostRequested && !this.peer) this.initPeerHost(sessionId);
   }
 
   // Opt-in cross-device hosting: called when the GM opens the Companion launcher (sharing intent),
   // so we only announce an id to the public PeerJS broker when the GM actually wants remote players —
-  // not on every session. Idempotent.
+  // not on every session. Idempotent. The request is remembered so a session-id change re-hosts.
+  private hostRequested = false;
   public enableRemote() {
+    this.hostRequested = true;
     if (this.peer || !this.sessionId || !this.isSender) return;
     this.initPeerHost(this.sessionId);
   }
+
+  // Fired when hosting failed because the id is ALREADY TAKEN by a live session elsewhere.
+  // The GM route owns the user-facing choice (keep and retry later, or regenerate).
+  public onHostIdUnavailable: (() => void) | null = null;
 
   // Setup for Player Mode (Receiver)
   public initReceiver(

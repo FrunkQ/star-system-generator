@@ -12,6 +12,7 @@
   import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
+  import { mintBroadcastId } from '$lib/broadcastId';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
@@ -69,6 +70,9 @@
 
   // Companion App broadcast lives here (root), not in SystemView, so the players' field guide works
   // whether the GM is on the starmap or inside a system. We own the session id; SystemView reuses it.
+  // The id is the starmap's PERSISTENT `broadcastId` once a map is loaded (minted below, saved with
+  // the map — docs/dev/vtt-integration-design.md 9.1/1A) so player links/QRs survive reloads and PC
+  // moves; generateId() is only the pre-load fallback so the service is never idless.
   let broadcastSessionId = generateId();
   let showCompanionModal = false;
   let showPlayerPresets = false;
@@ -703,9 +707,31 @@
     const type = (ui.travellerMode ? 'traveller-hex' : ui.gridType) as 'grid' | 'hex' | 'traveller-hex' | 'none';
     return { ...computePlayerStarmapSnapshot(map), mapGrid: { type, size: 50 } };
   }
+  // Mint the persistent broadcast id on first load of any map that lacks one; the autosave
+  // reactive persists it with the map. Minted ONCE — never re-derived on rename (that would
+  // break every stored player link); regeneration is the owner's deliberate action only.
+  $: if (browser && $starmapStore && !$starmapStore.broadcastId) {
+    starmapStore.update((m) => (m && !m.broadcastId ? { ...m, broadcastId: mintBroadcastId(m.name) } : m));
+  }
+  // Adopt the map's id (and re-register the sender, re-hosting any live PeerJS registration)
+  // whenever it changes: map load, or an owner-triggered regenerate.
+  $: if (browser && $starmapStore?.broadcastId && $starmapStore.broadcastId !== broadcastSessionId) {
+    broadcastSessionId = $starmapStore.broadcastId;
+    broadcastService.initSender(broadcastSessionId);
+  }
   onMount(() => {
     if (!browser) return;
     broadcastService.initSender(broadcastSessionId);
+    // Hosting collided with a LIVE session on the same id (stale tab on another PC, or a copied
+    // starmap file). Never silently regenerate — the owner chooses (vtt-integration-design 9.1/1A).
+    broadcastService.onHostIdUnavailable = () => {
+      const regen = window.confirm(
+        "Another session is already hosting this starmap's broadcast id (an old tab on another PC, or a copied starmap file).\n\n" +
+        'OK — mint a NEW session id for this starmap. Existing player links and QR codes stop working.\n' +
+        'Cancel — keep the current id: close the other session, then enable remote sharing again.'
+      );
+      if (regen) starmapStore.update((m) => (m ? { ...m, broadcastId: mintBroadcastId(m.name) } : m));
+    };
     broadcastService.onRequestStarmap = (requestingId) => {
       if (requestingId && requestingId !== broadcastSessionId) return;
       const map = get(starmapStore);
