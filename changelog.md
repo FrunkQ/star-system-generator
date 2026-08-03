@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.385-beta - 3rd Aug 2026
+
+* **The "show me the working" panel actually shows the working for a world's brightness.** It used to give you the finished number and a phrase; it now walks the whole chain — the bare ground its makeup implies, the dust or frost lying on top of it, the cloud deck above that, and what the world reflects in the end. Mars reads 0.105 bare, 0.252 with its rust, 0.256 through its wisps.
+* **A new card for a world's spin**: its tilt, whether that gives it real seasons, and — for a moon — which plane its orbit is quoted in and why. It says plainly when a figure was inferred by the engine rather than measured by somebody.
+* **Eclipses are documented for the first time**, on the physics page: where the observer is standing, what can pass in front of your star, why standing on the surface rather than at the centre is what makes totality possible at all, and what the prediction deliberately is not.
+* The physics page gains sections on albedo, spin axes and the spatial views (grids and routes), and its contents list is no longer missing an entry.
+* The radiation reading for the space above a world is described correctly everywhere now — it is the dose inside the belts, not the dose where a ship would park.
+
 ## v2.1.384-beta - 3rd Aug 2026
 
 * **The 3D system view can show your campaign's own stars in its sky.** Every charted system, at its true direction, its real brightness and its own colour, drawn in front of the generic starfield rather than instead of it. Sol seen from Alpha Centauri comes out at magnitude 0.5, exactly as it should -- and from Sol, Sirius, Alpha Centauri, Vega, Procyon and Altair all land within a third of a magnitude of the real night sky, which is a pleasing thing to be able to check.
