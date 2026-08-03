@@ -283,6 +283,49 @@ _(new observations go here — rough is fine)_
 
 ---
 
+## V3 workstreams, territories, and how to coordinate (2026-08-03)
+
+Five or more sessions now run at once, and several are DESIGNERS EXECUTING THEIR OWN DESIGNS —
+which is the right pattern, because the design rationale is the expensive thing to transfer and a
+fresh executor re-derives it badly. What that costs is coordination, so it is written down here
+rather than carried in anyone's head.
+
+**Territories. Stay inside yours; if you must cross, say so in your report rather than assuming.**
+
+| Workstream | Owns | Must not touch |
+|---|---|---|
+| **Tagging rewrite** (`docs/dev/unified-tagging-design.md`) | `src/lib/tags/**`, `tagLifecycle.ts`, the ~22 strip sites, tag emission in `SystemProcessor` | anything else while it is running — see below |
+| **Ship appearance** ([[G3]]) | the import pipeline, `src/lib/constructs/**`, the info-block render, preset-editor model fields | `holo/scene.ts` until Phase 2, and then only by arrangement |
+| **Real starmap importer** | `scripts/starmap-build/**`, `src/lib/import/**`, bundled map data | `src/lib/holo/**`, `src/lib/tags/**` |
+| **VTT integration** | `/bridge`, broadcast, the `/catalogue` route's integration surface | the player-view chrome inside `catalogue/+page.svelte` while [[A42]] is live |
+| **Scene and grids** ([[G9]], [[G10]]) | `src/lib/holo/**`, `src/lib/starmap/**`, `src/lib/map/**` | `src/lib/tags/**`, `scripts/**` |
+| **Removal** ([[A42]]) | Field Guide and Projector surfaces, `RailNav`, `PlayerViewModal` | `src/lib/physics/**`, `src/lib/tags/**` |
+
+**THE TAGGING REWRITE IS THE INVASIVE ONE.** It changes code almost every other stream reads. Give
+it the widest berth: ideally nothing else is in `src/lib/core` or `src/lib/tags` while it runs, and
+anyone who must emit a tag during that window should append a line here rather than editing around
+it. The alternative is a merge nobody can review.
+
+**Coordinating with the coordinator — the same six rules for every session.**
+1. **Do not allocate item numbers.** Append findings UNNUMBERED at the bottom of "Captured, not yet
+   triaged"; the coordinator numbers them. Three collisions happened when two people numbered at once.
+2. **Append a line to "Documentation debt"** for anything a reader needs to know, including
+   "no reader-facing change" when that is the answer. Silence is indistinguishable from forgetting.
+3. **Report a SECOND COPY of anything, always**, with every copy located by file and line — see the
+   duplication rule below. Unify if it is a few lines and in scope; otherwise write it up and let it
+   be scoped. Do not wander off refactoring mid-item.
+4. **Bring DECISIONS back rather than taking them.** Anything that changes what the product IS —
+   what a figure means, what a tag claims, what an import trusts — is the owner's call. Options with
+   a recommendation, not a fait accompli. [[C5]] and [[B22]] are the model.
+5. **Stay in your territory** and say in your report if you crossed and why.
+6. **Never act on your own context estimate.** It has been wrong every time it has been checked.
+
+**Version and changelog collisions are expected, not faults.** Every session bumps `package.json`
+and appends to `changelog.md`. On a rejected push: `git pull --rebase --autostash`, take THEIR
+version, bump the patch again from it, keep BOTH changelog entries, push. Never resolve a version
+conflict by keeping yours, and never `checkout --ours/--theirs` a whole file — this inbox in
+particular must keep every session's edits.
+
 ## Documentation debt
 
 One line per shipped change that a reader needs to know, appended as you go. Sweep periodically into
