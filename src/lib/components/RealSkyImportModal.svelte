@@ -14,8 +14,19 @@
   import { runTap, simbadResolveAdql } from '$lib/import/realsky/query.mjs';
   import { buildSgrAStarSystem, SGR_A_MAP_META } from '$lib/import/realsky/sgrastar.mjs';
   import { parallaxMasToLy } from '$lib/import/realsky/positions.mjs';
+  import { PIXELS_PER_LY, DEFAULT_MAP_CENTRE_PX } from '$lib/import/realsky/constants.mjs';
 
   const dispatch = createEventDispatcher();
+
+  // 'new' builds a fresh starmap from the entry screen; 'append' is the map's
+  // right-click "Import Real Stars Here…" — the region lands centred on the
+  // clicked point, co-located with whatever the map already holds, and the
+  // dialogue docks to the side so the live radius ring stays visible.
+  export let mode: 'new' | 'append' = 'new';
+  export let anchorPx: { x: number; y: number } = DEFAULT_MAP_CENTRE_PX;
+  export let anchorLabel = '';
+  export let existingSystems: any[] = [];
+  export let pixelsPerUnit: number = PIXELS_PER_LY;
 
   type Centre = { raDeg: number; decDeg: number; distLy: number; label: string };
   const SOL: Centre = { raDeg: 0, decDeg: 0, distLy: 0, label: 'Sol' };
@@ -42,9 +53,32 @@
   const centreKey = (c: Centre) => `${c.raDeg}|${c.decDeg}|${c.distLy}`;
   const region = () => ({ centre, radiusLy });
 
+  // In append mode the map draws a live ring at the anchor while the radius
+  // slides, so overlap with existing content is visible before importing.
+  function announceRadius() {
+    if (mode === 'append') dispatch('previewRadius', radiusLy * pixelsPerUnit);
+  }
+
   function refreshPreview() {
     if (!rows) { preview = null; return; }
-    preview = convertArchiveRows(rows, { region: region(), generated: new Date().toISOString().slice(0, 10) });
+    const mapCentrePx = mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX;
+    const raw = convertArchiveRows(rows, { region: region(), mapCentrePx, generated: new Date().toISOString().slice(0, 10) });
+    // Never import a system id the map already has (re-importing a region, or
+    // a map that started from a real-sky import).
+    const existingIds = new Set(existingSystems.map((s) => s.id));
+    const duplicates = raw.systems.filter((s) => existingIds.has(s.id));
+    preview = { ...raw, systems: raw.systems.filter((s) => !existingIds.has(s.id)), duplicates };
+    announceRadius();
+  }
+
+  // Existing systems that will sit inside the imported region's footprint.
+  function overlapping(): any[] {
+    if (mode !== 'append') return [];
+    const rPx = radiusLy * pixelsPerUnit;
+    return existingSystems.filter((s) => {
+      const dx = (s.position?.x ?? 0) - anchorPx.x, dy = (s.position?.y ?? 0) - anchorPx.y, dz = s.position?.z ?? 0;
+      return Math.sqrt(dx * dx + dy * dy + dz * dz) <= rPx;
+    });
   }
 
   async function loadRowsFor(c: Centre, r: number) {
@@ -103,8 +137,10 @@
   function importRegion() {
     if (!preview || !preview.systems.length) return;
     const p = REGION_PRESETS.find((x) => x.key === presetKey);
+    dispatch('previewRadius', 0);
     dispatch('import', {
       kind: 'region',
+      mode,
       systems: preview.systems,
       collisions: preview.collisions,
       skipped: preview.skipped,
@@ -116,8 +152,11 @@
 
   function importSgrA() {
     const entry = buildSgrAStarSystem();
+    if (mode === 'append') entry.position = { x: anchorPx.x, y: anchorPx.y, z: 0 };
+    dispatch('previewRadius', 0);
     dispatch('import', {
       kind: 'cluster',
+      mode,
       systems: [entry],
       collisions: [], skipped: [], fillOut: false,
       name: SGR_A_MAP_META.name,
@@ -126,19 +165,30 @@
     });
   }
 
+  function close() {
+    dispatch('previewRadius', 0);
+    dispatch('close');
+  }
+
   $: activePreset = REGION_PRESETS.find((p) => p.key === presetKey);
   $: systemsCount = preview?.systems.length ?? 0;
   $: planetsCount = preview ? preview.systems.reduce((s: number, x: any) => s + x.system.nodes.filter((n: any) => n.roleHint === 'planet').length, 0) : 0;
   $: band = costBand(systemsCount);
 </script>
 
-<div class="modal-background" role="presentation" on:click|self={() => dispatch('close')}>
-  <div class="modal" role="dialog" aria-label="Import from the real sky">
-    <h3>Import from the real sky</h3>
+<div class="modal-background" class:docked-wrap={mode === 'append'} role="presentation" on:click|self={() => mode === 'new' && close()}>
+  <div class="modal" class:docked={mode === 'append'} role="dialog" aria-label="Import from the real sky">
+    <h3>{mode === 'append' ? 'Import real stars here' : 'Import from the real sky'}</h3>
     <p class="intro">
-      Build a starmap from the astronomy catalogues: true 3D positions, and only planets the
-      NASA Exoplanet Archive lists as confirmed. Pick a worked example, or centre on any star
-      SIMBAD knows.
+      {#if mode === 'append'}
+        A real-sky region will land centred on the point you clicked{anchorLabel ? ` (${anchorLabel})` : ''},
+        alongside everything already on the map. The ring on the map shows the footprint as you
+        adjust the radius.
+      {:else}
+        Build a starmap from the astronomy catalogues: true 3D positions, and only planets the
+        NASA Exoplanet Archive lists as confirmed. Pick a worked example, or centre on any star
+        SIMBAD knows.
+      {/if}
     </p>
 
     <div class="presets">
@@ -172,13 +222,13 @@
         </p>
         <div class="actions">
           <button class="primary" on:click={importSgrA}>Import as a single system</button>
-          <button on:click={() => dispatch('close')}>Cancel</button>
+          <button on:click={close}>Cancel</button>
         </div>
       </div>
     {:else if presetKey}
       <label class="radius-row">
         <span>Radius: <strong>{radiusLy} ly</strong> around {centre.label}</span>
-        <input type="range" min="4" max="41" step="0.5" bind:value={radiusLy} on:input={onRadiusInput} />
+        <input type="range" min="4" max="41" step="0.5" bind:value={radiusLy} on:input={() => { onRadiusInput(); announceRadius(); }} />
       </label>
 
       {#if loading}
@@ -198,6 +248,18 @@
           — {source === 'live' ? 'live archive' : 'bundled snapshot'}
         </p>
         {#if sourceWarning}<p class="warning">{sourceWarning}</p>{/if}
+        {#if mode === 'append'}
+          {@const ov = overlapping()}
+          {#if ov.length}
+            <p class="warning">{ov.length} existing {ov.length === 1 ? 'system sits' : 'systems sit'} inside this footprint (inside the ring on the map): {ov.slice(0, 6).map((s) => s.name).join(', ')}{ov.length > 6 ? '…' : ''}. New systems import alongside them.</p>
+          {/if}
+          {#if preview.duplicates?.length}
+            <details>
+              <summary>Skipped: already on your map</summary>
+              <ul>{#each preview.duplicates as d}<li>{d.name}</li>{/each}</ul>
+            </details>
+          {/if}
+        {/if}
         {#if band !== 'green'}
           <p class="warning">Large import: consider a smaller radius.</p>
         {/if}
@@ -233,11 +295,11 @@
           <button class="primary" disabled={!systemsCount} on:click={importRegion}>
             {systemsCount ? `Import ${systemsCount} ${systemsCount === 1 ? 'system' : 'systems'}` : 'Nothing new to import'}
           </button>
-          <button on:click={() => dispatch('close')}>Cancel</button>
+          <button on:click={close}>Cancel</button>
         </div>
       {/if}
     {:else}
-      <div class="actions"><button on:click={() => dispatch('close')}>Cancel</button></div>
+      <div class="actions"><button on:click={close}>Cancel</button></div>
     {/if}
 
     <p class="sources">Sources: NASA Exoplanet Archive · SIMBAD. Star and planet parameters are real where measured; the physics engine derives the rest.</p>
@@ -248,6 +310,19 @@
   .modal-background {
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7);
     display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .docked-wrap {
+    background: transparent;
+    pointer-events: none;
+    justify-content: flex-end;
+    align-items: flex-start;
+  }
+  .docked-wrap .modal.docked {
+    pointer-events: auto;
+    margin: 56px 12px 0 0;
+    width: min(400px, 40vw);
+    max-height: calc(100vh - 70px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
   }
   .modal {
     background: #1e242c; color: #ddd; border: 1px solid #444; border-radius: 8px;

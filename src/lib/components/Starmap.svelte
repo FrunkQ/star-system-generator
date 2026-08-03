@@ -19,6 +19,11 @@
   import { stampForSave } from '$lib/map/provenance';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
+  import RealSkyImportModal from './RealSkyImportModal.svelte';
+  import { completeImportedStars } from '$lib/import/realsky/stardefaults';
+  import { fillOutAll } from '$lib/import/realsky/fillout';
+  import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { fixUpImportedSystem } from '$lib/system/importFixup';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
   import StarmapScaleBar from './StarmapScaleBar.svelte';
   import SystemPlacementDialog from './SystemPlacementDialog.svelte';
@@ -810,6 +815,37 @@
     closeContextMenu();
   }
 
+  // Real-sky import at a clicked point: the region lands centred here,
+  // co-located with whatever the map already holds. Same shape as the
+  // Traveller subsector import above, but from the astronomy catalogues.
+  let showRealSkyModal = false;
+  let realSkyAnchor = { x: 0, y: 0 };
+  let realSkyPreviewR = 0; // live footprint ring radius, in map px
+
+  function handleContextMenuRealSky() {
+    realSkyAnchor = { ...contextMenuClickCoords };
+    realSkyPreviewR = 0;
+    showRealSkyModal = true;
+    closeContextMenu();
+  }
+
+  function handleRealSkyAppend(event: CustomEvent<any>) {
+    const { systems, fillOut } = event.detail;
+    // Same completion + processing every imported system gets on load:
+    // pack-band star field/tilt, then the full physics pass (the Traveller
+    // importer processes before dispatching for the same reason).
+    completeImportedStars(systems, rulePack);
+    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), rulePack);
+    for (const entry of systems) {
+      entry.system = systemProcessor.process(fixUpImportedSystem(entry.system, rulePack), rulePack);
+    }
+    const existingIds = new Set(starmap.systems.map((s) => s.id));
+    const added = systems.filter((s: any) => !existingIds.has(s.id));
+    dispatch('updatestarmap', { ...starmap, systems: [...starmap.systems, ...added] });
+    showRealSkyModal = false;
+    realSkyPreviewR = 0;
+  }
+
   // WS7b — place a new system RELATIVE to this one, by bearing / elevation / distance. The dialogue docks
   // to whichever side of the map the origin ISN'T on, so the live ghost stays visible while you drag.
   function handleContextMenuAddNear() {
@@ -1410,6 +1446,13 @@
         {/if}
       {/each}
 
+      <!-- Real-sky import footprint: the live ring showing where an imported region will land and
+           which existing systems it will surround, updating as the dialogue's radius slides. -->
+      {#if showRealSkyModal && realSkyPreviewR > 0}
+        <circle class="realsky-ring" cx={realSkyAnchor.x} cy={realSkyAnchor.y} r={realSkyPreviewR} />
+        <circle class="realsky-anchor" cx={realSkyAnchor.x} cy={realSkyAnchor.y} r="3" />
+      {/if}
+
       <!-- WS7b GHOST: where the system being placed would land. A tether back to the origin so the bearing
            is unmistakable, a dashed ring for the system itself, and — when it has depth — the same signed
            label the real systems carry, since a flat map cannot show height any other way. -->
@@ -1504,6 +1547,7 @@
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
+                    <li on:click={handleContextMenuRealSky}>Import Real Stars Here…</li>
                     {#if $starmapUiStore.travellerMode}
                         <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP Here</li>
                         <li on:click={handleContextMenuTravellerImport}>Add Traveller Map SubSector Here</li>
@@ -1538,10 +1582,22 @@
   {/if}
   
   {#if showImportModal}
-      <ImportTravellerModal 
-          showModal={showImportModal} 
-          on:import={handleTravellerImport} 
-          on:close={() => showImportModal = false} 
+      <ImportTravellerModal
+          showModal={showImportModal}
+          on:import={handleTravellerImport}
+          on:close={() => showImportModal = false}
+      />
+  {/if}
+
+  {#if showRealSkyModal}
+      <RealSkyImportModal
+          mode="append"
+          anchorPx={realSkyAnchor}
+          existingSystems={starmap.systems}
+          pixelsPerUnit={activeScale.pixelsPerUnit > 0 ? activeScale.pixelsPerUnit : 43.30127018922193}
+          on:previewRadius={(e) => (realSkyPreviewR = e.detail)}
+          on:import={handleRealSkyAppend}
+          on:close={() => { showRealSkyModal = false; realSkyPreviewR = 0; }}
       />
   {/if}
 
@@ -1942,6 +1998,8 @@
   /* WS7b: the not-yet-real system. Dashed and warm so it reads as a proposal, never as map content. */
   .ghost-tether { stroke: #ff7a45; stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.6; pointer-events: none; }
   .ghost-ring { fill: none; stroke: #ff7a45; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.9; pointer-events: none; }
+  .realsky-ring { fill: rgba(120, 180, 255, 0.06); stroke: #7ab8ff; stroke-width: 1.5; stroke-dasharray: 6 4; opacity: 0.9; pointer-events: none; }
+  .realsky-anchor { fill: #7ab8ff; opacity: 0.9; pointer-events: none; }
   .ghost-core { fill: #ff7a45; opacity: 0.9; pointer-events: none; }
   .ghost-label { font-size: 10px; fill: #ff9a6b; pointer-events: none; }
 
