@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.391-beta - 3rd Aug 2026
+
+* G3 stage 3: the model import modal - live preview of the converted bytes, 90-degree orientation fix stored on the ref, attribution fields (CC-BY flagged when credit is missing), caps feedback. Wired into the construct editor beside the image.
+
 ## v2.1.390-beta - 3rd Aug 2026
 
 * Real-sky import, the library half: the starmap build kit's core (position mathematics, spectral classification, mass-radius estimation) now lives in `src/lib/import/realsky/` and is shared with a new importer library — TAP query builders for the NASA Exoplanet Archive, SIMBAD and Gaia DR3 with count-before-fetch region queries; a mass-aware cluster gate (dynamical time, not density, decides — S2's 16-year orbit around Sgr A* offers a system, a bound red-dwarf knot stays a starmap); and a confirmed-only converter that turns archive rows into starmap systems at true 3D positions, refuses to overwrite the curated bundled systems, and names every host it skips rather than inventing data. 32 tests; the bundled maps are byte-identical throughout. No UI yet — the New Starmap wiring is scoped separately (see the observations inbox).

@@ -9,6 +9,23 @@
 
   const dispatch = createEventDispatcher();
 
+  // G3 — optional 3D model, sibling of the image. The binary lives in the hash-addressed model
+  // store; the node carries only the ModelRef, so the broadcast snapshot stays light.
+  import ConstructModelModal from './ConstructModelModal.svelte';
+  let modelModalOpen = false;
+  function onModelSave(e: CustomEvent) {
+    construct.model = e.detail;
+    construct = construct;
+    modelModalOpen = false;
+    dispatch('update');
+  }
+  function removeModel() {
+    // The store entry stays - it is content-addressed and another construct may share the hull.
+    construct.model = undefined;
+    construct = construct;
+    dispatch('update');
+  }
+
   // F2 — optional custom image for a construct (default is the icon glyph).
   let imgInput: HTMLInputElement;
   async function onImageUpload(e: Event) {
@@ -158,6 +175,37 @@
       </div>
     </div>
 
+    <div class="form-group">
+      <label>3D Model <span class="descriptor">(optional — GLB, STL or OBJ; shown in the info block)</span></label>
+      <div class="custom-image">
+        {#if construct.model}
+          <span class="model-summary">
+            {construct.model.name || 'Model'}
+            · {(construct.model.triangles ?? 0).toLocaleString()} tris
+            · {Math.round((construct.model.bytes ?? 0) / 1024)} KB
+          </span>
+        {/if}
+        <button type="button" class="img-btn" on:click={() => (modelModalOpen = true)}>
+          {construct.model ? 'Replace model…' : 'Add 3D model…'}
+        </button>
+        {#if construct.model}
+          <button type="button" class="img-btn remove" on:click={removeModel}>Remove</button>
+        {/if}
+      </div>
+      {#if construct.model?.credit || construct.model?.license}
+        <span class="descriptor model-credit">
+          {[construct.model.credit, construct.model.license].filter(Boolean).join(' · ')}
+          {#if construct.model.license === 'CC-BY' && !construct.model.credit}
+            — CC-BY needs a credit; edit the model to add one
+          {/if}
+        </span>
+      {/if}
+    </div>
+
+    {#if modelModalOpen}
+      <ConstructModelModal {construct} on:save={onModelSave} on:close={() => (modelModalOpen = false)} />
+    {/if}
+
     <div class="row">
       <div class="form-group">
         <label for="dry-mass">Dry Mass (tonnes):</label>
@@ -243,6 +291,8 @@
   }
   .img-btn:hover { border-color: var(--accent, var(--text-muted)); }
   .img-btn.remove { color: var(--danger, #e06c6c); }
+  .model-summary { font-size: 0.85em; color: var(--text-muted, #9aa4b4); }
+  .model-credit { display: block; margin-top: 3px; }
 
   .checkbox-group { display: flex; flex-direction: column; gap: 10px; }
   .checkbox-group label { display: flex; align-items: center; gap: 10px; color: var(--text); }
