@@ -96,7 +96,7 @@ export interface HoloController {
   // G9: the campaign's OWN charted systems, drawn as real stars in front of the generic starfield.
   // The list is computed outside (map/skyStars) — this scene knows nothing about starmaps, only about
   // directions and magnitudes it has been handed.
-  setSkyStars(stars: SkyStar[], mode: SkyMode): void;
+  setSkyStars(stars: SkyStar[], mode: SkyMode, opts?: { boost?: number; labelPx?: number }): void;
   setBackground(bg: string): void; // 'space' | 'green' | 'blue' | 'black' (greenscreen for OBS)
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
@@ -342,7 +342,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let background = 'space';
   const starfield = buildStarfield();
   scene.add(starfield);
-  function applyStarfield() { starfield.visible = skyboxOn && background === 'space'; }
+  // 0 = the honest picture: charted stars at their true brightness against a full-strength backdrop.
+  // Rising, it BOTH dims the generic starfield and lifts the charted stars, because the thing being
+  // asked for is CONTRAST between the two populations and one dial is the honest way to express that
+  // — pushing only one of them would run out of room. At 1 the charted stars are deliberately
+  // oversaturated, which is a presentation choice and no longer a claim about apparent magnitude.
+  let skyBoost = 0;
+  // Height of a constellation name in SCREEN pixels. 0 = no names, which is how you look at the
+  // spikes alone; the spikes are the annotation and the names are a second, separable layer.
+  let skyLabelPx = 11;
+  function applyStarfield() {
+    starfield.visible = skyboxOn && background === 'space';
+    // G9: the generic starfield steps BACK as the charted stars are emphasised. Half the contrast dial
+    // is here — dimming the scenery is what lets the real systems read without pushing them past
+    // white, and it is why one control drives both.
+    (starfield.material as THREE.PointsMaterial).opacity = 0.9 * (1 - 0.8 * skyBoost);
+  }
   applyStarfield();
   function setSkybox(on: boolean) { skyboxOn = on; applyStarfield(); rebuildSkyStars(); }
 
@@ -429,10 +444,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const col = new THREE.Color(st.color);
       // World-space size, not screen-space: at a fixed 860 the camera's own wander of a few tens of
       // units changes the angular size by ~3%, so a per-frame resize would buy nothing.
-      const size = 3.2 + 9.5 * b;
+      const size = (3.2 + 9.5 * b) * (1 + 0.55 * skyBoost);
       const dot = new THREE.Sprite(new THREE.SpriteMaterial({
         map: skyDot(), color: col, transparent: true, depthWrite: false, depthTest: false,
-        blending: THREE.AdditiveBlending, opacity: 0.45 + 0.55 * b
+        blending: THREE.AdditiveBlending, opacity: Math.min(1, (0.45 + 0.55 * b) * (1 + 1.7 * skyBoost))
       }));
       dot.position.copy(pos);
       dot.scale.setScalar(size);
@@ -442,31 +457,42 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // does — which is what turns the derived magnitude from merely correct into readable.
       const spike = new THREE.Sprite(new THREE.SpriteMaterial({
         map: skySpike(), color: col, transparent: true, depthWrite: false, depthTest: false,
-        blending: THREE.AdditiveBlending, opacity: 0.3 + 0.5 * b
+        blending: THREE.AdditiveBlending, opacity: Math.min(1, (0.3 + 0.5 * b) * (1 + 1.7 * skyBoost))
       }));
       spike.position.copy(pos);
       spike.scale.setScalar(size * (2.6 + 4.4 * b));
       skyGroup.add(spike);
       // Names belong to the ANNOTATED mode only. In `true` the whole point is that these are
-      // indistinguishable from the sky, and a floating name would give the game away.
-      const label = makeGridLabel(st.name);
+      // indistinguishable from the sky, and a floating name would give the game away. Within `marked`
+      // they are separately switchable — a size of 0 leaves the spikes alone on the sky.
+      if (skyLabelPx <= 0) continue;
+      // Ask for a height in SCREEN pixels and convert once, here, using the live camera and viewport:
+      // at a fixed 860 the camera's own wander changes this by about 3%, so a per-frame resize would
+      // buy nothing — but a window resize changes it a lot, which is why resize() rebuilds the sky.
+      const worldPerPx = (2 * Math.tan((camera.fov * Math.PI) / 360) * SKY_RADIUS) / Math.max(1, viewH);
+      const label = makeGridLabel(st.name, skyLabelPx * worldPerPx);
       if (label) {
         label.position.copy(pos).add(new THREE.Vector3(size * 0.9, size * 0.5, 0));
-        label.scale.multiplyScalar(SKY_RADIUS * 0.028);
         skyGroup.add(label);
       }
     }
   }
 
-  function setSkyStars(stars: SkyStar[], mode: SkyMode) {
+  function setSkyStars(stars: SkyStar[], mode: SkyMode, opts: { boost?: number; labelPx?: number } = {}) {
     const nextMode: SkyMode = mode ?? 'off';
+    const nextBoost = Math.max(0, Math.min(1, opts.boost ?? 0));
+    const nextLabelPx = Math.max(0, Math.min(48, opts.labelPx ?? 11));
     // Cheap identity check first: this is re-applied on every prop change and the list is rebuilt by
     // the caller each time, so comparing contents keeps a reactive block from thrashing the geometry.
-    const same = nextMode === skyMode && stars.length === skyStars.length
+    const same = nextMode === skyMode && nextBoost === skyBoost && nextLabelPx === skyLabelPx
+      && stars.length === skyStars.length
       && stars.every((s, i) => s.id === skyStars[i].id && s.magnitude === skyStars[i].magnitude);
     if (same) return;
     skyStars = stars ?? [];
     skyMode = nextMode;
+    skyBoost = nextBoost;
+    skyLabelPx = nextLabelPx;
+    applyStarfield();   // the boost dims the backdrop, so it has to be re-applied with the sky
     rebuildSkyStars();
   }
   function setBackground(bg: string) {
@@ -2039,20 +2065,36 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   // A billboarded AU tick label for the scaled grid (fixed screen size so it stays legible).
-  function makeGridLabel(text: string): THREE.Sprite | null {
+  /**
+   * A small in-scene text sprite. `worldHeight` is how tall the text stands in scene units; the width
+   * follows from the MEASURED text so nothing is stretched and nothing is cut off.
+   *
+   * The canvas used to be a fixed 128x40 with the text drawn straight into it, which is fine for "5
+   * AU" and silently truncates anything longer — G9's constellation names ("Alpha Centauri" at this
+   * font is about 170px) were being clipped mid-word. Measuring costs one call and removes the whole
+   * class of bug. Grid labels are unchanged on screen: the same glyph height, the same left anchor,
+   * only a canvas that fits them.
+   */
+  function makeGridLabel(text: string, worldHeight = 0.28): THREE.Sprite | null {
     const c = document.createElement('canvas');
     const ctx = c.getContext('2d');
     if (!ctx) return null;
-    c.width = 128; c.height = 40;
-    ctx.font = '600 24px ui-monospace, monospace';
+    const FONT = '600 24px ui-monospace, monospace';
+    const PAD = 6;
+    ctx.font = FONT;
+    const w = Math.max(8, Math.ceil(ctx.measureText(text).width));
+    c.width = w + PAD * 2;
+    c.height = 40;
+    // Sizing the canvas RESETS the 2D context, so the font has to be set again after it.
+    ctx.font = FONT;
     ctx.fillStyle = 'rgba(180,210,240,0.9)';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, 6, 22);
+    ctx.fillText(text, PAD, 22);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false });
     const sp = new THREE.Sprite(mat);
-    sp.scale.set(0.9, 0.28, 1);
+    sp.scale.set(worldHeight * (c.width / c.height), worldHeight, 1);
     sp.center.set(0, 0.5);
     return sp;
   }
@@ -3015,6 +3057,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     sizeHud();
+    // G9 labels are sized in SCREEN pixels but live in world space, so the conversion depends on the
+    // viewport height. Without this they would keep the pixel size of whatever the window was when
+    // they were built.
+    if (skyMode !== 'off' && skyLabelPx > 0) rebuildSkyStars();
   }
 
   function dispose() {

@@ -229,6 +229,8 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     grid: p.grid,
     gridFalloff: p.gridFalloff ?? 0,
     constellations: p.constellations ?? 'off', // G9
+    constellationBoost: p.constellationBoost ?? 0.35,
+    constellationLabelSize: p.constellationLabelSize ?? 11,
 
     orbitSpeed: p.orbitSpeed,
     labelSize: p.labelSize,

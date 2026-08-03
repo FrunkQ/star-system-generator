@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.401-beta - 3rd Aug 2026
+
+* **Two dials for the charted stars in the system view's sky.** "Star boost" sets how far they stand out: it fades the generic starfield back and lifts the real systems together, from true brightness at one end to deliberately oversaturated at the other. "Name size" sizes the labels -- and its left end is Off, so you can look at the diffraction spikes on their own.
+* **Long star names were being cut off.** In-scene labels were drawn into a fixed-width canvas sized for "5 AU", so anything longer lost its tail -- "Teegarden's Star" needs nearly twice the room. The canvas is measured from the text now.
+
 ## v2.1.400-beta - 3rd Aug 2026
 
 * G3 true-scale polish from live testing. (1) Orbit-line VIBRATION at ship scale fixed - the A23 refinement's floors (sag tolerance 1e-12, concentration 0.002) clamped the dense arc ~3x coarser than the budget at a 100 m working distance, so every re-centre jumped the line; floors lowered to 1e-13 / 1e-5. (2) The ship now faces its orbit line at true scale - the heading guard was an absolute epsilon that swallowed metre-per-frame motion; it is now 0.1% of the hull length. (3) THE BODY-SIZE DIAL IS LOG-SPACED NOW, for bodies, stars and ships alike: sizes interpolate geometrically (true^(1-v) x readable^v), so every step multiplies size by a constant ratio - the 20-90% dead zone is gone and the 0-5% cliff is spread across the travel. THIS CHANGES MID-DIAL LOOKS IN EXISTING PRESETS (readable and true endpoints unchanged). Ships shed size faster than planets automatically (bigger readable-to-true ratio), replacing the squared-weight hack. (4) The import modal now shows BOTH alignment arrows, labelled: orange = rear of ship (main drive), green = direction of travel.

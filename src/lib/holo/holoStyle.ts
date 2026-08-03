@@ -29,6 +29,8 @@ export interface HoloStyle {
   // alone), 'true' (real direction/magnitude/colour), 'marked' (the same, with diffraction spikes and
   // names). The STAR LIST is data and arrives separately; only the choice is part of the look.
   constellations?: import('$lib/map/skyStars').SkyMode;
+  constellationBoost?: number;      // 0 true brightness .. 1 backdrop faded, charted stars oversaturated
+  constellationLabelSize?: number;  // name size in screen px; 0 = spikes without names
   orbitSpeed: number; // auto view-orbit: how fast the camera slowly circles the focused object (0 = static)
   labelSize?: number; // in-scene body-label font size in px (default 11)
   font?: string; // in-scene label font-family — inherited from the preset theme when set

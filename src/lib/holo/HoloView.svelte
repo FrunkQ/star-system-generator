@@ -55,7 +55,7 @@
     controller?.setAuroras(s.auroras ?? true);
     controller?.setBeltStyle(s.beltStyle ?? 'rocks');
     controller?.setBodySize(s.bodySize);
-    controller?.setSkyStars(skyStars, s.constellations ?? 'off');
+    controller?.setSkyStars(skyStars, s.constellations ?? 'off', { boost: s.constellationBoost ?? 0.35, labelPx: s.constellationLabelSize ?? 11 });
     controller?.setGrid(s.grid);
     controller?.setGridFalloff(s.gridFalloff ?? 0);
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);

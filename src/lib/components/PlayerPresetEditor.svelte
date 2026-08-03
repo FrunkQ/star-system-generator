@@ -563,6 +563,19 @@
                       {#each SKY_MODE_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                     </select>
                   </label>
+                  {#if (draft.constellations ?? 'off') !== 'off'}
+                    <!-- ONE dial for the contrast between the two populations: it fades the generic
+                         starfield back and lifts the charted stars together. Pushing only one of them
+                         runs out of headroom before they separate. The right-hand end deliberately
+                         oversaturates — past that point it is presentation, not apparent magnitude. -->
+                    <label>Star boost <span>{Math.round((draft.constellationBoost ?? 0.35) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.constellationBoost} /></label>
+                    {#if draft.constellations === 'marked'}
+                      <!-- 0 is OFF, and it is the point of the control as much as the sizing is: with
+                           names off you get the diffraction spikes alone, which is the cleaner way to
+                           read a pattern. -->
+                      <label>Name size <span>{(draft.constellationLabelSize ?? 11) > 0 ? `${draft.constellationLabelSize ?? 11} px` : 'Off'}</span><input type="range" min="0" max="28" step="1" bind:value={draft.constellationLabelSize} /></label>
+                    {/if}
+                  {/if}
                 {/if}
                 <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
               </fieldset>

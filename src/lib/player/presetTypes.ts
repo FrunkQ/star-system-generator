@@ -148,6 +148,12 @@ export interface PlayerPreset {
   // not a boolean — 'true' is an honest sky, 'marked' annotates the same stars with diffraction
   // spikes and names. Optional and defaulting to 'off', so nothing already saved changes.
   constellations?: import('$lib/map/skyStars').SkyMode;
+  // How hard the charted stars are pushed against the generic starfield: 0 = true brightness on a
+  // full-strength backdrop, 1 = backdrop faded right down and the charted stars oversaturated. One
+  // dial rather than two, because what is being set is the CONTRAST between the two populations.
+  constellationBoost?: number;
+  // Constellation NAME size in screen px. 0 = no names, leaving the diffraction spikes on their own.
+  constellationLabelSize?: number;
   // WS7: 3D starmap DEPTH stretch, display-only (1 = true depth). True interstellar depth is tiny next
   // to the map's spread, so this exaggerates it for clarity. Never affects distances.
   zExaggeration?: number;
