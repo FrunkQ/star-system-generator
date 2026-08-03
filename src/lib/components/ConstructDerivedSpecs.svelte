@@ -7,6 +7,7 @@
   import { describeTag } from '$lib/tags/tagPresentation';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
+  import ConstructPortrait from './ConstructPortrait.svelte';
 
   // The resources/contexts this ship can refuel from = the union of its fuels' refuel_tags. Surfacing
   // it next to Fuel Mass makes the link obvious: a body carrying one of these is a valid top-up (and
@@ -222,6 +223,9 @@
 
 {#if specs}
   <div class="derived-specs">
+    <!-- G3: the ship's picture, same chain as the player document (model > image > glyph) -
+         here simply so the GM can see at a glance what is loaded. -->
+    <ConstructPortrait {construct} />
     <div class="specs-grid">
       <div class="spec-item fixed" title="Current crew / Maximum crew">
         <span class="label">Crew</span>

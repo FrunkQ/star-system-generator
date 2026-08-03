@@ -65,6 +65,8 @@ export interface ModelRef {
   hadMaterials?: boolean;  // false = source carried no materials (every STL): tint applies by default
   // Orientation fix from the import preview (unit quaternion x,y,z,w), applied at VIEW time rather
   // than baked into the binary — so a compliant GLB stores byte-identical and keeps its compression.
+  // CONVENTION (aligned by the modal's drive marker): after orient, the NOSE points +Z and the MAIN
+  // DRIVE points -Z — so a scene can lookAt(velocity) and the engines honestly point aft.
   orient?: [number, number, number, number];
   title?: string; credit?: string; license?: string; sourceUrl?: string;
   custom?: boolean;        // GM-uploaded — the processor must never overwrite

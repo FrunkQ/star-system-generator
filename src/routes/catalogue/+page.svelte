@@ -9,6 +9,8 @@
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
+  import { setModelFetcher, modelArrived } from '$lib/constructs/modelFetch';
+  import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
@@ -889,6 +891,14 @@
       activePresetId = p.presetId;
       if (p.overrides) applyOverrides(p.overrides);
     };
+    // G3: construct model binaries fetch by hash on demand. A viewer that misses the local store
+    // asks through modelFetch; the GM answers with SYNC_MODEL; storing it (hash-verified inside
+    // importEmbeddedModels) wakes the waiting viewer, and the glyph fallback gives way to the ship.
+    setModelFetcher((hash) => broadcastService.sendMessage({ type: 'REQUEST_MODEL', payload: { targetId: sessionId, hash } }));
+    broadcastService.onModelUpdate = async (m) => {
+      const n = await importEmbeddedModels({ [m.hash]: { b64: m.b64, meta: m.meta as any } }).catch(() => 0);
+      if (n > 0) modelArrived(m.hash);
+    };
     broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId });
     phoneMq?.addEventListener('change', onPhoneMq);
     startClock();
@@ -897,6 +907,7 @@
   const onPhoneMq = () => (isPhone = phoneMq?.matches ?? false);
 
   onDestroy(() => {
+    setModelFetcher(null); // stop routing model requests into a closed transport
     broadcastService.close();
     phoneMq?.removeEventListener('change', onPhoneMq);
     if (browser) { cancelAnimationFrame(rafId); window.removeEventListener('popstate', onPopState); }

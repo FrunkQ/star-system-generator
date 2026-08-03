@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.396-beta - 3rd Aug 2026
+
+* G3 feedback round: the GM construct pane shows the ship (model > image > glyph chain, new ConstructPortrait); the player document now puts the MODEL first too (model > photo > glyph, was photo-first); the import modal aligns by the MAIN DRIVE against an orange marker (convention: nose +Z, drive -Z, stored on the ref); a saved .json embeds model binaries and restores them on load; remote players fetch missing models by hash over the broadcast (REQUEST_MODEL / SYNC_MODEL) and the glyph gives way when the ship arrives.
+
+## v2.1.394-beta - 3rd Aug 2026
+
+* (entry restored - lost to a shared-tree autostash) G3 stage 4: a construct with a 3D model shows it in the info block on BOTH document consumers - live turntable in the reserved gap, icon_color flat-shaded finish with panel-line edges for material-less meshes, attribution line beneath, glyph fallback when the binary is not local.
+
 ## v2.1.393-beta - 3rd Aug 2026
 
 * Unified tagging phase A, the persistence half: a hand-added tag now survives being SAVED, not just re-processed. The export/import fix-up filtered on the key alone, so an override inside a derived namespace was written out of the file and a free-text tag with a capital in it ("Smugglers", the Tags tab's own example) was read back as a legacy display-name tag and dropped — a tag that looked permanent until the next time the campaign was opened. Seven round-trip tests, including that the save still sheds the derived tags and classes it is meant to.

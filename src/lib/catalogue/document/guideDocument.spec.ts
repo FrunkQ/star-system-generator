@@ -76,8 +76,8 @@ describe('buildGuideDocument', () => {
     expect(photo.some((b) => b.kind === 'constructGlyph')).toBe(false);
   });
 
-  // G3: the priority chain is photo > model > glyph > nothing, and a model's attribution rides
-  // directly beneath its reserved gap (owner decision 5 - CC-BY is allowed, so credit must show).
+  // G3 (owner steer 2026-08-03): the priority chain is MODEL > photo > glyph > nothing, and a
+  // model's attribution rides directly beneath its reserved gap (decision 5 - CC-BY must credit).
   it('gives a construct with a model the reserved gap, its attribution line, and no glyph', () => {
     const withModel: any = { ...system, nodes: system.nodes.map((n: any) =>
       n.id === 'iss' ? { ...n, model: { hash: 'abc123', name: 'Hull', credit: 'A Modeller', license: 'CC-BY' } } : n) };
@@ -91,10 +91,13 @@ describe('buildGuideDocument', () => {
     expect(credit.text).toContain('A Modeller');
     expect(credit.text).toContain('CC-BY');
 
-    // A photo still outranks the model; 'none' still means none; no credit/licence -> no line.
+    // The model outranks a loaded photo ("if a construct is told to be 3D, display it first");
+    // the photo shows only when there is no model. 'none' still means none; no credit -> no line.
     const photo = buildGuideDocument(withModel, 'iss', { imagery: 'photo', image: {} as any, imageAspect: 1.5 });
-    expect(photo.some((b) => b.kind === 'image')).toBe(true);
-    expect(photo.some((b) => b.kind === 'bodyDisc')).toBe(false);
+    expect(photo.some((b) => b.kind === 'bodyDisc')).toBe(true);
+    expect(photo.some((b) => b.kind === 'image')).toBe(false);
+    const noModelPhoto = buildGuideDocument(system, 'iss', { imagery: 'photo', image: {} as any, imageAspect: 1.5 });
+    expect(noModelPhoto.some((b) => b.kind === 'image')).toBe(true);
     expect(buildGuideDocument(withModel, 'iss', { imagery: 'none' }).some((b) => b.kind === 'bodyDisc')).toBe(false);
     const bare: any = { ...system, nodes: system.nodes.map((n: any) =>
       n.id === 'iss' ? { ...n, model: { hash: 'abc123' } } : n) };

@@ -19,7 +19,16 @@ export interface ModelViewerOptions {
   /** Keep the drawing buffer so a host can drawImage() this canvas into a filter texture (A38 -
    *  the document's CRT/holo filters capture the graphic rather than layering it on top). */
   capture?: boolean;
+  /** Show the drive-alignment reference: an exhaust-orange arrow marking -Z, the direction the
+   *  ship's MAIN DRIVE must face once oriented (the import modal's alignment aid). */
+  driveMarker?: boolean;
 }
+
+// THE ORIENTATION CONVENTION (G3, owner steer 2026-08-03): after ModelRef.orient is applied,
+// the ship's NOSE points +Z and its MAIN DRIVE points -Z. The drive is the one reliable "end"
+// a spacecraft has, so the import modal aligns by it; the scene can then fly the ship nose-first
+// with Object3D.lookAt(velocity) and the engines honestly point aft.
+export const DRIVE_AXIS = new THREE.Vector3(0, 0, -1);
 
 export interface ModelViewer {
   /** Hand over a (parsed) model. tintHex applies only when the source had no materials. */
@@ -56,6 +65,16 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   spinGroup.add(orientGroup);
   scene.add(spinGroup);
 
+  if (opts.driveMarker) {
+    // The alignment reference lives BESIDE orientGroup (both inside spinGroup): a view drag turns
+    // ship and arrow together, an orientation fix turns the ship against the arrow - which is the
+    // whole exercise: turn the ship until its engines face the arrow.
+    const arrow = new THREE.ArrowHelper(DRIVE_AXIS, new THREE.Vector3(0, 0, -0.6), 0.4, 0xff8c3a, 0.16, 0.09);
+    (arrow.line.material as THREE.Material).transparent = true;
+    (arrow.line.material as THREE.Material).opacity = 0.9;
+    spinGroup.add(arrow);
+  }
+
   let disposed = false;
   let dragging = false;
   let yawVel = 0;
@@ -63,8 +82,9 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   let lastT = 0;
 
   function frameCamera() {
-    // Frame the bounding sphere of the oriented model so no 90-degree fix ever clips.
-    const box = new THREE.Box3().setFromObject(spinGroup);
+    // Frame the bounding sphere of the oriented MODEL (not the drive marker) so a 90-degree fix
+    // never clips but the arrow never pushes the ship smaller either.
+    const box = new THREE.Box3().setFromObject(orientGroup);
     if (box.isEmpty()) return;
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const dist = (sphere.radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.12;

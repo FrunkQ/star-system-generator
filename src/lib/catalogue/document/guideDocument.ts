@@ -117,21 +117,11 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // if one loaded); 'disc'/'sphere'/'flat' reserve a gap the view overlays the real renderer into.
   // The 'sliver' photo frame is special: it becomes a LEFT column beside the facts (handled in 4).
   const sliver = opts.imagery === 'photo' && !!opts.image && opts.photoFrame === 'sliver';
-  if (opts.imagery === 'photo' && opts.image && !sliver) {
-    blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox', focus: opts.imageFocus });
-    // A GM-uploaded picture still wins for a construct, which is why this branch is NOT gated below.
-  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
-    && subject && subject.kind !== 'construct') {
-    // A CONSTRUCT gets no body graphic. The body-graphics setting drew whatever was selected, so a
-    // 110 m ship was illustrated with the same featureless sphere a rocky world gets — a picture that
-    // is not merely plain but wrong about what the thing is (A28). It gets its OWN glyph below (A30).
-    // '__bodygfx' lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
-    blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
-  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
-    && subject && subject.kind === 'construct' && (subject as any).model?.hash) {
-    // G3: a construct carrying a 3D model gets the model - the priority chain is photo (branch
-    // above, unchanged) > model > glyph > nothing. Same reserved-gap mechanism as a body's globe:
-    // '__bodygfx' is where the consumers overlay the live turntable (ConstructModelGraphic).
+  if (subject && subject.kind === 'construct' && (subject as any).model?.hash && opts.imagery !== 'none') {
+    // G3 (owner steer 2026-08-03): for a construct the MODEL leads - the chain is model > photo >
+    // glyph > nothing, under every imagery mode except 'none' ("if a construct is told to be 3D,
+    // display it first"). Same reserved-gap mechanism as a body's globe: '__bodygfx' is where the
+    // consumers overlay the live turntable (ConstructModelGraphic). Bodies are untouched below.
     blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: false, mode: 'sphere', heightFrac: 0.32 });
     // Attribution (owner decision 5): CC-BY models are allowed, so wherever the model is shown the
     // credit rides directly beneath it - GM panel and player document alike, same builder.
@@ -141,6 +131,16 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
         .filter(Boolean).join(' ');
       blocks.push({ kind: 'text', text: line, italic: true });
     }
+  } else if (opts.imagery === 'photo' && opts.image && !sliver) {
+    blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox', focus: opts.imageFocus });
+    // A GM photo still wins for a MODEL-LESS construct; a model outranks it (branch above).
+  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
+    && subject && subject.kind !== 'construct') {
+    // A CONSTRUCT gets no body graphic. The body-graphics setting drew whatever was selected, so a
+    // 110 m ship was illustrated with the same featureless sphere a rocky world gets — a picture that
+    // is not merely plain but wrong about what the thing is (A28). It gets its OWN glyph below (A30).
+    // '__bodygfx' lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
+    blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
   } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
     && subject && subject.kind === 'construct') {
     // A30: the construct's authored icon, at info-block size — the picture that already exists in its

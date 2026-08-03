@@ -41,7 +41,12 @@ export type BroadcastMessage =
   // Unified player-view: the GM's Player Views modal drives the open player window — which preset is
   // live + the momentary overrides (hide labels / suspend filter / pause orbit / follow GM). A null
   // payload means "closed" (the player window shows a hold screen). Supersedes SYNC_GUIDECONFIG.
-  | { type: 'SYNC_PRESET'; payload: PresetBroadcast | null };
+  | { type: 'SYNC_PRESET'; payload: PresetBroadcast | null }
+  // G3 construct models: a player missing a model binary asks for it BY HASH and the GM answers
+  // once - the binary never rides the snapshot (design §4: sendIfChanged re-sends whole payloads,
+  // so inline models would multiply every resend). b64 rides the existing chunked path.
+  | { type: 'REQUEST_MODEL'; payload: { targetId: string | null; hash: string } }
+  | { type: 'SYNC_MODEL'; payload: { hash: string; b64: string; meta: Record<string, unknown> } };
 
 export interface PresetOverrides {
   followGM: boolean | null; // null = use the preset's own flag
@@ -324,6 +329,10 @@ class BroadcastService {
   public onGuideConfigUpdate: ((c: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> }) => void) | null = null;
   public onPresetUpdate: ((p: PresetBroadcast | null) => void) | null = null;
   public onFocusLevelUpdate: ((p: { id: string; level: number }) => void) | null = null;
+  // G3 construct models (sender side answers, receiver side stores) - transport only, the model
+  // store itself is the hosts' business.
+  public onRequestModel: ((requestingId: string | null, hash: string) => void) | null = null;
+  public onModelUpdate: ((m: { hash: string; b64: string; meta: Record<string, unknown> }) => void) | null = null;
 
   private handleMessage(data: any) {
       // Check if this is an envelope or legacy message
@@ -406,6 +415,16 @@ class BroadcastService {
                    if (targetId && targetId !== this.sessionId) return;
                    this.onRequestStarmap(msg.payload);
               }
+              break;
+          case 'REQUEST_MODEL':
+              if (this.isSender && this.onRequestModel) {
+                   const targetId = msg.payload?.targetId;
+                   if (targetId && targetId !== this.sessionId) return;
+                   this.onRequestModel(targetId ?? null, msg.payload.hash);
+              }
+              break;
+          case 'SYNC_MODEL':
+              if (!this.isSender && this.onModelUpdate) this.onModelUpdate(msg.payload);
               break;
       }
   }

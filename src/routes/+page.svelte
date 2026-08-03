@@ -55,6 +55,8 @@
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
+  import { collectModelsForExport, importEmbeddedModels, bytesToBase64 } from '$lib/constructs/modelTransfer';
+  import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave } from '$lib/map/provenance';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import { unitKind, rescaleForUnitChange } from '$lib/map/distanceUnits';
@@ -745,6 +747,16 @@
       const pid = get(runningPresetId);
       if (pid) broadcastService.sendMessage({ type: 'SYNC_PRESET', payload: { presetId: pid, overrides: get(liveOverrides) } });
     };
+    // G3: answer a player's model-by-hash request from the local store, once - the binary never
+    // rides the snapshot (it would multiply every sendIfChanged resend). Chunked automatically.
+    broadcastService.onRequestModel = async (_requestingId, hash) => {
+      try {
+        const stored = await getStoredModel(hash);
+        if (!stored) return; // honestly absent: the player keeps its glyph fallback
+        const { hash: _h, ...meta } = stored.meta;
+        broadcastService.sendMessage({ type: 'SYNC_MODEL', payload: { hash, b64: bytesToBase64(stored.bytes), meta } });
+      } catch { /* a failed read must not break the join burst */ }
+    };
   });
   // Re-broadcast the redacted starmap whenever it (or the GM's grid choice) changes, so guides stay
   // live. starmapStore ticks with every systemStore emission (several per second while idle) and the
@@ -1295,15 +1307,18 @@
     if (open) { annotateReasonsToVisit(open); systemStore.set({ ...open }); }
   }
 
-  function handleDownloadStarmap() {
+  async function handleDownloadStarmap() {
     if (!$starmapStore) return;
 
     // Strip derived physics from a CLONE before writing — the load path re-derives everything, so the
     // file needs only authored inputs. Keeps saved files small and free of stale baked-in data.
     const lean = stripStarmapForExport($starmapStore, selectedRulepack ?? undefined);
+    // G3: embed construct model binaries (base64 by hash) so the file is self-contained — a
+    // ModelRef without its binary would land on another machine as the icon-glyph fallback.
+    const models = await collectModelsForExport(lean).catch(() => undefined);
     // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
     // M1: stamp the build that wrote the file. See lib/map/provenance.ts for why explicit saves only.
-    const exportObj = stampForSave({ ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() });
+    const exportObj = stampForSave({ ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap(), ...(models ? { models } : {}) });
     const data = JSON.stringify(exportObj, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1325,7 +1340,7 @@
     const file = input.files[0];
     const reader = new FileReader();
 
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const data = JSON.parse(reader.result as string);
 
@@ -1334,11 +1349,15 @@
         mergeStarmapPacks(data.poiPacks);
         applyStarmapReasonsConfig(data.reasonsConfig);
         mergeStarmapCoIs(data.coiCategories);
+        // G3: put embedded model binaries into the local hash store (each verified against its own
+        // hash) so every ModelRef in the file has its model the moment the map opens.
+        await importEmbeddedModels(data.models).catch(() => 0);
 
         const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
         delete (sanitized as any).poiPacks;
         delete (sanitized as any).reasonsConfig;
         delete (sanitized as any).coiCategories;
+        delete (sanitized as any).models;
 
         // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
         // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).

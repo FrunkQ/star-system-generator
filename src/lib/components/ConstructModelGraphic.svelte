@@ -13,6 +13,7 @@
   import { getModel } from '$lib/constructs/modelStore';
   import { parseModel } from '$lib/constructs/modelImport';
   import { createModelViewer, type ModelViewer } from '$lib/constructs/modelViewer';
+  import { requestModel } from '$lib/constructs/modelFetch';
   import { constructIconShape, traceConstructIcon } from '$lib/constructs/constructIcon';
 
   export let model: ModelRef;
@@ -35,11 +36,20 @@
 
   $: displayTint = mono ? '#c8cdd6' : tint || '#ffd24d';
 
+  let unrequest: (() => void) | null = null;
   async function load(hash: string, tintNow: string) {
     const want = `${hash}|${tintNow}`;
     const stored = await getModel(hash).catch(() => null);
     if (want !== `${model.hash}|${displayTint}`) return; // subject/tint changed while reading
-    if (!stored) { missing = true; drawFallback(); return; }
+    if (!stored) {
+      // Not on this machine (a remote player, most likely): show the glyph and ask the transport
+      // for the binary by hash - when it lands in the store, retry and the glyph gives way.
+      missing = true; drawFallback();
+      unrequest?.();
+      unrequest = requestModel(hash, () => { loadedKey = null; load(model.hash, displayTint); });
+      return;
+    }
+    unrequest?.(); unrequest = null;
     missing = false;
     try {
       const parsed = await parseModel('stored.glb', stored.bytes);
@@ -79,7 +89,7 @@
     ro.observe(root);
     size();
   });
-  onDestroy(() => { ro?.disconnect(); viewer?.dispose(); });
+  onDestroy(() => { ro?.disconnect(); viewer?.dispose(); unrequest?.(); });
 
   // One keyed reload covers first mount, subject change and live retint alike.
   $: if (viewer && `${model.hash}|${displayTint}` !== loadedKey) load(model.hash, displayTint);
