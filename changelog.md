@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.393-beta - 3rd Aug 2026
+
+* Unified tagging phase A, the persistence half: a hand-added tag now survives being SAVED, not just re-processed. The export/import fix-up filtered on the key alone, so an override inside a derived namespace was written out of the file and a free-text tag with a capital in it ("Smugglers", the Tags tab's own example) was read back as a legacy display-name tag and dropped — a tag that looked permanent until the next time the campaign was opened. Seven round-trip tests, including that the save still sheds the derived tags and classes it is meant to.
+
 ## v2.1.392-beta - 3rd Aug 2026
 
 * Unified tagging, phase A: one authority decides which tags a re-derive pass may delete (`src/lib/tags/tagLifecycle.ts`). Thirty-four strip sites had each decided for themselves and twenty-five of them silently deleted hand-added tags — so a GM tag inside a physics namespace could not survive, and `importFixup` deleted one on save as well. Physics and rule tags are still cleared and re-derived; anything the engine cannot re-create (hand-added, generation provenance, construct hardware and runtime state) now survives, and an override suppresses its derived twin rather than duplicating it. Generation provenance — the `spin/*` inferred-value promise among it — is named as a class rather than surviving by nobody having listed it. 44 new tests; `solar-system-derived.json` byte-identical.
