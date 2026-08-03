@@ -9,6 +9,7 @@ import { writable, get } from 'svelte/store';
 import { makeupFractions } from './makeup';
 import { EARTH_MASS_KG } from '../constants';
 import { registerPoiCategories, registerPoiTags } from '../tags/tagPresentation';
+import { stripRuleTags } from '../tags/tagLifecycle';
 
 // ---------------------------------------------------------------------------------------------
 // Declarative condition schema. `true` = always. Numeric ops take [field, value]; eq compares a
@@ -356,8 +357,10 @@ export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, pack
     const b = node as CelestialBody;
     const role = (isConstruct ? 'construct' : (b.roleHint || '')) as PoIRole;
     // Clear stale rule-tags by category prefix — but NEVER a hand-added (manual) tag, even if the
-    // player filed it under an existing category (e.g. a custom frontier/my-depot).
-    b.tags = (b.tags || []).filter((t) => t.manual || !catPrefixes.some((p) => t.key.startsWith(p)));
+    // player filed it under an existing category (e.g. a custom frontier/my-depot). stripRuleTags
+    // also spares a PHYSICS tag sharing a rule category, which `frontier/*` now has: this pass does
+    // not own every key in its namespaces, only the ones a rule emitted.
+    b.tags = stripRuleTags(b.tags, catPrefixes);
     if (!conf.enabled) continue;
 
     const f = buildFeatures(b, ageGyr, hasRemnant, hasConstructs);

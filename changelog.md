@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.392-beta - 3rd Aug 2026
+
+* Unified tagging, phase A: one authority decides which tags a re-derive pass may delete (`src/lib/tags/tagLifecycle.ts`). Thirty-four strip sites had each decided for themselves and twenty-five of them silently deleted hand-added tags — so a GM tag inside a physics namespace could not survive, and `importFixup` deleted one on save as well. Physics and rule tags are still cleared and re-derived; anything the engine cannot re-create (hand-added, generation provenance, construct hardware and runtime state) now survives, and an override suppresses its derived twin rather than duplicating it. Generation provenance — the `spin/*` inferred-value promise among it — is named as a class rather than surviving by nobody having listed it. 44 new tests; `solar-system-derived.json` byte-identical.
+
 ## v2.1.391-beta - 3rd Aug 2026
 
 * G3 stage 3: the model import modal - live preview of the converted bytes, 90-degree orientation fix stored on the ref, attribution fields (CC-BY flagged when credit is missing), caps feedback. Wired into the construct editor beside the image.

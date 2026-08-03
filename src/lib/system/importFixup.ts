@@ -10,6 +10,7 @@
 import type { System, CelestialBody, Tag, RulePack } from '$lib/types';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
 import { makeupFractions } from '$lib/physics/makeup';
+import { survivesRederive } from '$lib/tags/tagLifecycle';
 
 // Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
 // so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
@@ -123,7 +124,14 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
   if (body.hydrosphere) delete (body.hydrosphere as any).layers;
   if (body.atmosphere) { delete (body.atmosphere as any).molarMassKg; delete (body.atmosphere as any).scaleHeightKm; }
   // Tags: keep only authored ones.
-  if (Array.isArray(body.tags)) body.tags = body.tags.filter((t: Tag) => !isInterferingTag(t.key, classNames));
+  //
+  // survivesRederive() first, and it is a FIX rather than a tidy-up: this filter never checked the
+  // manual flag, so a tag the GM added by hand inside a derived namespace — exactly what the override
+  // mechanism produces — was deleted here, on import AND on save, silently. It relied on hand-added
+  // tags never looking derived, which stops being true the moment a GM is allowed to override the
+  // physics. It also means a free-text tag with a capital in it ("Smugglers", which the Tags tab
+  // offers as its own example) now survives a save instead of being read as a legacy display-name tag.
+  if (Array.isArray(body.tags)) body.tags = body.tags.filter((t: Tag) => survivesRederive(t) || !isInterferingTag(t.key, classNames));
 }
 
 // Fix up a single system in place (and return it). Caller should re-run systemProcessor.process().

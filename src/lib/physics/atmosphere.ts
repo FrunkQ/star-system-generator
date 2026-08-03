@@ -1,5 +1,6 @@
 import type { Atmosphere, RulePack, CelestialBody, Barycenter, Tag } from '../types';
 import { evaluateTagTriggers } from '../utils';
+import { stripForReprocess, emit } from '../tags/tagLifecycle';
 import { G, UNIVERSAL_GAS_CONSTANT, EARTH_MASS_KG } from '../constants';
 
 const BOLTZMANN = 1.380649e-23;     // J/K
@@ -186,8 +187,11 @@ export function recalculateAtmosphereDerivedProperties(body: CelestialBody, allN
         Object.values(pack.gasPhysics).forEach(g => g.tags?.forEach(t => gasPhysicsTags.add(t.name)));
     }
 
-    const otherTags = body.tags.filter(t => !gasPhysicsTags.has(t.key));
-    body.tags = [...otherTags, ...dynamicTags.map(name => ({ key: name } as Tag))];
+    // The gas-role tags are flat (unnamespaced) keys the pack owns, cleared and re-derived here. A
+    // hand-added one survives via stripForReprocess and then suppresses its derived twin via emit().
+    const out = stripForReprocess(body.tags, [...gasPhysicsTags]);
+    for (const name of dynamicTags) emit(out, { key: name } as Tag);
+    body.tags = out;
 }
 
 export function calculateScaleHeight(body: CelestialBody): number {

@@ -1,12 +1,13 @@
 import type { CelestialBody, Starmap } from '$lib/types';
 import type { ScheduledJourneyLog, TransitPlan, TransitSegment, Vector2 } from '$lib/transit/types';
 import { isLegacyTag } from '$lib/tags/tagPresentation';
+import { survivesRederive } from '$lib/tags/tagLifecycle';
 
 // Drop V1 legacy tags the new engine replaces (classes, namespaced physics, atmosphere model). Never
 // touches a hand-added (manual) tag. Self-heals persisted/imported data without a full reprocess.
 function sanitizeTags(node: CelestialBody): { node: CelestialBody; changed: boolean } {
   if (!Array.isArray(node.tags) || !node.tags.length) return { node, changed: false };
-  const kept = node.tags.filter((t) => t?.manual || !isLegacyTag(t.key));
+  const kept = node.tags.filter((t) => (t && survivesRederive(t)) || !isLegacyTag(t.key));
   if (kept.length === node.tags.length) return { node, changed: false };
   return { node: { ...node, tags: kept }, changed: true };
 }

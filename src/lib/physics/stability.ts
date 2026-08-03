@@ -1,4 +1,5 @@
 import type { CelestialBody, Barycenter, System } from '../types';
+import { stripForReprocess } from '../tags/tagLifecycle';
 
 type OrbitalNode = CelestialBody;
 
@@ -403,7 +404,7 @@ export function annotateGravitationalStability(system: System): System {
   // Clear existing stability tags/fields each pass.
   for (const node of system.nodes) {
     if (!('tags' in node)) continue;
-    node.tags = (node.tags || []).filter((t) => !t.key.startsWith('stability/') && !t.key.startsWith('fate/'));
+    node.tags = stripForReprocess(node.tags, ['stability/', 'fate/']);
     delete (node as any).orbitalStability;
     delete (node as any).orbitalStabilityDetails;
   }

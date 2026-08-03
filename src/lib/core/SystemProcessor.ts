@@ -47,6 +47,9 @@ const LEGACY_DUPLICATE_TAGS = new Set<string>([
   'Active Volcanism', 'Active Volcano', 'Tidal Volcanism', 'Tidal Hotspots', 'Rings'
 ]);
 import { SeededRNG } from '../rng';
+// The one authority on which tags a re-derive pass may delete. Every strip below goes through it, so
+// a hand-added tag survives the pass that would otherwise have silently deleted it.
+import { stripForReprocess, survivesRederive, emit } from '../tags/tagLifecycle';
 import { annotateGravitationalStability } from '../physics/stability';
 import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
@@ -81,12 +84,12 @@ export class SystemProcessor implements ISystemProcessor {
             const s = node as CelestialBody;
             if (s.kind !== 'body' || s.roleHint !== 'star') continue;
             s.flareActivity = flareActivity(s.classes?.[0], this.systemAgeGyr);
-            s.tags = (s.tags || []).filter((t) => t.key !== 'hazard/flaring' && t.key !== STELLAR_ACTIVITY_TAG);
-            if (s.flareActivity > 0.4) s.tags.push({ key: 'hazard/flaring' });
+            s.tags = stripForReprocess(s.tags, ['hazard/flaring', STELLAR_ACTIVITY_TAG]);
+            if (s.flareActivity > 0.4) emit(s.tags, { key: 'hazard/flaring' });
             // MAGNETIC ACTIVITY, bucketed — the one judgement behind everything a star's surface
             // shows: spot count and darkness, facular brightening, and how often it flares. Both
             // renderers read this tag rather than re-deriving from the raw number.
-            s.tags.push({ key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
+            emit(s.tags, { key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
         }
 
         // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
@@ -413,7 +416,7 @@ export class SystemProcessor implements ISystemProcessor {
     // substellar mass window (e.g. the GM edited its mass down).
     private applySubstellarSelfLuminosity(body: CelestialBody) {
         const bd = brownDwarfThermal(body.massKg || 0, this.systemAgeGyr, body.radiusKm || 0);
-        body.tags = (body.tags || []).filter((t) => t.key !== 'thermal/self-luminous');
+        body.tags = stripForReprocess(body.tags, ['thermal/self-luminous']);
         if (bd.isSubstellar) {
             (body as any).isSelfLuminous = true;
             (body as any).selfLuminousTeffK = bd.teffK;
@@ -424,7 +427,7 @@ export class SystemProcessor implements ISystemProcessor {
             // own environment pass recomputes it (to ≈ the same value) via the self-luminous flux term.
             body.temperatureK = bd.teffK;
             // Tag it (value = Teff) — surfaces in Find-by-tag/reports and drives the self-luminous disc glow.
-            body.tags.push({ key: 'thermal/self-luminous', value: Math.round(bd.teffK).toString() });
+            emit(body.tags, { key: 'thermal/self-luminous', value: Math.round(bd.teffK).toString() });
         } else {
             (body as any).isSelfLuminous = false;
             delete (body as any).selfLuminousTeffK;
@@ -474,9 +477,9 @@ export class SystemProcessor implements ISystemProcessor {
                 tidalHeatingK = this.calculateTidalHeating(body, host as CelestialBody);
                 const hasHotspots = this.hasTidalHotspots(body, host as CelestialBody);
                 body.tags = body.tags || [];
-                body.tags = body.tags.filter(t => t.key !== 'tidal/hotspots');
+                body.tags = stripForReprocess(body.tags, ['tidal/hotspots']);
                 if (hasHotspots) {
-                    body.tags.push({ key: 'tidal/hotspots' });
+                    emit(body.tags, { key: 'tidal/hotspots' });
                 }
             }
         }
@@ -520,7 +523,7 @@ export class SystemProcessor implements ISystemProcessor {
             );
         }
         body.starTidallyLocked = !!body.tidallyLocked && orbitsStar;
-        body.tags = (body.tags || []).filter(t => t.key !== 'orbit/tidally-locked' && t.key !== 'orbit/locked-star' && t.key !== 'orbit/locked-planet' && t.key !== 'orbit/spin-orbit-resonance');
+        body.tags = stripForReprocess(body.tags, ['orbit/tidally-locked', 'orbit/locked-star', 'orbit/locked-planet', 'orbit/spin-orbit-resonance']);
 
         // B7: reconcile the SPIN with the lock, so the two cannot contradict each other. A locked
         // body's sidereal rotation period is its orbital period — surfaceTempProfile below has
@@ -538,14 +541,14 @@ export class SystemProcessor implements ISystemProcessor {
             );
             body.rotation_period_hours = spin.rotationHours;
             body.calculatedRotationPeriod_s = Math.abs(spin.rotationHours) * 3600;
-            if (spin.kind === 'resonant') body.tags.push({ key: 'orbit/spin-orbit-resonance', value: spin.ratio as string });
+            if (spin.kind === 'resonant') emit(body.tags, { key: 'orbit/spin-orbit-resonance', value: spin.ratio as string });
         }
         // Surface the lock TARGET as its own tag (both are registered so they survive tag sanitising):
         // locked-star = a permanent substellar face (eyeball candidate); locked-planet = a moon whose
         // whole surface still cycles through stellar day/night.
         if (body.tidallyLocked) {
-            body.tags.push({ key: 'orbit/tidally-locked' });
-            body.tags.push({ key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
+            emit(body.tags, { key: 'orbit/tidally-locked' });
+            emit(body.tags, { key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
         }
 
         // --- THE thermal fixed point: albedo ⇄ equilibrium temp ⇄ greenhouse ⇄ surface temp ⇄
@@ -614,7 +617,7 @@ export class SystemProcessor implements ISystemProcessor {
         // Surface temperature DECOMPOSED by cause (latitude / seasonal / day-night / locked faces /
         // tidal hotspots) — the whole picture, not one opaque min/max.
         body.tags = body.tags || [];
-        body.tags = body.tags.filter(t => t.key !== 'tidal/volcanism' && t.key !== 'tidal/lava-flows');
+        body.tags = stripForReprocess(body.tags, ['tidal/volcanism', 'tidal/lava-flows']);
         const surfaceLiquidWater = (body.hydrosphere?.composition === 'water')
             && (body.hydrosphere?.coverage ?? 0) > 0.2 && (body.temperatureK ?? 0) >= 273;
         const { profile, tags: tempTags } = surfaceTempProfile({
@@ -631,7 +634,7 @@ export class SystemProcessor implements ISystemProcessor {
             tidalRawIndex,
             iceFrac: makeupFractions(body).ice
         });
-        for (const key of tempTags) body.tags.push({ key });
+        for (const key of tempTags) emit(body.tags, { key });
         body.temperatureProfile = profile;
         body.temperatureRangeK = { min: profile.totalMinK, max: profile.totalMaxK };
 
@@ -704,11 +707,11 @@ export class SystemProcessor implements ISystemProcessor {
         if (!body.magneticField?.manual) {
             body.magneticField = { strengthGauss: +body.magnetism.nominalGauss.toFixed(4) };
         }
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('magnetic/'));
+        body.tags = stripForReprocess(body.tags, ['magnetic/']);
         // The shielding tag reconciles with the field the GM sees: 0 → unshielded, a whisker → tenuous
         // (Mercury), induced ocean → induced, a manual field with no interior source → anomalous, else a
         // dynamo. A manual value overrides the derived one.
-        body.tags.push({ key: magneticShieldingTag(body.magnetism, body.magneticField) });
+        emit(body.tags, { key: magneticShieldingTag(body.magnetism, body.magneticField) });
     }
 
     // THE RADIATION HAZARD TAGS, for every body whose dose describes a place you could actually be
@@ -724,8 +727,7 @@ export class SystemProcessor implements ISystemProcessor {
     // derivation — the doses were already computed for these bodies in pass 2c, and the bucketing is
     // radiationHazardBucket, the one B28 unified.
     private applyRadiationHazardTags(body: CelestialBody, pack: RulePack) {
-        body.tags = (body.tags || []).filter((t) => t.key !== RADIATION_HAZARD_TAG || t.manual);
-        body.tags = body.tags.filter((t) => t.key !== ORBITAL_RADIATION_TAG || t.manual);
+        body.tags = stripForReprocess(body.tags, [RADIATION_HAZARD_TAG, ORBITAL_RADIATION_TAG]);
         if (radiationPlace(body) === 'at 1 bar') return;   // no place to stand: no hazard tag (B18/B22)
 
         // The VALUE is a time word — how long a character standing here survives — because sieverts
@@ -890,8 +892,12 @@ export class SystemProcessor implements ISystemProcessor {
         // Cloud-deck + precipitation tags are OWNED by applyCloudDeckTags below (it strips its own
         // auto tags and keeps manual ones) — exempt them from this blanket strip or a GM's manual
         // deck would be deleted every pass.
-        body.tags = (body.tags || []).filter((t) =>
-            (t.key === CLOUD_DECK_TAG || t.key === PRECIPITATION_TAG
+        // survivesRederive() is the outer guard rather than a rewrite of the exemption list below,
+        // because the two protect different things: the list exempts keys ANOTHER pass owns
+        // (applyCloudDeckTags strips its own), while survivesRederive exempts tags NO pass can
+        // re-create — a GM's hand-added `structure/*` among them.
+        body.tags = (body.tags || []).filter((t) => survivesRederive(t)
+            || (t.key === CLOUD_DECK_TAG || t.key === PRECIPITATION_TAG
              || t.key === LIGHTNING_TAG || t.key === DUST_STORM_TAG || t.key === MONSOON_TAG)
             || (!t.key.startsWith('structure/') && t.key !== 'climate/polar-ice'
                 && !t.key.startsWith('hydrosphere/') && t.key !== 'climate/steam-world'
@@ -943,7 +949,7 @@ export class SystemProcessor implements ISystemProcessor {
         // makeup (radiogenic budget + iron core), mass/radius (cooling rate), system AGE (radiogenic
         // decay), surface water (mobile vs stagnant lid) and tidal tags (Io/Europa). Adds a
         // geology/* tag and feeds habitability (carbonate–silicate climate regulation).
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('geology/'));
+        body.tags = stripForReprocess(body.tags, ['geology/']);
         // Gas/ice giants have no solid surface → no tectonic regime; skip them.
         if (mk.gas <= 0.5 && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
             const hasLiquidSurfaceWater = fluidLayers.some(
@@ -969,23 +975,23 @@ export class SystemProcessor implements ISystemProcessor {
                 // wake a dead world (or intensify an active one) and change its geology/* tag.
                 radiogenicOverrideK: body.radiogenicHeatK ?? 0
             });
-            for (const key of body.geoActivity.tags) body.tags.push({ key });
+            for (const key of body.geoActivity.tags) emit(body.tags, { key });
             // Surface age (Gyr the visible surface has been exposed) drives cratering / weathering /
             // tholin build-up. Bucketed into a coarse tag for filtering; the number lives on geoActivity.
-            body.tags = body.tags.filter((t) => !t.key.startsWith('surface/age'));
+            body.tags = stripForReprocess(body.tags, ['surface/age']);
             const sAge = body.geoActivity.surfaceAgeGyr;
             const ageBucket = sAge < 0.1 ? 'young' : sAge < 1 ? 'moderate' : sAge < 3 ? 'old' : 'ancient';
-            body.tags.push({ key: 'surface/age', value: ageBucket });
+            emit(body.tags, { key: 'surface/age', value: ageBucket });
             // Irradiation dose (space weathering) — stellar UV + cosmic-ray floor, unshielded, over the
             // surface's exposure time. Drives tholin darkening (with retained organics as the precursor).
-            body.tags = body.tags.filter((t) => !t.key.startsWith('surface/irradiation'));
+            body.tags = stripForReprocess(body.tags, ['surface/irradiation']);
             body.irradiationDose = deriveIrradiationDose(
                 body.equilibriumTempK ?? body.temperatureK ?? 0,
                 body.radiationShieldingMag ?? 0,
                 sAge
             );
             const doseBucket = body.irradiationDose < 0.05 ? 'low' : body.irradiationDose < 0.2 ? 'moderate' : 'high';
-            body.tags.push({ key: 'surface/irradiation', value: doseBucket });
+            emit(body.tags, { key: 'surface/irradiation', value: doseBucket });
             // RADIATION HAZARD — the bucketed ANNUAL DOSE, which is a different question from the
             // space-weathering total above and had no tag of its own at all. So a GM scanning or
             // filtering tags saw "Space weathering: low" on Io and nothing to say its surface takes
@@ -1026,7 +1032,7 @@ export class SystemProcessor implements ISystemProcessor {
         // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8
         // (6 = the Saturn hexagon, the commonest). Deterministic on the body id so it's stable across
         // re-runs. Re-derived → strip any prior auto copy but keep a user's manual one.
-        body.tags = body.tags.filter((t) => t.key !== 'feature/polar-vortex' || t.manual);
+        body.tags = stripForReprocess(body.tags, ['feature/polar-vortex']);
         if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex') && hash01(`${body.id}|vortex`) < 0.7) {
             const sides = [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|vsides`) * 6) % 6];
             body.tags.push({ key: 'feature/polar-vortex', value: String(sides) });
@@ -1036,20 +1042,20 @@ export class SystemProcessor implements ISystemProcessor {
         // One ring → "ringed"; more than one → "multiple rings". Each ring's debris mass sorts it into
         // a light / medium / heavy tier (log scale, same as the orrery disc); the DISTINCT tiers present
         // are surfaced, so a heavy ring beside a faint one reads as both.
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('ring/'));
+        body.tags = stripForReprocess(body.tags, ['ring/']);
         const ringChildren = allNodes.filter(
             (n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'ring' && n.parentId === body.id
         ) as CelestialBody[];
         if (ringChildren.length) {
-            body.tags.push({ key: 'ring/system' });
-            if (ringChildren.length > 1) body.tags.push({ key: 'ring/multiple' });
+            emit(body.tags, { key: 'ring/system' });
+            if (ringChildren.length > 1) emit(body.tags, { key: 'ring/multiple' });
             const tiers = new Set<string>();
             for (const r of ringChildren) {
                 const me = (r.massKg ?? 0) / EARTH_MASS_KG;
                 const d = me > 0 ? Math.max(0, Math.min(1, (Math.log(me) - Math.log(1e-5)) / (Math.log(1) - Math.log(1e-5)))) : 0.5;
                 tiers.add(d < 1 / 3 ? 'light' : d < 2 / 3 ? 'medium' : 'heavy');
             }
-            for (const tier of ['light', 'medium', 'heavy']) if (tiers.has(tier)) body.tags.push({ key: `ring/${tier}` });
+            for (const tier of ['light', 'medium', 'heavy']) if (tiers.has(tier)) emit(body.tags, { key: `ring/${tier}` });
         }
 
         // (Magnetism used to be derived HERE, a whole pass after the radiation model that reads it.
@@ -1062,15 +1068,15 @@ export class SystemProcessor implements ISystemProcessor {
         const deform = rotationalDeform(body.rotation_period_hours ?? 0, density_gcc);
         body.oblateness = deform.oblateness;
         features['spinFraction'] = deform.fraction;
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('shape/'));
-        if (deform.shape !== 'spherical') body.tags.push({ key: `shape/${deform.shape}` });
+        body.tags = stripForReprocess(body.tags, ['shape/']);
+        if (deform.shape !== 'spherical') emit(body.tags, { key: `shape/${deform.shape}` });
 
         // Auroras (Phase G viz driver): atmosphere + magnetosphere + incident ionising flux → a polar
         // glow, graded faint→brilliant. Derived here (after magnetism + radiation + atmosphere are all
         // final); the numeric strength rides on the tag value so the renderer can scale the curtain.
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('aurora/'));
+        body.tags = stripForReprocess(body.tags, ['aurora/']);
         const aurora = deriveAurora(body);
-        if (aurora.tier) body.tags.push({ key: `aurora/${aurora.tier}`, value: aurora.strength.toFixed(2) });
+        if (aurora.tier) emit(body.tags, { key: `aurora/${aurora.tier}`, value: aurora.strength.toFixed(2) });
         // Resolve the emission-colour bands from the pack's gas data (data-driven, editable) onto the
         // body so every renderer reads the same colours without needing the rule pack.
         body.auroraEmitters = body.atmosphere ? resolveAuroraEmitters(body, pack) : undefined;
@@ -1079,7 +1085,10 @@ export class SystemProcessor implements ISystemProcessor {
         // Volatile-ice retention (which ices survive on the surface as frost/bright ice) — the physics
         // base for frost/tholin/bright-ice visuals. Cold trap (surface below the ice's melt point) +
         // gravity trap (Jeans λ holds the sublimated vapour). Solid surfaces only; giants excluded.
-        body.tags = (body.tags || []).filter((t) => !t.key.startsWith('volatiles/'));
+        // NOTE the pushes below are deliberately NOT guarded by emit(): `volatiles/ices` is one of the
+        // keys a body legitimately carries several times (one per species), so a GM's manual ice sits
+        // ALONGSIDE the derived ones rather than suppressing them.
+        body.tags = stripForReprocess(body.tags, ['volatiles/']);
         if (mk.gas <= 0.5 && (body.roleHint === 'planet' || body.roleHint === 'moon') && body.massKg && body.radiusKm) {
             body.volatiles = deriveVolatileRetention({
                 massKg: body.massKg,
@@ -1127,7 +1136,7 @@ export class SystemProcessor implements ISystemProcessor {
         // SURFACE OXIDATION — why Mars is red and the Moon, with the same iron and age but no
         // oxidiser, is grey. Must run AFTER geoActivity (it needs the surface AGE) and before the
         // apparent colour below, which reads the tag.
-        body.tags = (body.tags || []).filter((t) => t.key !== OXIDISED_TAG || t.manual);
+        body.tags = stripForReprocess(body.tags, [OXIDISED_TAG]);
         if (!body.tags.some((t) => t.key === OXIDISED_TAG)) {
             const rust = deriveOxidation(body);
             if (rust) body.tags.push({ key: OXIDISED_TAG, value: rust });
@@ -1223,7 +1232,7 @@ export class SystemProcessor implements ISystemProcessor {
         // figure is measured from a notional 1-bar level.
         // Anchors: Luna 1.9 km/s trivial, Mars 4.1 moderate, Earth 10.4 hard, Venus 29.5 extreme.
         if ((body.roleHint === 'planet' || body.roleHint === 'moon') && makeupFractions(body).gas <= 0.5) {
-            body.tags = (body.tags || []).filter((t) => t.key !== ASCENT_TAG || t.manual);
+            body.tags = stripForReprocess(body.tags, [ASCENT_TAG]);
             const dv = body.loDeltaVBudget_ms ?? 0;
             if (dv > 0 && !body.tags.some((t) => t.key === ASCENT_TAG)) {
                 const band = dv < 2000 ? 'trivial' : dv < 5000 ? 'moderate' : dv < 15000 ? 'hard' : 'extreme';
@@ -1330,8 +1339,8 @@ export class SystemProcessor implements ISystemProcessor {
         const hasSolidSurface = habMakeup.gas <= 0.5;
         if (!hasSolidSurface) {
             planet.habitabilityScore = 0;
-            planet.tags = planet.tags?.filter(t => !t.key.startsWith('habitability/')) || [];
-            planet.tags.push({ key: 'habitability/none' });
+            planet.tags = stripForReprocess(planet.tags, ['habitability/']);
+            emit(planet.tags, { key: 'habitability/none' });
             // The Bio tab still needs something to render, and "no surface to score" is a better
             // answer than a blank panel or a silent 50.
             planet.habitabilityBreakdown = {
@@ -1447,7 +1456,7 @@ export class SystemProcessor implements ISystemProcessor {
         const isSuperHabitable = planet.habitabilityScore > 100; // better-than-Earth (only super-habitable worlds)
 
         // Clear old habitability tags before adding new ones
-        planet.tags = planet.tags?.filter(t => !t.key.startsWith('habitability/')) || [];
+        planet.tags = stripForReprocess(planet.tags, ['habitability/']);
 
         let tier: string;
         if (isSuperHabitable) tier = 'habitability/super';
@@ -1456,7 +1465,7 @@ export class SystemProcessor implements ISystemProcessor {
         else if (subsurfaceHabitable) tier = 'habitability/subsurface';
         else if (isAlienHabitable) tier = 'habitability/alien';
         else tier = 'habitability/none';
-        planet.tags.push({ key: tier });
+        emit(planet.tags, { key: tier });
 
         // Store the AUTHORITATIVE breakdown so the Bio tab shows exactly this (one calc, not three):
         // the rebalanced surface factors AND the long-term geology/magnetism modifiers that the old

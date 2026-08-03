@@ -11,6 +11,7 @@ import type { CelestialBody, RulePack, Tag, GasCloud, LiquidDef } from '$lib/typ
 import { liquidDef, phaseAtP, saturationPressureBar } from './liquids';
 import { atmosphereProfile, MIN_ATM_BAR, type AtmosphereProfile } from './atmosphereProfile';
 import { makeupFractions } from './makeup';
+import { stripForReprocess } from '../tags/tagLifecycle';
 
 // ── The published vocabulary ─────────────────────────────────────────────────────────────────────
 export const CLOUD_DECK_TAG = 'structure/cloud-deck';
@@ -420,7 +421,7 @@ const WEATHER_KEYS = [CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG, DUST_STO
 // Processor hook: strip the previous pass's AUTO deck/weather tags, keep manual ones, and emit
 // fresh auto tags for species the manual set doesn't already cover (manual wins a collision).
 export function applyCloudDeckTags(tags: Tag[], decks: CloudDeck[], weather: WeatherTags = {}): Tag[] {
-  const kept = tags.filter((t) => !WEATHER_KEYS.includes(t.key) || t.manual);
+  const kept = stripForReprocess(tags, WEATHER_KEYS);
   const manualKeys = new Set(kept.map((t) => t.key));
   const manualSpecies = new Set(
     kept.filter((t) => t.key === CLOUD_DECK_TAG).map((t) => parseCloudDeckValue(t.value).species));
