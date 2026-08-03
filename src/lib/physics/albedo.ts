@@ -62,6 +62,13 @@ const DEFAULT_CLOUD_ALBEDO = 0.45;
 export interface AlbedoBreakdown {
   albedo: number;
   surfaceAlbedo: number;
+  // The ground BEFORE anything settled on it — makeup alone. Kept separate from surfaceAlbedo so
+  // the Newton trace can show the working rather than a single finished number: bare rock is dark,
+  // and what makes a world bright is the deposit on top of it (B5). Mars is 0.105 bare and 0.252
+  // once its oxide dust is counted, and those two numbers are the whole explanation.
+  bareAlbedo: number;
+  // What is lying on the ground, if anything — 'moderate oxide dust', 'Sulphur Dioxide frost'.
+  deposit?: string;
   cloudAlbedo: number;      // reflectivity of the TOP deck (0 when there are none)
   cloudCover: number;       // 0..1, sky coverage of the top deck
   cloudSpecies?: string;    // the top deck's condensate — the same species name the deck tags carry
@@ -112,7 +119,7 @@ export function deriveAlbedo(
   // solve; the legacy body.albedo is honoured too. Otherwise the albedo is derived below.
   const pinned = body.overrides?.albedo ?? (typeof body.albedo === 'number' ? body.albedo : undefined);
   if (typeof pinned === 'number' && pinned >= 0 && pinned <= 1) {
-    return { albedo: pinned, surfaceAlbedo: pinned, cloudAlbedo: 0, cloudCover: 0, note: 'Manually set (GM override).' };
+    return { albedo: pinned, surfaceAlbedo: pinned, bareAlbedo: pinned, cloudAlbedo: 0, cloudCover: 0, note: 'Manually set (GM override).' };
   }
   const K = surfaceConstants(pack);
   const mk = makeupFractions(body);
@@ -120,12 +127,14 @@ export function deriveAlbedo(
   // What is lying ON the ground, if anything — named so the Newton trace can say WHY a dark rock
   // reads bright, rather than leaving the reader to wonder where 0.57 came from on a basalt moon.
   let deposit: string | null = null;
+  let bare = 0;   // surface albedo BEFORE deposits — the trace shows both (B5)
 
   // --- What sits UNDER the clouds. -------------------------------------------------------------
   // A giant has no surface, so the decks are composited over its deep atmosphere instead.
   let surf: number;
   if (isGiant) {
     surf = giantBaseAlbedo(teqK, K.gas);
+    bare = surf;
   } else {
     surf = mk.metal * K.metal + mk.rock * K.rock + mk.carbon * K.carbon
       + mk.ice * K.ice + mk.gas * K.gas;
@@ -145,6 +154,7 @@ export function deriveAlbedo(
       // gas / supercritical: nothing is standing on the surface, so the bare ground shows.
     }
 
+    bare = surf;   // the ground as its makeup and hydrosphere leave it, before any deposit
     // --- OXIDE DUST (B5). Wind-laid ferric fines over the bare ground. The grade is
     // deriveOxidation's, which already reads the iron fraction, the oxidising power of the air and
     // how long the surface has sat there — nothing new is being invented, it is being LOOKED AT.
@@ -193,6 +203,8 @@ export function deriveAlbedo(
   return {
     albedo: +clamp(albedo, 0.02, 0.95).toFixed(3),
     surfaceAlbedo: +surf.toFixed(3),
+    bareAlbedo: +bare.toFixed(3),
+    ...(deposit ? { deposit } : {}),
     cloudAlbedo: +topAlbedo.toFixed(3),
     cloudCover: +(top?.coverage ?? 0).toFixed(2),
     cloudSpecies: top?.species,

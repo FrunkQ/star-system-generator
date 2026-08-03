@@ -11,7 +11,7 @@ import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
 import { auroraEmitter } from './aurora';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
-import { beltInnerEdgeRadii, radiationHazardBucket, lethalDoseTime } from './radiation';
+import { beltInnerEdgeRadii, radiationHazardBucket, lethalDoseTime, radiationPlace, orbitalRadiationPlace } from './radiation';
 
 export interface TraceField { label: string; value: string; }
 export interface TraceLayer {
@@ -120,6 +120,13 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     const notes: string[] = [];
     if (c.runnerUp) notes.push(`Beat the runner-up ${c.runnerUp.class.replace('planet/', '')} (${c.runnerUp.score}) — a type scores its MEAN band fit times a mild bonus for how many bands it defines, so a specific type wins when it fits cleanly, but padding a claim with barely-true bands no longer helps it.`);
     else if (!c.fallback) notes.push('The only type whose defining bands this body fell within.');
+    // B16 — the ordering ABOVE the score, which the score line alone does not reveal. Without this a
+    // reader comparing two candidates in the list below sees a smaller number winning and concludes
+    // the panel is broken.
+    notes.push('A COMPLETE MATCH BEATS A PARTIAL ONE, whatever the scores say. If this world falls inside every band a type defines, no type it falls outside of can win — the score only decides between types that all genuinely fit. Without that rule a heavily-weighted type could buy its way past a better-fitting rival on a single band it merely came close to.');
+    // B25 — the eyeball fingerprints gained a PRECONDITION, and a precondition that is invisible
+    // reads as an unexplained absence: "why is this locked, roasting world not a hot eyeball?"
+    notes.push('Some types also carry GATES — preconditions that must hold or the type is ruled out entirely, and that earn no score if they do. The eyeballs are gated on having a solid surface, because a permanently-lit dayside is a statement about GROUND: a tidally locked gas giant is not an eyeball however hot it is. A gate is deliberately not a band, because a band that is true of everything which survives it would drag a poor defining band UP by averaging — rewarding the worst matches most.');
     layers.push({ id: 'classification', title: 'Classification — why this type', link: '/physics#classification', inputs, outputs, notes });
   }
 
@@ -152,6 +159,64 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     notes: []
   });
 
+  // 2b. SPIN — the axis and the period, and where each number CAME FROM (inbox B10, C3(c)). The
+  //     trace had neither, which mattered because the seasonal term in the temperature range below
+  //     is driven by the tilt: a reader could see a seasonal swing explained by nothing.
+  const tiltDeg = (body as any).axial_tilt_deg as number | undefined;
+  const rotH = body.rotation_period_hours;
+  if (tiltDeg != null || rotH != null) {
+    const tagKeys = (body.tags ?? []).map((t) => t.key);
+    const axisInferred = tagKeys.includes('spin/axis-inferred');
+    const periodInferred = tagKeys.includes('spin/period-inferred');
+    const tipped = tagKeys.includes('spin/tipped');
+    // The tilt and the period are OUTPUTS of the spin model, not inputs to it — which also keeps
+    // the card from ever being empty, the invariant physicsTrace.spec asserts.
+    const spinIn: TraceField[] = [];
+    const spinOut: TraceField[] = [];
+    if (tiltDeg != null) {
+      spinOut.push({
+        label: 'Axial tilt' + (axisInferred ? ' (inferred, not measured)' : ''),
+        value: n(tiltDeg, 1, '°') + (tipped ? ' — tipped over by an impact' : '')
+      });
+    }
+    if (rotH != null) {
+      spinOut.push({
+        label: 'Rotation period' + (periodInferred ? ' (inferred, not measured)' : (body as any).tidallyLocked ? ' (set by the tidal lock)' : ''),
+        value: n(Math.abs(rotH), 2, 'h')
+      });
+    }
+    const spinNotes: string[] = [];
+    if (axisInferred || periodInferred) {
+      spinNotes.push('MARKED AS INFERRED, and that mark is a promise. A generated world\'s spin is a plausible value from the formation model, not a measurement — so it is tagged, and a figure WITHOUT that tag is one somebody actually observed. Earth\'s 23.4° and Uranus\'s 97.8° are known; a generated neighbour sitting beside them in the same starmap must not read as though it were.');
+    }
+    spinNotes.push('A world condenses from the same disc as its star, so it starts near the disc normal and is nudged from there. A late giant impact does not nudge an axis, it RE-POINTS it — which is why the tipped cases are drawn from an isotropic direction rather than a wider spread, and why they land where Uranus (on its side) and Venus (turning backwards) are rather than smearing everything toward 90°.');
+    if (body.orbit && (body.roleHint === 'moon')) {
+      const eclipticFramed = String((body.orbit as any).frame ?? '').toLowerCase() === 'ecliptic';
+      spinIn.push({
+        label: 'Orbit quoted in',
+        value: eclipticFramed ? 'the SYSTEM plane' : "its parent's EQUATOR"
+      });
+      spinNotes.push(eclipticFramed
+        ? 'This moon sits beyond its host\'s LAPLACE RADIUS, where the star\'s tide beats the host\'s equatorial bulge — so its orbit follows the system plane, not the host\'s equator. Our own Moon is the case: its 5.1° is quoted to the ecliptic, and to Earth\'s equator it wanders between 18.3° and 28.6° with no single number to give.'
+        : 'This moon sits INSIDE its host\'s Laplace radius, where the host\'s equatorial bulge governs, so its inclination is quoted in the host\'s equator and it rides the host\'s tilt. That is why Saturn\'s inner moons sit in the ring plane rather than flat in the system — the rings are in that same equator.');
+    }
+    if (tiltDeg != null) {
+      spinOut.push({
+        label: 'Seasons',
+        value: Math.min(Math.abs(tiltDeg), 180 - Math.abs(tiltDeg)) > 12
+          ? 'yes — the tilt drives a seasonal swing in the range below'
+          : 'negligible — too upright for a real season'
+      });
+    }
+    if ((body as any).tidallyLocked) spinOut.push({ label: 'Tidally locked', value: 'one face permanently toward its primary' });
+    if (spinOut.length) {
+      layers.push({
+        id: 'spin', title: 'Spin axis & rotation', link: '/physics#spin',
+        inputs: spinIn, outputs: spinOut, notes: spinNotes
+      });
+    }
+  }
+
   // 3. Temperature (equilibrium → mean → range)
   const tempOut: TraceField[] = [
     { label: 'Equilibrium temp', value: n(body.equilibriumTempK, 0, 'K') },
@@ -175,6 +240,44 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   } else if (body.temperatureRangeK) {
     tempOut.push({ label: 'Surface range', value: `${body.temperatureRangeK.min}–${body.temperatureRangeK.max} K` });
   }
+  // 3b. ALBEDO — its own layer, because it is its own derivation and the working is the interesting
+  //     part (inbox B5). It used to be a single line inside Temperature reading "0.256 — Cloud-free
+  //     moderate oxide dust over bare ground", which states the answer and hides every step of it.
+  //     Bare rock is DARK; brightness is what has settled on top. Mars is 0.105 as bare ground and
+  //     0.252 once its oxide dust is counted, and those two numbers ARE the explanation.
+  if (body.albedoBreakdown) {
+    const ab = body.albedoBreakdown as any;
+    const albInputs: TraceField[] = [
+      {
+        label: mk.gas > 0.5 ? 'Deep atmosphere (no surface)' : 'Bare ground, from the makeup',
+        value: n(ab.bareAlbedo, 3)
+      }
+    ];
+    if (ab.deposit) {
+      albInputs.push({ label: `Deposit on the ground: ${ab.deposit}`, value: `${n(ab.bareAlbedo, 3)} → ${n(ab.surfaceAlbedo, 3)}` });
+    }
+    if ((ab.cloudCover ?? 0) > 0) {
+      albInputs.push({
+        label: `Top cloud deck${ab.cloudSpecies ? ` (${ab.cloudSpecies})` : ''}`,
+        value: `reflects ${n(ab.cloudAlbedo, 2)} over ${pct(ab.cloudCover)} of the sky`
+      });
+    }
+    layers.push({
+      id: 'albedo', title: 'Albedo — how much light it throws back', link: '/physics#albedo',
+      inputs: albInputs,
+      outputs: [
+        { label: 'Surface (ground + deposits)', value: n(ab.surfaceAlbedo, 3) },
+        { label: 'Bond albedo (what the world reflects)', value: n(ab.albedo, 3) }
+      ],
+      notes: [
+        'BARE ROCK IS DARK, and metal is darker than rock — a space-weathered iron regolith is about the darkest natural surface there is, which is why Mercury at 62% metal reflects 0.088 and is the darkest rocky body in the Solar System. What makes a world BRIGHT is what has settled on it.',
+        'Two deposits, both read from physics the engine already derived for other reasons. OXIDE DUST: the ferric fines that make Mars orange, graded from its iron fraction, how oxidising the air is and how long the surface has gone unrepaved. VOLATILE FROST: if the atmosphere\'s dominant gas is below ITS OWN freezing point at the surface it is not really an atmosphere, it is lying on the ground — Io\'s sulphur dioxide freezes at 198 K and Io\'s surface is near 100, which is the whole of its 0.63.',
+        'The rust is worked out INSIDE the temperature solve, not before it, because it has to be: a surface is repaved quickly where there is liquid water and slowly where there is not, so how rusty a world is depends on its temperature and its temperature depends on how rusty it is. That closes a real feedback — colder, water freezes, the lid stops moving, the surface ages, more rust, brighter, colder — which is the same loop that gives Earth its snowball states, so the solve reports any world where it fails to settle instead of presenting a marginal answer as a firm one.',
+        'And a change here propagates: darkening Mars correctly took its equilibrium temperature from 216.7 K to 209.8, which is below the 214.5 K its thin water-ice wisps need to condense — so Mars got its clouds back from an ALBEDO fix, with nothing in the cloud model touched. That chain, makeup → deposits → albedo → temperature → cloud, is the clearest case in the engine of physics driving appearance.'
+      ]
+    });
+  }
+
   layers.push({
     id: 'temperature', title: 'Temperature & tidal heat', link: '/physics#temp-range',
     inputs: [
@@ -324,8 +427,12 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
 
     const band = radiationHazardBucket(body.surfaceRadiation, ctx.pack);
     const time = lethalDoseTime(body.surfaceRadiation, ctx.pack);
-    const where = body.roleHint === 'ring' ? 'In the ring plane'
-      : mk.gas > 0.5 ? 'At the 1-bar level' : 'At the surface';
+    // WHICH PLACE, from the shared helper rather than a third copy of the test (inbox B11). This
+    // used to re-implement it inline — ring / gas>0.5 / else — beside the info block's version and
+    // the processor's, which is exactly the duplication the standing rule is about. It also read
+    // the raw makeup fraction, so an ICE giant fell through and reported a "surface" dose.
+    const place = radiationPlace(body);
+    const where = place.charAt(0).toUpperCase() + place.slice(1);
     const outputs: TraceField[] = [
       { label: where, value: `${dose(body.surfaceRadiation)} — ${band}` },
       { label: 'Time to a lethal dose', value: time ? `~${time}` : 'past 50 years — the acute model says nothing here; this is a chronic cancer risk, not radiation sickness' },
@@ -333,8 +440,16 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       // side by side is two figures a million-fold apart told apart by a suffix.
       { label: 'Photon / particle', value: dosePair(ph, pa) }
     ];
+    // The SECOND figure names its own place too (inbox B27). "Above the atmosphere" read as "the
+    // dose where a ship parks", and Earth's is quoted at the INNER EDGE OF THE BELTS — 1,262 km up,
+    // where the figure is four thousand times what the ISS takes at 400 km, because low orbit sits
+    // BENEATH the belts. The altitude is derived per body from where its own air stops absorbing.
     if (typeof orbital === 'number' && orbital > body.surfaceRadiation * 1.5) {
-      outputs.push({ label: 'Above the atmosphere', value: `${dose(orbital)} — ${radiationHazardBucket(orbital, ctx.pack)}` });
+      const op = orbitalRadiationPlace(body);
+      outputs.push({
+        label: op.charAt(0).toUpperCase() + op.slice(1),
+        value: `${dose(orbital)} — ${radiationHazardBucket(orbital, ctx.pack)}`
+      });
     }
 
     layers.push({
@@ -343,7 +458,8 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       notes: [
         'Two channels, shielded differently. PHOTONS (UV, X-ray) are stopped by air alone; PARTICLES (stellar wind, flares, trapped belts) are deflected by a magnetosphere first and then absorbed by whatever air is left. That is why an airless world with a field and a world with air and no field fail in different ways.',
         'A TRAPPED BELT is not a light source and does not obey inverse square. Particles caught by the field of a giant and accelerated by its rotation form a population confined near the planet, so the dose falls off EXPONENTIALLY in host radii: Io and Callisto sit 4.4x apart in distance and five orders of magnitude apart in dose, which no power law fits. The belt is also cut off below an INNER EDGE, because a particle whose mirror point lies in dense air is absorbed within one bounce — without that edge the Van Allen belt around Earth would read at ground level and its surface would come out lethal.',
-        'A body with no surface reports TWO figures rather than one, and the difference is the point: Jupiter is a few mSv/yr at its 1-bar reference level and hundreds of Sv/day in the space above it. One number cannot answer both "what does the ground take" and "what does a ship take".'
+        'A body with no surface reports TWO figures rather than one, and the difference is the point: Jupiter is a few mSv/yr at its 1-bar reference level and hundreds of Sv/day in the space above it. One number cannot answer both "what does the ground take" and "what does a ship take".',
+        'EACH FIGURE NAMES ITS OWN PLACE, and for the second one that matters more than it sounds. It is quoted at the INNER EDGE OF THE TRAPPED BELTS, which for Earth is about 1,262 km up — so Earth reads days-to-lethal while the ISS at 400 km takes roughly 150 mSv a year, because low orbit sits BENEATH the belts except over the South Atlantic Anomaly. Read it as "there is a hazardous shell around this world", not as "orbit is lethal here". An airless world has no absorbing layer, so its belt edge is its own surface and the two figures are the same number — which is why only one row shows for Io, Luna or Mercury. A RING reports the ring plane, once, for the same reason: no air to absorb and no field to deflect, so a fragment\'s surface and a ship crossing take the same dose.'
       ]
     });
   }
