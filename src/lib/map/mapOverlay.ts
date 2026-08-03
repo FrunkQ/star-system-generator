@@ -14,7 +14,8 @@ export type MapOverlay =
   | 'scaled'         // polar rings labelled with real distances
   | 'hex'            // hex lattice
   | 'square'         // square lattice
-  | 'traveller-hex'; // hex lattice + Traveller CCRR numbering / subsector lines (2D; 3D draws the lattice)
+  | 'subsector-hex'   // hex lattice + the 8x10 subsector boundaries, NO hex numbering
+  | 'traveller-hex'; // the same, plus the Traveller CCRR hex numbering
 
 export interface MapOverlayOption { value: MapOverlay; label: string }
 
@@ -23,6 +24,7 @@ export const MAP_OVERLAY_OPTIONS: MapOverlayOption[] = [
   { value: 'off',           label: 'None' },
   { value: 'square',        label: 'Square' },
   { value: 'hex',           label: 'Hex' },
+  { value: 'subsector-hex', label: 'Subsector hex' },
   { value: 'traveller-hex', label: 'Traveller hex' },
   { value: 'plain',         label: 'Polar' },
   { value: 'scaled',        label: 'Polar + scale' }
@@ -33,15 +35,28 @@ export const MAP_OVERLAY_OPTIONS: MapOverlayOption[] = [
 // the meaningful overlays are a square grid or polar distance rings, so the system views offer those
 // only. Same vocabulary, filtered per scale — not a second enum.
 export const SYSTEM_OVERLAY_OPTIONS: MapOverlayOption[] =
-  MAP_OVERLAY_OPTIONS.filter((o) => o.value !== 'hex' && o.value !== 'traveller-hex');
+  MAP_OVERLAY_OPTIONS.filter((o) => !isHexFamily(o.value));
 
 // A stored system-scale overlay that predates the above (or a preset shared from a starmap) can still
 // say 'hex' — fold it to the nearest system-meaningful lattice rather than rendering a stray hex grid.
 export function forSystemScale(v: MapOverlay): MapOverlay {
-  return v === 'hex' || v === 'traveller-hex' ? 'square' : v;
+  return isHexFamily(v) ? 'square' : v;
 }
 
-const ALL: MapOverlay[] = ['off', 'plain', 'scaled', 'hex', 'square', 'traveller-hex'];
+const ALL: MapOverlay[] = ['off', 'plain', 'scaled', 'hex', 'square', 'subsector-hex', 'traveller-hex'];
+
+// Every overlay built on the hex lattice — three of them now, so the membership test has a NAME
+// rather than being spelled out at each site and forgotten at one of them.
+export function isHexFamily(v: MapOverlay): boolean {
+  return v === 'hex' || v === 'subsector-hex' || v === 'traveller-hex';
+}
+
+// Does this overlay draw the 8x10 SUBSECTOR boundaries? Both Traveller variants do; they differ
+// only in whether the hexes are NUMBERED. The borders are what make a map read as sectored; the
+// numbers are an addressing scheme, and plenty of tables want the first without the second.
+export function hasSubsectors(v: MapOverlay): boolean {
+  return v === 'subsector-hex' || v === 'traveller-hex';
+}
 
 // Accepts anything that has ever been persisted (including the 2D snap-grid's 'grid'/'none' spellings)
 // and returns a canonical value, so a view never has to guess what it was handed.
@@ -57,7 +72,7 @@ export function normaliseOverlay(v: unknown): MapOverlay {
 // Lattice overlays tile the plane; polar overlays ring the origin. Views that can only do one family
 // (or want to treat Traveller hex as a plain hex lattice, e.g. 3D) branch on these.
 export function isLattice(v: MapOverlay): boolean {
-  return v === 'square' || v === 'hex' || v === 'traveller-hex';
+  return v === 'square' || isHexFamily(v);
 }
 export function isPolar(v: MapOverlay): boolean {
   return v === 'plain' || v === 'scaled';

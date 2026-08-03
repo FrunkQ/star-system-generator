@@ -185,6 +185,16 @@ describe('lattice geometry', () => {
     expect(vs.some(([x, y]) => near(x, 0) && near(Math.abs(y), size)), 'a vertex sits directly above the centre — that is pointy-topped').toBe(false);
   });
 
+  // Three hex overlays now: plain, subsector (borders, no numbers) and Traveller (borders + numbers).
+  // They must all draw the SAME lattice — the difference is what is drawn ON it, not the hexes.
+  it('gives all three hex overlays the same lattice', () => {
+    const o = { cell: 4, originX: 0, originY: 0, half: 80 };
+    const plain = latticeFor('hex', o);
+    expect(latticeFor('subsector-hex', o), 'subsector-hex drew a different lattice').toEqual(plain);
+    expect(latticeFor('traveller-hex', o), 'traveller-hex drew a different lattice').toEqual(plain);
+    expect(plain.length).toBeGreaterThan(10);
+  });
+
   it('numbers Traveller hexes as Grid.svelte does', () => {
     expect(travellerHexLabel(0, 0)).toBe('0101');
     expect(travellerHexLabel(31, 39)).toBe('3240');

@@ -5,6 +5,9 @@
   // cover/starmap/system preview buttons: the 3D view gets the true GLSL filter, DOM views get the
   // CSS approximation (FilterFrame). Edits a DRAFT; Save commits to the campaign.
   import { createEventDispatcher, onMount } from 'svelte';
+  // Grid depth was a checkbox before it was a slider; a preset saved then holds a boolean.
+  // Read both rather than migrate — true becomes a full-depth curtain, false becomes flat.
+  const gridDepthPct = (v: unknown): number => (typeof v === 'number' ? v : v ? 1 : 0);
   import { browser } from '$app/environment';
   import { get } from 'svelte/store';
   import type { System, RulePack } from '$lib/types';
@@ -405,8 +408,12 @@
                 <!-- The lattice is FLAT by default. This adds the depth cue: each grid line at full
                      intensity with a short curtain fading away beneath it. Only on the tilted 3D map —
                      the 2D starmap is the same renderer locked overhead, where a curtain is edge-on. -->
-                {#if draft.starmapView === 'holo3d'}
-                  <label class="chk"><input type="checkbox" bind:checked={draft.starmapGridDepth} /> Grid depth</label>
+                <!-- The z-axis curtain: each grid line at full intensity with a skirt fading away
+                     BELOW it, which is what gives the lattice its dimensional look. 3D only — the 2D
+                     starmap is this renderer locked overhead, where a curtain is edge-on and invisible.
+                     A slider rather than a switch: how deep it hangs is the whole of the effect. -->
+                {#if draft.starmapView === 'holo3d' && draft.grid !== 'off'}
+                  <label>Grid depth <span>{Math.round(gridDepthPct(draft.starmapGridDepth) * 100)}%</span><input type="range" min="0" max="1" step="0.05" value={gridDepthPct(draft.starmapGridDepth)} on:input={(e) => (draft.starmapGridDepth = +e.currentTarget.value)} /></label>
                 {/if}
                 <!-- G4: one dial for every overlay type, polar included — near cells bright, falling
                      away with distance so the grid reads as ground rather than fighting the map. -->
@@ -731,7 +738,7 @@
             {:else if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
               <!-- BOTH map views are the same engine (2D = it locked flat) and run the real shader
                    themselves — mirroring the live player view exactly, so this preview can't drift. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={draft.starmapGridDepth === true} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
                 flat={draft.starmapView === 'diagram2d'}
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
                 background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />

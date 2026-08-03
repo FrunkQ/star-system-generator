@@ -15,10 +15,11 @@
   // which excluded the two lattice types the preset can actually hold — a preset saying 'square'
   // was being passed to a prop whose type said that value did not exist (inbox A37).
   export let grid: MapOverlay = 'plain';
-  // Opt-in depth under the lattice: the line at full intensity with a short curtain fading away
-  // below it. OFF by default — the lattice is flat, which is what the overhead 2D starmap wants
-  // and what a plan view reads as. Only meaningful on a tilted 3D map.
-  export let gridDepth = false;
+  // How far each grid line drops a curtain below itself, 0 (flat lattice) .. 1. The line stays at
+  // full intensity and the curtain fades away downward. 0 by default — a plan view reads as flat, and
+  // the overhead 2D starmap sees a curtain edge-on regardless. Only meaningful on a tilted 3D map,
+  // and forced to 0 in `flat` mode so the 2D view cannot pick it up by accident.
+  export let gridDepth = 0;
   // G4: how hard the grid fades with distance. 0 = even brightness across the field, 1 = bright
   // near cells falling away fast. Applies to every overlay type, polar included.
   export let gridFalloff = 0.5;
@@ -81,7 +82,7 @@
     controller.setMapGrid(mapGrid); // before setData: setData's rebuildGrid uses the fresh fit transform
     controller.setData(smSystems, smRoutes);
     controller.setGrid(grid);
-    controller.setGridSkirt(gridDepth && !flat);
+    controller.setGridSkirt(flat ? 0 : gridDepth);
     controller.setGridFalloff(gridFalloff);
     controller.setZExaggeration(zExaggeration); // display-only depth stretch
     controller.setBackground(background);

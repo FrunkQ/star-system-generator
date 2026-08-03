@@ -148,7 +148,7 @@ export interface PlayerPreset {
   // to the map's spread, so this exaggerates it for clarity. Never affects distances.
   zExaggeration?: number;
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
-  starmapGridDepth?: boolean; // 3D starmap: a depth curtain under each grid line (off = flat lattice)
+  starmapGridDepth?: number; // 3D starmap: how far each grid line drops a curtain, 0 (flat) .. 1
   starmapGridFalloff?: number; // starmap grid: distance fade, 0 (even) .. 1 (bright near, gone by the edge)
   gridFalloff?: number; // SYSTEM-stage ground grid: same dial, defaulted 0 so that view is unchanged unless asked
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters

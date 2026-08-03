@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.378-beta - 2nd Aug 2026
+
+* **Hex numbering covers the subsectors that have something in them, and covers them WHOLE.** It used to stop dead after four hundred hexes, filling the left of the map and leaving the right bare. Now a subsector with a star in it gets its full grid addressed and an empty one gets none -- the numbers are there to give you a reference frame around what is on the map, and blank space does not need one.
+* **A new "Subsector hex" overlay: the boundaries without the numbers**, for maps that want to read as sectored without the addressing.
+* **Grid depth is a slider, not a switch** -- how far the curtain hangs below each grid line is the whole of the effect, so it is worth being able to dial. Still 3D only; the 2D starmap sees a curtain edge-on.
+
 ## v2.1.377-beta - 2nd Aug 2026
 
 * **Every grid in the app is now drawn by one piece of geometry.** The system view had its own private copy, and its hexes were the wrong way up -- pointy-topped where the GM map and both starmaps are flat-topped. It never showed, because system-scale hexes are folded to squares before they can be drawn, but it was one decision away from showing. Deleted rather than kept.

@@ -136,7 +136,7 @@ export function hexLattice(o: LatticeOpts): LatticeEdge[] {
 /** The lattice for any overlay type. Polar and "off" have no lattice and return nothing. */
 export function latticeFor(type: MapOverlay, o: LatticeOpts): LatticeEdge[] {
   if (type === 'square') return squareLattice(o);
-  if (type === 'hex' || type === 'traveller-hex') return hexLattice(o);
+  if (type === 'hex' || type === 'subsector-hex' || type === 'traveller-hex') return hexLattice(o);
   return [];
 }
 

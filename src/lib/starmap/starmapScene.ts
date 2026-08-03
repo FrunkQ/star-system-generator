@@ -28,7 +28,7 @@ export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?
 // WS3: the shared overlay vocabulary (see lib/map/mapOverlay.ts). Re-exported under the historic name
 // so existing importers keep working.
 export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
-import { isLattice as isLatticeMode, normaliseOverlay, type MapOverlay } from '$lib/map/mapOverlay';
+import { isLattice as isLatticeMode, normaliseOverlay, isHexFamily, hasSubsectors, type MapOverlay } from '$lib/map/mapOverlay';
 import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
@@ -210,7 +210,9 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // The flat "2D map" is the PLAN view: depth collapses entirely, so a system's marker never drifts off
   // its map position and the 2D view stays pixel-honest against the GM map. Depth is a 3D-only reading.
   let flatMode = false;
-  let gridSkirt = false;   // opt-in depth curtain under each lattice line (3D starmap only)
+  // How far the depth curtain drops below each grid line, 0..1 (0 = flat lattice). The old always-on
+  // curtain was the equivalent of about 0.5 here, so that is the value that reproduces it.
+  let gridSkirt = 0;
   // G4: how hard the grid fades with distance from the focus. 0 = flat brightness everywhere,
   // 1 = the near cells are bright and it is gone by the edge of the field. The numbers it maps to
   // live here rather than being sprinkled through the renderer, and the DIAL is preset data.
@@ -288,14 +290,14 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // Alpha rides a vec4 colour attribute, so one draw call carries the whole gradient.
   function addLattice(
     edges: [number, number, number, number][], col: THREE.Color, cell: number, fadeFrom: number, fadeTo: number,
-    o: { alpha?: number; ribbon?: number; skirt?: boolean } = {}
+    o: { alpha?: number; ribbon?: number; skirt?: number } = {}
   ) {
     const A = o.alpha ?? 0.42;                       // line alpha at full strength
     // THE LATTICE IS FLAT unless the skirt is asked for. Each edge used to drop a short curtain
     // ALWAYS, which reads as depth on a tilted 3D map and as fuzz on a flat one — and the 2D starmap
     // is this same renderer locked overhead, so it was paying for a depth cue it can never show.
     // Now it is a choice ("Grid depth" on the 3D starmap): line at full intensity, fading downward.
-    const depth = Math.max(0.01, cell * 0.18);       // curtain drop — deliberately shallow; full-height read as too intense
+    const depth = Math.max(0.01, cell * 0.36 * (o.skirt ?? 0)); // drop scales with the dial; 0.5 is the historical look
     const y0 = 0.01;
     const fade = (x: number, z: number) => {
       const d = Math.hypot(x, z);
@@ -319,7 +321,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         pushC(sc, a1); pushC(sc, a2); pushC(sc, a2);
         sp.push(x1 - nx, y0, z1 - nz, x2 + nx, y0, z2 + nz, x1 + nx, y0, z1 + nz);
         pushC(sc, a1); pushC(sc, a2); pushC(sc, a1);
-      } else if (o.skirt) {
+      } else if ((o.skirt ?? 0) > 0.001) {
         // Curtain: two triangles, full alpha along the top edge fading to zero at the bottom.
         sp.push(x1, y0, z1, x2, y0, z2, x2, y0 - depth, z2);
         pushC(sc, a1 * 0.55); pushC(sc, a2 * 0.55); pushC(sc, 0);
@@ -374,7 +376,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // Squares take the THINNED cell (they are drawn per grid line, so a dense map is skipped through);
     // hexes take the true cell, exactly as before — a hex lattice cannot be thinned without moving the
     // centres a system is snapped to. Keeping those separate is what makes hex render unchanged.
-    const isHex = cfg.type === 'hex' || cfg.type === 'traveller-hex';
+    const isHex = isHexFamily(cfg.type);
     const sizeS = (cfg.size / 2) * mapK;                      // hex radius, centre to L/R vertex
     if (isHex && (1.5 * sizeS < 0.06 || Math.sqrt(3) * sizeS < 0.06)) return;  // too dense to be useful
     const geo = { cell: isHex ? cfg.size * mapK : cell, originX, originY: originZ, half, maxSegment: cell };
@@ -390,11 +392,34 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       // is still a LEGIBILITY gate, just set where a number is actually readable rather than where it
       // is comfortable.
       if (hd >= 0.22) {
-        let hexLabels = 0;
-        for (const c of hexCentres(geo)) {
-          if (hexLabels >= HEX_LABEL_CAP) break;
-          const sp = makeHexNumber(travellerHexLabel(c.col, c.row), hh * 0.22);
-          if (sp) { sp.position.set(c.x, 0.03, c.y - hh * 0.3); gridGroup.add(sp); hexLabels++; }
+        // NUMBER THE POPULATED SUBSECTORS, WHOLE — not every hex on the field, and not only the hexes
+        // that hold a star. A blank subsector carries no information and numbering it is just noise;
+        // a subsector with something in it gets its full 8x10 addressed, because the point of the
+        // numbering is to give a REFERENCE FRAME around what is there, and half a numbered block is
+        // no frame at all.
+        //
+        // It also replaces a cap that was doing real damage: the old code stopped after 400 sprites in
+        // ITERATION order, column by column from the left, so on a field of more than 400 hexes the
+        // numbering filled the left of the map and simply stopped. Selecting by content rather than
+        // truncating by count means the labels that survive are the ones a reader wanted.
+        const subKey = (col: number, row: number) => `${Math.floor(col / 8)},${Math.floor(row / 10)}`;
+        const populated = new Set<string>();
+        for (const sys of lastData?.systems ?? []) {
+          const col = Math.round(((sys.x ?? 0) * mapK) / hd);
+          const zBase = (Math.abs(col) % 2) * (hh / 2);
+          const row = Math.round(((sys.y ?? 0) * mapK - zBase) / hh);
+          populated.add(subKey(col, row));
+        }
+        if (populated.size) {
+          const centres = hexCentres(geo)
+            .filter((c) => populated.has(subKey(c.col, c.row)))
+            .map((c) => ({ c, d: Math.hypot(c.x, c.y) }))
+            .sort((p, q) => p.d - q.d)
+            .slice(0, HEX_LABEL_CAP);        // backstop only; the filter above does the real work
+          for (const { c } of centres) {
+            const sp = makeHexNumber(travellerHexLabel(c.col, c.row), hh * 0.22);
+            if (sp) { sp.position.set(c.x, 0.03, c.y - hh * 0.3); gridGroup.add(sp); }
+          }
         }
       }
     }
@@ -412,7 +437,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // the hexes are large, but these are sparse (every 8th column, every 10th row) and read at any
     // zoom. Drawn as RIBBONS, because THREE ignores line thickness on nearly every platform. Brighter
     // than the lattice and never skirted — a heavier line, not a deeper one.
-    if (cfg.type === 'traveller-hex') {
+    if (hasSubsectors(cfg.type)) {
       const subs = subsectorLattice(geo) as [number, number, number, number][];
       addLattice(subs, base.clone().multiplyScalar(0.85), cell, fw.from, fw.to,
         { alpha: 0.7, ribbon: Math.max(0.012, sizeS * 0.075) });
@@ -468,7 +493,12 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     addLattice(spokeEdges, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: false });
   }
   function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
-  function setGridSkirt(on: boolean) { if (on === gridSkirt) return; gridSkirt = on; rebuildGrid(); }
+  function setGridSkirt(v: number) {
+    const n = Math.max(0, Math.min(1, v || 0));
+    if (n === gridSkirt) return;
+    gridSkirt = n;
+    rebuildGrid();
+  }
   function setGridFalloff(v: number) { if (v === gridFalloff) return; gridFalloff = v; rebuildGrid(); }
   // Rebuilds the content because depth is baked into the placed geometry (positions, drop-lines,
   // route lines). Cheap at starmap scale and keeps one code path for placement.
