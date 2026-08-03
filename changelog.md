@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.400-beta - 3rd Aug 2026
+
+* G3 true-scale polish from live testing. (1) Orbit-line VIBRATION at ship scale fixed - the A23 refinement's floors (sag tolerance 1e-12, concentration 0.002) clamped the dense arc ~3x coarser than the budget at a 100 m working distance, so every re-centre jumped the line; floors lowered to 1e-13 / 1e-5. (2) The ship now faces its orbit line at true scale - the heading guard was an absolute epsilon that swallowed metre-per-frame motion; it is now 0.1% of the hull length. (3) THE BODY-SIZE DIAL IS LOG-SPACED NOW, for bodies, stars and ships alike: sizes interpolate geometrically (true^(1-v) x readable^v), so every step multiplies size by a constant ratio - the 20-90% dead zone is gone and the 0-5% cliff is spread across the travel. THIS CHANGES MID-DIAL LOOKS IN EXISTING PRESETS (readable and true endpoints unchanged). Ships shed size faster than planets automatically (bigger readable-to-true ratio), replacing the squared-weight hack. (4) The import modal now shows BOTH alignment arrows, labelled: orange = rear of ship (main drive), green = direction of travel.
+
 ## v2.1.399-beta - 3rd Aug 2026
 
 * G3 scale corrections from live testing: constructs now shrink FASTER than planets down the body-size dial (squared blend weight - at 5% a station reads near its real size instead of half an Earth, handing to its icon when too small), and the true-scale blackout is fixed - the camera near-plane floor (1e-8) sat ABOVE the framing distance of a 100 m ship, clipping the whole scene; it now follows the framing all the way down (1e-11). The drive plume's light reach also scales with the hull, so a burning shuttle no longer lights planets.

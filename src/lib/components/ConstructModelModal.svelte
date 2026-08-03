@@ -127,8 +127,10 @@
           <button type="button" on:click={resetOrient} disabled={!parsed || isIdentity(orient)}>Reset</button>
         </div>
         <div class="drive-hint">
-          Turn the ship so its <strong>main drive</strong> (engines) faces the orange arrow &mdash;
-          the map flies it nose-first the other way, engines aft. Drag to inspect from any side.
+          <span class="aft">Orange arrow = rear of ship</span> &mdash; turn the hull so its
+          <span class="aft">main drive</span> (engines) points into it.
+          <span class="fwd">Green arrow = direction of travel</span>, out past the nose.
+          Drag to inspect from any side.
         </div>
       </div>
 
@@ -222,7 +224,8 @@
   .orient-row .lbl { font-size: 0.85em; color: #9aa4b4; }
   .orient-row button { padding: 3px 10px; }
   .drive-hint { font-size: 0.8em; color: #9aa4b4; margin-top: 6px; max-width: 280px; }
-  .drive-hint strong { color: #ff8c3a; }
+  .drive-hint .aft { color: #ff8c3a; }
+  .drive-hint .fwd { color: #4ade80; }
   .form-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
   .pick { padding: 8px; }
   .stats { font-size: 0.85em; color: #9aa4b4; display: flex; flex-direction: column; gap: 3px; }

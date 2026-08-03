@@ -581,6 +581,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   // Rendered sphere radius for a body, blending its readable size toward its true physical size.
+  // GEOMETRIC dial blend (owner request, 2026-08-03): sizes interpolate in LOG space -
+  // true^(1-v) * readable^v - so every step of the slider multiplies the size by a constant
+  // RATIO. The old linear blend spent 20%-90% of the travel looking near-identical (the readable
+  // term dominates a 1e-5 true radius almost immediately) and crammed the whole true-scale
+  // transition into 0-5%. Log spacing spreads the change evenly across the dial, and as a free
+  // consequence ships shrink faster than planets at equal settings - their readable-to-true
+  // ratio is larger, so each step multiplies them down harder.
+  function dialBlend(trueScene: number, readable: number): number {
+    const t = Math.max(1e-12, trueScene);
+    const r = Math.max(1e-12, readable);
+    return Math.exp(Math.log(t) * (1 - bodySize) + Math.log(r) * bodySize);
+  }
+
   function bodyRadiusScene(node: any, systemLevel: boolean): number {
     const readable = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
     if (bodySize >= 0.999) return readable;
@@ -592,7 +605,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // for — 0.006 sat above every real body's true radius (Earth 1.1e-5, even Sol 1.2e-3), so Sol,
     // Jupiter, Earth and Luna all drew at the identical clamped size. The camera adapts instead: the
     // near plane and minimum zoom follow the framed body's size (see the render loop / focusBody).
-    return Math.max(1e-7, trueScene * (1 - bodySize) + readable * bodySize);
+    return Math.max(1e-7, dialBlend(trueScene, readable));
   }
 
   // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
@@ -601,7 +614,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (bodySize >= 0.999) return STAR_RADIUS;
     const km = node.physical_parameters?.radiusKm || node.radiusKm || 696000;
     const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-    return Math.max(1e-7, trueScene * (1 - bodySize) + STAR_RADIUS * bodySize); // true size; pixel floor at draw time (see bodyRadiusScene)
+    return Math.max(1e-7, dialBlend(trueScene, STAR_RADIUS)); // true size; pixel floor at draw time (see bodyRadiusScene)
   }
 
   function rebuildContent() {
@@ -1018,9 +1031,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (period > 0 && dNear <= camDist * RING_ADAPT_NEAR) {
       // Chord sag over one facet is R*dTheta^2/8 with dTheta = 2*pi*s/N, so invert that for the tolerance.
       const curveR = Math.max(1e-9, Math.hypot(r.abs[bi], r.abs[bi + 1], r.abs[bi + 2]));
-      const tol = Math.max(1e-12, camDist * RING_SAG_FRAC);
+      // Floors lowered for SHIP-scale focus (G3): at a 100 m working distance (~1e-9 units) the
+      // old floors (tol 1e-12, s 0.002) clamped the refinement ~3x coarser than the sag budget,
+      // so every dense-arc re-centre jumped the line by a visible fraction of the view - the
+      // "orbit lines vibrate" report, the A23 fault one scale further down.
+      const tol = Math.max(1e-13, camDist * RING_SAG_FRAC);
       s = (ORBIT_SAMPLES * Math.sqrt((8 * tol) / curveR)) / (2 * Math.PI);
-      s = Math.max(0.002, Math.min(1, s));
+      s = Math.max(1e-5, Math.min(1, s));
     }
     if (s >= 0.999) { rebaseStaticGeometry(r.obj, r.abs, sceneOrigin); return Infinity; } // uniform: the master stands
     const attr = (r.obj as any).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
@@ -1571,14 +1588,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const readable = Math.min(0.7, Math.max(0.14, 0.16 + 0.1 * (Math.log10(lengthM) - 1)));
     if (bodySize >= 0.999) return readable;
     const trueScene = ((lengthM / 1000) / AU_KM) * (GRID_RADIUS / rMax);
-    // SQUARED dial weight, deliberately steeper than the bodies' linear blend: a ship's readable
-    // marker is planet-comparable by design (legibility), so a linear blend kept hulls absurdly
-    // large deep into the dial - at 5% a 110 m station read half an Earth. Squaring means ships
-    // shed their readability boost faster than planets ("constructs shrink smaller than planets"),
-    // sitting near reality by 5% and honestly 1:1 at 0; the icon takes over whenever that leaves
-    // them under the pixel threshold.
-    const k = bodySize * bodySize;
-    return Math.max(1e-10, trueScene * (1 - k) + readable * k);
+    // Same geometric blend as the bodies (dialBlend): log spacing already shrinks a ship faster
+    // than a planet at equal dial settings, because its readable-to-true ratio is far larger -
+    // which is exactly the owner's "constructs should shrink smaller than planets". The earlier
+    // squared-weight hack this replaces was a linear-blend workaround.
+    return Math.max(1e-10, dialBlend(trueScene, readable));
   }
   const SHIP_MODEL_MIN_PX = 10; // below this the model IS the icon's job
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
@@ -1739,7 +1753,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // Nose-first along its motion (ModelRef convention: nose +Z, drive -Z), wings level to
           // the scene - and FLIPPED during a deceleration burn, because a torch ship brakes
           // engines-first. Holds its last heading when parked or the clock is paused.
-          if (!rebased && _shipDelta.lengthSq() > 1e-14) {
+          // The motion threshold is RELATIVE to the hull, not absolute: at true scale a frame's
+          // travel is metres (~1e-12 units), and the old absolute guard (1e-7) swallowed it -
+          // the ship held a stale heading and ignored its own orbit line. 0.1% of the hull per
+          // frame is real motion at every dial position.
+          const moveEps = Math.max(1e-24, ((b.shipLen ?? 0.2) * 1e-3) ** 2);
+          if (!rebased && _shipDelta.lengthSq() > moveEps) {
             if (burn.braking) _shipDelta.negate();
             b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
           }

@@ -119,13 +119,18 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   scene.add(spinGroup);
 
   if (opts.driveMarker) {
-    // The alignment reference lives BESIDE orientGroup (both inside spinGroup): a view drag turns
-    // ship and arrow together, an orientation fix turns the ship against the arrow - which is the
-    // whole exercise: turn the ship until its engines face the arrow.
-    const arrow = new THREE.ArrowHelper(DRIVE_AXIS, new THREE.Vector3(0, 0, -0.6), 0.4, 0xff8c3a, 0.16, 0.09);
-    (arrow.line.material as THREE.Material).transparent = true;
-    (arrow.line.material as THREE.Material).opacity = 0.9;
-    spinGroup.add(arrow);
+    // The alignment references live BESIDE orientGroup (both inside spinGroup): a view drag turns
+    // ship and arrows together, an orientation fix turns the ship against them - which is the
+    // whole exercise. ORANGE points out the REAR (where the main drive must face); GREEN points
+    // the direction of travel, out past the nose. Labels live in the modal beside the preview.
+    const aft = new THREE.ArrowHelper(DRIVE_AXIS, new THREE.Vector3(0, 0, -0.6), 0.4, 0xff8c3a, 0.16, 0.09);
+    (aft.line.material as THREE.Material).transparent = true;
+    (aft.line.material as THREE.Material).opacity = 0.9;
+    spinGroup.add(aft);
+    const fwd = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0.6), 0.4, 0x4ade80, 0.16, 0.09);
+    (fwd.line.material as THREE.Material).transparent = true;
+    (fwd.line.material as THREE.Material).opacity = 0.9;
+    spinGroup.add(fwd);
   }
 
   let disposed = false;
