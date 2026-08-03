@@ -120,6 +120,23 @@ envelope with `earth-like` — so auto‑assigning is guessing. They stay in the
 | `magnetic/*` | dynamo / induced / tenuous / unshielded | processor (**interior, pass 2b**) |
 | `geology/*` | tectonic + volcanic regime | processor (classification) |
 | `surface/*` | `surface/age`, `surface/irradiation` (space weathering), `surface/oxidised` | processor (classification) |
+| `spin/*` | `spin/axis-inferred`, `spin/period-inferred`, `spin/tipped` | **generation** (all three body-creation routes) |
+
+**`spin/*` IS A PROVENANCE NAMESPACE, and it is the only one.** Every other tag says what a world
+*is*; these say **who worked the number out**. A generated world's axial tilt and rotation period are
+plausible values from the formation model, not measurements, so they are marked — and the mark is
+worth having because its ABSENCE is the claim: Earth's 23.4° and Uranus's 97.8° were observed, and a
+generated neighbour sitting beside them in the same starmap must not read as though somebody had
+been there. `spin/tipped` is the other half and is physical rather than provenance: this world was
+hit hard enough to re-point its axis instead of being nudged from the disc it condensed in.
+
+**What qualifies is decided by one rule, not per field:** does the processor RE-DERIVE the value?
+A value it replaces was never a claim the generator made. So `axial_tilt_deg` is marked (nothing
+re-derives it), `rotation_period_hours` is marked *unless* the body is tidally locked (where the
+lock sets it from the orbit), and the die-rolled `magneticField` is **not** marked at all — the
+magnetism model overwrites it every pass, and a provenance tag there would be both untrue and
+deleted. The decision lives in `generation/spinProvenance.ts` so all three body-creation routes
+answer it identically; a fourth copy is how the rule stops holding.
 
 **`surface/oxidised` also feeds the ALBEDO, and that makes it load-bearing rather than flavour.**
 Ferric dust is what makes Mars bright — 0.25 measured against 0.105 for its bare rock — so the rust
