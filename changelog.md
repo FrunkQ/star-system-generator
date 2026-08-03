@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.380-beta - 2nd Aug 2026
+
+* **The radiation rows fit again.** They read "weeks - 213 Sv/y - lethal dose in ~8.6 days", which was long enough to be cut off and looked like it disagreed with itself -- the word at the front and the figure at the end are two ways of saying the same thing at different resolutions. The row now carries the measurement and a skull marking the time: "213 Sv/y - 8.6 d". The word is still on the radiation tag, where a bucket is useful because you can filter on it.
+
 ## v2.1.378-beta - 2nd Aug 2026
 
 * **Hex numbering covers the subsectors that have something in them, and covers them WHOLE.** It used to stop dead after four hundred hexes, filling the left of the map and leaving the right bare. Now a subsector with a star in it gets its full grid addressed and an empty one gets none -- the numbers are there to give you a reference frame around what is on the map, and blank space does not need one.

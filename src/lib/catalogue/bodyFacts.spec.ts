@@ -39,27 +39,33 @@ describe('bodyFacts — radiation rows say what they are', () => {
 
   it('drops a range whose ends round to the same figure, rather than printing 2.3-2.3', () => {
     const earth: any = { ...mars, surfaceRadiation: 2.3, surfaceRadiationMin: 2.29, surfaceRadiationMax: 2.31, orbitalRadiation: 2.3 };
-    expect(val(earth, 'Radiation (surface)')).toBe('background · 2.3 mSv/y');  // no lethal-dose phrase: the acute model says nothing here
+    expect(val(earth, 'Radiation (surface)')).toBe('2.3 mSv/y');  // no mark: the acute model says nothing here
   });
 
   // B28: the band is the same bucketing the `hazard/radiation` tag uses, and it has to SEPARATE a
   // real mission dose from a lethal one. The old three-band split called Mars and Io both "high",
   // sixty thousand times apart.
-  it('does not describe Mars and Io with the same word', () => {
+  // The bucket WORD left the row and lives on the `hazard/radiation` tag alone: the word and the
+  // figure are two resolutions of one quantity, and printing both made the row look self-contradictory
+  // ("weeks ... lethal dose in ~8.6 days") as well as long enough to truncate. What the row must still
+  // do is separate a mission-planning dose from a lethal one, which it does with the figure.
+  it('separates a mission dose from a lethal one, without a bucket word', () => {
     const io: any = { ...mars, name: 'Io', surfaceRadiation: 13139475 };
-    const marsBand = val(mars, 'Radiation (surface)')!.split(' ·')[0];
-    const ioBand = val(io, 'Radiation (surface)')!.split(' ·')[0];
-    expect(marsBand).toBe('years');   // ~23 years to a median lethal dose — a mission-planning problem
-    expect(ioBand).toBe('hours');     // ~3 hours — a different kind of problem entirely
+    const marsRow = val(mars, 'Radiation (surface)')!;
+    const ioRow = val(io, 'Radiation (surface)')!;
+    expect(marsRow).not.toMatch(/^(years|hours|weeks|months|days|chronic|background)/);
+    expect(marsRow).toContain('y');        // ~23 years to a median lethal dose
+    expect(ioRow).toContain('Sv/day');
+    expect(ioRow).toMatch(/ h$/);          // ~3 hours — a different kind of problem entirely
   });
 
   // B30: the bucket word is a survival time, and the sentence spells it out once — but only while
   // the acute model means anything. "Earth: 2,000 years" is arithmetic, not a prediction.
   it('spells out the survival time, and stops quoting one when it would be nonsense', () => {
     const io: any = { ...mars, name: 'Io', surfaceRadiation: 13139475 };
-    expect(val(io, 'Radiation (surface)')).toMatch(/lethal dose in ~3(\.\d)? h/);
+    expect(val(io, 'Radiation (surface)')).toMatch(/☠︎ 3(\.\d)? h$/);
     const earth: any = { ...mars, surfaceRadiation: 2.3 };
-    expect(val(earth, 'Radiation (surface)')).not.toContain('lethal dose');
+    expect(val(earth, 'Radiation (surface)')).not.toContain('☠');
   });
 
   // B26: three kinds of body, not two. A ring has no surface to stand on, but unlike a giant's

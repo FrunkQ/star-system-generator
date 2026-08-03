@@ -5,7 +5,7 @@ import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
-import { radiationHazardBucket, lethalDosePhrase } from '$lib/physics/radiation';
+import { radiationHazardBucket, lethalDoseTime, LETHAL_MARK } from '$lib/physics/radiation';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -378,11 +378,13 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
     const lo = typeof min === 'number' ? f(min) : null;
     const hi = typeof max === 'number' ? f(max) : null;
     const range = lo !== null && hi !== null && lo !== hi ? ` (${lo}–${hi})` : '';
-    // The bucket word is the survival time; the sentence spells it out once, in round figures, for
-    // whoever has not learned the ladder yet (inbox B30). Dropped entirely once the acute model
-    // stops meaning anything, rather than quoting two thousand years at a reader.
-    const phrase = lethalDosePhrase(mean, ctx.rulePack);
-    return `${radBand(mean)} · ${f(mean)} ${unit}${range}${phrase ? ` · ${phrase}` : ''}`;
+    // NO LEADING BUCKET WORD. It read "weeks · 213 Sv/y · lethal dose in ~8.6 days" — the word and
+    // the figure are two resolutions of ONE quantity, so putting both on one line made the row look
+    // like it disagreed with itself, and made it long enough to truncate. The word is still carried
+    // by the `hazard/radiation` tag, which is where a bucket is useful because it can be filtered on.
+    // The row carries the measurement, and the skull marks what the time beside it means.
+    const time = lethalDoseTime(mean, ctx.rulePack);
+    return `${f(mean)} ${unit}${range}${time ? ` · ${LETHAL_MARK} ${time}` : ''}`;
   }
   if (typeof any.surfaceRadiation === 'number') {
     add(`Radiation (${radiationPlace(b)})`,

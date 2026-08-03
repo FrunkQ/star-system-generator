@@ -11,7 +11,7 @@ import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
 import { auroraEmitter } from './aurora';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
-import { beltInnerEdgeRadii, radiationHazardBucket, lethalDosePhrase } from './radiation';
+import { beltInnerEdgeRadii, radiationHazardBucket, lethalDoseTime } from './radiation';
 
 export interface TraceField { label: string; value: string; }
 export interface TraceLayer {
@@ -323,12 +323,12 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     inputs.push({ label: 'Atmosphere blocks', value: `${pctFine(shieldAtmo)} of what reaches it` });
 
     const band = radiationHazardBucket(body.surfaceRadiation, ctx.pack);
-    const phrase = lethalDosePhrase(body.surfaceRadiation, ctx.pack);
+    const time = lethalDoseTime(body.surfaceRadiation, ctx.pack);
     const where = body.roleHint === 'ring' ? 'In the ring plane'
       : mk.gas > 0.5 ? 'At the 1-bar level' : 'At the surface';
     const outputs: TraceField[] = [
       { label: where, value: `${dose(body.surfaceRadiation)} — ${band}` },
-      { label: 'Time to a lethal dose', value: phrase ? phrase.replace('lethal dose in ~', '~') : 'past 50 years — the acute model says nothing here; this is a chronic cancer risk, not radiation sickness' },
+      { label: 'Time to a lethal dose', value: time ? `~${time}` : 'past 50 years — the acute model says nothing here; this is a chronic cancer risk, not radiation sickness' },
       // ONE unit for the pair, chosen from the larger — the A33 rule. Printing '17 mSv/yr / 36 Sv/day'
       // side by side is two figures a million-fold apart told apart by a suffix.
       { label: 'Photon / particle', value: dosePair(ph, pa) }

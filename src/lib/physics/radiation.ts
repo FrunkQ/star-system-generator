@@ -74,20 +74,32 @@ export function radiationHazardBucket(mSvPerYear: number, rulePack?: RulePack | 
     return 'years';
 }
 
-// A short, round phrase for the same figure — the legibility aid the bucket word summarises. Returns
-// null once the acute model stops meaning anything, rather than quoting a number nobody lives to
-// test. Deliberately coarse: this is a guide, not an engineering figure.
-export function lethalDosePhrase(mSvPerYear: number, rulePack?: RulePack | null): string | null {
+// The time to a lethal dose, as SHORT as it can be said. Returns null once the acute model stops
+// meaning anything, rather than quoting a number nobody lives to test. Deliberately coarse: this is
+// a guide, not an engineering figure.
+//
+// TERSE BY DESIGN, and the reason is worth keeping. The row used to lead with the bucket WORD and end
+// with a full sentence — "weeks · 213 Sv/y · lethal dose in ~8.6 days" — long enough to be truncated
+// on a normal panel, and reading as self-contradictory because the word and the figure are two
+// resolutions of one quantity sitting inches apart. The word belongs on the TAG, where it is a
+// filterable bucket; the ROW carries the figure.
+export function lethalDoseTime(mSvPerYear: number, rulePack?: RulePack | null): string | null {
     const years = yearsToLethalDose(mSvPerYear, rulePack);
     if (!Number.isFinite(years) || years > ACUTE_MODEL_LIMIT_YEARS) return null;
     const hours = years * 365 * 24;
     const round = (v: number) => (v < 10 ? Math.round(v * 10) / 10 : Math.round(v));
-    if (hours < 48) return `lethal dose in ~${round(hours)} h`;
+    if (hours < 48) return `${round(hours)} h`;
     const days = hours / 24;
-    if (days < 60) return `lethal dose in ~${round(days)} days`;
-    if (years < 2) return `lethal dose in ~${round(days / 30.44)} months`;
-    return `lethal dose in ~${round(years)} years`;
+    if (days < 60) return `${round(days)} d`;
+    if (years < 2) return `${round(days / 30.44)} mo`;
+    return `${round(years)} y`;
 }
+
+// The mark that says "this is a time to a LETHAL dose" without spending eleven characters saying it.
+// U+2620 with the TEXT variation selector, so it stays a glyph drawn in the page's own ink rather
+// than being substituted with a colour emoji — a player view runs through a CRT/phosphor filter, and
+// a full-colour skull would be the one thing on screen the filter never touched.
+export const LETHAL_MARK = '\u2620\uFE0E';
 
 // Photon (UV/visible/IR) vs particle (stellar wind / protons / flares) split by spectral
 // class. Cool dwarfs are wind/flare-dominated, so their particle fraction is much higher —
