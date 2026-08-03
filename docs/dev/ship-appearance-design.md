@@ -400,11 +400,17 @@ is Phase 1, the bundled set is last.
 **STATUS 2026-08-03: Phase 1 BUILT at v2.1.387-394-beta** (modules: `constructs/modelStore.ts`,
 `modelImport.ts`, `modelConvert.ts`, `modelViewer.ts`, `modelTransfer.ts`;
 `components/ConstructModelModal.svelte`, `ConstructModelGraphic.svelte`; builder + both document
-consumers). Two deliberate deviations from the letter of Phase 1, both recorded as inbox
-findings: export/.json embedding is helper-ready but unwired (its call sites sat in another
-session's live file), and the broadcast fetch-by-hash for remote players is deferred to the VTT
-stream's territory — same-machine players work today via the shared origin store, and a missing
-binary degrades to the icon glyph. Phases 2-4 not started.
+consumers), **then extended the same day by two owner-directed rounds (v2.1.396-397)** after
+live testing: export embedding and the broadcast fetch-by-hash both landed (the hot files
+cleared); the GM construct pane gained the picture chain (`ConstructPortrait`); the chain became
+MODEL-first (model > photo > glyph) on the owner's instruction; the modal aligns by the main
+drive (convention: NOSE +Z, DRIVE -Z on `ModelRef.orient`); and the SCENE HALF of section 6
+shipped early for the player view on explicit owner direction — the focused construct's hull
+replaces its glyph under standard framing, nose-first along its motion, flipped while braking,
+with a stern plume scaled to the fraction of the ship's own drive capability in use. All
+section 6 conditions hold (marker-only, zero radius contribution, 2D keeps the glyph). Banked
+follow-ups are on the inbox board: nozzle-placement picker, per-construct finish selector,
+wire-style parity for hulls, plume colour as pack data.
 
 - **Phase 0 — A30 interim (independent, do now):** glyph-at-size info-block for constructs.
 - **Phase 1 — upload + viewer, all three formats:** `model?: ModelRef` (`{ hash|url, name,
