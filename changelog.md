@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.373-beta - 2nd Aug 2026
+
+* **A Traveller hex map looks like one again.** It was drawing the same picture as a plain hex grid: the numbers only appeared on hexes bigger than a twenty-fourth of the whole map, so in practice never, and the subsector boundaries did not exist in the starmap renderer at all. Both are there now -- the heavy 8x10 boundary lines, with the proper zig-zag down the column edge, and numbers that show at readable sizes.
+* **Grids are flat.** Every grid line used to hang a short curtain beneath it whether you wanted it or not, which is a depth cue the overhead 2D map can never show.
+* **"Grid depth" is now a checkbox on the 3D starmap** -- the line at full brightness with the curtain fading away below it, for anyone who liked the old look.
+
 ## v2.1.372-beta - 3rd Aug 2026
 
 * **Worlds are the brightness they actually measure.** Bare rock was one flat value for everything, which made airless rock too bright and dusty or frosted worlds far too dark. Now the ground is dark — Mercury reflects 0.088 and Luna 0.11, matching the real figures — and what makes a world bright is what has settled on top of it.
