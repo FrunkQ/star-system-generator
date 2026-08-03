@@ -2,8 +2,11 @@
 //
 // One generator, because the alternative is what A34 found with the construct icons: four copies of a
 // shape vocabulary, agreeing by luck until one of them quietly did not. The 3D starmap scene
-// (starmapScene.renderMapGrid) and the 2D starmap view both consume this, so a GM switching between
-// them sees the SAME lattice rather than two implementations that happen to line up.
+// (starmapScene.renderMapGrid), the 2D starmap view and the SYSTEM view's ground plate
+// (holo/scene.ts) all consume this, so a GM switching between them sees the SAME lattice rather
+// than implementations that happen to line up. There is exactly one hex convention here and it is
+// FLAT-TOPPED; the system view's pointy-topped copy was deleted when this landed, unreachable and
+// already wrong.
 //
 // Coordinates are the MAP's own, and the caller applies its own transform — the 3D scene multiplies by
 // its fit (scene = (map - centre) * k), the 2D view by its pan/zoom. Nothing here knows about either.
@@ -34,6 +37,13 @@ export interface LatticeOpts {
   maxSegment?: number;
   /** Hard cap on rows/columns, so a tiny cell on a huge map cannot spawn unbounded geometry. */
   maxLines?: number;
+  /**
+   * Clip the lattice to a DISC of this radius about the origin rather than filling the square extent.
+   * The system view's ground grid is a disc — it reads as a plate under the orrery — while a starmap
+   * lattice fills its field. Same geometry, different boundary, so it is an option rather than a
+   * second generator.
+   */
+  clipRadius?: number;
 }
 
 const DEFAULT_MAX_LINES = 400;
@@ -58,13 +68,27 @@ export function squareLattice(o: LatticeOpts): LatticeEdge[] {
   if (!(cell > 0) || !(half > 0)) return [];
   const cap = o.maxLines ?? DEFAULT_MAX_LINES;
   const edges: LatticeEdge[] = [];
+  const R = o.clipRadius;
+  // A clipped line runs only as far as the disc allows at its own offset — the same chord the system
+  // view has always drawn (half = sqrt(R^2 - c^2)).
+  const chord = (c: number): number | null => {
+    if (!R) return half;
+    const h = Math.sqrt(Math.max(0, R * R - c * c));
+    return h > 0 ? Math.min(half, h) : null;
+  };
   const nx0 = Math.ceil((-half - originX) / cell), nx1 = Math.floor((half - originX) / cell);
   const ny0 = Math.ceil((-half - originY) / cell), ny1 = Math.floor((half - originY) / cell);
   for (let n = nx0; n <= Math.min(nx1, nx0 + cap); n++) {
-    edges.push(...runSegments(originX + n * cell, -half, half, false, o.maxSegment));
+    const x = originX + n * cell;
+    const ext = chord(x);
+    if (ext === null) continue;
+    edges.push(...runSegments(x, -ext, ext, false, o.maxSegment));
   }
   for (let n = ny0; n <= Math.min(ny1, ny0 + cap); n++) {
-    edges.push(...runSegments(originY + n * cell, -half, half, true, o.maxSegment));
+    const y = originY + n * cell;
+    const ext = chord(y);
+    if (ext === null) continue;
+    edges.push(...runSegments(y, -ext, ext, true, o.maxSegment));
   }
   return edges;
 }
@@ -84,7 +108,8 @@ export function hexCentres(o: LatticeOpts): { col: number; row: number; x: numbe
     const yBase = originY + (Math.abs(col) % 2) * (hh / 2);
     for (let row = Math.max(rowLo, rowHi - cap); row <= rowHi; row++) {
       const y = yBase + row * hh;
-      if (Math.abs(x) > half + size || Math.abs(y) > half + hh) continue;
+      if (o.clipRadius) { if (Math.hypot(x, y) > o.clipRadius + size) continue; }
+      else if (Math.abs(x) > half + size || Math.abs(y) > half + hh) continue;
       out.push({ col, row, x, y });
     }
   }

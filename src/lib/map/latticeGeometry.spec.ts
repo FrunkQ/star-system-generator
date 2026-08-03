@@ -155,6 +155,36 @@ describe('lattice geometry', () => {
     }
   });
 
+  // The system view's ground grid is a DISC, not a square field — that boundary is what makes it read
+  // as a plate under the orrery. It was the only thing the system view's private copy did that the
+  // shared generator did not, so it is the thing most likely to be lost in the unification.
+  it('clips to a disc when asked, and fills the square extent when not', () => {
+    const R = 12;
+    const clipped = squareLattice({ cell: R / 7, originX: 0, originY: 0, half: R, clipRadius: R, maxSegment: R / 7 });
+    const open = squareLattice({ cell: R / 7, originX: 0, originY: 0, half: R, maxSegment: R / 7 });
+    expect(clipped.length).toBeGreaterThan(20);
+    // Nothing outside the disc (a small tolerance: a segment END may sit exactly on the boundary).
+    for (const [x1, y1, x2, y2] of clipped) {
+      expect(Math.hypot(x1, y1), 'a clipped vertex escaped the disc').toBeLessThanOrEqual(R + 1e-6);
+      expect(Math.hypot(x2, y2), 'a clipped vertex escaped the disc').toBeLessThanOrEqual(R + 1e-6);
+    }
+    // The unclipped lattice reaches the CORNERS, which are outside the disc — so the two differ.
+    const openMax = Math.max(...open.map(([x1, y1]) => Math.hypot(x1, y1)));
+    expect(openMax, 'the unclipped lattice should reach past the disc').toBeGreaterThan(R + 1e-6);
+  });
+
+  // One hex convention, and it is FLAT-topped. The system view used to hold a pointy-topped copy.
+  it('has flat-topped hexes: a centre has vertices due left and right, none directly above', () => {
+    const cell = 10, size = cell / 2;
+    const edges = hexLattice({ cell, originX: 0, originY: 0, half: 6 });
+    const vs = edges.flatMap(([x1, y1, x2, y2]) => [[x1, y1], [x2, y2]]);
+    const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
+    // Flat-top: (+size, 0) and (-size, 0) are vertices; (0, +/-size) are NOT.
+    expect(vs.some(([x, y]) => near(x, size) && near(y, 0)), 'no vertex due right — not flat-topped').toBe(true);
+    expect(vs.some(([x, y]) => near(x, -size) && near(y, 0)), 'no vertex due left — not flat-topped').toBe(true);
+    expect(vs.some(([x, y]) => near(x, 0) && near(Math.abs(y), size)), 'a vertex sits directly above the centre — that is pointy-topped').toBe(false);
+  });
+
   it('numbers Traveller hexes as Grid.svelte does', () => {
     expect(travellerHexLabel(0, 0)).toBe('0101');
     expect(travellerHexLabel(31, 39)).toBe('3240');

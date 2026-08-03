@@ -20,6 +20,7 @@ import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader'
 import { compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
+import { latticeFor } from '$lib/map/latticeGeometry';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
@@ -992,30 +993,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // view draws the Traveller lattice without CCRR numbering: the numbering is a starmap-scale idea
     // (sector/subsector addressing), meaningless inside one system.
     if (isLattice(gridMode)) {
+      // THE shared lattice (map/latticeGeometry), the same generator the GM's grid and both starmaps
+      // use. This was a third private copy, and it had already drifted: its hexes were POINTY-topped
+      // (axial q/r, 60k-30 corners) where every other surface in the app is FLAT-topped. That was only
+      // ever harmless because forSystemScale folds hex to square before this can draw one, so the
+      // wrong branch was unreachable — luck, not design. The pointy-top code is deleted rather than
+      // ported: there is one hex convention and it is flat-topped.
+      // `clipRadius` keeps the system view's DISC boundary, which is what makes it read as a plate
+      // under the orrery rather than a field; maxSegment keeps the optional falloff per-cell.
       const s = GRID_RADIUS / 7;
+      const edges = latticeFor(gridMode, {
+        cell: s, originX: 0, originY: 0, half: GRID_RADIUS, clipRadius: GRID_RADIUS, maxSegment: s
+      });
       const pts: THREE.Vector3[] = [];
-      const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4, depthWrite: false });
-      if (gridMode === 'square') {
-        const n = Math.ceil(GRID_RADIUS / s);
-        for (let i = -n; i <= n; i++) {
-          const c = i * s;
-          const half = Math.sqrt(Math.max(0, GRID_RADIUS * GRID_RADIUS - c * c)); // clip to the disc
-          if (half <= 0) continue;
-          pts.push(new THREE.Vector3(c, 0.01, -half), new THREE.Vector3(c, 0.01, half));
-          pts.push(new THREE.Vector3(-half, 0.01, c), new THREE.Vector3(half, 0.01, c));
-        }
-      } else {
-        const corner = (cx: number, cz: number, k: number) => new THREE.Vector3(
-          cx + s * Math.cos((Math.PI / 180) * (60 * k - 30)), 0.01, cz + s * Math.sin((Math.PI / 180) * (60 * k - 30)));
-        const rng = 7;
-        for (let q = -rng; q <= rng; q++) {
-          for (let r = -rng; r <= rng; r++) {
-            const cx = s * Math.sqrt(3) * (q + r / 2), cz = s * 1.5 * r;
-            if (Math.hypot(cx, cz) > GRID_RADIUS + s) continue;
-            for (let k = 0; k < 6; k++) pts.push(corner(cx, cz, k), corner(cx, cz, k + 1));
-          }
-        }
+      for (const [x1, z1, x2, z2] of edges) {
+        pts.push(new THREE.Vector3(x1, 0.01, z1), new THREE.Vector3(x2, 0.01, z2));
       }
+      const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4, depthWrite: false });
       addGridLines(pts, mat, false);
       return;
     }

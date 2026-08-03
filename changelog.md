@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.377-beta - 2nd Aug 2026
+
+* **Every grid in the app is now drawn by one piece of geometry.** The system view had its own private copy, and its hexes were the wrong way up -- pointy-topped where the GM map and both starmaps are flat-topped. It never showed, because system-scale hexes are folded to squares before they can be drawn, but it was one decision away from showing. Deleted rather than kept.
+* The system grid still sits in its disc, and there are now tests that fail if either the disc or the flat-topped hex is ever lost.
+
 ## v2.1.376-beta - 2nd Aug 2026
 
 * **Grid falloff is on the system view too, not just the starmap.** Its own setting, and off by default -- the system grid has always been evenly lit and should not change unless you ask it to.
