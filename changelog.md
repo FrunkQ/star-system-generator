@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.398-beta - 3rd Aug 2026
+
+* G3 ship scale: a construct model's size now follows the SAME body-size dial blend as planets - at the readable end a log-mapped marker length derived from the authored dimensions (a 1 km cruiser visibly dwarfs a 110 m frigate), at the true end genuinely 1:1 (metres through the same conversion body radii use, renderable because the floating origin puts the focused ship at the origin). Below ~10 px the ICON stands in and above it the hull draws, at every dial position; focusing a modelled ship frames the hull itself, and the min-zoom floor comes down so a true-scale ship can fill the screen.
+
 ## v2.1.397-beta - 3rd Aug 2026
 
 * G3 scene half (owner-directed): focusing a construct in the 3D view swaps its glyph for the actual hull - standard framing, nose-first along its motion, FLIPPED during a deceleration burn (a torch ship brakes engines-first; decided from the transit sampler's own velocities, never from screen deltas), with a drive plume at the stern whose length and light scale with the fraction of the ship's OWN drive in use (100% = super bright and long; capability computed by the host from the rule pack). The model contributes no radius to clearance or framing, 2D views keep the glyph, and one shared display builder means the modal preview, the info block and the scene render the same approved form.

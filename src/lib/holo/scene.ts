@@ -183,6 +183,7 @@ interface BodyVisual {
   shipModel?: THREE.Group | null;
   shipPrev?: THREE.Vector3;  // last frame's position, for the motion direction
   shipFx?: ShipFx | null;    // the drive plume at the stern, driven by the sampled burn
+  shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
 }
 
 interface ShipFx { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; light: THREE.PointLight }
@@ -1521,7 +1522,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // what the 2D orrery's zoom does). The framing ANGLE is separate, so 2D (overhead) and 3D (tilted) get
   // identical framing from the same click.
   function frameDistance(b: BodyVisual): number {
-    const radius = b.isConstruct ? 0 : (b.radiusScene ?? 0);
+    // A modelled construct frames to its HULL (dial-blended length), so "zoom to the ship" comes
+    // all the way down to it at true scale; a glyph-only construct keeps the radius-less patch.
+    const radius = b.isConstruct ? ((b.shipModel && b.shipLen) ? b.shipLen / 2 : 0) : (b.radiusScene ?? 0);
     // Reach the FURTHEST context peer — for a barycentre member that is the partner star, so the pair
     // frames as a pair from either half (the barycentre point itself has no mesh here).
     let parentDist = 0;
@@ -1554,21 +1557,33 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // quad, on-screen px = scale · viewH / (2·tan(fov/2)).
   const CONSTRUCT_PX_FOCUS = 12;
   const CONSTRUCT_PX_IDLE = 4;
-  // G3: the focused ship model's LONG AXIS in scene units. frameDistance gives a radius-less
-  // construct a ~0.35-unit half-extent patch, so this fills the standard framing without touching
-  // the framing maths - the model contributes NO radius to clearance or the F5 bounding sphere,
-  // exactly as the sprite does not (the invariant a real extent must never break).
-  const SHIP_MODEL_SCENE_LEN = 0.42;
+  // G3: the ship model's LONG AXIS in scene units - the SAME dial blend a body's radius takes
+  // (bodyRadiusScene): at the readable end a log-mapped marker length so relative size stays
+  // honest (a 1 km cruiser visibly dwarfs a 110 m frigate), at the true end the AUTHORED
+  // dimensionsM converted exactly as body radii are (metres -> AU -> the true-scale factor) -
+  // genuinely 1:1, which the floating origin makes renderable because a focused ship sits at the
+  // origin and float precision is relative. No scene floor (the trap bodyRadiusScene documents):
+  // visibility is the pixel LOD's job - below a few pixels the ICON stands in, above it the hull
+  // draws, at every dial position. Recomputed on rebuild like the bodies (the dial rebuilds).
+  function shipLenScene(node: any): number {
+    const dims = node?.physical_parameters?.dimensionsM;
+    const lengthM = Math.max(...(Array.isArray(dims) ? dims.map((d: number) => Number(d) || 0) : [0]), 0) || 100;
+    const readable = Math.min(0.7, Math.max(0.14, 0.16 + 0.1 * (Math.log10(lengthM) - 1)));
+    if (bodySize >= 0.999) return readable;
+    const trueScene = ((lengthM / 1000) / AU_KM) * (GRID_RADIUS / rMax);
+    return Math.max(1e-10, trueScene * (1 - bodySize) + readable * bodySize);
+  }
+  const SHIP_MODEL_MIN_PX = 10; // below this the model IS the icon's job
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
 
-  async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number] }, tint: string, gen: number) {
+  async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number] }, tint: string, sceneLen: number, gen: number) {
     try {
       const stored = await getStoredModel(ref.hash);
       if (gen !== buildGen) return; // stale build
       if (!stored) {
         // Not local yet (a remote player). One-shot retry when the transport lands it in the
         // store - modelArrived clears the waiter, and the gen guard drops it across rebuilds.
-        requestModel(ref.hash, () => { if (gen === buildGen) loadShipModel(v, ref, tint, gen); });
+        requestModel(ref.hash, () => { if (gen === buildGen) loadShipModel(v, ref, tint, sceneLen, gen); });
         return;
       }
       const parsed = await parseStoredModel('stored.glb', stored.bytes);
@@ -1576,11 +1591,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const g = buildDisplayModel(parsed.object, {
         hadMaterials: ref.hadMaterials ?? true, tintHex: tint, orient: ref.orient ?? null
       });
-      g.scale.setScalar(SHIP_MODEL_SCENE_LEN);
-      g.visible = false; // updateConstructs reveals it while this construct is the focus
+      g.scale.setScalar(sceneLen);
+      g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
       v.shipFx = attachDrivePlume(g);
       contentGroup.add(g);
       v.shipModel = g;
+      v.shipLen = sceneLen;
       v.shipPrev = v.mesh.position.clone();
     } catch { /* the glyph sprite simply remains */ }
   }
@@ -1694,11 +1710,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const b of bodies) {
       if (!b.isConstruct) continue;
       const inFocus = visibleSet.has(b.id);
-      // G3: while this construct is THE focus (and airborne), its actual hull replaces the glyph -
-      // the honest render of a thing that really is that shape (design §6). Everywhere else, and on
-      // any machine without the binary, the sprite stands exactly as before. The model contributes
-      // no radius anywhere: it is the marker, nothing more.
-      const showModel = !!b.shipModel && focusedId === b.id && !framingWhole && !b.surfaceLock;
+      // G3: the hull replaces the glyph whenever it would be BIG ENOUGH TO READ - the pixel LOD
+      // from the design (§6/§7), same philosophy as the bodies' A9 floors but inverted: a body
+      // too small to see is floored up, a ship too small to read hands back to its icon. At the
+      // readable end of the dial a focused ship fills the frame; at true scale it is honestly a
+      // dot until the camera comes down to it. The model contributes no radius anywhere.
+      const distToCam = camera.position.distanceTo(b.mesh.position);
+      const pxLen = (b.shipLen ?? 0) / Math.max(1e-12, f * distToCam);
+      const showModel = !!b.shipModel && !b.surfaceLock && pxLen >= SHIP_MODEL_MIN_PX;
       if (b.shipModel) {
         b.shipModel.visible = showModel;
         if (showModel) {
@@ -1883,10 +1902,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     lastAutoDist = 0;
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
-    const rad = id ? (bodies.find((x) => x.id === id)?.radiusScene ?? 0) : 0;
+    const bv = id ? bodies.find((x) => x.id === id) : undefined;
+    const rad = bv ? (bv.radiusScene || ((bv.shipModel && bv.shipLen) ? bv.shipLen / 2 : 0)) : 0;
     // The lower clamp tracks the body: a true-scale world is ~1e-5 scene units, and a fixed 0.004 clamp
-    // would hold the camera thousands of radii out from the thing it just framed.
-    controls.minDistance = id ? Math.max(1e-6, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : unfocusedMinDist();
+    // would hold the camera thousands of radii out from the thing it just framed. A true-scale SHIP
+    // is smaller again (~1e-9), so a modelled construct may take the floor further down.
+    const minFloor = bv?.shipModel ? 1e-10 : 1e-6;
+    controls.minDistance = id ? Math.max(minFloor, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : unfocusedMinDist();
     focusDrive = id ? 48 : 0; // ~0.8 s of easing toward the framed shot
     visibleSet = getVisibleNodeIds(currentSystem, focusedId);
   }
@@ -2417,7 +2439,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // G3: a construct carrying a 3D model loads it in the background; the sprite stands until
       // (and unless) it lands, and stands permanently on a machine that lacks the binary.
       if (isConstruct && (node as any).model?.hash) {
-        loadShipModel(bodies[bodies.length - 1], (node as any).model, (node as any).icon_color || '#ffd24d', buildGen);
+        loadShipModel(bodies[bodies.length - 1], (node as any).model, (node as any).icon_color || '#ffd24d', shipLenScene(node), buildGen);
       }
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
