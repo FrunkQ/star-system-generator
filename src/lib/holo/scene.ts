@@ -22,6 +22,7 @@ import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
 import { latticeFor } from '$lib/map/latticeGeometry';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
+import { toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
@@ -2693,28 +2694,9 @@ function moonSpread(off: number, localScale: number, parentRadius: number): numb
 // spread transform the moon's own position uses (see the satellite branch in setTime), so the ring sits
 // exactly under the moon. kHelio = the parent's radial compression factor (compressScalar(r)/r);
 // localScale = the parent's orbit radius in scene units (compressScalar(r)).
-/**
- * C3: a satellite's orbital elements are quoted in its PARENT'S EQUATORIAL frame, not the system plane
- * — that is the convention for regular satellites, and it is what the bundled data uses (Saturn's rings
- * are i_deg 0 and its inner moons 0.009–1.57, all meaning "in the ring plane"). The propagator works in
- * the system frame, so without this rotation a moon's inclination lands in the wrong plane entirely and
- * Saturn's moons stay flat while its rings tilt 26.73° away from them. Both ring builders already do
- * exactly this rotation ("Ring plane = planet equator"); this is the same one, so moons and rings end up
- * coplanar by construction.
- *
- * Rotates a parent-relative PHYSICS offset. Scene space is (x, z, y), so the rings' scene-Z rotation is
- * this rotation here — keep the two in step if either ever changes.
- *
- * SATELLITES ONLY. A planet's inclination is ecliptic-relative and must never be touched by this.
- */
-function toParentEquator(x: number, y: number, z: number, tiltRad: number, out: { x: number; y: number; z: number }) {
-  if (!tiltRad) { out.x = x; out.y = y; out.z = z; return out; }
-  const c = Math.cos(tiltRad), s = Math.sin(tiltRad);
-  out.x = x * c - z * s;
-  out.y = y;
-  out.z = x * s + z * c;
-  return out;
-}
+// C3's satellite-frame rotation now lives in `system/satelliteFrame.ts`, imported at the top of this
+// file. It was private here, so the eclipse search (G8) would have had to write a second copy of it —
+// and a second copy of a rotation is how a moon and its own orbit ring end up in different planes.
 
 /**
  * A ring in the PARENT's local scene frame, laid down from a per-sample radial rule. Both callers below

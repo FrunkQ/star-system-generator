@@ -6,6 +6,7 @@ import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
 import { radiationHazardBucket, lethalDoseTime, LETHAL_MARK } from '$lib/physics/radiation';
+import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -87,6 +88,12 @@ export interface FactContext {
   // -work reading — what a ship can carry, not what is in it. Presentation only; the figures reach the
   // player either way, which is a known and accepted trade-off recorded in A29.
   liveReadings?: boolean;
+  // G8: the clock the "Next eclipse" row is answered against. WITHOUT IT THE ROW IS OMITTED, which is
+  // deliberate — the answer is a forward search and a caller that has no clock has not asked for one.
+  nowMs?: number;
+  // How this campaign writes a date. Supplied by the caller because the calendar is a per-campaign
+  // definition; without it the row still says when, relatively ("in 2.9 y").
+  formatDate?: (ms: number) => string;
 }
 
 // A CONSTRUCT is not a small planet, and the body block was describing it as one: Blip-A read Type /
@@ -289,6 +296,15 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   const resonance = b.tags?.find((t) => t.key === 'orbit/spin-orbit-resonance')?.value;
   if (resonance) add('Rotation', `${resonance} spin–orbit resonance`);
   else if (b.tidallyLocked) add('Rotation', 'tidally locked');
+  // NEXT ECLIPSE (G8). Sits with the orbital rows because that is what it is made of. It appears only
+  // when the caller hands over the system AND a clock: the answer is a forward search over the
+  // propagator, so it is computed when a reader asks for it and never as part of a derivation pass.
+  // `nextEclipseCached` holds the answer until the date it predicted has gone by, which is the whole
+  // of the caching rule and comes straight from how it is read.
+  if (ctx.system && typeof ctx.nowMs === 'number' && (b as any).id) {
+    const outlook = nextEclipseCached(ctx.system as any, (b as any).id, ctx.nowMs);
+    if (outlook?.next) add('Next eclipse', describeEclipse(outlook.next, ctx.nowMs, ctx.formatDate));
+  }
 
   // --- Bulk ---
   add('Mass', massRel(b));

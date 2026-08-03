@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.383-beta - 3rd Aug 2026
+
+* **Every world now says when its next eclipse is, and how dark it gets.** A new row in the body block, so it turns up in the GM's inspector, in printed player reports and in the info panels on the player views alike -- "in 107 d - 37% annular (Phobos)". Anything that would hide less than a quarter of the star is left out, because that is a transit rather than an eclipse and nobody would look up.
+* **A moon that is eclipsed on every orbit says so instead of quoting a date.** Io is in Jupiter's shadow every 1.8 days; that is a day and a night, not an event, and a date for it would be meaningless. Callisto, which really does escape the shadow for part of the cycle, still gets a date -- the rule is the geometry, not "is it a moon of a giant".
+* The three famous cases behave: Luna only just covers the Sun, Phobos is far too small ever to manage it, and Deimos is a speck. It says "when these orbits next line up" rather than pretending to be an ephemeris -- real eclipse seasons drift, and this one's do not.
+
 ## v2.1.382-beta - 3rd Aug 2026
 
 * **Asteroid belts and planetary rings now carry a radiation warning.** Jupiter's rings sit in the fiercest place in the Solar System — worse than Io — and had nothing on them at all, because the warning was being worked out in a step that skips anything which is not a planet or a moon. Jupiter's rings read lethal in *hours*, Saturn's in weeks, the main belt a long-term risk, the Kuiper belt background.

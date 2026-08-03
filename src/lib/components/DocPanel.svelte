@@ -35,6 +35,9 @@
   export let interactive = false; // hand-spin the 3D globe
   export let transparentBg = false; // let the host's backdrop show through (docked panel over the scene)
   export let showHeading = true;    // false when the host aside already shows the title bar
+  // G8: the campaign clock, so the body block can carry its "Next eclipse" row. Omitted -> no row.
+  export let nowMs: number | null = null;
+  export let formatDate: ((ms: number) => string) | undefined = undefined;
   export let units: MeasurementUnits = 'metric';
   export let tempUnit: TemperatureUnit = 'C';
   // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
@@ -93,6 +96,7 @@
     if (!canvas || w <= 0 || !system) return;
     const blocks = buildGuideDocument(system, selectedId, {
       panel: true, noHeading: !showHeading, units, tempUnit, imagery, tagStyle, photoFrame, rulePack, liveReadings,
+      nowMs: nowMs ?? undefined, formatDate,
       image: loaded?.img ?? null, imageAspect: loaded?.aspect, imageFocus: loaded?.focus ?? null
     });
     const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
@@ -125,7 +129,7 @@
   onDestroy(() => ro?.disconnect());
 
   // Redraw on any data/appearance change.
-  $: if (canvas) { system; selectedId; theme; imagery; photoFrame; tagStyle; units; tempUnit; loaded; render(); }
+  $: if (canvas) { system; selectedId; theme; imagery; photoFrame; tagStyle; units; tempUnit; loaded; nowMs; render(); }
 </script>
 
 <div class="doc-panel" bind:this={wrap} style="height:{contentH}px">

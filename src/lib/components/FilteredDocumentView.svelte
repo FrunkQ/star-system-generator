@@ -56,6 +56,9 @@
   export let rulePack: import('$lib/types').RulePack | null = null;
   // A29: show a construct's current fuel/cargo/crew, not just its capacity. Preset-driven.
   export let liveReadings = false;
+  // G8: the campaign clock, so a printed report carries the same "Next eclipse" row the live panel does.
+  export let nowMs: number | null = null;
+  export let formatDate: ((ms: number) => string) | undefined = undefined;
   export let tips: { top?: string; bottom?: string } | null = null;
   export let overlay: HudOverlay | null = null;
   export let companyName = '';
@@ -172,7 +175,7 @@
     const blocks = stage === 'starmap'
       ? buildStarmapDocument(starmap, { selectedId, layout: starmapLayout, colorful: accent === 'rainbow', fieldIcons: starmapFieldIcons })
       : (system ? buildGuideDocument(system, selectedId, {
-          units, tempUnit, colorful, imagery, rulePack, liveReadings,
+          units, tempUnit, colorful, imagery, rulePack, liveReadings, nowMs: nowMs ?? undefined, formatDate,
           image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
         }) : []);
     // GENUINE header/footer: reserve a band for the tip banners (and the company/footer stamps) so the
@@ -313,7 +316,7 @@
 
   // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
   // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
-  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; starmapLayout; starmapFieldIcons; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; render(); }
+  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; starmapLayout; starmapFieldIcons; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; nowMs; render(); }
   $: if (ctrl) handleSelection(selectedId);
   $: ctrl?.setFilter(filterId, filterParams);
 

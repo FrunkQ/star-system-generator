@@ -35,6 +35,10 @@ export interface GuideDocOpts {
   rulePack?: import('$lib/types').RulePack | null; // names a construct's engines and fuels, and gives them
   // an Isp and a density — without it a construct's mass, Δv and acceleration cannot be derived and
   // those rows are simply left out. Optional everywhere: a caller without a pack still gets the rest.
+  nowMs?: number;                        // G8: the clock the "Next eclipse" row answers against. Without
+  // it the row is omitted rather than guessed — a printed report and a live panel must agree, and they
+  // only can if both are told what time it is.
+  formatDate?: (ms: number) => string;   // how this campaign writes a date (its calendar is its own)
 }
 
 // Resolve a body's tags to display items (label + type colour + group), de-duplicated by label.
@@ -145,7 +149,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     const hostId = (subject as any).parentId || (subject as any).orbit?.hostId;
     const host = hostId ? (nodeById(system, hostId) as CelestialBody | null) : null;
     const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C',
-      { rulePack: opts.rulePack, host, liveReadings: opts.liveReadings, system });
+      { rulePack: opts.rulePack, host, liveReadings: opts.liveReadings, system, nowMs: opts.nowMs, formatDate: opts.formatDate });
     const rows = facts.filter((f) => f.value && f.label !== 'Tags');
     if (rows.length) blocks.push({ kind: 'spacer', h: 4 });
     for (const f of rows) blocks.push({ kind: 'keyValue', label: f.label, value: f.value });

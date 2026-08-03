@@ -154,6 +154,9 @@
   // Live clock for the interactive tier. Not synced to the GM at the starmap level — we just keep
   // the orbital plot gently in motion so it feels alive.
   let currentTime = Date.now();
+  // The clock the document/info surfaces are drawn against — see the note in the rAF loop below.
+  let docNowMs = currentTime;
+  let lastDocClock = 0;
   let isPlaying = true;
   let rafId = 0;
   // Player time rate: a discrete ladder of "in-sim time per real second", from 1 s (real time) up
@@ -653,7 +656,7 @@
           panelW: inspectorWidth,
           title: selectedBody.name,
           sub: selectedBody.roleHint || 'body',
-          facts: bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem }),
+          facts: bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem, nowMs: currentTime }),
           description: selectedBody.description || '',
           accent: presetAccent, font: presetFont, fontScale: infoFontScale,
           mono: activePreset?.bodyStyle === 'white',
@@ -661,6 +664,7 @@
           // graphic is omitted in the HUD (imagery 'none') — a live renderer can't sit inside the
           // filter-composited quad; the unfiltered aside shows it.
           blocks: displaySystem ? buildGuideDocument(displaySystem, docSelectedId ?? selectedBody.id, {
+            nowMs: docNowMs,
             panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack, liveReadings: !!activePreset?.liveReadings
           }) : undefined,
           theme: activePreset ? makeDocTheme({
@@ -740,6 +744,10 @@
       // Otherwise the player's own arbitrary clock.
       const rate = followGMActive && gmTime ? gmTime.timeScale : RATE_STEPS[rateIndex].sec;
       if (isPlaying) currentTime += dt * rate * 1000;
+      // G8: the document surfaces carry a "Next eclipse" row, and a date that has gone by should stop
+      // being shown. They redraw a canvas, so they get the clock at ONE HERTZ OF WALL TIME rather than
+      // per frame — the row only ever needs to be right to the second, whatever the time scale is.
+      if (ts - lastDocClock > 1000) { lastDocClock = ts; docNowMs = currentTime; }
       last = ts;
       rafId = requestAnimationFrame(tick);
     };
@@ -926,7 +934,7 @@
           <!-- D6 unify: the SAME document engine renders the info block (facts + tags + description +
                body graphic) with the preset's full appearance. The aside stays as chrome (title, close,
                resize); the legacy skins below keep their original markup. -->
-          <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg {rulePack} liveReadings={!!activePreset?.liveReadings}
+          <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg {rulePack} liveReadings={!!activePreset?.liveReadings} nowMs={docNowMs}
             font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
             fontScale={infoFontScale} listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle}
             tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
@@ -938,7 +946,7 @@
             <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
           {/if}
           <dl class="insp-grid">
-            {#each bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem }) as f}
+            {#each bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem, nowMs: currentTime }) as f}
               <dt>{f.label}</dt><dd>{f.value}</dd>
             {/each}
           </dl>
@@ -1156,7 +1164,7 @@
     <div class="preset-stage preset-doc" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
       {#if displaySystem}
         <FilteredDocumentView
-          system={displaySystem} selectedId={docSelectedId} {rulePack} liveReadings={!!activePreset?.liveReadings}
+          system={displaySystem} selectedId={docSelectedId} {rulePack} liveReadings={!!activePreset?.liveReadings} nowMs={docNowMs}
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
           colorful={docColorful} imagery={docImagery} photoFrame={activePreset.photoFrame} hideInfoBlock={activePreset.hideInfoPanel}
           bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
