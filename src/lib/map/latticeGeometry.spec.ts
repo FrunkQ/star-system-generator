@@ -67,6 +67,47 @@ describe('lattice geometry', () => {
     expect(subs, 'subsector lines should be a small fraction of the hex edges').toBeLessThan(hexes / 4);
   });
 
+  // A subsector boundary is ONE CONTINUOUS LINE across the map. The horizontal run is the flat bottom
+  // of each hex PLUS a bridge to the next column, which sits half a hex higher or lower depending on
+  // parity — leave the bridge out and you get a row of disconnected dashes.
+  //
+  // Counting shared endpoints does NOT test this (the first version of this test did, and passed with
+  // the bridge deleted, because the vertical zig-zags share endpoints among themselves). What tests it
+  // is SPAN: walk the segments into connected components and measure how wide the widest one is. With
+  // the bridge a horizontal boundary runs the width of the map; without it the widest component is a
+  // single hex's flat bottom.
+  it('joins its horizontal boundary into one line spanning the map', () => {
+    const HALF = 200;
+    const subs = subsectorLattice({ cell: 4, originX: 0, originY: 0, half: HALF });
+    const key = (x: number, y: number) => `${x.toFixed(3)},${y.toFixed(3)}`;
+    const adj = new Map<string, string[]>();
+    const xOf = new Map<string, number>();
+    for (const [x1, y1, x2, y2] of subs) {
+      const a = key(x1, y1), b = key(x2, y2);
+      xOf.set(a, x1); xOf.set(b, x2);
+      (adj.get(a) ?? adj.set(a, []).get(a)!).push(b);
+      (adj.get(b) ?? adj.set(b, []).get(b)!).push(a);
+    }
+    let widest = 0;
+    const seen = new Set<string>();
+    for (const start of adj.keys()) {
+      if (seen.has(start)) continue;
+      let lo = Infinity, hi = -Infinity;
+      const stack = [start];
+      seen.add(start);
+      while (stack.length) {
+        const n = stack.pop()!;
+        const x = xOf.get(n)!;
+        if (x < lo) lo = x;
+        if (x > hi) hi = x;
+        for (const m of adj.get(n) ?? []) if (!seen.has(m)) { seen.add(m); stack.push(m); }
+      }
+      widest = Math.max(widest, hi - lo);
+    }
+    expect(widest, 'the widest connected run is about one hex — the boundary is dashes, not a line')
+      .toBeGreaterThan(HALF);
+  });
+
   it('numbers Traveller hexes as Grid.svelte does', () => {
     expect(travellerHexLabel(0, 0)).toBe('0101');
     expect(travellerHexLabel(31, 39)).toBe('3240');

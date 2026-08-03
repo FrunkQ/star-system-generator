@@ -139,12 +139,23 @@ export function subsectorLattice(o: LatticeOpts): LatticeEdge[] {
   for (const c of hexCentres(o)) {
     // 1-based column/row, matching the CCRR address the labels use.
     const absCol = c.col + 1, absRow = c.row + 1;
+
+    // VERTICAL boundary, right of columns 8, 16, ... — the zig-zag down a flat-topped hex's right side.
     if (absCol % 8 === 0) {
       edges.push([c.x + size / 2, c.y - hh / 2, c.x + size, c.y]);
       edges.push([c.x + size, c.y, c.x + size / 2, c.y + hh / 2]);
     }
+
+    // HORIZONTAL boundary, below rows 10, 20, ... — the flat bottom of the hex, PLUS a bridge to the
+    // next column. The bridge is the part that matters and the part it is easy to leave out: without
+    // it the boundary is a row of disconnected dashes rather than one continuous line across the map.
+    // Adjacent columns are offset half a hex, so the bridge climbs or drops depending on parity —
+    // an even column's neighbour sits LOWER, an odd column's sits higher. Grid.svelte's rule exactly.
     if (absRow % 10 === 0) {
       edges.push([c.x + size / 2, c.y + hh / 2, c.x - size / 2, c.y + hh / 2]);
+      edges.push(Math.abs(c.col) % 2 === 0
+        ? [c.x + size / 2, c.y + hh / 2, c.x + size, c.y + hh]   // down-right to the lower neighbour
+        : [c.x + size / 2, c.y + hh / 2, c.x + size, c.y]);      // up-right to the higher one
     }
   }
   return edges;
