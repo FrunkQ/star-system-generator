@@ -15,6 +15,10 @@
   // which excluded the two lattice types the preset can actually hold — a preset saying 'square'
   // was being passed to a prop whose type said that value did not exist (inbox A37).
   export let grid: MapOverlay = 'plain';
+  // Opt-in depth under the lattice: the line at full intensity with a short curtain fading away
+  // below it. OFF by default — the lattice is flat, which is what the overhead 2D starmap wants
+  // and what a plan view reads as. Only meaningful on a tilted 3D map.
+  export let gridDepth = false;
   export let routeGlow = true; // emissive glow on the transit routes
   export let mono = false; // monochrome palette (white/grey) for tinting filters
   // The GM's snap-grid, in ITS OWN persisted spelling ('grid'/'none'). Kept verbatim rather than
@@ -74,6 +78,7 @@
     controller.setMapGrid(mapGrid); // before setData: setData's rebuildGrid uses the fresh fit transform
     controller.setData(smSystems, smRoutes);
     controller.setGrid(grid);
+    controller.setGridSkirt(gridDepth && !flat);
     controller.setZExaggeration(zExaggeration); // display-only depth stretch
     controller.setBackground(background);
     controller.setFraming(angleDeg);
@@ -105,7 +110,7 @@
   onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; zExaggeration; routeGlow; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; gridDepth; zExaggeration; routeGlow; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
 </script>

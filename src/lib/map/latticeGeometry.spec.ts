@@ -1,7 +1,7 @@
 // A37: the square lattice drew NOTHING on the 3D starmap, and the cause is arithmetic rather than a
 // missing branch — which means it can be PROVED here rather than looked at.
 import { describe, it, expect } from 'vitest';
-import { squareLattice, hexLattice, latticeFor, travellerHexLabel } from './latticeGeometry';
+import { squareLattice, hexLattice, latticeFor, travellerHexLabel, subsectorLattice } from './latticeGeometry';
 
 // The 3D scene's real numbers: GRID_RADIUS 12, half = 12*2.4, fade from 12*0.75 out to 12*1.9.
 const HALF = 12 * 2.4;
@@ -55,6 +55,16 @@ describe('lattice geometry', () => {
   it('caps its own geometry so a tiny cell cannot run away', () => {
     const huge = squareLattice({ cell: 0.01, originX: 0, originY: 0, half: 1000, maxLines: 50 });
     expect(huge.length).toBeLessThan(5000);
+  });
+
+  // A Traveller map must LOOK like one — the 8x10 subsector boundaries are what distinguish it from a
+  // plain hex field at any zoom, including the zooms where the numbers are too small to read.
+  it('draws subsector boundaries, far sparser than the hexes themselves', () => {
+    const o = { cell: 4, originX: 0, originY: 0, half: 120 };
+    const hexes = hexLattice(o).length;
+    const subs = subsectorLattice(o).length;
+    expect(subs, 'no subsector boundaries at all').toBeGreaterThan(0);
+    expect(subs, 'subsector lines should be a small fraction of the hex edges').toBeLessThan(hexes / 4);
   });
 
   it('numbers Traveller hexes as Grid.svelte does', () => {

@@ -402,6 +402,12 @@
                   </select>
                 </label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.starmapRouteGlow} /> Glowing routes</label>
+                <!-- The lattice is FLAT by default. This adds the depth cue: each grid line at full
+                     intensity with a short curtain fading away beneath it. Only on the tilted 3D map —
+                     the 2D starmap is the same renderer locked overhead, where a curtain is edge-on. -->
+                {#if draft.starmapView === 'holo3d'}
+                  <label class="chk"><input type="checkbox" bind:checked={draft.starmapGridDepth} /> Grid depth</label>
+                {/if}
                 <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (bleach — for a tinting filter)</label>
                 {#if draft.starmapView === 'holo3d'}
                   <!-- WS7: stretch DEPTH so it reads on screen. Visual only — journey distances are
@@ -713,7 +719,7 @@
             {:else if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
               <!-- BOTH map views are the same engine (2D = it locked flat) and run the real shader
                    themselves — mirroring the live player view exactly, so this preview can't drift. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={draft.starmapGridDepth === true} routeGlow={draft.starmapRouteGlow} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
                 flat={draft.starmapView === 'diagram2d'}
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
                 background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />

@@ -123,3 +123,29 @@ export function travellerHexLabel(col: number, row: number): string {
   if (dRow <= 0) dRow += 40;
   return String(dCol).padStart(2, '0') + String(dRow).padStart(2, '0');
 }
+
+// --- TRAVELLER SUBSECTOR BOUNDARIES -------------------------------------------------------------
+// What makes a Traveller hex map READ as one rather than as a plain hex field: the 8x10 subsector
+// grid, drawn heavier than the hexes themselves. Same rule as Grid.svelte (`absCol % 8`,
+// `absRow % 10`) and the same flat-topped geometry, so the GM's 2D map and both starmaps agree.
+//
+// The vertical boundary follows the ZIG-ZAG right-hand side of the last column in a subsector — a
+// hex lattice has no straight vertical line, and drawing one is the giveaway that a map was made by
+// somebody who had not looked at a Traveller sector.
+export function subsectorLattice(o: LatticeOpts): LatticeEdge[] {
+  const size = o.cell / 2;
+  const hh = Math.sqrt(3) * size;
+  const edges: LatticeEdge[] = [];
+  for (const c of hexCentres(o)) {
+    // 1-based column/row, matching the CCRR address the labels use.
+    const absCol = c.col + 1, absRow = c.row + 1;
+    if (absCol % 8 === 0) {
+      edges.push([c.x + size / 2, c.y - hh / 2, c.x + size, c.y]);
+      edges.push([c.x + size, c.y, c.x + size / 2, c.y + hh / 2]);
+    }
+    if (absRow % 10 === 0) {
+      edges.push([c.x + size / 2, c.y + hh / 2, c.x - size / 2, c.y + hh / 2]);
+    }
+  }
+  return edges;
+}

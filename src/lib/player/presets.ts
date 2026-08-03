@@ -75,6 +75,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   bodyGfx: 'sphere',
   beltStyle: 'rocks',
   starmapRouteGlow: true,
+  starmapGridDepth: false,
   starmapMono: false,
   background: 'space',
   grid: 'plain',

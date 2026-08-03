@@ -29,7 +29,7 @@ export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?
 // so existing importers keep working.
 export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
 import { isLattice as isLatticeMode, normaliseOverlay, type MapOverlay } from '$lib/map/mapOverlay';
-import { latticeFor, hexCentres, travellerHexLabel } from '$lib/map/latticeGeometry';
+import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -210,6 +210,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // The flat "2D map" is the PLAN view: depth collapses entirely, so a system's marker never drifts off
   // its map position and the 2D view stays pixel-honest against the GM map. Depth is a 3D-only reading.
   let flatMode = false;
+  let gridSkirt = false;   // opt-in depth curtain under each lattice line (3D starmap only)
 
   function clearGroup(g: THREE.Object3D) {
     g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { x?.map?.dispose?.(); x?.dispose?.(); }); });
@@ -267,8 +268,15 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   //  • DEPTH SKIRT — each edge drops a short curtain that fades to nothing. Seen straight down it's
   //    edge-on and invisible (identical to the 2D map); tilt the view and the grid gains subtle depth.
   // Alpha rides a vec4 colour attribute, so one draw call carries the whole gradient.
-  function addLattice(edges: [number, number, number, number][], col: THREE.Color, cell: number, fadeFrom: number, fadeTo: number) {
-    const A = 0.42;                                  // line alpha at full strength
+  function addLattice(
+    edges: [number, number, number, number][], col: THREE.Color, cell: number, fadeFrom: number, fadeTo: number,
+    o: { alpha?: number; ribbon?: number; skirt?: boolean } = {}
+  ) {
+    const A = o.alpha ?? 0.42;                       // line alpha at full strength
+    // THE LATTICE IS FLAT unless the skirt is asked for. Each edge used to drop a short curtain
+    // ALWAYS, which reads as depth on a tilted 3D map and as fuzz on a flat one — and the 2D starmap
+    // is this same renderer locked overhead, so it was paying for a depth cue it can never show.
+    // Now it is a choice ("Grid depth" on the 3D starmap): line at full intensity, fading downward.
     const depth = Math.max(0.01, cell * 0.18);       // curtain drop — deliberately shallow; full-height read as too intense
     const y0 = 0.01;
     const fade = (x: number, z: number) => {
@@ -284,17 +292,29 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       if (a1 <= 0.002 && a2 <= 0.002) continue;
       lp.push(x1, y0, z1, x2, y0, z2);
       pushC(lc, a1); pushC(lc, a2);
-      // Curtain: two triangles, full alpha along the top edge fading to zero at the bottom.
-      sp.push(x1, y0, z1, x2, y0, z2, x2, y0 - depth, z2);
-      pushC(sc, a1 * 0.55); pushC(sc, a2 * 0.55); pushC(sc, 0);
-      sp.push(x1, y0, z1, x2, y0 - depth, z2, x1, y0 - depth, z1);
-      pushC(sc, a1 * 0.55); pushC(sc, 0); pushC(sc, 0);
+      // A RIBBON gives real world-space thickness, which a line cannot: THREE's linewidth is ignored
+      // on almost every platform, so "thicker" has to be geometry. Used for subsector boundaries.
+      if (o.ribbon && o.ribbon > 0) {
+        const dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz) || 1;
+        const nx = (-dz / len) * (o.ribbon / 2), nz = (dx / len) * (o.ribbon / 2);
+        sp.push(x1 - nx, y0, z1 - nz, x2 - nx, y0, z2 - nz, x2 + nx, y0, z2 + nz);
+        pushC(sc, a1); pushC(sc, a2); pushC(sc, a2);
+        sp.push(x1 - nx, y0, z1 - nz, x2 + nx, y0, z2 + nz, x1 + nx, y0, z1 + nz);
+        pushC(sc, a1); pushC(sc, a2); pushC(sc, a1);
+      } else if (o.skirt) {
+        // Curtain: two triangles, full alpha along the top edge fading to zero at the bottom.
+        sp.push(x1, y0, z1, x2, y0, z2, x2, y0 - depth, z2);
+        pushC(sc, a1 * 0.55); pushC(sc, a2 * 0.55); pushC(sc, 0);
+        sp.push(x1, y0, z1, x2, y0 - depth, z2, x1, y0 - depth, z1);
+        pushC(sc, a1 * 0.55); pushC(sc, 0); pushC(sc, 0);
+      }
     }
     if (!lp.length) return;
     const lg = new THREE.BufferGeometry();
     lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
     lg.setAttribute('color', new THREE.Float32BufferAttribute(lc, 4));
     gridGroup.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false })));
+    if (!sp.length) return;
     const sg = new THREE.BufferGeometry();
     sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
     sg.setAttribute('color', new THREE.Float32BufferAttribute(sc, 4));
@@ -347,7 +367,11 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // enough on screen to read, and capped, so a zoomed-out sector does not spawn thousands of sprites.
     if (cfg.type === 'traveller-hex') {
       const hd = 1.5 * sizeS, hh = Math.sqrt(3) * sizeS;
-      if (hd >= 0.5) {
+      // 0.5 scene units was above a typical hex on a bundled map (GRID_RADIUS is 12, so that is ~24
+      // hexes across the whole field) — which is why Traveller hex looked identical to hex. The gate
+      // is still a LEGIBILITY gate, just set where a number is actually readable rather than where it
+      // is comfortable.
+      if (hd >= 0.22) {
         let hexLabels = 0;
         for (const c of hexCentres(geo)) {
           if (hexLabels >= HEX_LABEL_CAP) break;
@@ -362,7 +386,18 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // Fade in world space from a little past the map out to the span: viewed top-down the visible area
     // sits inside the solid zone so the lattice fills the screen, but tilt the camera and the far field
     // dissolves toward the horizon instead of stretching away as clutter.
-    addLattice(edges, base.clone().multiplyScalar(0.42), cell, GRID_RADIUS * 0.75, GRID_RADIUS * 1.9);
+    addLattice(edges, base.clone().multiplyScalar(0.42), cell, GRID_RADIUS * 0.75, GRID_RADIUS * 1.9, { skirt: gridSkirt });
+
+    // SUBSECTOR BOUNDARIES — what makes a Traveller map read as one rather than as a plain hex field,
+    // and the reason hex and Traveller hex were indistinguishable: the numbering is only legible when
+    // the hexes are large, but these are sparse (every 8th column, every 10th row) and read at any
+    // zoom. Drawn as RIBBONS, because THREE ignores line thickness on nearly every platform. Brighter
+    // than the lattice and never skirted — a heavier line, not a deeper one.
+    if (cfg.type === 'traveller-hex') {
+      const subs = subsectorLattice(geo) as [number, number, number, number][];
+      addLattice(subs, base.clone().multiplyScalar(0.85), cell, GRID_RADIUS * 0.75, GRID_RADIUS * 1.9,
+        { alpha: 0.7, ribbon: Math.max(0.012, sizeS * 0.075) });
+    }
   }
   function rebuildGrid() {
     clearGroup(gridGroup);
@@ -395,6 +430,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 })));
   }
   function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  function setGridSkirt(on: boolean) { if (on === gridSkirt) return; gridSkirt = on; rebuildGrid(); }
   // Rebuilds the content because depth is baked into the placed geometry (positions, drop-lines,
   // route lines). Cheap at starmap scale and keeps one code path for placement.
   function setZExaggeration(v: number) {
@@ -759,7 +795,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setGridSkirt, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

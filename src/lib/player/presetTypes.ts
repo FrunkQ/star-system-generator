@@ -148,6 +148,7 @@ export interface PlayerPreset {
   // to the map's spread, so this exaggerates it for clarity. Never affects distances.
   zExaggeration?: number;
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
+  starmapGridDepth?: boolean; // 3D starmap: a depth curtain under each grid line (off = flat lattice)
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1
   bodySize: number;    // 1 readable .. 0 true scale
