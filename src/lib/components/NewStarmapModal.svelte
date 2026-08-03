@@ -69,20 +69,35 @@
     </div>
 
     <div class="right-pane">
-        <div class="load-options">
-            <button on:click={() => dispatch('upload')}>Upload Starmap</button>
+        <!-- Three ways in, in the order a new GM should meet them: a finished example to
+             explore, real or saved data to bring in, an empty map to build on. -->
+        <section class="option-group">
+            <h3>Start from an example</h3>
             <!-- The starter maps come from the shipped manifest, so adding a bundled map is a data change
                  and never a code change. While it loads (or if it cannot be read) the original single
                  button stands in, so this screen always offers a way to start. -->
             {#each exampleMaps as m}
-              <button title={m.description ?? ''} on:click={() => dispatch('loadExampleStarmap', m.file)}>
-                Load Example: {m.name}
+              <button class="option" title={m.description ?? ''} on:click={() => dispatch('loadExampleStarmap', m.file)}>
+                <strong>{m.name}</strong>
+                {#if m.description}<small>{m.description}</small>{/if}
               </button>
             {/each}
-        </div>
+        </section>
 
-        <div class="new-starmap-form">
-            <h3>Create a New Starmap</h3>
+        <section class="option-group">
+            <h3>Bring in a map</h3>
+            <button class="option" on:click={() => dispatch('realSkyImport')}>
+              <strong>Import from the Real Sky…</strong>
+              <small>Real stars at true 3D positions from the astronomy catalogues — confirmed planets only, or filled out with generated worlds around them.</small>
+            </button>
+            <button class="option" on:click={() => dispatch('upload')}>
+              <strong>Upload a starmap file</strong>
+              <small>Load a .json starmap saved from this app.</small>
+            </button>
+        </section>
+
+        <section class="option-group new-starmap-form">
+            <h3>Start empty</h3>
             <label class="form-row">
             <span>Starmap Name:</span>
             <input type="text" bind:value={starmapName} />
@@ -114,7 +129,7 @@
             <div class="buttons">
             <button on:click={createStarmap}>Create Vast Nothingness</button>
             </div>
-        </div>
+        </section>
 
         <div class="version-info">
             <span>v{APP_VERSION}</span> | <span>{APP_DATE}</span>
@@ -184,6 +199,37 @@
     text-align: right;
   }
 
+  .option-group {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px 12px;
+    margin-bottom: 12px;
+  }
+  .option-group h3 {
+    margin: 0 0 8px;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+  }
+  .option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 6px;
+  }
+  .option:last-child { margin-bottom: 0; }
+  .option strong { display: block; }
+  .option small {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--text-faint);
+    font-weight: normal;
+    line-height: 1.3;
+  }
+
   .modal input[type="text"],
   .modal select {
     background-color: var(--bg-control);
@@ -212,17 +258,15 @@
     cursor: not-allowed;
   }
 
-  .load-options {
-    display: flex;
-    gap: 1em;
-    justify-content: center;
-    margin-bottom: 2em;
-    padding-bottom: 2em;
-    border-bottom: 1px solid var(--border);
+  /* Option cards read as choices, not actions: quiet until hovered, so the one
+     true ACTION button (Create) keeps the accent to itself. */
+  .modal button.option {
+    background-color: var(--bg-control);
+    border: 1px solid var(--border);
   }
-  
-  .load-options button {
-      flex: 1;
+  .modal button.option:hover {
+    background-color: var(--bg-control);
+    border-color: var(--accent);
   }
 
   .new-starmap-form {

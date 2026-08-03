@@ -28,6 +28,10 @@
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
+  import RealSkyImportModal from '$lib/components/RealSkyImportModal.svelte';
+  import { fillOutAll } from '$lib/import/realsky/fillout';
+  import { completeImportedStars } from '$lib/import/realsky/stardefaults';
+  import { PIXELS_PER_LY } from '$lib/import/realsky/constants.mjs';
   import GenerationWizard from '$lib/components/GenerationWizard.svelte';
   import Starmap from '$lib/components/Starmap.svelte';
   import SystemView from '$lib/components/SystemView.svelte';
@@ -103,6 +107,7 @@
   let interstellarShipId = '';
 
   let showNewStarmapModal = false;
+  let showRealSkyImportModal = false;
   let showGenerationWizard = false;
   let pendingWizardPosition: { x: number; y: number; z?: number } | null = null;
   let showEvolutionaryWizard = false;
@@ -1100,6 +1105,39 @@
 
   // The starter map to load is named by the modal (from the shipped manifest), so bundling another one is
   // a data change. Falls back to the original file for any caller that does not name one.
+  // Real-sky import: the modal hands over converted systems (plus the honesty
+  // report it already showed); this assembles them into a starmap, optionally
+  // fills out each system with generated worlds around the confirmed anchors
+  // (deterministic per star, tagged origin/generated), and runs the same
+  // physics recalc every loaded map gets.
+  async function handleRealSkyImport(event: CustomEvent<any>) {
+    const { systems, fillOut, name, description } = event.detail;
+    if (!selectedRulepack && rulePacks.length) selectedRulepack = rulePacks[0];
+    if (!selectedRulepack) return;
+    // The catalogues carry no stellar magnetic field or spin tilt; complete
+    // them from the rule pack's bands, deterministically per star, exactly as
+    // the generator does for its own stars.
+    completeImportedStars(systems, selectedRulepack);
+    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), selectedRulepack);
+    const newStarmap: StarmapType = {
+      id: `starmap-realsky-${Date.now()}`,
+      name,
+      description,
+      distanceUnit: 'ly',
+      unitIsPrefix: false,
+      mapMode: 'scaled',
+      generationEngine: 'standard',
+      invertDisplay: false,
+      scale: { unit: 'ly', pixelsPerUnit: PIXELS_PER_LY, showScaleBar: true },
+      systems,
+      routes: [],
+      temporal: createAnchoredTemporalState()
+    };
+    showRealSkyImportModal = false;
+    showNewStarmapModal = false;
+    starmapStore.set(await recalcAllSystems(newStarmap));
+  }
+
   async function handleLoadExampleStarmap(event?: CustomEvent<string>) {
       const file = event?.detail || 'Local_Neighbourhood-Starmap.json';
       try {
@@ -1462,7 +1500,11 @@
         on:load={handleLoadStarmap} 
         on:upload={handleUploadStarmap} 
         on:loadExampleStarmap={handleLoadExampleStarmap}
+        on:realSkyImport={() => (showRealSkyImportModal = true)}
     />
+    {#if showRealSkyImportModal}
+      <RealSkyImportModal on:import={handleRealSkyImport} on:close={() => (showRealSkyImportModal = false)} />
+    {/if}
   {:else if $starmapStore && currentSystemId}
     <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
     {#if $systemStore && effectiveRulePack}

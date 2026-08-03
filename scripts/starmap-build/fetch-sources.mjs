@@ -78,7 +78,10 @@ async function fetchSimbad() {
 
 const archive = await tap(psUrl, 'NASA Exoplanet Archive pscomppars (<12.7 pc)');
 writeFileSync(join(cacheDir, 'archive-pscomppars.json'), JSON.stringify(archive, null, 1));
-console.log(`  ${archive.length} planet rows cached.`);
+// Also published as a static asset: the in-app real-sky importer falls back to
+// it when the live TAP service is unreachable (src/lib/import/realsky/catalogue.mjs).
+writeFileSync(join(here, '..', '..', 'static', 'realsky', 'pscomppars.json'), JSON.stringify(archive, null, 1));
+console.log(`  ${archive.length} planet rows cached (+ static/realsky copy).`);
 
 const simbad = await fetchSimbad();
 writeFileSync(join(cacheDir, 'simbad-roster.json'), JSON.stringify(simbad, null, 1));

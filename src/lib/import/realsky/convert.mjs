@@ -174,7 +174,7 @@ export function convertArchiveRows(rows, { region, mapCentrePx = DEFAULT_MAP_CEN
         id: `${slug}-system`, name: hostname, seed: `realsky-${slug}`,
         epochT0: EPOCH, age_Gyr: first.st_age ?? 4.6,
         nodes, rulePackId: '', rulePackVersion: '', tags: [],
-        credits: { author: 'Star System Explorer', created: String(generated), version: 'real-sky' }
+        credits: { author: 'Star System Explorer', created: `real-sky import, ${generated}`, version: '1' }
       }
     });
   }
