@@ -40,6 +40,59 @@ export interface ModelViewer {
 
 const EDGE_THRESHOLD_DEG = 25; // reads as panel lines (design §5); below it, curvature stays clean
 
+/** Build the DISPLAY form of a parsed model: cloned, finished (flat-shaded tint + crease edges
+ *  when the source had no materials), centred, scaled to a unit long axis, and - when `orient`
+ *  is given - baked to the convention (nose +Z, drive -Z). The ONE builder behind the modal
+ *  preview, the info-block turntable and the holo scene's focused-ship display, so what the GM
+ *  approves is what every surface renders. */
+export function buildDisplayModel(
+  source: THREE.Object3D,
+  opts: { hadMaterials: boolean; tintHex?: string | null; orient?: [number, number, number, number] | null }
+): THREE.Group {
+  const work = source.clone(true);
+
+  if (!opts.hadMaterials) {
+    // Material-less source (every STL, bare OBJ): flat-shaded fill in the ship's own colour
+    // + crease edges. De-index for honest per-facet normals - flat shading IS the finish.
+    const tint = opts.tintHex || '#ffd24d';
+    const fill = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(tint), flatShading: true, metalness: 0.15, roughness: 0.62
+    });
+    const edge = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, -0.55)), transparent: true, opacity: 0.55 });
+    work.traverse((c) => {
+      const mesh = c as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.geometry) return;
+      let geo = mesh.geometry as THREE.BufferGeometry;
+      if (geo.index) geo = geo.toNonIndexed();
+      geo.computeVertexNormals(); // per-face after de-index: the faceted look
+      mesh.geometry = geo;
+      mesh.material = fill;
+      mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, EDGE_THRESHOLD_DEG), edge));
+    });
+  }
+
+  // Normalise: centre on the bounding box, longest axis = 1 unit. The authored dimensionsM never
+  // touch this - they ride the construct and matter only if a surface draws at world scale.
+  const wrap = new THREE.Group();
+  const box = new THREE.Box3().setFromObject(work);
+  if (!box.isEmpty()) {
+    const size = box.getSize(new THREE.Vector3());
+    const centre = box.getCenter(new THREE.Vector3());
+    work.position.sub(centre);
+    wrap.scale.setScalar(1 / Math.max(size.x, size.y, size.z, 1e-9));
+  }
+  wrap.add(work);
+  if (opts.orient) {
+    // Bake the GM's alignment so consumers with no orient stage of their own (the scene) can
+    // simply lookAt(velocity) and get engines-aft.
+    const baked = new THREE.Group();
+    wrap.quaternion.set(...opts.orient);
+    baked.add(wrap);
+    return baked;
+  }
+  return wrap;
+}
+
 export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOptions = {}): ModelViewer {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: !!opts.capture });
   renderer.setPixelRatio(Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
@@ -143,40 +196,10 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   return {
     setObject(object, { hadMaterials, tintHex }) {
       clearFrame();
-      const work = object.clone(true);
-
-      if (!hadMaterials) {
-        // Material-less source (every STL, bare OBJ): flat-shaded fill in the ship's own colour
-        // + crease edges. De-index for honest per-facet normals - flat shading IS the finish.
-        const tint = tintHex || '#ffd24d';
-        const fill = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(tint), flatShading: true, metalness: 0.15, roughness: 0.62
-        });
-        const edge = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, -0.55)), transparent: true, opacity: 0.55 });
-        work.traverse((c) => {
-          const mesh = c as THREE.Mesh;
-          if (!mesh.isMesh || !mesh.geometry) return;
-          let geo = mesh.geometry as THREE.BufferGeometry;
-          if (geo.index) geo = geo.toNonIndexed();
-          geo.computeVertexNormals(); // per-face after de-index: the faceted look
-          mesh.geometry = geo;
-          mesh.material = fill;
-          mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, EDGE_THRESHOLD_DEG), edge));
-        });
-      }
-
-      // Normalise: centre on the bounding box, longest axis = 1 scene unit. The authored
-      // dimensionsM never touch the portrait - they matter when the scene marker (Phase 2) draws
-      // at world scale, and they ride the construct, not the binary.
-      const box = new THREE.Box3().setFromObject(work);
-      if (!box.isEmpty()) {
-        const size = box.getSize(new THREE.Vector3());
-        const centre = box.getCenter(new THREE.Vector3());
-        const k = 1 / Math.max(size.x, size.y, size.z, 1e-9);
-        work.position.sub(centre);
-        frame.scale.setScalar(k);
-      }
-      frame.add(work);
+      // Orient is NOT baked here - the viewer owns a live orientGroup so the modal's buttons can
+      // re-orient without rebuilding; the shared builder handles finish + normalisation.
+      frame.scale.setScalar(1);
+      frame.add(buildDisplayModel(object, { hadMaterials, tintHex }));
       frameCamera();
     },
     setOrient(q) {

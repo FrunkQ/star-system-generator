@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.397-beta - 3rd Aug 2026
+
+* G3 scene half (owner-directed): focusing a construct in the 3D view swaps its glyph for the actual hull - standard framing, nose-first along its motion, FLIPPED during a deceleration burn (a torch ship brakes engines-first; decided from the transit sampler's own velocities, never from screen deltas), with a drive plume at the stern whose length and light scale with the fraction of the ship's OWN drive in use (100% = super bright and long; capability computed by the host from the rule pack). The model contributes no radius to clearance or framing, 2D views keep the glyph, and one shared display builder means the modal preview, the info block and the scene render the same approved form.
+
 ## v2.1.396-beta - 3rd Aug 2026
 
 * G3 feedback round: the GM construct pane shows the ship (model > image > glyph chain, new ConstructPortrait); the player document now puts the MODEL first too (model > photo > glyph, was photo-first); the import modal aligns by the MAIN DRIVE against an orange marker (convention: nose +Z, drive -Z, stored on the ref); a saved .json embeds model binaries and restores them on load; remote players fetch missing models by hash over the broadcast (REQUEST_MODEL / SYNC_MODEL) and the glyph gives way when the ship arrives.

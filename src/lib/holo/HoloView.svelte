@@ -33,6 +33,9 @@
   // colour by `map/skyStars`. DATA, not look — the mode that decides whether and how they are drawn
   // lives on the style. Empty is the normal case for any host that has no starmap to hand.
   export let skyStars: import('$lib/map/skyStars').SkyStar[] = [];
+  // G3: per-construct max acceleration (m/s^2), computed by the host (which holds the rule pack) -
+  // drives the focused ship's plume as a fraction of its OWN drive capability.
+  export let shipAccel: Record<string, number> | null = null;
 
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
@@ -123,6 +126,7 @@
   // Reactive feeds (guarded until the scene has loaded). setCompression/setFilter short-circuit when
   // the value is unchanged, so re-applying the whole style on any tweak is cheap.
   $: controller?.setSystem(system);
+  $: controller?.setShipCapability(shipAccel);
   $: controller?.setTime(currentTime);
   $: controller?.focusBody(focusedBodyId);
   $: if (controller) applyStyle(style);

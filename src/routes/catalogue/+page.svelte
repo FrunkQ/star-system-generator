@@ -11,6 +11,7 @@
   import { broadcastService } from '$lib/broadcast';
   import { setModelFetcher, modelArrived } from '$lib/constructs/modelFetch';
   import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
+  import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
@@ -159,6 +160,21 @@
     const sys = selectedSystemNode?.system ?? null;
     if (!sys || includeConstructs) return sys;
     return { ...sys, nodes: sys.nodes.filter((n) => n.kind !== 'construct') };
+  })();
+
+  // G3: each modelled ship's max acceleration, for the scene's drive plume - thrust reads as a
+  // fraction of the ship's OWN capability, and only the host holds the rule pack to derive it.
+  $: shipAccelMap = (() => {
+    if (!displaySystem || !rulePack) return null;
+    const out: Record<string, number> = {};
+    for (const n of displaySystem.nodes as any[]) {
+      if (n.kind !== 'construct' || !n.model?.hash) continue;
+      try {
+        const g = calculateFullConstructSpecs(n, rulePack).maxVacuumG;
+        if (g > 0) out[n.id] = g * 9.81;
+      } catch { /* a ship with unresolvable engines just takes the fallback ceiling */ }
+    }
+    return out;
   })();
 
   // Live clock for the interactive tier. Not synced to the GM at the starmap level — we just keep
@@ -1112,7 +1128,7 @@
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
-          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} on:focus={handleFocus} />
+          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} on:focus={handleFocus} />
         {:else}
           <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
             <SystemVisualizer

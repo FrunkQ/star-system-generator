@@ -9,6 +9,14 @@
 // collapse into a blob. Textured/lit spheroids, skins and GPU filters arrive in later increments.
 import * as THREE from 'three';
 import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
+// G3: the focused construct swaps its glyph sprite for its actual hull - loaded from the
+// hash-addressed store and built by the SAME display builder as the import modal's preview and
+// the info-block turntable, so every surface renders the one approved form.
+import { getModel as getStoredModel } from '$lib/constructs/modelStore';
+import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
+import { buildDisplayModel } from '$lib/constructs/modelViewer';
+import { requestModel } from '$lib/constructs/modelFetch';
+import { sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -169,7 +177,15 @@ interface BodyVisual {
   isStar?: boolean;          // role for the pixel-floor hierarchy (star > planet > moon)
   baseScale?: THREE.Vector3; // the mesh scale set at build (oblateness); the true-scale floor multiplies it
   screenK?: number;          // current true-scale visibility multiplier (1 = drawing at its real size)
+  // G3: the construct's 3D hull, shown IN PLACE OF the glyph sprite while this construct is the
+  // focus (design §6: the model is the marker, nothing more). Oriented nose-first along its motion
+  // (ModelRef convention: nose +Z, drive -Z). Contributes NO radius to clearance or framing.
+  shipModel?: THREE.Group | null;
+  shipPrev?: THREE.Vector3;  // last frame's position, for the motion direction
+  shipFx?: ShipFx | null;    // the drive plume at the stern, driven by the sampled burn
 }
+
+interface ShipFx { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; light: THREE.PointLight }
 
 // A planetary ring: a particle disc in the planet's tilted equatorial plane, spinning DIFFERENTIALLY
 // (inner particles orbit faster — that's what makes the rotation visible on an otherwise symmetric
@@ -1538,6 +1554,36 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // quad, on-screen px = scale · viewH / (2·tan(fov/2)).
   const CONSTRUCT_PX_FOCUS = 12;
   const CONSTRUCT_PX_IDLE = 4;
+  // G3: the focused ship model's LONG AXIS in scene units. frameDistance gives a radius-less
+  // construct a ~0.35-unit half-extent patch, so this fills the standard framing without touching
+  // the framing maths - the model contributes NO radius to clearance or the F5 bounding sphere,
+  // exactly as the sprite does not (the invariant a real extent must never break).
+  const SHIP_MODEL_SCENE_LEN = 0.42;
+  let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
+
+  async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number] }, tint: string, gen: number) {
+    try {
+      const stored = await getStoredModel(ref.hash);
+      if (gen !== buildGen) return; // stale build
+      if (!stored) {
+        // Not local yet (a remote player). One-shot retry when the transport lands it in the
+        // store - modelArrived clears the waiter, and the gen guard drops it across rebuilds.
+        requestModel(ref.hash, () => { if (gen === buildGen) loadShipModel(v, ref, tint, gen); });
+        return;
+      }
+      const parsed = await parseStoredModel('stored.glb', stored.bytes);
+      if (gen !== buildGen) return;
+      const g = buildDisplayModel(parsed.object, {
+        hadMaterials: ref.hadMaterials ?? true, tintHex: tint, orient: ref.orient ?? null
+      });
+      g.scale.setScalar(SHIP_MODEL_SCENE_LEN);
+      g.visible = false; // updateConstructs reveals it while this construct is the focus
+      v.shipFx = attachDrivePlume(g);
+      contentGroup.add(g);
+      v.shipModel = g;
+      v.shipPrev = v.mesh.position.clone();
+    } catch { /* the glyph sprite simply remains */ }
+  }
   // TRUE-SCALE VISIBILITY FLOOR. At the true end of the body-size dial a real planet is a fraction of a
   // pixel across at whole-system framing — Earth is about 0.05 px — so "true" came out as "absent", which
   // is not what the setting means. Any floor written in SCENE units is the wrong instrument for that: it
@@ -1569,11 +1615,131 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  const _shipLook = new THREE.Vector3();
+  const _shipDelta = new THREE.Vector3();
+  const _lastOrigin = new THREE.Vector3(NaN, 0, 0); // detects a floating-origin rebase between frames
+
+  // G3: a torch ship BRAKES engines-first, so during a deceleration burn the nose points backwards
+  // along the path. Decided from the transit sampler's own velocities (v at t and t+60s), not from
+  // screen deltas - compression bends the drawn path but cannot fake a burn. The threshold sits an
+  // order of magnitude above solar gravity at 1 AU (~0.006 m/s^2), so a gravity coast that happens
+  // to be slowing never reads as a burn. Throttled: one ship, four checks a second.
+  const BRAKE_ACCEL_MS2 = 0.05;
+  const FULL_PLUME_MS2 = 10; // fallback ceiling (~1 g) when the ship's own capability is unknown
+  // Per-construct max acceleration (m/s^2) from the HOST, which holds the rule pack the engine
+  // definitions live in - the scene itself never reads pack data. Drives thrust01 = the fraction
+  // of the ship's OWN drive being used, so a max burn reads super-bright whatever the hull.
+  let shipCapability: Record<string, number> | null = null;
+  function setShipCapability(map: Record<string, number> | null) { shipCapability = map; }
+  let _burnCache = { id: '', atMs: -Infinity, braking: false, thrust01: 0 };
+  function shipBurnState(id: string): { braking: boolean; thrust01: number } {
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (_burnCache.id === id && now - _burnCache.atMs < 250) return _burnCache;
+    let braking = false, thrust01 = 0;
+    const node = currentSystem?.nodes.find((n) => n.id === id) as any;
+    if (node?.scheduled_journeys?.length) {
+      const k1 = sampleJourneyKinematicsAtTime(currentSystem!, node, timeMs);
+      const k2 = k1?.state === 'Transit' ? sampleJourneyKinematicsAtTime(currentSystem!, node, timeMs + 60_000) : null;
+      if (k1 && k2) {
+        const v1 = k1.velocity_ms as any, v2 = k2.velocity_ms as any;
+        const ax = (v2.x - v1.x) / 60, ay = (v2.y - v1.y) / 60, az = ((v2.z ?? 0) - (v1.z ?? 0)) / 60;
+        const aMag = Math.hypot(ax, ay, az);
+        const dot = ax * v1.x + ay * v1.y + az * (v1.z ?? 0);
+        braking = aMag > BRAKE_ACCEL_MS2 && dot < 0;
+        const cap = Math.max(0.01, shipCapability?.[id] ?? FULL_PLUME_MS2);
+        thrust01 = aMag > BRAKE_ACCEL_MS2 ? Math.min(1, aMag / cap) : 0;
+      }
+    }
+    _burnCache = { id, atMs: now, braking, thrust01 };
+    return _burnCache;
+  }
+
+  // G3: the drive plume - thrust feedback at the stern. Attached INSIDE the display model at the
+  // oriented hull's -Z face centre (the convention makes the nozzle end derivable, no authoring
+  // needed), so it rides every flip and turn for free: a braking ship's plume points prograde
+  // because the whole ship does. Length and light scale with the SAMPLED acceleration - a coasting
+  // ship shows nothing, which is the honest reading. Colour is a hot blue-white for now; exhaust
+  // colour per engine belongs in rule-pack DATA when the finish menu lands (recorded follow-up).
+  function attachDrivePlume(model: THREE.Group): ShipFx {
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    const sternZ = box.isEmpty() ? -0.5 : box.min.z;
+    const holder = new THREE.Group();
+    holder.position.set(0, 0, sternZ);
+    // Cone flaring aft: apex at the nozzle, widening along -Z. ConeGeometry points +Y; the
+    // rotation maps local +Y onto -Z, so scaling cone.scale.y lengthens the plume astern.
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.07, 1, 16, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xbfe2ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+    );
+    cone.rotation.x = Math.PI / 2;
+    holder.add(cone);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    holder.add(glow);
+    const light = new THREE.PointLight(0xbfe2ff, 0, 3.2, 2); // intensity driven per frame
+    holder.add(light);
+    holder.visible = false;
+    model.add(holder);
+    return { holder, cone, glow, light };
+  }
   function updateConstructs() {
     const f = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
+    // A rebase shifts every position by one constant vector; a motion delta measured across it
+    // would read as a huge false velocity and slew the ship. Resync instead of orienting.
+    const rebased = !_lastOrigin.equals(originShift);
+    _lastOrigin.copy(originShift);
     for (const b of bodies) {
       if (!b.isConstruct) continue;
       const inFocus = visibleSet.has(b.id);
+      // G3: while this construct is THE focus (and airborne), its actual hull replaces the glyph -
+      // the honest render of a thing that really is that shape (design §6). Everywhere else, and on
+      // any machine without the binary, the sprite stands exactly as before. The model contributes
+      // no radius anywhere: it is the marker, nothing more.
+      const showModel = !!b.shipModel && focusedId === b.id && !framingWhole && !b.surfaceLock;
+      if (b.shipModel) {
+        b.shipModel.visible = showModel;
+        if (showModel) {
+          b.shipModel.position.copy(b.mesh.position);
+          if (!b.shipPrev) b.shipPrev = b.mesh.position.clone();
+          _shipDelta.copy(b.mesh.position).sub(b.shipPrev);
+          const burn = shipBurnState(b.id);
+          // Nose-first along its motion (ModelRef convention: nose +Z, drive -Z), wings level to
+          // the scene - and FLIPPED during a deceleration burn, because a torch ship brakes
+          // engines-first. Holds its last heading when parked or the clock is paused.
+          if (!rebased && _shipDelta.lengthSq() > 1e-14) {
+            if (burn.braking) _shipDelta.negate();
+            b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
+          }
+          // Drive plume: length and light scale with the fraction of the ship's OWN drive in use -
+          // quadratic so a station-keeping puff whispers and a 100% torch burn is SUPER bright and
+          // long. Rides the stern inside the model, so the brake flip points it prograde for free.
+          const fx = b.shipFx;
+          if (fx) {
+            const t = burn.thrust01;
+            fx.holder.visible = t > 0;
+            if (t > 0) {
+              const len = 0.3 + 2.6 * t * t + 0.5 * t;         // up to ~3.4 hull-lengths at 100%
+              const width = 0.55 + 1.1 * t;
+              fx.cone.scale.set(width, len, width);
+              fx.cone.position.z = -len / 2;                    // keep the apex at the nozzle
+              (fx.cone.material as THREE.MeshBasicMaterial).opacity = 0.3 + 0.5 * t;
+              fx.glow.scale.setScalar(0.14 + 0.4 * t);
+              (fx.glow.material as THREE.SpriteMaterial).opacity = 0.5 + 0.5 * t;
+              fx.light.intensity = 7 * t * t;                   // the SUPER-bright end is the light
+            } else {
+              fx.light.intensity = 0;
+            }
+          }
+        } else if (b.shipFx) {
+          b.shipFx.holder.visible = false;
+          b.shipFx.light.intensity = 0;
+        }
+        b.shipPrev ? b.shipPrev.copy(b.mesh.position) : (b.shipPrev = b.mesh.position.clone());
+      }
+      (b.mesh as THREE.Sprite).visible = !showModel;
       (b.mesh as THREE.Sprite).scale.setScalar((inFocus ? CONSTRUCT_PX_FOCUS : CONSTRUCT_PX_IDLE) * f);
       ((b.mesh as THREE.Sprite).material as THREE.SpriteMaterial).opacity = inFocus ? 1 : 0.45;
     }
@@ -1877,6 +2043,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     perfCount('holo.setSystem'); // a full scene rebuild — the prime suspect for the random slowdowns
     resetOriginForRebuild(); // everything absolute is about to be re-emitted; build it about the centre
     clearContent();
+    buildGen++; // invalidate in-flight async loads (ship models) from the previous system
     focusedId = null;
     focusDrive = 0;
     currentSystem = system;
@@ -2247,6 +2414,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         ? 0
         : (parentTiltDeg * Math.PI) / 180;
       bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, orbitTiltRad, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
+      // G3: a construct carrying a 3D model loads it in the background; the sprite stands until
+      // (and unless) it lands, and stands permanently on a machine that lacks the binary.
+      if (isConstruct && (node as any).model?.hash) {
+        loadShipModel(bodies[bodies.length - 1], (node as any).model, (node as any).icon_color || '#ffd24d', buildGen);
+      }
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
     // rendered globe), so order the bodies by tree depth once here rather than trusting node order.
@@ -2807,7 +2979,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, resetView, resize, dispose };
 }
 
 // ---- helpers ----
