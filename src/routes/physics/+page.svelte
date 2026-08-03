@@ -289,6 +289,19 @@
         anything and a body's own field does not shield it from its own trapped belt — you are inside both. Jupiter
         is the extreme case: about <strong>11&nbsp;mSv/yr</strong> at 1&nbsp;bar and roughly
         <strong>764&nbsp;Sv/day</strong> just above the cloud tops.</p>
+      <p><strong>That second figure is quoted at the INNER EDGE OF THE BELTS, and it now says so.</strong> It used
+        to be labelled simply "in orbit", which reads as "the dose where a ship parks" — and for Earth that would
+        have been wrong by four thousand times. Earth's figure is about <strong>653&nbsp;Sv/yr</strong>, which is
+        honest for the inner proton belt and useless as a station-planning number: the ISS at 400&nbsp;km takes
+        roughly <strong>150&nbsp;mSv/yr</strong>, because low orbit sits <em>beneath</em> the belts except over the
+        South Atlantic Anomaly. So the row names its own altitude, derived per body from where that world's
+        atmosphere stops absorbing: Earth reads <em>in the belts, from ~1,262&nbsp;km</em>. Read it as "there is a
+        hazardous shell around this world", not as "orbit is lethal here".</p>
+      <p>The wording follows the body. An <strong>airless</strong> world has no absorbing layer, so its belt edge
+        IS its surface and the two figures are the same number — the second row is simply not shown (Io, Luna,
+        Mercury). A <strong>giant</strong> keeps "above the cloud tops", which is the figure that was asked for. A
+        <strong>ring</strong> reports the ring plane and, again, only once. Nothing here re-derives a dose: the
+        numbers are unchanged and only the place they name is new.</p>
       <p><strong>Belts and rings carry the hazard word too, and one of them is the loudest reading in the Solar
         System.</strong> They used to get no radiation tag at all — not because anyone decided a debris field was
         safe, but because the tag was emitted inside the classification pass, which skips anything that is not a

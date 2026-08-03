@@ -232,8 +232,8 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     description: 'HOW LONG a character standing on this surface survives it, which is what sieverts per year will not tell you: hours, days, weeks, months or years to a median lethal dose. Past fifty years the acute model stops meaning anything, so it says chronic instead (a real long-term cancer risk, above the 20 mSv/yr occupational limit) or background (Earth sits here). The exact figure is beside the dose in the data block. Not the same reading as "Space weathering", which is a cumulative total and reads low on the fiercest surface in a system.'
   },
   'hazard/orbital-radiation': {
-    label: 'Orbital radiation',
-    description: 'The same survival-time reading for the space ABOVE the atmosphere, where a ship parks - shown only when it differs materially from the surface. Earth is the case that makes the point: its ground is background while the orbital space around it, inside the Van Allen belts, would give a lethal dose in a few days.'
+    label: 'Radiation belts',
+    description: 'The same survival-time reading for the space above the atmosphere, at the INNER EDGE OF THE TRAPPED-PARTICLE BELTS — 1,263 km up in Earth\'s case — shown only when it differs materially from the surface. It is not the dose at any altitude a ship chooses: low orbit sits BENEATH the belts, which is why the ISS at 400 km takes about 150 mSv a year while this figure reads days-to-lethal. Read it as "there is a hazardous shell around this world", not as "orbit is lethal".'
   },
 
   // --- Flight ---

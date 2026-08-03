@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { photonParticleSplit, calculateStellarRadiationComponents, beltParticleFlux, selfBeltParticleFlux, beltInnerEdgeRadii, radiationPlace, hasSolidSurface } from './radiation';
+import { photonParticleSplit, calculateStellarRadiationComponents, beltParticleFlux, selfBeltParticleFlux, beltInnerEdgeRadii, radiationPlace, hasSolidSurface, orbitalRadiationPlace } from './radiation';
 import type { CelestialBody, RulePack } from '$lib/types';
 
 // Phase 04.4 — spectral-class photon/particle split. Cool dwarfs are wind/flare-dominated,
@@ -238,5 +238,32 @@ describe('does this dose describe a place you could be (B11)', () => {
     // duplication the standing rule is about, so this must be the SAME boundary.
     expect(hasSolidSurface(body({ makeup: { gas: 0.49, rock: 0.51 } }))).toBe(true);
     expect(hasSolidSurface(body({ makeup: { gas: 0.51, rock: 0.49 } }))).toBe(false);
+  });
+});
+
+// B27 — the second figure named a place it did not describe. Earth's reads 653 Sv/yr, which is
+// honest for the inner proton belt and wrong by four thousand times as "the dose in orbit": the ISS
+// at 400 km takes about 150 mSv/yr because low orbit sits BENEATH the belts. B22's physics is right,
+// so the fix is the name, per body type.
+describe('the second radiation figure names where it is quoted (B27)', () => {
+  it('a magnetised world with air names the belt altitude, derived not fixed', () => {
+    // Earth: inner edge 1.1982 R_E on a 6,371 km radius -> 1,263 km. The shipped Earth reads 1,262,
+    // its stored edge and radius differing in the last place; the point is that it is DERIVED.
+    const earth = { roleHint: 'planet', classes: [], makeup: { rock: 0.8, metal: 0.2 }, radiusKm: 6371, beltInnerEdgeRadii: 1.1982 } as any;
+    expect(orbitalRadiationPlace(earth)).toBe('in the belts, from ~1,263 km');
+  });
+
+  it('an airless world just says orbit — its belt edge IS its surface', () => {
+    // No atmosphere, so beltInnerEdgeRadii is 1 and there is no absorbing shell to be above.
+    const luna = { roleHint: 'moon', classes: [], makeup: { rock: 1 }, radiusKm: 1737, beltInnerEdgeRadii: 1 } as any;
+    expect(orbitalRadiationPlace(luna)).toBe('in orbit');
+  });
+
+  it('a giant keeps B22 wording', () => {
+    expect(orbitalRadiationPlace({ roleHint: 'planet', classes: [], makeup: { gas: 0.9 } } as any)).toBe('above the cloud tops');
+  });
+
+  it('a ring reports the ring plane for both figures', () => {
+    expect(orbitalRadiationPlace({ roleHint: 'ring' } as any)).toBe('in the ring plane');
   });
 });

@@ -59,6 +59,39 @@ export function radiationPlace(n: any): 'surface' | 'at 1 bar' | 'in the ring pl
   return hasSolidSurface(n) ? 'surface' : 'at 1 bar';
 }
 
+// WHICH PLACE the SECOND figure describes (inbox B27), and the answer differs by body type in a way
+// one label cannot carry.
+//
+// The number is not wrong — B22's physics stands, Earth's inner edge at 1.1982 R_E matches the
+// measured ~1.2 — but "in orbit" reads as "the dose where a ship parks", and Earth's figure is
+// 653 Sv/yr because it is evaluated AT THE BELT INNER EDGE. The ISS at 400 km takes about
+// 150 mSv/yr, four thousand times less, because it flies BELOW the inner belt. A GM planning a
+// station was being told the wrong thing by four orders of magnitude.
+//
+// SO THE FIGURE IS NAMED FOR WHERE IT IS, rather than moved or re-derived. That is [[B26]]'s
+// answer to the same class of fault, and it is chosen over inventing a below-the-belt figure for a
+// specific reason: the engine has no altitude parameter for "where the ship is", and its belt law is
+// a single peak-and-scale-length fit. A LEO figure would be a NEW derivation with one anchor to
+// calibrate against, and would swap a 4,000x overshoot for an undershoot — B27 itself says the
+// physics is right and the question is where the figure is quoted. Naming it also satisfies what
+// [[B20]] will need: every figure has to mean a definite place before it can be decomposed by cause.
+//
+//   airless body   the belt inner edge IS the surface, so the two coincide — 'in orbit', and the
+//                  row is suppressed anyway because the figures are equal (Io, correctly)
+//   giant          'above the cloud tops', B22's wording, unchanged
+//   magnetised     'in the belts, from ~N km' — the altitude is derived, not a constant: it is
+//   with air       (beltInnerEdgeRadii - 1) x the body's radius, which is 1,263 km for Earth
+export function orbitalRadiationPlace(n: any): string {
+  if (n?.roleHint === 'ring') return 'in the ring plane';
+  if (!hasSolidSurface(n)) return 'above the cloud tops';
+  const edge = n?.beltInnerEdgeRadii ?? 1;
+  const radiusKm = n?.radiusKm ?? 0;
+  if (edge > 1.001 && radiusKm > 0) {
+    return `in the belts, from ~${Math.round((edge - 1) * radiusKm).toLocaleString()} km`;
+  }
+  return 'in orbit';
+}
+
 export function deriveIrradiationDose(teqK: number, magShield: number, surfaceAgeGyr: number): number {
   const uvRel = Math.pow(Math.max(0, teqK) / 255, 4);           // bolometric flux at orbit, Earth = 1
   const unshielded = 1 - Math.max(0, Math.min(0.99, magShield));

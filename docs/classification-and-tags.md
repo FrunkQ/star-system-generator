@@ -160,6 +160,16 @@ same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Trit
 > and `hasSolidSurface` moved to `physics/radiation.ts` so the processor and the info block cannot
 > disagree; `catalogue/bodyFacts.ts` re-exports them.
 
+> **`hazard/orbital-radiation` IS THE BELT FIGURE, NOT "THE DOSE IN ORBIT"** (inbox B27). It is
+> evaluated at the inner edge of the trapped-particle belts — 1,263 km for Earth — so Earth reads
+> *days* while the ISS at 400 km takes about 150 mSv/yr, four thousand times less, because low orbit
+> sits **beneath** the belts. The physics is right and unchanged; what was wrong was the name. The
+> row and the tag now say where the figure is (`Radiation (in the belts, from ~1,262 km)`), the
+> altitude is derived per body by `orbitalRadiationPlace()`, and the wording follows the body type:
+> an airless world's belt edge is its own surface so the two figures coincide and only one row shows,
+> a giant keeps "above the cloud tops", a ring keeps the ring plane. Read the tag as "there is a
+> hazardous shell around this world", not as "orbit is lethal".
+
 Tags that merely **duplicated** a class were removed (`Ocean World`→`planet/ocean`,
 `Ice World`→`planet/ice`, `Airless Rock`→`planet/barren`).
 

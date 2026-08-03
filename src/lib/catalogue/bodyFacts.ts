@@ -49,10 +49,10 @@ export function atmosphere(b: CelestialBody): string {
 // earns a hazard tag, and a second copy of that decision beside this one is the duplication the
 // standing rule exists to stop. Re-exported so every existing caller here and in the components
 // keeps working unchanged.
-export { hasSolidSurface, radiationPlace } from '$lib/physics/radiation';
+export { hasSolidSurface, radiationPlace, orbitalRadiationPlace } from '$lib/physics/radiation';
 // …and imported locally too: `export { x } from` re-exports without creating a binding in this
 // module, and the fact builder below calls radiationPlace directly.
-import { radiationPlace } from '$lib/physics/radiation';
+import { radiationPlace, orbitalRadiationPlace } from '$lib/physics/radiation';
 
 export interface Fact { label: string; value: string; }
 
@@ -381,7 +381,7 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   }
   if (typeof any.orbitalRadiation === 'number' && typeof any.surfaceRadiation === 'number'
       && any.orbitalRadiation > any.surfaceRadiation * 1.5) {
-    add('Radiation (in orbit)', radRow(any.orbitalRadiation));
+    add(`Radiation (${orbitalRadiationPlace(b)})`, radRow(any.orbitalRadiation));
   }
   if (any.magneticField?.strengthGauss) add('Magnetosphere', `${any.magneticField.strengthGauss.toFixed(2)} G`);
   if (any.geoActivity?.regime) add('Geology', titleCase(String(any.geoActivity.regime)));
