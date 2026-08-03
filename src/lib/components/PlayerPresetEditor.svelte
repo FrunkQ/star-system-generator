@@ -494,6 +494,13 @@
                     {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                   </select>
                 </label>
+                <!-- G4: the same falloff dial the starmap has, on the system view's ground grid. Its
+                     OWN field, defaulted to 0 — the system grid has always been evenly lit and should
+                     not change unless a GM asks. Deliberately not sharing `starmapGridFalloff`: the
+                     grid TYPE already shares one field across both stages and that is a recorded fault. -->
+                {#if draft.grid !== 'off'}
+                  <label>Grid falloff <span>{Math.round((draft.gridFalloff ?? 0) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.gridFalloff} /></label>
+                {/if}
                 <!-- Both dials share a convention that nothing on screen was saying: the LEFT end is
                      physical truth (0% spread = true distances; body size "true" = true radii) and the
                      right end is the readable exaggeration. The green pip marks the ACTUAL end, and the

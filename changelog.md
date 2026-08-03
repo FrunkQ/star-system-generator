@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.376-beta - 2nd Aug 2026
+
+* **Grid falloff is on the system view too, not just the starmap.** Its own setting, and off by default -- the system grid has always been evenly lit and should not change unless you ask it to.
+
 ## v2.1.375-beta - 2nd Aug 2026
 
 * **"Grid falloff" -- one dial from an even grid to bright near cells that fade out toward the edge of the field.** It works on every overlay: squares, hexes, Traveller hexes and the polar rings.

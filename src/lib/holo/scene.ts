@@ -94,6 +94,7 @@ export interface HoloController {
   setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: MapOverlay): void; // ground reference overlay (shared vocabulary, lib/map/mapOverlay.ts)
+  setGridFalloff(v: number): void; // G4: 0 = even brightness, 1 = bright near the centre and gone by the edge
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
   setLabelColor(hex: string | null): void; // in-scene label colour (null = default); matched to CRT phosphor
   setLabelSize(px: number): void; // in-scene label font size
@@ -295,6 +296,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // labelled). 'scaled' depends on the live radial map (compression + rMax), so it rebuilds with the
   // system / spread. Built after compressScalar/rMax are defined (rebuildGrid called there + on change).
   let gridMode: MapOverlay = 'plain';
+  // G4: distance falloff on the ground grid, 0 = even brightness (the historical look, and the
+  // default here so this view does not change unasked) .. 1 = bright near the centre, gone by the
+  // edge of the disc. Alpha is computed from the ABSOLUTE vertex positions, which is what makes it
+  // safe under the floating origin: rebasing moves the drawn coordinates, never the absolute ones,
+  // so the fade stays pinned to the system rather than sliding with the camera focus.
+  let gridFalloff = 0;
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
   // Absolute float64 masters for the grid's lines and its AU tick labels, so a floating-origin rebase
@@ -943,6 +950,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (let i = 0; i < pts.length; i++) { abs[3 * i] = pts[i].x; abs[3 * i + 1] = pts[i].y; abs[3 * i + 2] = pts[i].z; }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(abs.length), 3));
+    // G4 falloff. Per-vertex alpha from the ABSOLUTE position — computed once, never rebased, so the
+    // fade stays anchored to the system while the floating origin moves the drawn coordinates.
+    if (gridFalloff > 0.001) {
+      const f = Math.min(1, gridFalloff);
+      const from = GRID_RADIUS * (1 - 0.85 * f);
+      const to = from + GRID_RADIUS * (1.1 - 0.55 * f);
+      const cols = new Float32Array(pts.length * 4);
+      for (let i = 0; i < pts.length; i++) {
+        const d = Math.hypot(abs[3 * i], abs[3 * i + 2]);
+        const a = d <= from ? 1 : Math.max(0, 1 - (d - from) / Math.max(1e-6, to - from));
+        const c = (mat as THREE.LineBasicMaterial).color;
+        cols[4 * i] = c.r; cols[4 * i + 1] = c.g; cols[4 * i + 2] = c.b;
+        cols[4 * i + 3] = a * ((mat as THREE.LineBasicMaterial).opacity ?? 1);
+      }
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 4));
+      (mat as THREE.LineBasicMaterial).vertexColors = true;
+      (mat as THREE.LineBasicMaterial).opacity = 1;
+      mat.needsUpdate = true;
+    }
     const obj = loop ? new THREE.LineLoop(geo, mat) : new THREE.LineSegments(geo, mat);
     gridGroup.add(obj);
     gridAbs.push({ obj, abs });
@@ -1024,6 +1050,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
     const spokeMat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5, depthWrite: false });
     addGridLines(spokes, spokeMat, false);
+  }
+
+  function setGridFalloff(v: number) {
+    const n = Math.max(0, Math.min(1, v || 0));
+    if (n === gridFalloff) return;
+    gridFalloff = n;
+    rebuildGrid();
   }
 
   function setGrid(raw: MapOverlay) {
@@ -2565,7 +2598,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
 }
 
 // ---- helpers ----

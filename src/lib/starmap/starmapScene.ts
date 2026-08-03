@@ -217,6 +217,12 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   let gridFalloff = 0.5;
   // The fade window at a given strength: at 0 the grid never fades (fadeFrom past the field), at 1
   // it starts a quarter of the way out. fadeTo trails fadeFrom so the dissolve stays gradual.
+  // WHERE THE TUNABLE PART LIVES, since G4 asks for constants in DATA: the DIAL is preset data
+  // (`starmapGridFalloff` / `gridFalloff`), and that is the thing a GM wants to change. The four
+  // numbers below are the SHAPE of the dial — the near radius shrinking with strength, the span
+  // tightening with it — not tuning. Threading a rule pack into this scene purely to host them was
+  // tried and backed out: the scene takes its options at CONSTRUCTION, so a pack swapped later would
+  // not reach it, and a knob that silently goes stale is worse than one that is honestly in code.
   function fadeWindow(): { from: number; to: number } {
     const f = Math.max(0, Math.min(1, gridFalloff));
     if (f <= 0.001) return { from: GRID_RADIUS * 100, to: GRID_RADIUS * 200 };  // effectively none

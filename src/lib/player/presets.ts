@@ -77,6 +77,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   starmapRouteGlow: true,
   starmapGridDepth: false,
   starmapGridFalloff: 0.5,
+  gridFalloff: 0,
   starmapMono: false,
   background: 'space',
   grid: 'plain',
@@ -226,6 +227,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     background: p.background,
     bodySize: p.bodySize,
     grid: p.grid,
+    gridFalloff: p.gridFalloff ?? 0,
     orbitSpeed: p.orbitSpeed,
     labelSize: p.labelSize,
     font: p.font

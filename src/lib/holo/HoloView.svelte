@@ -49,6 +49,7 @@
     controller?.setBeltStyle(s.beltStyle ?? 'rocks');
     controller?.setBodySize(s.bodySize);
     controller?.setGrid(s.grid);
+    controller?.setGridFalloff(s.gridFalloff ?? 0);
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);
     controller?.setLabelSize(s.labelSize ?? 11);
     controller?.setLabelFont(s.font ?? null);

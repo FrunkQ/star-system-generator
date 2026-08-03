@@ -24,6 +24,7 @@ export interface HoloStyle {
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
   grid: 'off' | 'plain' | 'scaled' | 'hex'; // ground reference: none / polar rings / scale rings / hex (hex is starmap-only; the system view treats it as plain)
+  gridFalloff?: number; // G4: ground-grid distance fade, 0 (even, the default) .. 1 (bright centre, gone by the edge)
   orbitSpeed: number; // auto view-orbit: how fast the camera slowly circles the focused object (0 = static)
   labelSize?: number; // in-scene body-label font size in px (default 11)
   font?: string; // in-scene label font-family — inherited from the preset theme when set
@@ -52,6 +53,7 @@ export const DEFAULT_STYLE: HoloStyle = {
   background: 'space',
   bodySize: 1,
   grid: 'plain',
+  gridFalloff: 0,
   orbitSpeed: 0,
   labelSize: 11,
   render: 'filled',
