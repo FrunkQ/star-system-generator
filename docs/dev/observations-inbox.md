@@ -386,6 +386,9 @@ things the debt lines had wrong — see the note in [[D5]].
   for a braking burn); a saved .json now DOES carry the model binaries; remote players fetch
   missing models over the broadcast automatically; and focusing a modelled ship in the player 3D
   view shows the hull itself with a thrust plume scaled to the fraction of its drive in use.
+  (v2.1.398) Ship size follows the body-size dial exactly as planets do: readable marker length
+  derived from the authored dimensions at one end, TRUE 1:1 at the other, with the icon standing
+  in below ~10 px at any dial position.
 - **Tagging phase A (v2.1.392)** — a hand-added tag now SURVIVES a re-derive in every physics
   namespace, and an override SUPPRESSES the derived tag of the same key rather than sitting beside
   it. Twenty-five of thirty-four strip sites used to delete it. `docs/tags-guide.md` already promises
