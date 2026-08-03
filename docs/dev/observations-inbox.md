@@ -281,6 +281,35 @@ _(new observations go here — rough is fine)_
 
 ---
 
+## Documentation debt
+
+One line per shipped change that a reader needs to know, appended as you go. Sweep periodically into
+`src/routes/physics/+page.svelte`, `src/lib/physics/physicsTrace.ts` (the Newton explainer — the one
+that claims to SHOW THE WORKING, so the worst to leave wrong), `docs/tags-guide.md` and
+`docs/classification-and-tags.md`. Delete a line when it has been written up.
+
+**Outstanding as of v2.1.383-beta — everything below post-dates [[D5]], which brought all four
+surfaces current at v2.1.362:**
+
+- **B5 (v2.1.372)** — the surface albedo model: bare rock darkened, brightening added from derived
+  deposits (oxidation, frost, caps). Mars regains its water-ice wisp as a consequence. This is the
+  biggest single physics change since D5 and the physics page says nothing about it.
+- **G8 (v2.1.383)** — eclipse prediction is an entirely NEW user-facing capability: next eclipse and
+  its kind (total / annular / transit) from the angular-diameter ratio. Nothing documented anywhere.
+- **B11 (v2.1.382)** — belts and rings now receive derived physics; a ring can carry a radiation
+  hazard tag. Previously they fell out of pass 3 entirely.
+- **B27 (v2.1.382)** — the second radiation figure now names where it is quoted.
+- **B25/B33** — the eyeball fingerprints and the surface-resource rules now require a surface, so a
+  gas giant no longer classifies as an eyeball or offers life-support resupply.
+- **B24, B16** — a stability verdict no longer contradicts its own reason; a complete type match now
+  beats a partial match of a more specific one.
+- **B10 + C3(c)** — every generated world gets a spin axis, TAGGED as inferred; proc gen now chooses
+  a satellite's orbital plane rather than assuming the equator. The inferred-versus-measured
+  distinction is a reader-facing promise and should be explained as one.
+- **G4 + A37** — one grid vocabulary and one lattice generator across all four spatial views, with a
+  distance falloff. User-facing in the preset editor.
+- **A41** — starmap routes run to the stars in 3D rather than to their plane projections.
+
 ## Standing rules any worker session must follow
 
 - **Physics and data drive tags; tags drive the image.** Do not add rendering code to make something look a
@@ -303,6 +332,13 @@ _(new observations go here — rough is fine)_
   visual change covered only by unit tests and a green build is NOT finished, and it should be reported
   as unfinished rather than as done-with-a-caveat. If the browser is genuinely unavailable, say so and
   say what remains unseen, so the next session knows exactly what to look at first.
+- **BANK A LINE, SWEEP THE PROSE.** Writing documentation in every batch costs context in every
+  session; writing it from memory later does not happen — [[D5]] found the tag docs 120 versions
+  stale. So the rule is: when you ship something a reader needs to know, append ONE LINE to
+  "Documentation debt" below, naming what changed and which surface needs it. That is seconds of
+  work and it is the guard. A periodic sweep turns the lines into prose. If your item genuinely
+  needs no documentation, write that line too — "B24: no reader-facing change" — because silence is
+  indistinguishable from forgetting.
 - **A PHYSICS CHANGE IS NOT FINISHED UNTIL THE USER-FACING EXPLANATIONS FOLLOW IT.** Four surfaces
   explain this engine to people and all four drift silently, because nothing breaks when they go
   stale: `src/routes/physics/+page.svelte` (the physics page), `src/lib/physics/physicsTrace.ts` (the
