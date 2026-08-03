@@ -211,6 +211,18 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // its map position and the 2D view stays pixel-honest against the GM map. Depth is a 3D-only reading.
   let flatMode = false;
   let gridSkirt = false;   // opt-in depth curtain under each lattice line (3D starmap only)
+  // G4: how hard the grid fades with distance from the focus. 0 = flat brightness everywhere,
+  // 1 = the near cells are bright and it is gone by the edge of the field. The numbers it maps to
+  // live here rather than being sprinkled through the renderer, and the DIAL is preset data.
+  let gridFalloff = 0.5;
+  // The fade window at a given strength: at 0 the grid never fades (fadeFrom past the field), at 1
+  // it starts a quarter of the way out. fadeTo trails fadeFrom so the dissolve stays gradual.
+  function fadeWindow(): { from: number; to: number } {
+    const f = Math.max(0, Math.min(1, gridFalloff));
+    if (f <= 0.001) return { from: GRID_RADIUS * 100, to: GRID_RADIUS * 200 };  // effectively none
+    const from = GRID_RADIUS * (1.6 - 1.35 * f);   // 1.6 R at the gentlest, 0.25 R at the hardest
+    return { from, to: from + GRID_RADIUS * (1.5 - 0.85 * f) };
+  }
 
   function clearGroup(g: THREE.Object3D) {
     g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { x?.map?.dispose?.(); x?.dispose?.(); }); });
@@ -386,7 +398,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // Fade in world space from a little past the map out to the span: viewed top-down the visible area
     // sits inside the solid zone so the lattice fills the screen, but tilt the camera and the far field
     // dissolves toward the horizon instead of stretching away as clutter.
-    addLattice(edges, base.clone().multiplyScalar(0.42), cell, GRID_RADIUS * 0.75, GRID_RADIUS * 1.9, { skirt: gridSkirt });
+    const fw = fadeWindow();
+    addLattice(edges, base.clone().multiplyScalar(0.42), cell, fw.from, fw.to, { skirt: gridSkirt });
 
     // SUBSECTOR BOUNDARIES — what makes a Traveller map read as one rather than as a plain hex field,
     // and the reason hex and Traveller hex were indistinguishable: the numbering is only legible when
@@ -395,7 +408,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // than the lattice and never skirted — a heavier line, not a deeper one.
     if (cfg.type === 'traveller-hex') {
       const subs = subsectorLattice(geo) as [number, number, number, number][];
-      addLattice(subs, base.clone().multiplyScalar(0.85), cell, GRID_RADIUS * 0.75, GRID_RADIUS * 1.9,
+      addLattice(subs, base.clone().multiplyScalar(0.85), cell, fw.from, fw.to,
         { alpha: 0.7, ribbon: Math.max(0.012, sizeS * 0.075) });
     }
   }
@@ -415,22 +428,42 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       renderMapGrid(base, gridMode, mapGridCfg?.size ?? DEFAULT_MAP_CELL);
       return;
     }
+    // G4: POLAR goes through the SAME addLattice path as the lattices, so it gets the same distance
+    // falloff and the same optional depth. It used to be raw LineLoops with a per-ring dim baked in,
+    // which is why it could not take either — "every grid type the same treatment" is only true if
+    // they share the code that gives the treatment.
+    const pf = fadeWindow();
+    const ringEdges: [number, number, number, number][] = [];
+    const spokeEdges: [number, number, number, number][] = [];
     for (let ri = 1; ri <= 6; ri++) {
       const radius = (GRID_RADIUS / 6) * ri;
-      const col = base.clone().multiplyScalar(0.45 * (1 - (ri - 1) / 8));
-      gridGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ringPts(radius)), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.55 })));
+      const pts = ringPts(radius);
+      for (let i = 0; i < pts.length; i++) {
+        const a0 = pts[i], b0 = pts[(i + 1) % pts.length];
+        ringEdges.push([a0.x, a0.z, b0.x, b0.z]);
+      }
       if (gridMode === 'scaled') {
         const distVal = (radius / GRID_RADIUS) * extent; // map units at this ring ≈ distance
         const label = makeGridLabel(`${distVal >= 100 ? Math.round(distVal) : distVal.toFixed(distVal < 10 ? 1 : 0)}${unit ? ' ' + unit : ''}`);
         if (label) { label.position.set(radius, 0.02, 0); gridGroup.add(label); }
       }
     }
-    const spokes: THREE.Vector3[] = [];
-    for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; spokes.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(a) * GRID_RADIUS, 0, Math.sin(a) * GRID_RADIUS)); }
-    gridGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(spokes), new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5 })));
+    // Spokes, segmented for the same reason the squares are: a fade evaluated per vertex judges a
+    // full-length spoke by its far end and drops the whole thing (inbox A37).
+    const STEP = GRID_RADIUS / 24;
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2, cx = Math.cos(a), cz = Math.sin(a);
+      for (let r = 0; r < GRID_RADIUS; r += STEP) {
+        const r2 = Math.min(GRID_RADIUS, r + STEP);
+        spokeEdges.push([cx * r, cz * r, cx * r2, cz * r2]);
+      }
+    }
+    addLattice(ringEdges, base.clone().multiplyScalar(0.45), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.55, skirt: gridSkirt });
+    addLattice(spokeEdges, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: false });
   }
   function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
   function setGridSkirt(on: boolean) { if (on === gridSkirt) return; gridSkirt = on; rebuildGrid(); }
+  function setGridFalloff(v: number) { if (v === gridFalloff) return; gridFalloff = v; rebuildGrid(); }
   // Rebuilds the content because depth is baked into the placed geometry (positions, drop-lines,
   // route lines). Cheap at starmap scale and keeps one code path for placement.
   function setZExaggeration(v: number) {
@@ -795,7 +828,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setGridSkirt, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

@@ -1,7 +1,7 @@
 // A37: the square lattice drew NOTHING on the 3D starmap, and the cause is arithmetic rather than a
 // missing branch — which means it can be PROVED here rather than looked at.
 import { describe, it, expect } from 'vitest';
-import { squareLattice, hexLattice, latticeFor, travellerHexLabel, subsectorLattice } from './latticeGeometry';
+import { squareLattice, hexLattice, latticeFor, travellerHexLabel, subsectorLattice, hexCentres } from './latticeGeometry';
 
 // The 3D scene's real numbers: GRID_RADIUS 12, half = 12*2.4, fade from 12*0.75 out to 12*1.9.
 const HALF = 12 * 2.4;
@@ -106,6 +106,53 @@ describe('lattice geometry', () => {
     }
     expect(widest, 'the widest connected run is about one hex — the boundary is dashes, not a line')
       .toBeGreaterThan(HALF);
+  });
+
+  // ALIGNMENT AND SCALE against the GM's own grid. Grid.svelte is the reference — a system the GM
+  // snapped to a hex must land dead-centre in the player's hex, or the two maps are telling different
+  // stories about where things are. Its formula is reproduced here VERBATIM from the component and
+  // compared against the shared generator, so a change to either side breaks this rather than the map.
+  it('puts its hex centres exactly where the GM grid puts them', () => {
+    const gridSize = 50;                 // Starmap.svelte's default, = DEFAULT_MAP_CELL
+    const originX = 0, originY = 0;      // Starmap.svelte hardcodes both
+    const size = gridSize / 2;
+    const hexHeight = Math.sqrt(3) * size;
+    const horizDist = 1.5 * size;
+    // Grid.svelte: x = col*horizDist + originX; y = row*hexHeight + (|col|%2)*(hexHeight/2) + originY
+    const gm = (col: number, row: number) => ({
+      x: col * horizDist + originX,
+      y: row * hexHeight + (Math.abs(col) % 2) * (hexHeight / 2) + originY
+    });
+    const mine = new Map(
+      hexCentres({ cell: gridSize, originX, originY, half: 1200 }).map((c) => [`${c.col},${c.row}`, c])
+    );
+    let checked = 0;
+    for (let col = -6; col <= 6; col++) {
+      for (let row = -6; row <= 6; row++) {
+        const c = mine.get(`${col},${row}`);
+        if (!c) continue;                // outside the requested extent
+        const e = gm(col, row);
+        expect(c.x, `hex ${col},${row} x is off the GM grid`).toBeCloseTo(e.x, 9);
+        expect(c.y, `hex ${col},${row} y is off the GM grid`).toBeCloseTo(e.y, 9);
+        checked++;
+      }
+    }
+    expect(checked, 'no hexes were actually compared').toBeGreaterThan(100);
+  });
+
+  // SCALE: the scene hands the generator the GM cell multiplied by the map->scene fit, so the lattice
+  // must scale linearly with that factor and nothing else.
+  it('scales linearly with the map fit, so a GM cell is one player cell', () => {
+    const base = hexCentres({ cell: 50, originX: 0, originY: 0, half: 600 });
+    const k = 0.37;
+    const scaled = hexCentres({ cell: 50 * k, originX: 0, originY: 0, half: 600 * k });
+    const byKey = new Map(scaled.map((c) => [`${c.col},${c.row}`, c]));
+    for (const c of base.slice(0, 60)) {
+      const t = byKey.get(`${c.col},${c.row}`);
+      if (!t) continue;
+      expect(t.x).toBeCloseTo(c.x * k, 9);
+      expect(t.y).toBeCloseTo(c.y * k, 9);
+    }
   });
 
   it('numbers Traveller hexes as Grid.svelte does', () => {

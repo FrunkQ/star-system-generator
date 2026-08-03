@@ -1019,7 +1019,7 @@
       {#if activePreset.starmapView === 'holo3d' || activePreset.starmapView === 'diagram2d'}
         <!-- 3D (or 2D = the same renderer LOCKED OVERHEAD): real GLSL filter + raycast selection. -->
         <Starmap3DView {starmap} accentColor={presetAccent} font={presetFont} grid={activePreset.grid}
-          gridDepth={activePreset.starmapGridDepth === true}
+          gridDepth={activePreset.starmapGridDepth === true} gridFalloff={activePreset.starmapGridFalloff ?? 0.5}
           background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
           labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}

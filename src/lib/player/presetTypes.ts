@@ -149,6 +149,7 @@ export interface PlayerPreset {
   zExaggeration?: number;
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
   starmapGridDepth?: boolean; // 3D starmap: a depth curtain under each grid line (off = flat lattice)
+  starmapGridFalloff?: number; // starmap grid: distance fade, 0 (even) .. 1 (bright near, gone by the edge)
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1
   bodySize: number;    // 1 readable .. 0 true scale

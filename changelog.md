@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.375-beta - 2nd Aug 2026
+
+* **"Grid falloff" -- one dial from an even grid to bright near cells that fade out toward the edge of the field.** It works on every overlay: squares, hexes, Traveller hexes and the polar rings.
+* Polar rings and spokes are drawn the same way as every other grid now, which is what lets them take the falloff and the depth option at all. They used to have a fixed brightness ladder baked in; with falloff turned right down the outer rings are brighter than they used to be.
+* Checked the player's hexes against the GM's own grid: same origin, same cell size, same geometry, so a system snapped to a hex on your map sits dead-centre in the hex a player sees.
+
 ## v2.1.373-beta - 2nd Aug 2026
 
 * **A Traveller hex map looks like one again.** It was drawing the same picture as a plain hex grid: the numbers only appeared on hexes bigger than a twenty-fourth of the whole map, so in practice never, and the subsector boundaries did not exist in the starmap renderer at all. Both are there now -- the heavy 8x10 boundary lines, with the proper zig-zag down the column edge, and numbers that show at readable sizes.
