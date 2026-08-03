@@ -32,6 +32,7 @@ export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?
 export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
 import { isLattice as isLatticeMode, normaliseOverlay, isHexFamily, hasSubsectors, type MapOverlay } from '$lib/map/mapOverlay';
 import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
+import { niceSeries, formatNice } from '$lib/map/niceInterval';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -54,6 +55,9 @@ export interface StarmapSceneOptions {
 export interface StarmapController {
   setData(systems: SmSystem[], routes: SmRoute[]): void;
   setGrid(mode: MapOverlay): void;
+  // G10: map units per campaign distance unit, so the SCALED polar rings can report a real distance.
+  // Without it the rings label their own map coordinates — see the note in rebuildGrid.
+  setDistanceScale(pixelsPerUnit: number): void;
   setZExaggeration(v: number): void; // DISPLAY ONLY — stretches depth for clarity, never distances
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setMono(on: boolean): void; // monochrome palette for tinting filters
@@ -203,6 +207,9 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
   let extent = 1; // world half-extent of the map (map units), for LY labels
+  // G10: map units per distance unit. 0 = unknown, in which case the rings fall back to labelling map
+  // units, which is at least self-consistent.
+  let pixelsPerUnit = 0;
   let mapCx = 0, mapCy = 0, mapK = 1; // the fit transform from setData (scene = (mapPos - c)*k)
   let mapGridCfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null = null;
   // WS7 depth exaggeration. True interstellar depth is visually tiny next to the map's spread, so the
@@ -468,17 +475,32 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const pf = fadeWindow();
     const ringEdges: [number, number, number, number][] = [];
     const spokeEdges: [number, number, number, number][] = [];
-    for (let ri = 1; ri <= 6; ri++) {
-      const radius = (GRID_RADIUS / 6) * ri;
-      const pts = ringPts(radius);
+    // G10 — SCALED rings sit at ROUND distances, and they are real distances now.
+    //
+    // TWO FAULTS, and the second was the serious one. (a) The rings were sixths of the extent, so the
+    // label reported whatever radius that landed on — "3.7 ly" is noise wearing a number. They come
+    // off the shared 1/2/5 ladder now, so a GM reads 5, 10, 15 and can do arithmetic with it.
+    // (b) THE LABELS WERE NEVER CONVERTED OUT OF MAP UNITS. `extent` is in map coordinates and the
+    // suffix was the campaign's distance unit, with nothing between them but a comment reading "map
+    // units at this ring ~ distance". On the bundled Local Neighbourhood that is a factor of 43.3:
+    // the rings read 182 / 364 / ... / 1091 ly across a neighbourhood that is 25 ly to its edge.
+    //
+    // `plain` keeps its six even decorative rings — it makes no claim, so it needs no ladder.
+    const scaled = gridMode === 'scaled';
+    const perUnit = pixelsPerUnit > 0 ? pixelsPerUnit : 1;
+    const trueExtent = extent / perUnit;   // the map's half-extent in the campaign's OWN unit
+    const rings: { radius: number; value: number }[] = scaled
+      ? niceSeries(trueExtent, 6).map((v) => ({ radius: (v / trueExtent) * GRID_RADIUS, value: v }))
+      : Array.from({ length: 6 }, (_, i) => ({ radius: (GRID_RADIUS / 6) * (i + 1), value: 0 }));
+    for (const ring of rings) {
+      const pts = ringPts(ring.radius);
       for (let i = 0; i < pts.length; i++) {
         const a0 = pts[i], b0 = pts[(i + 1) % pts.length];
         ringEdges.push([a0.x, a0.z, b0.x, b0.z]);
       }
-      if (gridMode === 'scaled') {
-        const distVal = (radius / GRID_RADIUS) * extent; // map units at this ring ≈ distance
-        const label = makeGridLabel(`${distVal >= 100 ? Math.round(distVal) : distVal.toFixed(distVal < 10 ? 1 : 0)}${unit ? ' ' + unit : ''}`);
-        if (label) { label.position.set(radius, 0.02, 0); gridGroup.add(label); }
+      if (scaled) {
+        const label = makeGridLabel(`${formatNice(ring.value)}${unit ? ' ' + unit : ''}`);
+        if (label) { label.position.set(ring.radius, 0.02, 0); gridGroup.add(label); }
       }
     }
     // Spokes, segmented for the same reason the squares are: a fade evaluated per vertex judges a
@@ -495,6 +517,12 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     addLattice(spokeEdges, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: false });
   }
   function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  function setDistanceScale(v: number) {
+    const n = Number.isFinite(v) && v > 0 ? v : 0;
+    if (n === pixelsPerUnit) return;
+    pixelsPerUnit = n;
+    rebuildGrid();
+  }
   function setGridSkirt(v: number) {
     const n = Math.max(0, Math.min(1, v || 0));
     if (n === gridSkirt) return;
@@ -901,7 +929,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setDistanceScale, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

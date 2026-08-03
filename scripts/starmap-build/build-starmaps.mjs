@@ -24,7 +24,16 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { EPOCH, PIXELS_PER_LY, MAP_CENTRE, systems, MAP_A } from './data/systems-real.mjs';
+// Shared real-sky core — the same modules the in-app importer uses
+// (src/lib/import/realsky/). Plain ESM so this script stays `node`-runnable.
+import {
+  G, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, EARTH_RADIUS_KM,
+  JUPITER_MASS_KG, AU_KM, LY_PER_PC
+} from '../../src/lib/import/realsky/constants.mjs';
+import { hash01, round, mapPositionFromAstrometry } from '../../src/lib/import/realsky/positions.mjs';
+import { starClasses } from '../../src/lib/import/realsky/stars.mjs';
+import { estimateRadiusRe, defaultMakeup, planetDescription } from '../../src/lib/import/realsky/planets.mjs';
+import { EPOCH, MAP_CENTRE, systems, MAP_A } from './data/systems-real.mjs';
 import { MAP_B, fiction } from './data/systems-fiction.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -37,15 +46,6 @@ const repo = resolve(here, '..', '..');
 const outFlag = process.argv.indexOf('--out');
 const outDir = outFlag > -1 ? resolve(process.argv[outFlag + 1]) : join(repo, 'static', 'example-starmaps');
 mkdirSync(outDir, { recursive: true });
-
-const G = 6.6743e-11;
-const SOLAR_MASS_KG = 1.989e30;
-const SOLAR_RADIUS_KM = 695700;
-const EARTH_MASS_KG = 5.972e24;
-const EARTH_RADIUS_KM = 6371;
-const JUPITER_MASS_KG = 1.898e27;
-const AU_KM = 149597870.7;
-const LY_PER_PC = 3.2615637769;
 
 const appVersion = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf-8')).version;
 const BASE_MAP_VERSION = 2; // v1 = the hand-placed 20-system map; v2 = true-position rebuild
@@ -64,47 +64,12 @@ for (const row of archive) {
 for (const rows of planetsByHost.values()) rows.sort((a, b) => (a.pl_orbsmax ?? 1e9) - (b.pl_orbsmax ?? 1e9));
 
 // ---------------------------------------------------------------- helpers
-// Deterministic 0..1 hash (same recipe as SystemProcessor.hash01) — used for
-// orbital phase angles so builds are reproducible.
-function hash01(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return ((h >>> 0) % 100000) / 100000;
-}
-const round = (v, dp = 2) => Math.round(v * 10 ** dp) / 10 ** dp;
-
 // SIMBAD row: [main_id, ra, dec, plx_value, sp_type, pmra, pmdec, rvz_radvel]
 function positionFor(simbadId) {
   const row = simbad[simbadId];
   if (!row) throw new Error(`No SIMBAD cache row for "${simbadId}"`);
   const [, raDeg, decDeg, plxMas] = row;
-  const dLy = (1000 / plxMas) * LY_PER_PC;
-  const ra = (raDeg * Math.PI) / 180, dec = (decDeg * Math.PI) / 180;
-  const x = dLy * Math.cos(dec) * Math.cos(ra);
-  const y = dLy * Math.cos(dec) * Math.sin(ra);
-  const z = dLy * Math.sin(dec);
-  return {
-    distanceLy: dLy,
-    position: {
-      x: round(MAP_CENTRE.x + PIXELS_PER_LY * x),
-      y: round(MAP_CENTRE.y + PIXELS_PER_LY * y),
-      z: round(PIXELS_PER_LY * z)
-    }
-  };
-}
-
-const STAR_IMAGE = {
-  O: '/images/star_types/O.webp', B: '/images/star_types/B.webp', A: '/images/star_types/A.webp',
-  F: '/images/star_types/F.webp', G: '/images/star_types/G.webp', K: '/images/star_types/K.ebp.webp',
-  M: '/images/star_types/M.webp', L: '/images/star_types/L.png', T: '/images/star_types/T.png',
-  Y: '/images/star_types/Y.jpg', WD: '/images/star_types/WD.webp'
-};
-function starClasses(type) {
-  if (/white dwarf|^D/i.test(type)) return { classes: ['star/WD'], image: STAR_IMAGE.WD };
-  const m = type.match(/^(sd)?([OBAFGKMLTY])/i);
-  const letter = m ? m[2].toUpperCase() : 'M';
-  const full = type.replace(/\s*\(.*\)$/, '');
-  return { classes: [`star/${letter}`, ...(full && full !== letter ? [`star/${full}`] : [])], image: STAR_IMAGE[letter] };
+  return mapPositionFromAstrometry(raDeg, decDeg, plxMas, undefined, MAP_CENTRE);
 }
 
 function starNode(spec, sysDef, parentId, hostInfo) {
@@ -138,36 +103,6 @@ function starNode(spec, sysDef, parentId, hostInfo) {
   for (const extra of st.extraPlanets ?? []) children.push(manualPlanetNode(extra, sysDef, node));
   hostInfo?.stars.push(node);
   return { node, children, massKg };
-}
-
-// Chen & Kipping (2017)-style mass-radius estimate for planets without a
-// measured radius (radial-velocity discoveries). Earth units in, Earth radii out.
-function estimateRadiusRe(massMe) {
-  if (massMe < 2.04) return 1.008 * massMe ** 0.279;
-  if (massMe < 131.6) return Math.min(0.808 * massMe ** 0.589, 12);
-  return 12; // giants: ~Jupiter-sized regardless of mass
-}
-function defaultMakeup(massMe, densityGcc) {
-  if (densityGcc != null && densityGcc > 4) return { rock: 0.62, metal: 0.33, ice: 0.05 };
-  if (massMe < 4) return { rock: 0.65, metal: 0.30, ice: 0.05 };
-  if (massMe < 40) return { ice: 0.55, gas: 0.25, rock: 0.20 };
-  return { gas: 0.85, ice: 0.10, rock: 0.05 };
-}
-
-function planetDescription(row, override) {
-  if (override?.desc) return override.desc;
-  const bits = [];
-  const method = (row.discoverymethod ?? '').replace('Radial Velocity', 'radial velocity').replace('Transit', 'transit').replace('Imaging', 'direct imaging').replace('Astrometry', 'astrometry');
-  bits.push(`Confirmed ${row.disc_year ?? ''} (${method}).`.replace('  ', ' '));
-  if (row.pl_bmasse != null) {
-    const isMsini = /msini/i.test(row.pl_bmassprov ?? '');
-    const m = row.pl_bmasse;
-    const mStr = m >= 100 ? `${round(m / 317.8, 2)} Jupiter masses` : `${round(m, 2)} Earth masses`;
-    bits.push(isMsini ? `Minimum mass ${mStr}.` : `Mass ${mStr}.`);
-  }
-  if (row.pl_rade != null) bits.push(`Measured radius ${round(row.pl_rade, 2)} Earth radii.`);
-  if (row.pl_orbper != null) bits.push(`Orbital period ${row.pl_orbper < 100 ? round(row.pl_orbper, 1) + ' days' : round(row.pl_orbper / 365.25, 1) + ' years'}.`);
-  return bits.join(' ');
 }
 
 function planetNodes(st, sysDef, hostNode) {

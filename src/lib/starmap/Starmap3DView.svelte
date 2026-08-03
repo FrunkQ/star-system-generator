@@ -81,6 +81,8 @@
     controller.setMono(mono);
     controller.setMapGrid(mapGrid); // before setData: setData's rebuildGrid uses the fresh fit transform
     controller.setData(smSystems, smRoutes);
+    // G10: the scaled polar rings need map-units-per-distance-unit or they label map coordinates.
+    controller.setDistanceScale(starmap?.scale?.pixelsPerUnit ?? 0);
     controller.setGrid(grid);
     controller.setGridSkirt(flat ? 0 : gridDepth);
     controller.setGridFalloff(gridFalloff);
@@ -115,7 +117,7 @@
   onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; routeGlow; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; routeGlow; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
 </script>

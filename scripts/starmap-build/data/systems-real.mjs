@@ -28,9 +28,10 @@
 //   { bary: [specA, specB], aAU, e, id, name?, periodYr? }   // pair via barycentre
 // Star params may be omitted for planet hosts (auto-filled from the archive).
 
-export const EPOCH = 1762339146908;
-export const PIXELS_PER_LY = 43.30127018922193; // unchanged from the previous map
-export const MAP_CENTRE = { x: 400, y: 300 };   // Sol's pixel position, kept stable
+// Epoch and map-scale conventions live with the shared real-sky core
+// (src/lib/import/realsky/constants.mjs) — one source for the kit AND the
+// in-app importer. Re-exported here so roster consumers keep one import site.
+export { EPOCH, PIXELS_PER_LY, DEFAULT_MAP_CENTRE_PX as MAP_CENTRE } from '../../../src/lib/import/realsky/constants.mjs';
 
 export const systems = [
   // ---------------------------------------------------------------- Sol (special-cased: embedded from static/examples/Sol_2030-System.json)

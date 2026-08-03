@@ -1,5 +1,6 @@
 <script lang="ts">
   import { forSystemScale } from '$lib/map/mapOverlay';
+  import { niceStepBelow, formatNice } from '$lib/map/niceInterval';
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
@@ -438,11 +439,11 @@
     const hw = width / 2 / zoom, hh = height / 2 / zoom;
     const cx = renderPan.x, cy = renderPan.y;               // world point at screen centre
     const x0 = -hw, x1 = hw, y0 = -hh, y1 = hh;             // context-coord bounds
-    // A cell of roughly 90 screen px, snapped to 1/2/5 × 10^n AU.
-    const raw = 90 / zoom;
-    const pow = Math.pow(10, Math.floor(Math.log10(raw)));
-    const mant = raw / pow;
-    const step = (mant >= 5 ? 5 : mant >= 2 ? 2 : 1) * pow;
+    // A cell of roughly 90 screen px, snapped to the shared 1/2/5 × 10^n ladder (map/niceInterval).
+    // This view had the right idea first and kept it to itself — the ladder was inlined here and
+    // nowhere else, so when G10 needed the same answer for the 3D system grid and both starmaps'
+    // scale rings it would have become a second copy. It is the same arithmetic; only the home moved.
+    const step = niceStepBelow(90 / zoom);
     const line = 1 / zoom;
     ctx.save();
     ctx.lineWidth = line;
@@ -488,7 +489,7 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         for (let r = step; r <= maxR; r += step) {
-          const lbl = r >= 100 ? `${Math.round(r)} AU` : `${r < 1 ? r.toFixed(2) : r.toFixed(r < 10 ? 1 : 0)} AU`;
+          const lbl = `${formatNice(r)} AU`;   // one formatter, shared with every other scale label
           ctx.fillText(lbl, (ox + r) * zoom, oy * zoom - 2);
         }
         ctx.restore();

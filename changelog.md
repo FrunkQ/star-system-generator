@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.386-beta - 3rd Aug 2026
+
+* **The 3D system view's grid is a distance now, not a decoration.** It used to be a fraction of the view, so it meant nothing and changed size as you moved. It is a real number of AU, and it steps by decade as you zoom -- brightening and subdividing into ten on the way in, coarsening on the way out -- with the two levels crossfading so it reads as one grid rather than jumping.
+* **A correction worth stating plainly: the 3D starmap's "Polar + scale" rings have been reporting distances about 43 times too large.** They were labelling the map's own internal coordinates rather than light years, so on the bundled Local Neighbourhood the outer ring read "1091 ly" across a neighbourhood that is 25 ly to its edge. They now read 4, 8, 12, 16, 20 and 24 ly.
+* **Every scale ring and grid label across all four map views lands on a round number** -- 1, 2 or 5 and its tens -- from one shared piece of arithmetic. "5 AU" is a scale you can use; "3.7 AU" is noise wearing a number.
+
 ## v2.1.385-beta - 3rd Aug 2026
 
 * **The "show me the working" panel actually shows the working for a world's brightness.** It used to give you the finished number and a phrase; it now walks the whole chain — the bare ground its makeup implies, the dust or frost lying on top of it, the cloud deck above that, and what the world reflects in the end. Mars reads 0.105 bare, 0.252 with its rust, 0.256 through its wisps.

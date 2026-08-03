@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   compressRadius,
+  expandRadius,
   toSceneAbsolute,
   toSceneRebased,
   ulp32,
@@ -25,6 +26,32 @@ const PLUTO_RADIUS_KM = 1188.3;
 
 const v3 = (x = 0, y = 0, z = 0): Vec3 => ({ x, y, z });
 const auToScene = (au: number) => compressRadius(au, TRUE_SCALE);
+
+describe('expandRadius — the inverse, by bisecting the forward map', () => {
+  const MID: RadialMap = { ...TRUE_SCALE, compression: 0.65 }; // the app's own default
+
+  it('round-trips at every compression, including the toytown default', () => {
+    for (const m of [TRUE_SCALE, MID, READABLE]) {
+      for (const au of [0.001, 0.05, 0.387, 1, 5.2, 19.2, 39.5, 80]) {
+        expect(expandRadius(compressRadius(au, m), m)).toBeCloseTo(au, 6);
+      }
+    }
+  });
+
+  it('is exact and trivial at true scale, where the map is linear', () => {
+    expect(expandRadius(12, TRUE_SCALE)).toBeCloseTo(39.5, 9);
+    expect(expandRadius(6, TRUE_SCALE)).toBeCloseTo(19.75, 9);
+  });
+
+  it('reaches past the outermost body, because a camera can pull back further than that', () => {
+    expect(expandRadius(compressRadius(400, MID), MID)).toBeCloseTo(400, 4);
+  });
+
+  it('answers zero for zero and refuses a negative radius', () => {
+    expect(expandRadius(0, MID)).toBe(0);
+    expect(expandRadius(-3, MID)).toBe(0);
+  });
+});
 
 describe('floating origin — the radial map', () => {
   it('is exactly linear at true scale, mapping the outermost body to the grid radius', () => {

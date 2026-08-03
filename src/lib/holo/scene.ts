@@ -17,11 +17,11 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
-import { compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
+import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
+import { gridLevels, niceSeries, formatNice } from '$lib/map/niceInterval';
 import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
-import { latticeFor } from '$lib/map/latticeGeometry';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
@@ -1064,12 +1064,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   // Round-AU steps for the labelled grid, thinned to ~6 rings spanning the system's extent.
+  // G10: the SHARED 1/2/5 ladder (map/niceInterval), the same one the starmap's scaled rings use, so
+  // the two views cannot disagree about what a round distance is. The private list this replaced held
+  // 3, 30 and 300, which are not on that ladder — harmless in isolation, but two vocabularies for one
+  // idea is how the next one drifts.
   function gridAuSteps(): number[] {
-    const nice = [0.1, 0.2, 0.3, 0.5, 1, 2, 3, 5, 10, 20, 30, 50, 100, 200, 500, 1000];
-    const within = nice.filter((a) => a <= rMax * 1.02);
-    if (within.length <= 6) return within;
-    const step = Math.ceil(within.length / 6);
-    return within.filter((_, i) => i % step === 0 || i === within.length - 1);
+    return niceSeries(rMax * 1.02, 6, 6);
   }
 
   function ringPoints(radius: number): THREE.Vector3[] {
@@ -1115,6 +1115,104 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const l of gridLabels) l.sprite.position.set(l.abs[0] - sceneOrigin.x, l.abs[1] - sceneOrigin.y, l.abs[2] - sceneOrigin.z);
   }
 
+  // --- G10: THE GROUND GRID IS A DISTANCE ------------------------------------------------------
+  //
+  // It used to be `GRID_RADIUS / 7` — a fraction of the SCENE radius, so it scaled with the view and
+  // meant nothing physical. A grid whose cell is a real number of AU turns a decorative plate into a
+  // scale reference a GM can read at a glance, which is much the more useful object.
+  //
+  // WHY NOT `latticeFor` (map/latticeGeometry). The shared lattice generator tiles MAP space with a
+  // constant cell, and that
+  // is exactly right for the starmaps and the GM's snap grid, which is why it stays. It cannot express
+  // this one: the orrery's radial map is NONLINEAR at any toytown compression, so equal steps in AU
+  // are not equal steps on screen. These are two different objects, not two copies of one — a constant
+  // -cell tiling in map space, and a metric grid in a compressed radial space.
+  //
+  // WHAT IS EXACT AND WHAT IS NOT, stated rather than discovered later. Each line sits at the scene
+  // radius its own AU coordinate maps to, so every line is at the distance it claims ALONG ITS OWN
+  // AXIS, and at true scale (compression 0) the whole thing is a genuine uniform square grid. Under
+  // compression the cells narrow outward, which matches the orrery beneath them; a mathematically
+  // exact image of a square grid under a radial map would be CURVED, and straight lines at compressed
+  // positions are the readable approximation of it. The polar rings are the overlay that stays exactly
+  // right under compression, which is the honest reason to reach for `scaled` when precision matters.
+  let gridLevelMats: { mat: THREE.LineBasicMaterial; coarse: boolean; peak: number }[] = [];
+  let gridBuiltFor = { coarse: 0, span: 0 };
+
+  /** Half the AU extent the camera can currently see — what picks the decade. */
+  function visibleAu(): number {
+    const dist = camera.position.distanceTo(controls.target);
+    const halfScene = Math.max(1e-4, dist * Math.tan((camera.fov * Math.PI) / 360));
+    // The focus can sit well off the origin, so measure from the far edge of what is on screen.
+    const reach = halfScene + controls.target.length();
+    return Math.max(1e-6, expandRadius(Math.min(reach, GRID_RADIUS * 4), radialMap()));
+  }
+
+  /** Lines at whole multiples of `stepAu`, out to `spanAu`, clipped to the ground disc. */
+  function metricLines(stepAu: number, spanAu: number): THREE.Vector3[] {
+    const pts: THREE.Vector3[] = [];
+    if (!(stepAu > 0)) return pts;
+    const R = GRID_RADIUS;
+    const offsets: number[] = [0];
+    for (let k = 1; k * stepAu <= spanAu && offsets.length < 400; k++) {
+      const o = compressScalar(k * stepAu);
+      if (o > R) break;
+      offsets.push(o, -o);
+    }
+    // A run at |offset| reaches sqrt(R^2 - offset^2) each way inside the disc, which is what keeps the
+    // plate a DISC rather than a square — the same boundary the old lattice got from `clipRadius`.
+    for (const o of offsets) {
+      const half = Math.sqrt(Math.max(0, R * R - o * o));
+      if (half <= 1e-4) continue;
+      // Segmented ONLY when the falloff dial is on. A per-vertex fade evaluated at the ends of a
+      // full-width line judges the whole line by its far ends (inbox A37), so it needs pieces — but
+      // with the dial at 0, which is this view's default, `addGridLines` writes no colour attribute at
+      // all and the pieces buy nothing. One run per line then, which is 65,000 vertices down to a few
+      // hundred on the fine level.
+      const SEG = gridFalloff > 0.001 ? Math.max(0.25, R / 16) : Infinity;
+      for (let a = -half; a < half - 1e-9; a += SEG) {
+        const b = Math.min(half, a + SEG);
+        pts.push(new THREE.Vector3(a, 0.01, o), new THREE.Vector3(b, 0.01, o));   // along x
+        pts.push(new THREE.Vector3(o, 0.01, a), new THREE.Vector3(o, 0.01, b));   // along z
+      }
+    }
+    return pts;
+  }
+
+  function buildMetricGrid(base: THREE.Color) {
+    gridLevelMats = [];
+    const lv = gridLevels(visibleAu(), 6);
+    if (!lv) return;
+    // Cover a bit more than the view so a pan does not run off the grid, but never the whole system at
+    // a fine step — that is how a decade grid spawns ten thousand lines.
+    const span = Math.min(rMax * 1.2, visibleAu() * 2.5);
+    gridBuiltFor = { coarse: lv.coarse, span };
+    for (const [step, coarse] of [[lv.coarse, true], [lv.fine, false]] as [number, boolean][]) {
+      const peak = coarse ? 0.42 : 0.30;         // the ghost level is fainter even at full fade-in
+      const a = coarse ? 1 - lv.t : lv.t;
+      if (a < 0.02) continue;
+      const pts = metricLines(step, span);
+      if (!pts.length) continue;
+      const mat = new THREE.LineBasicMaterial({
+        color: base.clone().multiplyScalar(0.4), transparent: true, opacity: peak * a, depthWrite: false
+      });
+      addGridLines(pts, mat, false);
+      gridLevelMats.push({ mat, coarse, peak });
+    }
+  }
+
+  /**
+   * Per frame: slide the two levels' opacities as the zoom moves, and rebuild only when the DECADE
+   * itself changes. That split is the whole trick — geometry is expensive and a fade is not, so the
+   * crossfade runs continuously while the rebuild happens a handful of times across a whole zoom.
+   */
+  function updateGridLevels() {
+    if (!isLattice(gridMode) || gridMode === 'off' || !gridLevelMats.length) return;
+    const lv = gridLevels(visibleAu(), 6);
+    if (!lv) return;
+    if (lv.coarse !== gridBuiltFor.coarse) { rebuildGrid(); return; }
+    for (const g of gridLevelMats) g.mat.opacity = g.peak * (g.coarse ? 1 - lv.t : lv.t);
+  }
+
   function rebuildGrid() {
     clearGroup(gridGroup);
     gridAbs = [];
@@ -1126,24 +1224,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // view draws the Traveller lattice without CCRR numbering: the numbering is a starmap-scale idea
     // (sector/subsector addressing), meaningless inside one system.
     if (isLattice(gridMode)) {
-      // THE shared lattice (map/latticeGeometry), the same generator the GM's grid and both starmaps
-      // use. This was a third private copy, and it had already drifted: its hexes were POINTY-topped
-      // (axial q/r, 60k-30 corners) where every other surface in the app is FLAT-topped. That was only
-      // ever harmless because forSystemScale folds hex to square before this can draw one, so the
-      // wrong branch was unreachable — luck, not design. The pointy-top code is deleted rather than
-      // ported: there is one hex convention and it is flat-topped.
-      // `clipRadius` keeps the system view's DISC boundary, which is what makes it read as a plate
-      // under the orrery rather than a field; maxSegment keeps the optional falloff per-cell.
-      const s = GRID_RADIUS / 7;
-      const edges = latticeFor(gridMode, {
-        cell: s, originX: 0, originY: 0, half: GRID_RADIUS, clipRadius: GRID_RADIUS, maxSegment: s
-      });
-      const pts: THREE.Vector3[] = [];
-      for (const [x1, z1, x2, z2] of edges) {
-        pts.push(new THREE.Vector3(x1, 0.01, z1), new THREE.Vector3(x2, 0.01, z2));
-      }
-      const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.4, depthWrite: false });
-      addGridLines(pts, mat, false);
+      buildMetricGrid(base);
       return;
     }
     if (gridMode === 'scaled') {
@@ -1153,7 +1234,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (radius <= 0.02) continue;
         const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.55, depthWrite: false });
         addGridLines(ringPoints(radius), mat, true);
-        const label = makeGridLabel(au >= 1 ? `${au} AU` : `${au} AU`);
+        const label = makeGridLabel(`${formatNice(au)} AU`);
         if (label) {
           gridLabels.push({ sprite: label, abs: [radius, 0.02, 0] });
           label.position.set(radius - sceneOrigin.x, 0.02 - sceneOrigin.y, -sceneOrigin.z);
@@ -2645,6 +2726,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (viewInsetCur > 0.5) camera.setViewOffset(viewW, viewH, viewInsetCur / 2, 0, viewW, viewH);
     else if (camera.view && camera.view.enabled) camera.clearViewOffset();
     maybeRebase(); // A19: keep the origin under the camera before anything reads a scene position
+    updateGridLevels(); // G10: crossfade the ground grid's two decades as the zoom moves
     driveFocus();
     // Turntable, paused during the focus ease — and never when the heading is locked: autoRotate spins the
     // camera independently of enableRotate, so the lock has to kill it too or the map still drifts round.

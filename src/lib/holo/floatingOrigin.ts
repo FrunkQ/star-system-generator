@@ -43,6 +43,31 @@ export function compressRadius(r: number, m: RadialMap): number {
 }
 
 /**
+ * The INVERSE of `compressRadius`: how many AU a given scene radius stands for.
+ *
+ * Needed by anything that has to answer "what distance is this part of the view" — G10's metric ground
+ * grid picks its step from the AU extent actually on screen. Solved numerically by BISECTING THE
+ * FORWARD MAP rather than inverting the algebra: the forward map is a blend of a linear and a log
+ * term and has no clean closed-form inverse, and more importantly a second formula would be a second
+ * model, free to drift from this one the moment either is touched. This cannot drift — it calls it.
+ *
+ * `compressRadius` is strictly increasing in r, so bisection is safe. Fifty halvings take the bracket
+ * to about 1e-15 of its width, which is far below anything a grid cares about.
+ */
+export function expandRadius(scene: number, m: RadialMap): number {
+  if (!(scene > 0)) return 0;
+  let lo = 0;
+  let hi = Math.max(m.rMax, 1);
+  // Grow the bracket until it contains the answer — a camera can pull back past the outermost body.
+  for (let i = 0; i < 60 && compressRadius(hi, m) < scene; i++) hi *= 2;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    if (compressRadius(mid, m) < scene) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+/**
  * Physics frame (reference plane z=0, in-plane x/y) -> three's ground (x,z) with out-of-plane height on
  * three's up (y), applying the radial compression in AU space first. This is the ABSOLUTE scene frame:
  * the system's centre of mass sits at (0,0,0).
