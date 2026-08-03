@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.382-beta - 3rd Aug 2026
+
+* **Asteroid belts and planetary rings now carry a radiation warning.** Jupiter's rings sit in the fiercest place in the Solar System — worse than Io — and had nothing on them at all, because the warning was being worked out in a step that skips anything which is not a planet or a moon. Jupiter's rings read lethal in *hours*, Saturn's in weeks, the main belt a long-term risk, the Kuiper belt background.
+* Everything else that step does stays off for them on purpose: a cloud of debris has no magnetic field, no geology and no single surface, so those are left blank rather than invented.
+* **Uranus and Neptune stop claiming to have a surface.** Their radiation was labelled "at the surface" — they are ice giants and have not got one. Now reported at the 1-bar level, like Jupiter and Saturn.
+* **"Radiation in orbit" now says which orbit it means.** Earth's figure is the dose inside the Van Allen belts, and reading it as "the dose where a station sits" is wrong by four thousand times — the ISS flies below the belts. The row now reads "in the belts, from ~1,262 km", with the altitude worked out per world, and the tag is renamed to *Radiation belts*. The numbers themselves have not changed.
+
 ## v2.1.381-beta - 3rd Aug 2026
 
 * **Routes on the 3D starmap go to the stars now, not to the floor beneath them.** They were lines on the plane, which was right until systems were given a depth -- since then a route has ended at a system's shadow rather than at the system. The glow band follows the line up with it, and a route's name rides the line instead of hovering under it. The 2D starmap is the plan view and stays flat, which is the point of it.
