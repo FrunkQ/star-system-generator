@@ -16,6 +16,9 @@ export interface ModelViewerOptions {
   interactive?: boolean;   // drag to spin
   spin?: boolean;          // auto-turntable (pauses while dragging)
   background?: string | null; // null = transparent
+  /** Keep the drawing buffer so a host can drawImage() this canvas into a filter texture (A38 -
+   *  the document's CRT/holo filters capture the graphic rather than layering it on top). */
+  capture?: boolean;
 }
 
 export interface ModelViewer {
@@ -29,7 +32,7 @@ export interface ModelViewer {
 const EDGE_THRESHOLD_DEG = 25; // reads as panel lines (design §5); below it, curvature stays clean
 
 export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOptions = {}): ModelViewer {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: !!opts.capture });
   renderer.setPixelRatio(Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
   const scene = new THREE.Scene();
   if (opts.background) scene.background = new THREE.Color(opts.background);

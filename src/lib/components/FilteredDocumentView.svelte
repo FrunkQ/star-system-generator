@@ -20,6 +20,7 @@
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
   import { drawTipBanner, tipBannerHeight, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
   import BodyGraphic from './BodyGraphic.svelte';
+  import ConstructModelGraphic from './ConstructModelGraphic.svelte';
 
   // D9: the same component renders the SYSTEM Guide document or the STARMAP document (the systems
   // index) — one engine, one theme, one filter/scroll/tap pipeline for both stages.
@@ -89,6 +90,8 @@
   })();
   $: subjectRinged = subjectBody ? isRinged(system, subjectBody.id) : false;
   $: gfxOn = imagery === 'sphere' || imagery === 'disc' || imagery === 'flat';
+  // G3: a construct with a model takes the turntable in the reserved gap instead of BodyGraphic.
+  $: subjectModel = subjectBody?.kind === 'construct' ? ((subjectBody as any).model ?? null) : null;
   // A minimal single-body system for the 3D holo body graphic. The BODY sits at origin (so the holo's
   // focus fills the frame with it) with its ring child; the system's real STAR is placed OFF to the side
   // (a big fabricated orbit around the body) so it stays off-frame but lights the body from a 3/4 angle —
@@ -233,12 +236,14 @@
   // preserveDrawingBuffer, set in holo/scene.ts) and `flat` is PlanetDisc's 2D one. The simple `disc`
   // mode is an inline SVG with no canvas to capture, so it keeps the overlay — see the inbox note.
   let gfxComp: BodyGraphic | null = null;
+  let mdlComp: ConstructModelGraphic | null = null; // G3: the construct-model turntable, same getCanvas contract
   let composite: HTMLCanvasElement | null = null;
   let gfxRaf = 0;
-  $: gfxCapturable = gfxOn && !!gfxRect && !!subjectBody && filterId !== 'none' && imagery !== 'disc';
+  // A construct model is a WebGL canvas like the sphere, so it is capturable under any imagery mode.
+  $: gfxCapturable = gfxOn && !!gfxRect && !!subjectBody && filterId !== 'none' && (imagery !== 'disc' || !!subjectModel);
 
   function compositeFrame(): HTMLCanvasElement {
-    const src = gfxComp?.getCanvas() ?? null;
+    const src = mdlComp?.getCanvas() ?? gfxComp?.getCanvas() ?? null;
     if (!composite) composite = document.createElement('canvas');
     if (composite.width !== off.width || composite.height !== off.height) {
       composite.width = off.width; composite.height = off.height;
@@ -379,11 +384,17 @@
          pointer-accepting (so a player can still spin the globe) but is not itself drawn — otherwise
          the same graphic would appear twice, once filtered and once not. Same trick the holo HUD card
          uses to keep the inspector's buttons while the shader draws the card. -->
-    <div class="fd-bodygfx" class:interactive={selectable && imagery === 'sphere'} class:captured={gfxCapturable}
+    <div class="fd-bodygfx" class:interactive={selectable && (imagery === 'sphere' || !!subjectModel)} class:captured={gfxCapturable}
          style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
-      <BodyGraphic bind:this={gfxComp} body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
-        ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex}
-        interactive={selectable && imagery === 'sphere'} />
+      {#if subjectModel}
+        <ConstructModelGraphic bind:this={mdlComp} model={subjectModel}
+          tint={(subjectBody as any).icon_color || '#ffd24d'} iconType={(subjectBody as any).icon_type}
+          {mono} interactive={selectable} />
+      {:else}
+        <BodyGraphic bind:this={gfxComp} body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
+          ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex}
+          interactive={selectable && imagery === 'sphere'} />
+      {/if}
     </div>
   {/if}
   <!-- Transition overlay: the engine paints the outgoing snapshot here and animates it away. Sits above

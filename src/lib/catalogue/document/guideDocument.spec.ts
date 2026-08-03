@@ -76,6 +76,32 @@ describe('buildGuideDocument', () => {
     expect(photo.some((b) => b.kind === 'constructGlyph')).toBe(false);
   });
 
+  // G3: the priority chain is photo > model > glyph > nothing, and a model's attribution rides
+  // directly beneath its reserved gap (owner decision 5 - CC-BY is allowed, so credit must show).
+  it('gives a construct with a model the reserved gap, its attribution line, and no glyph', () => {
+    const withModel: any = { ...system, nodes: system.nodes.map((n: any) =>
+      n.id === 'iss' ? { ...n, model: { hash: 'abc123', name: 'Hull', credit: 'A Modeller', license: 'CC-BY' } } : n) };
+
+    const blocks = buildGuideDocument(withModel, 'iss', { imagery: 'disc' });
+    const gap = blocks.find((b) => b.kind === 'bodyDisc') as any;
+    expect(gap).toBeTruthy();
+    expect(gap.id).toBe('__bodygfx');                     // the consumers' overlay anchor
+    expect(blocks.some((b) => b.kind === 'constructGlyph')).toBe(false);
+    const credit = blocks.find((b) => b.kind === 'text' && (b as any).text.startsWith('Model:')) as any;
+    expect(credit.text).toContain('A Modeller');
+    expect(credit.text).toContain('CC-BY');
+
+    // A photo still outranks the model; 'none' still means none; no credit/licence -> no line.
+    const photo = buildGuideDocument(withModel, 'iss', { imagery: 'photo', image: {} as any, imageAspect: 1.5 });
+    expect(photo.some((b) => b.kind === 'image')).toBe(true);
+    expect(photo.some((b) => b.kind === 'bodyDisc')).toBe(false);
+    expect(buildGuideDocument(withModel, 'iss', { imagery: 'none' }).some((b) => b.kind === 'bodyDisc')).toBe(false);
+    const bare: any = { ...system, nodes: system.nodes.map((n: any) =>
+      n.id === 'iss' ? { ...n, model: { hash: 'abc123' } } : n) };
+    expect(buildGuideDocument(bare, 'iss', { imagery: 'disc' })
+      .some((b) => b.kind === 'text' && (b as any).text?.startsWith?.('Model:'))).toBe(false);
+  });
+
   it('renders tags as a styled tags block, not a plain fact row', () => {
     const tagged: any = { ...system, nodes: system.nodes.map((n: any) => n.id === 'earth' ? { ...n, tags: [{ key: 'structure/cloud-deck' }] } : n) };
     const blocks = buildGuideDocument(tagged, 'earth', { tagStyle: 'pills' });

@@ -128,6 +128,20 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     // '__bodygfx' lets FilteredDocumentView find the rect; taller for 3D so the spinning body has room.
     blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: isRinged(system, subject.id), mode: opts.imagery, heightFrac: opts.imagery === 'sphere' ? 0.32 : 0.24 });
   } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
+    && subject && subject.kind === 'construct' && (subject as any).model?.hash) {
+    // G3: a construct carrying a 3D model gets the model - the priority chain is photo (branch
+    // above, unchanged) > model > glyph > nothing. Same reserved-gap mechanism as a body's globe:
+    // '__bodygfx' is where the consumers overlay the live turntable (ConstructModelGraphic).
+    blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: false, mode: 'sphere', heightFrac: 0.32 });
+    // Attribution (owner decision 5): CC-BY models are allowed, so wherever the model is shown the
+    // credit rides directly beneath it - GM panel and player document alike, same builder.
+    const m = (subject as any).model;
+    if (m.credit || m.license) {
+      const line = ['Model:', m.title || m.name, m.credit && `by ${m.credit}`, m.license && `(${m.license})`]
+        .filter(Boolean).join(' ');
+      blocks.push({ kind: 'text', text: line, italic: true });
+    }
+  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
     && subject && subject.kind === 'construct') {
     // A30: the construct's authored icon, at info-block size — the picture that already exists in its
     // data, rather than a world's disc or a blank. Gated on the same imagery modes as the body disc, so

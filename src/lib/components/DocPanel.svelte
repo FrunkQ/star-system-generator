@@ -14,6 +14,7 @@
   import { loadBodyImage, type LoadedBodyImage } from '$lib/catalogue/document/bodyImage';
   import { starsOf, isRinged, isBary, dominantOf } from '$lib/catalogue/document/systemTopology';
   import BodyGraphic from './BodyGraphic.svelte';
+  import ConstructModelGraphic from './ConstructModelGraphic.svelte';
   import type { MeasurementUnits, TemperatureUnit } from '$lib/stores';
 
   export let system: System | null = null;
@@ -64,6 +65,8 @@
   $: subjectRinged = subjectBody && system ? isRinged(system, subjectBody.id) : false;
   $: starHex = system ? ((starsOf(system)[0] as any)?.apparentColorHex ?? null) : null;
   $: gfxOn = imagery === 'sphere' || imagery === 'disc' || imagery === 'flat';
+  // G3: a construct with a model takes the turntable in the reserved gap instead of BodyGraphic.
+  $: subjectModel = subjectBody?.kind === 'construct' ? ((subjectBody as any).model ?? null) : null;
 
   // Single-body scene for the 3D graphic — same shape the document view builds (root barycentre so a
   // planet isn't misread as the system's star; rings ride along).
@@ -135,12 +138,17 @@
 <div class="doc-panel" bind:this={wrap} style="height:{contentH}px">
   <canvas bind:this={canvas} style="width:{w}px; height:{contentH}px"></canvas>
   {#if gfxOn && gfxRect && subjectBody}
-    <div class="dp-gfx" class:interactive={interactive && imagery === 'sphere'}
+    <div class="dp-gfx" class:interactive={interactive && (imagery === 'sphere' || !!subjectModel)}
          style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
-      <BodyGraphic body={subjectBody} system={bodyGfxSystem}
-        mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
-        ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle}
-        bg={resolveDocColors(theme).bg} {starHex} interactive={interactive && imagery === 'sphere'} />
+      {#if subjectModel}
+        <ConstructModelGraphic model={subjectModel} tint={(subjectBody as any).icon_color || '#ffd24d'}
+          iconType={(subjectBody as any).icon_type} {mono} {interactive} />
+      {:else}
+        <BodyGraphic body={subjectBody} system={bodyGfxSystem}
+          mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
+          ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle}
+          bg={resolveDocColors(theme).bg} {starHex} interactive={interactive && imagery === 'sphere'} />
+      {/if}
     </div>
   {/if}
 </div>
