@@ -251,6 +251,50 @@ data that exists today:
   Likewise faction, age and battle damage: no data exists to drive them; do not invent it.
   If faction dressing is ever wanted, the lever is a tag or an authored field first.
 
+### Hull finishes: filling in a textureless model (owner ask, 2026-08-01)
+
+Most uploads arrive as bare geometry (every STL does). "Filled" must therefore not mean
+"textured or nothing" — it means a small menu of **procedural finishes**, every one generated
+from geometry + `icon_color` at load time, no textures, no new dependencies. All the
+primitives are already in the vendored three:
+
+1. **Flat-shaded** (the default): de-index + `computeVertexNormals` gives faceted per-face
+   normals — the "low poly but coloured" look — in the construct's tint, lit by the scene's
+   star light. Zero extra cost; works on any mesh however smooth it was authored.
+2. **Panel lines / crease edges — the "edge detection" ask, and it is a built-in.**
+   `THREE.EdgesGeometry(geometry, thresholdAngle)` extracts exactly the edges where adjacent
+   faces meet at more than the threshold (~25° reads as panel lines), computed once at load,
+   drawn as a `LineSegments` overlay on the fill. No post-processing, no shader. If 1 px
+   hairlines are too faint, `LineSegments2`/`LineMaterial` (vendored, `examples/jsm/lines/`)
+   draw screen-space-width lines.
+3. **Cel + creases:** `MeshToonMaterial` with a generated 3-4 step gradient ramp (a few-pixel
+   `DataTexture`, made in code) under the edge overlay — the clean technical-drawing/comic
+   look.
+4. **Smooth metal (matcap):** `MeshMatcapMaterial` with a matcap generated on a small canvas
+   (radial highlight sphere tinted toward `icon_color`) — the sculpting-tool look, needs no
+   lights, single draw call, reads as brushed metal at marker sizes.
+5. **Blueprint / hologram:** near-transparent dark fill (depth-writing) + crease edges in
+   `icon_color` + a fresnel rim glow (a few-line shader, or cheaper still an additive
+   slightly-scaled back-face hull). This is the finish most at home on the holo table.
+6. **Wireframe and occluded wireframe:** already the scene's own style vocabulary
+   (`wire-flat` / `wire-glow` / `-occ`); the occluded variant is an invisible
+   (`colorWrite: false`) depth-writing fill under depth-tested lines, which the body path
+   already does — constructs inherit the mechanism, nothing new.
+
+**Prior art — this is all stolen, deliberately.** Finishes 1-4 are straight from three.js's
+own example set (EdgesGeometry, toon and matcap examples); the inverted-hull rim is the
+classic outline trick every cel-shaded game uses; and the art references for 5 are Homeworld's
+tactical view and Elite: Dangerous's ship holograms — both are precisely "flat fill + edges +
+glow" and both stay legible at very small screen sizes, which is the marker's whole job. The
+heavyweight route — screen-space edge detection over depth/normal buffers (the Obra Dinn
+look), or three's `OutlinePass` — is **rejected**: full-screen passes that add nothing at
+marker scale.
+
+Finish is look-data like everything else: a per-construct field (default flat-shaded, or
+follow-the-preset), with the constants (crease threshold, ramp steps, rim power) in data.
+The scene's style dial outranks it — a wireframe scene renders every hull wireframe — and
+built meshes cache per (model hash, finish, tint).
+
 Where the constants live: the starter-set **manifest is rule-pack-style data** — model id,
 display name, licence/credit, which materials are tintable, default scale — not code. A GM
 editing the pack can add their own hosted models by URL the same way.
@@ -359,12 +403,14 @@ is Phase 1, the bundled set is last.
   **GLB, STL and OBJ** with convert-at-import (simplify via `meshopt_simplifier` — the one new
   dependency, MIT — texture downscale for wild GLBs, orientation/up-axis preview,
   normalisation, caps), hash-addressed IDB store, info-block turntable viewer, export/import
-  embedding, `icon_color` tint for material-less meshes. Info block only; no scene change;
-  broadcast ships models once by hash.
+  embedding, `icon_color` tint for material-less meshes with the flat-shaded + crease-edges
+  finishes (section 5; the rest of the finish menu follows in Phase 3). Info block only; no
+  scene change; broadcast ships models once by hash.
 - **Phase 2 — the scene marker:** model replaces sprite at marker scale under the focus rule;
   glyph LOD threshold; render styles applied; zero-radius invariants pinned by a test.
-- **Phase 3 — dressing:** `hull-*` tint convention for prepared models, `icon_type` decal,
-  tag-driven status dressing when construct tags exist.
+- **Phase 3 — dressing:** the full hull-finish menu (cel, matcap, blueprint/holo — section 5),
+  `hull-*` tint convention for prepared models, `icon_type` decal, tag-driven status dressing
+  when construct tags exist.
 - **Phase 4 — bundled starter set (optional):** CC0/PD set built by a `scripts/` kit (fetch,
   simplify, downscale textures to 512 px webp, meshopt- or Draco-compress, manifest with
   licence per model — preferring textured/multi-material sources so the filled render styles
