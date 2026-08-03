@@ -144,6 +144,10 @@ export interface PlayerPreset {
   beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black';
   grid: import('$lib/map/mapOverlay').MapOverlay; // WS3: shared overlay vocabulary across every view
+  // G9: the campaign's OWN charted systems drawn as real stars in the 3D system view's sky. An enum,
+  // not a boolean — 'true' is an honest sky, 'marked' annotates the same stars with diffraction
+  // spikes and names. Optional and defaulting to 'off', so nothing already saved changes.
+  constellations?: import('$lib/map/skyStars').SkyMode;
   // WS7: 3D starmap DEPTH stretch, display-only (1 = true depth). True interstellar depth is tiny next
   // to the map's spread, so this exaggerates it for clarity. Never affects distances.
   zExaggeration?: number;

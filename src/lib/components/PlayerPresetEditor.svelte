@@ -34,6 +34,7 @@
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { starsOf } from '$lib/catalogue/document/systemTopology';
   import { MAP_OVERLAY_OPTIONS, SYSTEM_OVERLAY_OPTIONS } from '$lib/map/mapOverlay';
+  import { SKY_MODE_OPTIONS, skyStarsFor, magnitudeLimitFor } from '$lib/map/skyStars';
   import DocPanel from './DocPanel.svelte';
 
   // D6: for the 2D/3D views the info-block preview APPEARS while you're tweaking Info Block controls
@@ -137,6 +138,13 @@
     return (textured ?? anySys)?.system ?? null;
   }
   let previewSystem: System | null = get(systemStore) ?? firstProcessedSystem();
+  // G9 preview: which starmap system the previewed System actually IS, so its sky is the real one
+  // rather than an invented viewpoint. Matched on the System's own id, which is what the starmap node
+  // carries; no match (a fallback example system) simply means no charted stars to show.
+  $: previewSkyStars = (draft?.constellations ?? 'off') === 'off'
+    ? []
+    : skyStarsFor($starmapStore, ($starmapStore?.systems ?? []).find((s: any) => s.system?.id === previewSystem?.id)?.id ?? null,
+        { magnitudeLimit: magnitudeLimitFor(draft.constellations ?? 'off') });
   let rulePack: RulePack | null = null;
   let currentTime = 0;
   let raf = 0;
@@ -544,6 +552,18 @@
                      plan view that never zooms. -->
                 <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system (never zoom to a body)</label>
                 <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
+                <!-- G9: the campaign's OWN charted systems, drawn into that starfield at their true
+                     direction, brightness and colour. An enum rather than a tickbox because the third
+                     state is a different claim, not a decoration: diffraction spikes are an INSTRUMENT
+                     artifact, so they read as "annotated" rather than as something an eye would see.
+                     Only meaningful over the starfield, so it follows it. -->
+                {#if draft.skybox}
+                  <label>Charted stars
+                    <select bind:value={draft.constellations}>
+                      {#each SKY_MODE_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                    </select>
+                  </label>
+                {/if}
                 <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
               </fieldset>
             {/if}
@@ -763,7 +783,7 @@
                  can't drift from what players actually get. -->
             {:else if (draft.systemView === 'holo3d' || draft.systemView === 'diagram2d') && previewSystem && rulePack}
               <div class="holo-wrap">
-                <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle}
+                <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle} skyStars={previewSkyStars}
                   focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
                 {#if infoPreview && !draft.hideInfoPanel}
                   <!-- Info-block preview (D6): the SAME DocPanel players get, docked like the live view.

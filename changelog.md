@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.384-beta - 3rd Aug 2026
+
+* **The 3D system view can show your campaign's own stars in its sky.** Every charted system, at its true direction, its real brightness and its own colour, drawn in front of the generic starfield rather than instead of it. Sol seen from Alpha Centauri comes out at magnitude 0.5, exactly as it should -- and from Sol, Sirius, Alpha Centauri, Vega, Procyon and Altair all land within a third of a magnitude of the real night sky, which is a pleasing thing to be able to check.
+* **Three settings, not a switch.** "True sky" draws only what an eye could actually see there and is otherwise indistinguishable from the backdrop. "Marked" gives the same stars diffraction spikes and names -- spikes are a telescope artifact rather than something you see, so they read as an annotation instead of a claim, and they get longer on the brighter stars.
+* Worth knowing before you turn it on: a 42-system map is a very sparse sky. Expect to recognise a star you know rather than to trace constellations; that comes with a bigger map.
+
 ## v2.1.383-beta - 3rd Aug 2026
 
 * **Every world now says when its next eclipse is, and how dark it gets.** A new row in the body block, so it turns up in the GM's inspector, in printed player reports and in the info panels on the player views alike -- "in 107 d - 37% annular (Phobos)". Anything that would hide less than a quarter of the star is left out, because that is a transit rather than an eclipse and nobody would look up.

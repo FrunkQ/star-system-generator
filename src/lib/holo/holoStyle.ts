@@ -25,6 +25,10 @@ export interface HoloStyle {
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
   grid: 'off' | 'plain' | 'scaled' | 'hex'; // ground reference: none / polar rings / scale rings / hex (hex is starmap-only; the system view treats it as plain)
   gridFalloff?: number; // G4: ground-grid distance fade, 0 (even, the default) .. 1 (bright centre, gone by the edge)
+  // G9: how the campaign's OWN charted systems are shown in this view's sky — 'off' (generic starfield
+  // alone), 'true' (real direction/magnitude/colour), 'marked' (the same, with diffraction spikes and
+  // names). The STAR LIST is data and arrives separately; only the choice is part of the look.
+  constellations?: import('$lib/map/skyStars').SkyMode;
   orbitSpeed: number; // auto view-orbit: how fast the camera slowly circles the focused object (0 = static)
   labelSize?: number; // in-scene body-label font size in px (default 11)
   font?: string; // in-scene label font-family — inherited from the preset theme when set

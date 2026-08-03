@@ -29,6 +29,10 @@
   // Pixels of the right edge covered by the info panel — the scene gently shifts its projection centre
   // left so the framed body stays centred in the VISIBLE strip (0 = no panel / mobile).
   export let viewInsetRight: number = 0;
+  // G9: the charted systems to hang in this view's sky, already reduced to direction + magnitude +
+  // colour by `map/skyStars`. DATA, not look — the mode that decides whether and how they are drawn
+  // lives on the style. Empty is the normal case for any host that has no starmap to hand.
+  export let skyStars: import('$lib/map/skyStars').SkyStar[] = [];
 
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
@@ -48,6 +52,7 @@
     controller?.setAuroras(s.auroras ?? true);
     controller?.setBeltStyle(s.beltStyle ?? 'rocks');
     controller?.setBodySize(s.bodySize);
+    controller?.setSkyStars(skyStars, s.constellations ?? 'off');
     controller?.setGrid(s.grid);
     controller?.setGridFalloff(s.gridFalloff ?? 0);
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);
@@ -125,7 +130,7 @@
   $: controller?.setUserSpin(userSpin);
   $: controller?.setViewInset(viewInsetRight);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
-  $: if (controller) { labelsVisible; filterBypass; orbitPaused; applyStyle(style); }
+  $: if (controller) { labelsVisible; filterBypass; orbitPaused; skyStars; applyStyle(style); }
 </script>
 
 <div class="holo-root" bind:this={container}>

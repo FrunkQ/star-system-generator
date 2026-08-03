@@ -20,6 +20,7 @@ import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader'
 import { compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
+import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
 import { latticeFor } from '$lib/map/latticeGeometry';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { toParentEquator } from '$lib/system/satelliteFrame';
@@ -84,6 +85,10 @@ export interface HoloController {
   // system rather than the focused body. overhead + whole = the projector's top-down plan view.
   setFraming(opts: { angleDeg?: number; whole?: boolean; fillFrac?: number }): void;
   setSkybox(on: boolean): void;
+  // G9: the campaign's OWN charted systems, drawn as real stars in front of the generic starfield.
+  // The list is computed outside (map/skyStars) — this scene knows nothing about starmaps, only about
+  // directions and magnitudes it has been handed.
+  setSkyStars(stars: SkyStar[], mode: SkyMode): void;
   setBackground(bg: string): void; // 'space' | 'green' | 'blue' | 'black' (greenscreen for OBS)
   setCompression(v: number): void; // toytown level 0 (true scale) .. 1 (fully compressed)
   setBeltDetail(v: number): void; // GM belt particle-budget quality 0..1 (performance)
@@ -322,9 +327,136 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   scene.add(starfield);
   function applyStarfield() { starfield.visible = skyboxOn && background === 'space'; }
   applyStarfield();
-  function setSkybox(on: boolean) { skyboxOn = on; applyStarfield(); }
+  function setSkybox(on: boolean) { skyboxOn = on; applyStarfield(); rebuildSkyStars(); }
+
+  // --- G9: THE CAMPAIGN'S OWN STARS -------------------------------------------------------------
+  //
+  // Far-field, and that is what makes this cheap: a charted system is a DIRECTION and nothing else, so
+  // it goes on a sphere at a fixed radius and never touches the floating origin, the rebase or any of
+  // the precision work A19 needed. The generic starfield stays exactly as it was and becomes the
+  // backdrop these sit in front of.
+  //
+  // Just inside the backdrop's 900 so the two cannot z-fight, and rendered after it. Both are far
+  // beyond anything in the system, so neither is ever occluded by the orrery.
+  const SKY_RADIUS = 860;
+  // Sprites rather than one Points cloud, because size and colour are PER STAR here — the whole point
+  // is that a derived magnitude is visible — and a dozen sprites is nothing. The backdrop stays a
+  // Points cloud because its 1,600 members are all alike.
+  const skyGroup = new THREE.Group();
+  skyGroup.renderOrder = -1; // in front of the backdrop (-1 too, added first), behind everything else
+  scene.add(skyGroup);
+  let skyStars: SkyStar[] = [];
+  let skyMode: SkyMode = 'off';
+
+  /**
+   * Magnitude to a 0..1 brightness. The scale runs from the naked-eye limit down to about Sirius, so
+   * the whole visible range is used rather than everything piling up at one end.
+   */
+  const skyBrightness = (m: number) => Math.max(0, Math.min(1, (NAKED_EYE_LIMIT - m) / (NAKED_EYE_LIMIT + 1.5)));
+
+  // A soft round star image, and the four-vane DIFFRACTION CROSS for the marked mode. Both cached: one
+  // texture each, whatever the sky holds.
+  let skyDotTex: THREE.CanvasTexture | null = null;
+  let skySpikeTex: THREE.CanvasTexture | null = null;
+  function skyDot(): THREE.CanvasTexture {
+    if (skyDotTex) return skyDotTex;
+    const S = 64, c = document.createElement('canvas');
+    c.width = c.height = S;
+    const ctx = c.getContext('2d')!;
+    const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.25, 'rgba(255,255,255,0.85)');
+    g.addColorStop(0.6, 'rgba(255,255,255,0.18)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+    skyDotTex = new THREE.CanvasTexture(c);
+    skyDotTex.colorSpace = THREE.SRGBColorSpace;
+    return skyDotTex;
+  }
+  function skySpike(): THREE.CanvasTexture {
+    if (skySpikeTex) return skySpikeTex;
+    const S = 128, c = document.createElement('canvas');
+    c.width = c.height = S;
+    const ctx = c.getContext('2d')!;
+    // Four vanes tapering to nothing, drawn as gradients so the cross fades out rather than stopping.
+    // A real secondary-mirror support throws exactly four; anything else would look like a sparkle.
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) {
+      const g = ctx.createLinearGradient(S / 2, S / 2, S / 2 + dx * S / 2, S / 2 + dy * S / 2);
+      g.addColorStop(0, 'rgba(255,255,255,0.95)');
+      g.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(S / 2, S / 2);
+      ctx.lineTo(S / 2 + dx * S / 2, S / 2 + dy * S / 2);
+      ctx.stroke();
+    }
+    skySpikeTex = new THREE.CanvasTexture(c);
+    skySpikeTex.colorSpace = THREE.SRGBColorSpace;
+    return skySpikeTex;
+  }
+
+  function rebuildSkyStars() {
+    clearGroup(skyGroup);
+    skyGroup.visible = skyMode !== 'off' && skyboxOn && background === 'space';
+    if (!skyGroup.visible || !skyStars.length) return;
+    const marked = skyMode === 'marked';
+    for (const st of skyStars) {
+      const b = skyBrightness(st.magnitude);
+      // PHYSICS (x, y, z) -> SCENE (x, z, y), the same axis convention positionToScene uses. The
+      // starmap's own plane IS the system's reference plane; there is no other frame to relate them
+      // by, and both maps already treat map-z as height.
+      const pos = new THREE.Vector3(st.dir.x, st.dir.z, st.dir.y).multiplyScalar(SKY_RADIUS);
+      const col = new THREE.Color(st.color);
+      // World-space size, not screen-space: at a fixed 860 the camera's own wander of a few tens of
+      // units changes the angular size by ~3%, so a per-frame resize would buy nothing.
+      const size = 3.2 + 9.5 * b;
+      const dot = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: skyDot(), color: col, transparent: true, depthWrite: false, depthTest: false,
+        blending: THREE.AdditiveBlending, opacity: 0.45 + 0.55 * b
+      }));
+      dot.position.copy(pos);
+      dot.scale.setScalar(size);
+      skyGroup.add(dot);
+      if (!marked) continue;
+      // SPIKES SCALE WITH BRIGHTNESS, longer on the brighter stars exactly as real astrophotography
+      // does — which is what turns the derived magnitude from merely correct into readable.
+      const spike = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: skySpike(), color: col, transparent: true, depthWrite: false, depthTest: false,
+        blending: THREE.AdditiveBlending, opacity: 0.3 + 0.5 * b
+      }));
+      spike.position.copy(pos);
+      spike.scale.setScalar(size * (2.6 + 4.4 * b));
+      skyGroup.add(spike);
+      // Names belong to the ANNOTATED mode only. In `true` the whole point is that these are
+      // indistinguishable from the sky, and a floating name would give the game away.
+      const label = makeGridLabel(st.name);
+      if (label) {
+        label.position.copy(pos).add(new THREE.Vector3(size * 0.9, size * 0.5, 0));
+        label.scale.multiplyScalar(SKY_RADIUS * 0.028);
+        skyGroup.add(label);
+      }
+    }
+  }
+
+  function setSkyStars(stars: SkyStar[], mode: SkyMode) {
+    const nextMode: SkyMode = mode ?? 'off';
+    // Cheap identity check first: this is re-applied on every prop change and the list is rebuilt by
+    // the caller each time, so comparing contents keeps a reactive block from thrashing the geometry.
+    const same = nextMode === skyMode && stars.length === skyStars.length
+      && stars.every((s, i) => s.id === skyStars[i].id && s.magnitude === skyStars[i].magnitude);
+    if (same) return;
+    skyStars = stars ?? [];
+    skyMode = nextMode;
+    rebuildSkyStars();
+  }
   function setBackground(bg: string) {
     background = bg;
+    // The charted stars share the backdrop's rule — they only make sense over space, never over a
+    // chroma key — so they follow it here rather than being left visible on a green screen.
+    queueMicrotask(() => rebuildSkyStars());
     // Named preset, OR a raw #rrggbb (used when the holo is embedded — e.g. the Guide document's 3D body
     // graphic — so its ground matches the surrounding page instead of the default navy).
     const named = BG_COLORS[bg];
@@ -2593,7 +2725,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, resetView, resize, dispose };
 }
 
 // ---- helpers ----

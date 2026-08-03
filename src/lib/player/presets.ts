@@ -228,6 +228,8 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     bodySize: p.bodySize,
     grid: p.grid,
     gridFalloff: p.gridFalloff ?? 0,
+    constellations: p.constellations ?? 'off', // G9
+
     orbitSpeed: p.orbitSpeed,
     labelSize: p.labelSize,
     font: p.font

@@ -13,6 +13,7 @@
   import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
+  import { skyStarsFor, magnitudeLimitFor } from '$lib/map/skyStars';
   import { makeDocTheme } from '$lib/catalogue/document/documentStyles';
   import { drawHud } from '$lib/catalogue/infoCard';
   import { drawCover } from '$lib/catalogue/coverCard';
@@ -115,6 +116,13 @@
   let previewSystemId: string | null = null; // starmap-level: clicked-but-not-entered system
   $: previewNode = starmap?.systems.find((s) => s.id === previewSystemId) || null;
   $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
+  // G9: the OTHER charted systems, as stars in this system's sky. Derived here rather than in the
+  // scene because it is starmap knowledge, and recomputed only when the map or the viewed system
+  // changes — never per frame. `off` skips the work entirely.
+  $: skyStars = (activePreset?.constellations ?? 'off') === 'off'
+    ? []
+    : skyStarsFor(starmap, selectedSystemId,
+        { magnitudeLimit: magnitudeLimitFor(activePreset!.constellations ?? 'off') });
 
   // Project the starmap's system positions into an SVG viewBox (with route lines) for the clickable
   // starmap diagram. Stays on top; the selected system's preview shows below.
@@ -1093,7 +1101,7 @@
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
-          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} on:focus={handleFocus} />
+          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} on:focus={handleFocus} />
         {:else}
           <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
             <SystemVisualizer
