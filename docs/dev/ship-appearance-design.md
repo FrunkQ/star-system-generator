@@ -397,6 +397,15 @@ work is not thrown away when models arrive.
 Reordered 2026-08-01 for the primary use case (user-uploaded SF ships): the import pipeline
 is Phase 1, the bundled set is last.
 
+**STATUS 2026-08-03: Phase 1 BUILT at v2.1.387-394-beta** (modules: `constructs/modelStore.ts`,
+`modelImport.ts`, `modelConvert.ts`, `modelViewer.ts`, `modelTransfer.ts`;
+`components/ConstructModelModal.svelte`, `ConstructModelGraphic.svelte`; builder + both document
+consumers). Two deliberate deviations from the letter of Phase 1, both recorded as inbox
+findings: export/.json embedding is helper-ready but unwired (its call sites sat in another
+session's live file), and the broadcast fetch-by-hash for remote players is deferred to the VTT
+stream's territory — same-machine players work today via the shared origin store, and a missing
+binary degrades to the icon glyph. Phases 2-4 not started.
+
 - **Phase 0 — A30 interim (independent, do now):** glyph-at-size info-block for constructs.
 - **Phase 1 — upload + viewer, all three formats:** `model?: ModelRef` (`{ hash|url, name,
   credit, license, sourceUrl, custom }` — the ImageRef shape plus hash), upload accepting
