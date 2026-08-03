@@ -32,7 +32,7 @@ export const DRIVE_AXIS = new THREE.Vector3(0, 0, -1);
 
 export interface ModelViewer {
   /** Hand over a (parsed) model. tintHex applies only when the source had no materials. */
-  setObject(object: THREE.Object3D, opts: { hadMaterials: boolean; tintHex?: string | null }): void;
+  setObject(object: THREE.Object3D, opts: { hadMaterials: boolean; tintHex?: string | null; finish?: HullFinish | null }): void;
   setOrient(q: [number, number, number, number] | null): void;
   setSize(w: number, h: number): void;
   dispose(): void;
@@ -40,34 +40,86 @@ export interface ModelViewer {
 
 const EDGE_THRESHOLD_DEG = 25; // reads as panel lines (design §5); below it, curvature stays clean
 
-/** Build the DISPLAY form of a parsed model: cloned, finished (flat-shaded tint + crease edges
- *  when the source had no materials), centred, scaled to a unit long axis, and - when `orient`
- *  is given - baked to the convention (nose +Z, drive -Z). The ONE builder behind the modal
- *  preview, the info-block turntable and the holo scene's focused-ship display, so what the GM
- *  approves is what every surface renders. */
+export type HullFinish = 'flat' | 'cel' | 'matcap' | 'blueprint';
+
+// Cel ramp: a four-step grey gradient the toon material quantises lighting against. Generated,
+// not an asset - the whole §5 menu is procedural by design.
+let celRamp: THREE.DataTexture | null = null;
+function getCelRamp(): THREE.DataTexture {
+  if (celRamp) return celRamp;
+  const data = new Uint8Array([70, 130, 195, 255]);
+  celRamp = new THREE.DataTexture(data, 4, 1, THREE.RedFormat);
+  celRamp.minFilter = celRamp.magFilter = THREE.NearestFilter;
+  celRamp.needsUpdate = true;
+  return celRamp;
+}
+
+// Matcap: a lit-sphere gradient painted on a small canvas, tinted toward the hull colour - the
+// sculpting-tool look, no scene lights needed. Falls back to null (flat finish) where 2D canvas
+// is unavailable (tests).
+const matcaps = new Map<string, THREE.Texture | null>();
+function getMatcap(tint: string): THREE.Texture | null {
+  if (matcaps.has(tint)) return matcaps.get(tint)!;
+  let tex: THREE.Texture | null = null;
+  if (typeof document !== 'undefined') {
+    const size = 256;
+    const cnv = document.createElement('canvas');
+    cnv.width = cnv.height = size;
+    const ctx = cnv.getContext('2d');
+    if (ctx) {
+      const g = ctx.createRadialGradient(size * 0.35, size * 0.3, size * 0.05, size * 0.5, size * 0.5, size * 0.62);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(0.25, shade(tint, 0.45));
+      g.addColorStop(0.62, tint);
+      g.addColorStop(1, shade(tint, -0.72));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+      tex = new THREE.CanvasTexture(cnv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+    }
+  }
+  matcaps.set(tint, tex);
+  return tex;
+}
+
+/** Build the DISPLAY form of a parsed model: cloned, finished, centred, scaled to a unit long
+ *  axis, and - when `orient` is given - baked to the convention (nose +Z, drive -Z). The ONE
+ *  builder behind the modal preview, the info-block turntable and the holo scene's focused-ship
+ *  display, so what the GM approves is what every surface renders.
+ *  `finish` (design §5): 'flat' (default - faceted tint + panel lines), 'cel', 'matcap',
+ *  'blueprint'. A chosen finish dresses ANY hull, authored materials included; no finish leaves
+ *  a GLB's authored materials untouched and tints only material-less sources. */
 export function buildDisplayModel(
   source: THREE.Object3D,
-  opts: { hadMaterials: boolean; tintHex?: string | null; orient?: [number, number, number, number] | null }
+  opts: { hadMaterials: boolean; tintHex?: string | null; orient?: [number, number, number, number] | null; finish?: HullFinish | null }
 ): THREE.Group {
   const work = source.clone(true);
+  const finish: HullFinish | null = opts.finish ?? (opts.hadMaterials ? null : 'flat');
 
-  if (!opts.hadMaterials) {
-    // Material-less source (every STL, bare OBJ): flat-shaded fill in the ship's own colour
-    // + crease edges. De-index for honest per-facet normals - flat shading IS the finish.
+  if (finish) {
     const tint = opts.tintHex || '#ffd24d';
-    const fill = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(tint), flatShading: true, metalness: 0.15, roughness: 0.62
-    });
-    const edge = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, -0.55)), transparent: true, opacity: 0.55 });
+    const edgeDark = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, -0.55)), transparent: true, opacity: 0.55 });
+    const edgeBright = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, 0.15)), transparent: true, opacity: 0.9 });
+    const matcap = finish === 'matcap' ? getMatcap(tint) : null;
+    const fill: THREE.Material =
+      finish === 'cel' ? new THREE.MeshToonMaterial({ color: new THREE.Color(tint), gradientMap: getCelRamp() })
+      : finish === 'matcap' && matcap ? new THREE.MeshMatcapMaterial({ matcap })
+      : finish === 'blueprint' ? new THREE.MeshBasicMaterial({ color: new THREE.Color(shade(tint, -0.82)), transparent: true, opacity: 0.4 })
+      : new THREE.MeshStandardMaterial({ color: new THREE.Color(tint), flatShading: true, metalness: 0.15, roughness: 0.62 });
+    // Which finishes carry panel lines: flat and cel take the dark crease edges, blueprint IS its
+    // bright edges over a ghost fill, matcap is a smooth metal and takes none.
+    const edge = finish === 'blueprint' ? edgeBright : finish === 'matcap' ? null : edgeDark;
     work.traverse((c) => {
       const mesh = c as THREE.Mesh;
       if (!mesh.isMesh || !mesh.geometry) return;
       let geo = mesh.geometry as THREE.BufferGeometry;
-      if (geo.index) geo = geo.toNonIndexed();
-      geo.computeVertexNormals(); // per-face after de-index: the faceted look
-      mesh.geometry = geo;
+      if (finish === 'flat' || finish === 'cel') {
+        if (geo.index) geo = geo.toNonIndexed();
+        geo.computeVertexNormals(); // per-face after de-index: the faceted look
+        mesh.geometry = geo;
+      }
       mesh.material = fill;
-      mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, EDGE_THRESHOLD_DEG), edge));
+      if (edge) mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, EDGE_THRESHOLD_DEG), edge));
     });
   }
 
@@ -199,12 +251,12 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   }
 
   return {
-    setObject(object, { hadMaterials, tintHex }) {
+    setObject(object, { hadMaterials, tintHex, finish }) {
       clearFrame();
       // Orient is NOT baked here - the viewer owns a live orientGroup so the modal's buttons can
       // re-orient without rebuilding; the shared builder handles finish + normalisation.
       frame.scale.setScalar(1);
-      frame.add(buildDisplayModel(object, { hadMaterials, tintHex }));
+      frame.add(buildDisplayModel(object, { hadMaterials, tintHex, finish }));
       frameCamera();
     },
     setOrient(q) {

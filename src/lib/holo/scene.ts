@@ -1471,7 +1471,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }, { signal: pointer.signal });
   // The user driving zoom (wheel / pinch) takes the camera off auto-framing — the orrery's rule, so the
   // view never fights someone looking around. Cleared by the next explicit (re)frame (focusBody/pickBody).
-  canvas.addEventListener('wheel', () => { userZoomOverride = true; }, { passive: true, signal: pointer.signal });
+  canvas.addEventListener('wheel', () => {
+    userZoomOverride = true;
+    // Grabbing the zoom mid-ease hands the camera over NOW - the 48-frame drive used to keep
+    // lerping against the wheel for most of a second ("fights the mouse"), worst on a tight
+    // ship close-up where a double-click restarts it.
+    if (focusDrive > 1) focusDrive = 1;
+  }, { passive: true, signal: pointer.signal });
   canvas.addEventListener('pointerup', (e) => {
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return; // a drag = orbit, not a pick
     const rect = canvas.getBoundingClientRect();
@@ -1567,7 +1573,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function frameDistance(b: BodyVisual): number {
     // A modelled construct frames to its HULL (dial-blended length), so "zoom to the ship" comes
     // all the way down to it at true scale; a glyph-only construct keeps the radius-less patch.
-    const radius = b.isConstruct ? ((b.shipModel && b.shipLen) ? b.shipLen / 2 : 0) : (b.radiusScene ?? 0);
+    // The FULL length stands in for the radius, deliberately generous: the half-length close-up
+    // put the hull at 50% of the frame with the min-zoom nearly touching it, which read as
+    // "zoomed in too much" and left no room for the plume. Full length puts the ship at roughly
+    // a quarter of the frame with its surroundings visible.
+    const radius = b.isConstruct ? ((b.shipModel && b.shipLen) ? b.shipLen : 0) : (b.radiusScene ?? 0);
     // Reach the FURTHEST context peer — for a barycentre member that is the partner star, so the pair
     // frames as a pair from either half (the barycentre point itself has no mesh here).
     let parentDist = 0;
@@ -1623,7 +1633,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const SHIP_MODEL_MIN_PX = 10; // below this the model IS the icon's job
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
 
-  async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number] }, tint: string, sceneLen: number, gen: number) {
+  async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number]; finish?: import('$lib/constructs/modelViewer').HullFinish }, tint: string, sceneLen: number, gen: number) {
     try {
       const stored = await getStoredModel(ref.hash);
       if (gen !== buildGen) return; // stale build
@@ -1636,8 +1646,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const parsed = await parseStoredModel('stored.glb', stored.bytes);
       if (gen !== buildGen) return;
       const g = buildDisplayModel(parsed.object, {
-        hadMaterials: ref.hadMaterials ?? true, tintHex: tint, orient: ref.orient ?? null
+        hadMaterials: ref.hadMaterials ?? true, tintHex: tint, orient: ref.orient ?? null,
+        finish: ref.finish ?? null
       });
+      // F6 parity: the map's render style outranks any finish - a wireframe scene renders a
+      // wireframe hull, exactly as it does every body. Baked at load because setRender rebuilds.
+      if (renderStyle.startsWith('wire')) {
+        const wireMat = new THREE.MeshBasicMaterial({
+          color: new THREE.Color(tint), wireframe: true, transparent: true,
+          opacity: renderStyle.includes('glow') ? 0.85 : 0.6
+        });
+        g.traverse((c) => {
+          const mesh = c as THREE.Mesh;
+          if (mesh.isMesh) mesh.material = wireMat;
+          const line = c as THREE.LineSegments;
+          if ((line as any).isLineSegments) line.visible = false; // crease edges double the wires
+        });
+      }
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
       v.shipFx = attachDrivePlume(g);
@@ -1959,7 +1984,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const bv = id ? bodies.find((x) => x.id === id) : undefined;
-    const rad = bv ? (bv.radiusScene || ((bv.shipModel && bv.shipLen) ? bv.shipLen / 2 : 0)) : 0;
+    const rad = bv ? (bv.radiusScene || ((bv.shipModel && bv.shipLen) ? bv.shipLen : 0)) : 0;
     // The lower clamp tracks the body: a true-scale world is ~1e-5 scene units, and a fixed 0.004 clamp
     // would hold the camera thousands of radii out from the thing it just framed. A true-scale SHIP
     // is smaller again (~1e-9), so a modelled construct may take the floor further down.

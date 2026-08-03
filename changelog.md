@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.402-beta - 3rd Aug 2026
+
+* G3 style round. (1) Hull models follow the map's render style: a wireframe scene renders a wireframe ship, exactly as it does the planets (F6 parity). (2) The design's procedural finish menu is live under the Filled style - Flat + panel lines / Cel shaded / Brushed metal (generated matcap) / Blueprint (bright edges over a ghost hull) - picked per construct from a Shading dropdown beside the model buttons; a chosen finish dresses even an authored GLB. (3) Focusing a ship no longer fights the mouse: the wheel releases the focus ease immediately, and the hull close-up frames at about a quarter of the view instead of half with room for the plume.
+
 ## v2.1.401-beta - 3rd Aug 2026
 
 * **Two dials for the charted stars in the system view's sky.** "Star boost" sets how far they stand out: it fades the generic starfield back and lifts the real systems together, from true brightness at one end to deliberately oversaturated at the other. "Name size" sizes the labels -- and its left end is Off, so you can look at the diffraction spikes on their own.

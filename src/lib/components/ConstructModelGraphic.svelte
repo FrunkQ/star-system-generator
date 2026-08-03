@@ -38,9 +38,9 @@
 
   let unrequest: (() => void) | null = null;
   async function load(hash: string, tintNow: string) {
-    const want = `${hash}|${tintNow}`;
+    const want = `${hash}|${tintNow}|${model.finish ?? ''}`;
     const stored = await getModel(hash).catch(() => null);
-    if (want !== `${model.hash}|${displayTint}`) return; // subject/tint changed while reading
+    if (want !== `${model.hash}|${displayTint}|${model.finish ?? ''}`) return; // subject/tint/finish changed while reading
     if (!stored) {
       // Not on this machine (a remote player, most likely): show the glyph and ask the transport
       // for the binary by hash - when it lands in the store, retry and the glyph gives way.
@@ -53,8 +53,8 @@
     missing = false;
     try {
       const parsed = await parseModel('stored.glb', stored.bytes);
-      if (want !== `${model.hash}|${displayTint}`) return;
-      viewer?.setObject(parsed.object, { hadMaterials: model.hadMaterials ?? true, tintHex: tintNow });
+      if (want !== `${model.hash}|${displayTint}|${model.finish ?? ''}`) return;
+      viewer?.setObject(parsed.object, { hadMaterials: model.hadMaterials ?? true, tintHex: tintNow, finish: model.finish ?? null });
       viewer?.setOrient(model.orient ?? null);
       loadedKey = want;
     } catch {
@@ -91,8 +91,8 @@
   });
   onDestroy(() => { ro?.disconnect(); viewer?.dispose(); unrequest?.(); });
 
-  // One keyed reload covers first mount, subject change and live retint alike.
-  $: if (viewer && `${model.hash}|${displayTint}` !== loadedKey) load(model.hash, displayTint);
+  // One keyed reload covers first mount, subject change, live retint and finish change alike.
+  $: if (viewer && `${model.hash}|${displayTint}|${model.finish ?? ''}` !== loadedKey) load(model.hash, displayTint);
 </script>
 
 <div class="cmg-root" bind:this={root}>

@@ -190,6 +190,15 @@
         </button>
         {#if construct.model}
           <button type="button" class="img-btn remove" on:click={removeModel}>Remove</button>
+          <!-- Hull finish (design §5): dresses the model when the map style is Filled; a wireframe
+               map style overrides it, exactly as it does the planets. -->
+          <select class="model-finish" bind:value={construct.model.finish} on:change={handleUpdate}
+                  title="How the hull is shaded when the map render style is Filled">
+            <option value={undefined}>Flat + panel lines</option>
+            <option value="cel">Cel shaded</option>
+            <option value="matcap">Brushed metal</option>
+            <option value="blueprint">Blueprint</option>
+          </select>
         {/if}
       </div>
       {#if construct.model?.credit || construct.model?.license}
@@ -293,6 +302,7 @@
   .img-btn.remove { color: var(--danger, #e06c6c); }
   .model-summary { font-size: 0.85em; color: var(--text-muted, #9aa4b4); }
   .model-credit { display: block; margin-top: 3px; }
+  .model-finish { font-size: 0.85em; padding: 3px 6px; }
 
   .checkbox-group { display: flex; flex-direction: column; gap: 10px; }
   .checkbox-group label { display: flex; align-items: center; gap: 10px; color: var(--text); }

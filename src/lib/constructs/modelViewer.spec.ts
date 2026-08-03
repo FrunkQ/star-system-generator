@@ -43,6 +43,23 @@ describe('buildDisplayModel', () => {
     expect(edges2).toBe(0);
   });
 
+  it('applies the finish menu: cel quantises, blueprint is bright edges over a ghost fill, and a chosen finish dresses even an authored GLB', () => {
+    const cel = buildDisplayModel(stlLikeMesh(), { hadMaterials: false, tintHex: '#ff0000', finish: 'cel' });
+    let toon = 0;
+    cel.traverse((c) => { if ((c as THREE.Mesh).isMesh && ((c as THREE.Mesh).material as any).isMeshToonMaterial) toon++; });
+    expect(toon).toBe(1);
+
+    const bp = buildDisplayModel(stlLikeMesh(), { hadMaterials: true, tintHex: '#ff0000', finish: 'blueprint' });
+    let ghost = 0, edges = 0;
+    bp.traverse((c) => {
+      const m = c as THREE.Mesh;
+      if (m.isMesh && (m.material as THREE.MeshBasicMaterial).transparent) ghost++;
+      if ((c as THREE.LineSegments).isLineSegments) edges++;
+    });
+    expect(ghost).toBe(1); // the finish overrode the authored material (hadMaterials true)
+    expect(edges).toBe(1);
+  });
+
   it('bakes orient so the long axis lands where the GM put it (nose +Z convention)', () => {
     // The hull is long in X; a -90-degree yaw about Y maps +X onto +Z (nose forward).
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);

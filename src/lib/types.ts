@@ -63,6 +63,10 @@ export interface ModelRef {
   triangles?: number;      // triangle count of the stored (post-simplify) mesh
   bytes?: number;          // stored GLB size in bytes
   hadMaterials?: boolean;  // false = source carried no materials (every STL): tint applies by default
+  // Hull finish (design §5's procedural menu): how the model is dressed when the map style is
+  // 'filled'. Absent = flat-shaded tint + panel lines for material-less sources, authored
+  // materials untouched for GLBs. A wireframe map style overrides every finish (F6 parity).
+  finish?: 'flat' | 'cel' | 'matcap' | 'blueprint';
   // Orientation fix from the import preview (unit quaternion x,y,z,w), applied at VIEW time rather
   // than baked into the binary — so a compliant GLB stores byte-identical and keeps its compression.
   // CONVENTION (aligned by the modal's drive marker): after orient, the NOSE points +Z and the MAIN
