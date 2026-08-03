@@ -85,6 +85,10 @@
           "key": "magnetic/tenuous"
         },
         {
+          "key": "hazard/radiation",
+          "value": "years"
+        },
+        {
           "key": "geology/inactive"
         },
         {
@@ -94,10 +98,6 @@
         {
           "key": "surface/irradiation",
           "value": "high"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "years"
         },
         {
           "key": "habitability/none"
@@ -521,6 +521,14 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
+          "key": "hazard/orbital-radiation",
+          "value": "years"
+        },
+        {
           "key": "geology/episodic"
         },
         {
@@ -530,14 +538,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
-        },
-        {
-          "key": "hazard/orbital-radiation",
-          "value": "years"
         },
         {
           "key": "structure/cloud-deck",
@@ -939,6 +939,14 @@
           "key": "magnetic/dynamo"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
+          "key": "hazard/orbital-radiation",
+          "value": "days"
+        },
+        {
           "key": "hydrosphere/ocean",
           "value": "water"
         },
@@ -956,14 +964,6 @@
         {
           "key": "surface/irradiation",
           "value": "low"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
-        },
-        {
-          "key": "hazard/orbital-radiation",
-          "value": "days"
         },
         {
           "key": "structure/cloud-deck",
@@ -1529,6 +1529,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "years"
+        },
+        {
           "key": "geology/inactive"
         },
         {
@@ -1538,10 +1542,6 @@
         {
           "key": "surface/irradiation",
           "value": "high"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "years"
         },
         {
           "key": "habitability/none"
@@ -1938,6 +1938,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "years"
+        },
+        {
           "key": "geology/inactive"
         },
         {
@@ -1947,10 +1951,6 @@
         {
           "key": "surface/irradiation",
           "value": "high"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "years"
         },
         {
           "key": "structure/cloud-deck",
@@ -2353,6 +2353,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "years"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -2369,10 +2373,6 @@
         {
           "key": "surface/irradiation",
           "value": "high"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "years"
         },
         {
           "key": "shape/oblate"
@@ -2760,6 +2760,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "years"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -2776,10 +2780,6 @@
         {
           "key": "surface/irradiation",
           "value": "high"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "years"
         },
         {
           "key": "habitability/none"
@@ -3181,6 +3181,10 @@
         "resonance": null
       },
       "tags": [
+        {
+          "key": "hazard/radiation",
+          "value": "chronic"
+        },
         {
           "key": "resource/ore-belt",
           "source": "rule:d13"
@@ -3596,7 +3600,12 @@
       ],
       "radiusInnerKm": 92000,
       "radiusOuterKm": 226000,
-      "tags": [],
+      "tags": [
+        {
+          "key": "hazard/radiation",
+          "value": "hours"
+        }
+      ],
       "areas": [],
       "description": "A faint ring system composed of three main parts: an inner 'halo', a bright 'main' ring, and an outer 'gossamer' ring. Unlike Saturn's icy rings, Jupiter's are made of small, dark dust particles, likely kicked up from its small inner moons by meteoroid impacts.",
       "isNameUserDefined": true,
@@ -3727,6 +3736,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "hours"
+        },
+        {
           "key": "geology/volcanic-tidal"
         },
         {
@@ -3736,10 +3749,6 @@
         {
           "key": "surface/irradiation",
           "value": "low"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "hours"
         },
         {
           "key": "volatiles/ices",
@@ -4180,6 +4189,10 @@
           "key": "magnetic/induced"
         },
         {
+          "key": "hazard/radiation",
+          "value": "days"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -4200,10 +4213,6 @@
         {
           "key": "surface/irradiation",
           "value": "low"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "days"
         },
         {
           "key": "volatiles/ices",
@@ -4675,6 +4684,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "months"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -4695,10 +4708,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "months"
         },
         {
           "key": "volatiles/ices",
@@ -5114,6 +5123,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "chronic"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -5134,10 +5147,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "chronic"
         },
         {
           "key": "volatiles/ices",
@@ -5857,7 +5866,12 @@
       "radiusInnerKm": 66900,
       "radiusOuterKm": 140180,
       "description": "The most extensive and complex ring system in the Solar System. The rings are not solid but are made of billions of particles of water ice, with some rock and dust, ranging in size from a grain of sand to a house. They are incredibly thin, perhaps only 10 meters thick.",
-      "tags": [],
+      "tags": [
+        {
+          "key": "hazard/radiation",
+          "value": "weeks"
+        }
+      ],
       "areas": [],
       "isNameUserDefined": true,
       "orbit": {
@@ -5987,6 +6001,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -6004,10 +6022,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "structure/cloud-deck",
@@ -6414,6 +6428,10 @@
           "key": "magnetic/induced"
         },
         {
+          "key": "hazard/radiation",
+          "value": "years"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -6437,10 +6455,6 @@
         {
           "key": "surface/irradiation",
           "value": "low"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "years"
         },
         {
           "key": "habitability/subsurface"
@@ -6898,6 +6912,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "years"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -6911,10 +6929,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "years"
         },
         {
           "key": "habitability/none"
@@ -7323,6 +7337,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "chronic"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -7339,10 +7357,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "chronic"
         },
         {
           "key": "habitability/none"
@@ -7732,6 +7746,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "months"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -7748,10 +7766,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "months"
         },
         {
           "key": "habitability/none"
@@ -8180,6 +8194,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -8196,10 +8214,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "habitability/none"
@@ -8571,6 +8585,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -8587,10 +8605,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "habitability/none"
@@ -9263,7 +9277,12 @@
       "radiusInnerKm": 38000,
       "radiusOuterKm": 98000,
       "description": "Uranus is surrounded by 13 known rings. Unlike Saturn's bright, icy rings, these are extremely dark and narrow, composed of particles as dark as coal, likely water ice mixed with radiation-processed organic compounds. They were the first to be discovered after Saturn's.",
-      "tags": [],
+      "tags": [
+        {
+          "key": "hazard/radiation",
+          "value": "months"
+        }
+      ],
       "areas": [],
       "isNameUserDefined": true,
       "orbit": {
@@ -9380,6 +9399,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -9393,10 +9416,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "habitability/none"
@@ -9770,6 +9789,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -9783,10 +9806,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "habitability/none"
@@ -10164,6 +10183,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -10177,10 +10200,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "habitability/none"
@@ -10875,7 +10894,12 @@
       "radiusInnerKm": 41900,
       "radiusOuterKm": 62930,
       "description": "Neptune is encircled by five faint, dark rings. They are notable for containing unstable, bright clumps of dust called 'arcs,' which are thought to be held in place by the gravity of the small moon Galatea. These rings are dusty and relatively young.",
-      "tags": [],
+      "tags": [
+        {
+          "key": "hazard/radiation",
+          "value": "months"
+        }
+      ],
       "areas": [],
       "isNameUserDefined": true,
       "orbit": {
@@ -10996,6 +11020,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -11013,10 +11041,6 @@
         {
           "key": "surface/irradiation",
           "value": "low"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "structure/cloud-deck",
@@ -11453,6 +11477,10 @@
       },
       "tags": [
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "resource/ore-belt",
           "source": "rule:d13"
         },
@@ -11578,6 +11606,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -11591,10 +11623,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "volatiles/ices",
@@ -12021,6 +12049,10 @@
           "key": "magnetic/unshielded"
         },
         {
+          "key": "hazard/radiation",
+          "value": "background"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -12034,10 +12066,6 @@
         {
           "key": "surface/irradiation",
           "value": "moderate"
-        },
-        {
-          "key": "hazard/radiation",
-          "value": "background"
         },
         {
           "key": "habitability/none"

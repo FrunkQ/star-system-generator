@@ -2,6 +2,7 @@ import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
 import { AU_KM, SOLAR_RADIUS_KM, RADIATION_UNSHIELDED_DOSE_MSV_YR } from "$lib/constants";
 import { calculateDistanceRangeToStar, calculateDistanceToStar } from "./temperature";
 import { isLuminousSource } from "./substellar";
+import { makeupFractions } from "./makeup";
 
 const FLARE_PARTICLE_WEIGHT = 0.5;   // how much a star's flare activity adds to the particle dose
 
@@ -14,6 +15,50 @@ const FLARE_PARTICLE_WEIGHT = 0.5;   // how much a star's flare activity adds to
 // charged component); times how long the surface has been exposed (surface age). Necessary but not
 // sufficient for tholins — the visual also needs the organic precursors (retained CH4/N2 ice).
 const GCR_FLOOR = 0.15;              // galactic cosmic-ray / solar-wind background, relative to Earth UV
+// IS THERE GROUND HERE? The same test B18 uses for habitability, B25 for the eyeball classes and
+// B33 for the surface resources — `makeupFractions(body).gas <= 0.5` — so all four now answer "does
+// this body have a surface" identically. Lives here rather than in the catalogue because it is a
+// physical question the processor and the info block must not disagree about.
+//
+// IT USED TO READ THE STORED `makeup.gas` AND A CLASS-NAME REGEX, AND BOTH WERE WRONG (inbox B11).
+// The stored field is usually absent — makeup is normally INFERRED from density, which is what
+// makeupFractions does — so the composition half almost never fired. And the regex listed
+// `gas-giant` but not `ice-giant`, so URANUS AND NEPTUNE read as having solid ground and their dose
+// has been labelled "Radiation (surface)" in the info block for as long as the label has existed:
+// exactly the category error B22 and B18 exist to prevent, inside the helper meant to enforce it.
+// The regex is gone rather than extended, because a derived CLASS is never a physics input
+// (standing rule) and B33 found bundled bodies carrying a giant class at gas 0.00.
+//
+// A STAR is excluded outright: a photosphere is not somewhere you stand, and the radiation model
+// does not compute a star's own dose at all, so without this Sol would carry a "background" hazard
+// tag derived from an undefined figure.
+export function hasSolidSurface(n: any): boolean {
+  if (n?.roleHint === 'star') return false;
+  return makeupFractions(n).gas <= 0.5;
+}
+
+// WHICH PLACE a body's primary radiation figure describes. One number cannot answer "what does the
+// ground take" and "what does a ship take", so B22 gave every body two figures and named them; this
+// names the FIRST one, and there are three kinds of body, not two (inbox B26).
+// A RING has no surface to stand on — but unlike a giant's envelope, which has no place to stand at
+// ALL, a ring is countless small bodies that each do have one. So the figure is genuinely meaningful
+// and only its name was wrong: it is the dose in the RING PLANE, which is simultaneously what a
+// fragment's surface takes and what a ship crossing the ring takes. That is why this is a label fix
+// and not a deletion, where B18 answered the same category question about habitability by removing
+// the score: there, the axis meant nothing for the body; here, the number means something and was
+// being told to the reader as if it were somewhere else.
+// For a ring the two places coincide, so the "in orbit" row correctly stays away — it is gated on
+// the two figures genuinely differing, and for a ring they are the same number.
+//
+// MOVED HERE FROM catalogue/bodyFacts.ts (inbox B11). It had been a presentation helper, but the
+// PROCESSOR needs the same answer to decide whether a body's dose deserves a hazard tag — and a
+// second copy of "does this figure describe a real place" is exactly the duplication the standing
+// rule is about. bodyFacts re-exports it, so the info block and the tag can never disagree.
+export function radiationPlace(n: any): 'surface' | 'at 1 bar' | 'in the ring plane' {
+  if (n?.roleHint === 'ring') return 'in the ring plane';
+  return hasSolidSurface(n) ? 'surface' : 'at 1 bar';
+}
+
 export function deriveIrradiationDose(teqK: number, magShield: number, surfaceAgeGyr: number): number {
   const uvRel = Math.pow(Math.max(0, teqK) / 255, 4);           // bolometric flux at orbit, Earth = 1
   const unshielded = 1 - Math.max(0, Math.min(0.99, magShield));

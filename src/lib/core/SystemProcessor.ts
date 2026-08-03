@@ -2,7 +2,7 @@ import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
-import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket } from '../physics/radiation';
+import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket, radiationPlace } from '../physics/radiation';
 // The annual-dose hazard tag. Its key is serialised, so it lives beside the other tag constants.
 const RADIATION_HAZARD_TAG = 'hazard/radiation';
 const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
@@ -711,7 +711,56 @@ export class SystemProcessor implements ISystemProcessor {
         body.tags.push({ key: magneticShieldingTag(body.magnetism, body.magneticField) });
     }
 
+    // THE RADIATION HAZARD TAGS, for every body whose dose describes a place you could actually be
+    // (inbox B11). They used to sit inside the geology branch of processClassification, which meant
+    // two gates neither of which was about radiation: the method returns early for anything that is
+    // not a planet or a moon, and the branch itself requires a solid-surfaced rocky body. So a RING
+    // carrying the loudest dose in its system — Jupiter's Rings at 360 Sv/day, above Io — came out
+    // with no hazard tag at all, and nothing to filter or warn on.
+    //
+    // The gate is `radiationPlace`, which is B26's decision and is now the only copy of it: 'surface'
+    // and 'in the ring plane' are real places and get the tag; 'at 1 bar' is a giant's notional level
+    // and does not, which is B22's and B18's answer preserved exactly. Nothing here is a new
+    // derivation — the doses were already computed for these bodies in pass 2c, and the bucketing is
+    // radiationHazardBucket, the one B28 unified.
+    private applyRadiationHazardTags(body: CelestialBody, pack: RulePack) {
+        body.tags = (body.tags || []).filter((t) => t.key !== RADIATION_HAZARD_TAG || t.manual);
+        body.tags = body.tags.filter((t) => t.key !== ORBITAL_RADIATION_TAG || t.manual);
+        if (radiationPlace(body) === 'at 1 bar') return;   // no place to stand: no hazard tag (B18/B22)
+
+        // The VALUE is a time word — how long a character standing here survives — because sieverts
+        // per year are unreadable at a table and "hours" is not (inbox B30). Derived (LD50 / dose
+        // rate) rather than tabulated, and bucketed rather than left as a raw float.
+        const surfaceBand = radiationHazardBucket(body.surfaceRadiation ?? 0, pack);
+        if (!body.tags.some((t) => t.key === RADIATION_HAZARD_TAG)) {
+            body.tags.push({ key: RADIATION_HAZARD_TAG, value: surfaceBand });
+        }
+        // ORBITAL radiation gets its own tag, but ONLY when it is news (inbox B31). Where do we park
+        // is a real decision and nothing surfaced it: Earth's ground is background while the space
+        // around it, inside the Van Allen belts, is days-to-lethal. Same gate the info block uses for
+        // the second row, so a body whose two figures agree does not carry two tags saying the same
+        // thing — which is also why a RING gets one tag and not two: for a ring the two places
+        // coincide and the figures are identical to the last digit.
+        const orbitalDose = (body as any).orbitalRadiation;
+        const orbitalBand = typeof orbitalDose === 'number' ? radiationHazardBucket(orbitalDose, pack) : null;
+        // News means a DIFFERENT WORD, not merely a bigger number. Titan's orbital dose is 2.8x its
+        // surface one and both are background — a second tag saying "background" beside the first is
+        // noise. Earth is the case worth carrying: background on the ground, days in the space above.
+        if (orbitalBand && orbitalBand !== surfaceBand
+            && (orbitalDose as number) > (body.surfaceRadiation ?? 0)
+            && !body.tags.some((t) => t.key === ORBITAL_RADIATION_TAG)) {
+            body.tags.push({ key: ORBITAL_RADIATION_TAG, value: orbitalBand });
+        }
+    }
+
     private processClassification(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG) {
+        // The radiation hazard tags are NOT part of classification and must not inherit its gate —
+        // a belt and a ring have real doses at real places. Everything below this line genuinely is
+        // planet/moon work: fingerprint classification, the tectonic regime, surface age and the
+        // rotational deformation all need a coherent solid body, and a diffuse debris field is not
+        // one. See B11 for the pile-sort of what applies to a belt and what does not.
+        this.applyRadiationHazardTags(body, pack);
+
         // Skip classification for Stars, Barycenters, etc.
         // Only Planets and Moons need dynamic classification based on physics.
         if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return;
@@ -951,27 +1000,6 @@ export class SystemProcessor implements ISystemProcessor {
             // sieverts per year are unreadable at a table and "hours" is not (inbox B30). It is
             // derived (LD50 / dose rate) rather than tabulated, and bucketed rather than left as a
             // raw float, which is the architecture doc's idiom and closes the tension [[A35]] flags.
-            body.tags = body.tags.filter((t) => t.key !== RADIATION_HAZARD_TAG || t.manual);
-            if (!body.tags.some((t) => t.key === RADIATION_HAZARD_TAG)) {
-                body.tags.push({ key: RADIATION_HAZARD_TAG, value: radiationHazardBucket(body.surfaceRadiation ?? 0, pack) });
-            }
-            // ORBITAL radiation gets its own tag, but ONLY when it is news (inbox B31). Where do we
-            // park is a real decision and nothing surfaced it: Earth's ground is background while the
-            // space around it, inside the Van Allen belts, is days-to-lethal. Same gate the info
-            // block uses for the second row, so a body whose two figures agree does not carry two
-            // tags saying the same thing.
-            body.tags = body.tags.filter((t) => t.key !== ORBITAL_RADIATION_TAG || t.manual);
-            const orbitalDose = (body as any).orbitalRadiation;
-            const orbitalBand = typeof orbitalDose === 'number' ? radiationHazardBucket(orbitalDose, pack) : null;
-            // News means a DIFFERENT WORD, not merely a bigger number. Titan's orbital dose is 2.8x
-            // its surface one and both are background — a second tag saying "background" beside the
-            // first is noise. Earth is the case worth carrying: background on the ground, days in the
-            // space above it.
-            if (orbitalBand && orbitalBand !== radiationHazardBucket(body.surfaceRadiation ?? 0, pack)
-                && (orbitalDose as number) > (body.surfaceRadiation ?? 0)
-                && !body.tags.some((t) => t.key === ORBITAL_RADIATION_TAG)) {
-                body.tags.push({ key: ORBITAL_RADIATION_TAG, value: orbitalBand });
-            }
             features['geoActive'] = body.geoActivity.active ? 1 : 0;
             features['plateTectonics'] = body.geoActivity.regime === 'plate-tectonics' ? 1 : 0;
         } else {

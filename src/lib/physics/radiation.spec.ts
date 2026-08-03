@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { photonParticleSplit, calculateStellarRadiationComponents, beltParticleFlux, selfBeltParticleFlux, beltInnerEdgeRadii } from './radiation';
+import { photonParticleSplit, calculateStellarRadiationComponents, beltParticleFlux, selfBeltParticleFlux, beltInnerEdgeRadii, radiationPlace, hasSolidSurface } from './radiation';
 import type { CelestialBody, RulePack } from '$lib/types';
 
 // Phase 04.4 — spectral-class photon/particle split. Cool dwarfs are wind/flare-dominated,
@@ -195,5 +195,48 @@ describe('belt inner edge and the two-figure report (B22)', () => {
       magneticField: { strengthGauss: 0.5 }, rotation_period_hours: 171.6 } as unknown as CelestialBody;
     expect(beltInnerEdgeRadii(airless, pack)).toBe(1);
     expect(selfBeltParticleFlux(airless, pack, 1)).toBeGreaterThan(0);
+  });
+});
+
+// B11 — a belt and a ring got no derived physics, because processClassification returns early for
+// anything that is not a planet or a moon and the radiation hazard tags lived inside it. Jupiter's
+// Rings carries the loudest dose in the Solar System (360 Sv/day, above Io) and had no tag at all.
+// The gate is radiationPlace, which is B26's decision: a real place gets a hazard word, a giant's
+// notional 1-bar level does not.
+describe('does this dose describe a place you could be (B11)', () => {
+  const body = (over: any) => ({ roleHint: 'planet', classes: [], ...over }) as any;
+
+  it('a ring reports the ring plane — countless small bodies that each have a surface', () => {
+    expect(radiationPlace(body({ roleHint: 'ring' }))).toBe('in the ring plane');
+  });
+
+  it('a belt reports a surface, for the same reason', () => {
+    expect(radiationPlace(body({ roleHint: 'belt', makeup: { rock: 0.7, ice: 0.3 } }))).toBe('surface');
+  });
+
+  it('a gas giant reports 1 bar — there is nowhere to stand (B18/B22)', () => {
+    expect(radiationPlace(body({ makeup: { gas: 0.9, ice: 0.1 } }))).toBe('at 1 bar');
+  });
+
+  // The two bugs this helper carried. It read the STORED makeup.gas, which is usually absent because
+  // makeup is inferred from density, and its class regex listed gas-giant but not ice-giant — so
+  // Uranus and Neptune read as solid ground and their dose was labelled "Radiation (surface)".
+  it('an ICE giant is not a surface either, whatever its class string says', () => {
+    // No stored makeup at all, which is the normal case: the answer must come from the inferred mix.
+    const uranus = body({ classes: ['planet/ringed', 'planet/ice-giant'], massKg: 8.681e25, radiusKm: 25362 });
+    expect(radiationPlace(uranus)).toBe('at 1 bar');
+  });
+
+  it('a star is not a surface: a photosphere is not somewhere you stand', () => {
+    // Without this Sol picked up a "background" hazard tag derived from an undefined dose.
+    expect(hasSolidSurface(body({ roleHint: 'star', classes: ['star/G'] }))).toBe(false);
+  });
+
+  it('agrees with the composition test the rest of the engine uses', () => {
+    // B18 (habitability), B25 (eyeballs) and B33 (surface resources) all gate on
+    // makeupFractions(body).gas <= 0.5. A second, differently-worded copy of "has a surface" is the
+    // duplication the standing rule is about, so this must be the SAME boundary.
+    expect(hasSolidSurface(body({ makeup: { gas: 0.49, rock: 0.51 } }))).toBe(true);
+    expect(hasSolidSurface(body({ makeup: { gas: 0.51, rock: 0.49 } }))).toBe(false);
   });
 });

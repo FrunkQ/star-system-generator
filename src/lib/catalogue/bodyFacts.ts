@@ -44,26 +44,15 @@ export function atmosphere(b: CelestialBody): string {
 // Same question the physics asks (inbox B18/B22): is there anywhere to stand? Reads the stored
 // makeup rather than re-deriving it, so the LABEL can never disagree with the model that produced
 // the number it labels.
-export function hasSolidSurface(n: any): boolean {
-  return !((n?.makeup?.gas ?? 0) > 0.5 || /gas-giant|jupiter|neptune|puff|brown-dwarf/.test((n?.classes ?? []).join(' ')));
-}
-
-// WHICH PLACE a body's primary radiation figure describes. One number cannot answer "what does the
-// ground take" and "what does a ship take", so B22 gave every body two figures and named them; this
-// names the FIRST one, and there are three kinds of body, not two (inbox B26).
-// A RING has no surface to stand on — but unlike a giant's envelope, which has no place to stand at
-// ALL, a ring is countless small bodies that each do have one. So the figure is genuinely meaningful
-// and only its name was wrong: it is the dose in the RING PLANE, which is simultaneously what a
-// fragment's surface takes and what a ship crossing the ring takes. That is why this is a label fix
-// and not a deletion, where B18 answered the same category question about habitability by removing
-// the score: there, the axis meant nothing for the body; here, the number means something and was
-// being told to the reader as if it were somewhere else.
-// For a ring the two places coincide, so the "in orbit" row correctly stays away — it is gated on
-// the two figures genuinely differing, and for a ring they are the same number.
-export function radiationPlace(n: any): 'surface' | 'at 1 bar' | 'in the ring plane' {
-  if (n?.roleHint === 'ring') return 'in the ring plane';
-  return hasSolidSurface(n) ? 'surface' : 'at 1 bar';
-}
+// hasSolidSurface and radiationPlace now live in physics/radiation.ts (inbox B11): the PROCESSOR
+// needs the same "does this figure describe a real place" answer to decide whether a body's dose
+// earns a hazard tag, and a second copy of that decision beside this one is the duplication the
+// standing rule exists to stop. Re-exported so every existing caller here and in the components
+// keeps working unchanged.
+export { hasSolidSurface, radiationPlace } from '$lib/physics/radiation';
+// …and imported locally too: `export { x } from` re-exports without creating a binding in this
+// module, and the fact builder below calls radiationPlace directly.
+import { radiationPlace } from '$lib/physics/radiation';
 
 export interface Fact { label: string; value: string; }
 

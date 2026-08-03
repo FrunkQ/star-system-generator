@@ -149,6 +149,17 @@ same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Trit
 > resurfaces it faster than anything can accumulate. Both are right; they answer different questions.
 > Do not "fix" the second by feeding it the belt.
 
+> **BELTS AND RINGS GET `hazard/radiation`, AND NOTHING ELSE FROM THE CLASSIFICATION PASS** (inbox
+> B11). The tag used to live inside `processClassification`, which returns early for anything that
+> is not a planet or a moon, so a ring carrying the loudest dose in its system — Jupiter's Rings at
+> 360 Sv/day, above Io — had no tag to filter or warn on. It is now emitted ahead of that gate, for
+> any body whose `radiationPlace()` names a real place: `surface` and `in the ring plane` qualify,
+> a giant's `at 1 bar` does not. **The rest of the pass stays off for them on purpose** — a diffuse
+> field has no dynamo, no tectonic regime, no cratering-sense surface age (so no
+> `surface/irradiation`, which needs one) and no single surface for a habitability score. `radiationPlace`
+> and `hasSolidSurface` moved to `physics/radiation.ts` so the processor and the info block cannot
+> disagree; `catalogue/bodyFacts.ts` re-exports them.
+
 Tags that merely **duplicated** a class were removed (`Ocean World`→`planet/ocean`,
 `Ice World`→`planet/ice`, `Airless Rock`→`planet/barren`).
 

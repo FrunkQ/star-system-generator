@@ -289,6 +289,16 @@
         anything and a body's own field does not shield it from its own trapped belt — you are inside both. Jupiter
         is the extreme case: about <strong>11&nbsp;mSv/yr</strong> at 1&nbsp;bar and roughly
         <strong>764&nbsp;Sv/day</strong> just above the cloud tops.</p>
+      <p><strong>Belts and rings carry the hazard word too, and one of them is the loudest reading in the Solar
+        System.</strong> They used to get no radiation tag at all — not because anyone decided a debris field was
+        safe, but because the tag was emitted inside the classification pass, which skips anything that is not a
+        planet or a moon. So Jupiter's Rings sat at <strong>360&nbsp;Sv/day</strong>, above Io, with nothing to
+        filter or warn on. They are tagged now, on the same test that names the row: somewhere you could actually
+        be gets a hazard word, and a giant's notional 1-bar level does not. The Main Belt reads a chronic risk, the
+        Kuiper Belt background, Saturn's rings weeks and Jupiter's <em>hours</em>.</p>
+      <p>The rest of the classification pass stays switched off for them, and deliberately: a diffuse debris field
+        has no dynamo, no tectonic regime, no cratering-sense surface age and no single surface for a habitability
+        score, so deriving those would be inventing answers rather than withholding them.</p>
       <p><strong>The hazard is reported as TIME TO HARM, not as a number of sieverts.</strong> A median lethal acute
         dose is about 5&nbsp;Sv (rule-pack data — <code>radiation_ld50_sv</code>), so the survival time is simply
         <code>LD50 ÷ dose rate</code>: <em>hours</em> (Io ≈ 3), <em>days</em> (Europa ≈ 1.3), <em>weeks</em>,
