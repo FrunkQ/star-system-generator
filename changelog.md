@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.417-beta - 4th Aug 2026
+
+* Welcome copy sharpened: the physics rewrite now says what it bought -- weather and lightning, aurorae, stellar flares and the dose they deliver, with the gases and liquids behind them editable; player views mention the filters and transitions that dress them for your setting; the 3D view notes that worlds are lit by their own star; and the night-sky line is shorter and no longer says the same thing twice.
+
 ## v2.1.416-beta - 4th Aug 2026
 
 * The V3 welcome gains the campaign's own night sky -- the systems on your starmap standing in as real stars behind the 3D view, visible on player views too -- and names Foundry alongside Mappadux and Owlbear Rodeo as the virtual tabletops in testing.

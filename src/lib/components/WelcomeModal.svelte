@@ -16,11 +16,12 @@
 
   // Headline features — brief and scannable; full detail lives in the guides.
   const features: { title: string; blurb: string }[] = [
-    { title: 'A rewritten physics engine', blurb: 'Worlds are derived end to end from what they are made of — density, temperature, atmosphere, cloud decks, oceans and ice, magnetism, geology and true colour — and the Newton panel shows the working.' },
-    { title: 'Player views', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — redacted, styled, and updating as you play." },
-    { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system, with orbits, tilts and moons where the physics puts them.' },
+    { title: 'A rewritten physics engine', blurb: 'What a world is made of decides everything else: density, temperature, atmosphere and cloud decks, oceans and ice, magnetism, geology, the radiation it throws out and the colour you actually see. The Newton panel shows the working.' },
+    { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
+    { title: 'Player views', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — redacted, updating as you play, and dressed with filters and transitions that lean hard into your setting's look." },
+    { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system — orbits, tilts and moons where the physics puts them, each world lit by its own star.' },
     { title: 'Starmaps have depth', blurb: 'Systems carry a z-axis, so distances are true in three dimensions. If you prefer a flat map, everything still works exactly as it did in 2D.' },
-    { title: 'Your own stars in the sky', blurb: 'The systems on your starmap appear as real stars behind the 3D view — each at its true direction, brightness and colour — so the constellations a party sees from one world are made of the places they can actually fly to. Player views can show them too.' },
+    { title: 'Your own stars in the sky', blurb: 'Your starmap becomes the night sky behind the 3D view — every system at its true direction, brightness and colour — so the constellations your players see are made of places they can fly to.' },
     { title: '3D ships', blurb: 'Bring your own models: constructs can be shown as real 3D craft.' },
     { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
     { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — real stars at true positions, confirmed planets only, or filled out with plausible worlds around them.' },
