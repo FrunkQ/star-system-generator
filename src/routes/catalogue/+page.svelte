@@ -169,10 +169,11 @@
     if (!displaySystem || !rulePack) return null;
     const out: Record<string, { accelMs2: number; exhaustHex?: string }> = {};
     const defs = (rulePack as any)?.engineDefinitions?.entries ?? [];
+    const fuels = (rulePack as any)?.fuelDefinitions?.entries ?? [];
     for (const n of displaySystem.nodes as any[]) {
       if (n.kind !== 'construct' || !n.model?.hash) continue;
       try {
-        const g = calculateFullConstructSpecs(n, rulePack).maxVacuumG;
+        const g = calculateFullConstructSpecs(n, defs, fuels, null).maxVacuumG;
         if (g <= 0) continue;
         let exhaustHex: string | undefined;
         let bestThrust = -1;

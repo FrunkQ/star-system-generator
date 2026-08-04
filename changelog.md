@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.420-beta - 4th Aug 2026
+
+* The GM's data block now shows the ship burning: the 3D portrait lights the same plume the map draws, in the drive's authored exhaust colour, whenever the ship is under thrust at the display clock - so scrubbing a transit shows the burn, the coast, and the braking burn in turn. The portrait is larger, drag-to-spin, and the ship stays centred while the plume is free to run off the edge.
+* Fixed while wiring it: the ship-capability lookup called calculateFullConstructSpecs with the rule pack where it takes engine and fuel arrays, so it threw into its own catch and EVERY ship silently fell back to the default thrust ceiling - plumes scaled against 1 g instead of the ship's real drive. Both hosts corrected.
+
 ## v2.1.419-beta - 4th Aug 2026
 
 * THE DRIVE PLUME NEVER LIT, AND COULD NOT HAVE. Burn detection differenced the path sampler's velocity, which is piecewise constant inside a segment - so it measured zero acceleration through a full-power burn and the plume and the brake flip never fired. It now reads the planner's OWN segment labels (Accel / Brake / Coast / Correction) and their delta-v, which is the published decision rather than a re-derivation. Seven tests pin it, including the piecewise-constant case that fooled the old code; nothing caught this before because no bundled construct carries a journey.

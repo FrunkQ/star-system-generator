@@ -225,7 +225,7 @@
   <div class="derived-specs">
     <!-- G3: the ship's picture, same chain as the player document (model > image > glyph) -
          here simply so the GM can see at a glance what is loaded. -->
-    <ConstructPortrait {construct} />
+    <ConstructPortrait {construct} {rulePack} nowMs={Number.isFinite(displayTimeMs) ? displayTimeMs : null} />
     <div class="specs-grid">
       <div class="spec-item fixed" title="Current crew / Maximum crew">
         <span class="label">Crew</span>

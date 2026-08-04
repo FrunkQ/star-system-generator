@@ -22,6 +22,9 @@
   export let mono = false;
   export let interactive = false;
   export let seed = ''; // the construct's id - two ships sharing a hull each get their own livery
+  // Live drive state, when the host knows it (the GM's data block): lights the plume exactly as
+  // the map does. null = not burning / unknown.
+  export let burn: { thrust01: number; braking: boolean; colorHex?: string } | null = null;
 
   let root: HTMLDivElement;
   let glCanvas: HTMLCanvasElement;
@@ -91,6 +94,9 @@
     size();
   });
   onDestroy(() => { ro?.disconnect(); viewer?.dispose(); unrequest?.(); });
+
+  // The plume follows the live burn on every frame the host re-evaluates it.
+  $: viewer?.setBurn(burn);
 
   // One keyed reload covers first mount, subject change, live retint and finish change alike.
   $: if (viewer && `${model.hash}|${displayTint}|${model.finish ?? ''}` !== loadedKey) load(model.hash, displayTint);

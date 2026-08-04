@@ -32,8 +32,12 @@ export const DRIVE_AXIS = new THREE.Vector3(0, 0, -1);
 
 export interface ModelViewer {
   /** Hand over a (parsed) model. tintHex applies only when the source had no materials. */
-  setObject(object: THREE.Object3D, opts: { hadMaterials: boolean; tintHex?: string | null; finish?: HullFinish | null }): void;
+  setObject(object: THREE.Object3D, opts: { hadMaterials: boolean; tintHex?: string | null; finish?: HullFinish | null; seed?: string }): void;
   setOrient(q: [number, number, number, number] | null): void;
+  /** Light the drive plume. thrust01 0..1 = fraction of the ship's own drive in use; braking
+   *  points the ship retrograde (the plume then leads, as it does on the map); colorHex is the
+   *  engine's authored exhaust colour, 'none' for a reactionless drive. null = not burning. */
+  setBurn(burn: { thrust01: number; braking: boolean; colorHex?: string } | null): void;
   setSize(w: number, h: number): void;
   dispose(): void;
 }
@@ -214,6 +218,27 @@ function makePatinaTexture(tint: string, seed: string): THREE.Texture | null {
   return tex;
 }
 
+// A soft radial glow sprite for the plume - local to the viewer so it takes no dependency on
+// holo/bodyFeatures (another workstream's module).
+let viewerGlow: THREE.Texture | null = null;
+function makeViewerGlow(): THREE.Texture | null {
+  if (viewerGlow) return viewerGlow;
+  if (typeof document === 'undefined') return null;
+  const size = 128;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = size;
+  const ctx = cnv.getContext('2d');
+  if (!ctx) return null;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  viewerGlow = new THREE.CanvasTexture(cnv);
+  return viewerGlow;
+}
+
 // Cel ramp: a four-step grey gradient the toon material quantises lighting against. Generated,
 // not an asset - the whole §5 menu is procedural by design.
 let celRamp: THREE.DataTexture | null = null;
@@ -366,6 +391,27 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
     spinGroup.add(fwd);
   }
 
+  // The turntable's own drive plume: the same shape the map draws (a cone flaring aft from the
+  // stern with a core glow and a soft bloom halo), so the GM's info block and the player's map
+  // agree about what a burn looks like. Sits OUTSIDE the framing measurement on purpose - the
+  // ship stays centred and the plume is free to run off the edge.
+  const plume = new THREE.Group();
+  const plumeCone = new THREE.Mesh(
+    new THREE.ConeGeometry(0.07, 1, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xbfe2ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+  );
+  plumeCone.rotation.x = Math.PI / 2;
+  plume.add(plumeCone);
+  const plumeGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeViewerGlow(), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  plume.add(plumeGlow);
+  const plumeHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeViewerGlow(), transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+  plume.add(plumeHalo);
+  plume.visible = false;
+  orientGroup.add(plume); // rides the GM's orientation fix, like the hull it is attached to
+
+  let frameRadius = 0.6; // the HULL's bounding radius, measured before the plume is lit
+  let sternZ = -0.5;
+
   let disposed = false;
   let dragging = false;
   let yawVel = 0;
@@ -373,14 +419,12 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   let lastT = 0;
 
   function frameCamera() {
-    // Frame the bounding sphere of the oriented MODEL (not the drive marker) so a 90-degree fix
-    // never clips but the arrow never pushes the ship smaller either.
-    const box = new THREE.Box3().setFromObject(orientGroup);
-    if (box.isEmpty()) return;
-    const sphere = box.getBoundingSphere(new THREE.Sphere());
-    const dist = (sphere.radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.12;
-    camera.position.set(sphere.center.x + dist * 0.28, sphere.center.y + dist * 0.18, sphere.center.z + dist * 0.94);
-    camera.lookAt(sphere.center);
+    // Framed on the HULL's radius alone (measured at setObject, before the plume exists): the
+    // ship sits centred and a little larger in the frame, and a long burn simply runs off the
+    // edge rather than shrinking the thing you are looking at.
+    const dist = (frameRadius / Math.sin((camera.fov * Math.PI) / 360)) * 0.98;
+    camera.position.set(dist * 0.28, dist * 0.18, dist * 0.94);
+    camera.lookAt(0, 0, 0);
   }
 
   function render(t: number) {
@@ -432,13 +476,40 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   }
 
   return {
-    setObject(object, { hadMaterials, tintHex, finish }) {
+    setObject(object, { hadMaterials, tintHex, finish, seed }) {
       clearFrame();
       // Orient is NOT baked here - the viewer owns a live orientGroup so the modal's buttons can
       // re-orient without rebuilding; the shared builder handles finish + normalisation.
       frame.scale.setScalar(1);
-      frame.add(buildDisplayModel(object, { hadMaterials, tintHex, finish }));
+      const built = buildDisplayModel(object, { hadMaterials, tintHex, finish, seed });
+      frame.add(built);
+      frame.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(frame);
+      frameRadius = box.isEmpty() ? 0.6 : Math.max(1e-6, box.getBoundingSphere(new THREE.Sphere()).radius);
+      sternZ = box.isEmpty() ? -0.5 : box.min.z;
+      plume.position.set(0, 0, sternZ);
       frameCamera();
+    },
+    setBurn(burn) {
+      const t = burn && burn.colorHex !== 'none' ? Math.max(0, Math.min(1, burn.thrust01)) : 0;
+      plume.visible = t > 0;
+      if (t <= 0) return;
+      const col = new THREE.Color(burn!.colorHex || '#bfe2ff');
+      (plumeCone.material as THREE.MeshBasicMaterial).color.set(col);
+      (plumeGlow.material as THREE.SpriteMaterial).color.set(col);
+      (plumeHalo.material as THREE.SpriteMaterial).color.set(col);
+      // Scaled to the HULL, so a big ship gets a proportionally big torch.
+      const k = frameRadius * 2;
+      const len = k * (0.3 + 2.6 * t * t + 0.5 * t);
+      const wide = k * (0.55 + 1.1 * t);
+      plumeCone.scale.set(wide, len, wide);
+      plumeCone.position.z = -len / 2;
+      (plumeCone.material as THREE.MeshBasicMaterial).opacity = 0.3 + 0.5 * t;
+      plumeGlow.scale.setScalar(k * (0.14 + 0.4 * t));
+      (plumeGlow.material as THREE.SpriteMaterial).opacity = 0.5 + 0.5 * t;
+      plumeHalo.scale.setScalar(k * (0.3 + 2.2 * t * t));
+      plumeHalo.position.z = -len * 0.35;
+      (plumeHalo.material as THREE.SpriteMaterial).opacity = 0.1 + 0.4 * t * t;
     },
     setOrient(q) {
       orientGroup.quaternion.set(...(q ?? [0, 0, 0, 1]));
