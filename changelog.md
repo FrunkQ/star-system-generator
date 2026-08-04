@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.412-beta - 4th Aug 2026
+
+* Internal only: the developer notes record the satellite-frame fix, the green suite, and a per-session working-tree recipe that stops parallel work sweeping each other. No change to the app.
+
 ## v2.1.411-beta - 4th Aug 2026
 
 * **The test suite is green again**, for the first time in about a hundred and twenty versions. Four tests covering the app's own start-up have been failing since v2.1.274 for two unrelated reasons — a storage mock that never grew a function the page had started calling, and two assertions still looking for a heading the reorganised New Starmap screen no longer has. The cost was never those four tests: it was that "the tests pass" meant nothing, so any real breakage had somewhere to hide.
