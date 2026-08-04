@@ -83,3 +83,66 @@ describe('computeWorldPositions3D', () => {
     expect(moon.z).toBeCloseTo(oracle.z, 4);
   });
 });
+
+// C9. A regular satellite's elements are quoted in its PARENT'S EQUATOR, not in the system plane —
+// see `system/satelliteFrame.ts` for the physics. That correction used to live only in the holo
+// renderer, so anything else reading the propagator (the eclipse search first) got the wrong plane
+// for any satellite of a tilted host. It is applied here now, so these are its pins.
+describe('computeWorldPositions3D — the satellite reference frame', () => {
+  const tilted = (tiltDeg: number, moonFrame?: string) => {
+    const sys = makeSystem(0);
+    sys.nodes[1].axial_tilt_deg = tiltDeg;
+    if (moonFrame) sys.nodes[2].orbit.frame = moonFrame;
+    return sys;
+  };
+  /** The moon's offset from its planet — which is what the frame acts on. */
+  const rel = (sys: any, t: number) => {
+    const p = computeWorldPositions3D(sys, t);
+    const m = p.get('moon')!, h = p.get('planet')!;
+    return { x: m.x - h.x, y: m.y - h.y, z: m.z - h.z };
+  };
+
+  it("rotates a moon into a leaning parent's equator", () => {
+    const t = 5e8;
+    const flat = rel(makeSystem(0), t);
+    const leaning = rel(tilted(40), t);
+    // The moon's own orbit is i_deg 0, so with an upright parent it stays in the reference plane and
+    // with a parent leaning 40 deg it leans 40 deg with it.
+    const tiltOf = (r: { x: number; y: number; z: number }) =>
+      Math.asin(Math.abs(r.z) / Math.hypot(r.x, r.y, r.z)) * 180 / Math.PI;
+    expect(tiltOf(flat)).toBeCloseTo(0, 9);
+    // One sample is a point on the orbit, not the whole plane, so it only reaches 40 deg where the
+    // orbit crosses the tilt axis — but it must have LEFT the plane, and by a lot.
+    expect(tiltOf(leaning)).toBeGreaterThan(5);
+    // A rotation moves a point; it does not stretch it. The distance to the parent is untouched.
+    expect(Math.hypot(leaning.x, leaning.y, leaning.z)).toBeCloseTo(Math.hypot(flat.x, flat.y, flat.z), 12);
+  });
+
+  it("honours `orbit.frame: 'ecliptic'` — a distant moon follows the system plane, not the equator", () => {
+    // Beyond roughly the Laplace radius the star's tide beats the parent's bulge, which is why Luna's
+    // 5.145 deg is quoted to the ecliptic. Such an orbit declares itself and must not be rotated.
+    const t = 5e8;
+    const a = rel(tilted(40, 'ecliptic'), t);
+    const b = rel(makeSystem(0), t);
+    expect(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)).toBeLessThan(1e-15);
+  });
+
+  it('never rotates a PLANET, however much its star leans', () => {
+    // A planet's inclination is already system-framed. The gate is the parent, not the child.
+    const t = 5e8;
+    const sys = makeSystem(35);
+    sys.nodes[0].axial_tilt_deg = 60;
+    const withTilt = computeWorldPositions3D(sys, t).get('planet')!;
+    const oracle = propagateState3D(sys.nodes[1], t).r;
+    expect(withTilt.x).toBeCloseTo(oracle.x, 12);
+    expect(withTilt.y).toBeCloseTo(oracle.y, 12);
+    expect(withTilt.z).toBeCloseTo(oracle.z, 12);
+  });
+
+  it('leaves the flat (2D) orrery walk alone — it is the plan view, with no axis to tilt into', () => {
+    const t = 5e8;
+    const a = computeWorldPositions(tilted(40), t).get('moon')!;
+    const b = computeWorldPositions(makeSystem(0), t).get('moon')!;
+    expect(a).toEqual(b);
+  });
+});

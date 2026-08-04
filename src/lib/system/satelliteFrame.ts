@@ -6,18 +6,20 @@
 // the ring plane"). C5 then measured the one approximation in it and found the `frame: 'ecliptic'`
 // declaration exact for every body in both bundled maps.
 //
-// THE PROPAGATOR DOES NOT KNOW ANY OF THAT. `physics/worldPositions.ts` walks the hierarchy in the
-// SYSTEM frame, so `computeWorldPositions3D` returns a moon at its parent-relative offset UNROTATED —
-// out of plane by the parent's axial tilt, which is 25.19 deg for Mars and 97.77 for Uranus. Every
-// consumer that wants a moon's TRUE position has had to apply the rotation itself, and so far exactly
-// one has: `holo/scene.ts`, which does it in two places and decides the `frame: 'ecliptic'` gate in
-// two different spellings. This module is that knowledge lifted out, so the next consumer shares it
-// instead of writing a third copy.
+// THE PROPAGATOR NOW APPLIES IT (C9). `computeWorldPositions3D` calls `satelliteTiltRad` and
+// `toParentEquator` on every parent-relative offset it accumulates, so a moon's world position is
+// framed at the SOURCE and every consumer gets the same answer. It did not use to: the rotation
+// lived only in `holo/scene.ts`, so the renderer and the propagator disagreed about where a moon
+// was by the parent's axial tilt — 25.19 deg for Mars, 97.77 for Uranus — and the eclipse search,
+// built on the propagator, inherited the wrong plane. There was briefly a `framedWorldPositions3D`
+// wrapper here that corrected the propagator's output after the fact; it is gone, because a
+// correction applied by some callers and not others is the same fault one layer up.
 //
-// See the inbox finding filed with G8: the propagator itself is the right long-term home, but moving
-// it there changes what the renderer receives and needs its own scoped pass.
-import { computeWorldPositions3D, type Vec3 } from '$lib/physics/worldPositions';
-import type { System } from '$lib/types';
+// WHAT STAYS HERE IS THE KNOWLEDGE, NOT A SECOND WALK: the rotation and the gate that decides
+// whether it applies. `worldPositions.ts` uses both, and `holo/scene.ts` uses them once more for an
+// orbit RING, which is sampled straight off the propagator's parent-relative state rather than read
+// out of a world-position map — a different input needing the same frame.
+import type { Vec3 } from '$lib/physics/worldPositions';
 
 /**
  * The rotation that carries a PARENT-RELATIVE offset from the system frame into the parent's
@@ -48,6 +50,13 @@ export function toParentEquator(
  *
  * SATELLITES ONLY. A planet's inclination is ecliptic-relative and must never be rotated, so callers
  * pass the parent they actually orbit and this returns 0 for a star parent.
+ *
+ * THIS IS THE ONLY SPELLING OF THE DECISION. It used to be written three times in `holo/scene.ts` —
+ * once at a ring's caller, once inside `buildMoonOrbitRing`, and once bare — and the three did not
+ * agree: the bare one skipped the `frame: 'ecliptic'` gate entirely, and the body-placement one
+ * gated on the RENDERER's idea of a satellite (anything not one hop from the root), which makes a
+ * planet orbiting a binary's SECONDARY star a satellite and rotates it by the star's tilt. It is
+ * not one: its inclination is quoted in the system plane like every other planet's.
  */
 export function satelliteTiltRad(node: any, parent: any): number {
   if (!node || !parent) return 0;
@@ -55,37 +64,4 @@ export function satelliteTiltRad(node: any, parent: any): number {
   if (parent.kind !== 'body' || parent.roleHint === 'star' || parent.parentId == null) return 0;
   if (String(node.orbit?.frame ?? '').toLowerCase() === 'ecliptic') return 0;
   return ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
-}
-
-/**
- * World positions in AU with every satellite rotated into its parent's equatorial plane — i.e. where
- * the bodies REALLY are, as against where the bare propagator puts them.
- *
- * Parent before child, by tree depth, because a moon's corrected position is built on its parent's
- * corrected position. That ordering is the same rule the idempotence work landed on for derived
- * quantities and it matters for the same reason.
- */
-export function framedWorldPositions3D(system: System | null, timeMs: number): Map<string, Vec3> {
-  const raw = computeWorldPositions3D(system, timeMs);
-  if (!system) return raw;
-  const byId = new Map<string, any>(system.nodes.map((n) => [n.id, n as any]));
-  const depthOf = (id: string | null | undefined): number => {
-    let d = 0, cur = id ?? null;
-    const seen = new Set<string>();
-    while (cur && !seen.has(cur)) { seen.add(cur); cur = byId.get(cur)?.parentId ?? null; d++; }
-    return d;
-  };
-  const out = new Map<string, Vec3>();
-  const tmp: Vec3 = { x: 0, y: 0, z: 0 };
-  for (const n of [...system.nodes].sort((a, b) => depthOf(a.id) - depthOf(b.id))) {
-    const r = raw.get(n.id);
-    if (!r) continue;
-    const parent = (n as any).parentId ? byId.get((n as any).parentId) : null;
-    const pRaw = parent ? raw.get(parent.id) : null;
-    const pOut = parent ? out.get(parent.id) : null;
-    if (!parent || !pRaw || !pOut) { out.set(n.id, { x: r.x, y: r.y, z: r.z }); continue; }
-    const e = toParentEquator(r.x - pRaw.x, r.y - pRaw.y, r.z - pRaw.z, satelliteTiltRad(n, parent), tmp);
-    out.set(n.id, { x: pOut.x + e.x, y: pOut.y + e.y, z: pOut.z + e.z });
-  }
-  return out;
 }

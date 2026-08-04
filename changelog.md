@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.410-beta - 4th Aug 2026
+
+* **A moon's position is now correct everywhere, not just on screen.** A satellite's orbit is quoted in its planet's equator, and that rotation was applied only by the 3D view — so anything else that asked the engine where a moon was got an answer up to the planet's whole axial tilt out of true (25 degrees at Mars, 98 at Uranus). The rotation has moved into the position engine itself, and the 3D view stopped doing it. The picture is unchanged, to the last decimal; eclipse predictions, distances and alignments are now built on the same positions you are looking at.
+
 ## v2.1.409-beta - 4th Aug 2026
 
 * **Settings → Tagging replaces the PoI and CoIs sections, and one editor replaces both.** Tags were explained in two places that each told half the story; now there is one screen that says where tags come from — the physics, the automated rules, or you — and one editor where a category owns its colour, its tags, its rules and what it can be applied to.

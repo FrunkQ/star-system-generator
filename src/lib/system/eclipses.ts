@@ -24,10 +24,13 @@
 // The cheap half is the pre-filter. How dark it can EVER get is pure arithmetic on orbital radii, so
 // an occulter that could not reach the reporting floor is dismissed without a single propagation.
 // That is what stops Deimos — a moving speck at about 1% — from ever costing anything.
+//
+// The propagator is framed at the source (C9), so a moon arrives in its parent's equatorial plane
+// without this file knowing anything about reference frames. It used to call a `framedWorldPositions3D`
+// wrapper for that, which no longer exists.
 import { AU_KM } from '$lib/constants';
-import { framedWorldPositions3D } from './satelliteFrame';
+import { computeWorldPositions3D, type Vec3 } from '$lib/physics/worldPositions';
 import type { System } from '$lib/types';
-import type { Vec3 } from '$lib/physics/worldPositions';
 
 /**
  * Below this fraction of the star's disc, an eclipse is not worth a GM's attention: the sky does not
@@ -262,7 +265,7 @@ function makeSampler(system: System, observerId: string, occulterId: string, sta
     used: 0,
     at(t: number) {
       s.used++;
-      const pos = framedWorldPositions3D(system, t);
+      const pos = computeWorldPositions3D(system, t);
       const B = pos.get(observerId), O = pos.get(occulterId), S = pos.get(starId);
       if (!B || !O || !S) return null;
       // WHERE ON THE SURFACE. Stand where the shadow falls — the point nearest the axis running
@@ -308,8 +311,8 @@ function refineMinimum(sampler: Sampler, lo: number, hi: number, iters = 24): nu
 
 /** The normal of `movingId`'s orbit about `hostId`, from two samples a quarter period apart. */
 function orbitNormal(system: System, hostId: string, movingId: string, t0: number, periodMs: number): Vec3 | null {
-  const p0 = framedWorldPositions3D(system, t0);
-  const p1 = framedWorldPositions3D(system, t0 + periodMs / 4);
+  const p0 = computeWorldPositions3D(system, t0);
+  const p1 = computeWorldPositions3D(system, t0 + periodMs / 4);
   const a = p0.get(movingId), b = p0.get(hostId), c = p1.get(movingId), d = p1.get(hostId);
   if (!a || !b || !c || !d) return null;
   const n = unit(cross(sub(a, b), sub(c, d)));
@@ -394,7 +397,7 @@ function seasonGate(system: System, observerId: string, occulterId: string, star
   const aPeri = pair.sepKm * (1 - pair.ecc);
   if (!(aPeri > 0)) return null;
   return (t: number): boolean => {
-    const pos = framedWorldPositions3D(system, t);
+    const pos = computeWorldPositions3D(system, t);
     const B = pos.get(observerId), S = pos.get(starId);
     if (!B || !S) return true;
     const toStar = sub(S, B);

@@ -3,7 +3,14 @@
 // parent — differing ONLY in the propagator: propagateState (flat, ω-only, what the orrery draws)
 // vs propagateState3D (full i/Ω rotation, what the holo view needs). Keeping one walk here means
 // the two views can never drift in how they place bodies. See docs/dev/v2.2-3d-design.md.
+//
+// C9: the 3D walk also puts every satellite in the frame its elements are actually quoted in — see
+// `../system/satelliteFrame.ts`. That correction used to live in the RENDERER alone, so the
+// propagator and the holo view answered "where is this moon" differently, by the parent's axial
+// tilt (25.19 deg for Mars, 97.77 for Uranus), and anything else reading positions — the eclipse
+// search first — got the wrong plane. It belongs here, once, at the source.
 import { propagateState, propagateState3D } from './orbits';
+import { satelliteTiltRad, toParentEquator } from '../system/satelliteFrame';
 import type { System } from '../types';
 
 export interface Vec2 { x: number; y: number; }
@@ -23,6 +30,11 @@ interface WalkOps<V> {
   add: (a: V, b: V) => V;
   lift: (p: { x: number; y: number }) => V; // absolute 2D construct position -> V
   propagate: (node: any, timeMs: number) => V | null;
+  // Carry a node's parent-relative offset out of the system frame and into the frame its elements
+  // are quoted in. 3D ONLY, and deliberately absent from the flat walk: the orrery propagates
+  // omega-only in the reference plane, so there is no out-of-plane axis for an equatorial rotation
+  // to tilt into — 2D is the plan view, and a satellite's plan position is its projection.
+  frame?: (node: any, parent: any, relative: V) => V;
 }
 
 // Generic hierarchy walk, memoised per node. Faithfully mirrors the orrery's original
@@ -71,7 +83,9 @@ function walkPositions<V>(
       const isStationary = node.kind === 'construct' && (node.physical_parameters?.massKg || 0) === 0;
       const timeToPropagate = isStationary ? node.orbit.t0 : timeMs;
       const p = ops.propagate(node, timeToPropagate);
-      if (p) relative = p;
+      // Parent before child is guaranteed by the recursion (resolve(parentId) above), which is what
+      // lets a moon's framed offset be added onto its parent's already-framed position.
+      if (p) relative = ops.frame ? ops.frame(node, nodesById.get(node.parentId), p) : p;
     }
     const abs = ops.add(parentPos, relative);
     out.set(nodeId, abs);
@@ -107,6 +121,10 @@ export function computeWorldPositions(
 /**
  * Inclination-aware (3D) world positions in AU (reference plane = z 0) — what the holo view uses.
  * Constructs are lifted to the plane (z=0); coplanar systems match computeWorldPositions exactly.
+ *
+ * Satellites arrive in their PARENT'S EQUATORIAL frame (C3/C9), because that is the frame their
+ * inclinations are quoted in. A construct placed absolutely by the transit sampler is never rotated
+ * — its kinematics are already an absolute answer, and it returns above before this runs.
  */
 export function computeWorldPositions3D(
   system: System | null,
@@ -120,7 +138,11 @@ export function computeWorldPositions3D(
       zero: { x: 0, y: 0, z: 0 },
       add: (a, b) => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }),
       lift: (p) => ({ x: p.x, y: p.y, z: 0 }),
-      propagate: (node, t) => propagateState3D(node, t).r
+      propagate: (node, t) => propagateState3D(node, t).r,
+      frame: (node, parent, r) => {
+        const tilt = satelliteTiltRad(node, parent);
+        return tilt ? toParentEquator(r.x, r.y, r.z, tilt, { x: 0, y: 0, z: 0 }) : r;
+      }
     },
     sampleConstruct
   );

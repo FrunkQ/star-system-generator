@@ -14,7 +14,7 @@ import {
   angularRadius, discObscuration, eclipseKind, nextEclipse, nextEclipseCached,
   clearEclipseCache, ECLIPSE_FLOOR
 } from './eclipses';
-import { framedWorldPositions3D } from './satelliteFrame';
+import { satelliteTiltRad, toParentEquator } from './satelliteFrame';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { AU_KM } from '$lib/constants';
 import type { System } from '$lib/types';
@@ -30,7 +30,7 @@ const nodeOf = (id: string): any => SOL.nodes.find((n) => n.id === id);
 
 /** Angular radius of `target` seen from the surface of `from`, at time t — the sub-target point. */
 function seenFrom(fromId: string, targetId: string, t = T0): number {
-  const pos = framedWorldPositions3D(SOL, t);
+  const pos = computeWorldPositions3D(SOL, t);
   const a = pos.get(fromId)!, b = pos.get(targetId)!;
   const dCentres = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * AU_KM;
   return angularRadius(nodeOf(targetId).radiusKm, dCentres - nodeOf(fromId).radiusKm);
@@ -226,31 +226,56 @@ describe('caching against the clock', () => {
   });
 });
 
+// C9: the frame is applied by the PROPAGATOR, so these read `computeWorldPositions3D` directly. They
+// used to compare it against a `framedWorldPositions3D` wrapper, which is exactly the divergence the
+// fix removed — so the control is now the same propagator over a system whose HOST DOES NOT LEAN.
 describe('the satellite reference frame reaches the search', () => {
-  it("framed positions put Phobos in Mars's equator; the bare propagator does not", () => {
-    // Orbit normal from two parent-relative samples a quarter period apart.
-    const q = (nodeOf('solar-system-phobos').orbital_period_days * DAY) / 4;
-    const normalFrom = (get: (t: number) => Map<string, any>) => {
-      const p0 = get(T0), p1 = get(T0 + q);
-      const r0 = { x: p0.get('solar-system-phobos')!.x - p0.get('solar-system-mars')!.x, y: p0.get('solar-system-phobos')!.y - p0.get('solar-system-mars')!.y, z: p0.get('solar-system-phobos')!.z - p0.get('solar-system-mars')!.z };
-      const r1 = { x: p1.get('solar-system-phobos')!.x - p1.get('solar-system-mars')!.x, y: p1.get('solar-system-phobos')!.y - p1.get('solar-system-mars')!.y, z: p1.get('solar-system-phobos')!.z - p1.get('solar-system-mars')!.z };
-      const n = { x: r0.y * r1.z - r0.z * r1.y, y: r0.z * r1.x - r0.x * r1.z, z: r0.x * r1.y - r0.y * r1.x };
-      const l = Math.hypot(n.x, n.y, n.z);
-      return Math.acos(Math.min(1, Math.abs(n.z / l))) * 180 / Math.PI; // tilt from the reference plane
+  /** Tilt of `moon`'s orbit normal about `host` from the reference plane, in degrees. */
+  const orbitTiltDeg = (sys: System, hostId: string, moonId: string, periodDays: number) => {
+    const q = (periodDays * DAY) / 4; // two parent-relative samples a quarter period apart
+    const rel = (t: number) => {
+      const p = computeWorldPositions3D(sys, t);
+      const m = p.get(moonId)!, h = p.get(hostId)!;
+      return { x: m.x - h.x, y: m.y - h.y, z: m.z - h.z };
     };
-    const framed = normalFrom((t) => framedWorldPositions3D(SOL, t));
-    const bare = normalFrom((t) => computeWorldPositions3D(SOL, t));
-    // Mars leans 25.19 deg and Phobos sits 1.093 deg off its equator.
-    expect(framed).toBeGreaterThan(23);
-    expect(framed).toBeLessThan(27);
-    // The bare propagator has it near the system plane — 24 degrees adrift, which is the finding.
-    expect(bare).toBeLessThan(2);
+    const r0 = rel(T0), r1 = rel(T0 + q);
+    const n = { x: r0.y * r1.z - r0.z * r1.y, y: r0.z * r1.x - r0.x * r1.z, z: r0.x * r1.y - r0.y * r1.x };
+    return Math.acos(Math.min(1, Math.abs(n.z / Math.hypot(n.x, n.y, n.z)))) * 180 / Math.PI;
+  };
+  /** The same system with one body's axial tilt removed — the control for "the frame is the equator". */
+  const untilted = (id: string): System => {
+    const s = JSON.parse(JSON.stringify(SOL)) as System;
+    (s.nodes.find((n) => n.id === id) as any).axial_tilt_deg = 0;
+    return s;
+  };
+
+  it("puts Phobos in Mars's equator, which is 25 deg out of the system plane", () => {
+    // Mars leans 25.19 deg and Phobos sits 1.093 deg off its equator, so the orbit normal is ~25 deg
+    // from the reference plane. Flatten Mars and the same moon falls back to its own 1.1 deg — which
+    // is what the propagator used to answer while Mars was leaning, and what G8 was searching on.
+    expect(orbitTiltDeg(SOL, 'solar-system-mars', 'solar-system-phobos', nodeOf('solar-system-phobos').orbital_period_days)).toBeGreaterThan(23);
+    expect(orbitTiltDeg(SOL, 'solar-system-mars', 'solar-system-phobos', nodeOf('solar-system-phobos').orbital_period_days)).toBeLessThan(27);
+    expect(orbitTiltDeg(untilted('solar-system-mars'), 'solar-system-mars', 'solar-system-phobos', nodeOf('solar-system-phobos').orbital_period_days)).toBeLessThan(2);
   });
 
   it('leaves Luna alone, because its elements declare themselves ecliptic-framed', () => {
+    // Earth leans 23.44 deg, so a satellite of Earth would move by that much — unless it says it is
+    // quoted to the ecliptic, as Luna does at 60 Earth radii. Flattening Earth must change nothing.
     const t = T0 + 3 * DAY;
-    const a = framedWorldPositions3D(SOL, t).get('solar-system-luna')!;
-    const b = computeWorldPositions3D(SOL, t).get('solar-system-luna')!;
+    const a = computeWorldPositions3D(SOL, t).get('solar-system-luna')!;
+    const b = computeWorldPositions3D(untilted('solar-system-earth'), t).get('solar-system-luna')!;
     expect(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)).toBeLessThan(1e-12);
+  });
+
+  it('is the one spelling of the gate: a planet of the root star is never rotated', () => {
+    // The renderer used to make this decision itself, and its test for "satellite" was "not one hop
+    // from the root" — which would rotate a planet of a binary's SECONDARY star by that star's tilt.
+    const byId = (id: string) => SOL.nodes.find((n) => n.id === id) as any;
+    expect(satelliteTiltRad(byId('solar-system-mars'), byId('solar-system-sun'))).toBe(0);
+    expect(satelliteTiltRad(byId('solar-system-phobos'), byId('solar-system-mars'))).toBeCloseTo(25.19 * Math.PI / 180, 9);
+    expect(satelliteTiltRad(byId('solar-system-luna'), byId('solar-system-earth'))).toBe(0);
+    // And the rotation is a rotation: it moves a point, it does not stretch it.
+    const r = toParentEquator(0.3, -0.4, 0.5, 1.1, { x: 0, y: 0, z: 0 });
+    expect(Math.hypot(r.x, r.y, r.z)).toBeCloseTo(Math.hypot(0.3, -0.4, 0.5), 12);
   });
 });

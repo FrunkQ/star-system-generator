@@ -31,7 +31,7 @@ import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay'
 import { gridLevels, niceSeries, formatNice } from '$lib/map/niceInterval';
 import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
-import { toParentEquator } from '$lib/system/satelliteFrame';
+import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
@@ -160,12 +160,6 @@ interface BodyVisual {
   // The construct DECLARES it is on the surface (`placement: 'Surface'`), which outranks the geometric
   // detection below: a declaration is a statement, the radius comparison is only a guess about one.
   surfaceDeclared?: boolean;
-  // C3: the PARENT's axial tilt in radians, for rotating this satellite's orbit into the parent's
-  // equatorial plane. Zero for a non-satellite, and zero when the orbit declares `frame: 'ecliptic'` —
-  // which is a real physical case, not a data error: beyond roughly 50 host radii the Laplace plane
-  // hands over from the parent's equator to the system plane, which is why Luna's 5.145 deg is quoted
-  // to the ecliptic while Saturn's inner moons are quoted to Saturn's equator.
-  orbitTiltRad?: number;
   // A construct sitting AT (or below) its parent's physical surface: glued to a fixed surface point
   // that co-rotates with the planet's spin, instead of following its own (Keplerian) orbit — so it
   // slides over the surface at the planet's rotation rate. dir0 is that point in the parent's local frame.
@@ -2246,11 +2240,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const kP = rP > 1e-9 ? compressScalar(rP) / rP : 0;
           const parentNode = nodesById.get(node.parentId);
           const parentRad = parentNode ? bodyRadiusScene(parentNode, true) : 0;
-          const parentTiltRad = (((parentNode as any)?.axial_tilt_deg || 0) * Math.PI) / 180; // C3: the moon's orbit is in the parent's equator
+          // C3/C9: the moon's orbit is quoted in the parent's equator. One spelling of that decision,
+          // shared with the propagator — this used to compute a bare tilt here and gate it again
+          // inside the ring builder, so the ring and the body could be told different things.
+          const orbitTiltRad = satelliteTiltRad(node, parentNode);
           // A construct is a fixed-screen-size glyph with no rendered globe, so it contributes no radius
           // to the clearance — exactly as its own placement does (radiusScene is 0 for one).
           const selfRad = node.kind === 'construct' ? 0 : bodyRadiusScene(node, false);
-          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, selfRad, compression, ringColor(node), parentTiltRad) : null;
+          const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, selfRad, compression, ringColor(node), orbitTiltRad) : null;
           if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
         }
       }
@@ -2537,12 +2534,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Same test the document builder uses (`constructsOf`, systemTopology.ts) so the two cannot
       // disagree about which constructs are on the ground.
       const surfaceDeclared = isConstruct && String((node as any).placement ?? '').toLowerCase() === 'surface';
-      // C3: satellites inherit their parent's equatorial frame unless the orbit declares otherwise.
-      const parentTiltDeg = (nodesById.get(node.parentId as string) as any)?.axial_tilt_deg || 0;
-      const orbitTiltRad = String((node as any).orbit?.frame ?? '').toLowerCase() === 'ecliptic'
-        ? 0
-        : (parentTiltDeg * Math.PI) / 180;
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, orbitTiltRad, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
       // G3: a construct carrying a 3D model loads it in the background; the sprite stands until
       // (and unless) it lands, and stands permanently on a machine that lacks the binary.
       if (isConstruct && (node as any).model?.hash) {
@@ -2589,7 +2581,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   const tmpParent = new THREE.Vector3();
-  const _satEq = { x: 0, y: 0, z: 0 }; // scratch for the satellite equatorial rotation (C3)
   function updatePositions() {
     if (!currentSystem) return;
     const positions = computeWorldPositions3D(currentSystem, timeMs);
@@ -2606,13 +2597,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // At compression 0 (true scale / projector) satellites sit exactly where physics puts them;
         // at the toytown end they fan out so a moon system doesn't collapse onto the planet.
         positionToScene(parent, tmpParent);
-        // C3: a SATELLITE's elements are quoted in its parent's equatorial frame, so rotate the
-        // parent-relative offset into it — the same rotation the rings use, which is what puts moons
-        // and rings in one plane. Barycentre members are system-level, not satellites: they must not be
-        // rotated, which is why this is gated on `b.satellite` and not merely on having a parent.
-        const rawX = p.x - parent.x, rawY = p.y - parent.y, rawZ = p.z - parent.z; // AU offset, system frame
-        const eq = b.satellite ? toParentEquator(rawX, rawY, rawZ, b.orbitTiltRad ?? 0, _satEq) : null;
-        const ox = eq ? eq.x : rawX, oy = eq ? eq.y : rawY, oz = eq ? eq.z : rawZ;
+        // C3/C9: a SATELLITE's elements are quoted in its parent's equatorial frame, and the
+        // propagator now applies that rotation itself — so the difference of two world positions is
+        // already the framed offset and this must NOT rotate it again. (It used to, because the
+        // propagator did not; the rotation is `satelliteTiltRad`/`toParentEquator` in
+        // `system/satelliteFrame.ts` and the orbit ring below is the one place still calling it, off
+        // the propagator's parent-relative state rather than a world-position map.)
+        const ox = p.x - parent.x, oy = p.y - parent.y, oz = p.z - parent.z; // AU offset, parent's frame
         const off = Math.hypot(ox, oy, oz);
         const pv = bodyById.get(b.parentId!);
         // Anchor to the parent's RENDERED position, not its raw compressed physics position: whenever the
@@ -3217,9 +3208,11 @@ function moonSpread(off: number, localScale: number, parentRadius: number): numb
 // spread transform the moon's own position uses (see the satellite branch in setTime), so the ring sits
 // exactly under the moon. kHelio = the parent's radial compression factor (compressScalar(r)/r);
 // localScale = the parent's orbit radius in scene units (compressScalar(r)).
-// C3's satellite-frame rotation now lives in `system/satelliteFrame.ts`, imported at the top of this
-// file. It was private here, so the eclipse search (G8) would have had to write a second copy of it —
-// and a second copy of a rotation is how a moon and its own orbit ring end up in different planes.
+// C3's satellite-frame rotation lives in `system/satelliteFrame.ts` and is applied by the PROPAGATOR
+// (C9), so a moon's placement no longer rotates anything — it reads a world position that is already
+// framed. This ring is the one place in the renderer that still rotates, because it is sampled from
+// `propagateState3D` directly (a parent-relative offset in the system frame) rather than read out of a
+// world-position map. Same helper, same gate, different input — which is why the body sits on it.
 
 /**
  * A ring in the PARENT's local scene frame, laid down from a per-sample radial rule. Both callers below
@@ -3248,9 +3241,10 @@ function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor:
   return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
 }
 
-function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, parentTiltRad = 0): THREE.LineLoop | null {
-  const eclipticFramed = String(node?.orbit?.frame ?? '').toLowerCase() === 'ecliptic';
-  return buildLocalOrbitRing(node, color, eclipticFramed ? 0 : parentTiltRad, (off) => {
+// `orbitTiltRad` is the caller's `satelliteTiltRad(node, parent)` — the gate is made there, once, and
+// NOT repeated here. It used to be made in both places in two different spellings.
+function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, orbitTiltRad = 0): THREE.LineLoop | null {
+  return buildLocalOrbitRing(node, color, orbitTiltRad, (off) => {
     const spreadDist = moonSpread(off, localScale, parentRadius);
     const trueDist = off * kHelio;
     // Same globe-relative clearance as the moon body (updatePositions), so the ring sits under the moon.
