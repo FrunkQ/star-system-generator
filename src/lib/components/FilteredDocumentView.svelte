@@ -18,6 +18,7 @@
   import { buildStarmapDocument } from '$lib/catalogue/document/starmapDocument';
   import { loadBodyImage as loadBodyImageShared } from '$lib/catalogue/document/bodyImage';
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
+  import { buildPortraitSystem } from '$lib/catalogue/document/portraitSystem';
   import { drawTipBanner, tipBannerHeight, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
   import BodyGraphic from './BodyGraphic.svelte';
   import ConstructModelGraphic from './ConstructModelGraphic.svelte';
@@ -101,20 +102,9 @@
   // A single-body system for the 3D portrait: JUST the body (+ its rings). No fabricated star — a stray
   // star sphere/corona would crash the frame and skew the aurora flux; the holo's PORTRAIT key light
   // (coloured by the real star below) lights the day/night terminator instead.
-  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? (() => {
-    // Wrap the subject in a synthetic, invisible root barycentre and PARENT the body to it. The holo
-    // treats a root-level `kind:'body'` (parentId null) as the system's STAR (self-emissive + corona),
-    // so a lone planet would render as a glowing green ball — parenting it keeps it classified as a
-    // planet (a star subject still reads as a star via its own roleHint). No orbit → sits at the origin.
-    const root = { id: '__root', name: '', kind: 'barycenter', parentId: null, orbit: undefined };
-    const bodyNode = { ...subjectBody, parentId: '__root', orbit: undefined };
-    const rings = (system?.nodes ?? []).filter((n: any) => (n.parentId === subjectBody.id || n.orbit?.hostId === subjectBody.id) && n.roleHint === 'ring')
-      .map((r: any) => ({ ...r, parentId: subjectBody.id }));
-    return {
-      id: 'bg', name: '', seed: 'bg', epochT0: 0, age_Gyr: (system as any)?.age_Gyr ?? 4.5,
-      nodes: [root, bodyNode, ...rings], rulePackId: '', rulePackVersion: '', tags: []
-    };
-  })() as any : null;
+  // A46: the ONE portrait-system builder - see catalogue/document/portraitSystem.ts for why the
+  // synthetic root exists. DocPanel consumes the same builder, so the two cannot drift.
+  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? buildPortraitSystem(subjectBody, system) : null;
   // Colour of the system's star — "the sun provides the right colour" for the portrait key light.
   $: starHex = (starsOf(system)[0] as any)?.apparentColorHex ?? null;
   $: docBg = resolveDocColors(theme).bg;

@@ -33,9 +33,10 @@
   // colour by `map/skyStars`. DATA, not look — the mode that decides whether and how they are drawn
   // lives on the style. Empty is the normal case for any host that has no starmap to hand.
   export let skyStars: import('$lib/map/skyStars').SkyStar[] = [];
-  // G3: per-construct max acceleration (m/s^2), computed by the host (which holds the rule pack) -
-  // drives the focused ship's plume as a fraction of its OWN drive capability.
-  export let shipAccel: Record<string, number> | null = null;
+  // G3: per-construct drive data, computed by the host (which holds the rule pack) - max accel
+  // drives the plume as a fraction of the ship's OWN capability; exhaustHex (engine-def pack
+  // data, G15(4)) colours it.
+  export let shipAccel: Record<string, { accelMs2: number; exhaustHex?: string }> | null = null;
 
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.

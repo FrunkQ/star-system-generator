@@ -162,16 +162,26 @@
     return { ...sys, nodes: sys.nodes.filter((n) => n.kind !== 'construct') };
   })();
 
-  // G3: each modelled ship's max acceleration, for the scene's drive plume - thrust reads as a
-  // fraction of the ship's OWN capability, and only the host holds the rule pack to derive it.
+  // G3: each modelled ship's drive data for the scene's plume - max accel (thrust reads as a
+  // fraction of the ship's OWN capability) and the exhaust colour of its dominant engine
+  // (engine-def pack data, G15(4)). Only the host holds the rule pack to derive either.
   $: shipAccelMap = (() => {
     if (!displaySystem || !rulePack) return null;
-    const out: Record<string, number> = {};
+    const out: Record<string, { accelMs2: number; exhaustHex?: string }> = {};
+    const defs = (rulePack as any)?.engineDefinitions?.entries ?? [];
     for (const n of displaySystem.nodes as any[]) {
       if (n.kind !== 'construct' || !n.model?.hash) continue;
       try {
         const g = calculateFullConstructSpecs(n, rulePack).maxVacuumG;
-        if (g > 0) out[n.id] = g * 9.81;
+        if (g <= 0) continue;
+        let exhaustHex: string | undefined;
+        let bestThrust = -1;
+        for (const inst of n.engines ?? []) {
+          const def = defs.find((d: any) => d.id === inst.engine_id);
+          const total = (def?.thrust_kN ?? 0) * (inst.quantity ?? 1);
+          if (def?.exhaust_color_hex && total > bestThrust) { bestThrust = total; exhaustHex = def.exhaust_color_hex; }
+        }
+        out[n.id] = { accelMs2: g * 9.81, ...(exhaustHex ? { exhaustHex } : {}) };
       } catch { /* a ship with unresolvable engines just takes the fallback ceiling */ }
     }
     return out;

@@ -66,7 +66,7 @@ export interface ModelRef {
   // Hull finish (design §5's procedural menu): how the model is dressed when the map style is
   // 'filled'. Absent = flat-shaded tint + panel lines for material-less sources, authored
   // materials untouched for GLBs. A wireframe map style overrides every finish (F6 parity).
-  finish?: 'flat' | 'cel' | 'matcap' | 'blueprint';
+  finish?: 'flat' | 'cel' | 'matcap' | 'blueprint' | 'plated' | 'patina' | 'iridescent';
   // Orientation fix from the import preview (unit quaternion x,y,z,w), applied at VIEW time rather
   // than baked into the binary — so a compliant GLB stores byte-identical and keeps its compression.
   // CONVENTION (aligned by the modal's drive marker): after orient, the NOSE points +Z and the MAIN
@@ -505,6 +505,10 @@ export interface EngineDefinition {
   atmo_efficiency?: number; // Optional: Thrust multiplier in atmosphere (0-1)
   description: string;
   drive_tags?: string[]; // FTL drive/* tag(s) this engine confers; empty/absent = sublight. See docs/tag-inheritance.md.
+  // G15(4): the drive plume's colour is pack DATA per the architecture rule (a GM-editable look
+  // lever). Absent = the renderer's hot blue-white default. The host passes it to the scene as
+  // look-data; the scene never reads the pack.
+  exhaust_color_hex?: string;
 }
 
 export interface GasTag {

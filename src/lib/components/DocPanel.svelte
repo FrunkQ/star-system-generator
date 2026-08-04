@@ -13,6 +13,7 @@
   import { resolveDocColors, type TagStyle, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
   import { loadBodyImage, type LoadedBodyImage } from '$lib/catalogue/document/bodyImage';
   import { starsOf, isRinged, isBary, dominantOf } from '$lib/catalogue/document/systemTopology';
+  import { buildPortraitSystem } from '$lib/catalogue/document/portraitSystem';
   import BodyGraphic from './BodyGraphic.svelte';
   import ConstructModelGraphic from './ConstructModelGraphic.svelte';
   import type { MeasurementUnits, TemperatureUnit } from '$lib/stores';
@@ -68,18 +69,9 @@
   // G3: a construct with a model takes the turntable in the reserved gap instead of BodyGraphic.
   $: subjectModel = subjectBody?.kind === 'construct' ? ((subjectBody as any).model ?? null) : null;
 
-  // Single-body scene for the 3D graphic — same shape the document view builds (root barycentre so a
-  // planet isn't misread as the system's star; rings ride along).
-  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? (() => {
-    const root = { id: '__root', name: '', kind: 'barycenter', parentId: null, orbit: undefined };
-    const bodyNode = { ...subjectBody, parentId: '__root', orbit: undefined };
-    const rings = (system?.nodes ?? []).filter((n: any) => (n.parentId === subjectBody.id || n.orbit?.hostId === subjectBody.id) && n.roleHint === 'ring')
-      .map((r: any) => ({ ...r, parentId: subjectBody.id }));
-    return {
-      id: 'bg', name: '', seed: 'bg', epochT0: 0, age_Gyr: (system as any)?.age_Gyr ?? 4.5,
-      nodes: [root, bodyNode, ...rings], rulePackId: '', rulePackVersion: '', tags: []
-    };
-  })() as any : null;
+  // A46: the ONE portrait-system builder - see catalogue/document/portraitSystem.ts for why the
+  // synthetic root exists. FilteredDocumentView consumes the same builder, so the two cannot drift.
+  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? buildPortraitSystem(subjectBody, system) : null;
 
   // Body photo via the shared loader (same-origin rule + auto-centre focus in one place).
   let loaded: LoadedBodyImage | null = null;

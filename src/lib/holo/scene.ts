@@ -1670,6 +1670,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
       v.shipFx = attachDrivePlume(g);
+      const exhaust = shipCapability?.[v.id]?.exhaustHex;
+      if (exhaust) {
+        const col = new THREE.Color(exhaust);
+        (v.shipFx.cone.material as THREE.MeshBasicMaterial).color.set(col);
+        (v.shipFx.glow.material as THREE.SpriteMaterial).color.set(col);
+        v.shipFx.light.color.set(col);
+      }
       // The plume light's reach scales with the hull (light params ignore parent scale): a burning
       // ship glows over a few hull-lengths, never across the system - at true scale the old fixed
       // 3.2-unit reach would have lit planets from a 100 m exhaust.
@@ -1722,11 +1729,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // to be slowing never reads as a burn. Throttled: one ship, four checks a second.
   const BRAKE_ACCEL_MS2 = 0.05;
   const FULL_PLUME_MS2 = 10; // fallback ceiling (~1 g) when the ship's own capability is unknown
-  // Per-construct max acceleration (m/s^2) from the HOST, which holds the rule pack the engine
-  // definitions live in - the scene itself never reads pack data. Drives thrust01 = the fraction
-  // of the ship's OWN drive being used, so a max burn reads super-bright whatever the hull.
-  let shipCapability: Record<string, number> | null = null;
-  function setShipCapability(map: Record<string, number> | null) { shipCapability = map; }
+  // Per-construct drive data from the HOST, which holds the rule pack the engine definitions
+  // live in - the scene itself never reads pack data. accelMs2 drives thrust01 = the fraction of
+  // the ship's OWN drive being used; exhaustHex (pack data, G15(4)) colours the plume, absent =
+  // the hot blue-white default.
+  let shipCapability: Record<string, { accelMs2: number; exhaustHex?: string }> | null = null;
+  function setShipCapability(map: Record<string, { accelMs2: number; exhaustHex?: string }> | null) {
+    shipCapability = map;
+    for (const b of bodies) {
+      if (!b.shipFx) continue;
+      const hex = map?.[b.id]?.exhaustHex;
+      const col = new THREE.Color(hex || '#bfe2ff');
+      (b.shipFx.cone.material as THREE.MeshBasicMaterial).color.set(col);
+      (b.shipFx.glow.material as THREE.SpriteMaterial).color.set(col);
+      b.shipFx.light.color.set(col);
+    }
+  }
   let _burnCache = { id: '', atMs: -Infinity, braking: false, thrust01: 0 };
   function shipBurnState(id: string): { braking: boolean; thrust01: number } {
     const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -1742,7 +1760,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const aMag = Math.hypot(ax, ay, az);
         const dot = ax * v1.x + ay * v1.y + az * (v1.z ?? 0);
         braking = aMag > BRAKE_ACCEL_MS2 && dot < 0;
-        const cap = Math.max(0.01, shipCapability?.[id] ?? FULL_PLUME_MS2);
+        const cap = Math.max(0.01, shipCapability?.[id]?.accelMs2 ?? FULL_PLUME_MS2);
         thrust01 = aMag > BRAKE_ACCEL_MS2 ? Math.min(1, aMag / cap) : 0;
       }
     }

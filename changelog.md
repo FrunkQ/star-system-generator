@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.416-beta - 4th Aug 2026
+
+* Coordinator round (fixes only). G13: the export/import of ship-model binaries (live since v2.1.396) is now PINNED by a round-trip spec - byte-identical through collect/embed/import, ref-only when a binary was never local, tampered blobs refused. A46: the info block's portrait-system builder is ONE exported function consumed by both document surfaces (was two identical copies). G15(4): a ship's drive-plume colour is rule-pack DATA now - optional exhaust_color_hex on the engine definition, derived per ship from its dominant engine by the host; the scene never reads the pack.
+
 ## v2.1.415-beta - 4th Aug 2026
 
 * The V3 welcome now lists what V3 actually is: the rewritten physics engine, player views, the 3D system view, starmaps with real depth (and 2D still working exactly as before), 3D ships, one tagging system throughout, real-sky importers, eclipse times, VTT integration in testing, retuned generation, the rebuilt default starmaps, and the long tail of fixes. Blurbs are a first pass and will be sharpened as each feature is bottomed out.
