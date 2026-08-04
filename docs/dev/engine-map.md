@@ -173,6 +173,11 @@ WHY: a helium giant offered "water ice" and "life-support resupply" from a super
 with no ground (B33); `isGiant` misfires on bodies carrying both a rocky and a giant class; the
 budget cannot separate giants from Earth (B25).
 BLAST: new resource/frontier rules must use the same gate. Same test the geology model uses.
+CAVEAT (2026-08-03, contradiction check): the RULE is single, the ENFORCEMENT is not. B36 records
+the same question answered in at least three more places — `physics/radiation.ts hasSolidSurface`,
+an inline `habMakeup.gas <= 0.5` at `SystemProcessor.ts:1302`, and another inline copy in B25's
+classifier gate. B11 unified two of them. Until B36 closes, changing the threshold here changes
+some callers and not others; fix B36 before trusting this entry's WHERE.
 
 ---
 

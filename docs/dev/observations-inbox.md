@@ -541,6 +541,18 @@ noticed.
   visual change covered only by unit tests and a green build is NOT finished, and it should be reported
   as unfinished rather than as done-with-a-caveat. If the browser is genuinely unavailable, say so and
   say what remains unseen, so the next session knows exactly what to look at first.
+- **SPENT MORE THAN TEN MINUTES WORKING OUT A NON-OBVIOUS RULE? WRITE IT INTO `docs/dev/engine-map.md`,
+  IN THE SAME COMMIT AS THE CODE.** One entry, the fixed format the file already uses
+  (`### ID claim` / WHERE / RULE / WHY / BLAST). It is an index of TRAPS for AGENTS changing the engine
+  — an invariant or an ordering that is invisible in the code, expensive to re-derive, and has already
+  been got wrong at least once. Same discipline as the Documentation-debt line, different target: debt
+  is for readers of the PRODUCT, the engine map is for whoever changes the ENGINE next.
+  **NOT a tutorial, NOT an API reference, and never a restatement of what the code already says** — if
+  an entry can be replaced by reading one function, delete it. A padded file stops being grepped, and
+  the whole value is in the rules that are not visible from the code.
+  **A WRONG ENTRY IS WORSE THAN A MISSING ONE.** If your change falsifies an entry, correct it in the
+  same commit. If you find two entries both claiming single authority over one concept, you have found
+  a duplication — report it; that is the detector this file gives you for free.
 - **BANK A LINE, SWEEP THE PROSE.** Writing documentation in every batch costs context in every
   session; writing it from memory later does not happen — [[D5]] found the tag docs 120 versions
   stale. So the rule is: when you ship something a reader needs to know, append ONE LINE to
