@@ -398,7 +398,11 @@ things the debt lines had wrong — see the note in [[D5]].
   view shows the hull itself with a thrust plume scaled to the fraction of its drive in use.
   (v2.1.398) Ship size follows the body-size dial exactly as planets do: readable marker length
   derived from the authored dimensions at one end, TRUE 1:1 at the other, with the icon standing
-  in below ~10 px at any dial position.
+  in below ~10 px at any dial position. (v2.1.400-405) The dial is LOG-SPACED for everything now
+  (mid-dial looks changed); hulls follow the map render style including OCCLUDING -occ wireframe;
+  the Shading dropdown offers seven finishes (three seeded per-ship liveries among them); and six
+  public-domain NASA craft ship as starter hulls in the model dialog. About + README credits
+  updated (NASA models, three.js, meshoptimizer, Draco).
 - **Tagging phase A (v2.1.392)** — a hand-added tag now SURVIVES a re-derive in every physics
   namespace, and an override SUPPRESSES the derived tag of the same key rather than sitting beside
   it. Twenty-five of thirty-four strip sites used to delete it. `docs/tags-guide.md` already promises
