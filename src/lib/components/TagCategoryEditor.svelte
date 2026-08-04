@@ -1,51 +1,56 @@
 <script lang="ts">
-  // Point-of-Interest pack editor: manage stacked packs (enable/import/export/new/delete), their
-  // categories, and rules. Rule conditions are built with guided field → operator → value rows
-  // (ANDed), with a raw-JSON fallback for complex any/not/nested logic.
+  // The one tag-category editor — it replaces the PoI pack editor and the CoI editor.
+  //
+  // A CATEGORY is the unit now: its colour, its tags, its automated rules, and which kinds of object
+  // it may be applied to. Packs are gone. A pack was only ever a bag of categories, and two packs
+  // defining the same category was a merge conflict with no UI to resolve it.
+  //
+  // The rule condition builder (guided field/operator/value rows, ANDed or ORed, with a raw-JSON
+  // fallback for nested logic) is carried over unchanged — only what it edits moved.
   import { createEventDispatcher } from 'svelte';
-  import { poiPacks, exportPack, importPack, POI_FIELDS, DEFAULT_POI_PACK, POI_ROLES, DEFAULT_POI_ROLES,
-    type PoIPack, type PoIRule, type PoIExpr, type PoIField, type ReasonCategory, type PoIRole } from '$lib/physics/reasonsToVisit';
-  import { EXAMPLE_POI_PACKS } from '$lib/physics/poiExamplePacks';
+  import { POI_FIELDS, POI_ROLES, DEFAULT_POI_ROLES,
+    type PoIRule, type PoIExpr, type PoIField, type PoIRole } from '$lib/physics/reasonsToVisit';
+  import {
+    tagCategories, upsertCategory, deleteCategory, setCategoryEnabled, setCategoryPlayerHidden,
+    addTagToCategory, removeTagFromCategory, updateTagDef, exportCategory, importCategory,
+    isSystemCategory, type TagCategory
+  } from '$lib/tags/tagCategories';
+  import { tagSlugSegment } from '$lib/tags/tagLifecycle';
   import DualRange from './DualRange.svelte';
   import { describeTag } from '$lib/tags/tagPresentation';
   import HelpModal from './HelpModal.svelte';
   import tagsGuide from '../../../docs/tags-guide.md?raw';
 
   let showHelp = false;
-
   export let existingTags: string[] = [];   // every tag key present across the systems (for has: rows)
 
   const dispatch = createEventDispatcher();
-  let selectedId = 'default';
-  $: packs = $poiPacks;
-  $: pack = packs.find((p) => p.id === selectedId) ?? packs[0];
-  $: isDefault = pack?.id === 'default';
+  let selectedId = 'resource';
+  $: cats = $tagCategories;
+  $: cat = cats.find((c) => c.id === selectedId) ?? cats[0];
+  $: isSystem = !!cat && isSystemCategory(cat.id);
 
-  // Category colour helpers (chip background / font) — drive the live tag previews + the rule list.
-  const catOf = (id: string): ReasonCategory | undefined => pack?.categories.find((c) => c.id === id);
-  const catBg = (id: string) => catOf(id)?.color || '#555a66';
-  const catFg = (id: string) => catOf(id)?.textColor || '#ffffff';
-  // The compound tag is category-id + "/" + a sanitised suffix the user types.
-  const slug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9/_-]/g, '');
+  // A tag renders in its OWN colour if it has one, else its category's — the whole mechanism behind
+  // "one faction category, a different colour per faction".
+  const tagBg = (key: string) => cat?.tags.find((t) => t.key === key)?.color || cat?.color || '#555a66';
+  const tagFg = (key: string) => cat?.tags.find((t) => t.key === key)?.textColor || cat?.textColor || '#ffffff';
+  const catBg = () => cat?.color || '#555a66';
+  const catFg = () => cat?.textColor || '#ffffff';
+  const slug = tagSlugSegment;
   const compoundTag = (catId: string, suffix: string) => `${catId}/${slug(suffix) || 'new-hook'}`;
-  const prettyName = (s: string) => (slug(s).split('/').pop() || 'new-hook').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const prettyName = (s: string) => (slug(s) || 'new-hook').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   const fieldOf = (name: string): PoIField | undefined => POI_FIELDS.find((f) => f.field === name);
   const opsFor = (f?: PoIField) => f?.type === 'number' ? ['gte', 'lte', 'gt', 'lt', 'between'] : ['eq'];
-  // Human-readable range for a numeric field — fractions read clearer as 0.0–1.0.
   const rangeText = (f?: PoIField) => f && f.type === 'number'
     ? (f.max !== undefined && f.max <= 1 ? '0.0–1.0' : `${f.min ?? 0}–${f.max ?? '∞'}`)
     : '';
-  // When a numeric field has explicit bounds, offer a slider (the number stays hand-editable).
   const hasRange = (f?: PoIField) => !!f && f.type === 'number' && f.min !== undefined && f.max !== undefined;
   const stepFor = (f: PoIField) => (f.max! <= 1 ? 0.01 : (f.max! <= 10 ? 0.1 : 1));
-  // Parse a "low,high" between value, defaulting empties to the field bounds.
   const betweenVals = (v: string, f: PoIField) => {
     const [a, b] = (v || '').split(',').map((x) => parseFloat(x));
     return { low: Number.isNaN(a) ? f.min! : a, high: Number.isNaN(b) ? f.max! : b };
   };
-  // A `has:<tag>` field is a tag-PRESENCE check (the body carries that tag). With the row's NOT
-  // toggle it becomes "lacks that tag". The tag list is the real tags present across the systems.
   const isHasField = (field: string) => field.startsWith('has:');
   const opsForRow = (row: { field: string }) => isHasField(row.field) ? [] : opsFor(fieldOf(row.field));
   function onFieldChange(row: { field: string; op: string }, value: string) {
@@ -53,7 +58,6 @@
     row.op = isHasField(value) ? '' : opsFor(fieldOf(value))[0];
     rows = rows;
   }
-  // Switching op to/from "between" reshapes the value between a single number and a "lo,hi" pair.
   function onOpChange(row: { field: string; op: string; value: string }, value: string) {
     const f = fieldOf(row.field);
     if (value === 'between' && !row.value.includes(',')) {
@@ -68,57 +72,62 @@
   }
   const OP_LABEL: Record<string, string> = { gte: '≥', lte: '≤', gt: '>', lt: '<', between: 'between', eq: 'is' };
 
-  // --- pack ops ---
-  function update(fn: (ps: PoIPack[]) => PoIPack[]) { poiPacks.update(fn); }
-  function patchPack(patch: Partial<PoIPack>) { update((ps) => ps.map((p) => p.id === pack.id ? { ...p, ...patch } : p)); }
-  function newPack() {
-    const id = 'pack-' + Math.random().toString(36).slice(2, 8);
-    update((ps) => [...ps, { id, name: 'New pack', description: '', enabled: true, categories: [{ id: 'custom', label: 'Custom', desc: '' }], rules: [] }]);
+  // --- category ops ---
+  function patchCat(patch: Partial<TagCategory>) { if (cat) upsertCategory({ ...cat, ...patch }); }
+  function newCategory() {
+    const id = 'category-' + Math.random().toString(36).slice(2, 6);
+    upsertCategory({
+      id, shortName: 'New category', longName: 'New category', color: '#6c8cb5', textColor: '#ffffff',
+      appliesTo: [...DEFAULT_POI_ROLES], enabled: true, tags: [], rules: []
+    });
     selectedId = id;
   }
-  function deletePack(id: string) {
-    if (id === 'default') return;
-    update((ps) => ps.filter((p) => p.id !== id));
-    selectedId = 'default';
+  function removeCategory(id: string) {
+    if (isSystemCategory(id)) return;
+    const name = cats.find((c) => c.id === id)?.longName || id;
+    if (!confirm(`Delete the "${name}" category?\n\nTags already applied to bodies and ships are NOT removed — they simply stop being described by this category, and its rules stop running.`)) return;
+    deleteCategory(id);
+    selectedId = cats.find((c) => c.id !== id)?.id ?? 'resource';
   }
-  function resetDefault() {
-    if (!confirm('Reset the built-in pack to its original categories and rules? Your edits to it will be lost.')) return;
-    update((ps) => ps.map((p) => p.id === 'default' ? { ...structuredClone(DEFAULT_POI_PACK), enabled: p.enabled } : p));
-  }
-  function doExport(p: PoIPack) {
-    const blob = new Blob([exportPack(p)], { type: 'application/json' });
+  function doExport(c: TagCategory) {
+    const blob = new Blob([exportCategory(c)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `${p.name.replace(/[^\w-]+/g, '_')}.poi.json`; a.click(); URL.revokeObjectURL(a.href);
+    a.download = `${(c.longName || c.id).replace(/[^\w-]+/g, '_')}.tagcategory.json`; a.click(); URL.revokeObjectURL(a.href);
   }
   let importError = '';
   function onImportFile(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0]; if (!file) return;
     const r = new FileReader();
-    r.onload = () => { try { const p = importPack(String(r.result)); update((ps) => [...ps.filter((x) => x.id !== p.id), p]); selectedId = p.id; importError = ''; } catch (err) { importError = (err as Error).message; } };
+    r.onload = () => {
+      try { const c = importCategory(String(r.result)); upsertCategory(c); selectedId = c.id; importError = ''; }
+      catch (err) { importError = (err as Error).message; }
+    };
     r.readAsText(file); (e.target as HTMLInputElement).value = '';
   }
-  function loadExample(ex: PoIPack) {
-    const copy = structuredClone(ex);
-    update((ps) => [...ps.filter((x) => x.id !== copy.id), copy]); selectedId = copy.id;
+  function toggleAppliesTo(role: PoIRole, on: boolean) {
+    if (!cat) return;
+    const cur = new Set(cat.appliesTo);
+    if (on) cur.add(role); else cur.delete(role);
+    patchCat({ appliesTo: [...cur] });
   }
 
-  // --- categories ---
-  function addCategory() { patchPack({ categories: [...pack.categories, { id: 'new-category', label: 'New category', desc: '', color: '#6c8cb5', textColor: '#ffffff' }] }); }
-  function patchCategory(i: number, patch: Partial<ReasonCategory>) {
-    patchPack({ categories: pack.categories.map((c, j) => j === i ? { ...c, ...patch } : c) });
+  // --- the category's own tag list ---
+  let newTagLabel = '';
+  function addTag() {
+    if (!cat || !newTagLabel.trim()) return;
+    addTagToCategory(cat.id, newTagLabel);
+    newTagLabel = '';
   }
-  function removeCategory(i: number) { patchPack({ categories: pack.categories.filter((_, j) => j !== i) }); }
 
   // --- rules ---
   let editing: PoIRule | null = null;
-  let ruleSuffix = '';          // the part after the category prefix, e.g. "geochem-sample"
+  let ruleSuffix = '';
   type Row = { field: string; op: string; value: string; neg?: boolean };
   let rows: Row[] = [];
   let rawMode = false; let rawText = ''; let ruleError = '';
-  let matchMode: 'all' | 'any' = 'all';      // builder combines its rows with AND (all) or OR (any)
+  let matchMode: 'all' | 'any' = 'all';
   const suffixOf = (tag: string) => tag.includes('/') ? tag.split('/').slice(1).join('/') : tag;
 
-  // Parse a single flat clause into a row (no NOT). Returns null if it isn't flat-representable.
   function clauseToRow(c: any): Row | null {
     if ('hasTag' in c) return { field: `has:${c.hasTag}`, op: '', value: '' };
     if ('between' in c) return { field: c.between[0], op: 'between', value: `${c.between[1]},${c.between[2]}` };
@@ -126,8 +135,6 @@
     const op = ['gt', 'lt', 'gte', 'lte'].find((o) => o in c);
     return op ? { field: c[op][0], op, value: String(c[op][1]) } : null;
   }
-  // A condition is builder-representable if it's `true`, a flat clause (optionally NOT-wrapped), or a
-  // flat all/any of those. Nested all/any and hasTagPrefix fall back to raw JSON.
   function whenToRows(when: PoIExpr): { rows: Row[]; raw: boolean; mode: 'all' | 'any' } {
     if (when === true) return { rows: [], raw: false, mode: 'all' };
     let clauses: any[]; let mode: 'all' | 'any' = 'all';
@@ -138,7 +145,7 @@
     for (const c of clauses) {
       const neg = 'not' in c;
       const row = clauseToRow(neg ? c.not : c);
-      if (!row) return { rows: [], raw: true, mode };   // nested / hasTagPrefix → raw
+      if (!row) return { rows: [], raw: true, mode };
       if (neg) row.neg = true;
       out.push(row);
     }
@@ -170,23 +177,28 @@
     }
   }
   function startRule(r?: PoIRule) {
-    const cat0 = pack.categories[0]?.id || 'custom';
-    editing = r ? { ...r } : { id: 'r' + Math.random().toString(36).slice(2, 7), tag: cat0 + '/new-hook', category: cat0, chance: 0.5, when: true };
+    const cid = cat?.id || 'custom';
+    editing = r ? { ...r } : { id: 'r' + Math.random().toString(36).slice(2, 7), tag: cid + '/new-hook', category: cid, chance: 0.5, when: true };
     ruleSuffix = suffixOf(editing.tag);
     const parsed = whenToRows(editing.when); rows = parsed.rows; rawMode = parsed.raw; matchMode = parsed.mode; rawText = JSON.stringify(editing.when, null, 0); ruleError = '';
   }
   function saveRule() {
-    if (!editing) return;
+    if (!editing || !cat) return;
     let when: PoIExpr;
     if (rawMode) { try { when = JSON.parse(rawText); } catch { ruleError = 'Invalid JSON'; return; } }
     else when = rowsToWhen(rows, matchMode);
-    // The tag is always category-id + "/" + the typed suffix, so it stays in sync with its category.
+    // A rule belongs to the category being edited, so its tag cannot drift out of the namespace.
     const r: PoIRule = {
-      ...editing, tag: compoundTag(editing.category, ruleSuffix), when,
+      ...editing, category: cat.id, tag: compoundTag(cat.id, ruleSuffix), when,
       label: editing.label?.trim() || undefined,
       description: editing.description?.trim() || undefined
     };
-    patchPack({ rules: pack.rules.some((x) => x.id === r.id) ? pack.rules.map((x) => x.id === r.id ? r : x) : [...pack.rules, r] });
+    const rules = cat.rules.some((x) => x.id === r.id) ? cat.rules.map((x) => x.id === r.id ? r : x) : [...cat.rules, r];
+    // The rule's tag IS one of the category's tags — register it so it is listed and colourable.
+    const tags = cat.tags.some((t) => t.key === r.tag)
+      ? cat.tags
+      : [...cat.tags, { key: r.tag, label: r.label || prettyName(ruleSuffix), description: r.description }];
+    upsertCategory({ ...cat, rules, tags });
     editing = null;
   }
   function toggleRole(role: PoIRole, on: boolean) {
@@ -196,22 +208,22 @@
     editing.appliesTo = [...cur]; editing = editing;
   }
   const ruleRoles = (r: PoIRule): PoIRole[] => (r.appliesTo && r.appliesTo.length ? r.appliesTo : DEFAULT_POI_ROLES);
-  function deleteRule(id: string) { patchPack({ rules: pack.rules.filter((r) => r.id !== id) }); }
-  function toggleRule(id: string) { patchPack({ rules: pack.rules.map((r) => r.id === id ? { ...r, enabled: r.enabled === false } : r) }); }
+  function deleteRule(id: string) { patchCat({ rules: cat.rules.filter((r) => r.id !== id) }); }
+  function toggleRule(id: string) { patchCat({ rules: cat.rules.map((r) => r.id === id ? { ...r, enabled: r.enabled === false } : r) }); }
   function addRow() { rows = [...rows, { field: POI_FIELDS[0].field, op: 'gte', value: '0.3' }]; }
-  // Tags selectable as presence ("has:") conditions: real tags on bodies + any tag a rule produces.
+
   $: tagOptions = (() => {
     const set = new Set<string>(existingTags);
-    for (const p of packs) for (const r of p.rules) set.add(r.tag);
+    for (const c of cats) for (const r of c.rules) set.add(r.tag);
     return [...set].filter(Boolean).sort();
   })();
 </script>
 
 <div class="modal-bg" on:click={() => dispatch('close')} role="presentation">
-<div class="modal" on:click|stopPropagation role="dialog" aria-label="PoI pack editor">
-  <header><h2>Point-of-Interest packs</h2>
+<div class="modal" on:click|stopPropagation role="dialog" aria-label="Tag category editor">
+  <header><h2>Tag categories</h2>
     <div class="head-actions">
-      <button type="button" class="poi-help" title="About tags, PoI & CoI" on:click={() => (showHelp = true)}>
+      <button type="button" class="poi-help" title="About tags" on:click={() => (showHelp = true)}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
         Guide
       </button>
@@ -219,60 +231,90 @@
     </div>
   </header>
   {#if showHelp}<HelpModal markdown={tagsGuide} on:close={() => (showHelp = false)} />{/if}
-  <p class="lede">Rules tag worlds with reasons to visit. Packs stack — enable several at once. Edit raw rules here, or hand a pack file to a friend. Physics-locked tags can't be changed; these add to them.</p>
+  <p class="lede">A category is a group of tags with a colour and a namespace. Its tags can be applied by hand, or seeded automatically by rules. Physics tags are separate — they are derived and can't be edited here.</p>
 
   <div class="cols">
-    <!-- pack list -->
+    <!-- category list -->
     <aside class="packs">
-      {#each packs as p (p.id)}
-        <button class="pack-row" class:sel={p.id === selectedId} on:click={() => (selectedId = p.id)}>
-          <input type="checkbox" checked={p.enabled !== false} on:click|stopPropagation on:change={() => poiPacks.update((ps) => ps.map((x) => x.id === p.id ? { ...x, enabled: x.enabled === false } : x))} />
-          <span class="pname">{p.name}</span>
-          <span class="pcount">{p.rules.length}</span>
+      {#each cats as c (c.id)}
+        <button class="pack-row" class:sel={c.id === selectedId} on:click={() => (selectedId = c.id)}>
+          <input type="checkbox" checked={c.enabled} on:click|stopPropagation on:change={(e) => setCategoryEnabled(c.id, e.currentTarget.checked)} title="Available for use" />
+          <span class="cat-dot" style="background:{c.color}"></span>
+          <span class="pname">{c.longName}{#if c.system}<span class="sysbadge" title="Needed by the engine — can be switched off, but not deleted">sys</span>{/if}</span>
+          <span class="pcount">{c.tags.length}</span>
         </button>
       {/each}
       <div class="pack-actions">
-        <button on:click={newPack}>+ New</button>
+        <button on:click={newCategory}>+ New</button>
         <label class="imp">Import…<input type="file" accept=".json" on:change={onImportFile} hidden /></label>
       </div>
       {#if importError}<p class="err">{importError}</p>{/if}
-      <div class="examples">
-        <span class="lbl">Examples:</span>
-        {#each EXAMPLE_POI_PACKS as ex}<button class="ex" on:click={() => loadExample(ex)} title={ex.description}>{ex.name}</button>{/each}
-      </div>
     </aside>
 
-    <!-- pack detail -->
-    {#if pack}
+    <!-- category detail -->
+    {#if cat}
     <section class="detail">
       <div class="head-row">
-        <input class="pack-name" value={pack.name} on:input={(e) => patchPack({ name: e.currentTarget.value })} />
-        <button class="ghost" on:click={() => doExport(pack)}>Export</button>
-        {#if isDefault}<button class="ghost" on:click={resetDefault} title="Restore the original built-in categories and rules">Reset</button>
-        {:else}<button class="ghost danger" on:click={() => deletePack(pack.id)}>Delete</button>{/if}
+        <input class="pack-name" value={cat.longName} on:input={(e) => patchCat({ longName: e.currentTarget.value, shortName: e.currentTarget.value })} />
+        <button class="ghost" on:click={() => doExport(cat)}>Export</button>
+        {#if !isSystem}<button class="ghost danger" on:click={() => removeCategory(cat.id)}>Delete</button>{/if}
       </div>
-      {#if isDefault}<p class="note">This is the built-in pack — edit it freely. Use <b>Reset</b> to restore the originals.</p>{/if}
+      {#if isSystem}
+        <p class="note">A <b>system</b> category: the engine matches these tags by name — refuelling, mining, drives, readiness — so it can't be deleted. Everything else about it is yours to change, including switching it off.</p>
+      {/if}
 
-      <h3>Categories</h3>
-      <p class="note">A category is a tag <b>prefix</b> + a <b>colour</b>. The <b>id</b> is what appears in the tag (e.g. <code>survey</code> → <code>survey/…</code>); the <b>label</b> is the heading players see (e.g. "Survey Value").</p>
-      {#each pack.categories as cat, i (i)}
-        <div class="cat-row">
-          <input class="mono" value={cat.id} on:input={(e) => patchCategory(i, { id: e.currentTarget.value })} placeholder="id (prefix)" title="The prefix shown in the tag, e.g. 'survey' → survey/geochem-sample." />
-          <input value={cat.label} on:input={(e) => patchCategory(i, { label: e.currentTarget.value })} placeholder="label (heading)" title="The display heading players see, e.g. 'Survey Value'." />
-          <input class="swatch" type="color" value={cat.color || '#6c8cb5'} on:input={(e) => patchCategory(i, { color: e.currentTarget.value })} title="Tag background colour" />
-          <input class="swatch" type="color" value={cat.textColor || '#ffffff'} on:input={(e) => patchCategory(i, { textColor: e.currentTarget.value })} title="Tag text colour" />
-          <span class="tag-chip-preview" style="background:{cat.color || '#6c8cb5'}; color:{cat.textColor || '#fff'}">{cat.id}/…</span>
-          <button class="x small" on:click={() => removeCategory(i)}>×</button>
+      <div class="cat-props">
+        <label class="fld mono-fld" title="The namespace shown in every tag, e.g. 'faction' → faction/red-syndicate.">Namespace
+          <input class="mono" value={cat.id} readonly title="Fixed once created — tags already applied carry it." />
+        </label>
+        <label class="fld" title="Tag background colour. A single tag can override this.">Colour
+          <input class="swatch" type="color" value={cat.color} on:input={(e) => patchCat({ color: e.currentTarget.value })} />
+        </label>
+        <label class="fld" title="Tag text colour.">Text
+          <input class="swatch" type="color" value={cat.textColor || '#ffffff'} on:input={(e) => patchCat({ textColor: e.currentTarget.value })} />
+        </label>
+      </div>
+      <label class="fld" title="Shown as the hover blurb wherever this category is explained.">Description
+        <input value={cat.description ?? ''} on:input={(e) => patchCat({ description: e.currentTarget.value })} placeholder="What this category is for" />
+      </label>
+
+      <div class="fld" title="Which kinds of object this category's tags can be applied to.">Applies to
+        <div class="roles">
+          {#each POI_ROLES as role}
+            <label class="rolechk"><input type="checkbox" checked={cat.appliesTo.includes(role)} on:change={(e) => toggleAppliesTo(role, e.currentTarget.checked)} /> {role}</label>
+          {/each}
         </div>
-      {/each}
-      <button class="add-line" on:click={addCategory}>+ category</button>
+      </div>
+      <label class="rolechk hide-row" title="Redact every tag in this category from players — they never reach the player view, the catalogue or a report.">
+        <input type="checkbox" checked={!!cat.playerHidden} on:change={(e) => setCategoryPlayerHidden(cat.id, e.currentTarget.checked)} /> Hide this category from players
+      </label>
 
-      <h3>Rules <span class="muted">({pack.rules.length})</span></h3>
+      <h3>Tags <span class="muted">({cat.tags.length})</span></h3>
+      <p class="note">A tag takes its category's colour unless you give it one of its own — which is how one Faction category can fly a different colour per faction.</p>
+      <div class="taglist">
+        {#each cat.tags as t (t.key)}
+          <div class="tag-row" class:derived={t.derived}>
+            <span class="tag-chip-preview" style="background:{tagBg(t.key)}; color:{tagFg(t.key)}">{t.label}</span>
+            <code class="key-mono">{t.key}</code>
+            <input class="swatch" type="color" value={t.color || cat.color} on:input={(e) => updateTagDef(cat.id, t.key, { color: e.currentTarget.value })} title="Colour for THIS tag (overrides the category)" />
+            {#if t.color}<button class="link" on:click={() => updateTagDef(cat.id, t.key, { color: undefined, textColor: undefined })} title="Use the category colour again">reset</button>{/if}
+            {#if t.derived}<span class="muted small" title="Mirrored from the ship's live state — not hand-set">auto</span>
+            {:else if !t.locked}<button class="x small" on:click={() => removeTagFromCategory(cat.id, t.key)}>×</button>{/if}
+          </div>
+        {/each}
+      </div>
+      <div class="addtag">
+        <input placeholder="New tag name, e.g. Red Syndicate" bind:value={newTagLabel} on:keydown={(e) => { if (e.key === 'Enter') addTag(); }} />
+        <button class="add-line" on:click={addTag} disabled={!newTagLabel.trim()}>+ tag</button>
+      </div>
+
+      <h3>Automated rules <span class="muted">({cat.rules.length})</span></h3>
+      <p class="note">Rules seed this category's tags onto worlds from the physics, with a seeded roll so a starmap always tags the same way.</p>
       <div class="rules">
-        {#each pack.rules as r (r.id)}
+        {#each cat.rules as r (r.id)}
           <div class="rule-row" class:off={r.enabled === false}>
             <input type="checkbox" checked={r.enabled !== false} on:change={() => toggleRule(r.id)} title="Enable/disable" />
-            <span class="rtag-chip" style="background:{catBg(r.category)}; color:{catFg(r.category)}" title={r.tag}>{r.tag}</span>
+            <span class="rtag-chip" style="background:{tagBg(r.tag)}; color:{tagFg(r.tag)}" title={r.tag}>{r.tag}</span>
             <span class="rchance">{Math.round(r.chance * 100)}%</span>
             <button class="link" on:click={() => startRule(r)}>edit</button><button class="link danger" on:click={() => deleteRule(r.id)}>del</button>
           </div>
@@ -284,16 +326,11 @@
   </div>
 
   <!-- rule editor overlay -->
-  {#if editing}
+  {#if editing && cat}
     <div class="rule-edit-bg" on:click={() => (editing = null)} role="presentation">
     <div class="rule-edit" on:click|stopPropagation role="dialog" aria-label="Edit rule">
-      <h3>Edit rule</h3>
-      <label class="fld" title="The category sets the tag's prefix and colour.">Category
-        <select value={editing.category} on:change={(e) => { editing.category = e.currentTarget.value; editing = editing; }}>
-          {#each pack.categories as c}<option value={c.id}>{c.label}</option>{/each}
-        </select>
-      </label>
-      <label class="fld" title="The internal tag key, e.g. 'geochem-sample'. Combined with the category it becomes the full tag id below.">Tag id (name)
+      <h3>Edit rule — {cat.longName}</h3>
+      <label class="fld" title="The internal tag key, e.g. 'geochem-sample'. Combined with the category namespace it becomes the full tag below.">Tag id (name)
         <input value={ruleSuffix} on:input={(e) => { ruleSuffix = e.currentTarget.value; }} placeholder="e.g. geochem-sample" />
       </label>
       <label class="fld" title="The friendly name players see on the chip. Blank = auto from the tag id.">Player name (label)
@@ -303,17 +340,19 @@
         <textarea class="desc" rows="2" value={editing.description ?? ''} on:input={(e) => { editing.description = e.currentTarget.value; editing = editing; }} placeholder="e.g. Spacers' tales of a wreck in this neighbourhood. (GM hook.)"></textarea>
       </label>
       <div class="tag-final">Players see:
-        <span class="tag-chip-preview" style="background:{catBg(editing.category)}; color:{catFg(editing.category)}" title={editing.description || ''}>{editing.label?.trim() || prettyName(ruleSuffix)}</span>
-        <code class="key-mono">{compoundTag(editing.category, ruleSuffix)}</code>
+        <span class="tag-chip-preview" style="background:{catBg()}; color:{catFg()}" title={editing.description || ''}>{editing.label?.trim() || prettyName(ruleSuffix)}</span>
+        <code class="key-mono">{compoundTag(cat.id, ruleSuffix)}</code>
       </div>
       <label class="fld">Chance: {Math.round(editing.chance * 100)}%
         <input type="range" min="0" max="1" step="0.01" value={editing.chance} on:input={(e) => editing.chance = parseFloat(e.currentTarget.value)} />
       </label>
 
-      <div class="fld" title="Which kinds of body this rule may tag.">Applies to
+      <div class="fld" title="Which kinds of body this rule may tag. Limited to what the category applies to.">Applies to
         <div class="roles">
           {#each POI_ROLES as role}
-            <label class="rolechk"><input type="checkbox" checked={ruleRoles(editing).includes(role)} on:change={(e) => toggleRole(role, e.currentTarget.checked)} /> {role}</label>
+            <label class="rolechk" class:ghosted={!cat.appliesTo.includes(role)} title={cat.appliesTo.includes(role) ? '' : `The ${cat.longName} category doesn't apply to ${role}s — add it above first.`}>
+              <input type="checkbox" disabled={!cat.appliesTo.includes(role)} checked={ruleRoles(editing).includes(role) && cat.appliesTo.includes(role)} on:change={(e) => toggleRole(role, e.currentTarget.checked)} /> {role}
+            </label>
           {/each}
         </div>
       </div>
@@ -395,7 +434,6 @@
   {/if}
 </div>
 </div>
-
 <style>
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2200; }
   .modal { background: var(--bg-panel); color: var(--text); border-radius: 8px; padding: 1.2rem 1.4rem; width: 860px; max-width: 96vw; max-height: 95vh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; }
@@ -493,4 +531,17 @@
     .cat-row { flex-wrap: wrap; }
     .cat-row .mono, .cat-row input { flex: 1 1 40%; }
   }
+
+  /* unified editor additions */
+  .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+  .sysbadge { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.65; margin-left: 5px; border: 1px solid currentColor; border-radius: 3px; padding: 0 3px; }
+  .cat-props { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .mono-fld { flex: 1 1 160px; }
+  .taglist { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
+  .tag-row { display: flex; align-items: center; gap: 7px; }
+  .tag-row.derived { opacity: 0.7; }
+  .addtag { display: flex; gap: 6px; align-items: center; }
+  .addtag input { flex: 1; }
+  .hide-row { margin: 6px 0; }
+  .rolechk.ghosted { opacity: 0.4; }
 </style>

@@ -39,8 +39,7 @@
   import TagFinder from '$lib/components/TagFinder.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
-  import PoIPackEditor from '$lib/components/PoIPackEditor.svelte';
-  import CoIEditor from '$lib/components/CoIEditor.svelte';
+  import TagCategoryEditor from '$lib/components/TagCategoryEditor.svelte';
   import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey } from '$lib/constructs/coi';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
   import EditFuelAndDrivesModal from '$lib/components/EditFuelAndDrivesModal.svelte';
@@ -120,8 +119,7 @@
   let routeToEdit: Route | null = null;
   let showSettingsModal = false;
   let showLlmSettingsModal = false;
-  let showPoiEditor = false;
-  let showCoiEditor = false;
+  let showTagEditor = false;
   // Technology editors (rulepack overrides) + About — moved up here from Starmap so the
   // sectioned Settings modal can open them from either view.
   let showFuelModal = false;
@@ -1592,17 +1590,13 @@
       on:editatmospheres={() => { settingsReturnSection = 'planets'; showAtmosphereModal = true; }}
       on:editliquids={() => { settingsReturnSection = 'planets'; showLiquidsModal = true; }}
       on:editsensors={() => { settingsReturnSection = 'technology'; showSensorsModal = true; }}
-      on:editpoi={() => { settingsReturnSection = 'generation'; showPoiEditor = true; }}
-      on:editcoi={() => { settingsReturnSection = 'coi'; showCoiEditor = true; }}
+      on:edittags={() => { settingsReturnSection = 'tagging'; showTagEditor = true; }}
       on:llm={() => { settingsReturnSection = 'system'; showLlmSettingsModal = true; }}
       on:about={() => showAbout = true}
     />
   {/if}
-  {#if showPoiEditor}
-    <PoIPackEditor existingTags={allTagKeys} on:close={() => { showPoiEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
-  {/if}
-  {#if showCoiEditor}
-    <CoIEditor on:close={() => { showCoiEditor = false; if (settingsReturnSection) showSettingsModal = true; }} />
+  {#if showTagEditor}
+    <TagCategoryEditor existingTags={allTagKeys} on:close={() => { showTagEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}

@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.409-beta - 4th Aug 2026
+
+* **Settings → Tagging replaces the PoI and CoIs sections, and one editor replaces both.** Tags were explained in two places that each told half the story; now there is one screen that says where tags come from — the physics, the automated rules, or you — and one editor where a category owns its colour, its tags, its rules and what it can be applied to.
+* **Any single tag can carry its own colour**, overriding its category's. That is the whole mechanism behind one Faction category flying a different colour per faction — no promotion step, no second system.
+* A category can be **hidden from players**, and says which kinds of object it applies to (star, planet, moon, belt, ring, construct). A rule's "applies to" is ghosted to what its category allows, so a rule can't target something the category doesn't cover.
+* Categories save and load as single files (`.tagcategory.json`), replacing the separate PoI-pack and CoI-pack formats. Deleting a category now tells you plainly that tags already applied to bodies and ships stay put — it stops describing them, it doesn't delete them.
+
 ## v2.1.408-beta - 4th Aug 2026
 
 * Tag categories now live in ONE store. PoI categories and CoI categories were always the same thing — a named group of tags with a colour, a list and a namespace — kept in two stores with two file formats, two editors, and two disagreeing definitions of "core" (six protected categories on one side, one on the other). They are one set now, and `resource/*`, which the two used to own half each, is a single category that means "extractable here" on a world and "carried" on a ship, exactly as the autopilot already read it. No visible change yet; the settings screens still look the same.

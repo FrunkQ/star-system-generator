@@ -4,13 +4,12 @@
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import { reasonsConfig, poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
-  import { coiCategories, setCoIEnabled } from '$lib/constructs/coi';
+  import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
 
   let clearing = false;
   async function clearEverything() {
-    if (!confirm('Clear ALL data?\n\nThis permanently deletes your saved starmap, PoI/CoI packs, settings, palette and everything else this app has stored in this browser — reproducing a brand-new install. This cannot be undone.')) return;
+    if (!confirm('Clear ALL data?\n\nThis permanently deletes your saved starmap, tag categories, settings, palette and everything else this app has stored in this browser — reproducing a brand-new install. This cannot be undone.')) return;
     if (!confirm('Are you absolutely sure? Everything will be wiped and the app will reload as a new user.')) return;
     clearing = true;
     try { await clearAllData(); } finally { window.location.reload(); }
@@ -25,7 +24,7 @@
   const dispatch = createEventDispatcher();
 
   // Sectioned settings (Starmap / Time / Tech / Planets / System). Orrery View was dropped (Q2).
-  type Section = 'starmap' | 'generation' | 'coi' | 'time' | 'technology' | 'planets' | 'system';
+  type Section = 'starmap' | 'tagging' | 'time' | 'technology' | 'planets' | 'system';
   // Sub-editors (Time & Calendars, Fuel & Drives…) reopen Settings at their section on close.
   export let initialSection: Section | null = null;
   let activeSection: Section = initialSection ?? 'starmap';
@@ -33,7 +32,7 @@
   // On narrow / touch the modal is a drill-in: a list of sections (drilled=false) →
   // a section's content (drilled=true). "Back" goes UP a level rather than closing.
   const SECTION_LABELS: Record<Section, string> = {
-    starmap: 'Starmap', generation: 'PoI', coi: 'CoIs', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
+    starmap: 'Starmap', tagging: 'Tagging', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
   };
   let isNarrow = false;
   let drilled = !!initialSection;
@@ -111,12 +110,6 @@
   $: if (showModal && activeSection === 'system' && storeState === null) refreshStorage();
 
   let generationEngine = starmap.generationEngine ?? 'standard';   // preserved on save; no longer surfaced in the UI
-  // Enabled-rule count per category across the enabled packs (shown beside each PoI category).
-  $: ruleCounts = (() => {
-    const m: Record<string, number> = {};
-    for (const p of $poiPacks) { if (p.enabled === false) continue; for (const r of p.rules) { if (r.enabled === false) continue; m[r.category] = (m[r.category] ?? 0) + 1; } }
-    return m;
-  })();
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
   // WS7: depth counts toward distance by default; a GM can opt into visual-only height.
   let ignoreZForDistances = starmap.ignoreZForDistances ?? false;
@@ -263,8 +256,7 @@
     <div class="settings-layout">
       <nav class="settings-nav">
         <button class:active={activeSection === 'starmap'} on:click={() => pickSection('starmap')}>Starmap</button>
-        <button class:active={activeSection === 'generation'} on:click={() => pickSection('generation')}>PoI</button>
-        <button class:active={activeSection === 'coi'} on:click={() => pickSection('coi')}>CoIs</button>
+        <button class:active={activeSection === 'tagging'} on:click={() => pickSection('tagging')}>Tagging</button>
         <button class:active={activeSection === 'time'} on:click={() => pickSection('time')}>Time</button>
         <button class:active={activeSection === 'technology'} on:click={() => pickSection('technology')}>Tech</button>
         <button class:active={activeSection === 'planets'} on:click={() => pickSection('planets')}>Planets</button>
@@ -363,43 +355,43 @@
             </label>
           </div>
 
-        {:else if activeSection === 'generation'}
-          <h3>Points of Interest</h3>
-          <p class="section-hint">RPG hooks tagged onto worlds — mineable resources, scientific draws, frontier logistics and mysteries — from the loaded PoI packs (physics + a seeded roll).</p>
+        {:else if activeSection === 'tagging'}
+          <h3>Tagging</h3>
+          <p class="section-hint">
+            Tags are how a world or a ship says what it is like beyond its physics. They come from three places:
+            the <strong>physics</strong>, which derives its own and can't be edited here (open the Newton panel — the
+            apple — on any body, or the <a href="/physics" target="_blank" rel="noreferrer">physics page</a>, to see
+            exactly which rule produced one); <strong>automated rules</strong> you can edit below; and
+            <strong>you</strong>, on any body or construct's Tags tab.
+          </p>
           <div class="form-group">
-            <label><input type="checkbox" bind:checked={$reasonsConfig.enabled} /> Show Point-of-Interest tags</label>
+            <label title="Turns off every automated tagging rule at once. Physics tags and your own hand-added tags are unaffected.">
+              <input type="checkbox" bind:checked={$tagRulesEnabled} /> Run automated tagging rules
+            </label>
           </div>
-          {#if $reasonsConfig.enabled}
-            <p class="section-hint">Categories currently loaded — tick to show in this view:</p>
-            <div class="form-group reason-cats">
-              {#each activeCategories($poiPacks) as cat}
-                <label class="cat-line" title={cat.desc}>
-                  <input type="checkbox" checked={$reasonsConfig.categories[cat.id] !== false}
-                    on:change={(e) => reasonsConfig.update((c) => ({ ...c, categories: { ...c.categories, [cat.id]: e.currentTarget.checked } }))} />
-                  <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
-                  <span class="cat-name">{cat.label}</span>
-                  <span class="cat-count">{ruleCounts[cat.id] ?? 0} {(ruleCounts[cat.id] ?? 0) === 1 ? 'rule' : 'rules'}</span>
-                </label>
-              {/each}
-            </div>
-            <button class="section-btn" on:click={() => { dispatch('editpoi'); showModal = false; }}>Edit PoI rule packs…</button>
-          {/if}
 
-        {:else if activeSection === 'coi'}
-          <h3>Constructs of Interest</h3>
-          <p class="section-hint">Hand-applied tags for ships &amp; stations — set on a construct's Tags tab. Unlike PoIs these are never auto-derived; you choose them. Owner sets the ship's tardiness, Purpose says what it does. They travel inside the starmap.</p>
-          <p class="section-hint">Categories — tick the ones you want available on constructs:</p>
+          <p class="section-hint">
+            Categories — tick to make one available. <strong>System</strong> categories can't be deleted because the
+            engine matches their tags by name (refuelling, mining, drives, readiness), but you can switch them off
+            and edit their tags freely.
+          </p>
           <div class="form-group reason-cats">
-            {#each $coiCategories as cat (cat.id)}
-              <label class="cat-line" title={cat.required ? 'Core category — always on (autopilot needs it)' : ''}>
-                <input type="checkbox" checked={cat.enabled === true || cat.required} disabled={cat.required} on:change={(e) => setCoIEnabled(cat.id, e.currentTarget.checked)} />
+            {#each $tagCategories as cat (cat.id)}
+              <label class="cat-line" title={cat.description || ''}>
+                <input type="checkbox" checked={cat.enabled} on:change={(e) => setCategoryEnabled(cat.id, e.currentTarget.checked)} />
                 <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
-                <span class="cat-name">{cat.label}{#if cat.required} <span class="cat-req">core</span>{/if}</span>
-                <span class="cat-count">{cat.tags.length} {cat.tags.length === 1 ? 'tag' : 'tags'}</span>
+                <span class="cat-name">
+                  {cat.longName}
+                  {#if cat.system}<span class="cat-req" title="Needed by the engine — can be switched off, but not deleted">system</span>{/if}
+                  {#if cat.playerHidden}<span class="cat-hidden" title="Hidden from players">hidden</span>{/if}
+                </span>
+                <span class="cat-count">
+                  {cat.tags.length} {cat.tags.length === 1 ? 'tag' : 'tags'}{#if cat.rules.length}, {cat.rules.length} {cat.rules.length === 1 ? 'rule' : 'rules'}{/if}
+                </span>
               </label>
             {/each}
           </div>
-          <button class="section-btn" on:click={() => { dispatch('editcoi'); showModal = false; }}>Edit Constructs of Interest…</button>
+          <button class="section-btn" on:click={() => { dispatch('edittags'); showModal = false; }}>Edit tag categories…</button>
 
         {:else if activeSection === 'time'}
           <h3>Date &amp; time</h3>
@@ -488,7 +480,7 @@
 
           <h4 class="advanced-head danger-head">Danger zone</h4>
           <div class="form-group">
-            <p class="section-hint">Wipe everything this app has stored in this browser — saved starmap, PoI/CoI packs, settings, palette, session — and reload as a brand-new user. Useful for testing the first-run experience. Cannot be undone.</p>
+            <p class="section-hint">Wipe everything this app has stored in this browser — saved starmap, tag categories, settings, palette, session — and reload as a brand-new user. Useful for testing the first-run experience. Cannot be undone.</p>
             <button class="section-btn danger-btn" on:click={clearEverything} disabled={clearing}>{clearing ? 'Clearing…' : 'Clear all data…'}</button>
           </div>
         {/if}
