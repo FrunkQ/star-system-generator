@@ -47,8 +47,24 @@ export async function hashModelBytes(bytes: ArrayBuffer): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Browsers may EVICT IndexedDB under storage pressure - "best effort" is the default bucket, and
+// a campaign carrying model binaries is exactly the sort of thing that gets cleared. Asking for
+// the persistent bucket costs one call and, once granted, means the data survives until the user
+// deletes it. Requested on the first store rather than at app start: by then the GM has actually
+// put something in, which is when Chrome is most likely to grant it silently.
+let persistRequested = false;
+async function requestPersistence(): Promise<void> {
+  if (persistRequested || typeof navigator === 'undefined' || !navigator.storage?.persist) return;
+  persistRequested = true;
+  try {
+    if (await navigator.storage.persisted?.()) return;
+    await navigator.storage.persist();
+  } catch { /* unsupported or denied: the store still works, it is just evictable */ }
+}
+
 /** Store a model under its content hash; returns the hash. Idempotent by construction. */
 export async function putModel(bytes: ArrayBuffer, meta: Omit<ModelRef, 'hash'>): Promise<string> {
+  void requestPersistence();
   const hash = await hashModelBytes(bytes);
   const db = await openDb();
   const entry: StoredModel = { bytes, meta: { ...meta, hash }, savedAtMs: Date.now() };

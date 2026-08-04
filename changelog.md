@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.428-beta - 4th Aug 2026
+
+* FOUND THE WAY A 3D MODEL GOES MISSING, and it is not storage: loading a construct TEMPLATE (or importing a construct file) replaced the ship's whole spec, and its picture and 3D model rode along with it - the template's blank fields won, so a ship you had already dressed came back plain with nothing looking broken. Appearance is now its own category, neither situation nor spec: the ship KEEPS its image, model, marker shape and colour unless the incoming template brings its own, in which case the template wins. Pinned by test.
+* A construct .json file now carries its model's BINARY, not just the hash - opening one on another machine used to land a reference pointing at nothing and fall back to the icon glyph. Same embedding the campaign export uses, verified against its own hash on the way in.
+* Model storage now asks the browser for the persistent bucket on first save. IndexedDB is evictable by default under storage pressure, which is exactly what a campaign full of model binaries invites.
+
 ## v2.1.427-beta - 4th Aug 2026
 
 * FIX: Pitch/Yaw/Roll stopped working in the 3D model dialog ("setOrient is not a function"). The engine-placement refactor replaced the block of viewer methods between setBurn and setSize, and setOrient sat inside it - so the method vanished from the object while its INTERFACE declaration remained, which is why the compiler stayed silent and only the click failed. Restored, along with the livery accent that the same edit dropped from the preview path. A new structural test now asserts every method the viewer's contract declares is actually present, and it was mutation-checked: delete setOrient again and the test fails.
