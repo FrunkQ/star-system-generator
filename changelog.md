@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.411-beta - 4th Aug 2026
+
+* **The test suite is green again**, for the first time in about a hundred and twenty versions. Four tests covering the app's own start-up have been failing since v2.1.274 for two unrelated reasons — a storage mock that never grew a function the page had started calling, and two assertions still looking for a heading the reorganised New Starmap screen no longer has. The cost was never those four tests: it was that "the tests pass" meant nothing, so any real breakage had somewhere to hide.
+
 ## v2.1.410-beta - 4th Aug 2026
 
 * **A moon's position is now correct everywhere, not just on screen.** A satellite's orbit is quoted in its planet's equator, and that rotation was applied only by the 3D view — so anything else that asked the engine where a moon was got an answer up to the planet's whole axial tilt out of true (25 degrees at Mars, 98 at Uranus). The rotation has moved into the position engine itself, and the 3D view stopped doing it. The picture is unchanged, to the last decimal; eclipse predictions, distances and alignments are now built on the same positions you are looking at.
