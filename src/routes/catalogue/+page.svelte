@@ -1066,7 +1066,7 @@
           background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
           labelSize={activePreset.labelSize}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
-          tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} mono={activePreset.starmapMono}
+          tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} dropLines={activePreset.starmapDropLines !== false} mono={activePreset.starmapMono}
           overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} zExaggeration={activePreset.zExaggeration ?? 1}
           flat={activePreset.starmapView === 'diagram2d'}
           lockRotation={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}

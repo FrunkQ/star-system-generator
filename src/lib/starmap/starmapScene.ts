@@ -58,6 +58,8 @@ export interface StarmapController {
   // G10: map units per campaign distance unit, so the SCALED polar rings can report a real distance.
   // Without it the rings label their own map coordinates — see the note in rebuildGrid.
   setDistanceScale(pixelsPerUnit: number): void;
+  // The vertical stems down to the reference plane and the rings that mark where they land.
+  setDropLines(on: boolean): void;
   setZExaggeration(v: number): void; // DISPLAY ONLY — stretches depth for clarity, never distances
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setMono(on: boolean): void; // monochrome palette for tinting filters
@@ -200,6 +202,11 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // --- Grid (LY rings / hex lattice) ---
   let gridMode: MapOverlay = 'plain';
   let routeGlowOn = true; // emissive glow on routes (vs plain lines)
+  // Depth tethers: the vertical stem from each system down to the reference plane, and the small ring
+  // that marks where it lands. On by default because they are what makes exaggerated depth READABLE —
+  // without them you cannot tell above from below — but on a map with real depth and a busy field they
+  // are also the dominant clutter, so a GM can drop them.
+  let dropLinesOn = true;
   let monoOn = false; // monochrome palette (white/grey) so a tint filter colours the whole map
   let lastData: { systems: SmSystem[]; routes: SmRoute[] } | null = null; // for rebuilds (route-glow / mono toggle)
   const MONO_HEX = 0xdfe6f0;
@@ -516,6 +523,14 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     addLattice(ringEdges, base.clone().multiplyScalar(0.45), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.55, skirt: gridSkirt });
     addLattice(spokeEdges, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: false });
   }
+  // Both halves of the tether go together: the ring exists to say where the stem lands, so a ring on
+  // its own would be marking the foot of a line nobody can see.
+  function setDropLines(on: boolean) {
+    const n = on !== false;
+    if (n === dropLinesOn) return;
+    dropLinesOn = n;
+    if (lastData) setData(lastData.systems, lastData.routes);
+  }
   function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
   function setDistanceScale(v: number) {
     const n = Number.isFinite(v) && v > 0 ? v : 0;
@@ -708,7 +723,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       // DROP-LINE: without a tether to the reference plane, exaggerated depth is unreadable — you cannot
       // tell above from below, or by how much. Fades out as it descends, and a small tick marks the spot
       // on the plane directly beneath, so the system's 2D position stays legible.
-      if (Math.abs(center.y) > 1e-4) {
+      if (dropLinesOn && Math.abs(center.y) > 1e-4) {
         const foot = new THREE.Vector3(center.x, 0, center.z);
         const dl = new THREE.BufferGeometry();
         dl.setAttribute('position', new THREE.Float32BufferAttribute([center.x, center.y, center.z, foot.x, foot.y, foot.z], 3));
@@ -929,7 +944,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setDistanceScale, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

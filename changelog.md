@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.406-beta - 3rd Aug 2026
+
+* **"Depth tethers" can be turned off on the 3D starmap.** The vertical stems running down from each system to the reference plane, and the little rings marking where they land, are now a tick-box in the starmap's display settings. They are what makes an exaggerated depth readable -- without them you cannot tell which side of the plane a star is on -- but on a map with real depth and a crowded field they are also the loudest thing on it, so it is your call.
+
 ## v2.1.405-beta - 4th Aug 2026
 
 * G3: solid wireframe, seeded liveries, and the NASA starter hulls. (1) The -occ wireframe styles now OCCLUDE on ship models - a depth-only copy of the hull (polygon-offset back a hair) hides far-side wires and anything behind, the bodies' nested-occluder trick generalised to arbitrary geometry. (2) Three new procedural finishes, all seeded by the construct's id so two ships sharing a hull wear different liveries: Panelled hull (seam-and-vent plating painted in the ship's colour, box-projected onto UV-less meshes), Weathered (oxidation splotches and streaking), and Iridescent (three.js physical iridescence). (3) Six real public-domain NASA craft ship as starter hulls (ISS, Hubble, Cassini, Juno, Voyager, MRO - under 1 MB total, fetched on demand), picked from a dropdown in the model dialog with attribution prefilled. Credits added to About and the README, including three.js / meshoptimizer / Draco.

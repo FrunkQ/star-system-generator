@@ -24,6 +24,9 @@
   // near cells falling away fast. Applies to every overlay type, polar included.
   export let gridFalloff = 0.5;
   export let routeGlow = true; // emissive glow on the transit routes
+  // The vertical stems down to the reference plane and the rings marking where they land. On by
+  // default: they are what makes exaggerated depth readable at all.
+  export let dropLines = true;
   export let mono = false; // monochrome palette (white/grey) for tinting filters
   // The GM's snap-grid, in ITS OWN persisted spelling ('grid'/'none'). Kept verbatim rather than
   // migrated: it is what is already saved in campaigns. normaliseOverlay folds it in the scene.
@@ -83,6 +86,7 @@
     controller.setData(smSystems, smRoutes);
     // G10: the scaled polar rings need map-units-per-distance-unit or they label map coordinates.
     controller.setDistanceScale(starmap?.scale?.pixelsPerUnit ?? 0);
+    controller.setDropLines(dropLines);
     controller.setGrid(grid);
     controller.setGridSkirt(flat ? 0 : gridDepth);
     controller.setGridFalloff(gridFalloff);
@@ -117,7 +121,7 @@
   onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; routeGlow; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
 </script>
