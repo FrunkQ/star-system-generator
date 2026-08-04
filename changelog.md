@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.413-beta - 4th Aug 2026
+
+* **The GM body panel now shows the next eclipse**, with the orbital rows where it belongs — the same line the player views already carried, from the same builder and the same clock, so the two can never word it differently. Mars reads "in 50 d - 37% annular (Phobos)"; a moon gets the view from its own surface, so Luna reads "76% partial (Earth)". A world with nothing to hide its star simply has no row.
+
 ## v2.1.412-beta - 4th Aug 2026
 
 * Internal only: the developer notes record the satellite-frame fix, the green suite, and a per-session working-tree recipe that stops parallel work sweeping each other. No change to the app.

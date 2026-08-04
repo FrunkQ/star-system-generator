@@ -2366,6 +2366,7 @@
                         system={$systemStore || system}
                         {rulePack}
                         {isEditing}
+                        nowMs={currentTime}
                         on:update={handleBodyUpdate}
                         on:delete={handleDeleteNode}
                         on:close={() => isEditing = false}

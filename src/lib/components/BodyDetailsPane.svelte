@@ -13,6 +13,8 @@
   export let system: StarSystem;
   export let rulePack: any;
   export let isEditing: boolean = false;
+  // G8: the display clock, forwarded so the technical block can show "Next eclipse".
+  export let nowMs: number | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -30,12 +32,13 @@
             {system}
             parentBody={parentBody}
             rootStar={rootStar}
+            {nowMs}
             on:update
             on:delete
             on:close
             on:tabchange
         />
     {:else}
-        <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} rootStar={rootStar} />
+        <BodyTechnicalDetails body={focusedBody} {rulePack} parentBody={parentBody} rootStar={rootStar} {nowMs} />
     {/if}
 {/if}

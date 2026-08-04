@@ -8,6 +8,8 @@
   import { calculateSurfaceTemperature, composeBodySurfaceTemperature } from '$lib/physics/temperature';
   import { systemStore, fmt } from '$lib/stores';
   import { get } from 'svelte/store';
+  import { onMount } from 'svelte';
+  import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
   import { phaseAtP } from '$lib/physics/liquids';
@@ -20,6 +22,33 @@
   export let rulePack: RulePack;
   export let parentBody: CelestialBody | null = null;
   export let rootStar: CelestialBody | null = null;
+  // G8: the campaign clock, so the orbital rows can carry "Next eclipse" — the same row the player
+  // views show, from the same builder. Null (no clock handed over) means no row, rather than a guess.
+  export let nowMs: number | null = null;
+
+  // The prediction is a forward search over the propagator, so it is computed when a READER asks and
+  // never in a derivation pass. `nextEclipseCached` then holds the answer until the date it predicted
+  // has gone by. What it cannot absorb is the GM scrubbing time BACKWARDS — that misses the cache on
+  // every frame and each miss is a real search — so the clock this row reads is sampled once a second
+  // of WALL time, which is the rule the player views already use: a date only needs to be right to
+  // the second, whatever the time scale.
+  let eclipseNowMs: number | null = null;
+  $: if (nowMs === null) eclipseNowMs = null;
+  onMount(() => {
+      eclipseNowMs = nowMs;
+      const id = setInterval(() => { eclipseNowMs = nowMs; }, 1000);
+      return () => clearInterval(id);
+  });
+  // A new body must not wait up to a second for its row, so re-sample immediately when the selection
+  // changes — cheap, because a cache hit is a map lookup.
+  $: if (body) eclipseNowMs = nowMs;
+  $: eclipseText = (() => {
+      const sys = $systemStore;
+      const id = (body as any)?.id;
+      if (!sys || !id || eclipseNowMs === null) return null;
+      const outlook = nextEclipseCached(sys as any, id, eclipseNowMs);
+      return outlook?.next ? describeEclipse(outlook.next, eclipseNowMs, undefined) : null;
+  })();
 
   // The "Orbit (from …)" label: keep the host TYPE but name the actual host too (on a multi-star system
   // a bare "Barycentre" / "star" is ambiguous). A barycentre names the bodies it holds, since a body can
@@ -655,6 +684,13 @@
           <div class="detail-item" title={(body as any).resonanceNote}>
               <span class="label">Resonance</span>
               <span class="value">{(body.orbit?.resonance ? `${body.orbit.resonance.numerator}:${body.orbit.resonance.denominator}` : (body.tags?.some((t) => t.key === 'resonance/laplace') ? 'Laplace chain' : 'Mean-motion'))}</span>
+          </div>
+      {/if}
+
+      {#if eclipseText}
+          <div class="detail-item" title="When this world's star is next hidden from it, and by how much — seen from where the shadow falls. Elements are held fixed (no nodal precession), so this is when they next line up rather than an ephemeris.">
+              <span class="label">Next Eclipse</span>
+              <span class="value">{eclipseText}</span>
           </div>
       {/if}
 

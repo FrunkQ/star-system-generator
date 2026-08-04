@@ -18,6 +18,8 @@
   export let system: System;
   export let parentBody: CelestialBody | null = null;
   export let rootStar: CelestialBody | null = null;
+  // G8: forwarded to the live stats block below so its orbital rows can carry "Next eclipse".
+  export let nowMs: number | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -120,7 +122,7 @@
   </div>
 
   <div class="live-stats">
-      <BodyTechnicalDetails {body} {rulePack} {parentBody} {rootStar} />
+      <BodyTechnicalDetails {body} {rulePack} {parentBody} {rootStar} {nowMs} />
   </div>
 </div>
 
