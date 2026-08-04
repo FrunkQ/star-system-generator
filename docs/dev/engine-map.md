@@ -138,6 +138,23 @@ re-seeded tags across an existing campaign.
 BLAST: migration must copy enabled state verbatim; "absent preference" is NOT "on" — `intrigue`
 ships off (caught by the derived baseline moving).
 
+
+### TAG-13 Map markers read the snapshot, never the raw system
+WHERE: `tags/mapHighlights.markersFor` (takes tags, not a body id)
+RULE: `markersFor` has no idea who is looking, deliberately. The caller passes tags that are ALREADY
+redacted for that audience — player surfaces pass the snapshot (TAG-9), GM surfaces pass raw.
+WHY: it makes "highlight the whole Faction category" safe to leave on: a secret faction cannot become
+a player badge, because it was removed before markers were built. Teaching the marker builder about
+audiences would put a second redaction rule next to the first.
+BLAST: a new marker surface → confirm which tags it hands in.
+
+### TAG-14 Highlight selection is live and shared, not per-surface
+WHERE: `player/liveOverrides.mapHighlights`
+RULE: ONE value drives the GM's maps and the players' windows. Momentary — never saved into a preset.
+WHY: the GM must be looking at what they are about to push; a separate preview is a second source of
+truth for "what shows on the map".
+BLAST: do not add a GM-only copy. Persisting a favourite set is banked, not built.
+
 ---
 
 ## PHYSICS — ordering and honesty
