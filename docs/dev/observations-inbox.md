@@ -444,9 +444,10 @@ things the debt lines had wrong — see the note in [[D5]].
 - **G9 tweaks (v2.1.401)** — two new preset controls (Star boost, Name size) on the charted-star
   sky. Worth a sentence wherever it is written up: at high boost the brightness is deliberately
   oversaturated and no longer reads as apparent magnitude.
-- **Welcome screen (v2.1.414)** — now a V3 PLACEHOLDER, not release notes: `WelcomeModal.svelte` claims
-  nothing V3 does not do yet and its `features` list is empty by design. Someone must write the real V3
-  welcome before release; the seen-flag is already bumped to `sse_welcome_v3_seen`.
+- **Welcome screen (v2.1.415)** — `WelcomeModal.svelte` now carries the owner's V3 headline list (12 items).
+  The HEADLINES are real; the BLURBS are a first pass to be sharpened as each feature is bottomed out, and
+  two lines need re-checking before release: that VTT integration is still accurately 'in testing', and that
+  the third-party VTT names are spelled as those products spell them.
 - **Real-sky import (v2.1.403)** — READER-FACING: the New Starmap screen is reorganised and gains
   "Import from the Real Sky…" (presets, fill-out mode, Sgr A* cluster demo), and the map's right-click
   gains "Import Real Stars Here…". `Help.md` / `GettingStarted.md` should introduce both, including

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.415-beta - 4th Aug 2026
+
+* The V3 welcome now lists what V3 actually is: the rewritten physics engine, player views, the 3D system view, starmaps with real depth (and 2D still working exactly as before), 3D ships, one tagging system throughout, real-sky importers, eclipse times, VTT integration in testing, retuned generation, the rebuilt default starmaps, and the long tail of fixes. Blurbs are a first pass and will be sharpened as each feature is bottomed out.
+
 ## v2.1.414-beta - 4th Aug 2026
 
 * Real-sky import tells you what a big import will COST before you commit to one: alongside the system and planet counts, the dialogue now shows the estimated size, how long the map will take to load, and a plain reading (comfortable / large / very large). Past the comfortable band it offers a real alternative rather than advice -- a one-tap chip naming the exact radius that brings it back in range and how many systems that leaves ("Radius 13 ly -> 120 systems"), found by searching the rows already in hand. A very large import is allowed but gated behind a confirmation restating the cost, and past a hard ceiling it is refused with a reason. Nothing is ever silently trimmed: a truncated map that claims to be a survey is worse than no map.

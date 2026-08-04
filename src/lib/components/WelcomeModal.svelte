@@ -1,14 +1,11 @@
 <script lang="ts">
   // First-run welcome — shown once (localStorage flag set by the parent on close).
   //
-  // PLACEHOLDER FOR V3. The V2 copy this replaced listed the V2 headline features and
-  // addressed users arriving from V1; it is in git history if any of it is worth reusing.
-  // Before V3 ships, someone needs to write the real thing:
-  //   - `features` below is a PLACEHOLDER LIST and deliberately claims nothing. Fill it
-  //     from the V3 workstreams as they land, or delete it and write prose.
-  //   - the lede and the heads-up both need the V3 story (what changed, what carries over).
-  // Deliberately NOT claiming anything V3 does not yet do — an inaccurate welcome is worse
-  // than a plain one.
+  // V3 welcome — FIRST PASS. The headlines below are the owner's list and are real, but the
+  // blurbs are placeholders to be sharpened once each feature is bottomed out. Two things to
+  // check before release: that every line still matches what shipped, and that anything still
+  // in testing (VTT integration) is still labelled as such. An inaccurate welcome is worse
+  // than a plain one, so nothing here claims more than the feature currently does.
   import { createEventDispatcher } from 'svelte';
   import { APP_VERSION } from '$lib/constants';
   const dispatch = createEventDispatcher();
@@ -17,8 +14,21 @@
 
   const GH = 'https://github.com/FrunkQ/star-system-generator/blob/beta';
 
-  // PLACEHOLDER — replace with the V3 headline features before release.
-  const features: { title: string; blurb: string }[] = [];
+  // Headline features — brief and scannable; full detail lives in the guides.
+  const features: { title: string; blurb: string }[] = [
+    { title: 'A rewritten physics engine', blurb: 'Worlds are derived end to end from what they are made of — density, temperature, atmosphere, cloud decks, oceans and ice, magnetism, geology and true colour — and the Newton panel shows the working.' },
+    { title: 'Player views', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — redacted, styled, and updating as you play." },
+    { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system, with orbits, tilts and moons where the physics puts them.' },
+    { title: 'Starmaps have depth', blurb: 'Systems carry a z-axis, so distances are true in three dimensions. If you prefer a flat map, everything still works exactly as it did in 2D.' },
+    { title: '3D ships', blurb: 'Bring your own models: constructs can be shown as real 3D craft.' },
+    { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
+    { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — real stars at true positions, confirmed planets only, or filled out with plausible worlds around them.' },
+    { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
+    { title: 'Virtual tabletop integration', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and others are in testing.' },
+    { title: 'Sharper generation', blurb: 'Procedural systems have been retuned to sit better inside the new physics.' },
+    { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
+    { title: 'Many improvements and fixes', blurb: 'Hundreds of smaller changes throughout — the changelog has every one, build by build.' }
+  ];
 </script>
 
 <div class="modal-overlay" role="presentation" on:click={close}>
@@ -33,7 +43,7 @@
 
     <div class="w-body">
       <p class="lede">V3 is being built in the open on this beta. Everything you already do still works
-        and your saved starmaps still load — the release notes for what is new are being written.</p>
+        and your saved starmaps still load — but a great deal is new. The short version:</p>
 
       {#if features.length}
         <ul class="feat">
@@ -45,9 +55,10 @@
           {/each}
         </ul>
       {:else}
-        <p class="placeholder">Highlights land here as V3 takes shape. In the meantime the changelog has
-          every change, build by build.</p>
+        <p class="placeholder">Highlights land here as V3 takes shape.</p>
       {/if}
+
+      <p class="placeholder">Fuller notes for each of these follow as V3 firms up.</p>
 
       <p class="guides-line">
         New here, or want the detail? Read the
