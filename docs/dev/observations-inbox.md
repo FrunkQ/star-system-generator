@@ -502,6 +502,23 @@ things the debt lines had wrong — see the note in [[D5]].
 - **G8 GM panel (v2.1.413-beta)** - READER-FACING: the GM's read-only body block now shows a "Next Eclipse" row with the orbital rows, the same one the player views already had. Anywhere that lists what the GM inspector shows needs it; the row's own tooltip carries the honesty caveat (elements held fixed, no nodal precession, so it is when they next line up rather than an ephemeris).
 - **Tagging B/C (v2.1.408-421)** — READER-FACING, and the tag docs are now materially wrong rather than merely stale. `docs/tags-guide.md` is built around "Points of Interest" and "Constructs of Interest", which no longer exist: there is one **Settings → Tagging** section, one category editor, and a category is the unit (packs are gone). It also needs the three things that are new — a **per-tag colour** overriding its category's; **GM overrides**, where a hand-added tag in a physics namespace beats the derived one; and **secret tags** plus player-hidden categories, redacted from every player surface. `docs/classification-and-tags.md` still wants the provenance column from the phase-A line above, now including that a **generated** tag is removable and never re-derived (A44). Both are a rewrite rather than a patch, which is why they are banked rather than done inline.
 
+## docs/dev/engine-map.md — the traps file (started 2026-08-04)
+
+`docs/dev/engine-map.md` is a NEW, deliberately LLM-facing index of the non-obvious rules: the ones
+invisible in the code, expensive to re-derive, and already got wrong at least once. It is not a
+tutorial and not a duplicate of the code — every entry is an INVARIANT or an ORDERING plus the file
+that enforces it, the failure it prevents (with the inbox id), and a BLAST line naming what else to
+check.
+
+Seeded with the tags/lifecycle domain and four physics entries; every other domain is a stub with
+candidate entries listed. **The ask of every session: when something costs you more than ten minutes
+to work out, add ONE entry in the existing format.** That is how it gets built. A wrong entry is
+worse than a missing one, so fix it in the same commit as the code it describes.
+
+Why it should help the duplication problem specifically: the entries name what a thing is the single
+authority FOR, so a second implementation is visible as a contradiction rather than having to be
+noticed.
+
 ## Standing rules any worker session must follow
 
 - **Physics and data drive tags; tags drive the image.** Do not add rendering code to make something look a
