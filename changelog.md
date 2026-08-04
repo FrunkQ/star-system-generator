@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.418-beta - 4th Aug 2026
+
+* Livery contrast accent, DERIVED not dialled (owner decision: no second colour slider): the Panelled and Weathered finishes now carry a seeded complementary accent computed from the ship's own colour - accent panels and a livery stripe on the plating, oxidation blooming toward the accent hue in the weathering (verdigris on a copper hull, rust on a blue one). Saturation and lightness are floored so a grey or near-black hull still earns a coloured accent. One colour to touch, per ship variation for free; if control is ever wanted the lever is pack data, not a slider.
+
 ## v2.1.417-beta - 4th Aug 2026
 
 * Welcome copy sharpened: the physics rewrite now says what it bought -- weather and lightning, aurorae, stellar flares and the dose they deliver, with the gases and liquids behind them editable; player views mention the filters and transitions that dress them for your setting; the 3D view notes that worlds are lit by their own star; and the night-sky line is shorter and no longer says the same thing twice.

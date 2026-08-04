@@ -86,8 +86,41 @@ function boxProjectUVs(geo: THREE.BufferGeometry, tiles = 3): void {
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
 
+// The liveries' CONTRAST ACCENT is DERIVED from the base colour, not authored (owner decision
+// 2026-08-04: no second slider) - a seeded rotation into the complementary range at moderated
+// saturation, so it always contrasts and never clashes, and the GM still touches ONE colour.
+// If control is ever wanted, the lever is pack DATA (an accent palette), not another slider.
+function accentFrom(tint: string, rnd: () => number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(tint.trim());
+  if (!m) return '#d8642f';
+  const v = parseInt(m[1], 16);
+  let r = ((v >> 16) & 255) / 255, g = ((v >> 8) & 255) / 255, b = (v & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0;
+  const l = (max + min) / 2;
+  const d = max - min;
+  let sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  if (d > 0) {
+    h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  // Complementary-ish rotation (150-210 deg, seeded), workable saturation and lightness even
+  // when the base is grey or near-black - a grey hull still earns a coloured accent.
+  h = (h + 150 + rnd() * 60) % 360;
+  sat = Math.max(0.45, Math.min(0.75, sat < 0.15 ? 0.55 : sat));
+  const lit = Math.max(0.35, Math.min(0.6, l < 0.2 || l > 0.85 ? 0.48 : l));
+  const c = (1 - Math.abs(2 * lit - 1)) * sat;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const mm = lit - c / 2;
+  const [r2, g2, b2] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  const to = (n: number) => Math.round((n + mm) * 255).toString(16).padStart(2, '0');
+  return `#${to(r2)}${to(g2)}${to(b2)}`;
+}
+
 /** PLATED: a seeded hull-plating sheet - panel rectangles with seams, tonal variation, a few
- *  accent panels and vents - painted in shades of the ship's own colour. */
+ *  accent panels and vents - painted in shades of the ship's own colour with a DERIVED
+ *  contrast accent for the marked panels and the livery stripe. */
 function makePlatedTexture(tint: string, seed: string): THREE.Texture | null {
   if (typeof document === 'undefined') return null;
   const size = 512;
@@ -96,6 +129,7 @@ function makePlatedTexture(tint: string, seed: string): THREE.Texture | null {
   const ctx = cnv.getContext('2d');
   if (!ctx) return null;
   const rnd = seededRng(seed + '|plated');
+  const accent = accentFrom(tint, rnd);
   ctx.fillStyle = tint;
   ctx.fillRect(0, 0, size, size);
   // Panel grid: uneven columns/rows, subdivided; each panel gets a tonal nudge, some get accents.
@@ -109,8 +143,8 @@ function makePlatedTexture(tint: string, seed: string): THREE.Texture | null {
       const shadeF = (rnd() - 0.5) * 0.3;
       ctx.fillStyle = shade(tint, shadeF);
       ctx.fillRect(xs[ci], y, xs[ci + 1] - xs[ci], h);
-      if (rnd() < 0.08) { // accent panel
-        ctx.fillStyle = shade(tint, rnd() < 0.5 ? 0.5 : -0.6);
+      if (rnd() < 0.1) { // accent panel - the DERIVED contrast hue, not just a tonal nudge
+        ctx.fillStyle = rnd() < 0.7 ? accent : shade(accent, -0.35);
         ctx.fillRect(xs[ci] + 2, y + 2, (xs[ci + 1] - xs[ci]) * (0.3 + rnd() * 0.4), h - 4);
       }
       if (rnd() < 0.12) { // vent slats
@@ -126,13 +160,25 @@ function makePlatedTexture(tint: string, seed: string): THREE.Texture | null {
       y += h;
     }
   }
+  // One livery stripe in the accent, the mark that reads as OWNERSHIP at a glance - sometimes
+  // double, occasionally absent (rnd keeps it per-ship).
+  if (rnd() < 0.8) {
+    const sy = size * (0.15 + rnd() * 0.7);
+    const sh = size * (0.02 + rnd() * 0.04);
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, sy, size, sh);
+    if (rnd() < 0.4) ctx.fillRect(0, sy + sh * 1.8, size, sh * 0.45);
+    ctx.globalAlpha = 1;
+  }
   const tex = new THREE.CanvasTexture(cnv);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 
-/** PATINA: the ship's colour weathered - streaks, scorch, oxidation splotches. */
+/** PATINA: the ship's colour weathered - streaks, scorch, and oxidation blooming toward the
+ *  DERIVED accent hue (verdigris on a copper hull, rust on a blue one). */
 function makePatinaTexture(tint: string, seed: string): THREE.Texture | null {
   if (typeof document === 'undefined') return null;
   const size = 512;
@@ -141,12 +187,13 @@ function makePatinaTexture(tint: string, seed: string): THREE.Texture | null {
   const ctx = cnv.getContext('2d');
   if (!ctx) return null;
   const rnd = seededRng(seed + '|patina');
+  const accent = accentFrom(tint, rnd);
   ctx.fillStyle = tint;
   ctx.fillRect(0, 0, size, size);
-  for (let i = 0; i < 60; i++) { // oxidation splotches
+  for (let i = 0; i < 60; i++) { // oxidation splotches - a third bloom in the accent, the rest char
     const r = 8 + rnd() * 60;
     const g = ctx.createRadialGradient(rnd() * size, rnd() * size, 1, rnd() * size, rnd() * size, r);
-    const dark = shade(tint, -(0.2 + rnd() * 0.5));
+    const dark = rnd() < 0.35 ? shade(accent, -(0.1 + rnd() * 0.3)) : shade(tint, -(0.2 + rnd() * 0.5));
     g.addColorStop(0, dark + '');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalAlpha = 0.12 + rnd() * 0.22;
