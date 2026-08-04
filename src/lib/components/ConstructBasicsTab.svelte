@@ -6,6 +6,8 @@
   import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
 
   export let construct: CelestialBody;
+  // Optional: lets the model dialog preview the ship's real exhaust colour while placing drives.
+  export let rulePack: any = null;
 
   const dispatch = createEventDispatcher();
 
@@ -142,80 +144,110 @@
 </script>
 
 <div class="tab-panel">
-    <div class="row">
-      <div class="form-group" style="flex: 1;">
-        <label for="icon-type">Icon Type:</label>
-        <select id="icon-type" bind:value={construct.icon_type} on:change={handleUpdate}>
-          <option value="square">Square</option>
-          <option value="triangle">Triangle</option>
-          <option value="circle">Circle</option>
-          <option value="cross">Cross</option>
-          <option value="diamond">Diamond</option>
-        </select>
-      </div>
-      <div class="form-group" style="flex: 1;">
-        <label for="icon-color">Colour:</label>
-        <input type="color" id="icon-color" bind:value={construct.icon_color} on:input={handleUpdate} />
-      </div>
-    </div>
+    <!-- ONE appearance block: how this ship looks on the map (2D marker), in 3D, and what
+         colours dress it. These used to be three separate stacked groups that each repeated the
+         same idea; the ship's COLOUR now sits at the top because everything below inherits it. -->
+    <fieldset class="appearance">
+      <legend>Appearance</legend>
 
-    <div class="form-group">
-      <label>Image <span class="descriptor">(optional — defaults to the icon)</span></label>
-      <div class="custom-image">
-        {#if construct.image?.custom}
-          <img class="custom-thumb" src={construct.image.url} alt="Custom construct artwork" />
-        {/if}
-        <button type="button" class="img-btn" on:click={() => imgInput?.click()}>
-          {construct.image?.custom ? 'Replace image…' : 'Add image…'}
-        </button>
-        {#if construct.image?.custom}
-          <button type="button" class="img-btn remove" on:click={removeCustomImage}>Remove</button>
-        {/if}
-        <input type="file" accept="image/*" bind:this={imgInput} on:change={onImageUpload} hidden />
-      </div>
-    </div>
+      <div class="app-grid">
+        <span class="app-label">Colour</span>
+        <div class="app-ctl">
+          <input type="color" id="icon-color" bind:value={construct.icon_color} on:input={handleUpdate} />
+          <span class="descriptor">marker, hull tint and plume dressing all follow this</span>
+        </div>
 
-    <div class="form-group">
-      <label>3D Model <span class="descriptor">(optional — GLB, STL or OBJ; shown in the info block)</span></label>
-      <div class="custom-image">
-        {#if construct.model}
-          <span class="model-summary">
-            {construct.model.name || 'Model'}
-            · {(construct.model.triangles ?? 0).toLocaleString()} tris
-            · {Math.round((construct.model.bytes ?? 0) / 1024)} KB
-          </span>
-        {/if}
-        <button type="button" class="img-btn" on:click={() => (modelModalOpen = true)}>
-          {construct.model ? 'Replace model…' : 'Add 3D model…'}
-        </button>
-        {#if construct.model}
-          <button type="button" class="img-btn remove" on:click={removeModel}>Remove</button>
-          <!-- Hull finish (design §5): dresses the model when the map style is Filled; a wireframe
-               map style overrides it, exactly as it does the planets. -->
-          <select class="model-finish" bind:value={construct.model.finish} on:change={handleUpdate}
-                  title="How the hull is shaded when the map render style is Filled">
-            <option value={undefined}>Flat + panel lines</option>
-            <option value="plated">Panelled hull (seeded)</option>
-            <option value="patina">Weathered (seeded)</option>
-            <option value="cel">Cel shaded</option>
-            <option value="matcap">Brushed metal</option>
-            <option value="iridescent">Iridescent</option>
-            <option value="blueprint">Blueprint</option>
+        <span class="app-label">Marker</span>
+        <div class="app-ctl">
+          <select id="icon-type" bind:value={construct.icon_type} on:change={handleUpdate}>
+            <option value="square">Square</option>
+            <option value="triangle">Triangle</option>
+            <option value="circle">Circle</option>
+            <option value="cross">Cross</option>
+            <option value="diamond">Diamond</option>
           </select>
+          <span class="descriptor">2D map, and the fallback everywhere</span>
+        </div>
+
+        <span class="app-label">Picture</span>
+        <div class="app-ctl">
+          {#if construct.image?.custom}
+            <img class="custom-thumb" src={construct.image.url} alt="Custom construct artwork" />
+          {/if}
+          <button type="button" class="img-btn" on:click={() => imgInput?.click()}>
+            {construct.image?.custom ? 'Replace…' : 'Add…'}
+          </button>
+          {#if construct.image?.custom}
+            <button type="button" class="img-btn remove" on:click={removeCustomImage}>Remove</button>
+          {/if}
+          <input type="file" accept="image/*" bind:this={imgInput} on:change={onImageUpload} hidden />
+        </div>
+
+        <span class="app-label">3D model</span>
+        <div class="app-ctl">
+          <button type="button" class="img-btn" on:click={() => (modelModalOpen = true)}>
+            {construct.model ? 'Edit model…' : 'Add 3D model…'}
+          </button>
+          {#if construct.model}
+            <button type="button" class="img-btn remove" on:click={removeModel}>Remove</button>
+          {/if}
+          {#if construct.model}
+            <span class="descriptor">
+              {construct.model.name || 'Model'} &middot;
+              {(construct.model.triangles ?? 0).toLocaleString()} tris &middot;
+              {Math.round((construct.model.bytes ?? 0) / 1024)} KB
+            </span>
+          {:else}
+            <span class="descriptor">GLB, STL or OBJ &mdash; or a real NASA craft</span>
+          {/if}
+        </div>
+
+        {#if construct.model}
+          <span class="app-label">Shading</span>
+          <div class="app-ctl">
+            <select class="model-finish" bind:value={construct.model.finish} on:change={handleUpdate}
+                    title="How the hull is shaded when the map render style is Filled">
+              <option value={undefined}>Flat + panel lines</option>
+              <option value="plated">Panelled hull</option>
+              <option value="patina">Weathered</option>
+              <option value="cel">Cel shaded</option>
+              <option value="matcap">Brushed metal</option>
+              <option value="iridescent">Iridescent</option>
+              <option value="blueprint">Blueprint</option>
+            </select>
+            <span class="descriptor">wireframe map styles override this</span>
+          </div>
+
+          <span class="app-label">Drives</span>
+          <div class="app-ctl">
+            <span class="descriptor">
+              {#if construct.model.nozzles?.length}
+                {construct.model.nozzles.length} placed
+                {#if (construct.model.nozzleScale ?? 1) !== 1}&middot; {(construct.model.nozzleScale ?? 1).toFixed(2)}&times; size{/if}
+              {:else}
+                one at the stern (default)
+              {/if}
+              &mdash; set them in <em>Edit model &rsaquo; Engines</em>
+            </span>
+          </div>
+
+          {#if construct.model.credit || construct.model.license}
+            <span class="app-label">Credit</span>
+            <div class="app-ctl">
+              <span class="descriptor">
+                {[construct.model.credit, construct.model.license].filter(Boolean).join(' · ')}
+                {#if construct.model.license === 'CC-BY' && !construct.model.credit}
+                  &mdash; CC-BY needs a credit
+                {/if}
+              </span>
+            </div>
+          {/if}
         {/if}
       </div>
-      {#if construct.model?.credit || construct.model?.license}
-        <span class="descriptor model-credit">
-          {[construct.model.credit, construct.model.license].filter(Boolean).join(' · ')}
-          {#if construct.model.license === 'CC-BY' && !construct.model.credit}
-            — CC-BY needs a credit; edit the model to add one
-          {/if}
-        </span>
-      {/if}
-    </div>
+    </fieldset>
 
     {#if modelModalOpen}
-      <ConstructModelModal {construct} on:save={onModelSave} on:close={() => (modelModalOpen = false)} />
+      <ConstructModelModal {construct} {rulePack} on:save={onModelSave} on:close={() => (modelModalOpen = false)} />
     {/if}
 
     <div class="row">
@@ -226,7 +258,7 @@
     </div>
 
     <div class="form-group dimensions-group">
-        <label>Dimensions (L x W x H) m:</label>
+        <span class="dim-label">Dimensions (L x W x H) m:</span>
         <div class="dimensions-inputs">
           <input type="number" placeholder="L" bind:value={construct.physical_parameters.dimensionsM[0]} on:input={handleUpdate} />
           <input type="number" placeholder="W" bind:value={construct.physical_parameters.dimensionsM[1]} on:input={handleUpdate} />
@@ -291,7 +323,6 @@
     text-align: center;
   }
 
-  .custom-image { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .custom-thumb {
     width: 48px; height: 48px; object-fit: cover; border-radius: 4px;
     border: 1px solid var(--border); background: var(--bg-control);
@@ -303,8 +334,15 @@
   }
   .img-btn:hover { border-color: var(--accent, var(--text-muted)); }
   .img-btn.remove { color: var(--danger, #e06c6c); }
-  .model-summary { font-size: 0.85em; color: var(--text-muted, #9aa4b4); }
-  .model-credit { display: block; margin-top: 3px; }
+  .appearance { border: 1px solid var(--border-color, #333a46); border-radius: 6px; padding: 6px 10px 10px; margin: 0 0 10px; }
+  .appearance legend { font-size: 0.85em; color: var(--text-muted, #9aa4b4); padding: 0 4px; }
+  /* Label column + control column: every row reads the same way, and the whole block is about
+     half the height the three separate groups took. */
+  .app-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+  .dim-label { display: block; font-size: 0.9em; margin-bottom: 3px; }
+  .app-label { font-size: 0.85em; color: var(--text-muted, #9aa4b4); white-space: nowrap; }
+  .app-ctl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+  .app-ctl .descriptor { font-size: 0.8em; }
   .model-finish { font-size: 0.85em; padding: 3px 6px; }
 
   .checkbox-group { display: flex; flex-direction: column; gap: 10px; }

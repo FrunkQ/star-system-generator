@@ -159,7 +159,7 @@
 
   <div class="tab-content">
     {#if selectedTab === 'Basics'}
-      <ConstructBasicsTab {construct} on:update={handleUpdate} />
+      <ConstructBasicsTab {construct} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
       <ConstructGeneralTab {system} {construct} on:update={handleUpdate} />
     {:else if selectedTab === 'Engines'}

@@ -78,6 +78,15 @@ export interface ModelRef {
   // CONVENTION (aligned by the modal's drive marker): after orient, the NOSE points +Z and the MAIN
   // DRIVE points -Z — so a scene can lookAt(velocity) and the engines honestly point aft.
   orient?: [number, number, number, number];
+  // Drive nozzles, in the model's OWN normalised space (the space `orient` then rotates), so a
+  // later re-orientation never strands them. Empty/absent = one plume at the stern-face centre,
+  // which is right for most hulls; the editor's placer exists for the ones it is not (offset or
+  // multiple drives). `nozzleScale` sizes them all, 1 = the default width.
+  nozzles?: [number, number, number][];
+  nozzleScale?: number;
+  // Livery accent. Absent = DERIVED from the ship's colour (a seeded complementary hue), which is
+  // the default and needs no authoring; set it to pin the contrast instead of taking the roll.
+  accentHex?: string;
   title?: string; credit?: string; license?: string; sourceUrl?: string;
   custom?: boolean;        // GM-uploaded — the processor must never overwrite
 }

@@ -38,6 +38,12 @@ export interface ModelViewer {
    *  points the ship retrograde (the plume then leads, as it does on the map); colorHex is the
    *  engine's authored exhaust colour, 'none' for a reactionless drive. null = not burning. */
   setBurn(burn: { thrust01: number; braking: boolean; colorHex?: string } | null): void;
+  /** Where the drives are, in the model's own normalised space. Empty = one plume at the stern
+   *  centre (the sensible default). `markers` draws a pip at each point - the editor's placer. */
+  setNozzles(points: [number, number, number][], scale?: number, markers?: boolean): void;
+  /** Raycast a screen point onto the hull; returns the hit in the model's own space, or null.
+   *  The placer uses it to turn a click on the ship into a nozzle position. */
+  pickOnHull(clientX: number, clientY: number): [number, number, number] | null;
   setSize(w: number, h: number): void;
   dispose(): void;
 }
@@ -125,7 +131,7 @@ function accentFrom(tint: string, rnd: () => number): string {
 /** PLATED: a seeded hull-plating sheet - panel rectangles with seams, tonal variation, a few
  *  accent panels and vents - painted in shades of the ship's own colour with a DERIVED
  *  contrast accent for the marked panels and the livery stripe. */
-function makePlatedTexture(tint: string, seed: string): THREE.Texture | null {
+function makePlatedTexture(tint: string, seed: string, accentOverride: string | null = null): THREE.Texture | null {
   if (typeof document === 'undefined') return null;
   const size = 512;
   const cnv = document.createElement('canvas');
@@ -133,7 +139,7 @@ function makePlatedTexture(tint: string, seed: string): THREE.Texture | null {
   const ctx = cnv.getContext('2d');
   if (!ctx) return null;
   const rnd = seededRng(seed + '|plated');
-  const accent = accentFrom(tint, rnd);
+  const accent = accentOverride || accentFrom(tint, rnd);
   ctx.fillStyle = tint;
   ctx.fillRect(0, 0, size, size);
   // Panel grid: uneven columns/rows, subdivided; each panel gets a tonal nudge, some get accents.
@@ -183,7 +189,7 @@ function makePlatedTexture(tint: string, seed: string): THREE.Texture | null {
 
 /** PATINA: the ship's colour weathered - streaks, scorch, and oxidation blooming toward the
  *  DERIVED accent hue (verdigris on a copper hull, rust on a blue one). */
-function makePatinaTexture(tint: string, seed: string): THREE.Texture | null {
+function makePatinaTexture(tint: string, seed: string, accentOverride: string | null = null): THREE.Texture | null {
   if (typeof document === 'undefined') return null;
   const size = 512;
   const cnv = document.createElement('canvas');
@@ -191,7 +197,7 @@ function makePatinaTexture(tint: string, seed: string): THREE.Texture | null {
   const ctx = cnv.getContext('2d');
   if (!ctx) return null;
   const rnd = seededRng(seed + '|patina');
-  const accent = accentFrom(tint, rnd);
+  const accent = accentOverride || accentFrom(tint, rnd);
   ctx.fillStyle = tint;
   ctx.fillRect(0, 0, size, size);
   for (let i = 0; i < 60; i++) { // oxidation splotches - a third bloom in the accent, the rest char
@@ -288,7 +294,7 @@ function getMatcap(tint: string): THREE.Texture | null {
  *  a GLB's authored materials untouched and tints only material-less sources. */
 export function buildDisplayModel(
   source: THREE.Object3D,
-  opts: { hadMaterials: boolean; tintHex?: string | null; orient?: [number, number, number, number] | null; finish?: HullFinish | null; seed?: string }
+  opts: { hadMaterials: boolean; tintHex?: string | null; orient?: [number, number, number, number] | null; finish?: HullFinish | null; seed?: string; accentHex?: string | null }
 ): THREE.Group {
   const work = source.clone(true);
   const finish: HullFinish | null = opts.finish ?? (opts.hadMaterials ? null : 'flat');
@@ -299,7 +305,8 @@ export function buildDisplayModel(
     const edgeDark = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, -0.55)), transparent: true, opacity: 0.55 });
     const edgeBright = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, 0.15)), transparent: true, opacity: 0.9 });
     const matcap = finish === 'matcap' ? getMatcap(tint) : null;
-    const livery = finish === 'plated' ? makePlatedTexture(tint, seed) : finish === 'patina' ? makePatinaTexture(tint, seed) : null;
+    const livery = finish === 'plated' ? makePlatedTexture(tint, seed, opts.accentHex ?? null)
+      : finish === 'patina' ? makePatinaTexture(tint, seed, opts.accentHex ?? null) : null;
     const fill: THREE.Material =
       finish === 'cel' ? new THREE.MeshToonMaterial({ color: new THREE.Color(tint), gradientMap: getCelRamp() })
       : finish === 'matcap' && matcap ? new THREE.MeshMatcapMaterial({ matcap })
@@ -391,23 +398,103 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
     spinGroup.add(fwd);
   }
 
-  // The turntable's own drive plume: the same shape the map draws (a cone flaring aft from the
-  // stern with a core glow and a soft bloom halo), so the GM's info block and the player's map
-  // agree about what a burn looks like. Sits OUTSIDE the framing measurement on purpose - the
-  // ship stays centred and the plume is free to run off the edge.
-  const plume = new THREE.Group();
-  const plumeCone = new THREE.Mesh(
-    new THREE.ConeGeometry(0.07, 1, 16, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xbfe2ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
-  );
-  plumeCone.rotation.x = Math.PI / 2;
-  plume.add(plumeCone);
-  const plumeGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeViewerGlow(), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
-  plume.add(plumeGlow);
-  const plumeHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeViewerGlow(), transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
-  plume.add(plumeHalo);
-  plume.visible = false;
-  orientGroup.add(plume); // rides the GM's orientation fix, like the hull it is attached to
+  // The turntable's own drive plumes: the same shape the map draws (a cone flaring aft from each
+  // nozzle with a core glow and a soft bloom halo), so the GM's info block, the import preview and
+  // the player's map all agree about what a burn looks like. OUTSIDE the framing measurement on
+  // purpose - the ship stays centred and a long plume is free to run off the edge.
+  interface PlumeRig { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; halo: THREE.Sprite }
+  const plumes = new THREE.Group();
+  orientGroup.add(plumes); // rides the GM's orientation fix, like the hull it hangs off
+  const markers = new THREE.Group();
+  orientGroup.add(markers);
+  let rigs: PlumeRig[] = [];
+  let nozzlePoints: [number, number, number][] = [];
+  let nozzleScale = 1;
+  let showMarkers = false;
+  let lastBurn: { thrust01: number; braking: boolean; colorHex?: string } | null = null;
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+
+  function makeRig(): PlumeRig {
+    const holder = new THREE.Group();
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.07, 1, 16, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xbfe2ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+    );
+    cone.rotation.x = Math.PI / 2;
+    holder.add(cone);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeViewerGlow(), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+    holder.add(glow);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeViewerGlow(), transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+    holder.add(halo);
+    plumes.add(holder);
+    return { holder, cone, glow, halo };
+  }
+
+  function rebuildRigs() {
+    for (const r of rigs) {
+      plumes.remove(r.holder);
+      r.cone.geometry.dispose();
+      (r.cone.material as THREE.Material).dispose();
+      (r.glow.material as THREE.Material).dispose();
+      (r.halo.material as THREE.Material).dispose();
+    }
+    rigs = [];
+    // No authored nozzles: one plume at the stern-face centre - the default that reads right on
+    // most hulls, and exactly what shipped before the placer existed.
+    const pts: [number, number, number][] = nozzlePoints.length ? nozzlePoints : [[0, 0, sternZ]];
+    for (const pt of pts) {
+      const rig = makeRig();
+      rig.holder.position.set(pt[0], pt[1], pt[2]);
+      rigs.push(rig);
+    }
+    for (const m of [...markers.children]) {
+      markers.remove(m);
+      const mesh = m as THREE.Mesh;
+      mesh.geometry?.dispose();
+      (mesh.material as THREE.Material)?.dispose();
+    }
+    if (showMarkers) {
+      for (const pt of nozzlePoints) {
+        const pip = new THREE.Mesh(
+          new THREE.SphereGeometry(Math.max(1e-4, frameRadius * 0.05), 10, 8),
+          new THREE.MeshBasicMaterial({ color: 0xff8c3a, depthTest: false, transparent: true, opacity: 0.95 })
+        );
+        pip.position.set(pt[0], pt[1], pt[2]);
+        pip.renderOrder = 999;
+        markers.add(pip);
+      }
+    }
+    applyBurn();
+  }
+
+  function applyBurn() {
+    const burn = lastBurn;
+    const t = burn && burn.colorHex !== 'none' ? Math.max(0, Math.min(1, burn.thrust01)) : 0;
+    plumes.visible = t > 0;
+    if (t <= 0) return;
+    const col = new THREE.Color(burn.colorHex || '#bfe2ff');
+    // Scaled to the HULL so a big ship gets a proportionally big torch; nozzleScale is the GM's
+    // size dial on top. Several nozzles each take a share of the width, so four drives do not
+    // read as four full-power torches.
+    const share = rigs.length > 1 ? 1 / Math.sqrt(rigs.length) : 1;
+    const k = frameRadius * 2 * nozzleScale * share;
+    const len = k * (0.3 + 2.6 * t * t + 0.5 * t);
+    const wide = k * (0.55 + 1.1 * t);
+    for (const r of rigs) {
+      (r.cone.material as THREE.MeshBasicMaterial).color.set(col);
+      (r.glow.material as THREE.SpriteMaterial).color.set(col);
+      (r.halo.material as THREE.SpriteMaterial).color.set(col);
+      r.cone.scale.set(wide, len, wide);
+      r.cone.position.z = -len / 2;
+      (r.cone.material as THREE.MeshBasicMaterial).opacity = 0.3 + 0.5 * t;
+      r.glow.scale.setScalar(k * (0.14 + 0.4 * t));
+      (r.glow.material as THREE.SpriteMaterial).opacity = 0.5 + 0.5 * t;
+      r.halo.scale.setScalar(k * (0.3 + 2.2 * t * t));
+      r.halo.position.z = -len * 0.35;
+      (r.halo.material as THREE.SpriteMaterial).opacity = 0.1 + 0.4 * t * t;
+    }
+  }
 
   let frameRadius = 0.6; // the HULL's bounding radius, measured before the plume is lit
   let sternZ = -0.5;
@@ -487,33 +574,30 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
       const box = new THREE.Box3().setFromObject(frame);
       frameRadius = box.isEmpty() ? 0.6 : Math.max(1e-6, box.getBoundingSphere(new THREE.Sphere()).radius);
       sternZ = box.isEmpty() ? -0.5 : box.min.z;
-      plume.position.set(0, 0, sternZ);
+      rebuildRigs();
       frameCamera();
     },
     setBurn(burn) {
-      const t = burn && burn.colorHex !== 'none' ? Math.max(0, Math.min(1, burn.thrust01)) : 0;
-      plume.visible = t > 0;
-      if (t <= 0) return;
-      const col = new THREE.Color(burn!.colorHex || '#bfe2ff');
-      (plumeCone.material as THREE.MeshBasicMaterial).color.set(col);
-      (plumeGlow.material as THREE.SpriteMaterial).color.set(col);
-      (plumeHalo.material as THREE.SpriteMaterial).color.set(col);
-      // Scaled to the HULL, so a big ship gets a proportionally big torch.
-      const k = frameRadius * 2;
-      const len = k * (0.3 + 2.6 * t * t + 0.5 * t);
-      const wide = k * (0.55 + 1.1 * t);
-      plumeCone.scale.set(wide, len, wide);
-      plumeCone.position.z = -len / 2;
-      (plumeCone.material as THREE.MeshBasicMaterial).opacity = 0.3 + 0.5 * t;
-      plumeGlow.scale.setScalar(k * (0.14 + 0.4 * t));
-      (plumeGlow.material as THREE.SpriteMaterial).opacity = 0.5 + 0.5 * t;
-      plumeHalo.scale.setScalar(k * (0.3 + 2.2 * t * t));
-      plumeHalo.position.z = -len * 0.35;
-      (plumeHalo.material as THREE.SpriteMaterial).opacity = 0.1 + 0.4 * t * t;
+      lastBurn = burn;
+      applyBurn();
     },
-    setOrient(q) {
-      orientGroup.quaternion.set(...(q ?? [0, 0, 0, 1]));
-      frameCamera();
+    setNozzles(points, scale = 1, withMarkers = false) {
+      nozzlePoints = (points ?? []).map((pt) => [pt[0], pt[1], pt[2]] as [number, number, number]);
+      nozzleScale = Math.max(0.1, Math.min(4, scale || 1));
+      showMarkers = withMarkers;
+      rebuildRigs();
+    },
+    pickOnHull(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObject(frame, true).filter((h) => (h.object as THREE.Mesh).isMesh);
+      if (!hits.length) return null;
+      // Back into the MODEL's own space (what nozzles are stored in), so a later orientation
+      // change carries the point along with the hull instead of stranding it.
+      const local = frame.worldToLocal(hits[0].point.clone());
+      return [local.x, local.y, local.z];
     },
     setSize(w, h) {
       if (w <= 0 || h <= 0) return;

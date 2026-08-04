@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.422-beta - 4th Aug 2026
+
+* ENGINE PLACEMENT, and it is a clicker rather than a plane: the model dialog is now two steps - Facing, then Engines. In the Engines step, click the ship wherever a drive sits and a plume lights there; click a chip to remove one; a Size dial sets how wide they all are. Length and brightness still come from real thrust on the map, and the plumes preview in the ship's own authored exhaust colour while you place them. Placing nothing means one plume at the stern, which suits most hulls. Points are stored in the model's own space, so re-orienting the ship later carries its drives with it instead of stranding them.
+* The construct's appearance controls are ONE compact block instead of three stacked groups: colour at the top (marker, hull tint and plume dressing all follow it), then marker shape, picture, 3D model, shading, and a drive summary - each a labelled row in a two-column grid, about half the height it used to take. Shading also moved into the model dialog, next to a new Livery accent control (Auto derives the contrast hue from the ship's colour; untick to pin your own), so the whole look can be set in one place while watching the preview.
+
 ## v2.1.421-beta - 4th Aug 2026
 
 * **A44 — a generated tag no longer claims the physics made it.** Tags like `spin/axis-inferred` (this obliquity was inferred, not measured) or `origin/generated` (this world was invented to fill out a real star) were shown under a red padlock reading "derived from the physics — fixed, recomputed every run". Every word was wrong: nothing re-derives them, they are the generator's own record, and you can legitimately delete one. They now sit under **Generated**, removable, saying so. The Newton panel — the one that claims to show its working — was making the same misattribution and now names them too.

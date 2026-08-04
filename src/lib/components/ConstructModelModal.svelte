@@ -12,6 +12,8 @@
   import { createModelViewer, type ModelViewer } from '$lib/constructs/modelViewer';
 
   export let construct: CelestialBody;
+  // Optional: only used to preview the ship's real exhaust colour while placing drives.
+  export let rulePack: any = null;
 
   const dispatch = createEventDispatcher();
 
@@ -26,6 +28,18 @@
   let uploadBytes = 0;
   let parsed: ParsedModel | null = null;   // the ORIGINAL parse (hadMaterials comes from here)
   let converted: ConvertResult | null = null;
+
+  // Two things the GM sets up here, in order: which way the ship faces, then where its drives
+  // are. The mode decides what a click on the preview DOES - inspect (drag to spin) or place.
+  let mode: 'orient' | 'engines' = 'orient';
+  // Nozzles in the model's own space, plus the size dial that applies to all of them.
+  let nozzles: [number, number, number][] = [...((construct.model?.nozzles ?? []) as [number, number, number][])];
+  let nozzleScale = construct.model?.nozzleScale ?? 1;
+  // Livery accent: auto (derived from the ship's colour) unless the GM pins one.
+  let accentAuto = !construct.model?.accentHex;
+  let accentHex = construct.model?.accentHex ?? '#d8642f';
+  // Finish carries over from the construct so the preview shows what the map will draw.
+  let finish: NonNullable<CelestialBody['model']>['finish'] = construct.model?.finish;
 
   // Orientation: 90-degree steps about world axes, composed as the GM presses; stored on the ref.
   let orient = new THREE.Quaternion();
@@ -57,8 +71,13 @@
       // Preview the STORED bytes, not the upload - what the GM approves is what everyone sees.
       const stored = await parseModel('stored.glb', c.glb);
       parsed = p; converted = c;
-      viewer?.setObject(stored.object, { hadMaterials: p.hadMaterials, tintHex: construct.icon_color || '#ffd24d', finish: construct.model?.finish ?? null, seed: construct.id });
+      viewer?.setObject(stored.object, {
+        hadMaterials: p.hadMaterials, tintHex: construct.icon_color || '#ffd24d',
+        finish: finish ?? null, seed: construct.id, accentHex: accentAuto ? null : accentHex
+      });
       viewer?.setOrient(orientArr);
+      viewer?.setNozzles(nozzles, nozzleScale, mode === 'engines');
+      previewBurn();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Could not read that file.';
     } finally {
@@ -103,6 +122,63 @@
     }
   }
 
+  // In the engines step the plumes are lit at a representative power so the GM is placing
+  // something they can SEE - the map still drives them from real thrust.
+  function previewBurn() {
+    viewer?.setBurn(mode === 'engines' ? { thrust01: 0.55, braking: false, colorHex: exhaustHex } : null);
+  }
+  // The dominant engine's authored exhaust colour, so the placer previews the ship's real flame.
+  $: exhaustHex = (() => {
+    const defs = (rulePack as any)?.engineDefinitions?.entries ?? [];
+    let best = -1, hex: string | undefined;
+    for (const inst of (construct as any).engines ?? []) {
+      const def = defs.find((d: any) => d.id === inst.engine_id);
+      const total = (def?.thrust_kN ?? 0) * (inst.quantity ?? 1);
+      if (def?.exhaust_color_hex && total > best) { best = total; hex = def.exhaust_color_hex; }
+    }
+    return hex;
+  })();
+  // Re-dress the preview whenever a look parameter changes (cheap: no re-parse, just materials).
+  $: if (parsed && viewer) {
+    finish; accentAuto; accentHex;
+    redress();
+  }
+  let redressKey = '';
+  async function redress() {
+    const key = `${finish ?? ''}|${accentAuto ? 'auto' : accentHex}`;
+    if (!converted || key === redressKey) return;
+    redressKey = key;
+    const stored = await parseModel('stored.glb', converted.glb);
+    viewer?.setObject(stored.object, {
+      hadMaterials: parsed!.hadMaterials, tintHex: construct.icon_color || '#ffd24d',
+      finish: finish ?? null, seed: construct.id, accentHex: accentAuto ? null : accentHex
+    });
+    viewer?.setOrient(orientArr);
+    viewer?.setNozzles(nozzles, nozzleScale, mode === 'engines');
+    previewBurn();
+  }
+
+  function setMode(m: 'orient' | 'engines') {
+    mode = m;
+    viewer?.setNozzles(nozzles, nozzleScale, mode === 'engines');
+    previewBurn();
+  }
+  // A click on the hull in the engines step drops a drive there.
+  function onPreviewClick(e: MouseEvent) {
+    if (mode !== 'engines' || !parsed) return;
+    const hit = viewer?.pickOnHull(e.clientX, e.clientY);
+    if (!hit) return;
+    nozzles = [...nozzles, hit];
+    viewer?.setNozzles(nozzles, nozzleScale, true);
+  }
+  function removeNozzle(i: number) {
+    nozzles = nozzles.filter((_, k) => k !== i);
+    viewer?.setNozzles(nozzles, nozzleScale, mode === 'engines');
+  }
+  function onScale() {
+    viewer?.setNozzles(nozzles, nozzleScale, mode === 'engines');
+  }
+
   function rotate(axis: 'x' | 'y' | 'z') {
     const v = axis === 'x' ? new THREE.Vector3(1, 0, 0) : axis === 'y' ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
     orient = new THREE.Quaternion().setFromAxisAngle(v, Math.PI / 2).multiply(orient).normalize();
@@ -124,6 +200,10 @@
         bytes: converted.glb.byteLength,
         hadMaterials: parsed.hadMaterials,
         ...(isIdentity(orient) ? {} : { orient: orientArr }),
+        ...(finish ? { finish } : {}),
+        ...(nozzles.length ? { nozzles } : {}),
+        ...(nozzleScale !== 1 ? { nozzleScale } : {}),
+        ...(accentAuto ? {} : { accentHex }),
         ...(title.trim() ? { title: title.trim() } : {}),
         ...(credit.trim() ? { credit: credit.trim() } : {}),
         ...(license ? { license } : {}),
@@ -141,28 +221,61 @@
   const kb = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`;
 </script>
 
-<div class="modal-background" on:click={() => dispatch('close')}>
-  <div class="modal" on:click|stopPropagation>
+<div class="modal-background" role="presentation" on:click={() => dispatch('close')} on:keydown={(e) => { if (e.key === 'Escape') dispatch('close'); }}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="3D model" tabindex="-1" on:click|stopPropagation on:keydown|stopPropagation>
     <h3>3D Model</h3>
 
     <div class="body">
       <div class="preview-col">
-        <canvas bind:this={previewCanvas} class="preview"></canvas>
+        <canvas bind:this={previewCanvas} class="preview" class:placing={mode === 'engines'} on:click={onPreviewClick}></canvas>
         {#if busy}<div class="overlay">Converting&hellip;</div>{/if}
         {#if !parsed && !busy}<div class="overlay hint">GLB, STL or OBJ</div>{/if}
-        <div class="orient-row">
-          <span class="lbl">Orientation:</span>
-          <button type="button" on:click={() => rotate('x')} disabled={!parsed} title="Pitch 90&deg;">Pitch</button>
-          <button type="button" on:click={() => rotate('y')} disabled={!parsed} title="Yaw 90&deg;">Yaw</button>
-          <button type="button" on:click={() => rotate('z')} disabled={!parsed} title="Roll 90&deg;">Roll</button>
-          <button type="button" on:click={resetOrient} disabled={!parsed || isIdentity(orient)}>Reset</button>
+        <div class="mode-tabs">
+          <button type="button" class:on={mode === 'orient'} on:click={() => setMode('orient')} disabled={!parsed}>1 &middot; Facing</button>
+          <button type="button" class:on={mode === 'engines'} on:click={() => setMode('engines')} disabled={!parsed}>2 &middot; Engines</button>
         </div>
-        <div class="drive-hint">
-          <span class="aft">Orange arrow = rear of ship</span> &mdash; turn the hull so its
-          <span class="aft">main drive</span> (engines) points into it.
-          <span class="fwd">Green arrow = direction of travel</span>, out past the nose.
-          Drag to inspect from any side.
-        </div>
+
+        {#if mode === 'orient'}
+          <div class="orient-row">
+            <button type="button" on:click={() => rotate('x')} disabled={!parsed} title="Pitch 90&deg;">Pitch</button>
+            <button type="button" on:click={() => rotate('y')} disabled={!parsed} title="Yaw 90&deg;">Yaw</button>
+            <button type="button" on:click={() => rotate('z')} disabled={!parsed} title="Roll 90&deg;">Roll</button>
+            <button type="button" on:click={resetOrient} disabled={!parsed || isIdentity(orient)}>Reset</button>
+          </div>
+          <div class="drive-hint">
+            <span class="aft">Orange arrow = rear of ship</span> &mdash; turn the hull so its
+            <span class="aft">main drive</span> points into it.
+            <span class="fwd">Green arrow = direction of travel</span>, out past the nose.
+            Drag to inspect from any side.
+          </div>
+        {:else}
+          <div class="orient-row">
+            <span class="lbl">{nozzles.length || 'no'} drive{nozzles.length === 1 ? '' : 's'} placed</span>
+            {#if nozzles.length}
+              <button type="button" on:click={() => { nozzles = []; viewer?.setNozzles([], nozzleScale, true); }}>Clear</button>
+            {/if}
+          </div>
+          <label class="slider-row">
+            <span class="lbl">Size</span>
+            <input type="range" min="0.3" max="2.5" step="0.05" bind:value={nozzleScale} on:input={onScale} disabled={!parsed} />
+            <span class="lbl">{nozzleScale.toFixed(2)}&times;</span>
+          </label>
+          {#if nozzles.length}
+            <div class="nozzle-list">
+              {#each nozzles as n, i}
+                <button type="button" class="nozzle-chip" on:click={() => removeNozzle(i)} title="Remove this drive">
+                  Drive {i + 1} &times;
+                </button>
+              {/each}
+            </div>
+          {/if}
+          <div class="drive-hint">
+            <strong>Click the ship</strong> where each drive sits &mdash; a plume lights there.
+            Click a chip to remove one. No drives placed means one plume at the stern, which suits
+            most hulls. The <em>length and brightness</em> come from real thrust on the map; this
+            size dial only sets how wide they are.
+          </div>
+        {/if}
       </div>
 
       <div class="form-col">
@@ -200,6 +313,30 @@
           </div>
         {/if}
         {#if error}<div class="error">{error}</div>{/if}
+
+        {#if parsed}
+          <div class="row">
+            <div class="form-group" style="flex:1">
+              <label for="mdl-finish">Shading</label>
+              <select id="mdl-finish" bind:value={finish}>
+                <option value={undefined}>Flat + panel lines</option>
+                <option value="plated">Panelled hull</option>
+                <option value="patina">Weathered</option>
+                <option value="cel">Cel shaded</option>
+                <option value="matcap">Brushed metal</option>
+                <option value="iridescent">Iridescent</option>
+                <option value="blueprint">Blueprint</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label for="mdl-accent">Livery accent</label>
+              <div class="accent-row">
+                <label class="tick"><input type="checkbox" bind:checked={accentAuto} /> Auto</label>
+                <input id="mdl-accent" type="color" bind:value={accentHex} disabled={accentAuto} />
+              </div>
+            </div>
+          </div>
+        {/if}
 
         <div class="form-group">
           <label for="mdl-title">Model name</label>
@@ -266,6 +403,16 @@
   .orient-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
   .orient-row .lbl { font-size: 0.85em; color: #9aa4b4; }
   .orient-row button { padding: 3px 10px; }
+  .mode-tabs { display: flex; gap: 4px; margin-top: 8px; }
+  .mode-tabs button { flex: 1; padding: 4px 6px; font-size: 0.85em; }
+  .mode-tabs button.on { background: var(--accent, #3a6ea5); color: #fff; }
+  .slider-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .slider-row input[type='range'] { flex: 1; }
+  .nozzle-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .nozzle-chip { font-size: 0.78em; padding: 2px 8px; border-radius: 10px; }
+  .accent-row { display: flex; align-items: center; gap: 8px; }
+  .accent-row .tick { display: flex; align-items: center; gap: 4px; font-size: 0.85em; color: #9aa4b4; }
+  .preview.placing { cursor: crosshair; }
   .drive-hint { font-size: 0.8em; color: #9aa4b4; margin-top: 6px; max-width: 280px; }
   .drive-hint .aft { color: #ff8c3a; }
   .drive-hint .fwd { color: #4ade80; }
