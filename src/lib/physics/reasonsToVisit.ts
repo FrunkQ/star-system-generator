@@ -5,11 +5,11 @@
 // Tags are emitted with a per-body SEEDED roll (deterministic from body id + system seed). Multiple
 // packs STACK — their categories merge and their rules all run.
 import type { System, CelestialBody } from '../types';
-import { writable, get } from 'svelte/store';
+import { derived, get } from 'svelte/store';
 import { makeupFractions } from './makeup';
 import { EARTH_MASS_KG } from '../constants';
-import { registerPoiCategories, registerPoiTags } from '../tags/tagPresentation';
 import { stripRuleTags } from '../tags/tagLifecycle';
+import { tagCategories, tagRulesEnabled, normalizeTagCategories } from '../tags/tagCategories';
 
 // ---------------------------------------------------------------------------------------------
 // Declarative condition schema. `true` = always. Numeric ops take [field, value]; eq compares a
@@ -69,96 +69,15 @@ export const POI_FIELDS: PoIField[] = [
 ];
 
 export interface ReasonsConfig { enabled: boolean; categories: Record<string, boolean>; }
-export const REASONS_DEFAULTS: ReasonsConfig = {
-  enabled: true,
-  // Mysteries & hooks (intrigue) default OFF — it's the most "GM flavour" set; the physical three
-  // (resources / science / frontier) are on. Existing users keep their saved choices.
-  categories: { resource: true, science: true, frontier: true, intrigue: false }
-};
+// Moved to tags/tagDefaults.ts with the rest of the default data — the migration needs it, and
+// reaching back here for it would be the cycle that file exists to avoid.
+export { REASONS_DEFAULTS } from '../tags/tagDefaults';
+import { REASONS_DEFAULTS } from '../tags/tagDefaults';
 
-// --- The built-in default pack (the original rules, as data). Order preserved so the seeded roll
-//     sequence — and therefore which tags appear — is identical to the hardcoded version. ---
-let _rid = 0; const R = (tag: string, category: string, chance: number, when: PoIExpr, appliesTo?: PoIRole[]): PoIRule => ({ id: `d${_rid++}`, tag, category, chance, when, appliesTo });
-
-// SURFACE-ACCESS rules: the same rule, plus "and there is a surface to get it off".
-//
-// B33. A rule that says you can mine, refuel or resupply here is a claim about reaching material
-// and lifting it — but these rules were all written against BULK COMPOSITION, which a giant
-// trivially satisfies. A 751 C helium giant offered "Life-support resupply", "Water/ice refuelling"
-// and "Water ice", because a planet-sized envelope contains plenty of water by mass. It is
-// supercritical vapour spread through an atmosphere, not ice, and there is no ground to stand on.
-//
-// GATED ON makeup.gas, NOT on `isGiant`, and not on the delta-v budget. Both were considered:
-//  - `isGiant` already exists and reads well, but it is `classes include a giant type OR gas >= 0.4`,
-//    and the bundled data has bodies carrying BOTH a rocky and a giant class — "planet/desert +
-//    planet/cloudless-gas-giant" at gas 0.00, "planet/ice + planet/ice-giant" at gas 0.00. Gating on
-//    it would strip surface resources from bodies whose composition says they have a surface.
-//  - the surface-to-low-orbit budget is the better IDEA — accessibility is the concept these rules
-//    are missing — but it cannot do this particular job, because for a body with no surface the
-//    figure is derived at the notional 1-bar radius and is as fictional as the surface gravity B18
-//    found there. Measured across the 366 bundled bodies, the giants' budgets run 9.1 to 1163 km/s:
-//    the low end is Earth's, so no threshold excludes giants without excluding Earth too.
-// makeup.gas is what B18 and B25 already use, so habitability, classification and now the reasons
-// to visit all answer "does this body have a surface" the same way.
-const SURFACE = (when: PoIExpr): PoIExpr => ({ all: [{ lt: ['makeup.gas', 0.5] }, when] });
-const RS = (tag: string, category: string, chance: number, when: PoIExpr, appliesTo?: PoIRole[]): PoIRule =>
-  R(tag, category, chance, SURFACE(when), appliesTo);
-export const DEFAULT_POI_PACK: PoIPack = {
-  id: 'default', name: 'Reasons to Visit (default)', description: 'The built-in physics-driven PoI hooks.', enabled: true,
-  categories: [
-    { id: 'resource', label: 'Resources', desc: 'Mineable / economic value — fuels, metals, exotics', color: '#d4a843', textColor: '#1a1206' },
-    { id: 'science', label: 'Scientific interest', desc: 'Research draws — rare formations, biosignatures, anomalies', color: '#5a9fd0', textColor: '#04121c' },
-    { id: 'frontier', label: 'Frontier logistics', desc: 'Refuelling, waystations, gravity assists', color: '#6fae8f', textColor: '#06160f' },
-    { id: 'intrigue', label: 'Mysteries & hooks', desc: 'Rumours, signals, legends — pure adventure bait', color: '#b07ad0', textColor: '#160a1c' }
-  ],
-  rules: [
-    // Rocky/solid-world resources — planets & moons (belts have their own ore/rare-metals hooks).
-    RS('resource/heavy-metals', 'resource', 0.7, { gte: ['makeup.metal', 0.3] }, ['planet', 'moon']),
-    RS('resource/platinum-group', 'resource', 0.45, { gte: ['makeup.metal', 0.5] }, ['planet', 'moon']),
-    RS('resource/rare-earths', 'resource', 0.4, { all: [{ gte: ['makeup.metal', 0.2] }, { gte: ['makeup.rock', 0.3] }] }, ['planet', 'moon']),
-    RS('resource/fissiles', 'resource', 0.3, { all: [{ gte: ['makeup.rockMetal', 0.6] }, { between: ['ageGyr', 0.5, 9] }] }, ['planet', 'moon']),
-    R('resource/helium-3', 'resource', 1.0, { eq: ['isGiant', true] }, ['planet']),  // He in a giant's atmosphere — deterministic
-    R('resource/helium-3', 'resource', 0.3, { all: [{ eq: ['hasAtmo', false] }, { gte: ['ageGyr', 3] }, { gt: ['makeup.rockIce', 0.5] }] }, ['moon']),  // airless-moon regolith (solar-wind implanted) — a prospect, semi-random
-    R('resource/deuterium', 'resource', 0.4, { any: [{ gte: ['makeup.gas', 0.4] }, { gte: ['hydroCover', 0.3] }] }, ['planet', 'moon']),
-    RS('resource/water-ice', 'resource', 1.0, { any: [{ eq: ['hydro', 'water'] }, { gte: ['hydroCover', 0.1] }, { gte: ['makeup.ice', 0.3] }, { hasTag: 'structure/icy-shell' }] }, ['planet', 'moon']),  // any liquid water OR ice → water-ice (deterministic; was wrongly capped to frozen worlds <250K)
-    R('resource/volatiles', 'resource', 0.5, { any: [{ all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 160] }] }, { gte: ['makeup.ice', 0.5] }] }, ['belt', 'moon']),
-    R('resource/hydrocarbons', 'resource', 1.0, { any: [{ eq: ['atmMain', 'CH4'] }, { eq: ['hydro', 'methane'] }] }, ['planet', 'moon']),  // methane atmosphere OR surface lakes — deterministic
-    RS('resource/exotic-crystals', 'resource', 0.25, { all: [{ gte: ['massMe', 2] }, { gte: ['makeup.rockMetal', 0.7] }] }, ['planet', 'moon']),
-    RS('resource/diamonds', 'resource', 0.4, { all: [{ gte: ['makeup.carbon', 0.3] }, { gte: ['massMe', 0.8] }] }, ['planet', 'moon']),
-    RS('resource/organics', 'resource', 0.5, { any: [{ eq: ['hasBio', true] }, { hasTag: 'prebiotic-precursor' }, { all: [{ eq: ['hydro', 'water'] }, { between: ['teqK', 250, 330] }] }] }, ['planet', 'moon']),
-    R('resource/ore-belt', 'resource', 0.8, true, ['belt']),
-    // Atmosphere-present resources — DETERMINISTIC (the gas is measurably there, so the resource is): chance 1.0.
-    R('resource/oxidizer', 'resource', 1.0, { eq: ['hasO2', true] }, ['planet', 'moon']),
-    R('resource/noble-gases', 'resource', 1.0, { eq: ['hasNobleGas', true] }, ['planet', 'moon']),
-    R('resource/volatiles', 'resource', 1.0, { eq: ['atmMain', 'CO2'] }, ['planet', 'moon']),
-    R('science/pristine-protoplanetary', 'science', 0.85, { lt: ['ageGyr', 0.5] }, ['planet', 'moon']),
-    R('science/biosignature', 'science', 0.95, { eq: ['hasBio', true] }, ['planet', 'moon']),
-    R('science/extremophile-niche', 'science', 0.8, { any: [{ eq: ['regime', 'cryovolcanic'] }, { hasTag: 'structure/subsurface-ocean' }, { hasTag: 'habitability/subsurface' }] }, ['planet', 'moon']),
-    R('science/tidal-laboratory', 'science', 0.6, { any: [{ hasTag: 'tidal/hotspots' }, { eq: ['regime', 'tidal-volcanic'] }, { hasTag: 'resonance/laplace' }] }, ['planet', 'moon']),
-    R('science/impact-record', 'science', 0.3, { any: [{ gt: ['ecc', 0.2] }, { eq: ['regime', 'crater'] }] }, ['planet', 'moon', 'belt']),
-    R('science/remnant-proximity', 'science', 0.6, { eq: ['hasRemnant', true] }, ['planet', 'moon']),
-    R('science/resonance-showcase', 'science', 0.45, { hasTagPrefix: 'resonance/' }, ['planet', 'moon']),
-    R('science/rare-world-type', 'science', 0.6, { eq: ['isRareType', true] }, ['planet', 'moon']),
-    R('science/exotic-chemistry', 'science', 0.4, { any: [{ hasTag: 'highly-corrosive' }, { hasTag: 'corrosive' }, { hasTag: 'technosignature' }] }, ['planet', 'moon']),
-    R('science/runaway-greenhouse', 'science', 0.5, { any: [{ eq: ['regime', 'stagnant-lid'] }, { hasTag: 'climate/runaway-greenhouse' }] }, ['planet']),
-    RS('frontier/fuel-depot', 'frontier', 0.6, { any: [{ gte: ['makeup.ice', 0.2] }, { eq: ['hydro', 'water'] }, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 250] }, { hasTag: 'structure/icy-shell' }] }] }, ['planet', 'moon']),
-    R('frontier/gas-skimming', 'frontier', 0.92, { eq: ['isGiant', true] }, ['planet']),
-    RS('frontier/life-support', 'frontier', 0.6, { any: [{ eq: ['hasO2', true] }, { all: [{ eq: ['hydro', 'water'] }, { eq: ['hasAtmo', true] }] }] }, ['planet', 'moon']),
-    R('frontier/aerobraking', 'frontier', 0.3, { all: [{ eq: ['hasAtmo', true] }, { gte: ['pressure', 0.1] }] }, ['planet', 'moon']),
-    R('frontier/gravity-assist', 'frontier', 0.3, { gte: ['massMe', 50] }, ['planet']),
-    R('frontier/waystation', 'frontier', 0.2, { gt: ['makeup.rockMetal', 0.4] }, ['moon']),
-    R('intrigue/anomalous-signal', 'intrigue', 0.08, true, ['planet', 'moon', 'belt']),
-    R('intrigue/derelict-rumour', 'intrigue', 0.18, { eq: ['hasConstructs', true] }, ['planet', 'moon', 'belt']),
-    R('intrigue/derelict-rumour', 'intrigue', 0.05, { eq: ['hasConstructs', false] }, ['planet', 'moon', 'belt']),
-    R('intrigue/uncharted-feature', 'intrigue', 0.1, true, ['planet', 'moon', 'belt']),
-    R('intrigue/legend', 'intrigue', 0.4, { any: [{ hasTag: 'habitability/super' }, { eq: ['isLegendClass', true] }] }, ['planet', 'moon']),
-    // Belt-specific hooks. Belts read by temperature (icy outer/Kuiper vs rocky-metallic inner) and
-    // orbital excitation (a stirred belt is likely a disrupted differentiated body — a shattered core).
-    R('frontier/ice-mining', 'frontier', 0.7, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 150] }] }, ['belt']),
-    R('resource/rare-metals', 'resource', 0.4, { gte: ['teqK', 150] }, ['belt']),
-    R('science/shattered-core', 'science', 0.5, { gt: ['ecc', 0.12] }, ['belt'])
-  ]
-};
+// The built-in rule pack (and its rule DSL) moved to tags/tagDefaults.ts — same reason as the
+// construct starter set: the store below reads from tagCategories, which would otherwise cycle.
+export { DEFAULT_POI_PACK } from '../tags/tagDefaults';
+import { DEFAULT_POI_PACK } from '../tags/tagDefaults';
 
 // Backwards-compatible export (the default categories) for the existing Settings UI.
 export const REASON_CATEGORIES: ReasonCategory[] = DEFAULT_POI_PACK.categories;
@@ -178,32 +97,26 @@ function loadConfig(): ReasonsConfig {
     return { enabled: v.enabled ?? true, categories: { ...REASONS_DEFAULTS.categories, ...(v.categories || {}), resource: true } };
   } catch { return structuredClone(REASONS_DEFAULTS); }
 }
-export const reasonsConfig = writable<ReasonsConfig>(loadConfig());
+// THE STORES MOVED — see tags/tagCategories.ts. What is left here is the RULES VIEW of that store,
+// keeping the old names and shapes so every consumer kept working. `poiPacks` is now a single
+// synthetic pack assembled from the categories that carry rules; there is no pack identity any more,
+// because a pack was only ever a bag of categories and two of them defining the same category was a
+// merge conflict nobody could see.
+export const reasonsConfig = derived([tagCategories, tagRulesEnabled], ([cats, on]) => ({
+  enabled: on,
+  categories: Object.fromEntries(cats.map((c) => [c.id, c.enabled]))
+} as ReasonsConfig));
 
-const PACKS_KEY = 'poi-packs';
-function loadPacks(): PoIPack[] {
-  const def = structuredClone(DEFAULT_POI_PACK);
-  if (typeof localStorage === 'undefined') return [def];
-  try {
-    const saved = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null');
-    if (!Array.isArray(saved) || !saved.length) return [def];
-    // The built-in pack is user-editable: honour the saved (possibly edited) version if present,
-    // otherwise seed the built-in. "Reset" in the editor restores it to DEFAULT_POI_PACK.
-    const out: PoIPack[] = [];
-    const savedDefault = saved.find((p: PoIPack) => p.id === 'default');
-    out.push(savedDefault && Array.isArray(savedDefault.rules) && Array.isArray(savedDefault.categories)
-      ? { ...savedDefault, id: 'default' }
-      : def);
-    for (const p of saved) if (p.id !== 'default' && p && p.id && Array.isArray(p.rules)) out.push(p);
-    return out;
-  } catch { return [def]; }
-}
-export const poiPacks = writable<PoIPack[]>(loadPacks());
-
-if (typeof window !== 'undefined') {
-  reasonsConfig.subscribe((v) => { try { localStorage.setItem(CFG_KEY, JSON.stringify(v)); } catch { /* private */ } });
-  poiPacks.subscribe((v) => { try { localStorage.setItem(PACKS_KEY, JSON.stringify(v)); } catch { /* private */ } });
-}
+export const poiPacks = derived(tagCategories, (cats) => [{
+  id: 'default',
+  name: 'Tag categories',
+  description: 'Assembled from Settings → Tagging.',
+  enabled: true,
+  categories: cats.map((c) => ({ id: c.id, label: c.shortName || c.longName, desc: c.description, color: c.color, textColor: c.textColor })),
+  // Sorted back into the order the rules were authored in — the seeded roll advances per rule, so
+  // category-grouped order would re-roll every world in the starmap. See TagRule.seq.
+  rules: cats.flatMap((c) => c.rules).slice().sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))
+} as PoIPack]);
 
 // Merged categories across all ENABLED packs (dedup by id; first definition wins).
 export function activeCategories(packs: PoIPack[]): ReasonCategory[] {
@@ -211,20 +124,6 @@ export function activeCategories(packs: PoIPack[]): ReasonCategory[] {
   for (const p of packs) { if (p.enabled === false) continue; for (const c of p.categories) if (!seen.has(c.id)) seen.set(c.id, c); }
   return [...seen.values()];
 }
-// Every category across ALL packs (enabled or not) — used to keep the tag presentation layer (chip
-// colours, grouping labels) in sync so even a disabled pack's lingering tags still render correctly.
-function allCategories(packs: PoIPack[]): ReasonCategory[] {
-  const seen = new Map<string, ReasonCategory>();
-  for (const p of packs) for (const c of p.categories) if (!seen.has(c.id)) seen.set(c.id, c);
-  return [...seen.values()];
-}
-// Push category styles (colour + label) AND per-rule tag presentation (player name + hover text) into
-// tagPresentation whenever the packs change, so a tag like survey/geochem-sample picks up its
-// pack-defined colour, heading, label and description. Fires once on init too.
-poiPacks.subscribe((p) => {
-  registerPoiCategories(allCategories(p));
-  registerPoiTags(p.flatMap((pk) => pk.rules).map((r) => ({ key: r.tag, label: r.label, description: r.description })));
-});
 
 // --- Import / export (JSON pack files). ---
 export function exportPack(pack: PoIPack): string {
@@ -245,26 +144,49 @@ export function importPack(json: string): PoIPack {
 
 // --- Starmap embedding: a .json starmap carries its own packs so they travel with the map. The
 //     built-in default pack is never embedded (it's always present); only the user's stacked packs. ---
+// Saves now embed the unified categories (see tagCategories.categoriesForStarmap), so nothing needs
+// to write packs out. These two remain to READ what older starmaps carry.
 export function packsForStarmap(): PoIPack[] {
-  return get(poiPacks).filter((p) => p.id !== 'default');
+  return [];
 }
-// Merge packs loaded from a starmap into the live store (replace by id, append new ones).
+
+/** Merge packs from an older starmap: fold each pack's categories and rules into the unified store. */
 export function mergeStarmapPacks(packs: PoIPack[] | undefined): void {
   if (!Array.isArray(packs) || !packs.length) return;
-  poiPacks.update((cur) => {
-    const out = [...cur];
+  tagCategories.update((cur) => {
+    const byId = new Map(cur.map((c) => [c.id, c]));
     for (const p of packs) {
-      if (!p || !p.id || p.id === 'default' || !Array.isArray(p.rules)) continue;
-      const i = out.findIndex((x) => x.id === p.id);
-      if (i >= 0) out[i] = p; else out.push(p);
+      if (!p || p.enabled === false || !Array.isArray(p.rules)) continue;
+      for (const rc of p.categories ?? []) {
+        if (!byId.has(rc.id)) {
+          byId.set(rc.id, {
+            id: rc.id, shortName: rc.label, longName: rc.label, description: rc.desc,
+            color: rc.color || '#888888', textColor: rc.textColor,
+            appliesTo: ['planet', 'moon', 'belt'], enabled: true, tags: [], rules: []
+          } as any);
+        }
+      }
+      for (const r of p.rules) {
+        const c = byId.get(r.category);
+        if (!c || c.rules.some((x) => x.id === r.id)) continue;
+        c.rules = [...c.rules, r as any];
+        if (!c.tags.some((t) => t.key === r.tag)) {
+          c.tags = [...c.tags, { key: r.tag, label: r.label || r.tag.split('/').slice(1).join(' '), description: r.description }];
+        }
+      }
     }
-    return out;
+    return normalizeTagCategories([...byId.values()]);
   });
 }
+
+/** Apply an older starmap's per-category on/off state onto the unified categories. */
 export function applyStarmapReasonsConfig(cfg: ReasonsConfig | undefined): void {
-  if (cfg && typeof cfg === 'object' && cfg.categories) {
-    reasonsConfig.set({ enabled: cfg.enabled ?? true, categories: { ...REASONS_DEFAULTS.categories, ...cfg.categories } });
-  }
+  if (!cfg || typeof cfg !== 'object') return;
+  if (typeof cfg.enabled === 'boolean') tagRulesEnabled.set(cfg.enabled);
+  if (!cfg.categories) return;
+  tagCategories.update((cs) => cs.map((c) => (
+    cfg.categories[c.id] === undefined ? c : { ...c, enabled: cfg.categories[c.id] !== false }
+  )));
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.408-beta - 4th Aug 2026
+
+* Tag categories now live in ONE store. PoI categories and CoI categories were always the same thing — a named group of tags with a colour, a list and a namespace — kept in two stores with two file formats, two editors, and two disagreeing definitions of "core" (six protected categories on one side, one on the other). They are one set now, and `resource/*`, which the two used to own half each, is a single category that means "extractable here" on a world and "carried" on a ship, exactly as the autopilot already read it. No visible change yet; the settings screens still look the same.
+* A system category can no longer be DELETED — the engine matches those slugs by hand, and a dangling one breaks refuelling or mining with no error — but it can still be switched OFF, which is what "core" should have meant all along. Categories that ship disabled stay disabled.
+
 ## v2.1.407-beta - 4th Aug 2026
 
 * Tags are case-insensitive. `Smugglers`, `smugglers` and `SMUGGLERS` are one tag, stored in one spelling and title-cased back for display, so what you see is unchanged. Typing a tag with spaces now works too — "Red Syndicate" becomes `red-syndicate` instead of a malformed key that the next save threw away. Two private copies of "make a label safe" were unified into the tagging module, and the free-text field, which used neither, now uses the shared one.

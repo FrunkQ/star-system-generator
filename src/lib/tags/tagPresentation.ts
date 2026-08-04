@@ -25,10 +25,14 @@ export function registerPoiCategories(cats: { id: string; label: string; color?:
 // Per-tag friendly name + hover description, supplied by PoI rules (the editor's "player name" and
 // "hover text"). Rebuilt wholesale on each registration so deletions/edits take effect. Overrides
 // the built-in TAG_INFO / title-cased fallback for that exact tag key.
-const POI_TAG_META: Record<string, { label?: string; description?: string }> = {};
-export function registerPoiTags(tags: { key: string; label?: string; description?: string }[]): void {
+const POI_TAG_META: Record<string, { label?: string; description?: string; color?: string; textColor?: string }> = {};
+export function registerPoiTags(tags: { key: string; label?: string; description?: string; color?: string; textColor?: string }[]): void {
   for (const k of Object.keys(POI_TAG_META)) delete POI_TAG_META[k];
-  for (const t of tags) { if (t?.key && (t.label || t.description)) POI_TAG_META[t.key] = { label: t.label, description: t.description }; }
+  for (const t of tags) {
+    if (t?.key && (t.label || t.description || t.color)) {
+      POI_TAG_META[t.key] = { label: t.label, description: t.description, color: t.color, textColor: t.textColor };
+    }
+  }
 }
 
 // Per-namespace grouping + chip colour.
@@ -457,7 +461,13 @@ export function describeTag(key: string): TagPresentation {
   const label = tagMeta?.label || info?.label || titleCase(key.includes('/') ? key.split('/').slice(1).join(' ') : key);
   // Never leave a tag unexplained: specific write-up → namespace-level fallback → (last resort) blank.
   const description = tagMeta?.description ?? info?.description ?? (key.includes('/') ? NAMESPACE_DESC[ns] : undefined) ?? '';
-  return { key, label, description, group: meta.group, color: meta.color, textColor };
+  // A PER-TAG colour wins over its category's. That is what lets one `faction` category give every
+  // faction its own flag colour without a second mechanism to configure.
+  return {
+    key, label, description, group: meta.group,
+    color: tagMeta?.color || meta.color,
+    textColor: tagMeta?.textColor || textColor
+  };
 }
 
 // A CONTEXTUAL label for compact lists (reports, the field guide) where a bare "Oblate" or "Dynamo"
