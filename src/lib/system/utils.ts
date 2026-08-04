@@ -1,5 +1,6 @@
 // src/lib/system/utils.ts
 import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode, Starmap } from '../types';
+import { compactBurns } from '$lib/constructs/shipBurn';
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
 import { systemProcessor } from '../core/SystemProcessor';
@@ -129,6 +130,15 @@ export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
   // Drop bulky fields the guide never shows — transit logs (with huge pathPoint arrays), classifier
   // debug, drafts, AI context. Keeps the broadcast small enough to cross a WebRTC data channel.
   const slimNode = (n: any) => {
+    // A ship's DRIVE PLUME is observable - anyone looking at it sees the torch - but the journeys
+    // that say so are stripped below (huge pathPoint arrays, and a forward plan that must not
+    // cross). So publish the burns in a compact form first: when, how hard, which way, and
+    // nothing else. The player evaluates them against their own clock, so the plume stays live
+    // between snapshots. No destination, no route, no path.
+    if (n?.kind === 'construct') {
+      const burns = compactBurns(n);
+      if (burns.length) n.driveBurns = burns;
+    }
     delete n.scheduled_journeys;
     delete n.draft_transit_plan;
     delete n.classification;

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.439-beta - 5th Aug 2026
+
+* Drive plumes reach the player views now. A ship under power lit its torch on the GM's map and coasted silently on everyone else's, because a player's snapshot has its journeys stripped - they carry huge path arrays and the ship's forward plan, neither of which should cross - and the journeys are what say a ship is burning. The snapshot now carries the burns in a compact form instead: when, how hard, which way, and nothing else. No route, no destination, no path. The player evaluates them against their own clock, so the plume stays live between broadcasts rather than freezing at whatever it was when one arrived, and GM and player read the same thrust at the same instant.
+
 ## v2.1.438-beta - 5th Aug 2026
 
 * FIX: at 1:1 scale ships were drawn astronomically large - hulls spanning much of the inner system - and grew further when you zoomed in by hand. The floor that keeps a ship legible works out how big it must be drawn to occupy a minimum number of PIXELS; it did so by dividing by the ship's current on-screen size, and at true scale that divisor lands on the guard value put there to avoid dividing by zero. Once the guard took over, the size stopped tracking the camera: hence both the enormous hulls and the growing-as-you-zoom. It now computes the world size the floor needs directly, with no division, so a ship holds the same size on screen at every distance and shrinks in step as you close on it.
