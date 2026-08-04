@@ -478,6 +478,11 @@ things the debt lines had wrong — see the note in [[D5]].
   the Shading dropdown offers seven finishes (three seeded per-ship liveries among them); and six
   public-domain NASA craft ship as starter hulls in the model dialog. About + README credits
   updated (NASA models, three.js, meshoptimizer, Draco).
+- **Save bundles (v2.1.429)** - READER-FACING AND FORMAT-LEVEL: a campaign or system with assets
+  now saves as `.sse.zip` (readable json + assets/ as real files) instead of one JSON with base64
+  inside; asset-free saves are unchanged. Both load, decided by the zip magic number not the name.
+  Needs a line wherever saving/loading is documented, including that a bundle can be opened and
+  hand-edited with any zip tool, and that a construct .json now carries its model binary too.
 - **G13/A46/G15 coordinator round (v2.1.406)** - reader-facing: an exported .json carries ship
   model binaries and restores them on load (was already live since v2.1.396, now pinned by spec);
   engine definitions may carry `exhaust_color_hex` (pack data) to colour a ship's drive plume.

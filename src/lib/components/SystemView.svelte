@@ -40,6 +40,8 @@
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { packBundle, unpackBundle, sniffBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
   import ImportModal from './ImportModal.svelte';
   import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
@@ -1361,7 +1363,7 @@
     showSaveModal = true;
   }
 
-  function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
+  async function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
     if (!$systemStore) return;
     
     let systemToSave = $systemStore;
@@ -1381,13 +1383,18 @@
         systemToSave.nodes = systemToSave.nodes.filter(n => n.kind !== 'construct');
     }
 
-    // 3. Download
-    const json = JSON.stringify(systemToSave, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    // 3. Download. A system carrying assets (body photos, ship models) saves as a BUNDLE - a zip
+    // with a readable system.json beside the assets as real files; without them it stays plain
+    // JSON. Same container the campaign save uses, so one reader opens either.
+    const models = await collectModelsForExport({ systems: [{ system: systemToSave }] }).catch(() => undefined);
+    const bundle = packBundle('system', systemToSave, { models });
+    const blob = bundle
+      ? new Blob([bundle], { type: 'application/zip' })
+      : new Blob([JSON.stringify(systemToSave, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${systemToSave.name.replace(/\s+/g, '_') || 'system'}-System${mode === 'Player' ? '-Player' : ''}.json`;
+    a.download = `${systemToSave.name.replace(/\s+/g, '_') || 'system'}-System${mode === 'Player' ? '-Player' : ''}${bundle ? BUNDLE_EXT : '.json'}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1410,8 +1417,20 @@
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const json = e.target?.result as string;
-        let newSystem = JSON.parse(json);
+        // Bundle (zip) or plain JSON, decided by the magic number rather than the file name.
+        const raw = new Uint8Array(e.target?.result as ArrayBuffer);
+        let newSystem: any;
+        if (sniffBundle(raw)) {
+          const unpacked = unpackBundle(raw);
+          if (unpacked.kind !== 'system') {
+            alert('That bundle holds a whole campaign, not a single system. Load it from the starmap instead.');
+            return;
+          }
+          await importEmbeddedModels(unpacked.models).catch(() => 0);
+          newSystem = unpacked.doc;
+        } else {
+          newSystem = JSON.parse(new TextDecoder().decode(raw));
+        }
         if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
           // Keep the old ID to preserve starmap link
           const oldId = $systemStore?.id;
@@ -1433,7 +1452,7 @@
         console.error(err);
       }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   }
 
   async function handleShare() {
@@ -2191,7 +2210,7 @@
            Starmap nav, Projector and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
-      <input type="file" accept="application/json,.json,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+      <input type="file" accept="application/json,.json,.zip,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">

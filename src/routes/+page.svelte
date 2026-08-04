@@ -59,6 +59,7 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { collectModelsForExport, importEmbeddedModels, bytesToBase64 } from '$lib/constructs/modelTransfer';
+  import { packBundle, unpackBundle, sniffBundle, BUNDLE_EXT } from '$lib/io/bundle';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave } from '$lib/map/provenance';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
@@ -1357,12 +1358,18 @@
     // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
     // M1: stamp the build that wrote the file. See lib/map/provenance.ts for why explicit saves only.
     const exportObj = stampForSave({ ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap(), ...(models ? { models } : {}) });
-    const data = JSON.stringify(exportObj, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
+    // A campaign carrying assets saves as a BUNDLE: a zip holding a small, readable starmap.json
+    // beside the models and pictures as real files. One with no assets stays a plain .json, which
+    // is the file GMs hand-edit and diff. Both load; the loader sniffs, it does not trust names.
+    const base = `${$starmapStore.name.replace(/\s/g, '_') || 'starmap'}-Starmap`;
+    const bundle = packBundle('starmap', exportObj, { models });
+    const blob = bundle
+      ? new Blob([bundle], { type: 'application/zip' })
+      : new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${$starmapStore.name.replace(/\s/g, '_') || 'starmap'}-Starmap.json`;
+    a.download = base + (bundle ? BUNDLE_EXT : '.json');
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -1380,7 +1387,22 @@
 
     reader.onload = async () => {
       try {
-        const data = JSON.parse(reader.result as string);
+        // A save is either a bundle (zip) or plain JSON. Decided by the MAGIC NUMBER, so a
+        // renamed file still opens; the bundle's assets are unpacked before anything reads them.
+        const raw = new Uint8Array(reader.result as ArrayBuffer);
+        let data: any;
+        let bundledModels: Record<string, { b64: string; meta: Record<string, unknown> }> | null = null;
+        if (sniffBundle(raw)) {
+          const unpacked = unpackBundle(raw);
+          if (unpacked.kind !== 'starmap') {
+            alert('That bundle holds a single system, not a campaign. Open it from the system view instead.');
+            return;
+          }
+          data = unpacked.doc;
+          bundledModels = unpacked.models;
+        } else {
+          data = JSON.parse(new TextDecoder().decode(raw));
+        }
 
         // Bring in any PoI packs / reasons config the starmap carries, BEFORE re-deriving systems,
         // so the embedded rules drive the re-tag below. These live app-wide once merged.
@@ -1389,7 +1411,7 @@
         mergeStarmapCoIs(data.coiCategories);
         // G3: put embedded model binaries into the local hash store (each verified against its own
         // hash) so every ModelRef in the file has its model the moment the map opens.
-        await importEmbeddedModels(data.models).catch(() => 0);
+        await importEmbeddedModels(bundledModels ?? data.models).catch(() => 0);
 
         const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
         delete (sanitized as any).poiPacks;
@@ -1470,7 +1492,7 @@
 <main>
 
 
-  <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json" />
+  <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json,.zip" />
 
   {#if physicsProgress}
     <div class="physics-overlay" role="status" aria-live="polite">

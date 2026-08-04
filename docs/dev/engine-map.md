@@ -291,6 +291,21 @@ survives that; a 500 KB model multiplies every resend until the GM's tab stalls.
 BLAST: any new place a model is attached; anything that puts bytes on a node. Content addressing
 means two ships sharing a hull cost one entry — do not "clean up" the store per construct.
 
+### DATA-M3 A save is a bundle or plain JSON, and the MAGIC NUMBER decides
+WHERE: `src/lib/io/bundle.ts` (`sniffBundle` / `packBundle` / `unpackBundle`); callers in
+`routes/+page.svelte` and `components/SystemView.svelte`
+RULE: a campaign or system carrying assets saves as a zip (`.sse.zip`) - a readable
+`starmap.json`/`system.json` beside `assets/models/<hash>.glb` and `assets/images/<nodeId>.<ext>`.
+With no assets it stays plain `.json`. On load the format is decided by the zip signature, NEVER
+the extension, so a renamed file still opens. `packBundle` returns null when nothing needs
+extracting - that null IS the "write plain JSON" signal.
+WHY: base64-in-JSON cost 33% on the biggest bytes in the file and made a save unreadable and
+un-hand-editable, which is what GMs actually do with them. Owner decision, 2026-08-04.
+BLAST: adding a new asset kind (extract it in `packBundle`, restore it in `unpackBundle`, and add
+a round-trip case). Only DATA-URL images are extracted - an http(s) url is someone else's server
+and must survive untouched. `.ubox`/`.sc`/`.pak` are zips too: the importer adapters are matched
+BEFORE the sniff, so do not reorder that check.
+
 ### DATA-M2 Imported model bytes are verified against their own key
 WHERE: `modelTransfer.importEmbeddedModels`; pinned by `modelTransfer.roundtrip.spec.ts`
 RULE: an embedded blob is re-hashed on import and DROPPED if it does not match the key it arrived

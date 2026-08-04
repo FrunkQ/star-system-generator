@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.429-beta - 4th Aug 2026
+
+* SAVES ARE BUNDLES NOW, for a campaign AND for a single system. A save that carries assets is written as a zip (`.sse.zip`) holding a small, readable `starmap.json` / `system.json` beside `assets/models/*.glb` and `assets/images/*` as ordinary files - so you can open a save in any zip tool, read and hand-edit the JSON without scrolling past walls of base64, and swap a hull or a photo by replacing a file. It is also smaller: base64 cost 33% on top of the biggest bytes in the file. A save with no assets is still written as plain `.json`, exactly as before.
+* NOTHING STOPS LOADING. Both formats open, and the loader decides by the zip magic number rather than the file name, so a renamed save still works. A README inside each bundle explains the layout. Body photos, which used to sit on nodes as inline data URLs, now travel as real image files too - so they no longer bloat the JSON either.
+
 ## v2.1.428-beta - 4th Aug 2026
 
 * FOUND THE WAY A 3D MODEL GOES MISSING, and it is not storage: loading a construct TEMPLATE (or importing a construct file) replaced the ship's whole spec, and its picture and 3D model rode along with it - the template's blank fields won, so a ship you had already dressed came back plain with nothing looking broken. Appearance is now its own category, neither situation nor spec: the ship KEEPS its image, model, marker shape and colour unless the incoming template brings its own, in which case the template wins. Pinned by test.
