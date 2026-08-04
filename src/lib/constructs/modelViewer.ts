@@ -540,13 +540,13 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   }
 
   function frameCamera() {
-    // Frame the MODEL (not the plumes, which are allowed to run off the edge).
-    const box = new THREE.Box3().setFromObject(orientGroup);
-    if (box.isEmpty()) return;
-    const sphere = box.getBoundingSphere(new THREE.Sphere());
-    centre.copy(sphere.center);
-    frameRadius = Math.max(1e-6, sphere.radius);
-    baseDist = (sphere.radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.12;
+    // Uses `frameRadius` - the HULL's radius, measured ONCE in setObject from `frame`, before any
+    // plume exists. Do NOT re-measure a live box here: the plumes and nozzle markers hang off
+    // orientGroup too, a lit plume runs to ~3.4 hull-lengths, and framing that shrinks the ship to
+    // a speck the moment it burns. (Fixed in 4c73c0b, re-broken by the orbit rewrite, restored.)
+    // The hull is centred on the origin by buildDisplayModel, so the target is simply that.
+    centre.set(0, 0, 0);
+    baseDist = (frameRadius / Math.sin((camera.fov * Math.PI) / 360)) * 1.12;
     placeCamera();
   }
 

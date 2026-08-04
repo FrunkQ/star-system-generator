@@ -1631,6 +1631,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // its legibility in SCREEN space. Hiding it was the old rule, and it meant a player preset that
   // frames the whole system (never zooming to a body) showed the icon and never the ship.
   const SHIP_MODEL_MIN_PX = 14;
+  const SHIP_MODEL_IDLE_PX = 7; // an unfocused ship: still a shape, not a shout
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
 
   async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number]; finish?: import('$lib/constructs/modelViewer').HullFinish; nozzles?: [number, number, number][]; nozzleScale?: number }, tint: string, sceneLen: number, gen: number) {
@@ -1835,15 +1836,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // dot until the camera comes down to it. The model contributes no radius anywhere.
       const distToCam = camera.position.distanceTo(b.mesh.position);
       const naturalPx = (b.shipLen ?? 0) / Math.max(1e-12, f * distToCam);
-      // The model stands in for the GLYPH, which was always drawn at a fixed screen size - so it
-      // shows whenever the glyph would be full-size (in the focus set), floored to a readable
-      // size when the true one would be too small. An UNFOCUSED construct keeps its tiny dim
-      // glyph: a 4 px model is a smudge where a 4 px glyph is still a marker.
-      const showModel = !!b.shipModel && !b.surfaceLock && inFocus;
+      // A loaded hull ALWAYS replaces the glyph - the model IS the marker (design §6). Two earlier
+      // rules both failed here and are recorded so neither comes back: hiding it below ~10 px
+      // meant a whole-system preset (which never zooms to a body) showed the icon forever, and
+      // gating on the focus set meant a ship in DEEP SPACE - not in the system's visible set at
+      // all - stayed a cross however far you zoomed in. Legibility is a SCREEN-SIZE floor, never
+      // a reason to withhold the render.
+      const showModel = !!b.shipModel && !b.surfaceLock;
       if (b.shipModel) {
         b.shipModel.visible = showModel;
         if (showModel) {
-          const floorK = naturalPx < SHIP_MODEL_MIN_PX ? SHIP_MODEL_MIN_PX / Math.max(1e-9, naturalPx) : 1;
+          // Floor the DRAWN size: full readable size when this ship is the focus, a smaller floor
+          // when it is not, mirroring the two states the glyph sprite has always had (12 px / 4 px)
+          // so an idle ship reads as a marker rather than shouting over the focused one.
+          const minPx = inFocus ? SHIP_MODEL_MIN_PX : SHIP_MODEL_IDLE_PX;
+          const floorK = naturalPx < minPx ? minPx / Math.max(1e-9, naturalPx) : 1;
           b.shipModel.scale.setScalar((b.shipLen ?? 0.2) * floorK);
           b.shipModel.position.copy(b.mesh.position);
           if (!b.shipPrev) b.shipPrev = b.mesh.position.clone();

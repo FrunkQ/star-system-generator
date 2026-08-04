@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.435-beta - 4th Aug 2026
+
+* TWO REGRESSIONS FIXED, both mine, both re-breaking something that already worked. (1) A burning ship shrank to a speck in its own portrait: the camera framed a live bounding box that included the drive plume, which runs to about three hull-lengths, so the hull was pushed away the moment it lit. The earlier fix - measure the hull ONCE when the model loads, before any plume exists - was undone by the free-orbit rewrite and is now restored, and pinned by a test that fails if anything measures live again. (2) A ship showed only its icon on the map however far you zoomed in: yesterday's change required it to be in the focus set, which a ship in deep space never is. A loaded hull now always replaces the glyph, as it did before, with a screen-size floor for legibility rather than a reason to hide it.
+
 ## v2.1.434-beta - 4th Aug 2026
 
 * FIX: a player view showed a ship's icon where the GM view showed its 3D model. The model was hidden whenever it would draw smaller than about ten pixels, on the grounds that it would be mush - but a preset that frames the whole system (and so never zooms to a body) leaves every ship below that line permanently, so the hull never appeared however long you looked at it. The model is now ENLARGED to a readable size instead of being hidden, which is exactly how the true-scale body floor already works: keep the honest render, guarantee its legibility in screen space. A ship that is not the focus still draws its small dim glyph, because a four-pixel model is a smudge where a four-pixel glyph is still a marker.

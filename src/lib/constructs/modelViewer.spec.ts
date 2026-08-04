@@ -106,3 +106,27 @@ describe('createModelViewer surface', () => {
     viewer.dispose();
   });
 });
+
+// The viewer frames the HULL, never the flame. This has broken TWICE: the plume group hangs off
+// the same node a live bounding-box measurement would include, so a ship shrank to a speck the
+// moment it started burning. The rule is that frameCamera reuses `frameRadius` - measured once in
+// setObject from `frame`, before any plume exists - and never re-measures.
+describe('viewer framing measures the hull only', () => {
+  const src = readFileSync('src/lib/constructs/modelViewer.ts', 'utf8');
+  const fn = src.slice(src.indexOf('function frameCamera()'), src.indexOf('function render('));
+
+  it('frameCamera reuses frameRadius and measures nothing live', () => {
+    expect(fn).toContain('frameRadius');
+    expect(fn).not.toContain('setFromObject'); // a live box would re-include the plume
+  });
+
+  it('frameRadius is taken from the hull group in setObject', () => {
+    const setObj = src.slice(src.indexOf('setObject(object,'), src.indexOf('setOrient(q)'));
+    expect(setObj).toContain('setFromObject(frame)');
+    expect(setObj).toContain('frameRadius =');
+  });
+
+  it('keeps the plumes on the orientation fix, so a re-aligned hull keeps its flame', () => {
+    expect(src).toContain('orientGroup.add(plumes)');
+  });
+});
