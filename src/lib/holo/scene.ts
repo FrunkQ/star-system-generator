@@ -1661,7 +1661,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       parsedHullCache.set(ref.hash, parsed.object);
       if (gen !== buildGen) return;
       attachShipModel(v, ref, tint, sceneLen, parsed.object);
-    } catch { /* the glyph sprite simply remains */ }
+    } catch (e) {
+      console.warn('[holo] ship model could not be loaded for', v.id, e);
+    }
   }
 
   /** Build + attach a hull from an already-parsed source. Synchronous by design. */
@@ -1707,7 +1709,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       v.shipModel = g;
       v.shipLen = sceneLen;
       v.shipPrev = v.mesh.position.clone();
-    } catch { /* a malformed hull: the glyph sprite simply remains */ }
+    } catch (e) {
+      // Silence here cost several rounds of blind diagnosis: the ship simply stayed a glyph and
+      // nothing said why. A warn is cheap and the glyph fallback still stands.
+      console.warn('[holo] ship model could not be built for', v.id, e);
+    }
   }
   // TRUE-SCALE VISIBILITY FLOOR. At the true end of the body-size dial a real planet is a fraction of a
   // pixel across at whole-system framing — Earth is about 0.05 px — so "true" came out as "absent", which
@@ -1789,10 +1795,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (!fx) return;
     fx.suppressed = hex === 'none';
     const col = new THREE.Color(fx.suppressed ? '#000000' : (hex || '#bfe2ff'));
-    (fx.cone.material as THREE.MeshBasicMaterial).color.set(col);
-    (fx.glow.material as THREE.SpriteMaterial).color.set(col);
-    (fx.halo.material as THREE.SpriteMaterial).color.set(col);
-    fx.light.color.set(col);
+    // ONE rig per nozzle since the placer landed. This function was left reading the old
+    // single-rig shape (fx.cone/glow/halo/light) when ShipFx became { rigs }, so it threw
+    // `undefined.material` on EVERY construct with a model - inside attachShipModel's catch,
+    // which said nothing. The ship silently stayed a glyph everywhere, in every view.
+    for (const rig of fx.rigs) {
+      (rig.cone.material as THREE.MeshBasicMaterial).color.set(col);
+      (rig.glow.material as THREE.SpriteMaterial).color.set(col);
+      (rig.halo.material as THREE.SpriteMaterial).color.set(col);
+      rig.light.color.set(col);
+    }
   }
 
   // G3: the drive plume - thrust feedback at the stern. Attached INSIDE the display model at the

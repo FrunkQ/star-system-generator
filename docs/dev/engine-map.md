@@ -261,6 +261,20 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S7 Never swallow an exception on the path that decides whether a thing renders
+WHERE: `src/lib/holo/scene.ts` (`attachShipModel`, `loadShipModel`) - both now `console.warn`
+RULE: a try/catch around model building MUST report. The fallback (the glyph) is correct
+behaviour, so a silent failure looks exactly like a design decision and cannot be distinguished
+from one by looking at the screen.
+WHY: `applyExhaustColour` was left reading the OLD single-rig shape (`fx.cone`) after `ShipFx`
+became `{ rigs }`. It threw `undefined.material` for EVERY construct with a model, inside a
+silent catch - so ships showed their icon everywhere, in every view, and three rounds of
+diagnosis went into visibility rules, LOD thresholds and framing that were all innocent.
+BLAST: `npm run build` does NOT typecheck (Vite strips types), and `svelte-check` currently
+reports ~1357 pre-existing errors repo-wide, so neither would have caught it. Until that noise
+is cleared, a refactor that changes a shared interface's SHAPE needs every reader grepped by
+hand - `grep 'fx\.' ` would have found this in seconds.
+
 ### RENDER-S6 The body-size dial interpolates GEOMETRICALLY, not linearly
 WHERE: `src/lib/holo/scene.ts:dialBlend` (bodies, stars and ship hulls all route through it)
 RULE: size = true^(1-v) x readable^v, so each step of the dial multiplies size by a constant ratio.

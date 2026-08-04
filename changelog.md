@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.437-beta - 5th Aug 2026
+
+* THE ACTUAL CAUSE of ships showing an icon instead of their 3D model, found by watching a live player view rather than reasoning about it: when drive plumes became a list (one per placed nozzle), the function that colours the exhaust was left reading the old single-plume shape. It threw on EVERY construct with a model - inside a catch that said nothing - so the hull silently never attached and the glyph stood in, in every view, at every zoom. Ships render again. The three previous attempts at this, which changed visibility rules, level-of-detail thresholds and camera framing, were all chasing innocent code.
+* Those catches now warn instead of swallowing. A model that cannot be built still falls back to the icon, as it should, but it says why - the silence is what made this take four attempts to find.
+
 ## v2.1.436-beta - 4th Aug 2026
 
 * THE REAL FIX for 3D ships vanishing on the player's map: a ship IN TRANSIT never got its model, while a parked one always did. A moving ship changes the broadcast snapshot continuously, so a player's view rebuilds its scene about twice a second - and the model loader, which is asynchronous, re-checked whether its build was still current after every step and gave up when it was not. It therefore never finished for anything that was moving. Hulls are now cached by content hash the moment they are parsed, so a rebuild re-attaches them instantly with no asynchronous step to lose, and the cache is filled even when the build that requested it has already gone. Reproduced as a test first: the old path attaches nothing under a rebuild storm, the new one attaches immediately.
