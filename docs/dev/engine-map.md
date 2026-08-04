@@ -155,6 +155,15 @@ WHY: the GM must be looking at what they are about to push; a separate preview i
 truth for "what shows on the map".
 BLAST: do not add a GM-only copy. Persisting a favourite set is banked, not built.
 
+### TAG-15 A player window has its OWN store instances
+WHERE: `SystemVisualizer.highlights` prop; `broadcast.PresetOverrides.mapHighlights`
+RULE: the player view runs in a separate document, so every Svelte store in it is a fresh empty
+instance. Anything the GM sets locally reaches it ONLY over the broadcast. Components shared by both
+take the value as a prop and fall back to the store.
+WHY: a shared component reading `$liveOverrides` works on the GM's screen and silently does nothing
+on the player's — no error, just a feature that never appears.
+BLAST: any GM-side live control that a shared component consumes. Add it to `PresetOverrides` too.
+
 ---
 
 ## PHYSICS — ordering and honesty
