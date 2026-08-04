@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.436-beta - 4th Aug 2026
+
+* THE REAL FIX for 3D ships vanishing on the player's map: a ship IN TRANSIT never got its model, while a parked one always did. A moving ship changes the broadcast snapshot continuously, so a player's view rebuilds its scene about twice a second - and the model loader, which is asynchronous, re-checked whether its build was still current after every step and gave up when it was not. It therefore never finished for anything that was moving. Hulls are now cached by content hash the moment they are parsed, so a rebuild re-attaches them instantly with no asynchronous step to lose, and the cache is filled even when the build that requested it has already gone. Reproduced as a test first: the old path attaches nothing under a rebuild storm, the new one attaches immediately.
+* Drive plumes follow the render style now: in a wireframe scene the exhaust is drawn as vector geometry like the hull it comes from, instead of a solid glowing cone hanging off a wireframe ship.
+
 ## v2.1.435-beta - 4th Aug 2026
 
 * TWO REGRESSIONS FIXED, both mine, both re-breaking something that already worked. (1) A burning ship shrank to a speck in its own portrait: the camera framed a live bounding box that included the drive plume, which runs to about three hull-lengths, so the hull was pushed away the moment it lit. The earlier fix - measure the hull ONCE when the model loads, before any plume exists - was undone by the free-orbit rewrite and is now restored, and pinned by a test that fails if anything measures live again. (2) A ship showed only its icon on the map however far you zoomed in: yesterday's change required it to be in the focus set, which a ship in deep space never is. A loaded hull now always replaces the glyph, as it did before, with a screen-size floor for legibility rather than a reason to hide it.

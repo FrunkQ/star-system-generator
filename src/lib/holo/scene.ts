@@ -1633,11 +1633,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const SHIP_MODEL_MIN_PX = 14;
   const SHIP_MODEL_IDLE_PX = 7; // an unfocused ship: still a shape, not a shout
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
+  // Parsed hulls by content hash, for the life of the scene. Shared safely because
+  // buildDisplayModel CLONES its source - two ships on one hull cost one parse.
+  const parsedHullCache = new Map<string, THREE.Object3D>();
 
-  async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number]; finish?: import('$lib/constructs/modelViewer').HullFinish; nozzles?: [number, number, number][]; nozzleScale?: number }, tint: string, sceneLen: number, gen: number) {
+  type ShipModelRef = { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number]; finish?: import('$lib/constructs/modelViewer').HullFinish; nozzles?: [number, number, number][]; nozzleScale?: number };
+
+  async function loadShipModel(v: BodyVisual, ref: ShipModelRef, tint: string, sceneLen: number, gen: number) {
+    // A CACHED hull attaches with no await at all, and that is the whole point. A construct IN
+    // TRANSIT changes the broadcast snapshot continuously, so a player's scene calls setSystem
+    // (and so bumps buildGen) about twice a second - and every rebuild discarded the in-flight
+    // async load before it could attach. A ship in a stable orbit does not move the snapshot, so
+    // ITS model loaded fine: that is why models appeared on parked ships and never on moving ones.
+    const cached = parsedHullCache.get(ref.hash);
+    if (cached) { attachShipModel(v, ref, tint, sceneLen, cached); return; }
     try {
       const stored = await getStoredModel(ref.hash);
-      if (gen !== buildGen) return; // stale build
       if (!stored) {
         // Not local yet (a remote player). One-shot retry when the transport lands it in the
         // store - modelArrived clears the waiter, and the gen guard drops it across rebuilds.
@@ -1645,8 +1656,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         return;
       }
       const parsed = await parseStoredModel('stored.glb', stored.bytes);
+      // Fill the cache BEFORE the staleness check: even if this build is already gone, the next
+      // one (a fraction of a second later) then attaches instantly instead of racing again.
+      parsedHullCache.set(ref.hash, parsed.object);
       if (gen !== buildGen) return;
-      const g = buildDisplayModel(parsed.object, {
+      attachShipModel(v, ref, tint, sceneLen, parsed.object);
+    } catch { /* the glyph sprite simply remains */ }
+  }
+
+  /** Build + attach a hull from an already-parsed source. Synchronous by design. */
+  function attachShipModel(v: BodyVisual, ref: ShipModelRef, tint: string, sceneLen: number, source: THREE.Object3D) {
+    try {
+      const g = buildDisplayModel(source, {
         hadMaterials: ref.hadMaterials ?? true, tintHex: tint, orient: ref.orient ?? null,
         finish: ref.finish ?? null, seed: v.id
       });
@@ -1686,7 +1707,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       v.shipModel = g;
       v.shipLen = sceneLen;
       v.shipPrev = v.mesh.position.clone();
-    } catch { /* the glyph sprite simply remains */ }
+    } catch { /* a malformed hull: the glyph sprite simply remains */ }
   }
   // TRUE-SCALE VISIBILITY FLOOR. At the true end of the body-size dial a real planet is a fraction of a
   // pixel across at whole-system framing — Earth is about 0.05 px — so "true" came out as "absent", which
@@ -1793,14 +1814,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       holder.position.set(pt[0], pt[1], pt[2]);
       // Cone flaring aft: apex at the nozzle, widening along -Z. ConeGeometry points +Y; the
       // rotation maps local +Y onto -Z, so scaling cone.scale.y lengthens the plume astern.
+      // F6 parity extends to the FLAME: in a wireframe scene the exhaust is drawn as vector
+      // geometry too, or a solid glowing cone hangs off a wireframe hull.
+      const wire = renderStyle.startsWith('wire');
       const cone = new THREE.Mesh(
-        new THREE.ConeGeometry(0.07, 1, 16, 1, true),
-        new THREE.MeshBasicMaterial({ color: 0xbfe2ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+        new THREE.ConeGeometry(0.07, 1, wire ? 8 : 16, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: 0xbfe2ff, transparent: true, opacity: wire ? 0.75 : 0.55, wireframe: wire,
+          blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+        })
       );
       cone.rotation.x = Math.PI / 2;
       holder.add(cone);
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: 0.9,
+        map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: wire ? 0.35 : 0.9,
         blending: THREE.AdditiveBlending, depthWrite: false
       }));
       holder.add(glow);
@@ -1808,7 +1835,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // core glow, so a hard burn reads as a bright smear from any angle - including straight
       // down, which is what the "2D" map is (the holo scene locked overhead).
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: 0.35,
+        map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: wire ? 0.1 : 0.35,
         blending: THREE.AdditiveBlending, depthWrite: false
       }));
       holder.add(halo);
