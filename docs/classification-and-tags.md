@@ -108,6 +108,37 @@ envelope with `earth-like` — so auto‑assigning is guessing. They stay in the
 
 ## Tags = orthogonal conditions/history (namespaced)
 
+### Provenance — the column that decides what may delete a tag
+
+Every tag has an ORIGIN, and it is the origin, not the namespace, that says what happens to it on the
+next pass. `tags/tagLifecycle.ts` is the only module that interprets this; everything else asks it.
+
+| origin | written by | survives a re-process | survives export | removable by hand |
+|---|---|---|---|---|
+| `physics` | the processor, every pass | no — cleared and re-derived | no | no (it comes straight back) |
+| `rule` | an automated tagging rule | no — cleared and re-rolled | no | no (edit the rule) |
+| `authored` | **generation / import**, once | **yes** | **yes** | **yes, permanently** |
+| `manual` | the GM, by hand (incl. overrides) | yes | yes | yes |
+| `inherited` | construct hardware (drive, fuel) | yes | no — recomputed | no (change the hardware) |
+| `derived` | runtime state (in transit, adrift) | yes | no — recomputed | no (it mirrors state) |
+
+**Provenance is declared by the CATEGORY, not by the tag.** The tag carries only the simple half —
+was a human responsible (`manual`) — and `tagDefaults.ENGINE_NAMESPACES` declares, per namespace,
+what a tag there is when nothing else says. That table is the single place to add a new engine
+namespace; miss it and the namespace's tags silently read as `physics` and get stripped. Exact keys
+may override their namespace, which `orbit/` needs: `orbit/retrograde` is the generator's claim,
+`orbit/tidally-locked` is re-derived every pass.
+
+**`authored` is the class the UI used to get wrong.** A generated tag was shown under a red padlock
+reading "derived from the physics — recomputed every run", which was false in every clause (inbox
+A44). Nothing re-derives it, and a GM may delete it for good. An edit that makes an inferred value
+real must also RETIRE the claim — typing an obliquity clears `spin/axis-inferred`.
+
+**A hand-added tag in a physics namespace is an OVERRIDE.** It survives the pass that would have
+re-derived the namespace, and the emitter's guard (`tagLifecycle.emit`) means it SUPPRESSES the
+derived tag of the same key rather than sitting beside it. So the GM wins that key outright, and
+every consumer — renderers, rules, the finder — reads the override exactly as it would the real one.
+
 | namespace | meaning | written by |
 |---|---|---|
 | `origin/*` | provenance (`migrated`, `captured`) | generation |

@@ -1,74 +1,136 @@
-# Tags, Points & Constructs of Interest
+# Tags
 
-Tags are how Star System Explorer records *what a place or a ship is like* — beyond its raw physics. They power the **Find by tag** search, they give players concrete reasons to visit somewhere, and the autopilot reads them to decide where ships can refuel, mine and dock. This guide explains where tags come from and how to make them your own.
+Tags are how this engine says what a thing is *like*. A world has a mass and a temperature; it also
+has plate tectonics, a breathable atmosphere, a lethal radiation dose, an ice deposit somebody could
+mine, and a syndicate that considers it theirs. The numbers are the physics. The tags are everything
+the physics *means*.
 
-## Two kinds of tag
+They are deliberately the main currency of the app rather than a labelling feature bolted onto it.
+A tag is a short piece of plain language — `geology/plate-tectonics`, `frontier/refuelling`,
+`faction/red-syndicate` — carrying a value when it needs one. That makes them readable by you at the
+table, filterable in the finder, testable by the automated rules, and legible to the renderers: the
+craters, volcanic vents, auroras and cloud decks you see on a planet are drawn from its tags, not
+from the equations directly.
 
-**Physics tags** are derived automatically from a body's properties, every time the system is processed. You can't remove them — they *are* the physics — and they update if you edit the world. Things like `magnetic/dynamo`, `geology/plate-tectonics`, `orbit/tidally-locked` or `stability/marginal`. Open the **Newton panel** (the apple icon) on any body to see every tag and the exact rule or physics that produced it.
+That indirection is the point. The physics decides what is true; it writes tags; everything else
+reads tags. Nothing that draws a picture needs to know how a dynamo works, and nothing in the
+physics needs to know what a picture looks like. It also means that when you add a tag by hand you
+are speaking the same language the engine does — which is why a hand-added tag can drive a visual
+feature or satisfy a rule exactly as a derived one would.
 
-**Hand-added tags** are yours: add them to any body or construct for any purpose, and remove them freely. They survive re-processing, so the engine's auto-retagging never wipes your work.
+This is an ambition the app has not entirely arrived at; some things are still wired more directly
+than they ought to be. But it is the direction of travel, and it is why tags get more attention here
+than a labelling system would normally deserve.
 
-### Tags a crew would actually act on
+## Where a tag comes from
 
-Most physics tags describe a world; a handful decide what you *do* about it, and those are the ones worth knowing by name.
+Every tag has a provenance, and the Tags tab groups them by it, because "who said this?" decides what
+you can do about it.
 
-| Tag | Reads | What it settles |
-|---|---|---|
-| **Radiation hazard** | `hours` · `days` · `weeks` · `months` · `years` · `chronic` · `background` | **How long a character standing there survives.** Not sieverts — the time to a lethal dose. Io is *hours*, Europa *days*, Mars *years*, Earth *background*. Past fifty years the acute model stops meaning anything, so it says *chronic* (a real long-term cancer risk) rather than quoting a number nobody lives to test. |
-| **Radiation belts** | the same words | The reading at the **inner edge of the trapped-particle belts** — for Earth about 1,262 km up — shown only when it is genuinely different news from the ground. **It is not the dose at whatever altitude a ship chooses.** Low orbit sits *beneath* the belts, which is why Earth reads *days* here while the ISS at 400 km takes about 150 mSv a year. Read it as "there is a hazardous shell around this world", not "orbit is lethal". An airless world has no absorbing air, so its belt edge is its own surface and the two figures are the same number — which is why the row simply does not appear for Luna or Io. |
-| **Ascent cost** | `trivial` · `moderate` · `hard` · `extreme` | **Whether the party can leave.** Luna is trivial, Mars moderate, Earth hard, Venus extreme. |
-| **Magnetosphere** | `dynamo` · `induced` · `tenuous` · `unshielded` | Why the radiation figure is what it is. |
-| **Space weathering** | `low` · `moderate` · `high` | **Not a dose.** How much radiation the *visible surface has accumulated over its lifetime* — it drives tholin reddening and regolith greying. A constantly resurfaced world like Io reads *low* here while its radiation hazard reads *hours*. Both are correct; they answer different questions. |
-| **Spin axis inferred** | present or absent | **Whether anyone actually measured this world's tilt.** A generated world's axial tilt and rotation period are plausible values from the formation model, so they say so. The point is what the *absence* means: Earth's 23.4° and Uranus's 97.8° are observed, and a generated neighbour in the same starmap must not read as though somebody had been there. A tidally locked world's period is not marked — that one is derived from the orbit, not guessed. |
-| **Tipped over** | present or absent | This world was hit hard enough to **re-point its axis**, rather than being nudged from the disc it formed in. Uranus lies on its side at 97.8°; Venus turns backwards at 177.4°. |
+**Physics.** Derived from the body's properties every time the system is processed —
+`magnetic/dynamo`, `orbit/tidally-locked`, `hazard/radiation`, `stability/marginal`. Edit the world
+and they change with it. Open the Newton panel (the apple) on any body to see which layer produced
+each one, and from what.
 
-That last pairing catches people out, and it is worth reading twice: a world can be the most violently irradiated surface in a system and still be lightly weathered, because volcanism repaints it faster than anything can build up.
+**Automated rules.** Seeded by rules you can read and change, which test a body's physics and roll
+against a chance — mineable resources, scientific draws, frontier logistics, plot hooks. The roll is
+seeded from the body and the starmap, so a given world always tags the same way, and switching one
+category on or off never reshuffles the others.
 
-**Belts and rings carry the radiation hazard too, and one of them is the loudest reading in the Solar System.** They used to carry no tag at all — not because a debris field was judged safe, but because the tag was worked out in a step that skips anything which is not a planet or a moon. Jupiter's rings sit at about 360 sieverts a *day*, worse than Io, and there was nothing to filter or warn on. A belt or a ring gets the hazard word for the same reason its dose is quoted "in the ring plane": it is countless small bodies that each have a surface, so the number is what a fragment takes and what a ship crossing takes. A **gas giant** still gets no surface hazard tag, because there is nowhere to stand at all — that is the one distinction the two cases turn on.
+**Generated.** Written once, when a body was created or imported, recording something the physics
+cannot work out for itself: that an obliquity was *inferred* rather than measured
+(`spin/axis-inferred`), that a moon was captured rather than formed where it sits
+(`origin/captured`), or that a world was invented to fill out a real star system
+(`origin/generated`). Nothing re-derives these. Delete one and it stays deleted — and if you type in
+a real value for something that was inferred, the tag claiming it was a guess retires itself, because
+it has stopped being true.
 
-Tags live in tidy namespaces — `resource/*`, `science/*`, `atmosphere/*`, `geology/*`, `orbit/*` and so on — so related tags group together in the finder and in reports.
+**Yours.** Anything you add by hand, for any purpose. It survives every re-process and every save.
 
-## Points of Interest (PoI)
+## Categories
 
-A **Point of Interest** is a tag that gives a *world* narrative or practical value — a reason a crew would actually go there. Some are seeded automatically from the physics; you decide which categories are switched on under **Settings → Generation**.
+A category is a group of related tags sharing a namespace and a colour: `faction/*`, `resource/*`,
+`purpose/*`. It is the unit you configure, under **Settings → Tagging**.
 
-Each candidate PoI has a physics **condition** (what must be true of the body) *and* a **probability**, rolled from a seed tied to the body and system. So a given starmap always tags the same way, but not every world has everything — and toggling one category never reshuffles the others.
+Each category has a name, a colour, and the list of things it applies to — star, planet, moon, belt,
+ring, construct. A category that applies only to constructs will not clutter a moon's Tags tab, and a
+rule belonging to it cannot target one.
 
-| Category | What it flags | Examples |
-|---|---|---|
-| `resource/*` | Extractable materials | heavy & rare metals, fissiles, helium-3, deuterium, water ice, volatiles, hydrocarbons, diamonds, organics, asteroid ore |
-| `science/*` | Research draws | biosignatures, pristine protoplanetary disks, tidal labs, impact records, remnant proximity, exotic chemistry |
-| `frontier/*` | Logistics | gas-giant & ice **refuelling**, life-support resupply, aerobraking, gravity assists, waystation sites |
-| `intrigue/*` | Pure bait (low odds) | anomalous signals, derelict rumours, uncharted features, legends |
+Some categories are marked **system**. The engine matches those tags by name — ships refuel on
+`frontier/*`, mine `resource/*`, inherit FTL from `drive/*`, and have their readiness gated by
+`status/*` — so removing one would break something quietly. You can still switch a system category
+off, rename its tags, recolour it and rewrite its rules; you simply cannot delete it.
 
-These are scientifically plausible (helium-3 on old airless regolith, diamonds on carbon-rich high-pressure worlds, refuelling at hydrogen giants) but deliberately a **hook generator**, not a first-principles resource model — grist for your plots.
+Everything else is yours to create and remove. Deleting a category does not delete tags already
+applied to your worlds and ships: it stops describing them, and its rules stop running.
 
-**Surface hooks need a surface.** Anything that means "land, dig it up and lift it" — the metals, fissiles, water ice, diamonds, organics, fuel depots and life-support resupply — is gated on the body having solid ground (`makeup.gas` under 0.5, the same test the world classifier and the habitability score use). A gas giant contains plenty of water and metal by mass, but it is spread through a planet-sized envelope with nothing to stand on, so it no longer offers to resupply you. What a giant *does* keep is everything you can do from orbit or the upper atmosphere: **helium-3, gas skimming, deuterium, aerobraking and gravity assists**.
+### Colour
 
-## Constructs of Interest (CoI)
+A tag takes its category's colour unless you give it one of its own. That is the whole mechanism
+behind a single Faction category in which every faction flies a different colour — one category, one
+place to manage it, each tag distinct on the map.
 
-A **Construct of Interest** is the same idea applied to *ships and stations*: a tag describing a capability or role. Six categories are always on — Status, Owner, Purpose, Resources, Hull class and FTL drive. Universe and Tech & origin are on by default but can be switched off; Disposition is off by default. All are editable under Settings → CoIs.
+## Making them your own
 
-CoI tags aren't just labels — the engine reads them. A construct's FTL drive and range are inherited from its fitted engine (a warp drive confers FTL; a sublight drive doesn't), and its refuel sources come from its fuel tanks. The **autopilot** uses all of this to route a ship: what it can mine, where it can refuel, whether it can jump.
+**Adding a tag.** On any body or construct, open the Tags tab, pick a category (or Custom for free
+text), give it a name and optionally a value. Tags are case-insensitive and spaces are fine: type
+"Red Syndicate" and it is stored tidily and shown back to you properly capitalised.
 
-## Find by tag
+**Overriding the physics.** That same list offers the engine's own namespaces — Geology, Tidal,
+Aurora, Habitability and the rest. Add one by hand and it *wins*: it survives every re-derive, it
+suppresses the tag the engine would otherwise have written, and it drives everything the real one
+drives, including the visuals and the rules. If you want a volcanic moon the physics does not think
+is volcanic, you can simply say so. The tab groups these as **GM overrides** and says plainly that
+they may contradict the physics, because they may.
 
-The **Find by tag…** panel (from the rail) searches every body or construct that carries the tags you pick:
+**Secrets.** Any hand-added tag can be marked secret, and a whole category can be hidden from
+players. Neither ever reaches them: not the shared catalogue, not a player view, not the holo table,
+not a printed report. So the syndicate that secretly runs a station can be tagged, filtered and
+mapped by you without ever appearing on their screens.
 
-- Switch between **Bodies** and **Constructs** at the top — they use different tag sets.
-- Set the **scope** to one system or all systems.
-- **Search** for a tag by name, or browse the **category bubbles** and expand one to see its tags.
-- Click tags to stack them into the filter — results carry **all** the active tags (AND logic).
-- Inside a system on a scaled map, results show the distance to each hit and sort nearest-first.
+## Automated tagging rules
 
-Handy for "where's the closest gas giant I can refuel at?" or "show me every world with a breathable atmosphere."
+Each category can carry rules that apply its tags for you. A rule is a condition over a body's
+physics — bulk composition, mass, temperature, pressure, liquid coverage, geology regime, other tags
+— plus a chance, built with a guided editor or written as raw JSON when the logic gets involved.
 
-## Manual tagging & your own rules
+These are a hook generator, not a first-principles resource model. They are chosen to be plausible
+(helium-3 in old airless regolith, diamonds on carbon-rich high-pressure worlds, refuelling at
+hydrogen giants) and they are gated on physical sense: a rule offering something you must lift off
+the ground also checks there is ground to lift it from, so a gas giant is not advertised as an ice
+quarry on the strength of the water in its envelope.
 
-You can tag anything by hand, and you can invent tags that don't exist yet — a `faction/red-syndicate` or a `plot/the-lost-fleet`, whatever your campaign needs. Hand-added tags are then usable as **conditions in PoI rules**, so your own tags can drive automatic flavour on other worlds.
+Your own hand-added tags can be conditions in rules, so a tag you invent can drive automatic flavour
+across a whole starmap. Prison colonies only on ore-rich moons; a slim chance of alien ruins on any
+terrestrial; a depot at every ice giant — that is a rule.
 
-## Author your own packs
+All rules can be switched off at once with **Run automated tagging rules** in Settings → Tagging.
+Physics tags and your own hand-added tags are unaffected.
 
-PoI and CoI rules are bundled into **packs** you can stack and load, so you can flavour a whole starmap to your universe. A pack is a set of rules, each with a **condition builder** (all-of / any-of groups, numeric range sliders, NOT toggles) and a raw-JSON fallback for power users.
+## Showing them on the maps
 
-Want prison colonies only on ore-rich moons? A slim chance of alien ruins on any terrestrial? A refuelling depot at every ice giant? That's a pack. Build them in Settings, save them with your starmap, and share them with other GMs.
+Under **Player Views → Quick overrides**, *Highlight on the maps* takes a live selection of anything
+you want made visible: a whole category, a single tag, or several at once. Whatever you pick is
+badged on your maps and on the players' at the same time, in each tag's own colour.
+
+Pick the Faction category and every faction flies its own flag. Pick `frontier/refuelling` alone and
+the players see exactly where they can top up, and nothing else. On the starmap a system shows the
+union of everything inside it, so a faction holding one moon lights the whole system, and a contested
+system honestly shows more than one flag.
+
+The selection is momentary — it is never saved into a preset — and secret tags can never appear, so
+leaving a faction highlighted is safe.
+
+## Finding things
+
+**Find by tag** searches every body or construct carrying the tags you pick. Switch between bodies
+and constructs, set the scope to one system or all of them, search by name or browse the category
+bubbles, and stack several tags to narrow the results — a result must carry all of them. Inside a
+system it sorts by distance, which is how you answer "where is the nearest gas giant I can refuel
+at?".
+
+## Sharing
+
+A category — its tags, colours, applies-to list and rules — saves to a file and loads back, so you
+can flavour a starmap to your universe and hand the result to another GM. Categories also travel
+inside the starmap itself, so a shared map arrives already speaking its own language.

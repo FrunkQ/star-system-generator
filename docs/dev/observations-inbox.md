@@ -482,25 +482,12 @@ things the debt lines had wrong — see the note in [[D5]].
   model binaries and restores them on load (was already live since v2.1.396, now pinned by spec);
   engine definitions may carry `exhaust_color_hex` (pack data) to colour a ship's drive plume.
   A46 is internal-only (no reader-facing change).
-- **Tagging phase A (v2.1.392)** — a hand-added tag now SURVIVES a re-derive in every physics
-  namespace, and an override SUPPRESSES the derived tag of the same key rather than sitting beside
-  it. Twenty-five of thirty-four strip sites used to delete it. `docs/tags-guide.md` already promises
-  hand-added tags "survive re-processing, so the engine's auto-retagging never wipes your work" —
-  true as a promise, false in fact until now — and it should also say what an override DOES, because
-  winning the key is a rule a GM can rely on. Two save-contents changes ride along: a manual tag in a
-  derived namespace, and a free-text tag with a capital in it ("Smugglers", the Tags tab's own
-  example), used to be dropped by `importFixup` on export and now persist.
-- **Tagging phase A (v2.1.392)** — `docs/classification-and-tags.md`'s tag table wants a provenance
-  column: physics / rule / authored / manual / inherited / derived, and which survive a pass. The
-  `authored` class (generation's own claims — `spin/*`, `origin/*`, `orbit/retrograde`,
-  `orbit/double`, `traveller/*`) is newly NAMED, not newly behaved: it previously survived only
-  because no strip site happened to list it, which is a thin guarantee for something the spin pair
-  depends on.
+
+
 - **C9 (v2.1.410-beta)** - NO reader-facing change to the picture, by design and by measurement, but a REAL change to every number derived from a moon's position: `computeWorldPositions3D` now returns satellites in their parent's equatorial frame. Nothing user-facing describes the propagator, so no surface needs new prose; the changelog entry carries it. If `docs/dev/architecture-physics-tags-visuals.md` or the 3D design doc ever describe where the satellite frame is applied, they now name the propagator, not `holo/scene.ts`.
 - **E3/E1 (v2.1.411-beta)** - no reader-facing change. Developer-facing only: `vitest run` exits 0 again, and `src/setup.ts` answers root-relative fetches with a 404 rather than throwing.
 - **E2/E4 (v2.1.411-beta)** - no reader-facing change. The worktree-per-session recipe is in this file's standing rules; if a contributor-facing document ever describes how to work on this repo, it belongs there too.
 - **G8 GM panel (v2.1.413-beta)** - READER-FACING: the GM's read-only body block now shows a "Next Eclipse" row with the orbital rows, the same one the player views already had. Anywhere that lists what the GM inspector shows needs it; the row's own tooltip carries the honesty caveat (elements held fixed, no nodal precession, so it is when they next line up rather than an ephemeris).
-- **Tagging B/C (v2.1.408-421)** — READER-FACING, and the tag docs are now materially wrong rather than merely stale. `docs/tags-guide.md` is built around "Points of Interest" and "Constructs of Interest", which no longer exist: there is one **Settings → Tagging** section, one category editor, and a category is the unit (packs are gone). It also needs the three things that are new — a **per-tag colour** overriding its category's; **GM overrides**, where a hand-added tag in a physics namespace beats the derived one; and **secret tags** plus player-hidden categories, redacted from every player surface. `docs/classification-and-tags.md` still wants the provenance column from the phase-A line above, now including that a **generated** tag is removable and never re-derived (A44). Both are a rewrite rather than a patch, which is why they are banked rather than done inline.
 
 ## docs/dev/engine-map.md — the traps file (started 2026-08-04)
 
@@ -518,6 +505,15 @@ worse than a missing one, so fix it in the same commit as the code it describes.
 Why it should help the duplication problem specifically: the entries name what a thing is the single
 authority FOR, so a second implementation is visible as a contradiction rather than having to be
 noticed.
+
+- **Tagging A-D (v2.1.392-424)** — WRITTEN UP, debt cleared. `docs/tags-guide.md` fully rewritten
+  around the unified model (no PoI/CoI; category is the unit; provenance, per-tag colour, GM
+  overrides, secret tags, map highlights) and opening with what tags are FOR — the natural-language
+  layer between the physics and everything that reads it, so the physics never has to know about the
+  UI. `docs/classification-and-tags.md` gained the provenance table (origin x survives-what) and the
+  override/authored rules. Still outstanding elsewhere: `src/routes/physics/+page.svelte` has no
+  section on overrides, and `physicsTrace` now labels them but the physics PAGE does not explain the
+  mechanism.
 
 ## Standing rules any worker session must follow
 
