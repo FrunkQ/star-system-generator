@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.405-beta - 4th Aug 2026
+
+* G3: solid wireframe, seeded liveries, and the NASA starter hulls. (1) The -occ wireframe styles now OCCLUDE on ship models - a depth-only copy of the hull (polygon-offset back a hair) hides far-side wires and anything behind, the bodies' nested-occluder trick generalised to arbitrary geometry. (2) Three new procedural finishes, all seeded by the construct's id so two ships sharing a hull wear different liveries: Panelled hull (seam-and-vent plating painted in the ship's colour, box-projected onto UV-less meshes), Weathered (oxidation splotches and streaking), and Iridescent (three.js physical iridescence). (3) Six real public-domain NASA craft ship as starter hulls (ISS, Hubble, Cassini, Juno, Voyager, MRO - under 1 MB total, fetched on demand), picked from a dropdown in the model dialog with attribution prefilled. Credits added to About and the README, including three.js / meshoptimizer / Draco.
+
 ## v2.1.404-beta - 3rd Aug 2026
 
 * Real-sky import now uses LIVE archive data in the browser. Measured from the deployed site (and confirmed in the owner's console): the NASA Exoplanet Archive sends no CORS header, so direct browser queries are always blocked -- it was never intermittent. A small same-origin proxy (/api/realsky-tap, SELECT-on-pscomppars only) now forwards the query server-side, so imports are as fresh as the archive; the bundled snapshot remains the offline fallback and says which source answered. The About dialogue gains the archive's and SIMBAD's requested acknowledgements alongside the image credits.

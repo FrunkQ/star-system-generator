@@ -142,7 +142,7 @@
          style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
       {#if subjectModel}
         <ConstructModelGraphic model={subjectModel} tint={(subjectBody as any).icon_color || '#ffd24d'}
-          iconType={(subjectBody as any).icon_type} {mono} {interactive} />
+          iconType={(subjectBody as any).icon_type} seed={subjectBody.id} {mono} {interactive} />
       {:else}
         <BodyGraphic body={subjectBody} system={bodyGfxSystem}
           mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}

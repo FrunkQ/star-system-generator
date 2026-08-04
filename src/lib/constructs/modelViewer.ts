@@ -40,7 +40,132 @@ export interface ModelViewer {
 
 const EDGE_THRESHOLD_DEG = 25; // reads as panel lines (design §5); below it, curvature stays clean
 
-export type HullFinish = 'flat' | 'cel' | 'matcap' | 'blueprint';
+export type HullFinish = 'flat' | 'cel' | 'matcap' | 'blueprint' | 'plated' | 'patina' | 'iridescent';
+
+// Seeded rng for the generated liveries: the same construct always wears the same panels and
+// weathering, two ships sharing one hull each get their own - procedural variation is the whole
+// point of "a handful of models covers many ships" (design §5).
+function seededRng(seedStr: string): () => number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seedStr.length; i++) { h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), h | 1);
+    h ^= h + Math.imul(h ^ (h >>> 7), h | 61);
+    return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Box-project UVs onto non-indexed geometry: each triangle takes the two axes its face normal
+ *  least points along, scaled by the bounding box. No authored UVs needed - which is the whole
+ *  case, because a printing STL never has any. */
+function boxProjectUVs(geo: THREE.BufferGeometry, tiles = 3): void {
+  const pos = geo.getAttribute('position');
+  if (!pos) return;
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox!;
+  const size = new THREE.Vector3().subVectors(bb.max, bb.min);
+  const inv = new THREE.Vector3(1 / Math.max(1e-9, size.x), 1 / Math.max(1e-9, size.y), 1 / Math.max(1e-9, size.z));
+  const uv = new Float32Array(pos.count * 2);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
+  for (let t = 0; t < pos.count; t += 3) {
+    a.fromBufferAttribute(pos as THREE.BufferAttribute, t);
+    b.fromBufferAttribute(pos as THREE.BufferAttribute, t + 1);
+    c.fromBufferAttribute(pos as THREE.BufferAttribute, t + 2);
+    n.subVectors(b, a).cross(c.clone().sub(a));
+    const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+    for (let k = 0; k < 3; k++) {
+      const v = k === 0 ? a : k === 1 ? b : c;
+      let u2: number, v2: number;
+      if (ax >= ay && ax >= az) { u2 = (v.y - bb.min.y) * inv.y; v2 = (v.z - bb.min.z) * inv.z; }
+      else if (ay >= az) { u2 = (v.x - bb.min.x) * inv.x; v2 = (v.z - bb.min.z) * inv.z; }
+      else { u2 = (v.x - bb.min.x) * inv.x; v2 = (v.y - bb.min.y) * inv.y; }
+      uv[(t + k) * 2] = u2 * tiles;
+      uv[(t + k) * 2 + 1] = v2 * tiles;
+    }
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+
+/** PLATED: a seeded hull-plating sheet - panel rectangles with seams, tonal variation, a few
+ *  accent panels and vents - painted in shades of the ship's own colour. */
+function makePlatedTexture(tint: string, seed: string): THREE.Texture | null {
+  if (typeof document === 'undefined') return null;
+  const size = 512;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = size;
+  const ctx = cnv.getContext('2d');
+  if (!ctx) return null;
+  const rnd = seededRng(seed + '|plated');
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, size, size);
+  // Panel grid: uneven columns/rows, subdivided; each panel gets a tonal nudge, some get accents.
+  const cols = 5 + Math.floor(rnd() * 4);
+  const xs = [0]; for (let i = 1; i < cols; i++) xs.push(xs[i - 1] + (size - xs[i - 1]) * (0.5 + rnd() * 0.4) / (cols - i + 1));
+  xs.push(size);
+  for (let ci = 0; ci < xs.length - 1; ci++) {
+    let y = 0;
+    while (y < size) {
+      const h = size * (0.06 + rnd() * 0.18);
+      const shadeF = (rnd() - 0.5) * 0.3;
+      ctx.fillStyle = shade(tint, shadeF);
+      ctx.fillRect(xs[ci], y, xs[ci + 1] - xs[ci], h);
+      if (rnd() < 0.08) { // accent panel
+        ctx.fillStyle = shade(tint, rnd() < 0.5 ? 0.5 : -0.6);
+        ctx.fillRect(xs[ci] + 2, y + 2, (xs[ci + 1] - xs[ci]) * (0.3 + rnd() * 0.4), h - 4);
+      }
+      if (rnd() < 0.12) { // vent slats
+        ctx.strokeStyle = shade(tint, -0.7);
+        ctx.lineWidth = 2;
+        const vx = xs[ci] + (xs[ci + 1] - xs[ci]) * 0.2, vw = (xs[ci + 1] - xs[ci]) * 0.5;
+        for (let s = 0; s < 4; s++) { ctx.beginPath(); ctx.moveTo(vx, y + h * (0.25 + s * 0.15)); ctx.lineTo(vx + vw, y + h * (0.25 + s * 0.15)); ctx.stroke(); }
+      }
+      // seam
+      ctx.strokeStyle = shade(tint, -0.55);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(xs[ci] + 0.5, y + 0.5, xs[ci + 1] - xs[ci] - 1, h - 1);
+      y += h;
+    }
+  }
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/** PATINA: the ship's colour weathered - streaks, scorch, oxidation splotches. */
+function makePatinaTexture(tint: string, seed: string): THREE.Texture | null {
+  if (typeof document === 'undefined') return null;
+  const size = 512;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = size;
+  const ctx = cnv.getContext('2d');
+  if (!ctx) return null;
+  const rnd = seededRng(seed + '|patina');
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 60; i++) { // oxidation splotches
+    const r = 8 + rnd() * 60;
+    const g = ctx.createRadialGradient(rnd() * size, rnd() * size, 1, rnd() * size, rnd() * size, r);
+    const dark = shade(tint, -(0.2 + rnd() * 0.5));
+    g.addColorStop(0, dark + '');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.12 + rnd() * 0.22;
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+  ctx.globalAlpha = 0.18; // streaking, pulled one way like re-entry heating
+  for (let i = 0; i < 40; i++) {
+    const y = rnd() * size, len = 30 + rnd() * 160;
+    ctx.strokeStyle = shade(tint, rnd() < 0.7 ? -0.45 : 0.3);
+    ctx.lineWidth = 1 + rnd() * 3;
+    ctx.beginPath(); ctx.moveTo(rnd() * size, y); ctx.lineTo(rnd() * size * 0.2 + len, y + (rnd() - 0.5) * 8); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 
 // Cel ramp: a four-step grey gradient the toon material quantises lighting against. Generated,
 // not an asset - the whole §5 menu is procedural by design.
@@ -91,33 +216,42 @@ function getMatcap(tint: string): THREE.Texture | null {
  *  a GLB's authored materials untouched and tints only material-less sources. */
 export function buildDisplayModel(
   source: THREE.Object3D,
-  opts: { hadMaterials: boolean; tintHex?: string | null; orient?: [number, number, number, number] | null; finish?: HullFinish | null }
+  opts: { hadMaterials: boolean; tintHex?: string | null; orient?: [number, number, number, number] | null; finish?: HullFinish | null; seed?: string }
 ): THREE.Group {
   const work = source.clone(true);
   const finish: HullFinish | null = opts.finish ?? (opts.hadMaterials ? null : 'flat');
 
   if (finish) {
     const tint = opts.tintHex || '#ffd24d';
+    const seed = opts.seed || tint;
     const edgeDark = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, -0.55)), transparent: true, opacity: 0.55 });
     const edgeBright = new THREE.LineBasicMaterial({ color: new THREE.Color(shade(tint, 0.15)), transparent: true, opacity: 0.9 });
     const matcap = finish === 'matcap' ? getMatcap(tint) : null;
+    const livery = finish === 'plated' ? makePlatedTexture(tint, seed) : finish === 'patina' ? makePatinaTexture(tint, seed) : null;
     const fill: THREE.Material =
       finish === 'cel' ? new THREE.MeshToonMaterial({ color: new THREE.Color(tint), gradientMap: getCelRamp() })
       : finish === 'matcap' && matcap ? new THREE.MeshMatcapMaterial({ matcap })
       : finish === 'blueprint' ? new THREE.MeshBasicMaterial({ color: new THREE.Color(shade(tint, -0.82)), transparent: true, opacity: 0.4 })
+      : finish === 'plated' && livery ? new THREE.MeshStandardMaterial({ map: livery, flatShading: true, metalness: 0.3, roughness: 0.55 })
+      : finish === 'patina' && livery ? new THREE.MeshStandardMaterial({ map: livery, flatShading: true, metalness: 0.5, roughness: 0.75 })
+      : finish === 'iridescent' ? new THREE.MeshPhysicalMaterial({ color: new THREE.Color(shade(tint, -0.25)), metalness: 0.9, roughness: 0.28, iridescence: 1, iridescenceIOR: 1.6 })
       : new THREE.MeshStandardMaterial({ color: new THREE.Color(tint), flatShading: true, metalness: 0.15, roughness: 0.62 });
     // Which finishes carry panel lines: flat and cel take the dark crease edges, blueprint IS its
-    // bright edges over a ghost fill, matcap is a smooth metal and takes none.
-    const edge = finish === 'blueprint' ? edgeBright : finish === 'matcap' ? null : edgeDark;
+    // bright edges over a ghost fill; the livery finishes paint their own seams and the smooth
+    // metals (matcap, iridescent) take none.
+    const edge = finish === 'blueprint' ? edgeBright : (finish === 'flat' || finish === 'cel') ? edgeDark : null;
+    const needsFacets = finish === 'flat' || finish === 'cel' || finish === 'plated' || finish === 'patina';
     work.traverse((c) => {
       const mesh = c as THREE.Mesh;
       if (!mesh.isMesh || !mesh.geometry) return;
       let geo = mesh.geometry as THREE.BufferGeometry;
-      if (finish === 'flat' || finish === 'cel') {
+      if (needsFacets) {
         if (geo.index) geo = geo.toNonIndexed();
         geo.computeVertexNormals(); // per-face after de-index: the faceted look
         mesh.geometry = geo;
       }
+      // The livery finishes need UVs a printing mesh never has - box-project them from the shape.
+      if (livery) boxProjectUVs(geo);
       mesh.material = fill;
       if (edge) mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, EDGE_THRESHOLD_DEG), edge));
     });

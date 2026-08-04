@@ -1647,21 +1647,31 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (gen !== buildGen) return;
       const g = buildDisplayModel(parsed.object, {
         hadMaterials: ref.hadMaterials ?? true, tintHex: tint, orient: ref.orient ?? null,
-        finish: ref.finish ?? null
+        finish: ref.finish ?? null, seed: v.id
       });
       // F6 parity: the map's render style outranks any finish - a wireframe scene renders a
       // wireframe hull, exactly as it does every body. Baked at load because setRender rebuilds.
       if (renderStyle.startsWith('wire')) {
+        const occluded = renderStyle.endsWith('-occ');
         const wireMat = new THREE.MeshBasicMaterial({
           color: new THREE.Color(tint), wireframe: true, transparent: true,
-          opacity: renderStyle.includes('glow') ? 0.85 : 0.6
+          opacity: renderStyle.includes('glow') ? 0.85 : 0.6, depthWrite: occluded
         });
+        const occTargets: THREE.Mesh[] = [];
         g.traverse((c) => {
           const mesh = c as THREE.Mesh;
-          if (mesh.isMesh) mesh.material = wireMat;
+          if (mesh.isMesh) { mesh.material = wireMat; occTargets.push(mesh); }
           const line = c as THREE.LineSegments;
           if ((line as any).isLineSegments) line.visible = false; // crease edges double the wires
         });
+        if (occluded) {
+          // SOLID wireframe (the -occ styles): a depth-only copy of each mesh, pushed back a hair
+          // by polygon offset so near-side wires survive while the far side and anything behind
+          // the hull fail the depth test - the bodies' nested-occluder trick generalised to
+          // arbitrary geometry (a shrunken copy only works on a sphere).
+          const occMat = new THREE.MeshBasicMaterial({ colorWrite: false, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+          for (const mesh of occTargets) mesh.add(new THREE.Mesh(mesh.geometry, occMat));
+        }
       }
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)

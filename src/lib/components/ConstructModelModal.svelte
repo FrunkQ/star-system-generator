@@ -47,28 +47,59 @@
   });
   onDestroy(() => viewer?.dispose());
 
-  async function onFile(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
+  async function processBytes(name: string, bytes: ArrayBuffer) {
     busy = true; error = null; parsed = null; converted = null;
-    fileName = file.name;
-    uploadBytes = file.size;
-    if (!title) title = file.name.replace(/\.(glb|stl|obj)$/i, '');
+    fileName = name;
+    uploadBytes = bytes.byteLength;
     try {
-      const bytes = await file.arrayBuffer();
-      const p = await parseModel(file.name, bytes);
+      const p = await parseModel(name, bytes);
       const c = await convertParsedModel(p, bytes);
       // Preview the STORED bytes, not the upload - what the GM approves is what everyone sees.
       const stored = await parseModel('stored.glb', c.glb);
       parsed = p; converted = c;
-      viewer?.setObject(stored.object, { hadMaterials: p.hadMaterials, tintHex: construct.icon_color || '#ffd24d' });
+      viewer?.setObject(stored.object, { hadMaterials: p.hadMaterials, tintHex: construct.icon_color || '#ffd24d', finish: construct.model?.finish ?? null, seed: construct.id });
       viewer?.setOrient(orientArr);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Could not read that file.';
     } finally {
       busy = false;
-      input.value = '';
+    }
+  }
+
+  async function onFile(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!title) title = file.name.replace(/\.(glb|stl|obj)$/i, '');
+    await processBytes(file.name, await file.arrayBuffer());
+    input.value = '';
+  }
+
+  // G3 Phase 4: the bundled NASA starter hulls (static/models/nasa) - real public-domain craft,
+  // fetched on demand and run through the SAME convert path as an upload (they pass through
+  // byte-identical), with attribution prefilled from the manifest.
+  interface StarterEntry { id: string; file: string; name: string; lengthM: number; credit: string; license: string; sourceUrl: string }
+  let starters: StarterEntry[] = [];
+  let starterId = '';
+  onMount(async () => {
+    try {
+      const res = await fetch('/models/nasa/manifest.json');
+      if (res.ok) starters = (await res.json()).models ?? [];
+    } catch { /* no starter set in this deployment - the picker simply does not render */ }
+  });
+  async function onStarterPick() {
+    const entry = starters.find((s) => s.id === starterId);
+    if (!entry) return;
+    try {
+      const res = await fetch(`/models/nasa/${entry.file}`);
+      if (!res.ok) throw new Error('Could not fetch that starter hull.');
+      title = entry.name;
+      credit = entry.credit;
+      license = entry.license;
+      sourceUrl = entry.sourceUrl;
+      await processBytes(entry.file, await res.arrayBuffer());
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Could not fetch that starter hull.';
     }
   }
 
@@ -139,6 +170,17 @@
           {parsed ? 'Choose a different file…' : 'Choose a model file…'}
         </button>
         <input type="file" accept=".glb,.stl,.obj" bind:this={fileInput} on:change={onFile} style="display:none" />
+        {#if starters.length}
+          <div class="starter-row">
+            <span class="lbl">or a starter hull:</span>
+            <select bind:value={starterId} on:change={onStarterPick} disabled={busy}>
+              <option value="">Real spacecraft (NASA)&hellip;</option>
+              {#each starters as s}
+                <option value={s.id}>{s.name}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
 
         {#if converted && parsed}
           <div class="stats">
@@ -172,7 +214,8 @@
             <label for="mdl-license">Licence</label>
             <select id="mdl-license" bind:value={license}>
               <option value="">Unknown / personal use</option>
-              <option value="CC0">CC0 / Public domain</option>
+              <option value="Public domain">Public domain</option>
+              <option value="CC0">CC0</option>
               <option value="CC-BY">CC-BY (credit required)</option>
               <option value="Other">Other</option>
             </select>
@@ -228,6 +271,9 @@
   .drive-hint .fwd { color: #4ade80; }
   .form-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
   .pick { padding: 8px; }
+  .starter-row { display: flex; align-items: center; gap: 6px; }
+  .starter-row .lbl { font-size: 0.85em; color: #9aa4b4; white-space: nowrap; }
+  .starter-row select { flex: 1; min-width: 0; }
   .stats { font-size: 0.85em; color: #9aa4b4; display: flex; flex-direction: column; gap: 3px; }
   .stats .note { color: #7fb2d9; }
   .warn { font-size: 0.85em; color: #e0b352; }

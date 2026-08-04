@@ -389,7 +389,7 @@
       {#if subjectModel}
         <ConstructModelGraphic bind:this={mdlComp} model={subjectModel}
           tint={(subjectBody as any).icon_color || '#ffd24d'} iconType={(subjectBody as any).icon_type}
-          {mono} interactive={selectable} />
+          seed={subjectBody.id} {mono} interactive={selectable} />
       {:else}
         <BodyGraphic bind:this={gfxComp} body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
           ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex}

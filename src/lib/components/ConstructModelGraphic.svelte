@@ -21,6 +21,7 @@
   export let iconType: string | undefined = undefined; // for the store-miss glyph fallback
   export let mono = false;
   export let interactive = false;
+  export let seed = ''; // the construct's id - two ships sharing a hull each get their own livery
 
   let root: HTMLDivElement;
   let glCanvas: HTMLCanvasElement;
@@ -54,7 +55,7 @@
     try {
       const parsed = await parseModel('stored.glb', stored.bytes);
       if (want !== `${model.hash}|${displayTint}|${model.finish ?? ''}`) return;
-      viewer?.setObject(parsed.object, { hadMaterials: model.hadMaterials ?? true, tintHex: tintNow, finish: model.finish ?? null });
+      viewer?.setObject(parsed.object, { hadMaterials: model.hadMaterials ?? true, tintHex: tintNow, finish: model.finish ?? null, seed });
       viewer?.setOrient(model.orient ?? null);
       loadedKey = want;
     } catch {

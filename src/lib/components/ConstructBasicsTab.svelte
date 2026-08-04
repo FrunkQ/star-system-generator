@@ -195,8 +195,11 @@
           <select class="model-finish" bind:value={construct.model.finish} on:change={handleUpdate}
                   title="How the hull is shaded when the map render style is Filled">
             <option value={undefined}>Flat + panel lines</option>
+            <option value="plated">Panelled hull (seeded)</option>
+            <option value="patina">Weathered (seeded)</option>
             <option value="cel">Cel shaded</option>
             <option value="matcap">Brushed metal</option>
+            <option value="iridescent">Iridescent</option>
             <option value="blueprint">Blueprint</option>
           </select>
         {/if}
