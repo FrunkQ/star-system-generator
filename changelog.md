@@ -64,7 +64,7 @@ All notable changes are listed here:
 
 ## v2.1.426-beta - 4th Aug 2026
 
-* Map highlights reach the players. The GM's selection rides the same broadcast as the other live overrides, so badging a category or a tag shows up on the players' system map as it does on the GM's — one selection, both screens.
+* Map highlights reach the players' PRINTED/CRT system view. The GM's selection rides the same broadcast as the other live overrides. **Not yet the 3D holo or the 2D overhead player views, nor the player starmap** — those render through different components (HoloView, Starmap3DView) which have not been wired. The GM's own system map and starmap badge correctly.
 * A secret tag can never become a player badge, and that is now a test rather than an argument: highlighting names a category or a key, never a body, and a player view is handed the already-redacted snapshot, so the secret faction was gone before any marker existed. It still badges on the GM's own map, which is the point of keeping the two apart.
 
 ## v2.1.425-beta - 4th Aug 2026
