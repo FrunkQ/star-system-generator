@@ -41,6 +41,21 @@ describe('collectAttributions', () => {
     expect(blip.usedBy).toEqual(['Blip-A (Tau Ceti)']);
   });
 
+  it('credits a BODY photo, not only construct art', () => {
+    // Body pictures went uncredited for a while because the planet editor recorded no
+    // provenance - the collector always read them, so this pins the whole path.
+    const doc = { nodes: [
+      { id: 'mars', name: 'Mars', image: { url: 'assets/images/mars.jpg', credit: 'A Photographer', license: 'CC-BY', sourceUrl: 'https://pics.example/mars' } }
+    ] };
+    const [entry] = collectAttributions(doc);
+    expect(entry.kind).toBe('image');
+    expect(entry.usedBy).toEqual(['Mars']);     // no system name on a bare system save
+    expect(entry.credit).toBe('A Photographer');
+    const text = renderAttributions([entry], 'system.json');
+    expect(text).toContain('A Photographer');
+    expect(text).not.toContain('No provenance recorded');
+  });
+
   it('ignores remote and not-yet-packed images - only what the bundle carries', () => {
     const doc = { nodes: [
       { id: 'a', name: 'A', image: { url: 'https://example.com/x.jpg' } },

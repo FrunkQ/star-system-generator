@@ -580,11 +580,19 @@
     if (!file) return;
     try {
       const url = await fileToDownscaledDataUrl(file, 512);
-      body.image = { url, custom: true };
+      // Keep any provenance already recorded when the picture is replaced - the artist was
+      // credited once and a re-crop should not quietly anonymise them.
+      const prev = body.image ?? {};
+      body.image = { ...prev, url, custom: true };
       body = body;
       dispatch('update');
     } catch { alert('Could not read that image file.'); }
     finally { input.value = ''; }
+  }
+  // Provenance edits are ordinary body edits - dispatch so they save with everything else.
+  function handleImageAttrChange() {
+    body = body;
+    dispatch('update');
   }
   function removeCustomImage() {
     body.image = undefined; // processor re-derives the type image next pass
@@ -938,6 +946,26 @@
             {#if body.image?.custom}<button type="button" class="link-btn" on:click={removeCustomImage}>Remove (use type image)</button>{/if}
             <input type="file" accept="image/*" bind:this={imgInput} on:change={onImageUpload} style="display:none" />
         </div>
+        {#if body.image?.custom}
+            <!-- Provenance for an UPLOADED picture. It travels with the save (ATTRIBUTIONS.md in
+                 a save bundle), because a campaign gets handed to players and posted publicly -
+                 and CC-BY is an obligation, not a preference. -->
+            <div class="custom-image img-attr">
+                <input class="attr" type="text" placeholder="Artist or source" bind:value={body.image.credit} on:change={handleImageAttrChange} />
+                <select class="attr-lic" bind:value={body.image.license} on:change={handleImageAttrChange}>
+                    <option value={undefined}>Licence…</option>
+                    <option value="Own work">Own work</option>
+                    <option value="Public domain">Public domain</option>
+                    <option value="CC0">CC0</option>
+                    <option value="CC-BY">CC-BY</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input class="attr" type="text" placeholder="Source URL" bind:value={body.image.sourceUrl} on:change={handleImageAttrChange} />
+            </div>
+            {#if body.image.license === 'CC-BY' && !body.image.credit}
+                <span class="sub-label warn-note">CC-BY requires naming the author.</span>
+            {/if}
+        {/if}
     </div>
 </div>
 
@@ -1131,6 +1159,10 @@
   .compress-note { margin: 2px 0 0; font-size: 0.72em; color: var(--text-faint); line-height: 1.4; }
   .custom-image { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
   .custom-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+  /* Three small controls that must not push the panel wider than its column. */
+  .img-attr .attr { flex: 1 1 8rem; min-width: 0; font-size: 0.85em; padding: 2px 6px; }
+  .img-attr .attr-lic { font-size: 0.85em; padding: 2px 4px; }
+  .warn-note { color: var(--warning, #e0b352); }
   .sc-derived-val { min-width: 90px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
   .sc-derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
   .sc-ovr-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }

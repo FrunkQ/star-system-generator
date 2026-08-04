@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.433-beta - 4th Aug 2026
+
+* Uploaded BODY pictures can record their provenance too - credit, licence and source sit under the custom-image controls in the planet editor, matching the ship editor, and CC-BY without a named author is flagged. Body photos were the last uploaded asset that always landed in a save's ATTRIBUTIONS.md as anonymous. Replacing a picture keeps the credit already entered.
+
 ## v2.1.432-beta - 4th Aug 2026
 
 * FIX: "Edit model" opened on an empty preview. The dialog only ever showed a NEWLY chosen file, so a ship that already had a hull had nothing to edit - and its orientation and attribution came up blank as if it had never been set. It now loads what the construct actually has: the stored binary, its alignment, its drives, its credit and licence, with the title reading "Edit 3D Model". If the binary is not on this machine (someone else's campaign opened without its bundle) it says so instead of showing an empty frame.
