@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.404-beta - 3rd Aug 2026
+
+* Real-sky import now uses LIVE archive data in the browser. Measured from the deployed site (and confirmed in the owner's console): the NASA Exoplanet Archive sends no CORS header, so direct browser queries are always blocked -- it was never intermittent. A small same-origin proxy (/api/realsky-tap, SELECT-on-pscomppars only) now forwards the query server-side, so imports are as fresh as the archive; the bundled snapshot remains the offline fallback and says which source answered. The About dialogue gains the archive's and SIMBAD's requested acknowledgements alongside the image credits.
+
 ## v2.1.403-beta - 3rd Aug 2026
 
 * Import from the Real Sky: build a starmap straight from the astronomy catalogues. The New Starmap screen (now reorganised into example / bring-in / start-empty groups) gains an import dialogue with worked presets -- the Local Neighbourhood, an extended 30-light-year shell, a region around TRAPPIST-1, and Sagittarius A* imported as a single system with the ten best-measured S-stars swinging round the black hole on their real published orbits (S2: 16 years, e 0.884). Any SIMBAD name works as a custom centre. Only confirmed planets import, positions are true 3D positions, systems the bundled maps already curate are skipped and say so, and hosts missing catalogue data are skipped by name rather than invented. Live queries fall back to a bundled snapshot when offline, with the coverage limit stated.

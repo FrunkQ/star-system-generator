@@ -15,14 +15,33 @@ export const BUNDLED_CACHE_URL = '/realsky/pscomppars.json';
 export const BUNDLED_CACHE_MAX_LY = 12.7 * LY_PER_PC; // ~41.4 — the snapshot's own query bound
 
 // Load the archive rows for a region. Returns { rows, source, warning }.
-// `source` is 'live' or 'bundled'; `warning` is set when the bundled snapshot
-// cannot fully cover the requested region.
+// `source` is 'live', 'live-proxy' or 'bundled'; `warning` is set when the
+// bundled snapshot cannot fully cover the requested region.
+//
+// Order of attack, measured rather than assumed (2026-08-03): a DIRECT
+// browser query is always CORS-blocked by the archive (no ACAO header), so
+// in the app the real live path is the same-origin proxy /api/realsky-tap.
+// Direct is still tried first because it is the right path for node
+// (tests, the build kit) where CORS does not exist and no server is running.
 export async function loadArchiveRows(region, { fetchImpl = fetch, signal } = {}) {
+  const adql = archivePlanetsAdql(region);
   try {
-    const rows = await runTap('archive', archivePlanetsAdql(region), { fetchImpl, signal });
+    const rows = await runTap('archive', adql, { fetchImpl, signal });
     return { rows, source: 'live', warning: null };
-  } catch (liveError) {
-    if (liveError?.name === 'AbortError') throw liveError;
+  } catch (directError) {
+    if (directError?.name === 'AbortError') throw directError;
+    try {
+      const res = await fetchImpl(`/api/realsky-tap?${new URLSearchParams({ query: adql })}`, { signal });
+      if (res.ok) return { rows: await res.json(), source: 'live-proxy', warning: null };
+    } catch (proxyError) {
+      if (proxyError?.name === 'AbortError') throw proxyError;
+    }
+    return loadBundledSnapshot(region, { fetchImpl, signal, liveError: directError });
+  }
+}
+
+async function loadBundledSnapshot(region, { fetchImpl, signal, liveError }) {
+  {
     const res = await fetchImpl(BUNDLED_CACHE_URL, { signal });
     if (!res.ok) {
       throw new Error(

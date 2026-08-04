@@ -38,7 +38,7 @@
 
   let rows: any[] | null = null;
   let rowsCentreKey = '';
-  let source: 'live' | 'bundled' | null = null;
+  let source: 'live' | 'live-proxy' | 'bundled' | null = null;
   let sourceWarning: string | null = null;
   let loading = false;
   let loadError: string | null = null;
@@ -146,7 +146,7 @@
       skipped: preview.skipped,
       fillOut,
       name: presetKey === 'custom' ? `Real sky: ${radiusLy} ly around ${centre.label}` : (p?.name ?? 'Real-sky import'),
-      description: `Real-sky import: ${radiusLy} light years around ${centre.label}. Confirmed planets from the NASA Exoplanet Archive (${source === 'live' ? 'live query' : 'bundled snapshot'}); positions are true 3D positions.${fillOut ? ' Filled out with generated worlds (tagged origin/generated) around the confirmed anchors.' : ' Confirmed planets only — nothing invented.'}`
+      description: `Real-sky import: ${radiusLy} light years around ${centre.label}. Confirmed planets from the NASA Exoplanet Archive (${source?.startsWith('live') ? 'live query' : 'bundled snapshot'}); positions are true 3D positions.${fillOut ? ' Filled out with generated worlds (tagged origin/generated) around the confirmed anchors.' : ' Confirmed planets only — nothing invented.'}`
     });
   }
 
@@ -245,7 +245,7 @@
           {#if preview.skipped.length}
             · {preview.skipped.length} host{preview.skipped.length === 1 ? '' : 's'} missing data (skipped, never invented)
           {/if}
-          — {source === 'live' ? 'live archive' : 'bundled snapshot'}
+          — {source?.startsWith('live') ? 'live archive' : 'bundled snapshot'}
         </p>
         {#if sourceWarning}<p class="warning">{sourceWarning}</p>{/if}
         {#if mode === 'append'}

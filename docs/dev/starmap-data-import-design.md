@@ -84,10 +84,16 @@ Practical notes, learned from the build kit:
   as "minimum mass" in descriptions.
 - SIMBAD's `ident` table resolves any alias, but component stars need care ("40 Eri A" fails,
   "GJ 166 A" works). Resolve failures must be user-visible, not silent drops.
-- All three TAP services answer JSON over plain HTTPS GET — fetchable from the browser if the
-  service sends CORS headers (Exoplanet Archive and SIMBAD do; Gaia needs checking — if any
-  source is CORS-hostile we need a tiny serverless proxy or "download the JSON and drop it
-  here" fallback, same UX as the .ubox/.sc importers).
+- All three TAP services answer JSON over plain HTTPS GET, but browser access is decided by
+  CORS, and it was MEASURED on 2026-08-03 from the deployed beta origin rather than assumed:
+  **SIMBAD sends `Access-Control-Allow-Origin: *` and works live from the browser** (name
+  resolution is live today); **the NASA Exoplanet Archive sends no CORS header and is ALWAYS
+  blocked from a browser** — not intermittently unavailable, deterministically so. Region
+  imports therefore run on the bundled snapshot (`static/realsky/pscomppars.json`, refreshed
+  by the kit's fetch each release), which is complete for confirmed planets to ~41 ly. For
+  live freshness beyond that, the fix is a tiny same-origin proxy (a Vercel API route
+  forwarding to the TAP service, ~15 lines) — also the route Gaia will need if its CORS
+  turns out the same.
 - Rate limits are generous but real: batch by region query, never per-star loops (the build
   kit's per-star SIMBAD loop is fine for 54 stars, wrong for 2,000 — use one ADQL cone query).
 

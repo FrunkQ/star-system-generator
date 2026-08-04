@@ -43,6 +43,9 @@ Built with <a href="https://kit.svelte.dev/" target="_blank" rel="noopener noref
 
 <hr>
 
+<p><strong>Astronomy Data:</strong></p>
+<p>Real-sky imports and the bundled starmaps make use of the <a href="https://exoplanetarchive.ipac.caltech.edu/" target="_blank" rel="noopener noreferrer">NASA Exoplanet Archive</a>, which is operated by the California Institute of Technology, under contract with the National Aeronautics and Space Administration under the Exoplanet Exploration Program, and of the <a href="https://simbad.cds.unistra.fr/simbad/" target="_blank" rel="noopener noreferrer">SIMBAD database</a>, operated at CDS, Strasbourg, France. A snapshot of the archive's confirmed-planet set ships with the app; star-name resolution queries SIMBAD live. S-star orbital elements: Gillessen et al. 2017, refined by the GRAVITY Collaboration.</p>
+
 <p><strong>Image Attributions:</strong></p>
 <p>Planet Images: Courtesy of Pablo Carlos Budassi, used under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> license. Source: <a href="https://pablocarlosbudassi.com/2021/02/planet-types.html" target="_blank" rel="noopener noreferrer">pablocarlosbudassi.com</a>.</p>
 <p>Star Images: Sourced from the <a href="https://beyond-universe.fandom.com/wiki/" target="_blank" rel="noopener noreferrer">Beyond Universe Wiki</a> on Fandom, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a> license.</p>
