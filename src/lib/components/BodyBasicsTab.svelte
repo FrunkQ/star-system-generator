@@ -492,6 +492,19 @@
 
   function handleUpdate() { dispatch('update'); }
 
+  // A44 / B10. `spin/axis-inferred` and `spin/period-inferred` say "this number was invented, not
+  // measured" — a promise to the reader that an inferred value is distinguishable from a real one.
+  // The moment the GM types a real one in, that claim stops being true, and a tag asserting it is
+  // simply wrong. Nothing re-derives these (they are `authored`), so nothing would ever clear them:
+  // retiring the claim is the edit's job.
+  function clearSpinProvenance(which: 'axis' | 'period') {
+    const key = which === 'axis' ? 'spin/axis-inferred' : 'spin/period-inferred';
+    if (!body.tags?.some((t) => t.key === key)) return;
+    body.tags = body.tags.filter((t) => t.key !== key);
+    body = body;
+  }
+  function onTiltInput() { clearSpinProvenance('axis'); handleUpdate(); }
+
   // Rotational deformation (E4): the bulk density sets a hard BREAK-UP spin — spin any faster and the
   // equator sheds mass into a ring. Derived live from density + the day length, so it tracks composition
   // edits too. We surface the shape and hard-clamp the day length at the break-up period.
@@ -536,6 +549,7 @@
     body.rotation_period_hours = +(isRetrograde ? -mag : mag).toFixed(2);
     body.tidallyLocked = opts.locked;
     (body as any).tidalLockManual = true; // any hand-set rate/lock is a manual pin
+    clearSpinProvenance('period');          // a typed period is no longer an inferred one (A44)
     body = body;
     dispatch('update');
   }
@@ -895,9 +909,9 @@
         <label for="tilt">Axial Tilt: {(body.axial_tilt_deg ?? 0).toFixed(0)}°</label>
         <div class="tilt-row">
             <input class="tilt-slider" type="range" id="tilt" min="0" max="180" step="1"
-                   bind:value={body.axial_tilt_deg} on:input={handleUpdate} />
+                   bind:value={body.axial_tilt_deg} on:input={onTiltInput} />
             <input class="tilt-num" type="number" step="0.1" min="0" max="180"
-                   bind:value={body.axial_tilt_deg} on:input={handleUpdate} />
+                   bind:value={body.axial_tilt_deg} on:input={onTiltInput} />
         </div>
     </div>
 
