@@ -1,10 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
-  import { describeTag, tagSource, formatTagValue } from '$lib/tags/tagPresentation';
-  import { poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
+  import { describeTag, formatTagValue } from '$lib/tags/tagPresentation';
+  import { poiPacks } from '$lib/physics/reasonsToVisit';
   import { customTagVocabulary } from '$lib/tags/customTags';
-  import { canonicalTagKey, tagSlugSegment } from '$lib/tags/tagLifecycle';
+  import { canonicalTagKey, tagSlugSegment, tagOrigin, PHYSICS_NAMESPACES } from '$lib/tags/tagLifecycle';
+  import { tagCategories, categoriesFor } from '$lib/tags/tagCategories';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -15,7 +16,8 @@
   let newCat = 'custom';
   let newName = '';
   let newValue = '';
-  $: cats = activeCategories($poiPacks);
+  // Only categories that apply to THIS kind of object — a ship's Purpose has no business on a moon.
+  $: cats = categoriesFor($tagCategories, (body.roleHint as any) || 'planet');
   // Both spellings come from tagLifecycle so the key the preview shows is the key that gets stored:
   // a whole key for the free-text path (slashes kept, so `faction/red` still works), one segment for
   // the category path. Previously the custom path stored the raw text, which is how "Smugglers" and
@@ -64,31 +66,57 @@
       if (!key || (newCat !== 'custom' && !tagSlugSegment(newName))) return;
       if (!body.tags) body.tags = [];
       if (!body.tags.some((t) => t.key === key)) {
-          // manual:true marks it as the player's own — it survives the reasons re-tag pass even when
-          // filed under an existing category, and always reads as "Yours" (removable).
-          body.tags = [...body.tags, { key, value: newValue || undefined, manual: true }];
+          // manual:true marks it as the player's own — it survives every re-derive pass even when
+          // filed under a physics namespace, and always reads as yours (removable). `override` says
+          // it sits in a namespace the engine derives, so the UI can be honest that the physics did
+          // not produce it and may disagree with it.
+          const override = isPhysicsNs(key) || undefined;
+          body.tags = [...body.tags, { key, value: newValue || undefined, manual: true, override } as any];
           dispatch('update');
       }
       newName = ''; newValue = '';
   }
 
-  // Group the body's tags by SOURCE so the player can see where each came from: their own first,
-  // then PoI-rule tags (changeable via the pack) and physics tags (fixed) under category headings.
-  // A manual:true tag is always "Yours" regardless of its namespace.
-  interface TagItem { key: string; value?: string; label: string; color: string; textColor: string; desc: string; source?: string; }
+  // Group by real PROVENANCE, from tagLifecycle — not by guessing at the namespace.
+  //
+  // Inbox A44: this used to ask `tagSource(key)`, which reads the namespace and knows only "PoI or
+  // physics". A generator-written tag like `spin/axis-inferred` therefore landed in physics and wore
+  // the red "derived from the physics — fixed, recomputed every run" lock. Every word of that was
+  // wrong: NOTHING re-derives it, it is the generator's own claim, and the GM can legitimately delete
+  // it. A tag that misreports where it came from is worse than an unexplained one, because the reader
+  // has no reason to doubt it — so provenance now comes from the one module that actually knows.
+  interface TagItem { key: string; value?: string; label: string; color: string; textColor: string; desc: string; source?: string; secret?: boolean; }
   $: groups = (() => {
-    const manual: TagItem[] = [];
+    const manual: TagItem[] = [];      // hand-added, including overrides
+    const overrides: TagItem[] = [];   // hand-added INSIDE a physics namespace
+    const authored: TagItem[] = [];    // the generator's own claims — nothing re-derives them
     const poi: Record<string, TagItem[]> = {};
     const physics: Record<string, TagItem[]> = {};
     for (const t of body.tags ?? []) {
       const info = describeTag(t.key);
-      const item: TagItem = { key: t.key, value: t.value, label: info.label, color: info.color, textColor: info.textColor || '#fff', desc: info.description, source: t.source };
-      const src = t.manual ? 'manual' : tagSource(t.key);
-      if (src === 'manual') manual.push(item);
-      else { const bucket = src === 'poi' ? poi : physics; (bucket[info.group] ||= []).push(item); }
+      const item: TagItem = {
+        key: t.key, value: t.value, label: info.label, color: info.color,
+        textColor: info.textColor || '#fff', desc: info.description, source: t.source,
+        secret: (t as any).secret
+      };
+      switch (tagOrigin(t)) {
+        case 'manual':
+          ((t as any).override || isPhysicsNs(t.key) ? overrides : manual).push(item);
+          break;
+        case 'authored': authored.push(item); break;
+        case 'rule': (poi[info.group] ||= []).push(item); break;
+        default: (physics[info.group] ||= []).push(item); break;   // physics | inherited | derived
+      }
     }
-    return { manual, poi, physics };
+    return { manual, overrides, authored, poi, physics };
   })();
+  const isPhysicsNs = (key: string) => PHYSICS_NAMESPACES.some((n) => key.startsWith(`${n.id}/`));
+
+  function toggleSecret(key: string) {
+    if (!body.tags) return;
+    body.tags = body.tags.map((t) => t.key === key ? { ...t, secret: (t as any).secret ? undefined : true } as any : t);
+    dispatch('update');
+  }
   const sortedGroups = (r: Record<string, TagItem[]>) => Object.keys(r).sort();
 
   // Which rule seeded a tag (Tag.source = 'rule:<id>') — so the mouseover says exactly where it came from
@@ -115,7 +143,47 @@
         <h5 class="src-head manual-head">Yours</h5>
         <div class="tags-list">
           {#each groups.manual as t (t.key)}
-            <button class="tag-chip active" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Your tag — click to remove'} on:click={() => removeTag(t.key)}>
+            <button class="tag-chip active" class:secret={t.secret} style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Your tag — click to remove' + (t.secret ? '\nSECRET: players never see this one.' : '')} on:click={() => removeTag(t.key)}>
+              {#if t.secret}<span class="eye" title="Hidden from players">◍</span>{/if}
+              {t.label}{#if formatTagValue(t.key, t.value)}: {formatTagValue(t.key, t.value)}{/if} <span class="x">×</span>
+            </button>
+            <button class="secret-btn" title={t.secret ? 'Visible to players — click to hide' : 'Hide from players'} on:click={() => toggleSecret(t.key)}>{t.secret ? 'hidden' : 'hide'}</button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    <!-- GM overrides: hand-added INSIDE a namespace the engine derives. -->
+    {#if groups.overrides.length}
+      <div class="tag-group">
+        <h5 class="src-head override-head">GM override <span class="src-note">· may not respect the physics</span></h5>
+        <p class="grp-note">
+          You added these by hand in a namespace the engine derives. They survive every re-derive and
+          the physics will not argue — but it did not produce them, and they may contradict it.
+          <a href="/physics" target="_blank" rel="noreferrer">How the physics tags work</a>.
+        </p>
+        <div class="tags-list">
+          {#each groups.overrides as t (t.key)}
+            <button class="tag-chip active override" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Your override — the engine did not derive this. Click to remove.'} on:click={() => removeTag(t.key)}>
+              {t.label}{#if formatTagValue(t.key, t.value)}: {formatTagValue(t.key, t.value)}{/if} <span class="x">×</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    <!-- Generated: the generator's own claims. Inbox A44 — NOT physics, and not locked. -->
+    {#if groups.authored.length}
+      <div class="tag-group">
+        <h5 class="src-head authored-head">Generated <span class="src-note">· not re-derived</span></h5>
+        <p class="grp-note">
+          Written when this body was generated or imported, recording something the physics cannot work
+          out for itself — an inferred spin, a captured orbit, a world invented to fill out a real star.
+          Nothing re-creates these, so removing one removes it for good.
+        </p>
+        <div class="tags-list">
+          {#each groups.authored as t (t.key)}
+            <button class="tag-chip active" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Recorded at generation — nothing re-derives it. Click to remove.'} on:click={() => removeTag(t.key)}>
               {t.label}{#if formatTagValue(t.key, t.value)}: {formatTagValue(t.key, t.value)}{/if} <span class="x">×</span>
             </button>
           {/each}
@@ -161,9 +229,20 @@
     <label class="fld">Category
       <select bind:value={newCat}>
         <option value="custom">Custom</option>
-        {#each cats as c}<option value={c.id}>{c.label}</option>{/each}
+        {#each cats as c}<option value={c.id}>{c.longName}</option>{/each}
+        <!-- The engine's own namespaces, so a GM can force one the physics did not derive. -->
+        <optgroup label="Physics (GM override)">
+          {#each PHYSICS_NAMESPACES as n}<option value={n.id}>{n.label}</option>{/each}
+        </optgroup>
       </select>
     </label>
+    {#if isPhysicsNs(previewKey)}
+      <p class="override-warn">
+        The engine derives <code>{newCat}/…</code> itself. Adding one here overrides it: it will survive
+        every re-derive and suppress the tag the physics would have written — which may be exactly what
+        you want, and may contradict the physics.
+      </p>
+    {/if}
     {#if availableInCat.length}
       <div class="avail-row">
         <span class="avail-lbl">{newCat === 'custom' ? 'Reuse from this starmap:' : 'Available:'}</span>
@@ -195,6 +274,16 @@
   .manual-head { color: var(--link, #6aa0d8); }
   .poi-head { color: #e0973a; }
   .physics-head { color: var(--text-faint); }
+  .override-head { color: #d08a4a; }
+  .authored-head { color: #8fa8c8; }
+  .grp-note { margin: 0 0 4px; font-size: 0.7em; color: var(--text-faint); line-height: 1.35; }
+  .grp-note a { color: var(--link, #6aa0d8); }
+  .override-warn { margin: 0; font-size: 0.7em; color: #d08a4a; line-height: 1.35; }
+  .tag-chip.override { outline: 1px dashed rgba(255,255,255,0.45); outline-offset: -2px; }
+  .tag-chip.secret { opacity: 0.85; }
+  .eye { font-size: 0.85em; opacity: 0.9; }
+  .secret-btn { border: 1px solid var(--border); background: transparent; color: var(--text-faint); border-radius: 3px; font-size: 0.62em; padding: 1px 4px; cursor: pointer; align-self: center; }
+  .secret-btn:hover { color: var(--text); }
   .tags-list { display: flex; flex-wrap: wrap; gap: 5px; }
   .tag-chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; gap: 5px; color: #fff; }
   .tag-chip.active:hover { filter: brightness(1.12); }

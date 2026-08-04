@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.421-beta - 4th Aug 2026
+
+* **A44 — a generated tag no longer claims the physics made it.** Tags like `spin/axis-inferred` (this obliquity was inferred, not measured) or `origin/generated` (this world was invented to fill out a real star) were shown under a red padlock reading "derived from the physics — fixed, recomputed every run". Every word was wrong: nothing re-derives them, they are the generator's own record, and you can legitimately delete one. They now sit under **Generated**, removable, saying so. The Newton panel — the one that claims to show its working — was making the same misattribution and now names them too.
+* **You can override the physics.** Pick a physics namespace on any body's Tags tab (Geology, Tidal, Aurora, Habitability…) and add a tag by hand. It survives every re-derive, suppresses the tag the engine would have written, and drives everything the real one drives — visuals, rules, find-by-tag. It is grouped as a **GM override** and labelled as possibly contradicting the physics, because it might.
+* **Secret tags.** Mark any hand-added tag secret and it never reaches a player — not the catalogue, not a player view, not the holo table, not a printed report. A whole category can be hidden the same way. Redaction happens at the single point every player surface reads.
+* B38: the habitability pass cleared its own tag namespace in two separate branches, which is how the two came to disagree about hand-added tags. It clears once now, where the pass begins.
+
 ## v2.1.420-beta - 4th Aug 2026
 
 * The GM's data block now shows the ship burning: the 3D portrait lights the same plume the map draws, in the drive's authored exhaust colour, whenever the ship is under thrust at the display clock - so scrubbing a transit shows the burn, the coast, and the braking burn in turn. The portrait is larger, drag-to-spin, and the ship stays centred while the plume is free to run off the edge.

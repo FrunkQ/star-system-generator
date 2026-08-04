@@ -17,7 +17,13 @@ export interface Visibility {
 // `origin` states where a tag came from and therefore what may delete it — see tags/tagLifecycle.ts,
 // which is the only place that interprets it. It is OPTIONAL and inferred from the flags below when
 // absent, so the existing writers did not have to change; set it explicitly on new ones.
-export interface Tag { key: string; value?: string; ns?: string; origin?: 'physics' | 'rule' | 'authored' | 'manual' | 'inherited' | 'derived'; manual?: boolean; coi?: boolean; inherited?: boolean; source?: string; }
+export interface Tag {
+  key: string; value?: string; ns?: string;
+  origin?: 'physics' | 'rule' | 'authored' | 'manual' | 'inherited' | 'derived';
+  override?: true;   // manual, inside a namespace the engine derives — it wins that key
+  secret?: true;     // never reaches a player surface (see tags/tagLifecycle redactTagsForPlayers)
+  manual?: boolean; coi?: boolean; inherited?: boolean; source?: string;
+}
 
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;

@@ -3,6 +3,9 @@ import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, 
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
 import { systemProcessor } from '../core/SystemProcessor';
+import { get } from 'svelte/store';
+import { redactTagsForPlayers } from '../tags/tagLifecycle';
+import { tagCategories } from '../tags/tagCategories';
 
 /**
  * Recursively calculates a node's average orbital distance (semi-major axis) from the root star in AU.
@@ -70,9 +73,17 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
   }
 
   // 2. Filter and Sanitize
+  const categories = get(tagCategories);
   playerSystem.nodes = playerSystem.nodes.filter((node: any) => !hiddenIds.has(node.id)).map((node: CelestialBody | Barycenter) => {
       // Remove GM-only fields
       delete (node as any).gmNotes;
+
+      // Secret tags, and every tag of a player-hidden category, never leave the GM's screen. Done
+      // HERE because every player surface reads this snapshot — doing it per-surface is how one of
+      // them ends up leaking.
+      if (Array.isArray((node as any).tags)) {
+        (node as any).tags = redactTagsForPlayers((node as any).tags, categories);
+      }
       // A construct's cargo MANIFEST used to be deleted here (A27). REVERSED by decision, 2026-08-01:
       // it now travels and the "Live readings" toggle governs whether a reader sees it, exactly as it
       // governs the cargo tonnage the manifest describes. A27's reasoning — "a star catalogue would

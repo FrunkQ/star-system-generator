@@ -9,6 +9,7 @@ import { atmosphereProfile } from './atmosphereProfile';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
 import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
+import { tagOrigin } from '$lib/tags/tagLifecycle';
 import { auroraEmitter } from './aurora';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { beltInnerEdgeRadii, radiationHazardBucket, lethalDoseTime, radiationPlace, orbitalRadiationPlace } from './radiation';
@@ -606,7 +607,16 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   const tags: TagProvenance[] = (body.tags ?? []).map((t) => {
     const info = describeTag(t.key);
     const ns = t.key.split('/')[0];
-    const layer = t.key.includes('/') ? (NS_LAYER[ns] ?? 'Other') : (FLAT_LAYER[t.key] ?? 'Other');
+    // PROVENANCE FIRST, namespace second (inbox A44). This panel's whole claim is that it shows the
+    // working, so attributing a tag to a physics layer that did not produce it is the worst error it
+    // can make. A hand-added override and a generator's own claim both live in physics namespaces and
+    // neither is derived by the layer that owns the namespace — say so instead of guessing from the key.
+    const origin = tagOrigin(t);
+    const layer = origin === 'manual'
+      ? 'GM override — not derived'
+      : origin === 'authored'
+        ? 'Recorded at generation — not re-derived'
+        : (t.key.includes('/') ? (NS_LAYER[ns] ?? 'Other') : (FLAT_LAYER[t.key] ?? 'Other'));
     return { key: t.key, label: info.label, description: info.description, layer, color: info.color };
   });
 

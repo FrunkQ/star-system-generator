@@ -1301,7 +1301,13 @@ export class SystemProcessor implements ISystemProcessor {
 
     private calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG, pack: RulePack) {
         if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;
-    
+
+        // ONE clear, at the top of the pass that owns the namespace (inbox B38). It used to happen in
+        // two places — the no-surface guard below and the main scoring path — which is how the two
+        // branches came to disagree about hand-added tags: a rule applied to one was silently absent
+        // from the other. The pass owns `habitability/*`, so the pass clears it, once, here.
+        planet.tags = stripForReprocess(planet.tags, ['habitability/']);
+
         // Plateau Scoring: Max score within [min, max], linear falloff outside
         const scoreFromPlateau = (value: number, minOpt: number, maxOpt: number, falloff: number) => {
             if (value >= minOpt && value <= maxOpt) return 1.0;
@@ -1339,7 +1345,6 @@ export class SystemProcessor implements ISystemProcessor {
         const hasSolidSurface = habMakeup.gas <= 0.5;
         if (!hasSolidSurface) {
             planet.habitabilityScore = 0;
-            planet.tags = stripForReprocess(planet.tags, ['habitability/']);
             emit(planet.tags, { key: 'habitability/none' });
             // The Bio tab still needs something to render, and "no surface to score" is a better
             // answer than a blank panel or a silent 50.
@@ -1455,8 +1460,7 @@ export class SystemProcessor implements ISystemProcessor {
         const isAlienHabitable = planet.habitabilityScore > 40 && factors.solvent > 0; // needs SOME usable solvent
         const isSuperHabitable = planet.habitabilityScore > 100; // better-than-Earth (only super-habitable worlds)
 
-        // Clear old habitability tags before adding new ones
-        planet.tags = stripForReprocess(planet.tags, ['habitability/']);
+        // (Cleared once at the top of the pass — B38.)
 
         let tier: string;
         if (isSuperHabitable) tier = 'habitability/super';

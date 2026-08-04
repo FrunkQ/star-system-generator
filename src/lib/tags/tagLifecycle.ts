@@ -39,6 +39,35 @@ export type TagOrigin = 'physics' | 'rule' | 'authored' | 'manual' | 'inherited'
 // `orbit/spin-orbit-resonance` are re-derived every pass by the processor's lock model.
 const AUTHORED = ['spin/', 'origin/', 'traveller/', 'orbit/retrograde', 'orbit/double'];
 
+/**
+ * The namespaces the engine derives, offered to a GM who wants to OVERRIDE one by hand — say a
+ * volcanic moon the physics does not think is volcanic. An override is a manual tag, so it survives
+ * the pass that would otherwise re-derive the namespace, and it suppresses the derived tag of the
+ * same key rather than sitting beside it.
+ *
+ * This is deliberately a curated list rather than every namespace that exists: these are the ones a
+ * GM has a reason to force, and each one drives something visible (a renderer feature, a rule input,
+ * a find-by-tag result).
+ */
+export const PHYSICS_NAMESPACES: { id: string; label: string }[] = [
+  { id: 'geology', label: 'Geology' },
+  { id: 'tidal', label: 'Tidal' },
+  { id: 'climate', label: 'Climate' },
+  { id: 'weather', label: 'Weather' },
+  { id: 'aurora', label: 'Aurora' },
+  { id: 'magnetic', label: 'Magnetism' },
+  { id: 'shape', label: 'Shape' },
+  { id: 'structure', label: 'Structure' },
+  { id: 'surface', label: 'Surface' },
+  { id: 'volatiles', label: 'Volatiles' },
+  { id: 'thermal', label: 'Thermal' },
+  { id: 'habitability', label: 'Habitability' },
+  { id: 'hazard', label: 'Hazard' },
+  { id: 'flight', label: 'Flight' },
+  { id: 'activity', label: 'Activity' }
+];
+export const isPhysicsNamespace = (id: string): boolean => PHYSICS_NAMESPACES.some((n) => n.id === id);
+
 // TAG KEYS ARE CASE-INSENSITIVE, and the way to make that true everywhere is to have ONE spelling
 // rather than to compare loosely in a dozen places. `Smugglers`, `smugglers` and `SMUGGLERS` are one
 // tag, stored lowercase; `describeTag` title-cases it back for display, so the reader still sees
@@ -168,6 +197,27 @@ export function stripRuleTags(tags: Tag[] | undefined, categoryPrefixes: readonl
  * `weather/precipitation` — see tagConsistency.spec.ts, which requires several of a thing to be
  * several tags rather than one delimited value). Those sites push directly.
  */
+/**
+ * Strip everything a player must not see: a tag marked `secret`, and every tag belonging to a
+ * category marked `playerHidden`.
+ *
+ * ONE place does this, and it is called from `computePlayerSnapshot` — the single point every player
+ * surface already flows through (the catalogue, the player views, the holo table, the broadcast, the
+ * printed report). A second redaction site is how a leak happens: one surface gets the fix and
+ * another does not, and nothing reports the difference.
+ */
+export function redactTagsForPlayers(
+  tags: Tag[] | undefined,
+  categories: { id: string; playerHidden?: boolean }[]
+): Tag[] {
+  const hidden = new Set(categories.filter((c) => c.playerHidden).map((c) => c.id));
+  return (tags ?? []).filter((t) => {
+    if (t.secret) return false;
+    const ns = canonicalTagKey(t.key).split('/')[0];
+    return !hidden.has(ns);
+  });
+}
+
 export function emit(tags: Tag[], tag: Tag): void {
   const key = canonicalTagKey(tag.key);
   if (!tags.some((t) => canonicalTagKey(t.key) === key)) tags.push(tag);
