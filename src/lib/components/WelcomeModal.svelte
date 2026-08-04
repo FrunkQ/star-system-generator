@@ -20,11 +20,12 @@
     { title: 'Player views', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — redacted, styled, and updating as you play." },
     { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system, with orbits, tilts and moons where the physics puts them.' },
     { title: 'Starmaps have depth', blurb: 'Systems carry a z-axis, so distances are true in three dimensions. If you prefer a flat map, everything still works exactly as it did in 2D.' },
+    { title: 'Your own stars in the sky', blurb: 'The systems on your starmap appear as real stars behind the 3D view — each at its true direction, brightness and colour — so the constellations a party sees from one world are made of the places they can actually fly to. Player views can show them too.' },
     { title: '3D ships', blurb: 'Bring your own models: constructs can be shown as real 3D craft.' },
     { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
     { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — real stars at true positions, confirmed planets only, or filled out with plausible worlds around them.' },
     { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
-    { title: 'Virtual tabletop integration', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and others are in testing.' },
+    { title: 'Virtual tabletop integration', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and Foundry are in testing.' },
     { title: 'Sharper generation', blurb: 'Procedural systems have been retuned to sit better inside the new physics.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     { title: 'Many improvements and fixes', blurb: 'Hundreds of smaller changes throughout — the changelog has every one, build by build.' }
