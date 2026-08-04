@@ -20,35 +20,31 @@ import { starClasses } from './stars.mjs';
 import { defaultMakeup, estimateRadiusRe, planetDescription } from './planets.mjs';
 
 // Archive hostnames already curated into the bundled Local Neighbourhood.
-// MIRRORS the `planetsFrom` entries in scripts/starmap-build/data/
-// systems-real.mjs — convert.spec.js imports the roster and fails if the two
-// ever disagree, so this cannot silently drift.
-export const BUNDLED_ARCHIVE_HOSTS = {
-  'Proxima Cen': 'sys-alphacen',
-  "Barnard's star": 'sys-barnard',
-  'GJ 411': 'sys-lalande',
-  'eps Eri': 'sys-epseri',
-  'GJ 887': 'sys-lacaille9352',
-  'Ross 128': 'sys-ross128',
-  'Gl 725 A': 'sys-struve2398',
-  'GJ 15 A': 'sys-groombridge34',
-  'tau Cet': 'sys-tauceti',
-  'eps Ind A': 'sys-epsindi',
-  'GJ 1061': 'sys-gj1061',
-  'YZ Cet': 'sys-yzceti',
-  "Teegarden's Star": 'sys-teegarden',
-  'Kapteyn': 'sys-kapteyn',
-  'Wolf 1061': 'sys-wolf1061',
-  'GJ 9066': 'sys-gj9066',
-  'GJ 674': 'sys-gj674',
-  'GJ 687': 'sys-gj687',
-  'GJ 876': 'sys-gj876',
-  'GJ 1002': 'sys-gj1002',
-  'GJ 273': 'sys-luyten',
-  'TRAPPIST-1': 'sys-trappist',
-  'GJ 832': 'sys-gj832',
-  'GJ 682': 'sys-gj682'
-};
+//
+// D15 — this list is NOT maintained here. It is GENERATED from the build
+// kit's roster (`scripts/starmap-build/data/systems-real.mjs`, every
+// `planetsFrom` entry) whenever the bundled maps are rebuilt, because the
+// roster is the one place that actually knows which hosts are curated. It was
+// briefly a hand-kept mirror, which is this codebase's most recurring fault:
+// one question answered in two places, waiting to drift.
+//
+// Why generated rather than imported or fetched:
+//   - a direct import would make the APP depend on `scripts/**`, which it
+//     must not;
+//   - reading it from the shipped manifest at runtime would make this
+//     synchronous converter async, and a failed fetch would silently drop the
+//     protection — the worst failure mode, because the import would look like
+//     it worked while quietly overwriting curated systems.
+// Generated source has neither problem, and follows the existing precedent of
+// `src/lib/generated/exampleSystems.ts`.
+//
+// Staleness is caught, not trusted: `convert.spec.js` walks the roster and
+// fails naming the host if the generated file disagrees with it. Add a planet
+// host to a bundled system and the suite goes red until the kit is re-run.
+// Relative, not `$lib` — this module stays runnable under plain node like the
+// rest of the shared core, so it must not depend on Vite's aliases.
+import { BUNDLED_ARCHIVE_HOSTS } from '../../generated/bundledArchiveHosts.mjs';
+export { BUNDLED_ARCHIVE_HOSTS };
 
 // "HD 219134" → "hd-219134"; collision-proofed by the caller only if two
 // distinct hostnames slug identically (rare; then the catalogue id joins it).

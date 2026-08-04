@@ -1,8 +1,12 @@
 // Real-sky import — converter tests, run against the build kit's COMMITTED
-// archive cache (real pscomppars rows, no network). Also the drift guard
-// between BUNDLED_ARCHIVE_HOSTS and the curated roster: if a session adds a
-// planet host to the bundled maps without teaching the converter, or vice
-// versa, this fails naming the host.
+// archive cache (real pscomppars rows, no network).
+//
+// Also the STALENESS guard for `src/lib/generated/bundledArchiveHosts.mjs`
+// (D15): that file is generated from the roster by the build kit, so this
+// walks the roster itself and fails naming the host if the two disagree. Add
+// a planet host to a bundled system and this goes red until the kit is
+// re-run — which is the whole point of generating it rather than keeping a
+// second copy by hand.
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,12 +35,28 @@ function rosterHosts() {
   return hosts;
 }
 
-describe('BUNDLED_ARCHIVE_HOSTS mirrors the curated roster', () => {
+describe('the generated bundled-host map is not stale', () => {
   it('every roster planet host is protected, and nothing extra is', () => {
     const fromRoster = new Set(rosterHosts());
     const protectedHosts = new Set(Object.keys(BUNDLED_ARCHIVE_HOSTS));
+    // Failure here means: re-run `node scripts/starmap-build/build-starmaps.mjs`.
     expect([...fromRoster].filter((h) => !protectedHosts.has(h))).toEqual([]);
     expect([...protectedHosts].filter((h) => !fromRoster.has(h))).toEqual([]);
+  });
+
+  it('points each host at the system id that actually curates it', () => {
+    // Not just the same NAMES — the same mapping. A host aimed at the wrong
+    // system would report a misleading collision to the GM.
+    const rosterPairs = new Map();
+    const walk = (spec, sysId) => {
+      if (!spec) return;
+      if (spec.star) { if (spec.star.planetsFrom) rosterPairs.set(spec.star.planetsFrom, sysId); return; }
+      if (spec.bary) spec.bary.forEach((s) => walk(s, sysId));
+    };
+    for (const s of roster) walk(s.root, s.id);
+    expect(Object.fromEntries([...rosterPairs].sort())).toEqual(
+      Object.fromEntries(Object.entries(BUNDLED_ARCHIVE_HOSTS).sort())
+    );
   });
 });
 
