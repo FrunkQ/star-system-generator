@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.438-beta - 5th Aug 2026
+
+* FIX: at 1:1 scale ships were drawn astronomically large - hulls spanning much of the inner system - and grew further when you zoomed in by hand. The floor that keeps a ship legible works out how big it must be drawn to occupy a minimum number of PIXELS; it did so by dividing by the ship's current on-screen size, and at true scale that divisor lands on the guard value put there to avoid dividing by zero. Once the guard took over, the size stopped tracking the camera: hence both the enormous hulls and the growing-as-you-zoom. It now computes the world size the floor needs directly, with no division, so a ship holds the same size on screen at every distance and shrinks in step as you close on it.
+
 ## v2.1.437-beta - 5th Aug 2026
 
 * THE ACTUAL CAUSE of ships showing an icon instead of their 3D model, found by watching a live player view rather than reasoning about it: when drive plumes became a list (one per placed nozzle), the function that colours the exhaust was left reading the old single-plume shape. It threw on EVERY construct with a model - inside a catch that said nothing - so the hull silently never attached and the glyph stood in, in every view, at every zoom. Ships render again. The three previous attempts at this, which changed visibility rules, level-of-detail thresholds and camera framing, were all chasing innocent code.

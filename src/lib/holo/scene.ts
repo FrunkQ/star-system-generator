@@ -1874,7 +1874,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // readable end of the dial a focused ship fills the frame; at true scale it is honestly a
       // dot until the camera comes down to it. The model contributes no radius anywhere.
       const distToCam = camera.position.distanceTo(b.mesh.position);
-      const naturalPx = (b.shipLen ?? 0) / Math.max(1e-12, f * distToCam);
       // A loaded hull ALWAYS replaces the glyph - the model IS the marker (design §6). Two earlier
       // rules both failed here and are recorded so neither comes back: hiding it below ~10 px
       // meant a whole-system preset (which never zooms to a body) showed the icon forever, and
@@ -1889,8 +1888,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // when it is not, mirroring the two states the glyph sprite has always had (12 px / 4 px)
           // so an idle ship reads as a marker rather than shouting over the focused one.
           const minPx = inFocus ? SHIP_MODEL_MIN_PX : SHIP_MODEL_IDLE_PX;
-          const floorK = naturalPx < minPx ? minPx / Math.max(1e-9, naturalPx) : 1;
-          b.shipModel.scale.setScalar((b.shipLen ?? 0.2) * floorK);
+          // Work in WORLD units directly: the size that occupies minPx at this distance is
+          // minPx * f * dist, so the drawn size is simply the larger of that and the true size.
+          // The previous form divided by the on-screen size to get a multiplier, and at TRUE
+          // scale that divisor is ~1e-9 - right on the guard clamp added to avoid dividing by
+          // zero. Once the clamp fired the result stopped tracking distance, so the hull was
+          // drawn AU across and grew as you zoomed: the two faults reported together.
+          const minWorld = minPx * f * distToCam;
+          b.shipModel.scale.setScalar(Math.max(b.shipLen ?? 0, minWorld));
           b.shipModel.position.copy(b.mesh.position);
           if (!b.shipPrev) b.shipPrev = b.mesh.position.clone();
           _shipDelta.copy(b.mesh.position).sub(b.shipPrev);
