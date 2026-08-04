@@ -8,7 +8,7 @@
   import type { CelestialBody, ModelRef } from '$lib/types';
   import { parseModel, type ParsedModel } from '$lib/constructs/modelImport';
   import { convertParsedModel, MODEL_WARN_BYTES, type ConvertResult } from '$lib/constructs/modelConvert';
-  import { putModel } from '$lib/constructs/modelStore';
+  import { putModel, getModel } from '$lib/constructs/modelStore';
   import { createModelViewer, type ModelViewer } from '$lib/constructs/modelViewer';
 
   export let construct: CelestialBody;
@@ -42,15 +42,19 @@
   let finish: NonNullable<CelestialBody['model']>['finish'] = construct.model?.finish;
 
   // Orientation: 90-degree steps about world axes, composed as the GM presses; stored on the ref.
-  let orient = new THREE.Quaternion();
+  // Seeded from the ref so editing an aligned ship does not silently reset it to the raw import.
+  let orient = construct.model?.orient
+    ? new THREE.Quaternion(...(construct.model.orient as [number, number, number, number]))
+    : new THREE.Quaternion();
   $: orientArr = [orient.x, orient.y, orient.z, orient.w] as [number, number, number, number];
   const isIdentity = (q: THREE.Quaternion) => Math.abs(q.w) > 0.9999;
 
   // Attribution (owner decision 5): CC-BY is allowed, so the fields exist at the front door.
-  let title = '';
-  let credit = '';
-  let license = '';
-  let sourceUrl = '';
+  // Seeded from the existing ref, because this dialog is "Edit model" as often as it is "Add".
+  let title = construct.model?.title || construct.model?.name || '';
+  let credit = construct.model?.credit ?? '';
+  let license = construct.model?.license ?? '';
+  let sourceUrl = construct.model?.sourceUrl ?? '';
   $: creditMissing = license === 'CC-BY' && !credit.trim();
 
   let previewRo: ResizeObserver | null = null;
@@ -64,7 +68,47 @@
     // trust one measurement taken before layout settled.
     previewRo = new ResizeObserver(size);
     previewRo.observe(previewCanvas);
+    // Load what the construct ALREADY has. Without this the dialog opened empty on an existing
+    // model - "Edit model" showed nothing to edit, and saving would have replaced a good hull
+    // with whatever was picked next.
+    if (construct.model?.hash) loadExisting(construct.model.hash);
   });
+
+  /** Pull the stored binary back in so the dialog opens on the ship as it stands. */
+  async function loadExisting(hash: string) {
+    busy = true; error = null;
+    try {
+      const stored = await getModel(hash);
+      if (!stored) {
+        // The ref points at a binary this machine does not hold (opened someone else's campaign
+        // without its bundle). Say so plainly rather than showing an empty frame.
+        error = 'This ship\'s model is not on this machine. Choose a file to replace it.';
+        return;
+      }
+      const parsedStored = await parseModel('stored.glb', stored.bytes);
+      parsed = parsedStored;
+      // Nothing to convert: these bytes ARE what is stored. Report them as they are.
+      converted = {
+        glb: stored.bytes, triangles: construct.model?.triangles ?? parsedStored.triangles,
+        originalTriangles: construct.model?.triangles ?? parsedStored.triangles,
+        simplified: false, passthrough: true, overWarn: stored.bytes.byteLength > MODEL_WARN_BYTES
+      };
+      fileName = construct.model?.name || 'stored model';
+      uploadBytes = stored.bytes.byteLength;
+      viewer?.setObject(parsedStored.object, {
+        hadMaterials: construct.model?.hadMaterials ?? parsedStored.hadMaterials,
+        tintHex: construct.icon_color || '#ffd24d',
+        finish: finish ?? null, seed: construct.id, accentHex: accentAuto ? null : accentHex
+      });
+      viewer?.setOrient(orientArr);
+      viewer?.setNozzles(nozzles, nozzleScale, mode === 'engines');
+      previewBurn();
+    } catch {
+      error = 'Could not read the stored model.';
+    } finally {
+      busy = false;
+    }
+  }
   onDestroy(() => { previewRo?.disconnect(); viewer?.dispose(); });
 
   async function processBytes(name: string, bytes: ArrayBuffer) {
@@ -231,7 +275,7 @@
 
 <div class="modal-background" role="presentation" on:click={() => dispatch('close')} on:keydown={(e) => { if (e.key === 'Escape') dispatch('close'); }}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="3D model" tabindex="-1" on:click|stopPropagation on:keydown|stopPropagation>
-    <h3>3D Model</h3>
+    <h3>{construct.model ? 'Edit 3D Model' : 'Add 3D Model'}</h3>
 
     <div class="body">
       <div class="preview-col">

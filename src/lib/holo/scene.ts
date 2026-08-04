@@ -180,7 +180,9 @@ interface BodyVisual {
   shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
 }
 
-interface ShipFx { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; halo: THREE.Sprite; light: THREE.PointLight; suppressed?: boolean }
+interface PlumeRig { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; halo: THREE.Sprite; light: THREE.PointLight }
+// One rig per authored nozzle (none authored = one at the stern centre, the old behaviour).
+interface ShipFx { rigs: PlumeRig[]; suppressed?: boolean }
 
 // A planetary ring: a particle disc in the planet's tilted equatorial plane, spinning DIFFERENTIALLY
 // (inner particles orbit faster — that's what makes the rotation visible on an otherwise symmetric
@@ -1627,7 +1629,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const SHIP_MODEL_MIN_PX = 10; // below this the model IS the icon's job
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
 
-  async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number]; finish?: import('$lib/constructs/modelViewer').HullFinish }, tint: string, sceneLen: number, gen: number) {
+  async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number]; finish?: import('$lib/constructs/modelViewer').HullFinish; nozzles?: [number, number, number][]; nozzleScale?: number }, tint: string, sceneLen: number, gen: number) {
     try {
       const stored = await getStoredModel(ref.hash);
       if (gen !== buildGen) return; // stale build
@@ -1669,12 +1671,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       }
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
-      v.shipFx = attachDrivePlume(g);
+      v.shipFx = attachDrivePlume(g, (ref.nozzles ?? []) as [number, number, number][]);
       applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
       // The plume light's reach scales with the hull (light params ignore parent scale): a burning
       // ship glows over a few hull-lengths, never across the system - at true scale the old fixed
       // 3.2-unit reach would have lit planets from a 100 m exhaust.
-      v.shipFx.light.distance = Math.max(1e-9, sceneLen * 8);
+      for (const rig of v.shipFx.rigs) rig.light.distance = Math.max(1e-9, sceneLen * 8);
       contentGroup.add(g);
       v.shipModel = g;
       v.shipLen = sceneLen;
@@ -1710,6 +1712,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       b.screenK = k;
       b.mesh.scale.set(b.baseScale.x * k, b.baseScale.y * k, b.baseScale.z * k);
     }
+  }
+
+  // The GM's size dial for a ship's drives, read from the node so an edit shows without a rebuild.
+  function nozzleScaleOf(id: string): number {
+    const n = currentSystem?.nodes.find((x) => x.id === id) as any;
+    return Math.max(0.1, Math.min(4, n?.model?.nozzleScale ?? 1));
   }
 
   const _shipLook = new THREE.Vector3();
@@ -1767,38 +1775,45 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // because the whole ship does. Length and light scale with the SAMPLED acceleration - a coasting
   // ship shows nothing, which is the honest reading. Colour is a hot blue-white for now; exhaust
   // colour per engine belongs in rule-pack DATA when the finish menu lands (recorded follow-up).
-  function attachDrivePlume(model: THREE.Group): ShipFx {
+  function attachDrivePlume(model: THREE.Group, nozzles: [number, number, number][] = []): ShipFx {
     model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model);
     const sternZ = box.isEmpty() ? -0.5 : box.min.z;
-    const holder = new THREE.Group();
-    holder.position.set(0, 0, sternZ);
-    // Cone flaring aft: apex at the nozzle, widening along -Z. ConeGeometry points +Y; the
-    // rotation maps local +Y onto -Z, so scaling cone.scale.y lengthens the plume astern.
-    const cone = new THREE.Mesh(
-      new THREE.ConeGeometry(0.07, 1, 16, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xbfe2ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
-    );
-    cone.rotation.x = Math.PI / 2;
-    holder.add(cone);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: 0.9,
-      blending: THREE.AdditiveBlending, depthWrite: false
-    }));
-    holder.add(glow);
-    // A second, much wider, much softer halo: the bloom a real torch throws. Additive over the
-    // core glow, so a hard burn reads as a bright smear from any angle - including straight down,
-    // which is what the "2D" map is (the holo scene locked overhead).
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: 0.35,
-      blending: THREE.AdditiveBlending, depthWrite: false
-    }));
-    holder.add(halo);
-    const light = new THREE.PointLight(0xbfe2ff, 0, 3.2, 2); // intensity driven per frame
-    holder.add(light);
-    holder.visible = false;
-    model.add(holder);
-    return { holder, cone, glow, halo, light };
+    // The GM's placed drives, in the model's own space; with none placed, one plume at the stern
+    // face centre - right for most hulls and what shipped before the placer existed.
+    const points: [number, number, number][] = nozzles.length ? nozzles : [[0, 0, sternZ]];
+    const rigs: PlumeRig[] = [];
+    for (const pt of points) {
+      const holder = new THREE.Group();
+      holder.position.set(pt[0], pt[1], pt[2]);
+      // Cone flaring aft: apex at the nozzle, widening along -Z. ConeGeometry points +Y; the
+      // rotation maps local +Y onto -Z, so scaling cone.scale.y lengthens the plume astern.
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(0.07, 1, 16, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0xbfe2ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+      );
+      cone.rotation.x = Math.PI / 2;
+      holder.add(cone);
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: 0.9,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      holder.add(glow);
+      // A second, much wider, much softer halo: the bloom a real torch throws. Additive over the
+      // core glow, so a hard burn reads as a bright smear from any angle - including straight
+      // down, which is what the "2D" map is (the holo scene locked overhead).
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: 0.35,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      holder.add(halo);
+      const light = new THREE.PointLight(0xbfe2ff, 0, 3.2, 2); // intensity driven per frame
+      holder.add(light);
+      holder.visible = false;
+      model.add(holder);
+      rigs.push({ holder, cone, glow, halo, light });
+    }
+    return { rigs };
   }
   function updateConstructs() {
     const f = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
@@ -1842,28 +1857,30 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const fx = b.shipFx;
           if (fx) {
             const t = fx.suppressed ? 0 : burn.thrust01;
-            fx.holder.visible = t > 0;
-            if (t > 0) {
-              const len = 0.3 + 2.6 * t * t + 0.5 * t;         // up to ~3.4 hull-lengths at 100%
-              const width = 0.55 + 1.1 * t;
-              fx.cone.scale.set(width, len, width);
-              fx.cone.position.z = -len / 2;                    // keep the apex at the nozzle
-              (fx.cone.material as THREE.MeshBasicMaterial).opacity = 0.3 + 0.5 * t;
-              fx.glow.scale.setScalar(0.14 + 0.4 * t);
-              (fx.glow.material as THREE.SpriteMaterial).opacity = 0.5 + 0.5 * t;
+            // Several nozzles each take a share of the width, so a four-drive ship reads as one
+            // ship under power rather than four torches; the GM's nozzleScale multiplies on top.
+            const share = fx.rigs.length > 1 ? 1 / Math.sqrt(fx.rigs.length) : 1;
+            const k = share * (nozzleScaleOf(b.id) || 1);
+            for (const rig of fx.rigs) {
+              rig.holder.visible = t > 0;
+              if (t <= 0) { rig.light.intensity = 0; continue; }
+              const len = k * (0.3 + 2.6 * t * t + 0.5 * t);   // up to ~3.4 hull-lengths at 100%
+              const width = k * (0.55 + 1.1 * t);
+              rig.cone.scale.set(width, len, width);
+              rig.cone.position.z = -len / 2;                   // keep the apex at the nozzle
+              (rig.cone.material as THREE.MeshBasicMaterial).opacity = 0.3 + 0.5 * t;
+              rig.glow.scale.setScalar(k * (0.14 + 0.4 * t));
+              (rig.glow.material as THREE.SpriteMaterial).opacity = 0.5 + 0.5 * t;
               // The halo blooms with the square of thrust - barely there at a station-keeping
               // puff, a wide bright smear at full torch.
-              fx.halo.scale.setScalar(0.3 + 2.2 * t * t);
-              fx.halo.position.z = -len * 0.35;
-              (fx.halo.material as THREE.SpriteMaterial).opacity = 0.1 + 0.4 * t * t;
-              fx.light.intensity = 7 * t * t;                   // the SUPER-bright end is the light
-            } else {
-              fx.light.intensity = 0;
+              rig.halo.scale.setScalar(k * (0.3 + 2.2 * t * t));
+              rig.halo.position.z = -len * 0.35;
+              (rig.halo.material as THREE.SpriteMaterial).opacity = 0.1 + 0.4 * t * t;
+              rig.light.intensity = 7 * t * t * share;          // the SUPER-bright end is the light
             }
           }
         } else if (b.shipFx) {
-          b.shipFx.holder.visible = false;
-          b.shipFx.light.intensity = 0;
+          for (const rig of b.shipFx.rigs) { rig.holder.visible = false; rig.light.intensity = 0; }
         }
         b.shipPrev ? b.shipPrev.copy(b.mesh.position) : (b.shipPrev = b.mesh.position.clone());
       }

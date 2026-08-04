@@ -60,6 +60,9 @@
       if (want !== `${model.hash}|${displayTint}|${model.finish ?? ''}`) return;
       viewer?.setObject(parsed.object, { hadMaterials: model.hadMaterials ?? true, tintHex: tintNow, finish: model.finish ?? null, seed });
       viewer?.setOrient(model.orient ?? null);
+      // The GM placed these; every surface that draws the ship must honour them, not just the
+      // editor's preview. Empty = the default single plume at the stern.
+      viewer?.setNozzles(model.nozzles ?? [], model.nozzleScale ?? 1, false);
       loadedKey = want;
     } catch {
       missing = true; drawFallback();
@@ -97,6 +100,7 @@
 
   // The plume follows the live burn on every frame the host re-evaluates it.
   $: viewer?.setBurn(burn);
+  $: viewer?.setNozzles(model.nozzles ?? [], model.nozzleScale ?? 1, false);
 
   // One keyed reload covers first mount, subject change, live retint and finish change alike.
   $: if (viewer && `${model.hash}|${displayTint}|${model.finish ?? ''}` !== loadedKey) load(model.hash, displayTint);

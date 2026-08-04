@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.432-beta - 4th Aug 2026
+
+* FIX: "Edit model" opened on an empty preview. The dialog only ever showed a NEWLY chosen file, so a ship that already had a hull had nothing to edit - and its orientation and attribution came up blank as if it had never been set. It now loads what the construct actually has: the stored binary, its alignment, its drives, its credit and licence, with the title reading "Edit 3D Model". If the binary is not on this machine (someone else's campaign opened without its bundle) it says so instead of showing an empty frame.
+* FIX: placed drives only lit up in the editor. Every other surface still drew one plume at the stern, because neither the info-block portrait nor the map read the placement. Both do now - place four drives and you see four, in the GM's data panel, the player's document and the 3D map alike, with the size dial honoured and the width shared between them so a four-drive ship reads as one ship under power rather than four torches.
+
 ## v2.1.431-beta - 4th Aug 2026
 
 * The 3D model dialog is much bigger and you can fly around the ship in it. The preview now fills its column (up to 62% of the window height) on a dialog half again as wide, and the camera FREE-ORBITS: drag to swing over, under and behind the hull, wheel or pinch to close right in on a nacelle, "Reset view" to get back. It used to be a yaw-only turntable, which could not reach the stern or the belly - exactly where you need to look when placing drives. Near and far planes follow the working distance, so a close-up does not clip through the hull.
