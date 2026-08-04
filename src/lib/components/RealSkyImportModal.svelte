@@ -15,6 +15,7 @@
   import { buildSgrAStarSystem, SGR_A_MAP_META } from '$lib/import/realsky/sgrastar.mjs';
   import { parallaxMasToLy } from '$lib/import/realsky/positions.mjs';
   import { PIXELS_PER_LY, DEFAULT_MAP_CENTRE_PX } from '$lib/import/realsky/constants.mjs';
+  import { CEILING, costBand, estimateCost, suggestRadius } from '$lib/import/realsky/costModel.mjs';
 
   const dispatch = createEventDispatcher();
 
@@ -128,10 +129,34 @@
     }
   }
 
-  // Design §5b thresholds — counts here are usually tiny, but the guardrail
-  // copy ships with the dialogue so bigger sources slot in later.
-  function costBand(n: number): 'green' | 'amber' | 'red' {
-    return n <= 150 ? 'green' : n <= 500 ? 'amber' : 'red';
+  // Size guardrails (§5b) live in costModel.mjs so they can be tested against
+  // counts the confirmed-planet catalogue never reaches — see the note there.
+  // This supplies the one thing the model cannot: how many systems a given
+  // radius would actually yield, converted client-side from rows in hand.
+  function countAt(r: number): number {
+    if (!rows) return 0;
+    const mapCentrePx = mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX;
+    const out = convertArchiveRows(rows, { region: { centre, radiusLy: r }, mapCentrePx, generated: 'count' });
+    const existingIds = new Set(existingSystems.map((s) => s.id));
+    return out.systems.filter((s: any) => !existingIds.has(s.id)).length;
+  }
+
+  function applySuggestion(r: number) {
+    radiusLy = r;
+    onRadiusInput();
+    announceRadius();
+  }
+
+  // The red band is gated, never silently truncated: a truncated "census" is a
+  // lie, so the GM either shrinks the region deliberately or owns the big map
+  // deliberately, having been told what it costs.
+  function importBig() {
+    const c = estimateCost(preview?.systems ?? []);
+    const ok = confirm(
+      `${systemsCount} systems, ${c.size}, ${c.time} — every time this map loads, plus slower autosave and player broadcast.\n\n` +
+      `Import anyway?`
+    );
+    if (ok) importRegion();
   }
 
   function importRegion() {
@@ -174,6 +199,9 @@
   $: systemsCount = preview?.systems.length ?? 0;
   $: planetsCount = preview ? preview.systems.reduce((s: number, x: any) => s + x.system.nodes.filter((n: any) => n.roleHint === 'planet').length, 0) : 0;
   $: band = costBand(systemsCount);
+  // Both recompute off `preview`, which changes on every radius/centre move.
+  $: cost = preview ? estimateCost(preview.systems) : null;
+  $: suggestion = preview && band !== 'green' ? suggestRadius(radiusLy, countAt) : null;
 </script>
 
 <div class="modal-background" class:docked-wrap={mode === 'append'} role="presentation" on:click|self={() => mode === 'new' && close()}>
@@ -246,6 +274,9 @@
             · {preview.skipped.length} host{preview.skipped.length === 1 ? '' : 's'} missing data (skipped, never invented)
           {/if}
           — {source?.startsWith('live') ? 'live archive' : 'bundled snapshot'}
+          {#if cost && systemsCount}
+            · {cost.size} · {cost.time} — {cost.reading}
+          {/if}
         </p>
         {#if sourceWarning}<p class="warning">{sourceWarning}</p>{/if}
         {#if mode === 'append'}
@@ -261,7 +292,17 @@
           {/if}
         {/if}
         {#if band !== 'green'}
-          <p class="warning">Large import: consider a smaller radius.</p>
+          <div class="tone-down">
+            <span class="warning">
+              {band === 'red' ? 'Very large import.' : 'Large import.'}
+              {#if suggestion}Tap to shrink it:{:else}Every radius on this slider is this busy — the region itself is dense.{/if}
+            </span>
+            {#if suggestion}
+              <button class="chip" on:click={() => applySuggestion(suggestion.radiusLy)}>
+                Radius {suggestion.radiusLy} ly → {suggestion.count} systems
+              </button>
+            {/if}
+          </div>
         {/if}
         {#if preview.collisions.length}
           <details>
@@ -292,9 +333,17 @@
         </label>
 
         <div class="actions">
-          <button class="primary" disabled={!systemsCount} on:click={importRegion}>
-            {systemsCount ? `Import ${systemsCount} ${systemsCount === 1 ? 'system' : 'systems'}` : 'Nothing new to import'}
-          </button>
+          {#if systemsCount > CEILING}
+            <button class="primary" disabled title="Shrink the region — this many systems would make the map unusable.">
+              Too large to import ({systemsCount} systems)
+            </button>
+          {:else if band === 'red'}
+            <button class="primary caution" on:click={importBig}>Import anyway (not recommended)</button>
+          {:else}
+            <button class="primary" disabled={!systemsCount} on:click={importRegion}>
+              {systemsCount ? `Import ${systemsCount} ${systemsCount === 1 ? 'system' : 'systems'}` : 'Nothing new to import'}
+            </button>
+          {/if}
           <button on:click={close}>Cancel</button>
         </div>
       {/if}
@@ -347,6 +396,13 @@
   .status.band-amber { color: #f0b429; }
   .status.band-red { color: #ff6b6b; }
   .warning { color: #f0b429; margin: 0.2rem 0; font-size: 0.82rem; }
+  .tone-down { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0.3rem 0; }
+  .chip {
+    background: #2c3542; color: #cdd6df; border: 1px solid #4a5665;
+    border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.78rem; cursor: pointer;
+  }
+  .chip:hover { border-color: #ff5a1f; color: #fff; }
+  .actions button.primary.caution { background: #a8431a; border-color: #a8431a; }
   .error { color: #ff6b6b; margin: 0.3rem 0; }
   details { margin: 0.3rem 0; font-size: 0.82rem; color: #99a5b3; }
   details ul { margin: 0.3rem 0 0.3rem 1.2rem; padding: 0; }
