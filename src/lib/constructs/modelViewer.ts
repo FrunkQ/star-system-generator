@@ -22,6 +22,9 @@ export interface ModelViewerOptions {
   /** Show the drive-alignment reference: an exhaust-orange arrow marking -Z, the direction the
    *  ship's MAIN DRIVE must face once oriented (the import modal's alignment aid). */
   driveMarker?: boolean;
+  /** Wheel/pinch zoom. OFF by default on purpose: an info-block portrait sits inside a scrolling
+   *  panel, and swallowing the wheel there would trap the page. The editor turns it on. */
+  zoom?: boolean;
 }
 
 // THE ORIENTATION CONVENTION (G3, owner steer 2026-08-03): after ModelRef.orient is applied,
@@ -44,6 +47,11 @@ export interface ModelViewer {
   /** Raycast a screen point onto the hull; returns the hit in the model's own space, or null.
    *  The placer uses it to turn a click on the ship into a nozzle position. */
   pickOnHull(clientX: number, clientY: number): [number, number, number] | null;
+  /** True when the last pointer gesture moved the camera - the caller should treat the click that
+   *  follows as the end of a drag, not as a place-a-drive tap. */
+  wasDrag(): boolean;
+  /** Back to the framed, un-zoomed three-quarter view. */
+  resetView(): void;
   setSize(w: number, h: number): void;
   dispose(): void;
 }
@@ -500,18 +508,46 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   let sternZ = -0.5;
 
   let disposed = false;
-  let dragging = false;
-  let yawVel = 0;
   let raf = 0;
   let lastT = 0;
 
+  // FREE ORBIT. The camera flies on a sphere around the model: drag to swing round and over/under
+  // it, wheel or pinch to close in. Placing a drive means seeing the stern, the belly and the
+  // nacelles, so a yaw-only turntable (what this used to be) could not reach half the hull.
+  // The MODEL is never rotated by this - the alignment arrows sit in the model's frame, so
+  // orbiting the camera keeps ship and arrows in the relationship the GM is setting up.
+  let camYaw = 0.28;      // radians, around the vertical
+  let camPitch = 0.20;    // radians, above the equator; clamped short of the poles
+  let camZoom = 1;        // multiplier on the auto-framed distance
+  const PITCH_LIMIT = 1.45; // ~83 deg: past this the up-vector flips and the view rolls sickeningly
+  const centre = new THREE.Vector3();
+  let baseDist = 2;
+
+  function placeCamera() {
+    const d = baseDist * camZoom;
+    const cp = Math.cos(camPitch);
+    camera.position.set(
+      centre.x + d * cp * Math.sin(camYaw),
+      centre.y + d * Math.sin(camPitch),
+      centre.z + d * cp * Math.cos(camYaw)
+    );
+    camera.lookAt(centre);
+    // Near/far follow the working distance, so a close-up of a nacelle does not clip through the
+    // hull and a zoomed-out shot keeps the whole ship.
+    camera.near = Math.max(1e-4, d * 0.02);
+    camera.far = Math.max(camera.near * 100, d * 12);
+    camera.updateProjectionMatrix();
+  }
+
   function frameCamera() {
-    // Framed on the HULL's radius alone (measured at setObject, before the plume exists): the
-    // ship sits centred and a little larger in the frame, and a long burn simply runs off the
-    // edge rather than shrinking the thing you are looking at.
-    const dist = (frameRadius / Math.sin((camera.fov * Math.PI) / 360)) * 0.98;
-    camera.position.set(dist * 0.28, dist * 0.18, dist * 0.94);
-    camera.lookAt(0, 0, 0);
+    // Frame the MODEL (not the plumes, which are allowed to run off the edge).
+    const box = new THREE.Box3().setFromObject(orientGroup);
+    if (box.isEmpty()) return;
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    centre.copy(sphere.center);
+    frameRadius = Math.max(1e-6, sphere.radius);
+    baseDist = (sphere.radius / Math.sin((camera.fov * Math.PI) / 360)) * 1.12;
+    placeCamera();
   }
 
   function render(t: number) {
@@ -519,32 +555,73 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
     const dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0;
     lastT = t;
     if (!dragging && opts.spin !== false) spinGroup.rotation.y += dt * 0.5;
-    else if (Math.abs(yawVel) > 1e-4) { spinGroup.rotation.y += yawVel; yawVel *= 0.92; }
     renderer.render(scene, camera);
     raf = requestAnimationFrame(render);
   }
   raf = requestAnimationFrame(render);
 
-  // Drag to spin - a turntable, not an orbit: yaw only, matching how the holo's globe portrait feels.
+  // Drag orbits, wheel and pinch zoom. A DRAG must not be mistaken for a click: the placer drops
+  // a nozzle on click, and swinging the camera round would otherwise pepper the hull with drives.
+  let dragging = false;
+  let dragMoved = 0;
+  const pointers = new Map<number, { x: number; y: number }>();
+  let pinchStart = 0;
+  let pinchZoom0 = 1;
+
   function onDown(e: PointerEvent) {
     if (!opts.interactive) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinchStart = Math.hypot(a.x - b.x, a.y - b.y);
+      pinchZoom0 = camZoom;
+      dragging = false;
+      return;
+    }
     dragging = true;
+    dragMoved = 0;
     canvas.setPointerCapture(e.pointerId);
   }
   function onMove(e: PointerEvent) {
-    if (!dragging) return;
+    if (!opts.interactive) return;
+    const prev = pointers.get(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2 && pinchStart > 0 && opts.zoom) {
+      const [a, b] = [...pointers.values()];
+      const now = Math.hypot(a.x - b.x, a.y - b.y);
+      if (now > 0) setZoom(pinchZoom0 * (pinchStart / now));
+      return;
+    }
+    if (!dragging || !prev) return;
+    const dx = e.clientX - prev.x;
+    const dy = e.clientY - prev.y;
+    dragMoved += Math.abs(dx) + Math.abs(dy);
     const k = 0.008;
-    spinGroup.rotation.y += e.movementX * k;
-    yawVel = e.movementX * k * 0.6;
+    camYaw -= dx * k;
+    camPitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, camPitch + dy * k));
+    placeCamera();
   }
   function onUp(e: PointerEvent) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinchStart = 0;
     dragging = false;
     try { canvas.releasePointerCapture(e.pointerId); } catch { /* already released */ }
+  }
+  function setZoom(z: number) {
+    // In toward a tenth of the framed distance (nacelle detail), out to four times it.
+    camZoom = Math.max(0.1, Math.min(4, z));
+    placeCamera();
+  }
+  function onWheel(e: WheelEvent) {
+    if (!opts.interactive || !opts.zoom) return; // never steal the wheel from a scrolling host
+    e.preventDefault();
+    setZoom(camZoom * (e.deltaY > 0 ? 1.12 : 1 / 1.12));
   }
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerup', onUp);
   canvas.addEventListener('pointercancel', onUp);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
 
   function clearFrame() {
     for (const child of [...frame.children]) {
@@ -606,12 +683,19 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
       const local = frame.worldToLocal(hits[0].point.clone());
       return [local.x, local.y, local.z];
     },
+    wasDrag() {
+      return dragMoved > 6; // a few pixels of tremor is still a click
+    },
+    resetView() {
+      camYaw = 0.28; camPitch = 0.20; camZoom = 1;
+      placeCamera();
+    },
     setSize(w, h) {
       if (w <= 0 || h <= 0) return;
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      frameCamera();
+      placeCamera();
     },
     dispose() {
       disposed = true;
@@ -620,6 +704,7 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onUp);
+      canvas.removeEventListener('wheel', onWheel);
       clearFrame();
       renderer.dispose();
     }

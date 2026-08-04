@@ -53,13 +53,19 @@
   let sourceUrl = '';
   $: creditMissing = license === 'CC-BY' && !credit.trim();
 
+  let previewRo: ResizeObserver | null = null;
   onMount(() => {
-    // No auto-spin here: the modal's job is ALIGNMENT (drag inspects, buttons orient), and a
+    // No auto-spin here: the modal's job is ALIGNMENT (drag orbits, buttons orient), and a
     // turntable moving under the orange drive arrow makes aligning to it a shooting-gallery game.
-    viewer = createModelViewer(previewCanvas, { interactive: true, spin: false, background: null, driveMarker: true });
-    viewer.setSize(previewCanvas.clientWidth, previewCanvas.clientHeight);
+    viewer = createModelViewer(previewCanvas, { interactive: true, spin: false, background: null, driveMarker: true, zoom: true });
+    const size = () => viewer?.setSize(previewCanvas.clientWidth, previewCanvas.clientHeight);
+    size();
+    // The preview is responsive now (it fills its column), so it must follow the box rather than
+    // trust one measurement taken before layout settled.
+    previewRo = new ResizeObserver(size);
+    previewRo.observe(previewCanvas);
   });
-  onDestroy(() => viewer?.dispose());
+  onDestroy(() => { previewRo?.disconnect(); viewer?.dispose(); });
 
   async function processBytes(name: string, bytes: ArrayBuffer) {
     busy = true; error = null; parsed = null; converted = null;
@@ -166,6 +172,8 @@
   // A click on the hull in the engines step drops a drive there.
   function onPreviewClick(e: MouseEvent) {
     if (mode !== 'engines' || !parsed) return;
+    // Swinging the camera round ends in a click over the hull; that is navigation, not placement.
+    if (viewer?.wasDrag()) return;
     const hit = viewer?.pickOnHull(e.clientX, e.clientY);
     if (!hit) return;
     nozzles = [...nozzles, hit];
@@ -230,6 +238,11 @@
         <canvas bind:this={previewCanvas} class="preview" class:placing={mode === 'engines'} on:click={onPreviewClick}></canvas>
         {#if busy}<div class="overlay">Converting&hellip;</div>{/if}
         {#if !parsed && !busy}<div class="overlay hint">GLB, STL or OBJ</div>{/if}
+        <div class="view-hint">
+          Drag to orbit &middot; wheel or pinch to zoom
+          <button type="button" class="link" on:click={() => viewer?.resetView()} disabled={!parsed}>Reset view</button>
+        </div>
+
         <div class="mode-tabs">
           <button type="button" class:on={mode === 'orient'} on:click={() => setMode('orient')} disabled={!parsed}>1 &middot; Facing</button>
           <button type="button" class:on={mode === 'engines'} on:click={() => setMode('engines')} disabled={!parsed}>2 &middot; Engines</button>
@@ -271,6 +284,7 @@
           {/if}
           <div class="drive-hint">
             <strong>Click the ship</strong> where each drive sits &mdash; a plume lights there.
+            Orbit and zoom in first to reach the stern or the belly.
             Click a chip to remove one. No drives placed means one plume at the stern, which suits
             most hulls. The <em>length and brightness</em> come from real thrust on the map; this
             size dial only sets how wide they are.
@@ -387,16 +401,21 @@
   .modal {
     background: var(--panel-bg, #1a1e26); color: var(--text-color, #dfe6f0);
     border: 1px solid var(--border-color, #333a46); border-radius: 8px;
-    width: min(720px, 94vw); max-height: 90vh; overflow: auto;
+    width: min(1040px, 96vw); max-height: 92vh; overflow: auto;
     padding: 16px 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   }
   h3 { margin: 0 0 12px; }
   .body { display: flex; gap: 16px; }
-  .preview-col { position: relative; flex: 0 0 280px; }
-  .preview { width: 280px; height: 280px; background: #0a0d13; border-radius: 6px; display: block; touch-action: none; cursor: grab; }
+  /* The preview is the point of this dialog - give it the room. It fills its column and stays
+     square-ish, so a wide screen gets a big model rather than a big form. */
+  .preview-col { position: relative; flex: 1 1 460px; min-width: 300px; display: flex; flex-direction: column; }
+  .preview {
+    width: 100%; aspect-ratio: 1 / 1; max-height: 62vh; background: #0a0d13; border-radius: 6px;
+    display: block; touch-action: none; cursor: grab;
+  }
   .preview:active { cursor: grabbing; }
   .overlay {
-    position: absolute; top: 0; left: 0; width: 280px; height: 280px;
+    position: absolute; top: 0; left: 0; right: 0; aspect-ratio: 1 / 1; max-height: 62vh;
     display: flex; align-items: center; justify-content: center; pointer-events: none;
   }
   .overlay.hint { color: #5a6374; }
@@ -413,10 +432,14 @@
   .accent-row { display: flex; align-items: center; gap: 8px; }
   .accent-row .tick { display: flex; align-items: center; gap: 4px; font-size: 0.85em; color: #9aa4b4; }
   .preview.placing { cursor: crosshair; }
-  .drive-hint { font-size: 0.8em; color: #9aa4b4; margin-top: 6px; max-width: 280px; }
+  .drive-hint { font-size: 0.8em; color: #9aa4b4; margin-top: 6px; }
   .drive-hint .aft { color: #ff8c3a; }
   .drive-hint .fwd { color: #4ade80; }
-  .form-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .form-col { flex: 1 1 340px; min-width: 280px; display: flex; flex-direction: column; gap: 8px; }
+  .body { flex-wrap: wrap; }
+  .view-hint { display: flex; align-items: center; gap: 8px; font-size: 0.8em; color: #6f7a8a; margin-top: 6px; }
+  .view-hint .link { background: none; border: none; color: #7fb2d9; padding: 0; font-size: 1em; text-decoration: underline; }
+  .view-hint .link:disabled { color: #4a5260; text-decoration: none; }
   .pick { padding: 8px; }
   .starter-row { display: flex; align-items: center; gap: 6px; }
   .starter-row .lbl { font-size: 0.85em; color: #9aa4b4; white-space: nowrap; }

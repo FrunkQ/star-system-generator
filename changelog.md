@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.431-beta - 4th Aug 2026
+
+* The 3D model dialog is much bigger and you can fly around the ship in it. The preview now fills its column (up to 62% of the window height) on a dialog half again as wide, and the camera FREE-ORBITS: drag to swing over, under and behind the hull, wheel or pinch to close right in on a nacelle, "Reset view" to get back. It used to be a yaw-only turntable, which could not reach the stern or the belly - exactly where you need to look when placing drives. Near and far planes follow the working distance, so a close-up does not clip through the hull.
+* Placing drives survives all that: a drag that ends over the ship is treated as navigation, not as a click that drops a drive. The wheel is only captured in the editor, never in the info-block portrait, so scrolling a panel with a ship in it still scrolls the panel.
+
 ## v2.1.430-beta - 4th Aug 2026
 
 * Every save bundle now carries an ATTRIBUTIONS.md: each uploaded model and picture listed once with what uses it (a hull shared by three ships is credited once, naming all three), its title, credit, licence and source. It names the gaps too - an asset with nothing recorded says so, and anything licensed CC-BY with no author credited is called out as a breach rather than a gap, because sharing the save is where that obligation lands. Provenance now travels with the art, in a file a person can read without the app.
