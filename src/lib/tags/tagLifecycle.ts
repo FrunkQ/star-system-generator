@@ -24,20 +24,61 @@
 //   derived    runtime state (status/in-transit-*, adrift)    KEPT by a re-process
 //
 // `authored` is not a new idea, it is an existing accident written down. `spin/axis-inferred`,
-// `origin/migrated` and `orbit/retrograde` survive today only because no strip site happens to name
-// them and `importFixup`'s DERIVED_TAG_PREFIXES happens to omit them. The spin pair in particular is
-// a PROMISE TO THE READER — that an inferred obliquity is distinguishable from a measured one
-// (inbox B10, C3c) — and it should not rest on nobody having added `spin/` to a list. Naming the
-// class here means the next person who adds a strip cannot quietly break it, because the test does.
+// `origin/migrated` and `orbit/retrograde` survived only because no strip site happened to name them
+// and `importFixup`'s DERIVED_TAG_PREFIXES happened to omit them. The spin pair in particular is a
+// PROMISE TO THE READER — that an inferred obliquity is distinguishable from a measured one (inbox
+// B10, C3c) — and it should not rest on nobody having added `spin/` to a list. It is now declared,
+// per namespace, in tagDefaults.ENGINE_NAMESPACES, and a test holds it.
 import type { Tag } from '../types';
+// Safe to import: tagDefaults has type-only imports, so this cannot cycle.
+import { ENGINE_NAMESPACES } from './tagDefaults';
 
 export type TagOrigin = 'physics' | 'rule' | 'authored' | 'manual' | 'inherited' | 'derived';
 
-// Generation-written provenance the processor never re-derives. Entries ending in `/` are whole
-// namespaces; the rest are exact keys. `orbit/` is deliberately NOT a namespace here — it is mixed:
-// `orbit/retrograde` and `orbit/double` are generation's claims, while `orbit/tidally-locked` and
-// `orbit/spin-orbit-resonance` are re-derived every pass by the processor's lock model.
-const AUTHORED = ['spin/', 'origin/', 'traveller/', 'orbit/retrograde', 'orbit/double'];
+// PROVENANCE IS A PROPERTY OF THE CATEGORY; the TAG carries only a flag.
+//
+// The split is the useful one: a tag records whether a human put it there (`manual`), and its
+// category records what a tag in that namespace IS when nothing else says — derived every pass, or
+// written once at generation. So the per-tag data stays a simple yes/no that any writer can set
+// honestly, and the richer logic lives in one editable place instead of being restated per tag.
+//
+// It used to be the latter — a literal `['spin/', 'origin/', …]` sitting in this file — and that is
+// the shape of thing that goes stale in silence: add a namespace anywhere in the engine and this list
+// does not know, so its tags quietly claim to be physics-derived. Categories already declare
+// everything else about a namespace, so they declare this too and there is one answer to "where does
+// a tag in this namespace come from".
+//
+// A registry rather than an import, because `tagCategories` imports THIS module — inverting the
+// dependency keeps the graph acyclic, and a Map lookup stays cheap in the strip/emit hot paths.
+// Whoever owns the categories calls `registerCategoryProvenance` whenever they change.
+const CATEGORY_PROVENANCE = new Map<string, TagOrigin>();
+
+function seedEngineProvenance(): void {
+  for (const n of ENGINE_NAMESPACES) CATEGORY_PROVENANCE.set(canonicalTagKey(n.id), n.provenance as TagOrigin);
+}
+// Seeded AT LOAD, not on first use. Registration that waits for someone to import the store is how a
+// spec (and, one import-order change away, the app) ends up asking an empty registry and being told
+// every generated tag is physics-derived.
+seedEngineProvenance();
+
+/** Register the USER categories' provenance. The engine's own namespaces are re-seeded alongside, so
+ *  a category edit can never drop them. */
+export function registerCategoryProvenance(entries: { id: string; provenance?: TagOrigin }[]): void {
+  CATEGORY_PROVENANCE.clear();
+  seedEngineProvenance();
+  for (const e of entries) {
+    if (e?.id && e.provenance) CATEGORY_PROVENANCE.set(canonicalTagKey(e.id), e.provenance);
+  }
+}
+
+/** The provenance a namespace declares, or undefined if nothing has claimed it. */
+export function namespaceProvenance(key: string): TagOrigin | undefined {
+  const k = canonicalTagKey(key);
+  const ns = k.includes('/') ? k.split('/')[0] : k;
+  // An exact key can override its namespace: `orbit/` is mixed — `orbit/retrograde` is the
+  // generator's claim while `orbit/tidally-locked` is re-derived every pass.
+  return CATEGORY_PROVENANCE.get(k) ?? CATEGORY_PROVENANCE.get(ns);
+}
 
 /**
  * The namespaces the engine derives, offered to a GM who wants to OVERRIDE one by hand — say a
@@ -49,24 +90,15 @@ const AUTHORED = ['spin/', 'origin/', 'traveller/', 'orbit/retrograde', 'orbit/d
  * GM has a reason to force, and each one drives something visible (a renderer feature, a rule input,
  * a find-by-tag result).
  */
-export const PHYSICS_NAMESPACES: { id: string; label: string }[] = [
-  { id: 'geology', label: 'Geology' },
-  { id: 'tidal', label: 'Tidal' },
-  { id: 'climate', label: 'Climate' },
-  { id: 'weather', label: 'Weather' },
-  { id: 'aurora', label: 'Aurora' },
-  { id: 'magnetic', label: 'Magnetism' },
-  { id: 'shape', label: 'Shape' },
-  { id: 'structure', label: 'Structure' },
-  { id: 'surface', label: 'Surface' },
-  { id: 'volatiles', label: 'Volatiles' },
-  { id: 'thermal', label: 'Thermal' },
-  { id: 'habitability', label: 'Habitability' },
-  { id: 'hazard', label: 'Hazard' },
-  { id: 'flight', label: 'Flight' },
-  { id: 'activity', label: 'Activity' }
-];
-export const isPhysicsNamespace = (id: string): boolean => PHYSICS_NAMESPACES.some((n) => n.id === id);
+let PHYSICS_NS_CACHE: { id: string; label: string }[] =
+  ENGINE_NAMESPACES.filter((n) => n.provenance === 'physics' && !n.id.includes('/'));
+
+/** Populated from the same table that declares provenance — one list, not two that drift apart. */
+export function registerOverridableNamespaces(entries: { id: string; label: string }[]): void {
+  PHYSICS_NS_CACHE = entries.filter((e) => !e.id.includes('/'));
+}
+export const overridableNamespaces = (): { id: string; label: string }[] => PHYSICS_NS_CACHE;
+export const isPhysicsNamespace = (id: string): boolean => namespaceProvenance(id) === 'physics';
 
 // TAG KEYS ARE CASE-INSENSITIVE, and the way to make that true everywhere is to have ONE spelling
 // rather than to compare loosely in a dozen places. `Smugglers`, `smugglers` and `SMUGGLERS` are one
@@ -144,8 +176,9 @@ export function tagOrigin(t: Tag): TagOrigin {
   // A CoI tag that is neither inherited nor runtime-derived was chosen by hand on the Tags tab.
   if (t.coi) return 'manual';
   if (typeof t.source === 'string' && t.source.startsWith('rule:')) return 'rule';
-  if (matchesTarget(t.key, AUTHORED)) return 'authored';
-  return 'physics';
+  // Ask the namespace what it is. Physics is the fallback because an unclaimed namespace is one the
+  // engine emitted and nobody described — which is a documentation gap, not a licence to keep it.
+  return namespaceProvenance(t.key) ?? 'physics';
 }
 
 export const isManual = (t: Tag): boolean => tagOrigin(t) === 'manual';

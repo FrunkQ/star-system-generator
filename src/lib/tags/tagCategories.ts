@@ -18,8 +18,8 @@
 // starmaps of anyone who had turned it off.
 import { writable, derived, get } from 'svelte/store';
 import { registerPoiCategories, registerPoiTags } from './tagPresentation';
-import { canonicalTagKey, tagSlugSegment } from './tagLifecycle';
-import { DEFAULT_COI_CATEGORIES, DEFAULT_POI_PACK, REASONS_DEFAULTS } from './tagDefaults';
+import { canonicalTagKey, tagSlugSegment, registerCategoryProvenance, registerOverridableNamespaces, type TagOrigin } from './tagLifecycle';
+import { ENGINE_NAMESPACES, DEFAULT_COI_CATEGORIES, DEFAULT_POI_PACK, REASONS_DEFAULTS } from './tagDefaults';
 import type { PoIExpr, PoIRole } from '../physics/reasonsToVisit';
 
 export type TagRole = PoIRole;
@@ -68,6 +68,13 @@ export interface TagCategory {
   description?: string;
   color: string;
   textColor?: string;
+  // WHERE A TAG IN THIS NAMESPACE COMES FROM, when the tag itself does not say. Provenance belongs to
+  // the category because that is the only place it can be kept honest: a hardcoded list of key
+  // prefixes goes stale the moment someone adds a namespace, and does so silently. A user adding
+  // their own tags to a category simply inherits its answer, which is right — they can override any
+  // individual tag by hand, and that override is recorded on the tag.
+  // Omitted on a user category: its tags carry their own flags (manual, or rule-emitted).
+  provenance?: TagOrigin;
   appliesTo: TagRole[];
   system?: boolean;           // UNDELETABLE (see header). Not undisableable.
   enabled: boolean;
@@ -271,6 +278,16 @@ if (typeof window !== 'undefined') {
 // One registration of colours + labels for the whole app, replacing the two that raced each other.
 // A per-tag colour override wins over its category's, which is what makes a faction category able to
 // give every faction its own flag colour without a second mechanism.
+// Provenance registration. The engine's own namespaces are constant; the user's categories change as
+// they edit, so both go in together on every change and `tagOrigin` has one place to ask.
+tagCategories.subscribe((cats) => {
+  registerCategoryProvenance([
+    ...ENGINE_NAMESPACES.map((n) => ({ id: n.id, provenance: n.provenance as TagOrigin })),
+    ...cats.filter((c) => c.provenance).map((c) => ({ id: c.id, provenance: c.provenance }))
+  ]);
+  registerOverridableNamespaces(ENGINE_NAMESPACES.filter((n) => n.provenance === 'physics'));
+});
+
 tagCategories.subscribe((cats) => {
   if (!cats.length) return;
   registerPoiCategories(cats.map((c) => ({ id: c.id, label: c.shortName || c.longName, color: c.color, textColor: c.textColor })));

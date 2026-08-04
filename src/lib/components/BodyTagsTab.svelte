@@ -4,7 +4,7 @@
   import { describeTag, formatTagValue } from '$lib/tags/tagPresentation';
   import { poiPacks } from '$lib/physics/reasonsToVisit';
   import { customTagVocabulary } from '$lib/tags/customTags';
-  import { canonicalTagKey, tagSlugSegment, tagOrigin, PHYSICS_NAMESPACES } from '$lib/tags/tagLifecycle';
+  import { canonicalTagKey, tagSlugSegment, tagOrigin, overridableNamespaces, isPhysicsNamespace } from '$lib/tags/tagLifecycle';
   import { tagCategories, categoriesFor } from '$lib/tags/tagCategories';
 
   export let body: CelestialBody;
@@ -110,7 +110,7 @@
     }
     return { manual, overrides, authored, poi, physics };
   })();
-  const isPhysicsNs = (key: string) => PHYSICS_NAMESPACES.some((n) => key.startsWith(`${n.id}/`));
+  const isPhysicsNs = (key: string) => isPhysicsNamespace(key);
 
   function toggleSecret(key: string) {
     if (!body.tags) return;
@@ -232,7 +232,7 @@
         {#each cats as c}<option value={c.id}>{c.longName}</option>{/each}
         <!-- The engine's own namespaces, so a GM can force one the physics did not derive. -->
         <optgroup label="Physics (GM override)">
-          {#each PHYSICS_NAMESPACES as n}<option value={n.id}>{n.label}</option>{/each}
+          {#each overridableNamespaces() as n}<option value={n.id}>{n.label}</option>{/each}
         </optgroup>
       </select>
     </label>

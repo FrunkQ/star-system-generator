@@ -20,6 +20,56 @@ export const REASONS_DEFAULTS: { enabled: boolean; categories: Record<string, bo
   categories: { resource: true, science: true, frontier: true, intrigue: false }
 };
 
+// EVERY NAMESPACE THE ENGINE ITSELF WRITES, and where its tags come from. This is the data that used
+// to be a literal array of key prefixes inside tagLifecycle — the kind of list that goes stale in
+// silence, because adding a namespace anywhere in the engine does not make it notice.
+//
+//   physics   the processor derives it every pass; a strip clears it and an emitter rewrites it.
+//   authored  written ONCE at generation or import and never re-derived. Freely removable: delete
+//             one and it stays deleted, which is exactly what the lock on those tags used to deny.
+//
+// `orbit/` is listed BY KEY rather than as a namespace because it is genuinely mixed: retrograde and
+// double are the generator's claims about how a body came to be, while tidally-locked and
+// spin-orbit-resonance are re-derived from the lock model on every pass.
+export const ENGINE_NAMESPACES: { id: string; provenance: 'physics' | 'authored'; label: string }[] = [
+  // Generation and import provenance — the promises that an inferred value is distinguishable from
+  // a measured one (inbox B10, C3c) and that an invented world is distinguishable from a detected
+  // one (the real-sky importer's origin/generated).
+  { id: 'spin', provenance: 'authored', label: 'Spin provenance' },
+  { id: 'origin', provenance: 'authored', label: 'Origin' },
+  { id: 'traveller', provenance: 'authored', label: 'Traveller' },
+  { id: 'orbit/retrograde', provenance: 'authored', label: 'Retrograde orbit' },
+  { id: 'orbit/double', provenance: 'authored', label: 'Double orbit' },
+
+  // Derived every pass. These are the namespaces a GM may override by hand.
+  { id: 'geology', provenance: 'physics', label: 'Geology' },
+  { id: 'tidal', provenance: 'physics', label: 'Tidal' },
+  { id: 'climate', provenance: 'physics', label: 'Climate' },
+  { id: 'weather', provenance: 'physics', label: 'Weather' },
+  { id: 'aurora', provenance: 'physics', label: 'Aurora' },
+  { id: 'magnetic', provenance: 'physics', label: 'Magnetism' },
+  { id: 'shape', provenance: 'physics', label: 'Shape' },
+  { id: 'structure', provenance: 'physics', label: 'Structure' },
+  { id: 'surface', provenance: 'physics', label: 'Surface' },
+  { id: 'volatiles', provenance: 'physics', label: 'Volatiles' },
+  { id: 'thermal', provenance: 'physics', label: 'Thermal' },
+  { id: 'habitability', provenance: 'physics', label: 'Habitability' },
+  { id: 'hazard', provenance: 'physics', label: 'Hazard' },
+  { id: 'flight', provenance: 'physics', label: 'Flight' },
+  { id: 'activity', provenance: 'physics', label: 'Activity' },
+  { id: 'orbit', provenance: 'physics', label: 'Orbit' },
+  { id: 'stability', provenance: 'physics', label: 'Stability' },
+  { id: 'fate', provenance: 'physics', label: 'Fate' },
+  { id: 'resonance', provenance: 'physics', label: 'Resonance' },
+  { id: 'ring', provenance: 'physics', label: 'Rings' },
+  { id: 'barycenter', provenance: 'physics', label: 'Barycentre' },
+  { id: 'stellar', provenance: 'physics', label: 'Stellar activity' },
+  { id: 'biodiversity', provenance: 'physics', label: 'Biosphere' },
+  { id: 'atmosphere', provenance: 'physics', label: 'Atmosphere' },
+  { id: 'feature', provenance: 'physics', label: 'Features' }
+];
+
+
 function prettify(slug: string): string {
   if (slug === 'HQ') return 'HQ';
   return slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');

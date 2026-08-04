@@ -6,7 +6,7 @@
 // The assertions below are the only thing standing between a GM's override and a future strip.
 import { describe, it, expect } from 'vitest';
 import type { Tag } from '../types';
-import { tagOrigin, survivesRederive, isEngineOwned, stripForReprocess, stripRuleTags, emit, matchesTarget, canonicalTagKey, tagSlugSegment, canonicaliseTags } from './tagLifecycle';
+import { tagOrigin, survivesRederive, isEngineOwned, stripForReprocess, stripRuleTags, emit, matchesTarget, canonicalTagKey, tagSlugSegment, canonicaliseTags, namespaceProvenance, registerCategoryProvenance } from './tagLifecycle';
 
 const t = (key: string, extra: Partial<Tag> = {}): Tag => ({ key, ...extra });
 
@@ -164,6 +164,40 @@ describe('emit — the guard that stops an override being duplicated', () => {
     }
     expect(tags).toHaveLength(1);
     expect(tags[0].value).toBe('lethal');
+  });
+});
+
+describe('provenance comes from the category, the tag carries only a flag', () => {
+  it('answers per namespace without anything being registered first', () => {
+    // Seeded at load from ENGINE_NAMESPACES. If this needs a store import to pass, the registration
+    // is lazy again and every generated tag silently reads as physics.
+    expect(namespaceProvenance('spin/axis-inferred')).toBe('authored');
+    expect(namespaceProvenance('geology/plate-tectonics')).toBe('physics');
+  });
+
+  it('lets an exact key override its namespace, which orbit/ needs', () => {
+    expect(namespaceProvenance('orbit/retrograde')).toBe('authored');   // the generator's claim
+    expect(namespaceProvenance('orbit/tidally-locked')).toBe('physics'); // re-derived every pass
+  });
+
+  it('takes a user category\'s declared provenance', () => {
+    registerCategoryProvenance([{ id: 'lore', provenance: 'authored' }]);
+    expect(namespaceProvenance('lore/the-lost-fleet')).toBe('authored');
+    expect(tagOrigin(t('lore/the-lost-fleet'))).toBe('authored');
+    registerCategoryProvenance([]);   // re-seeds the engine namespaces
+    expect(namespaceProvenance('spin/tipped')).toBe('authored');
+  });
+
+  it('keeps the engine namespaces when user categories are re-registered', () => {
+    registerCategoryProvenance([{ id: 'faction', provenance: 'manual' }]);
+    expect(namespaceProvenance('geology/x')).toBe('physics');
+  });
+
+  it('lets the TAG\'s own flag win over its category', () => {
+    // The division of labour: the flag says a human put it there, the category says what the
+    // namespace is otherwise.
+    expect(tagOrigin(t('geology/plate-tectonics', { manual: true }))).toBe('manual');
+    expect(tagOrigin(t('geology/plate-tectonics'))).toBe('physics');
   });
 });
 

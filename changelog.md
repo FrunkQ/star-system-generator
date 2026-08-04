@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.423-beta - 4th Aug 2026
+
+* A tag's provenance is now declared by its CATEGORY rather than by a hardcoded list of key prefixes buried in the tagging module. The tag itself carries only the simple part — was this put here by hand — and the category answers what a tag in that namespace is otherwise: derived every pass, or written once at generation and never re-derived. Adding a namespace to the engine no longer means remembering to update a list somewhere else, which is the kind of thing that goes wrong silently.
+
 ## v2.1.422-beta - 4th Aug 2026
 
 * ENGINE PLACEMENT, and it is a clicker rather than a plane: the model dialog is now two steps - Facing, then Engines. In the Engines step, click the ship wherever a drive sits and a plume lights there; click a chip to remove one; a Size dial sets how wide they all are. Length and brightness still come from real thrust on the map, and the plumes preview in the ship's own authored exhaust colour while you place them. Placing nothing means one plume at the stern, which suits most hulls. Points are stored in the model's own space, so re-orienting the ship later carries its drives with it instead of stranding them.
