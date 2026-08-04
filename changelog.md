@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.434-beta - 4th Aug 2026
+
+* FIX: a player view showed a ship's icon where the GM view showed its 3D model. The model was hidden whenever it would draw smaller than about ten pixels, on the grounds that it would be mush - but a preset that frames the whole system (and so never zooms to a body) leaves every ship below that line permanently, so the hull never appeared however long you looked at it. The model is now ENLARGED to a readable size instead of being hidden, which is exactly how the true-scale body floor already works: keep the honest render, guarantee its legibility in screen space. A ship that is not the focus still draws its small dim glyph, because a four-pixel model is a smudge where a four-pixel glyph is still a marker.
+
 ## v2.1.433-beta - 4th Aug 2026
 
 * Uploaded BODY pictures can record their provenance too - credit, licence and source sit under the custom-image controls in the planet editor, matching the ship editor, and CC-BY without a named author is flagged. Body photos were the last uploaded asset that always landed in a save's ATTRIBUTIONS.md as anonymous. Replacing a picture keeps the credit already entered.

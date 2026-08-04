@@ -1626,7 +1626,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // squared-weight hack this replaces was a linear-blend workaround.
     return Math.max(1e-10, dialBlend(trueScene, readable));
   }
-  const SHIP_MODEL_MIN_PX = 10; // below this the model IS the icon's job
+  // A model smaller than this on screen is mush, so it is ENLARGED to it rather than hidden -
+  // the same answer the bodies' true-scale floor gives (A9): keep the honest render and guarantee
+  // its legibility in SCREEN space. Hiding it was the old rule, and it meant a player preset that
+  // frames the whole system (never zooming to a body) showed the icon and never the ship.
+  const SHIP_MODEL_MIN_PX = 14;
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
 
   async function loadShipModel(v: BodyVisual, ref: { hash: string; hadMaterials?: boolean; orient?: [number, number, number, number]; finish?: import('$lib/constructs/modelViewer').HullFinish; nozzles?: [number, number, number][]; nozzleScale?: number }, tint: string, sceneLen: number, gen: number) {
@@ -1830,11 +1834,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // readable end of the dial a focused ship fills the frame; at true scale it is honestly a
       // dot until the camera comes down to it. The model contributes no radius anywhere.
       const distToCam = camera.position.distanceTo(b.mesh.position);
-      const pxLen = (b.shipLen ?? 0) / Math.max(1e-12, f * distToCam);
-      const showModel = !!b.shipModel && !b.surfaceLock && pxLen >= SHIP_MODEL_MIN_PX;
+      const naturalPx = (b.shipLen ?? 0) / Math.max(1e-12, f * distToCam);
+      // The model stands in for the GLYPH, which was always drawn at a fixed screen size - so it
+      // shows whenever the glyph would be full-size (in the focus set), floored to a readable
+      // size when the true one would be too small. An UNFOCUSED construct keeps its tiny dim
+      // glyph: a 4 px model is a smudge where a 4 px glyph is still a marker.
+      const showModel = !!b.shipModel && !b.surfaceLock && inFocus;
       if (b.shipModel) {
         b.shipModel.visible = showModel;
         if (showModel) {
+          const floorK = naturalPx < SHIP_MODEL_MIN_PX ? SHIP_MODEL_MIN_PX / Math.max(1e-9, naturalPx) : 1;
+          b.shipModel.scale.setScalar((b.shipLen ?? 0.2) * floorK);
           b.shipModel.position.copy(b.mesh.position);
           if (!b.shipPrev) b.shipPrev = b.mesh.position.clone();
           _shipDelta.copy(b.mesh.position).sub(b.shipPrev);
