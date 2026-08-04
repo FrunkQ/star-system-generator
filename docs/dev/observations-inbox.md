@@ -361,6 +361,44 @@ version, bump the patch again from it, keep BOTH changelog entries, push. Never 
 conflict by keeping yours, and never `checkout --ours/--theirs` a whole file — this inbox in
 particular must keep every session's edits.
 
+## Assignment plan (2026-08-03, coordinator) — established sessions keep their AREAS as fix/tweak
+owners; NEW collated work goes to one fresh session
+
+The V3 feature sessions are no longer being loaded with new content. Each keeps its area and takes
+only fixes and tweaks IN that area. Everything new or cross-cutting collects under "NEW SESSION".
+
+**G3 / ship appearance session** (scope-complete, polishing): G13 (export/import of model binaries —
+its own helpers, blocked only by a hot file at the time), G15 (its banked follow-ups, owner-priority
+order), A46 (the duplicated `bodyGfxSystem` IIFEs — its own surface).
+**Real-sky importer session**: G12 (wire its UI — was outside importer territory, is inside its
+area), D15 (its deliberate second copy of `planetsFrom`, to be collapsed or justified).
+**Tagging rewrite session** (mid-migration, phases continuing): B38 (double strip of one namespace —
+found by it, in its files), A44 (generator tags shown as engine-locked — provenance is its subject),
+plus the remaining phases of its own design.
+**G9/G10 scene session**: A45 (the GM snap-grid picker as a hand-written copy of the overlay list —
+its own G10 ground), C7 (Sol_Expanse frame flag sweep, renderer-adjacent).
+**VTT session** (deliberately slow-rolled): G14 when it resumes (model binaries over broadcast are
+explicitly its territory per the G3 design).
+
+**NEW SESSION — collated, prompt from scratch, roughly in order:**
+1. **C9** — `computeWorldPositions3D` does not apply C3's satellite frame; the rotation lives only
+   in the renderer. Invalidates G8's eclipse geometry for inclined satellites. HIGHEST VALUE.
+2. **E3/E5 + E2/E4** — make the suite green (page.spec.ts has failed silently for ~118 versions,
+   so "tests pass" currently means nothing) and adopt the worktree-per-session fix for the four
+   recorded tree sweeps. One hygiene batch.
+3. **A42 + A47** — the Field Guide/Projector removal, WITH the preset-fallback fix folded in
+   (a failed custom preset currently falls through to the surface being removed).
+4. **B34 + B36 + B37** — stellarRadiation misnamed since B17 with a classifier consumer; the
+   ninth duplication (three disagreeing "has a solid surface" tests); a belt's ascent Δv from a
+   non-mass. One physics-consistency batch.
+5. **DATA BATCH: D7, D8, D11, D13, D14 (+C8)** — bundled-data corrections (55%-ice super-Earths,
+   no tilts in SciFi map, rocky+giant double classes, Pluto's methane/frost, Pluto-Charon
+   inclination, Laplace-radius satellites). All data, all bounded by the D4d kit test.
+6. **A48** — the 99-control editor regroup, once PlayerPresetEditor is uncontended.
+7. **A43, D6, D10, D12, B35, B39, D9, E1-retire** — smaller, as capacity allows. B39 corrects
+   G11's toroid mechanism (absent spin reads as ZERO, not infinite — the toroids need a different
+   explanation; G11's audit should chase it).
+
 ## Documentation debt
 
 One line per shipped change that a reader needs to know, appended as you go. Sweep periodically into
