@@ -216,6 +216,61 @@ _Unwritten. Candidates: the floating-origin rule (scene coordinates are relative
 (0,0,0) is not the star); immutable GL texture caveat (A1); "a proximity test against a sampled curve
 must be against its SEGMENTS, never its samples"._
 
+#### Ship models (G3) — added 2026-08-04 by the ship-appearance stream
+
+### RENDER-S1 One builder dresses a ship model, everywhere it is drawn
+WHERE: `src/lib/constructs/modelViewer.ts:buildDisplayModel`
+RULE: the import modal's preview, the info-block turntable and the holo scene's focused hull ALL
+build through this one function (finish, tint, livery, normalise-to-unit-length, optional orient
+bake). Never dress a model at a call site.
+WHY: what the GM approves in the dialog must be what every surface shows. Three copies would drift
+the first time a finish was added — the same fault A46 fixed for the body portrait.
+BLAST: adding a finish, changing normalisation, or adding a fourth surface that draws a hull.
+
+### RENDER-S2 A construct contributes NO radius, model or not
+WHERE: `src/lib/holo/scene.ts` (`frameDistance`, the clearance branch in `updatePositions`)
+RULE: a ship model is a MARKER with real geometry, not a body. It must never feed ring clearance or
+the whole-system bounding sphere (F5). `frameDistance` may read its hull length to frame it; nothing
+else may.
+WHY: real extent in the clearance maths makes camera framing depend on zoom — F4's bug class — and
+would push moons off their orbits around a station.
+BLAST: any new use of `shipLen`. Any "make constructs act like bodies" change.
+
+### RENDER-S3 Nozzles live in the model's own space, orientation applies at view time
+WHERE: `ModelRef.nozzles` (`types.ts`), `modelViewer.setNozzles` / `setOrient`
+RULE: authored drive positions are stored BEFORE `orient` is applied, and the plume rig hangs off
+the same group the orientation fix rotates. Storing them post-orientation strands every drive the
+moment the GM re-aligns the hull.
+WHY: orientation is editable forever; the placement was made once.
+BLAST: baking orient into the stored binary; moving the plume group out of `orientGroup`.
+
+### RENDER-S4 Camera near-plane must follow the framed object all the way down
+WHERE: `src/lib/holo/scene.ts` (near-plane block in the render loop)
+RULE: `near` tracks the camera-target distance with a floor low enough for the SMALLEST framable
+thing. A ship at true scale frames at ~1e-9 scene units; the floor is 1e-11.
+WHY: the floor was 1e-8 — written when the smallest framable thing was a body (~1e-7) — so focusing
+a construct at true scale put the whole scene inside the near plane and the view went black.
+BLAST: anything that can be framed smaller than a body (debris, a docked shuttle).
+
+### RENDER-S5 An interface-declared method is not an implemented one
+WHERE: `modelViewer.ts` return object; guarded by `modelViewer.spec.ts` ("createModelViewer surface")
+RULE: the viewer is an object literal behind a hand-written interface, so a method dropped from the
+literal still type-checks against the interface and fails only at the call site, at runtime.
+WHY: a refactor replaced the span between two methods and silently deleted `setOrient` — Pitch/Yaw/
+Roll died with "setOrient is not a function" and nothing else complained. The surface test now
+asserts every declared method exists (mutation-checked: remove it again and the test fails).
+BLAST: any range-based edit of that return object. Add new methods to the required list.
+
+### RENDER-S6 The body-size dial interpolates GEOMETRICALLY, not linearly
+WHERE: `src/lib/holo/scene.ts:dialBlend` (bodies, stars and ship hulls all route through it)
+RULE: size = true^(1-v) x readable^v, so each step of the dial multiplies size by a constant ratio.
+WHY: linear blending let the readable term dominate a 1e-5 true radius immediately — 20%-90% of the
+travel looked identical and the whole true-scale transition was crammed into 0-5%. Log spacing also
+makes ships shed size faster than planets for free (bigger readable-to-true ratio), which is what
+"constructs should be smaller" asked for.
+BLAST: changing either endpoint; adding a new object class to the dial. Mid-dial looks in SAVED
+presets move if this changes — endpoints do not.
+
 ### TRANSIT-*  (journeys, autopilot, routing)
 _Unwritten. Candidates: which tags autopilot matches by slug and what breaks if they move; readiness
 and tardiness sources; belt mass is a debris-density proxy, not gravitational mass._
@@ -224,6 +279,46 @@ and tardiness sources; belt mass is a debris-density proxy, not gravitational ma
 _Unwritten. Candidates: `tests/fixtures/*` and `tests/output/*` are GENERATED, never hand-edited;
 bundled-map collision protection in the real-sky importer; stable-id rules._
 
+#### Ship-model binaries (G3) — added 2026-08-04 by the ship-appearance stream
+
+### DATA-M1 A model binary never rides the node
+WHERE: `src/lib/constructs/modelStore.ts`, `modelTransfer.ts`, `broadcast.ts` (`REQUEST_MODEL`)
+RULE: the node carries a `ModelRef` (hash + attribution) ONLY. The GLB lives in a hash-addressed
+IndexedDB store; it reaches a saved file by explicit embedding at export, and a remote player by an
+on-demand fetch keyed on the hash. Inlining it as a data URL is the trap.
+WHY: `sendIfChanged` re-stringifies and re-sends the WHOLE snapshot on any change. A photo (30-80 KB)
+survives that; a 500 KB model multiplies every resend until the GM's tab stalls.
+BLAST: any new place a model is attached; anything that puts bytes on a node. Content addressing
+means two ships sharing a hull cost one entry — do not "clean up" the store per construct.
+
+### DATA-M2 Imported model bytes are verified against their own key
+WHERE: `modelTransfer.importEmbeddedModels`; pinned by `modelTransfer.roundtrip.spec.ts`
+RULE: an embedded blob is re-hashed on import and DROPPED if it does not match the key it arrived
+under. A ref whose binary this machine never had exports ref-only and degrades to the icon glyph.
+WHY: the store is content-addressed; mis-filing a payload under someone else's hash would poison
+every construct pointing at it.
+BLAST: adding another transport (the broadcast path shares this function deliberately).
+
 ### UI-*  (panels, editors, player views)
 _Unwritten. Candidates: which surfaces read the player snapshot; the four explanation surfaces that
 drift silently (physics page, Newton explainer, tags guide, classification doc)._
+
+#### Construct appearance (G3) — added 2026-08-04 by the ship-appearance stream
+
+### UI-C1 One colour drives a construct's whole look
+WHERE: `ConstructBasicsTab.svelte` (Appearance block), `constructIcon.ts`, `modelViewer.ts`
+RULE: `icon_color` is the single authored colour: the 2D marker, the hull tint for material-less
+models, and the seeded livery all derive from it. The livery's CONTRAST accent is DERIVED from it
+too (seeded complementary rotation) unless a GM pins `ModelRef.accentHex`.
+WHY: an owner decision — one colour to set, variation for free. A second required slider was
+considered and rejected; if per-faction control is ever wanted, the lever is pack DATA.
+BLAST: adding another colour field to a construct. Ask whether it can be derived first.
+
+### UI-C2 The picture chain is model > photo > glyph, on every surface
+WHERE: `catalogue/document/guideDocument.ts` (imagery branch), `ConstructPortrait.svelte`
+RULE: a construct with a 3D model shows the model; without one, its uploaded photo; without that,
+its authored `icon_type` glyph. Same order in the GM pane and the player document. `imagery: 'none'`
+still means none.
+WHY: the order was photo-first and was corrected by owner steer ("if a construct is told to be 3D,
+display it first"). A28/A30 are the history: the wrong picture is worse than no picture.
+BLAST: any new construct-showing surface. Do not re-derive the chain locally — read these two.
