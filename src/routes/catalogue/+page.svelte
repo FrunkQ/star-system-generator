@@ -433,7 +433,11 @@
     holoFilterBypass = ov.filterBypass;
     holoOrbitPaused = ov.orbitPaused;
     overrideFollowGM = ov.followGM ?? null;
+    mapHighlights = (ov.mapHighlights ?? []) as any;
   }
+  // The GM's live highlight selection. The snapshot this view renders is already redacted, so a
+  // secret tag cannot become a badge here however it is selected.
+  let mapHighlights: import('$lib/tags/mapHighlights').MapHighlights = [];
   let overrideFollowGM: boolean | null = null;
   // Following the GM = the override (if set) else the preset's own followGM flag.
   $: followGMActive = (overrideFollowGM ?? activePreset?.followGM) ?? false;
@@ -1149,6 +1153,7 @@
               {rulePack}
               {currentTime}
               {focusedBodyId}
+              highlights={mapHighlights}
               showNames={true}
               toytownFactor={displaySystem.toytownFactor || 0}
               fullScreen={true}

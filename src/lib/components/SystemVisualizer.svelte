@@ -89,9 +89,17 @@
   let canvas: HTMLCanvasElement;
   // MAP HIGHLIGHTS (phase D). The GM's own map badges whatever the live selection names, in the
   // tag's own colour, so what you are about to push to the players is what you are already looking at.
-  import { markersFor, capMarkers, type HighlightMarker } from '$lib/tags/mapHighlights';
+  //
+  // The PLAYER window runs its own copy of this component in a separate document, so it has its own
+  // (empty) liveOverrides store — the GM's selection reaches it over the broadcast instead and is
+  // passed in. Prop wins when given; otherwise the local store, which is the GM's own map.
+  // Either way the tags being matched are whatever this view was handed, and a player view is handed
+  // the redacted snapshot — so a secret tag cannot badge here regardless of what is selected.
+  import { markersFor, capMarkers, type HighlightMarker, type MapHighlights } from '$lib/tags/mapHighlights';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  export let highlights: MapHighlights | null = null;
+  $: activeHighlights = highlights ?? $liveOverrides.mapHighlights;
 
   // Foreground overlay canvas: sits above the PlanetDisc HTML layer; constructs + labels draw here
   // so they're never hidden behind a big planet disc. Sized to match `canvas` each frame.
@@ -1451,7 +1459,7 @@
                       ctx.fillStyle = getNodeColor(node);
                   }
                   ctx.fillText(node.name, tx, ty);
-                  drawMarkers(ctx, markersFor(node.tags, $liveOverrides.mapHighlights, $tagCategories),
+                  drawMarkers(ctx, markersFor(node.tags, activeHighlights, $tagCategories),
                               screenPos.x, screenPos.y, radiusPx);
               }
           }
@@ -1469,7 +1477,7 @@
               ctx.strokeText(node.name, tx, ty);
               ctx.fillStyle = node.icon_color || '#f0f0f0'; 
               ctx.fillText(node.name, tx, ty);
-              drawMarkers(ctx, markersFor((node as any).tags, $liveOverrides.mapHighlights, $tagCategories),
+              drawMarkers(ctx, markersFor((node as any).tags, activeHighlights, $tagCategories),
                           screenPos.x, screenPos.y, size / 2);
           }
       }

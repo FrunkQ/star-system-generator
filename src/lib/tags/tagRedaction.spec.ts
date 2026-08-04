@@ -6,6 +6,7 @@
 // gets the fix, another does not, and nothing reports the difference.
 import { describe, it, expect } from 'vitest';
 import { redactTagsForPlayers } from './tagLifecycle';
+import { markersFor } from './mapHighlights';
 import type { Tag } from '../types';
 
 const cats = [
@@ -50,5 +51,35 @@ describe('redacting tags for players', () => {
   it('copes with no tags and no categories', () => {
     expect(redactTagsForPlayers(undefined, [])).toEqual([]);
     expect(redactTagsForPlayers([{ key: 'a/b' }], [])).toHaveLength(1);
+  });
+});
+
+describe('a secret tag cannot become a player-facing map badge', () => {
+  // The safety argument for map highlights, stated as a test rather than left as reasoning.
+  //
+  // Highlighting is a SELECTION — it names a category or a key, never a body — and the marker builder
+  // is given whatever tags the surface already holds. A player surface holds the redacted snapshot.
+  // So "highlight the whole Faction category" is safe to leave switched on: the secret faction was
+  // removed before any marker existed, and the marker builder never had to know who was watching.
+  const cats = [
+    { id: 'faction', shortName: 'Faction', longName: 'Faction', color: '#333', appliesTo: ['planet'], enabled: true, tags: [], rules: [] },
+    { id: 'plot', shortName: 'Plot', longName: 'Plot', color: '#666', playerHidden: true, appliesTo: ['planet'], enabled: true, tags: [], rules: [] }
+  ] as any;
+
+  it('drops it before markers are built, even when its category is highlighted', () => {
+    const onBody: Tag[] = [{ key: 'faction/open-guild' }, { key: 'faction/hidden-hand', secret: true }];
+    const forPlayers = redactTagsForPlayers(onBody, cats);
+    const markers = markersFor(forPlayers, [{ ref: 'faction' }], cats);
+    expect(markers.map((m) => m.key)).toEqual(['faction/open-guild']);
+  });
+
+  it('drops a whole player-hidden category the same way', () => {
+    const forPlayers = redactTagsForPlayers([{ key: 'plot/the-betrayal' }], cats);
+    expect(markersFor(forPlayers, [{ ref: 'plot' }], cats)).toEqual([]);
+  });
+
+  it('still badges it on the GM side, which is the point of keeping the two apart', () => {
+    const onBody: Tag[] = [{ key: 'faction/hidden-hand', secret: true }];
+    expect(markersFor(onBody, [{ ref: 'faction' }], cats)).toHaveLength(1);
   });
 });

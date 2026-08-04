@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.426-beta - 4th Aug 2026
+
+* Map highlights reach the players. The GM's selection rides the same broadcast as the other live overrides, so badging a category or a tag shows up on the players' system map as it does on the GM's — one selection, both screens.
+* A secret tag can never become a player badge, and that is now a test rather than an argument: highlighting names a category or a key, never a body, and a player view is handed the already-redacted snapshot, so the secret faction was gone before any marker existed. It still badges on the GM's own map, which is the point of keeping the two apart.
+
 ## v2.1.425-beta - 4th Aug 2026
 
 * The tag guide is rewritten around what tags are actually for: the app's main currency and its natural-language layer, where the physics decides what is true and writes tags, and everything else — renderers, rules, the finder, you — reads tags. It covers the parts that were undocumented (provenance, categories, per-tag colour, overriding the physics, secret tags, map highlights) and says honestly that the separation is not complete yet.

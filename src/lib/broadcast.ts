@@ -53,6 +53,12 @@ export interface PresetOverrides {
   filterBypass: boolean;
   orbitPaused: boolean;
   labelsHidden: boolean;
+  // What the GM is highlighting on the maps right now — category ids and/or exact tag keys. Rides
+  // with the other momentary overrides so the players' map badges whatever the GM's does.
+  // SAFE BY CONSTRUCTION: this is only a SELECTION. The tags themselves arrive via the player
+  // snapshot, which has already removed secret tags and player-hidden categories, so highlighting a
+  // category cannot reveal one.
+  mapHighlights?: { ref: string; style?: string }[];
 }
 export interface PresetBroadcast {
   presetId: string;
