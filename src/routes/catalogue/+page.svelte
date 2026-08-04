@@ -179,6 +179,8 @@
         for (const inst of n.engines ?? []) {
           const def = defs.find((d: any) => d.id === inst.engine_id);
           const total = (def?.thrust_kN ?? 0) * (inst.quantity ?? 1);
+          // 'none' is a real authored answer (a reactionless drive has no plume), not a missing
+          // value - it wins the dominant slot like any other and the scene draws nothing.
           if (def?.exhaust_color_hex && total > bestThrust) { bestThrust = total; exhaustHex = def.exhaust_color_hex; }
         }
         out[n.id] = { accelMs2: g * 9.81, ...(exhaustHex ? { exhaustHex } : {}) };

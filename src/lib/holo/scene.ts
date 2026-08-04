@@ -16,7 +16,7 @@ import { getModel as getStoredModel } from '$lib/constructs/modelStore';
 import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { requestModel } from '$lib/constructs/modelFetch';
-import { sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
+import { shipBurnAt } from '$lib/constructs/shipBurn';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -180,7 +180,7 @@ interface BodyVisual {
   shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
 }
 
-interface ShipFx { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; light: THREE.PointLight }
+interface ShipFx { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; halo: THREE.Sprite; light: THREE.PointLight; suppressed?: boolean }
 
 // A planetary ring: a particle disc in the planet's tilted equatorial plane, spinning DIFFERENTIALLY
 // (inner particles orbit faster — that's what makes the rotation visible on an otherwise symmetric
@@ -1670,13 +1670,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
       v.shipFx = attachDrivePlume(g);
-      const exhaust = shipCapability?.[v.id]?.exhaustHex;
-      if (exhaust) {
-        const col = new THREE.Color(exhaust);
-        (v.shipFx.cone.material as THREE.MeshBasicMaterial).color.set(col);
-        (v.shipFx.glow.material as THREE.SpriteMaterial).color.set(col);
-        v.shipFx.light.color.set(col);
-      }
+      applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
       // The plume light's reach scales with the hull (light params ignore parent scale): a burning
       // ship glows over a few hull-lengths, never across the system - at true scale the old fixed
       // 3.2-unit reach would have lit planets from a 100 m exhaust.
@@ -1736,36 +1730,35 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let shipCapability: Record<string, { accelMs2: number; exhaustHex?: string }> | null = null;
   function setShipCapability(map: Record<string, { accelMs2: number; exhaustHex?: string }> | null) {
     shipCapability = map;
-    for (const b of bodies) {
-      if (!b.shipFx) continue;
-      const hex = map?.[b.id]?.exhaustHex;
-      const col = new THREE.Color(hex || '#bfe2ff');
-      (b.shipFx.cone.material as THREE.MeshBasicMaterial).color.set(col);
-      (b.shipFx.glow.material as THREE.SpriteMaterial).color.set(col);
-      b.shipFx.light.color.set(col);
-    }
+    for (const b of bodies) applyExhaustColour(b, map?.[b.id]?.exhaustHex);
   }
   let _burnCache = { id: '', atMs: -Infinity, braking: false, thrust01: 0 };
   function shipBurnState(id: string): { braking: boolean; thrust01: number } {
     const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (_burnCache.id === id && now - _burnCache.atMs < 250) return _burnCache;
-    let braking = false, thrust01 = 0;
     const node = currentSystem?.nodes.find((n) => n.id === id) as any;
-    if (node?.scheduled_journeys?.length) {
-      const k1 = sampleJourneyKinematicsAtTime(currentSystem!, node, timeMs);
-      const k2 = k1?.state === 'Transit' ? sampleJourneyKinematicsAtTime(currentSystem!, node, timeMs + 60_000) : null;
-      if (k1 && k2) {
-        const v1 = k1.velocity_ms as any, v2 = k2.velocity_ms as any;
-        const ax = (v2.x - v1.x) / 60, ay = (v2.y - v1.y) / 60, az = ((v2.z ?? 0) - (v1.z ?? 0)) / 60;
-        const aMag = Math.hypot(ax, ay, az);
-        const dot = ax * v1.x + ay * v1.y + az * (v1.z ?? 0);
-        braking = aMag > BRAKE_ACCEL_MS2 && dot < 0;
-        const cap = Math.max(0.01, shipCapability?.[id]?.accelMs2 ?? FULL_PLUME_MS2);
-        thrust01 = aMag > BRAKE_ACCEL_MS2 ? Math.min(1, aMag / cap) : 0;
-      }
-    }
-    _burnCache = { id, atMs: now, braking, thrust01 };
+    // The planner's own segment labels say whether this is a burn and which way it points -
+    // shipBurnAt reads them. (It replaced a velocity-difference that always measured zero; the
+    // note in shipBurn.ts explains why, because the trap will look reasonable again one day.)
+    const burn = shipBurnAt(node, timeMs);
+    const cap = Math.max(0.01, shipCapability?.[id]?.accelMs2 ?? FULL_PLUME_MS2);
+    const thrust01 = burn.thrusting && burn.accelMs2 > BRAKE_ACCEL_MS2 ? Math.min(1, burn.accelMs2 / cap) : 0;
+    _burnCache = { id, atMs: now, braking: burn.braking && thrust01 > 0, thrust01 };
     return _burnCache;
+  }
+
+  /** Paint a ship's plume in its drive's authored exhaust colour (pack data). The literal
+   *  'none' is an honest authored answer - a reactionless drive HAS no exhaust - and suppresses
+   *  the plume entirely rather than drawing a default-coloured one it should not have. */
+  function applyExhaustColour(b: BodyVisual, hex: string | undefined) {
+    const fx = b.shipFx;
+    if (!fx) return;
+    fx.suppressed = hex === 'none';
+    const col = new THREE.Color(fx.suppressed ? '#000000' : (hex || '#bfe2ff'));
+    (fx.cone.material as THREE.MeshBasicMaterial).color.set(col);
+    (fx.glow.material as THREE.SpriteMaterial).color.set(col);
+    (fx.halo.material as THREE.SpriteMaterial).color.set(col);
+    fx.light.color.set(col);
   }
 
   // G3: the drive plume - thrust feedback at the stern. Attached INSIDE the display model at the
@@ -1793,11 +1786,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       blending: THREE.AdditiveBlending, depthWrite: false
     }));
     holder.add(glow);
+    // A second, much wider, much softer halo: the bloom a real torch throws. Additive over the
+    // core glow, so a hard burn reads as a bright smear from any angle - including straight down,
+    // which is what the "2D" map is (the holo scene locked overhead).
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makeGlowTexture(), color: 0xdff0ff, transparent: true, opacity: 0.35,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    holder.add(halo);
     const light = new THREE.PointLight(0xbfe2ff, 0, 3.2, 2); // intensity driven per frame
     holder.add(light);
     holder.visible = false;
     model.add(holder);
-    return { holder, cone, glow, light };
+    return { holder, cone, glow, halo, light };
   }
   function updateConstructs() {
     const f = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
@@ -1840,7 +1841,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // long. Rides the stern inside the model, so the brake flip points it prograde for free.
           const fx = b.shipFx;
           if (fx) {
-            const t = burn.thrust01;
+            const t = fx.suppressed ? 0 : burn.thrust01;
             fx.holder.visible = t > 0;
             if (t > 0) {
               const len = 0.3 + 2.6 * t * t + 0.5 * t;         // up to ~3.4 hull-lengths at 100%
@@ -1850,6 +1851,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               (fx.cone.material as THREE.MeshBasicMaterial).opacity = 0.3 + 0.5 * t;
               fx.glow.scale.setScalar(0.14 + 0.4 * t);
               (fx.glow.material as THREE.SpriteMaterial).opacity = 0.5 + 0.5 * t;
+              // The halo blooms with the square of thrust - barely there at a station-keeping
+              // puff, a wide bright smear at full torch.
+              fx.halo.scale.setScalar(0.3 + 2.2 * t * t);
+              fx.halo.position.z = -len * 0.35;
+              (fx.halo.material as THREE.SpriteMaterial).opacity = 0.1 + 0.4 * t * t;
               fx.light.intensity = 7 * t * t;                   // the SUPER-bright end is the light
             } else {
               fx.light.intensity = 0;

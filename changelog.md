@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.419-beta - 4th Aug 2026
+
+* THE DRIVE PLUME NEVER LIT, AND COULD NOT HAVE. Burn detection differenced the path sampler's velocity, which is piecewise constant inside a segment - so it measured zero acceleration through a full-power burn and the plume and the brake flip never fired. It now reads the planner's OWN segment labels (Accel / Brake / Coast / Correction) and their delta-v, which is the published decision rather than a re-derivation. Seven tests pin it, including the piecewise-constant case that fooled the old code; nothing caught this before because no bundled construct carries a journey.
+* Exhaust colour is authored on the DRIVE DESIGN now, authentically: xenon ion the famous NSTAR blue, Hall thrusters bluer-violet, argon plasma violet, hydrazine RCS near-colourless, methalox blue, hot-hydrogen NTR faintest blue, gas-core brighter, Orion pulse white-gold, fusion torch brilliant blue-white, antimatter violet-white, astrophage red on the Petrova line - and the Alcubierre ring authored as "none", because a reactionless drive has no exhaust and drawing one would be a lie. All 13 engines in the starter pack carry it.
+* Plumes GLOW: a wide soft halo blooms with the square of thrust over the core, so a hard burn reads as a bright smear from any angle - including straight down, which is what the "2D" map is.
+
 ## v2.1.418-beta - 4th Aug 2026
 
 * Livery contrast accent, DERIVED not dialled (owner decision: no second colour slider): the Panelled and Weathered finishes now carry a seeded complementary accent computed from the ship's own colour - accent panels and a livery stripe on the plating, oxidation blooming toward the accent hue in the weathering (verdigris on a copper hull, rust on a blue one). Saturation and lightness are floored so a grey or near-black hull still earns a coloured accent. One colour to touch, per ship variation for free; if control is ever wanted the lever is pack data, not a slider.
