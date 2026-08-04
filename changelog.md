@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.414-beta - 4th Aug 2026
+
+* Real-sky import tells you what a big import will COST before you commit to one: alongside the system and planet counts, the dialogue now shows the estimated size, how long the map will take to load, and a plain reading (comfortable / large / very large). Past the comfortable band it offers a real alternative rather than advice -- a one-tap chip naming the exact radius that brings it back in range and how many systems that leaves ("Radius 13 ly -> 120 systems"), found by searching the rows already in hand. A very large import is allowed but gated behind a confirmation restating the cost, and past a hard ceiling it is refused with a reason. Nothing is ever silently trimmed: a truncated map that claims to be a survey is worse than no map.
+* The welcome screen is now a V3 placeholder rather than the V2 release notes, and returning users will see it once.
+* Internal: the importer's list of "hosts the bundled maps already curate" is no longer a hand-kept copy of the starmap roster -- the build kit generates it, and the test suite fails by name if the two ever disagree.
+
 ## v2.1.413-beta - 4th Aug 2026
 
 * **The GM body panel now shows the next eclipse**, with the orbital rows where it belongs — the same line the player views already carried, from the same builder and the same clock, so the two can never word it differently. Mars reads "in 50 d - 37% annular (Phobos)"; a moon gets the view from its own surface, so Luna reads "76% partial (Earth)". A world with nothing to hide its star simply has no row.

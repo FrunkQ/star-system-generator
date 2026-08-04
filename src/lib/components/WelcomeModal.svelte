@@ -1,6 +1,14 @@
 <script lang="ts">
-  // First-run V2 welcome — shown once (localStorage flag set by the parent on close). Tells returning
-  // V1 users what's changed and what's new, and points at the guides. Reuses the shared modal chrome.
+  // First-run welcome — shown once (localStorage flag set by the parent on close).
+  //
+  // PLACEHOLDER FOR V3. The V2 copy this replaced listed the V2 headline features and
+  // addressed users arriving from V1; it is in git history if any of it is worth reusing.
+  // Before V3 ships, someone needs to write the real thing:
+  //   - `features` below is a PLACEHOLDER LIST and deliberately claims nothing. Fill it
+  //     from the V3 workstreams as they land, or delete it and write prose.
+  //   - the lede and the heads-up both need the V3 story (what changed, what carries over).
+  // Deliberately NOT claiming anything V3 does not yet do — an inaccurate welcome is worse
+  // than a plain one.
   import { createEventDispatcher } from 'svelte';
   import { APP_VERSION } from '$lib/constants';
   const dispatch = createEventDispatcher();
@@ -9,42 +17,37 @@
 
   const GH = 'https://github.com/FrunkQ/star-system-generator/blob/beta';
 
-  // Headline new features — brief, scannable. (Full detail lives in the guides.)
-  const features: { title: string; blurb: string }[] = [
-    { title: 'A new interface', blurb: 'Rebuilt to work on tablets and phones, with a left rail for navigation, Find-by-tag and tools.' },
-    { title: 'Interstellar travel', blurb: 'Fly between systems — instant jump drives or realistic reaction drives, with relativistic time dilation.' },
-    { title: 'The Field Guide', blurb: "Serve live, redacted system data to your players' own phones and tablets, in four skins." },
-    { title: 'Physics-derived worlds', blurb: 'Composition, oceans, ice caps, magnetism, geology and true colour are all derived from real physics.' },
-    { title: 'The Newton panel', blurb: 'Click the apple on any world to see the working behind it, linked to a full physics reference.' },
-    { title: 'Tags, Points & Constructs of Interest', blurb: 'Give players reasons to visit places; find worlds by tag; author your own flavour packs.' },
-    { title: 'In-system autopilot', blurb: 'Set NPC ships loose on their own routes — mine, transport, patrol, explore or escort.' },
-    { title: 'Classification & visuals', blurb: '50+ planet types, brown dwarfs that glow, auroras, oblate fast-rotators, cratered dead worlds.' },
-    { title: 'Import from Universe Sandbox & SpaceEngine', blurb: 'Drop a Universe Sandbox (.ubox) or SpaceEngine (.sc) file into the New System dialogue — it converts into a playable system and SSG derives the physics.' }
-  ];
+  // PLACEHOLDER — replace with the V3 headline features before release.
+  const features: { title: string; blurb: string }[] = [];
 </script>
 
 <div class="modal-overlay" role="presentation" on:click={close}>
-  <div class="modal-card welcome-card" role="dialog" aria-label="Welcome to Star System Explorer 2" on:click|stopPropagation>
+  <div class="modal-card welcome-card" role="dialog" aria-label="Welcome to Star System Explorer 3" on:click|stopPropagation>
     <header class="w-head">
       <div>
-        <h2>Welcome to Star System Explorer&nbsp;2</h2>
-        <p class="ver">The biggest upgrade yet · {APP_VERSION}</p>
+        <h2>Welcome to Star System Explorer&nbsp;3</h2>
+        <p class="ver">Beta · {APP_VERSION}</p>
       </div>
       <button class="w-close" aria-label="Close" on:click={close}>×</button>
     </header>
 
     <div class="w-body">
-      <p class="lede">Everything you did in V1 is still here — and your saved starmaps still load — but the
-        interface has been rebuilt and a great deal is new. The short version:</p>
+      <p class="lede">V3 is being built in the open on this beta. Everything you already do still works
+        and your saved starmaps still load — the release notes for what is new are being written.</p>
 
-      <ul class="feat">
-        {#each features as f}
-          <li>
-            <span class="dot" aria-hidden="true"></span>
-            <span><strong>{f.title}.</strong> {f.blurb}</span>
-          </li>
-        {/each}
-      </ul>
+      {#if features.length}
+        <ul class="feat">
+          {#each features as f}
+            <li>
+              <span class="dot" aria-hidden="true"></span>
+              <span><strong>{f.title}.</strong> {f.blurb}</span>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="placeholder">Highlights land here as V3 takes shape. In the meantime the changelog has
+          every change, build by build.</p>
+      {/if}
 
       <p class="guides-line">
         New here, or want the detail? Read the
@@ -54,12 +57,12 @@
       </p>
 
       <div class="heads-up">
-        <p><strong>Expect the odd bug.</strong> This is a huge release with a lot going on under the hood, so
+        <p><strong>Expect the odd bug.</strong> This is a live beta with a lot changing under the hood, so
         some things will slip through. If you hit one, please report it on
         <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">our Discord</a> —
-        it's the fastest way to get it fixed. Thank you for helping shape V2!</p>
-        <p><strong>One-way upgrade:</strong> systems saved in V2 will <em>not</em> open in the old V1 app, so
-        keep a backup of anything precious before you re-save it.</p>
+        it's the fastest way to get it fixed. Thank you for helping shape V3!</p>
+        <p><strong>Keep a backup.</strong> Beta builds move fast; export anything precious before you
+        re-save it.</p>
       </div>
     </div>
 
@@ -96,6 +99,7 @@
     color: var(--status-bad, #e0484d); cursor: pointer; line-height: 1; font-size: 1.5rem; font-weight: 700;
   }
   .w-close:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 30%, var(--bg-control)); }
+  .placeholder { color: var(--text-faint); font-style: italic; }
   .w-body { overflow-y: auto; padding: 14px 18px; }
   .lede { margin: 0 0 12px; color: var(--text, #e8e8e8); font-size: 0.94rem; line-height: 1.55; }
   .feat { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }

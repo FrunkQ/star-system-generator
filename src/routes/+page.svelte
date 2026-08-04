@@ -130,7 +130,9 @@
   let showAbout = false;
   let showHelpMenu = false;
   // First-run V2 welcome (shown once — returning V1 users need to know what changed).
-  const WELCOME_KEY = 'sse_welcome_v2_seen';
+  // Bumped with the welcome itself: anyone who dismissed the V2 one has this flag
+  // already set, so a new welcome needs a new key or nobody ever sees it.
+  const WELCOME_KEY = 'sse_welcome_v3_seen';
   let showWelcome = false;
   function dismissWelcome() {
     showWelcome = false;

@@ -60,9 +60,16 @@ and the catalogue description composer live in `src/lib/import/realsky/` as
 plain dependency-free ESM, imported by BOTH this kit and the in-app real-sky
 importer (see `docs/dev/starmap-data-import-design.md`). A change to any of
 them changes generator output, so the pin test will demand the shipped maps be
-regenerated in the same commit. The importer's `BUNDLED_ARCHIVE_HOSTS`
-(convert.mjs) mirrors this roster's `planetsFrom` entries and a test fails if
-they disagree — adding a planet host here means teaching the converter too.
+regenerated in the same commit.
+
+**Adding a planet host to the roster also changes generated source.** The
+importer needs to know which archive hosts are already curated here, so the
+build EMITS `src/lib/generated/bundledArchiveHosts.mjs` from the roster's
+`planetsFrom` entries (the same pattern as `generate-examples-list.cjs`). It
+used to be a hand-kept copy inside `convert.mjs`; it is not any more. Re-run
+the build after touching the roster — `convert.spec.js` goes red, naming the
+host, until you do. The emission is skipped under `--out` so the pin test
+never rewrites repository source.
 
 ## Data files
 
