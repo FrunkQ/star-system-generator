@@ -4,6 +4,7 @@
   import { describeTag, tagSource, formatTagValue } from '$lib/tags/tagPresentation';
   import { poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
   import { customTagVocabulary } from '$lib/tags/customTags';
+  import { canonicalTagKey, tagSlugSegment } from '$lib/tags/tagLifecycle';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -15,8 +16,13 @@
   let newName = '';
   let newValue = '';
   $: cats = activeCategories($poiPacks);
-  const slug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9/_-]/g, '');
-  $: previewKey = newCat === 'custom' ? (newName.trim() || 'tag') : `${newCat}/${slug(newName) || 'name'}`;
+  // Both spellings come from tagLifecycle so the key the preview shows is the key that gets stored:
+  // a whole key for the free-text path (slashes kept, so `faction/red` still works), one segment for
+  // the category path. Previously the custom path stored the raw text, which is how "Smugglers" and
+  // "Red Syndicate" became keys that the import strip then read as V1 display-name tags and deleted.
+  $: previewKey = newCat === 'custom'
+    ? (canonicalTagKey(newName) || 'tag')
+    : `${newCat}/${tagSlugSegment(newName) || 'name'}`;
   $: previewInfo = describeTag(previewKey);
 
   // The existing PoI tags defined in the chosen category that this body doesn't have yet — click one to
@@ -54,8 +60,8 @@
       dispatch('update');
   }
   function addCustomTag() {
-      const key = newCat === 'custom' ? newName.trim() : `${newCat}/${slug(newName)}`;
-      if (!key || (newCat !== 'custom' && !slug(newName))) return;
+      const key = newCat === 'custom' ? canonicalTagKey(newName) : `${newCat}/${tagSlugSegment(newName)}`;
+      if (!key || (newCat !== 'custom' && !tagSlugSegment(newName))) return;
       if (!body.tags) body.tags = [];
       if (!body.tags.some((t) => t.key === key)) {
           // manual:true marks it as the player's own — it survives the reasons re-tag pass even when

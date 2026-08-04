@@ -205,6 +205,10 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Migrated',
     description: 'Formed at a different distance and migrated to its present orbit — the classic history of a hot Jupiter that spiralled inward through the disc.'
   },
+  'origin/generated': {
+    label: 'Generated',
+    description: 'INVENTED, NOT OBSERVED. A real-sky import filled this world in around a confirmed star to make the system playable; no telescope has seen it. Seeded from the star\'s catalogue id, so the same import always produces the same worlds. The confirmed detections in the same system carry no such tag — that is how you tell them apart.'
+  },
 
   // --- Spin (the axis, as opposed to shape/ which is what the spin does to the body) ---
   'spin/axis-inferred': {

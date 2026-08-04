@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { coiCategories, resetCoIs, exportCoIs, importCoIs, mergeStarmapCoIs, setCoIEnabled, type CoICategory } from '$lib/constructs/coi';
   import HelpModal from './HelpModal.svelte';
+  import { tagSlugSegment } from '$lib/tags/tagLifecycle';
   import tagsGuide from '../../../docs/tags-guide.md?raw';
 
   let showHelp = false;
@@ -28,7 +29,8 @@
     (e.target as HTMLInputElement).value = '';
   }
 
-  const slug = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  // One spelling of "make a label safe", shared with the body Tags tab (was a third private copy).
+  const slug = tagSlugSegment;
 
   function mutate(fn: (cats: CoICategory[]) => CoICategory[]) { coiCategories.update(fn); }
 

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.407-beta - 4th Aug 2026
+
+* Tags are case-insensitive. `Smugglers`, `smugglers` and `SMUGGLERS` are one tag, stored in one spelling and title-cased back for display, so what you see is unchanged. Typing a tag with spaces now works too — "Red Syndicate" becomes `red-syndicate` instead of a malformed key that the next save threw away. Two private copies of "make a label safe" were unified into the tagging module, and the free-text field, which used neither, now uses the shared one.
+* The real-sky importer's `origin/generated` tag — the marker that says a world was invented to fill out a system rather than detected — had no description and rendered with a generic namespace blurb. It now explains itself, which for an honesty marker is the whole point.
+
 ## v2.1.406-beta - 3rd Aug 2026
 
 * **"Depth tethers" can be turned off on the 3D starmap.** The vertical stems running down from each system to the reference plane, and the little rings marking where they land, are now a tick-box in the starmap's display settings. They are what makes an exaggerated depth readable -- without them you cannot tell which side of the plane a star is on -- but on a map with real depth and a crowded field they are also the loudest thing on it, so it is your call.

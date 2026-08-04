@@ -39,10 +39,63 @@ export type TagOrigin = 'physics' | 'rule' | 'authored' | 'manual' | 'inherited'
 // `orbit/spin-orbit-resonance` are re-derived every pass by the processor's lock model.
 const AUTHORED = ['spin/', 'origin/', 'traveller/', 'orbit/retrograde', 'orbit/double'];
 
+// TAG KEYS ARE CASE-INSENSITIVE, and the way to make that true everywhere is to have ONE spelling
+// rather than to compare loosely in a dozen places. `Smugglers`, `smugglers` and `SMUGGLERS` are one
+// tag, stored lowercase; `describeTag` title-cases it back for display, so the reader still sees
+// "Smugglers". Spaces become hyphens for the same reason the category path already slugs them — a
+// key with a space in it is indistinguishable from a V1 display-name tag, which is exactly why free
+// text like "Red Syndicate" used to be thrown away on save.
+export function canonicalTagKey(key: string): string {
+  return String(key ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9/_-]/g, '');
+}
+
+/**
+ * Canonicalise ONE path segment — a label the GM typed, becoming the part after the slash. Slashes
+ * collapse here (unlike `canonicalTagKey`) because a segment cannot contain one: a category tag named
+ * "Search/Rescue" is one tag called `purpose/search-rescue`, not a two-level key.
+ */
+export function tagSlugSegment(label: string): string {
+  return String(label ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/**
+ * Canonicalise a tag list and collapse keys that differ only in case. The first spelling of a key
+ * wins its position; a `manual` tag beats a derived twin, because if a GM and the engine disagree the
+ * GM's is the one they typed.
+ *
+ * NOT to be run before legacy detection. `isLegacyTag` recognises a V1 tag BY its capitals and
+ * spaces ("Tidally Locked"), so canonicalising first would launder every V1 tag into a valid-looking
+ * user tag and the import strip would keep them all. Strip first, canonicalise what survives.
+ */
+export function canonicaliseTags(tags: Tag[] | undefined): Tag[] {
+  const out: Tag[] = [];
+  const seen = new Map<string, number>();
+  for (const t of tags ?? []) {
+    const key = canonicalTagKey(t.key);
+    if (!key) continue;                       // a key of only punctuation is not a tag
+    const at = seen.get(key);
+    if (at === undefined) {
+      seen.set(key, out.length);
+      out.push(key === t.key ? t : { ...t, key });
+      continue;
+    }
+    // Duplicate after folding case: keep the GM's over the engine's, else keep the first.
+    if (isManual(t) && !isManual(out[at])) out[at] = { ...t, key };
+  }
+  return out;
+}
+
 /** True when `key` matches a target: an entry ending in `/` is a namespace prefix, else an exact key. */
 export function matchesTarget(key: string, targets: readonly string[]): boolean {
+  const k = canonicalTagKey(key);
   for (const t of targets) {
-    if (t.endsWith('/') ? key.startsWith(t) : key === t) return true;
+    // canonicalTagKey keeps a trailing slash, so a namespace target stays a namespace target.
+    const target = canonicalTagKey(t);
+    if (t.endsWith('/') ? k.startsWith(target) : k === target) return true;
   }
   return false;
 }
@@ -116,5 +169,6 @@ export function stripRuleTags(tags: Tag[] | undefined, categoryPrefixes: readonl
  * several tags rather than one delimited value). Those sites push directly.
  */
 export function emit(tags: Tag[], tag: Tag): void {
-  if (!tags.some((t) => t.key === tag.key)) tags.push(tag);
+  const key = canonicalTagKey(tag.key);
+  if (!tags.some((t) => canonicalTagKey(t.key) === key)) tags.push(tag);
 }

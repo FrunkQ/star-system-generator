@@ -6,7 +6,7 @@
 // The assertions below are the only thing standing between a GM's override and a future strip.
 import { describe, it, expect } from 'vitest';
 import type { Tag } from '../types';
-import { tagOrigin, survivesRederive, isEngineOwned, stripForReprocess, stripRuleTags, emit, matchesTarget } from './tagLifecycle';
+import { tagOrigin, survivesRederive, isEngineOwned, stripForReprocess, stripRuleTags, emit, matchesTarget, canonicalTagKey, tagSlugSegment, canonicaliseTags } from './tagLifecycle';
 
 const t = (key: string, extra: Partial<Tag> = {}): Tag => ({ key, ...extra });
 
@@ -164,6 +164,50 @@ describe('emit — the guard that stops an override being duplicated', () => {
     }
     expect(tags).toHaveLength(1);
     expect(tags[0].value).toBe('lethal');
+  });
+});
+
+describe('tag keys are case-insensitive', () => {
+  it('folds case and spaces to one spelling', () => {
+    expect(canonicalTagKey('Smugglers')).toBe('smugglers');
+    expect(canonicalTagKey('SMUGGLERS')).toBe('smugglers');
+    expect(canonicalTagKey('  Red Syndicate  ')).toBe('red-syndicate');
+    expect(canonicalTagKey('Faction/Red Syndicate')).toBe('faction/red-syndicate');
+  });
+
+  it('keeps slashes in a whole key but collapses them in a segment', () => {
+    expect(canonicalTagKey('faction/red')).toBe('faction/red');
+    expect(tagSlugSegment('Search/Rescue')).toBe('search-rescue');
+  });
+
+  it('drops punctuation that cannot appear in a key', () => {
+    expect(canonicalTagKey("O'Brien's Rest!")).toBe('obriens-rest');
+    expect(canonicalTagKey('!!!')).toBe('');
+  });
+
+  it('matches targets regardless of the case a tag was written in', () => {
+    expect(matchesTarget('Geology/Plate-Tectonics', ['geology/'])).toBe(true);
+    expect(matchesTarget('HAZARD/RADIATION', ['hazard/radiation'])).toBe(true);
+  });
+
+  it('does not let a namespace target match a longer namespace', () => {
+    expect(matchesTarget('surfacewater/x', ['surface/'])).toBe(false);
+  });
+
+  it('collapses tags that differ only in case, and the GM wins', () => {
+    const folded = canonicaliseTags([
+      t('hazard/radiation', { value: 'lethal' }),
+      t('Hazard/Radiation', { value: 'background', manual: true })
+    ]);
+    expect(folded).toHaveLength(1);
+    expect(folded[0].key).toBe('hazard/radiation');
+    expect(folded[0].value).toBe('background');
+  });
+
+  it('emit() will not add a tag that already exists in another case', () => {
+    const tags = [t('Smugglers', { manual: true })];
+    emit(tags, t('smugglers'));
+    expect(tags).toHaveLength(1);
   });
 });
 
