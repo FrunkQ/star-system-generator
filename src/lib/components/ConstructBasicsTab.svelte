@@ -36,7 +36,10 @@
     if (!file) return;
     try {
       const url = await fileToDownscaledDataUrl(file, 512);
-      construct.image = { url, custom: true };
+      // Keep any provenance already recorded when replacing the picture - the GM credited the
+      // artist once and should not have to do it again for a re-crop.
+      const prev = construct.image ?? {};
+      construct.image = { ...prev, url, custom: true };
       construct = construct;
       dispatch('update');
     } catch { alert('Could not read that image file.'); }
@@ -182,6 +185,26 @@
           {/if}
           <input type="file" accept="image/*" bind:this={imgInput} on:change={onImageUpload} hidden />
         </div>
+
+        {#if construct.image?.custom}
+          <span class="app-label">Picture credit</span>
+          <div class="app-ctl">
+            <input class="attr" type="text" placeholder="Artist or source" bind:value={construct.image.credit} on:change={handleUpdate} />
+            <select class="attr-lic" bind:value={construct.image.license} on:change={handleUpdate}>
+              <option value={undefined}>Licence…</option>
+              <option value="Own work">Own work</option>
+              <option value="Public domain">Public domain</option>
+              <option value="CC0">CC0</option>
+              <option value="CC-BY">CC-BY</option>
+              <option value="Other">Other</option>
+            </select>
+            <input class="attr" type="text" placeholder="Source URL" bind:value={construct.image.sourceUrl} on:change={handleUpdate} />
+          </div>
+          {#if construct.image.license === 'CC-BY' && !construct.image.credit}
+            <span class="app-label"></span>
+            <div class="app-ctl"><span class="warn-note">CC-BY requires naming the author.</span></div>
+          {/if}
+        {/if}
 
         <span class="app-label">3D model</span>
         <div class="app-ctl">
@@ -343,6 +366,10 @@
   .app-label { font-size: 0.85em; color: var(--text-muted, #9aa4b4); white-space: nowrap; }
   .app-ctl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
   .app-ctl .descriptor { font-size: 0.8em; }
+  /* Provenance row: three small controls that must not shove the block wider than the panel. */
+  .app-ctl .attr { flex: 1 1 8rem; min-width: 0; font-size: 0.85em; padding: 2px 6px; }
+  .app-ctl .attr-lic { font-size: 0.85em; padding: 2px 4px; }
+  .warn-note { font-size: 0.8em; color: var(--warning, #e0b352); }
   .model-finish { font-size: 0.85em; padding: 3px 6px; }
 
   .checkbox-group { display: flex; flex-direction: column; gap: 10px; }

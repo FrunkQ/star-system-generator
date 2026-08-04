@@ -18,6 +18,7 @@
 // file extension — a renamed file still loads correctly.
 import { zipSync, strToU8, strFromU8 } from 'fflate';
 import { readZipMembers } from '$lib/import/shared/zip';
+import { buildAttributionsFile } from './attributions';
 
 export const BUNDLE_EXT = '.sse.zip';
 const MODELS_DIR = 'assets/models/';
@@ -126,11 +127,17 @@ export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): 
   if (!assets) return null; // nothing to carry: plain JSON is the better file
 
   files[DOC_NAME[kind]] = strToU8(JSON.stringify(out, null, 2));
+  // Provenance travels WITH the art: a readable file naming every uploaded asset, what uses it,
+  // and its credit/licence/source - including the ones with nothing recorded, so a GM can see
+  // what still needs filling in before they share the save.
+  const attributions = buildAttributionsFile(out, modelMeta, DOC_NAME[kind]);
+  if (attributions) files['ATTRIBUTIONS.md'] = strToU8(attributions);
   files['README.txt'] = strToU8(
     `Star System Explorer save bundle (${kind}).\n\n` +
     `${DOC_NAME[kind]} is the data - edit it in any text editor.\n` +
     `assets/models/*.glb are ship models, named by content hash.\n` +
-    `assets/images/*   are uploaded pictures, named by the node they belong to.\n\n` +
+    `assets/images/*   are uploaded pictures, named by the node they belong to.\n` +
+    `ATTRIBUTIONS.md   who made the art and under what licence - read it before sharing.\n\n` +
     `Replace an asset by overwriting the file, keeping its name. Re-zip with these paths intact.\n` +
     `A plain .json save (no assets) still loads, and always will.\n`
   );

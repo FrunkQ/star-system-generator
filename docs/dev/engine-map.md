@@ -301,10 +301,22 @@ the extension, so a renamed file still opens. `packBundle` returns null when not
 extracting - that null IS the "write plain JSON" signal.
 WHY: base64-in-JSON cost 33% on the biggest bytes in the file and made a save unreadable and
 un-hand-editable, which is what GMs actually do with them. Owner decision, 2026-08-04.
-BLAST: adding a new asset kind (extract it in `packBundle`, restore it in `unpackBundle`, and add
-a round-trip case). Only DATA-URL images are extracted - an http(s) url is someone else's server
+BLAST: adding a new asset kind (extract it in `packBundle`, restore it in `unpackBundle`, add a
+round-trip case, AND teach `io/attributions.ts` about it - an asset with no provenance path is one
+nobody can credit). Only DATA-URL images are extracted - an http(s) url is someone else's server
 and must survive untouched. `.ubox`/`.sc`/`.pak` are zips too: the importer adapters are matched
 BEFORE the sniff, so do not reorder that check.
+
+### DATA-M4 Provenance travels with the art, and the gaps are named
+WHERE: `src/lib/io/attributions.ts`, written into every bundle as `ATTRIBUTIONS.md`
+RULE: each uploaded model/image is listed once with what uses it and its credit/licence/source.
+An asset with NOTHING recorded is listed as such; CC-BY with no credit is called out as a breach
+rather than a gap. `collectAttributions` reads only assets the bundle CARRIES (an `assets/` path),
+never a remote url or an unpacked data: url - so it must run AFTER packing has rewritten them.
+WHY: a save gets handed to a player or posted publicly. Provenance buried in JSON is provenance
+nobody honours, and CC-BY is an obligation, not a preference.
+BLAST: changing the asset paths (the collector matches on the `assets/` prefix). Adding an upload
+surface: fill the ImageRef/ModelRef provenance fields or every asset it creates reports blank.
 
 ### DATA-M2 Imported model bytes are verified against their own key
 WHERE: `modelTransfer.importEmbeddedModels`; pinned by `modelTransfer.roundtrip.spec.ts`

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.430-beta - 4th Aug 2026
+
+* Every save bundle now carries an ATTRIBUTIONS.md: each uploaded model and picture listed once with what uses it (a hull shared by three ships is credited once, naming all three), its title, credit, licence and source. It names the gaps too - an asset with nothing recorded says so, and anything licensed CC-BY with no author credited is called out as a breach rather than a gap, because sharing the save is where that obligation lands. Provenance now travels with the art, in a file a person can read without the app.
+* Construct pictures can record their provenance at last: credit, licence and source URL sit beside the picture in the Appearance block. The fields have existed on the data since V1 and nothing ever filled them, so every uploaded image was anonymous. Replacing a picture keeps the credit you already entered.
+
 ## v2.1.429-beta - 4th Aug 2026
 
 * SAVES ARE BUNDLES NOW, for a campaign AND for a single system. A save that carries assets is written as a zip (`.sse.zip`) holding a small, readable `starmap.json` / `system.json` beside `assets/models/*.glb` and `assets/images/*` as ordinary files - so you can open a save in any zip tool, read and hand-edit the JSON without scrolling past walls of base64, and swap a hull or a photo by replacing a file. It is also smaller: base64 cost 33% on top of the biggest bytes in the file. A save with no assets is still written as plain `.json`, exactly as before.

@@ -40,6 +40,20 @@ describe('packBundle', () => {
     expect(json).toContain('A Modeller');               // attribution stays legible
   });
 
+  it('writes ATTRIBUTIONS.md naming the art and what uses it', () => {
+    const map = starmapWith('data:image/jpeg;base64,' + b64('J'), 'abc123');
+    const zip = packBundle('starmap', map, { models: { abc123: { b64: b64('G'), meta: { credit: 'A Modeller', license: 'CC-BY' } } } })!;
+    const members = readZipMembers(zip, ['.md', '.txt']);
+    const name = Object.keys(members).find((n) => n.endsWith('ATTRIBUTIONS.md'))!;
+    expect(name).toBeTruthy();
+    const text = strFromU8(members[name]);
+    expect(text).toContain('A Modeller');
+    expect(text).toContain('Rocinante');            // what uses it
+    expect(text).toContain('assets/models/abc123.glb');
+    // The picture had nothing recorded, and the file must say so rather than omit it.
+    expect(text).toContain('_No provenance recorded._');
+  });
+
   it('leaves a remote image URL exactly as authored', () => {
     const map = starmapWith('https://example.com/pic.jpg', 'abc123');
     const zip = packBundle('starmap', map, { models: { abc123: { b64: b64('G'), meta: {} } } })!;

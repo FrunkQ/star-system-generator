@@ -478,6 +478,11 @@ things the debt lines had wrong — see the note in [[D5]].
   the Shading dropdown offers seven finishes (three seeded per-ship liveries among them); and six
   public-domain NASA craft ship as starter hulls in the model dialog. About + README credits
   updated (NASA models, three.js, meshoptimizer, Draco).
+- **Attributions (v2.1.430)** - a bundle now carries `ATTRIBUTIONS.md`: every uploaded model and
+  picture, what uses it, its credit/licence/source, with unrecorded ones named and CC-BY-without-
+  credit called out. Construct pictures can now record credit/licence/source (the ImageRef fields
+  existed and nothing filled them). NOT DONE, worth its own slot: the BODY image upload
+  (`BodyBasicsTab`) still records no provenance, so body photos land in the file as blank.
 - **Save bundles (v2.1.429)** - READER-FACING AND FORMAT-LEVEL: a campaign or system with assets
   now saves as `.sse.zip` (readable json + assets/ as real files) instead of one JSON with base64
   inside; asset-free saves are unchanged. Both load, decided by the zip magic number not the name.
