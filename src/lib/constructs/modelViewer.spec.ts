@@ -3,7 +3,8 @@
 // with crease edges for material-less sources, and the orient bake honouring nose+Z/drive-Z.
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { buildDisplayModel } from './modelViewer';
+import { buildDisplayModel, createModelViewer } from './modelViewer';
+import { readFileSync } from 'node:fs';
 
 function stlLikeMesh(): THREE.Group {
   // An elongated box along X, off-centre - like a real hull parsed from an STL (no materials flag
@@ -71,5 +72,37 @@ describe('buildDisplayModel', () => {
     expect(size.z).toBeCloseTo(1, 3);     // the long axis now runs along Z (the nose direction)
     expect(size.x).toBeCloseTo(1 / 8, 3); // the old depth swings onto X
     expect(size.y).toBeCloseTo(2 / 8, 3); // height untouched by a yaw
+  });
+});
+
+// The viewer's API surface, pinned. This exists because a refactor DID silently drop `setOrient`
+// (the interface still declared it, so TypeScript stayed quiet and only the Svelte call site blew
+// up at runtime: "setOrient is not a function"). A structural check costs nothing and catches the
+// whole class - any method the interface promises must actually be on the object.
+describe('createModelViewer surface', () => {
+  it('returns every method the ModelViewer contract declares', () => {
+    // jsdom has no WebGL, so constructing the real viewer is not possible here; assert against the
+    // module's own contract instead by checking the factory's returned object shape via a stub
+    // canvas guarded by a try - if WebGL is unavailable the test still enforces the method list.
+    const required = ['setObject', 'setOrient', 'setBurn', 'setNozzles', 'pickOnHull', 'setSize', 'dispose'];
+    let viewer: any = null;
+    try {
+      const canvas = document.createElement('canvas');
+      viewer = createModelViewer(canvas, {});
+    } catch {
+      viewer = null; // no WebGL in this environment
+    }
+    if (!viewer) {
+      // Fall back to the source contract: every name must appear as a method on the returned
+      // object literal. Cheap, but it is exactly the check that was missing.
+      const src = readFileSync('src/lib/constructs/modelViewer.ts', 'utf8');
+      const ret = src.slice(src.lastIndexOf('\n  return {'));
+      for (const name of required) {
+        expect(ret.includes(`\n    ${name}(`), `${name} missing from the returned object`).toBe(true);
+      }
+      return;
+    }
+    for (const name of required) expect(typeof viewer[name], name).toBe('function');
+    viewer.dispose();
   });
 });

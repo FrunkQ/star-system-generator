@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.427-beta - 4th Aug 2026
+
+* FIX: Pitch/Yaw/Roll stopped working in the 3D model dialog ("setOrient is not a function"). The engine-placement refactor replaced the block of viewer methods between setBurn and setSize, and setOrient sat inside it - so the method vanished from the object while its INTERFACE declaration remained, which is why the compiler stayed silent and only the click failed. Restored, along with the livery accent that the same edit dropped from the preview path. A new structural test now asserts every method the viewer's contract declares is actually present, and it was mutation-checked: delete setOrient again and the test fails.
+
 ## v2.1.426-beta - 4th Aug 2026
 
 * Map highlights reach the players. The GM's selection rides the same broadcast as the other live overrides, so badging a category or a tag shows up on the players' system map as it does on the GM's — one selection, both screens.

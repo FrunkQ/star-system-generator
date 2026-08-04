@@ -32,7 +32,7 @@ export const DRIVE_AXIS = new THREE.Vector3(0, 0, -1);
 
 export interface ModelViewer {
   /** Hand over a (parsed) model. tintHex applies only when the source had no materials. */
-  setObject(object: THREE.Object3D, opts: { hadMaterials: boolean; tintHex?: string | null; finish?: HullFinish | null; seed?: string }): void;
+  setObject(object: THREE.Object3D, opts: { hadMaterials: boolean; tintHex?: string | null; finish?: HullFinish | null; seed?: string; accentHex?: string | null }): void;
   setOrient(q: [number, number, number, number] | null): void;
   /** Light the drive plume. thrust01 0..1 = fraction of the ship's own drive in use; braking
    *  points the ship retrograde (the plume then leads, as it does on the map); colorHex is the
@@ -563,18 +563,25 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   }
 
   return {
-    setObject(object, { hadMaterials, tintHex, finish, seed }) {
+    setObject(object, { hadMaterials, tintHex, finish, seed, accentHex }) {
       clearFrame();
       // Orient is NOT baked here - the viewer owns a live orientGroup so the modal's buttons can
       // re-orient without rebuilding; the shared builder handles finish + normalisation.
       frame.scale.setScalar(1);
-      const built = buildDisplayModel(object, { hadMaterials, tintHex, finish, seed });
+      const built = buildDisplayModel(object, { hadMaterials, tintHex, finish, seed, accentHex });
       frame.add(built);
       frame.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(frame);
       frameRadius = box.isEmpty() ? 0.6 : Math.max(1e-6, box.getBoundingSphere(new THREE.Sphere()).radius);
       sternZ = box.isEmpty() ? -0.5 : box.min.z;
       rebuildRigs();
+      frameCamera();
+    },
+    // The GM's 90-degree alignment fix. Lives on a group of its own so it can be re-applied
+    // without rebuilding the hull - and so the plumes and nozzle markers, which hang off the
+    // same group, turn with the ship rather than being left behind.
+    setOrient(q) {
+      orientGroup.quaternion.set(...(q ?? [0, 0, 0, 1]));
       frameCamera();
     },
     setBurn(burn) {
