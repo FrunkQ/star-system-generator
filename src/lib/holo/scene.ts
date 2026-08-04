@@ -12,7 +12,7 @@ import { traceConstructIcon, constructIconShape } from '$lib/constructs/construc
 // G3: the focused construct swaps its glyph sprite for its actual hull - loaded from the
 // hash-addressed store and built by the SAME display builder as the import modal's preview and
 // the info-block turntable, so every surface renders the one approved form.
-import { getModel as getStoredModel } from '$lib/constructs/modelStore';
+import { loadModelBytes, isFetchableFromPeer, modelKey } from '$lib/constructs/modelSource';
 import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { requestModel } from '$lib/constructs/modelFetch';
@@ -1645,20 +1645,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // (and so bumps buildGen) about twice a second - and every rebuild discarded the in-flight
     // async load before it could attach. A ship in a stable orbit does not move the snapshot, so
     // ITS model loaded fine: that is why models appeared on parked ships and never on moving ones.
-    const cached = parsedHullCache.get(ref.hash);
+    const key = modelKey(ref);
+    const cached = parsedHullCache.get(key);
     if (cached) { attachShipModel(v, ref, tint, sceneLen, cached); return; }
     try {
-      const stored = await getStoredModel(ref.hash);
-      if (!stored) {
+      // Bundled models resolve straight from the app's own files - no store, no transfer - so a
+      // preset or bundled campaign can point at one and every viewer has it.
+      const bytes = await loadModelBytes(ref);
+      if (!bytes) {
         // Not local yet (a remote player). One-shot retry when the transport lands it in the
         // store - modelArrived clears the waiter, and the gen guard drops it across rebuilds.
-        requestModel(ref.hash, () => { if (gen === buildGen) loadShipModel(v, ref, tint, sceneLen, gen); });
+        if (isFetchableFromPeer(ref)) {
+          requestModel(ref.hash!, () => { if (gen === buildGen) loadShipModel(v, ref, tint, sceneLen, gen); });
+        }
         return;
       }
-      const parsed = await parseStoredModel('stored.glb', stored.bytes);
+      const parsed = await parseStoredModel('stored.glb', bytes);
       // Fill the cache BEFORE the staleness check: even if this build is already gone, the next
       // one (a fraction of a second later) then attaches instantly instead of racing again.
-      parsedHullCache.set(ref.hash, parsed.object);
+      parsedHullCache.set(key, parsed.object);
       if (gen !== buildGen) return;
       attachShipModel(v, ref, tint, sceneLen, parsed.object);
     } catch (e) {
@@ -2639,7 +2644,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
       // G3: a construct carrying a 3D model loads it in the background; the sprite stands until
       // (and unless) it lands, and stands permanently on a machine that lacks the binary.
-      if (isConstruct && (node as any).model?.hash) {
+      if (isConstruct && ((node as any).model?.hash || (node as any).model?.url)) {
         loadShipModel(bodies[bodies.length - 1], (node as any).model, (node as any).icon_color || '#ffd24d', shipLenScene(node), buildGen);
       }
     }

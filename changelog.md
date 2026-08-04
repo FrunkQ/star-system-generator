@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.440-beta - 5th Aug 2026
+
+* Bundled spacecraft models are now REFERENCED rather than copied. Picking one of the NASA starter hulls used to duplicate its bytes into your browser's storage, into every save file, and over the wire to every player - for a file all of them already had, because it ships with the app. A construct now simply points at it. That costs no storage, adds nothing to a save, and needs no transfer: a player's browser resolves the same path locally. Your own uploads are unchanged and still travel with the campaign.
+* Because a reference costs nothing, the bundled maps ship pre-modelled: the International Space Station carries the real NASA model of itself in both Local Neighbourhood maps and the Sol 2030 system, with NASA's public-domain credit attached. Only genuine matches are wired this way - a model of a real craft belongs to that craft and nothing else.
+
 ## v2.1.439-beta - 5th Aug 2026
 
 * Drive plumes reach the player views now. A ship under power lit its torch on the GM's map and coasted silently on everyone else's, because a player's snapshot has its journeys stripped - they carry huge path arrays and the ship's forward plan, neither of which should cross - and the journeys are what say a ship is burning. The snapshot now carries the burns in a compact form instead: when, how hard, which way, and nothing else. No route, no destination, no path. The player evaluates them against their own clock, so the plume stays live between broadcasts rather than freezing at whatever it was when one arrived, and GM and player read the same thrust at the same instant.

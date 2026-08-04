@@ -63,7 +63,11 @@ export interface ImageRef { url: string; title?: string; credit?: string; licens
 // broadcast snapshot resend. Attribution fields mirror ImageRef: CC-BY models are allowed
 // (owner decision 5), so credit/license/sourceUrl must survive export and share with the ref.
 export interface ModelRef {
-  hash: string;            // content hash (SHA-256 hex) of the stored GLB — the store key
+  // A BUNDLED model — an app-relative path such as `/models/nasa/iss.glb`. The file ships with
+  // the app, so every browser already has it: nothing goes in the model store, nothing is
+  // embedded in a save, and nothing crosses the broadcast. A bundled ref needs no `hash`.
+  url?: string;
+  hash?: string;           // content hash (SHA-256 hex) of a GM-UPLOADED GLB — the store key
   name?: string;           // display name (source filename or model title)
   sourceFormat?: 'glb' | 'stl' | 'obj'; // what the GM uploaded, before conversion
   triangles?: number;      // triangle count of the stored (post-simplify) mesh

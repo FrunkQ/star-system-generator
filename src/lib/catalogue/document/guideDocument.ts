@@ -117,7 +117,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // if one loaded); 'disc'/'sphere'/'flat' reserve a gap the view overlays the real renderer into.
   // The 'sliver' photo frame is special: it becomes a LEFT column beside the facts (handled in 4).
   const sliver = opts.imagery === 'photo' && !!opts.image && opts.photoFrame === 'sliver';
-  if (subject && subject.kind === 'construct' && (subject as any).model?.hash && opts.imagery !== 'none') {
+  if (subject && subject.kind === 'construct' && ((subject as any).model?.hash || (subject as any).model?.url) && opts.imagery !== 'none') {
     // G3 (owner steer 2026-08-03): for a construct the MODEL leads - the chain is model > photo >
     // glyph > nothing, under every imagery mode except 'none' ("if a construct is told to be 3D,
     // display it first"). Same reserved-gap mechanism as a body's globe: '__bodygfx' is where the

@@ -140,6 +140,7 @@
     const file = input.files?.[0];
     if (!file) return;
     if (!title) title = file.name.replace(/\.(glb|stl|obj)$/i, '');
+    bundledUrl = null; // an upload replaces a bundled reference with the GM's own file
     await processBytes(file.name, await file.arrayBuffer());
     input.value = '';
   }
@@ -150,6 +151,9 @@
   interface StarterEntry { id: string; file: string; name: string; lengthM: number; credit: string; license: string; sourceUrl: string }
   let starters: StarterEntry[] = [];
   let starterId = '';
+  // A BUNDLED hull is REFERENCED, never copied: the file ships with the app, so every browser
+  // already has it. Set when a starter is picked, cleared when a file is uploaded over it.
+  let bundledUrl: string | null = construct.model?.url ?? null;
   onMount(async () => {
     try {
       const res = await fetch('/models/nasa/manifest.json');
@@ -166,6 +170,7 @@
       credit = entry.credit;
       license = entry.license;
       sourceUrl = entry.sourceUrl;
+      bundledUrl = `/models/nasa/${entry.file}`; // referenced, not stored
       await processBytes(entry.file, await res.arrayBuffer());
     } catch (err) {
       error = err instanceof Error ? err.message : 'Could not fetch that starter hull.';
@@ -262,8 +267,15 @@
         ...(sourceUrl.trim() ? { sourceUrl: sourceUrl.trim() } : {}),
         custom: true
       };
-      const hash = await putModel(converted.glb, meta);
-      dispatch('save', { ...meta, hash } as ModelRef);
+      if (bundledUrl) {
+        // Nothing to store: the file is part of the app. Every viewer - GM, player, another
+        // machine opening the save - resolves the same path locally, so this costs no storage,
+        // no bytes in the save file and no transfer over the broadcast.
+        dispatch('save', { ...meta, url: bundledUrl } as ModelRef);
+      } else {
+        const hash = await putModel(converted.glb, meta);
+        dispatch('save', { ...meta, hash } as ModelRef);
+      }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Could not store the model.';
       saving = false;

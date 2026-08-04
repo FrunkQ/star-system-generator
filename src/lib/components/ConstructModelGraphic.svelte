@@ -10,7 +10,7 @@
   // there been no model, so degradation lands on yesterday's look, never on a blank.
   import { onMount, onDestroy } from 'svelte';
   import type { ModelRef } from '$lib/types';
-  import { getModel } from '$lib/constructs/modelStore';
+  import { loadModelBytes, isFetchableFromPeer, modelKey } from '$lib/constructs/modelSource';
   import { parseModel } from '$lib/constructs/modelImport';
   import { createModelViewer, type ModelViewer } from '$lib/constructs/modelViewer';
   import { requestModel } from '$lib/constructs/modelFetch';
@@ -43,21 +43,26 @@
   let unrequest: (() => void) | null = null;
   async function load(hash: string, tintNow: string) {
     const want = `${hash}|${tintNow}|${model.finish ?? ''}`;
-    const stored = await getModel(hash).catch(() => null);
-    if (want !== `${model.hash}|${displayTint}|${model.finish ?? ''}`) return; // subject/tint/finish changed while reading
-    if (!stored) {
+    // Bundled (url) or uploaded (hash) - the resolver knows which; this code does not care.
+    const bytes = await loadModelBytes(model).catch(() => null);
+    if (want !== `${modelKey(model)}|${displayTint}|${model.finish ?? ''}`) return; // subject/tint/finish changed while reading
+    if (!bytes) {
       // Not on this machine (a remote player, most likely): show the glyph and ask the transport
       // for the binary by hash - when it lands in the store, retry and the glyph gives way.
       missing = true; drawFallback();
       unrequest?.();
-      unrequest = requestModel(hash, () => { loadedKey = null; load(model.hash, displayTint); });
+      // Only an UPLOADED model is worth asking a peer for; a bundled file is one every viewer
+      // has, so a failed fetch would fail for them too.
+      if (isFetchableFromPeer(model)) {
+        unrequest = requestModel(hash, () => { loadedKey = null; load(modelKey(model), displayTint); });
+      }
       return;
     }
     unrequest?.(); unrequest = null;
     missing = false;
     try {
-      const parsed = await parseModel('stored.glb', stored.bytes);
-      if (want !== `${model.hash}|${displayTint}|${model.finish ?? ''}`) return;
+      const parsed = await parseModel('stored.glb', bytes);
+      if (want !== `${modelKey(model)}|${displayTint}|${model.finish ?? ''}`) return;
       viewer?.setObject(parsed.object, { hadMaterials: model.hadMaterials ?? true, tintHex: tintNow, finish: model.finish ?? null, seed });
       viewer?.setOrient(model.orient ?? null);
       // The GM placed these; every surface that draws the ship must honour them, not just the
@@ -103,7 +108,7 @@
   $: viewer?.setNozzles(model.nozzles ?? [], model.nozzleScale ?? 1, false);
 
   // One keyed reload covers first mount, subject change, live retint and finish change alike.
-  $: if (viewer && `${model.hash}|${displayTint}|${model.finish ?? ''}` !== loadedKey) load(model.hash, displayTint);
+  $: if (viewer && `${modelKey(model)}|${displayTint}|${model.finish ?? ''}` !== loadedKey) load(modelKey(model), displayTint);
 </script>
 
 <div class="cmg-root" bind:this={root}>

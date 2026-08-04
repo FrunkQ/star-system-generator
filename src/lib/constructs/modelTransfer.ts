@@ -20,7 +20,9 @@ export function referencedModelHashes(starmap: { systems?: { system?: { nodes?: 
   const hashes = new Set<string>();
   for (const entry of starmap.systems ?? []) {
     for (const node of entry.system?.nodes ?? []) {
-      const h = node?.model?.hash;
+      // A BUNDLED model (url) is part of the app on every machine - there is nothing to embed,
+      // and embedding it would put an app asset in every save file for no reason.
+      const h = node?.model?.url ? null : node?.model?.hash;
       if (typeof h === 'string' && h) hashes.add(h);
     }
   }

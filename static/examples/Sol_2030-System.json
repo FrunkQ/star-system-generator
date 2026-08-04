@@ -68,7 +68,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 439.7654525746886,
-      "greenhouseTempK": 4.326640157213818e-9,
+      "greenhouseTempK": 4.326640157213818e-09,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 439.76545257901523,
@@ -160,7 +160,7 @@
           "CO2": 0.965,
           "N2": 0.035,
           "SO2": 0.00015,
-          "H2O": 0.00002
+          "H2O": 2e-05
         },
         "main": "CO2",
         "pressure_bar": 92,
@@ -473,7 +473,7 @@
         "hostMu": 42643806000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 0.0000626,
+          "a_AU": 6.26e-05,
           "e": 0.0151,
           "i_deg": 1.093,
           "omega_deg": 0,
@@ -685,7 +685,7 @@
           "He": 0.13,
           "CH4": 0.003,
           "NH3": 0.00026,
-          "H2S": 0.00008
+          "H2S": 8e-05
         },
         "main": "H2",
         "pressure_bar": 1,
@@ -810,7 +810,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 118.25745818500486,
-      "greenhouseTempK": 0.000001808328556691768,
+      "greenhouseTempK": 1.808328556691768e-06,
       "tidalHeatK": 4.93145425708962,
       "radiogenicHeatK": 0,
       "temperatureK": 123.18891404182969,
@@ -821,7 +821,7 @@
           "S": 0.1
         },
         "main": "SO2",
-        "pressure_bar": 1e-8,
+        "pressure_bar": 1e-08,
         "molarMassKg": 0.06080000000000001,
         "scaleHeightKm": 9.378879335756507
       },
@@ -849,7 +849,7 @@
       "habitabilityScore": 12.753423069772463,
       "surfaceRadiation": 20.43988052919227,
       "stellarRadiation": 0.036879765152038245,
-      "radiationShieldingAtmo": 1.1099999386310344e-7,
+      "radiationShieldingAtmo": 1.1099999386310344e-07,
       "radiationShieldingMag": 0,
       "photonRadiation": 16.595892476273043,
       "particleRadiation": 1.8439880529192272,
@@ -1129,7 +1129,7 @@
           "He": 0.03,
           "CH4": 0.0045,
           "NH3": 0.00012,
-          "H2S": 0.00004
+          "H2S": 4e-05
         },
         "main": "H2",
         "pressure_bar": 1,
@@ -1263,7 +1263,7 @@
         "composition": {
           "N2": 0.95,
           "CH4": 0.05,
-          "HCN": 0.0000012
+          "HCN": 1.2e-06
         },
         "main": "N2",
         "pressure_bar": 1.45,
@@ -1297,7 +1297,7 @@
       "radiationShieldingAtmo": 0.9999657046231983,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.00016778071698654953,
-      "particleRadiation": 0.00001864230188739439,
+      "particleRadiation": 1.864230188739439e-05,
       "stellarRadiationMin": 0.009740344708318137,
       "stellarRadiationMax": 0.012212046468452873,
       "surfaceRadiationMin": 2.000167024395975,
@@ -1340,7 +1340,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 87.16734055374522,
-      "greenhouseTempK": 4.661779406414735e-8,
+      "greenhouseTempK": 4.661779406414735e-08,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 87.16734060036302,
@@ -1353,7 +1353,7 @@
           "CH4": 0.01
         },
         "main": "H2O",
-        "pressure_bar": 1e-9,
+        "pressure_bar": 1e-09,
         "molarMassKg": 0.017779999999999997,
         "scaleHeightKm": 359.39522288066956
       },
@@ -1381,7 +1381,7 @@
       "habitabilityScore": 22.500887479059124,
       "surfaceRadiation": 7.443261156810057,
       "stellarRadiation": 0.010886522401207133,
-      "radiationShieldingAtmo": 8.045454524818751e-9,
+      "radiationShieldingAtmo": 8.045454524818751e-09,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.898935041129051,
       "particleRadiation": 0.5443261156810056,
@@ -2164,7 +2164,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 49.17666062345122,
-      "greenhouseTempK": 0.000020408335639210383,
+      "greenhouseTempK": 2.0408335639210383e-05,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 49.176681031786856,
@@ -2175,7 +2175,7 @@
           "CH4": 0.001
         },
         "main": "N2",
-        "pressure_bar": 0.000014,
+        "pressure_bar": 1.4e-05,
         "molarMassKg": 0.027988,
         "scaleHeightKm": 18.73502361782742
       },
@@ -2284,9 +2284,9 @@
         "hostId": "bary-auto-id-1771448528579-8l0pwwf51",
         "hostMu": 975115229999.9999,
         "t0": 1762339146908,
-        "n_rad_per_s": 0.000011513962834212866,
+        "n_rad_per_s": 1.1513962834212866e-05,
         "elements": {
-          "a_AU": 0.00001405886379192334,
+          "a_AU": 1.405886379192334e-05,
           "e": 0.2488,
           "i_deg": 17.16,
           "omega_deg": 0,
@@ -2299,7 +2299,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 42.947991060905515,
-      "greenhouseTempK": 0.00005526266059632093,
+      "greenhouseTempK": 5.526266059632093e-05,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 42.94804632356611,
@@ -2311,7 +2311,7 @@
           "CO": 0.01
         },
         "main": "N2",
-        "pressure_bar": 0.00001,
+        "pressure_bar": 1e-05,
         "molarMassKg": 0.02788,
         "scaleHeightKm": 20.796332219200405
       },
@@ -2339,7 +2339,7 @@
       "habitabilityScore": 24.333466666666666,
       "surfaceRadiation": 2.3207629754263026,
       "stellarRadiation": 0.0006415720012380857,
-      "radiationShieldingAtmo": 0.00007177742387742825,
+      "radiationShieldingAtmo": 7.177742387742825e-05,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.2886866778836722,
       "particleRadiation": 0.03207629754263024,
@@ -2366,7 +2366,7 @@
         "hostId": "bary-auto-id-1771448528579-8l0pwwf51",
         "hostMu": 975115229999.9999,
         "t0": 1762339146908,
-        "n_rad_per_s": 0.000011513962834212866,
+        "n_rad_per_s": 1.1513962834212866e-05,
         "elements": {
           "a_AU": 0.00011594113620807666,
           "e": 0.2488,
@@ -2487,7 +2487,7 @@
         "hostMu": 398600000000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 0.000045,
+          "a_AU": 4.5e-05,
           "e": 0.0001,
           "i_deg": 51.6,
           "omega_deg": 0,
@@ -2495,7 +2495,15 @@
           "M0_rad": 0
         }
       },
-      "placement": "Low Orbit"
+      "placement": "Low Orbit",
+      "model": {
+        "url": "/models/nasa/iss.glb",
+        "name": "International Space Station",
+        "credit": "NASA",
+        "license": "Public domain",
+        "sourceUrl": "https://github.com/nasa/NASA-3D-Resources",
+        "hadMaterials": true
+      }
     },
     {
       "id": "construct-tiangong",
@@ -2561,7 +2569,7 @@
         "hostMu": 398600000000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 0.000045,
+          "a_AU": 4.5e-05,
           "e": 0.0001,
           "i_deg": 41.5,
           "omega_deg": 0,
@@ -2636,7 +2644,7 @@
         "hostMu": 4902.8,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 0.00002,
+          "a_AU": 2e-05,
           "e": 0.05,
           "i_deg": 90,
           "omega_deg": 0,
@@ -2719,9 +2727,9 @@
         "hostId": "solar-system-earth",
         "hostMu": 398600000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 0.00007292115,
+        "n_rad_per_s": 7.292115e-05,
         "elements": {
-          "a_AU": 0.00004258750455597227,
+          "a_AU": 4.258750455597227e-05,
           "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
