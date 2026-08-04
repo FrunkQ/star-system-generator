@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.424-beta - 4th Aug 2026
+
+* **Map highlights.** Pick a whole tag category or a single tag from Player Views → Quick overrides, and it gets badged on the maps — yours and the players', from the one selection, so what you pick is what they see. A category flies each of its tags in its own colour (one Faction category, a different colour per faction); a single tag shows only where it is, which is the "just show them where the refuelling is" case without configuring anything first.
+* On the **starmap** a system badges the union of what everything inside it carries, not just its star — the interesting cases are never on the star. Several factions in one system all show, because contested space is a real answer rather than a rendering problem. Four badges then "+N".
+* Secret tags and player-hidden categories can never become a player-facing badge, so leaving a faction highlighted is safe.
+
 ## v2.1.423-beta - 4th Aug 2026
 
 * A tag's provenance is now declared by its CATEGORY rather than by a hardcoded list of key prefixes buried in the tagging module. The tag itself carries only the simple part — was this put here by hand — and the category answers what a tag in that namespace is otherwise: derived every pass, or written once at generation and never re-derived. Adding a namespace to the engine no longer means remembering to update a list somewhere else, which is the kind of thing that goes wrong silently.

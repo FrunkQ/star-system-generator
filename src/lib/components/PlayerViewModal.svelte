@@ -15,6 +15,7 @@
     playerPresetList, addPreset, deletePreset, duplicateIntoStarmap, runPresetMigration
   } from '$lib/player/presetStore';
   import { liveOverrides, runningPresetId } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
   import PlayerPresetEditor from './PlayerPresetEditor.svelte';
 
   export let sessionId: string | null = null;
@@ -60,6 +61,38 @@
   function setOverride(changes: Partial<import('$lib/player/liveOverrides').LiveOverrides>) {
     liveOverrides.update((o) => ({ ...o, ...changes }));
     if (get(runningPresetId)) broadcastThrottled();
+  }
+
+  // --- Map highlights (live selection of what gets badged on the maps) ---
+  // Only enabled categories, and only tags that are actually defined, so the list cannot offer
+  // something that will never match anything.
+  $: highlightableTags = $tagCategories
+    .filter((c) => c.enabled)
+    .flatMap((c) => c.tags.map((t) => ({ key: t.key, label: t.label, catName: c.shortName || c.longName })));
+
+  const isHighlighted = (ref: string) => $liveOverrides.mapHighlights.some((h) => h.ref === ref);
+
+  function addHighlight(ref: string) {
+    if (!ref || isHighlighted(ref)) return;
+    setOverride({ mapHighlights: [...$liveOverrides.mapHighlights, { ref }] });
+  }
+  function removeHighlight(ref: string) {
+    setOverride({ mapHighlights: $liveOverrides.mapHighlights.filter((h) => h.ref !== ref) });
+  }
+  /** A chip renders in the colour the marker will actually be, so the picker previews the map. */
+  function hlStyle(ref: string): { label: string; color: string; textColor: string } {
+    const cats = $tagCategories;
+    if (!ref.includes('/')) {
+      const c = cats.find((x) => x.id === ref);
+      return { label: c?.longName || ref, color: c?.color || '#888', textColor: c?.textColor || '#fff' };
+    }
+    const c = cats.find((x) => ref.startsWith(`${x.id}/`));
+    const t = c?.tags.find((x) => x.key === ref);
+    return {
+      label: t?.label || ref.split('/').slice(1).join(' '),
+      color: t?.color || c?.color || '#888',
+      textColor: t?.textColor || c?.textColor || '#fff'
+    };
   }
 
   let selectedId: string | null = null;
@@ -246,6 +279,41 @@
                 on:change={(e) => setOverride({ orbitPaused: (e.currentTarget as HTMLInputElement).checked })} />
               Pause auto view-orbit
             </label>
+
+            <!-- Highlights. Not gated on a running view: it badges the GM's own maps too, and seeing
+                 it before pushing it is the point. -->
+            <div class="hl-block">
+              <span class="ov-head hl-head">Highlight on the maps</span>
+              <p class="hl-hint">
+                Badges whatever you pick, on your maps and the players'. A whole category flies each of
+                its tags in its own colour; a single tag shows only where it is.
+              </p>
+              {#if $liveOverrides.mapHighlights.length}
+                <div class="hl-chips">
+                  {#each $liveOverrides.mapHighlights as h (h.ref)}
+                    {@const style = hlStyle(h.ref)}
+                    <button class="hl-chip" style="background:{style.color}; color:{style.textColor}"
+                      title="Stop highlighting {style.label}" on:click={() => removeHighlight(h.ref)}>
+                      {style.label} <span class="x">×</span>
+                    </button>
+                  {/each}
+                  <button class="hl-clear" on:click={() => setOverride({ mapHighlights: [] })}>clear</button>
+                </div>
+              {/if}
+              <select class="hl-add" value="" on:change={(e) => { addHighlight(e.currentTarget.value); e.currentTarget.value = ''; }}>
+                <option value="" disabled>Add a highlight…</option>
+                <optgroup label="Whole category">
+                  {#each $tagCategories.filter((c) => c.enabled) as c (c.id)}
+                    <option value={c.id} disabled={isHighlighted(c.id)}>{c.longName}</option>
+                  {/each}
+                </optgroup>
+                <optgroup label="One tag">
+                  {#each highlightableTags as t (t.key)}
+                    <option value={t.key} disabled={isHighlighted(t.key)}>{t.catName} · {t.label}</option>
+                  {/each}
+                </optgroup>
+              </select>
+            </div>
           </div>
         </aside>
       {/if}
@@ -332,4 +400,14 @@
   @media (max-width: 400px) {
     .grid { grid-template-columns: 1fr; }
   }
+
+  .hl-block { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .hl-head { margin: 0; }
+  .hl-hint { margin: 0; font-size: 0.66rem; color: var(--text-faint); line-height: 1.35; }
+  .hl-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .hl-chip { border: none; border-radius: 4px; padding: 2px 7px; font-size: 0.7rem; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
+  .hl-chip:hover { filter: brightness(1.12); }
+  .hl-chip .x { font-weight: bold; }
+  .hl-clear { background: none; border: none; color: var(--text-faint); font-size: 0.66rem; cursor: pointer; text-decoration: underline; }
+  .hl-add { width: 100%; padding: 4px; font-size: 0.72rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
 </style>

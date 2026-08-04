@@ -36,6 +36,16 @@
   import { ensureTemporalState, setMasterToDisplay } from '$lib/temporal/defaults';
   import TimeControls from './TimeControls.svelte';
 
+
+  // MAP HIGHLIGHTS — a system badges the union of what everything INSIDE it carries, not just its
+  // star. The interesting cases are never on the star: a faction holding one moon, a refuelling stop
+  // at a gas giant. Several factions in one system is a real answer, so they all show.
+  import { rollUpMarkers, capMarkers } from '$lib/tags/mapHighlights';
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
+  const systemMarkers = (sysNode: any) =>
+    capMarkers(rollUpMarkers(sysNode?.system?.nodes ?? [], $liveOverrides.mapHighlights, $tagCategories));
+
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
@@ -1274,7 +1284,29 @@
         {/if}
       {/each}
 
-      {#each starmap.systems as systemNode}
+          {#each starmap.systems as systemNode}
+        {@const hl = systemMarkers(systemNode)}
+        {#if hl.shown.length}
+          <g class="hl-markers" transform="translate({systemNode.position.x + 8}, {systemNode.position.y - 10})" pointer-events="none">
+            {#each hl.shown as m, i (m.key)}
+              {#if m.style === 'ring' || m.style === 'both'}
+                <circle cx={-8} cy={10} r={9 + i * 2.5} fill="none" stroke={m.color} stroke-width="1.4" />
+              {/if}
+              {#if m.style !== 'ring'}
+                <g transform="translate(0, {i * 9})">
+                  <rect x="0" y="-4.5" width={(m.style === 'pin' || m.style === 'flag' ? m.monogram : m.label).length * 3.6 + 6} height="9" rx="2.5" fill={m.color} />
+                  <text x="3" y="2" class="hl-text" fill={m.textColor}>{m.style === 'pin' || m.style === 'flag' ? m.monogram : m.label}</text>
+                </g>
+              {/if}
+            {/each}
+            {#if hl.overflow}
+              <g transform="translate(0, {hl.shown.length * 9})">
+                <rect x="0" y="-4.5" width="16" height="9" rx="2.5" fill="rgba(30,34,42,0.9)" />
+                <text x="3" y="2" class="hl-text" fill="#cfd6e0">+{hl.overflow}</text>
+              </g>
+            {/if}
+          </g>
+        {/if}
         {@const visualNodes = getVisualNodes(systemNode.system)}
         <g
           role="button"
@@ -2079,4 +2111,7 @@
   .jc-buttons button { padding: 8px 14px; border: none; border-radius: 4px; cursor: pointer; background: var(--bg-control); color: var(--text); font: inherit; }
   .jc-buttons button.danger { background: var(--status-bad, #e0484d); color: #fff; }
   .jc-buttons button.primary { background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); }
+
+  .hl-text { font-size: 6px; font-family: system-ui, sans-serif; dominant-baseline: middle; }
+  .hl-markers { pointer-events: none; }
 </style>

@@ -87,6 +87,12 @@
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
+  // MAP HIGHLIGHTS (phase D). The GM's own map badges whatever the live selection names, in the
+  // tag's own colour, so what you are about to push to the players is what you are already looking at.
+  import { markersFor, capMarkers, type HighlightMarker } from '$lib/tags/mapHighlights';
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
+
   // Foreground overlay canvas: sits above the PlanetDisc HTML layer; constructs + labels draw here
   // so they're never hidden behind a big planet disc. Sized to match `canvas` each frame.
   let fgCanvas: HTMLCanvasElement;
@@ -1333,6 +1339,64 @@
           ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
           ctx.lineJoin = 'round';
 
+
+          // One painter for both marker shapes. Canvas rather than DOM because it draws on the same overlay
+          // as every other label and must not fight the pan/zoom transform.
+          function drawMarkers(
+              ctx: CanvasRenderingContext2D,
+              markers: HighlightMarker[],
+              x: number, y: number, discRadiusPx: number
+          ) {
+              if (!markers.length) return;
+              const { shown, overflow } = capMarkers(markers);
+
+              // RINGS first, nested outward, so a label drawn after sits on top of them.
+              let ringR = Math.max(discRadiusPx, 3) + 3;
+              for (const m of shown) {
+                  if (m.style !== 'ring' && m.style !== 'both') continue;
+                  ctx.beginPath();
+                  ctx.arc(x, y, ringR, 0, Math.PI * 2);
+                  ctx.strokeStyle = m.color;
+                  ctx.lineWidth = 2;
+                  ctx.stroke();
+                  ringR += 4;                       // 2px stroke + 2px gap
+              }
+
+              // PILLS fan to the right of the body, stacked downward — a stable order, so a body's badges
+              // do not reshuffle between frames.
+              const pills = shown.filter((m) => m.style !== 'ring');
+              if (!pills.length && !overflow) return;
+              const prevFont = ctx.font;
+              const prevAlign = ctx.textAlign;
+              ctx.font = '9px system-ui, sans-serif';
+              ctx.textAlign = 'left';
+              let py = y + 9;
+              const px = x + Math.max(discRadiusPx, 3) + 5;
+              for (const m of pills) {
+                  const text = m.style === 'pin' || m.style === 'flag' ? m.monogram : m.label;
+                  const w = ctx.measureText(text).width + 8;
+                  ctx.fillStyle = m.color;
+                  if (typeof (ctx as any).roundRect === 'function') {
+                      ctx.beginPath(); (ctx as any).roundRect(px, py - 7, w, 11, 3); ctx.fill();
+                  } else {
+                      ctx.fillRect(px, py - 7, w, 11);
+                  }
+                  ctx.fillStyle = m.textColor;
+                  ctx.fillText(text, px + 4, py + 1);
+                  py += 13;
+              }
+              if (overflow) {
+                  const text = `+${overflow}`;
+                  const w = ctx.measureText(text).width + 8;
+                  ctx.fillStyle = 'rgba(30,34,42,0.9)';
+                  ctx.fillRect(px, py - 7, w, 11);
+                  ctx.fillStyle = '#cfd6e0';
+                  ctx.fillText(text, px + 4, py + 1);
+              }
+              ctx.font = prevFont;
+              ctx.textAlign = prevAlign;
+          }
+
           // Draw labels child → parent (deepest hierarchy depth first) so a parent's label paints LAST
           // and sits on TOP of its satellites' labels in a crowded cluster — the parent is the most
           // important / most likely to be clicked.
@@ -1387,6 +1451,8 @@
                       ctx.fillStyle = getNodeColor(node);
                   }
                   ctx.fillText(node.name, tx, ty);
+                  drawMarkers(ctx, markersFor(node.tags, $liveOverrides.mapHighlights, $tagCategories),
+                              screenPos.x, screenPos.y, radiusPx);
               }
           }
           for (const node of system.nodes) {
@@ -1403,6 +1469,8 @@
               ctx.strokeText(node.name, tx, ty);
               ctx.fillStyle = node.icon_color || '#f0f0f0'; 
               ctx.fillText(node.name, tx, ty);
+              drawMarkers(ctx, markersFor((node as any).tags, $liveOverrides.mapHighlights, $tagCategories),
+                          screenPos.x, screenPos.y, size / 2);
           }
       }
       if (showZones && stellarZones.size > 0) {
