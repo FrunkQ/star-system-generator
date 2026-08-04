@@ -27,7 +27,7 @@
     : `${newCat}/${tagSlugSegment(newName) || 'name'}`;
   $: previewInfo = describeTag(previewKey);
 
-  // The existing PoI tags defined in the chosen category that this body doesn't have yet — click one to
+  // The tags already defined in the chosen category that this body doesn't have yet — click one to
   // add it manually (kept as the player's own, so the reasons pass never strips it).
   // For "Custom", offer the starmap-wide vocabulary of custom tags used on ANY body/construct (across all
   // systems), minus the ones this body already has — so a tag added anywhere is a one-click reuse here.
@@ -120,14 +120,14 @@
   const sortedGroups = (r: Record<string, TagItem[]>) => Object.keys(r).sort();
 
   // Which rule seeded a tag (Tag.source = 'rule:<id>') — so the mouseover says exactly where it came from
-  // and whether it was deterministic (chance 100%) or a roll. The rules live in the active PoI packs.
+  // and whether it was deterministic (chance 100%) or a roll. Rules live on their tag category.
   $: ruleById = (() => { const m = new Map<string, any>(); for (const p of $poiPacks) for (const r of (p.rules ?? [])) m.set(r.id, r); return m; })();
   function provenance(source?: string): string {
-    if (!source?.startsWith('rule:')) return 'From a PoI rule — re-applied every run. Change the rule/pack to alter it.';
+    if (!source?.startsWith('rule:')) return 'Seeded by an automated tagging rule — re-applied every run. Edit the rule to change it.';
     const r = ruleById.get(source.slice(5));
     if (!r) return 'Seeded by a rule no longer in the pack.';
     const det = r.chance >= 1 ? 'always seeded (deterministic)' : `${Math.round(r.chance * 100)}% chance`;
-    return `Seeded by rule "${r.label || r.tag}" — ${det}. Edit it in Settings → Reasons to Visit.`;
+    return `Seeded by rule "${r.label || r.tag}" — ${det}. Edit it in Settings → Tagging.`;
   }
 </script>
 
@@ -191,10 +191,10 @@
       </div>
     {/if}
 
-    <!-- PoI-rule tags: changeable by editing the pack (orange lock). -->
+    <!-- Rule-seeded tags: changeable by editing the rule (orange lock). -->
     {#each sortedGroups(groups.poi) as g (g)}
       <div class="tag-group">
-        <h5 class="src-head poi-head">{g} <span class="src-note">· PoI rule</span></h5>
+        <h5 class="src-head poi-head">{g} <span class="src-note">· automated rule</span></h5>
         <div class="tags-list">
           {#each groups.poi[g] as t (t.key)}
             <button class="tag-chip locked" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + provenance(t.source)}>
@@ -291,7 +291,7 @@
   .x { font-weight: bold; font-size: 1.1em; line-height: 0.5; }
   .lock { flex: 0 0 auto; }
   .lock.physics { color: #ef4444; }   /* red outline — physics, cannot change */
-  .lock.poi { color: #f59e0b; }       /* orange outline — PoI rule, changeable */
+  .lock.poi { color: #f59e0b; }       /* orange outline — rule-seeded, changeable */
   .no-tags { color: var(--text-faint); font-style: italic; }
   .add-tag-form { display: flex; flex-direction: column; gap: 8px; }
   .fld { display: flex; flex-direction: column; gap: 3px; font-size: 0.75em; color: var(--text-muted); }

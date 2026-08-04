@@ -45,8 +45,8 @@
           <span class="hi-desc">Every constant, derivation and honest fudge — and how a world's type &amp; tags are decided. The apple (Newton) icon links in here.</span>
         </a>
         <button class="help-item" on:click={() => (inlineDoc = tagsGuide)}>
-          <span class="hi-title">Tags, Points &amp; Constructs of Interest</span>
-          <span class="hi-desc">Physics vs hand-added tags, PoI/CoI, manual tagging, packs, and Find-by-tag.</span>
+          <span class="hi-title">Tags</span>
+          <span class="hi-desc">Where tags come from, categories, overriding the physics, secret tags, highlighting them on the maps, and Find-by-tag.</span>
         </button>
         <button class="help-item" on:click={() => (inlineDoc = autopilotGuide)}>
           <span class="hi-title">Autopilot</span>

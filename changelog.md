@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.425-beta - 4th Aug 2026
+
+* The tag guide is rewritten around what tags are actually for: the app's main currency and its natural-language layer, where the physics decides what is true and writes tags, and everything else — renderers, rules, the finder, you — reads tags. It covers the parts that were undocumented (provenance, categories, per-tag colour, overriding the physics, secret tags, map highlights) and says honestly that the separation is not complete yet.
+* "Points of Interest" and "Constructs of Interest" are gone from the interface. They were two names for one idea. Rule-seeded tags now say so, the tooltip points at Settings → Tagging rather than a menu that no longer exists, and the rule reference page is the tagging rule reference.
+
 ## v2.1.424-beta - 4th Aug 2026
 
 * **Map highlights.** Pick a whole tag category or a single tag from Player Views → Quick overrides, and it gets badged on the maps — yours and the players', from the one selection, so what you pick is what they see. A category flies each of its tags in its own colour (one Faction category, a different colour per faction); a single tag shows only where it is, which is the "just show them where the refuelling is" case without configuring anything first.
