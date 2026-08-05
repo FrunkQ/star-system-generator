@@ -1,29 +1,33 @@
 # G3 ship models - handoff to a fresh session
 
-Written 2026-08-05 at v2.1.446-beta by the session that built G3. Handing over because that
-session's context was full and it had started reasoning from memory instead of from the code.
-**Treat every conclusion below as a claim to re-verify, not as fact.** The last thing that
-session asserted - "the sizing is correct, the screenshot was from an old build" - was rejected
-by the owner with "it does not work". That assertion is the most likely thing to be wrong.
+Written 2026-08-05 at v2.1.446-beta by the session that built G3, and **RESOLVED at
+v2.1.447-beta** by the session it was handed to. The sizing fault is found, fixed and measured.
 
-## 1. Establish the symptom before reading anything else
+The permanent record is [[RENDER-S9]] and the amended [[RENDER-S8]] in `docs/dev/engine-map.md`,
+plus the reopening note on **G3** in `docs/dev/observations-inbox.md`. This file is kept only for
+the parts that are still live: what exists (section 3), the traps (section 5), what no human has
+looked at (section 6) and the working rules (section 7).
 
-Do not assume you know what is broken. The owner reported "it does not work" against a build
-where the previous session believed ship rendering was finished. Ask which surface and what is
-seen: GM 2D map, GM 3D holo, player 2D, player 3D, or the info-block portrait; and whether the
-ship is absent, an icon instead of a hull, or the wrong size.
+## 1. RESOLVED - what was actually wrong
 
-**Then read section 8 first.** The owner captured a debug trace after this note was written and
-it narrows the sizing fault to one condition in one function. Start there, not from scratch.
+`buildDisplayModel` normalises a hull to a unit long axis, but returned that normalised group
+DIRECTLY whenever the ModelRef carried no `orient`. `scene.ts:attachShipModel` then called
+`g.scale.setScalar(sceneLen)`, which overwrote the normalisation instead of composing with it, so
+the hull drew at `native x sceneLen`. The bundled ISS normalises by 0.039 and therefore drew
+**25.6x oversize** - a 109 m station spanning a fifth of an AU - with nothing selected and no zoom
+involved. A ModelRef WITH an orient took a wrapper path and was correct, and the error factor is
+each model FILE's native size, so different models were wrong by different amounts in either
+direction. That is why it presented as "sometimes too close, sometimes too far, inconsistent".
 
-**Then measure it. Do not judge from a screenshot.** In any view with the 3D scene running:
+Fix: `buildDisplayModel` always returns an outer group whose transform belongs to the caller.
+Pinned by `modelViewer.spec.ts` ("leaves its own transform free for the caller"), mutation-checked.
 
-    window.__shipDebug = true
-
-That logs, per construct per frame, the true hull length in scene units, distance to camera, the
-pixel floor being applied and the size actually drawn (`onScreenPx`). Four separate wrong
-diagnoses in the previous session came from inferring size from images; the one time it was
-measured, the answer arrived in a single line of output.
+**The instrument was lying, which is why the previous session concluded the opposite.**
+`window.__shipDebug` printed the size the code INTENDED (`drawn`/`onScreenPx`), not the size of the
+object: it reported a serene `onScreenPx: 7` while the hull was really 204 px across. The section-8
+arithmetic below was sound to five figures - about a quantity that was not what the screen was
+showing. The hook now also prints `measured`, `measuredPx` and `ratio` taken from the hull's real
+world extent; **read `ratio` first, and if it is far from 1 the fault is upstream of the floor.**
 
 ## 2. Read, in this order
 
@@ -61,7 +65,7 @@ measured, the answer arrived in a single line of output.
   over. `src/lib/constructs/modelLoadRace.spec.ts` and `shipScreenFloor.spec.ts` encode two of
   the regressions - if you change loading or sizing, expect those to be the ones that speak up.
 
-## 4. The scene sizing model, and why it is the prime suspect
+## 4. The scene sizing model (it was NOT the fault - see section 1 - but this is still how it works)
 
 A real ship is microscopic next to a planet, so the scene applies a screen-space floor: never let
 a hull draw smaller than `SHIP_MODEL_IDLE_PX` (7 px), or `SHIP_MODEL_MIN_PX` (14 px) when
@@ -111,6 +115,10 @@ trip including `ATTRIBUTIONS.md`; the matcap/blueprint/plated/patina finishes on
 `-occ` wireframe occlusion. The owner has offered to eyeball things - use that, ask for one
 specific check at a time.
 
+Added at v2.1.447-beta: the size fix was measured on the BUNDLED ISS only, so a GM-UPLOADED model
+(the `hash` path) has not been checked; and the drive plume now sits at the stern rather than the
+hull's centre, which no one has seen yet.
+
 ## 7. Working rules for this repo
 
 - Beta channel: **push every green build without asking**. Production stays explicit approval.
@@ -123,7 +131,22 @@ specific check at a time.
   (`src/lib/constructs/**`, the construct parts of the scene, the model UI) unless told otherwise.
   G14 (remote players) is VTT territory - leave it alone.
 
-## 8. Measured trace from the owner, 2026-08-05, v2.1.446-beta - THE LEAD
+## 8. SUPERSEDED - the trace below was a red herring, kept as a worked example
+
+**Everything in this section is arithmetically correct and led nowhere**, because it reasons about
+`drawn` - the size the code intends - while the hull on screen was 25.6x bigger than that. The
+floor-release condition it fingers as "the most likely whole cause" was innocent. With the hull
+correctly sized, selecting a ship engages follow, `framingThis` becomes true, the floor releases
+and the camera reaches 1.1e-9 scene units, so the controls DO permit true scale (the section's own
+open question 1). Open question 2 also resolves: `shipLen` is real, not clamped - a 46 m hull at
+true scale genuinely lands near 1e-10, though note that anything smaller does hit the
+`Math.max(1e-10, ...)` guard, so relative ship sizes stop being honest at the very bottom of the
+dial. That is a separate, unreported issue.
+
+Kept verbatim because it is the clearest example in this repo of a measurement that is impeccable
+and still wrong: it never asked whether the number being measured was the number on the screen.
+
+## 8a. Original trace from the owner, 2026-08-05, v2.1.446-beta
 
 A focused construct in the 3D scene, many consecutive frames, abridged:
 

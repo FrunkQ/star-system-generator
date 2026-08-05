@@ -313,12 +313,39 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
-### RENDER-S8 A ship's drawn size cannot be judged from a screenshot - measure it
+### RENDER-S9 A "normalised" model group is only normalised until someone sets its scale
+WHERE: `src/lib/constructs/modelViewer.ts:buildDisplayModel` (returns an OUTER group whose own
+transform is the caller's); consumed by `holo/scene.ts:attachShipModel` and the portrait viewer.
+Guarded by `modelViewer.spec.ts` ("leaves its own transform free for the caller").
+RULE: a builder that normalises geometry must park that scale on a CHILD and hand back a wrapper
+with an identity transform. Every caller's natural move is `obj.scale.setScalar(wanted)`, which
+overwrites - not composes with - a scale sitting on the returned object itself.
+WHY: `buildDisplayModel` returned the normalised group directly when the ModelRef carried no
+`orient`, and `scene.ts` then did `g.scale.setScalar(sceneLen)`, throwing the normalisation away
+and drawing the hull at `native x sceneLen`. The bundled ISS normalises by 0.039, so it drew 25.6x
+oversize - a 109 m station a fifth of an AU long. The factor is the model FILE's native size, so
+each model was wrong by its own amount and in either direction, and a model WITH an orient took a
+wrapper path and was correct: it presented as "sometimes too close, sometimes too far, erratic"
+rather than as a plain constant error, which is what made it hard to name.
+BLAST: the existing "normalises to a unit long axis" test stayed green through all of it, because
+it measures the returned object WITHOUT setting a scale on it - the one thing every real caller
+does. Test the contract the caller relies on, not the one the builder advertises. The portrait
+viewer hid it too: it measures whatever it is handed and frames to that, so a 25x hull just gets
+framed 25x further away and looks perfect - the only surface a human had ever checked.
+
+### RENDER-S8 A ship's drawn size cannot be judged from a screenshot - measure it, and measure the OBJECT
 WHERE: `src/lib/holo/scene.ts:updateConstructs` (`window.__shipDebug = true` logs the numbers)
 RULE: the drawn size is `max(trueLength, minPx * f * cameraDistance)` - it depends on the
 body-size dial, the camera distance AND the viewport height together. A hull that looks "AU
 across" may be a correct 7 px on a screen you are not looking at, and one that looks right may
 be wrong. Turn the hook on and read `onScreenPx` before changing anything.
+CAVEAT, paid for the hard way: `drawn`/`onScreenPx` are only what the code INTENDS. Read
+`measured`/`measuredPx` (the hull's real world extent) and check `ratio` is near 1. The hook once
+reported a serene 7 px while the hull was really 204 px across, and its arithmetic reconciled to
+five figures against a picture of a station spanning a fifth of an AU - so "measure, don't judge
+from a screenshot" produced a CONFIDENT WRONG ANSWER and closed the investigation. A `ratio` well
+off 1 means the fault is upstream of this maths (see RENDER-S9), not in the floor. `measured` is
+an axis-aligned box around a hull that turns with its heading, so ~1.0-1.7 is healthy.
 WHY: this was misdiagnosed four times from screenshots - visibility rules, LOD thresholds and
 camera framing were all "fixed" while innocent. The one real fault (a division landing on the
 divide-by-zero guard at true scale) was found in seconds once the numbers were printed.
