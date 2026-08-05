@@ -15,10 +15,14 @@ export interface LiveOverrides {
   // Secret tags and player-hidden categories are removed from the player snapshot before markers are
   // built, so highlighting a category cannot leak one.
   mapHighlights: MapHighlights;
+  // The mute. Choosing WHAT to highlight happens in Find by tag, which knows what is on the map;
+  // this is the one-click "not right now" for the whole set, so a GM can drop the badges mid-scene
+  // without losing the selection they built.
+  highlightsMuted: boolean;
 }
 
 export const DEFAULT_OVERRIDES: LiveOverrides = {
-  followGM: null, filterBypass: false, orbitPaused: false, labelsHidden: false, mapHighlights: []
+  followGM: null, filterBypass: false, orbitPaused: false, labelsHidden: false, mapHighlights: [], highlightsMuted: false
 };
 
 export const liveOverrides = writable<LiveOverrides>({ ...DEFAULT_OVERRIDES });

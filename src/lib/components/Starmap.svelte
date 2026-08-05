@@ -43,8 +43,27 @@
   import { rollUpMarkers, capMarkers } from '$lib/tags/mapHighlights';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
   const systemMarkers = (sysNode: any) =>
-    capMarkers(rollUpMarkers(sysNode?.system?.nodes ?? [], $liveOverrides.mapHighlights, $tagCategories));
+    capMarkers(rollUpMarkers(sysNode?.system?.nodes ?? [], activeHighlights, $tagCategories));
+  // A HIGHLIGHT IS A FILTER on the starmap, by default and with no extra control: once something is
+  // highlighted, the systems carrying none of it fade back. "Show me where the refuelling is" then
+  // reads as a map answer instead of a hunt for small badges. Clearing the selection restores
+  // everything — it is a visual emphasis, never a hide.
+  $: highlightsActive = activeHighlights.length > 0;
+  const systemMatches = (sysNode: any) =>
+    rollUpMarkers(sysNode?.system?.nodes ?? [], activeHighlights, $tagCategories).length > 0;
+  // The KEY. Badges alone do not explain themselves at starmap zoom, so the selection is listed with
+  // its colours. Built from the same resolution the markers use, so it cannot disagree with them.
+  $: highlightKey = (() => {
+    const seen = new Map<string, { label: string; color: string; textColor: string }>();
+    for (const sys of starmap?.systems ?? []) {
+      for (const m of rollUpMarkers((sys as any)?.system?.nodes ?? [], activeHighlights, $tagCategories)) {
+        if (!seen.has(m.key)) seen.set(m.key, { label: m.label, color: m.color, textColor: m.textColor });
+      }
+    }
+    return [...seen.values()];
+  })();
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
@@ -1287,7 +1306,7 @@
           {#each starmap.systems as systemNode}
         {@const hl = systemMarkers(systemNode)}
         {#if hl.shown.length}
-          <g class="hl-markers" transform="translate({systemNode.position.x + 8}, {systemNode.position.y - 10})" pointer-events="none">
+          <g class="hl-markers" transform="translate({systemNode.position.x + 8 * labelK}, {systemNode.position.y - 10 * labelK}) scale({labelK})" pointer-events="none">
             {#each hl.shown as m, i (m.key)}
               {#if m.style === 'ring' || m.style === 'both'}
                 <circle cx={-8} cy={10} r={9 + i * 2.5} fill="none" stroke={m.color} stroke-width="1.4" />
@@ -1311,6 +1330,7 @@
         <g
           role="button"
           tabindex="0"
+          class:hl-dim={highlightsActive && !systemMatches(systemNode)}
           on:pointerdown={(e) => handleSystemPointerDown(e, systemNode.id)}
           on:click={(e) => handleStarClick(e, systemNode.id)}
           on:dblclick={() => handleStarDblClick(systemNode.id)}
@@ -1517,6 +1537,15 @@
       {/if}
       </g>
     </svg>
+    {#if highlightKey.length}
+      <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. -->
+      <div class="hl-key">
+        <span class="hl-key-head">Highlighted</span>
+        {#each highlightKey as k (k.label)}
+          <span class="hl-key-row"><span class="hl-key-dot" style="background:{k.color}"></span>{k.label}</span>
+        {/each}
+      </div>
+    {/if}
     <StarmapScaleBar
       {zoom}
       {svgScale}
@@ -2114,4 +2143,14 @@
 
   .hl-text { font-size: 6px; font-family: system-ui, sans-serif; dominant-baseline: middle; }
   .hl-markers { pointer-events: none; }
+
+  /* A highlight filters by emphasis: unmatched systems fade, they never vanish. */
+  .hl-dim { opacity: 0.22; transition: opacity 120ms ease; }
+
+  .hl-key { position: absolute; top: 10px; right: 10px; z-index: 6; display: flex; flex-direction: column; gap: 3px;
+            background: rgba(12,15,22,0.82); border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px;
+            font-size: 0.68rem; color: var(--text); pointer-events: none; max-width: 190px; }
+  .hl-key-head { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
+  .hl-key-row { display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hl-key-dot { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
 </style>

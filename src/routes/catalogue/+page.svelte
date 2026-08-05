@@ -433,7 +433,7 @@
     holoFilterBypass = ov.filterBypass;
     holoOrbitPaused = ov.orbitPaused;
     overrideFollowGM = ov.followGM ?? null;
-    mapHighlights = (ov.mapHighlights ?? []) as any;
+    mapHighlights = (ov.highlightsMuted ? [] : (ov.mapHighlights ?? [])) as any;
   }
   // The GM's live highlight selection. The snapshot this view renders is already redacted, so a
   // secret tag cannot become a badge here however it is selected.

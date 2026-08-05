@@ -99,7 +99,8 @@
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   export let highlights: MapHighlights | null = null;
-  $: activeHighlights = highlights ?? $liveOverrides.mapHighlights;
+  // The mute is part of the selection's meaning, not a separate render flag: muted means "none".
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights);
 
   // Foreground overlay canvas: sits above the PlanetDisc HTML layer; constructs + labels draw here
   // so they're never hidden behind a big planet disc. Sized to match `canvas` each frame.

@@ -95,6 +95,46 @@
   })();
   const fmtDist = (d: number | null) => d == null ? '' : (d === 0 ? 'this system' : `${d} ${distanceUnit}`);
   const metaFor = (key: string) => describeTag(key);
+  // --- Highlight markers on the player views -------------------------------------------------
+  // This picker already knows what is ON the map, with colours and counts, so it is the right place
+  // to choose what gets badged — highlighting a tag nothing carries would show nothing. Drag a tag
+  // chip or a category bubble into the tray, or click + on it. The Quick-overrides panel in Player
+  // Views is then just a mute for what is chosen here, not a second way to choose it.
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
+
+  let dragOver = false;
+  const isHl = (ref: string) => $liveOverrides.mapHighlights.some((h) => h.ref === ref);
+  function addHighlight(ref: string) {
+    if (!ref || isHl(ref)) return;
+    liveOverrides.update((o) => ({ ...o, mapHighlights: [...o.mapHighlights, { ref }] }));
+  }
+  function removeHighlight(ref: string) {
+    liveOverrides.update((o) => ({ ...o, mapHighlights: o.mapHighlights.filter((h) => h.ref !== ref) }));
+  }
+  function onDrop(e: DragEvent) {
+    dragOver = false;
+    const ref = e.dataTransfer?.getData('text/tag-ref');
+    if (ref) addHighlight(ref);
+  }
+  const startDrag = (e: DragEvent, ref: string) => e.dataTransfer?.setData('text/tag-ref', ref);
+  // A GROUP is a display name ("Geology"); the highlight wants the namespace it came from.
+  const groupRef = (g: string) => {
+    const first = grouped[g]?.[0]?.key ?? '';
+    return first.includes('/') ? first.split('/')[0] : first;
+  };
+  /** What a chosen ref renders as, so the tray previews the marker. */
+  function hlChip(ref: string): { label: string; color: string; textColor: string } {
+    if (ref.includes('/')) {
+      const i = describeTag(ref);
+      return { label: i.label, color: i.color, textColor: i.textColor || '#fff' };
+    }
+    const c = $tagCategories.find((x) => x.id === ref);
+    if (c) return { label: c.longName, color: c.color, textColor: c.textColor || '#fff' };
+    const i = describeTag(`${ref}/x`);
+    return { label: ref.charAt(0).toUpperCase() + ref.slice(1), color: i.color, textColor: i.textColor || '#fff' };
+  }
+
 </script>
 
 <div class="tag-finder">
@@ -141,7 +181,10 @@
   <!-- category bubbles -->
   <div class="bubbles">
     {#each groupNames as g (g)}
-      <button class="bubble" class:open={expanded === g} style="--c:{groupColor(g)}" on:click={() => (expanded = expanded === g ? null : g)}>
+      <button class="bubble" class:open={expanded === g} style="--c:{groupColor(g)}"
+        draggable="true" on:dragstart={(e) => startDrag(e, groupRef(g))}
+        on:click={() => (expanded = expanded === g ? null : g)}
+        title="Click to open. Drag onto the highlight tray to badge the whole category.">
         {g} <span class="bcnt">{grouped[g].length}</span>
       </button>
     {/each}
@@ -149,8 +192,14 @@
   {#if expanded && grouped[expanded]}
     <div class="cat-tags">
       {#each grouped[expanded] as t (t.key)}
-        <button class="chip" class:active={filters.includes(t.key)} style="background:{t.color}; color:{t.textColor}" on:click={() => addFilter(t.key)} title={t.key}>
+        <button class="chip" class:active={filters.includes(t.key)} style="background:{t.color}; color:{t.textColor}"
+          draggable="true" on:dragstart={(e) => startDrag(e, t.key)}
+          on:click={() => addFilter(t.key)} title="{t.key}
+Click to filter. Drag onto the highlight tray to badge it on the maps.">
           {t.label} <span class="cnt">{t.count}</span>
+          <span class="tohl" role="button" tabindex="-1" title="Highlight on the player views"
+            on:click|stopPropagation={() => addHighlight(t.key)}
+            on:keydown|stopPropagation={(e) => { if (e.key === 'Enter') addHighlight(t.key); }}>+</span>
         </button>
       {/each}
     </div>
@@ -168,6 +217,28 @@
       {/each}
     {:else}
       <span class="hint">Pick a category bubble or search to add tag filters.</span>
+    {/if}
+  </div>
+
+  <!-- Highlight tray: what gets badged on the maps and the players' views. -->
+  <div class="hl-tray" class:over={dragOver}
+    role="region" aria-label="Show highlight markers on player views"
+    on:dragover|preventDefault={() => (dragOver = true)}
+    on:dragleave={() => (dragOver = false)}
+    on:drop|preventDefault={onDrop}>
+    <span class="hl-title">Show highlight markers on player views</span>
+    {#if $liveOverrides.mapHighlights.length}
+      <div class="hl-list">
+        {#each $liveOverrides.mapHighlights as h (h.ref)}
+          {@const c = hlChip(h.ref)}
+          <button class="chip rm" style="background:{c.color}; color:{c.textColor}"
+            on:click={() => removeHighlight(h.ref)} title="Stop highlighting {c.label}">
+            {c.label} <span class="x">×</span>
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <span class="hint">Drag a tag or a category here — or use the + on a tag — to badge it on every map, yours and the players'.</span>
     {/if}
   </div>
 
@@ -243,4 +314,12 @@
     .chip { padding: 2px 7px; font-size: 0.72rem; line-height: 1.3; }
     .res-name { font-size: 0.9rem; }
   }
+
+  .hl-tray { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; padding: 6px 7px;
+             border: 1px dashed var(--border); border-radius: 5px; transition: border-color 120ms, background 120ms; }
+  .hl-tray.over { border-color: var(--link, #6aa0d8); background: rgba(106,160,216,0.10); border-style: solid; }
+  .hl-title { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); }
+  .hl-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tohl { margin-left: 4px; opacity: 0.55; font-weight: bold; cursor: pointer; }
+  .tohl:hover { opacity: 1; }
 </style>

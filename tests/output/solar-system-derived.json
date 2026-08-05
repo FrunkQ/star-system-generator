@@ -12540,6 +12540,14 @@
         }
       },
       "placement": "Low Orbit",
+      "model": {
+        "url": "/models/nasa/iss.glb",
+        "name": "International Space Station",
+        "credit": "NASA",
+        "license": "Public domain",
+        "sourceUrl": "https://github.com/nasa/NASA-3D-Resources",
+        "hadMaterials": true
+      },
       "tags": []
     },
     {

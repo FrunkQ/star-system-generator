@@ -59,6 +59,7 @@ export interface PresetOverrides {
   // snapshot, which has already removed secret tags and player-hidden categories, so highlighting a
   // category cannot reveal one.
   mapHighlights?: { ref: string; style?: string }[];
+  highlightsMuted?: boolean;
 }
 export interface PresetBroadcast {
   presetId: string;

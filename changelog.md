@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.430-beta - 5th Aug 2026
+
+* **Choosing what to highlight now happens in Find by tag**, which already knows what is on the map, with colours and counts. Drag a tag chip or a category bubble into the tray at the bottom — "Show highlight markers on player views" — or press the + on a tag. Player Views → Quick overrides is now just the mute for it, so you can drop the badges mid-scene without losing the selection you built.
+* Two tag pickers, deliberately: **Find by tag** offers only what something actually carries (right for highlighting — badging a tag nothing has shows nothing), while the full-vocabulary picker offers everything the app knows including the engine's own namespaces (right for adding a tag by hand, where the first one has to come from somewhere).
+* On the starmap a highlight now behaves as a filter by default: systems carrying none of it fade back, and a key names what the colours mean. Marker size follows the label scale rather than adding another control.
+
 ## v2.1.440-beta - 5th Aug 2026
 
 * Bundled spacecraft models are now REFERENCED rather than copied. Picking one of the NASA starter hulls used to duplicate its bytes into your browser's storage, into every save file, and over the wire to every player - for a file all of them already had, because it ships with the app. A construct now simply points at it. That costs no storage, adds nothing to a save, and needs no transfer: a player's browser resolves the same path locally. Your own uploads are unchanged and still travel with the campaign.

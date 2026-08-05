@@ -64,12 +64,6 @@
   }
 
   // --- Map highlights (live selection of what gets badged on the maps) ---
-  // Only enabled categories, and only tags that are actually defined, so the list cannot offer
-  // something that will never match anything.
-  $: highlightableTags = $tagCategories
-    .filter((c) => c.enabled)
-    .flatMap((c) => c.tags.map((t) => ({ key: t.key, label: t.label, catName: c.shortName || c.longName })));
-
   const isHighlighted = (ref: string) => $liveOverrides.mapHighlights.some((h) => h.ref === ref);
 
   function addHighlight(ref: string) {
@@ -283,11 +277,12 @@
             <!-- Highlights. Not gated on a running view: it badges the GM's own maps too, and seeing
                  it before pushing it is the point. -->
             <div class="hl-block">
-              <span class="ov-head hl-head">Highlight on the maps</span>
-              <p class="hl-hint">
-                Badges whatever you pick, on your maps and the players'. A whole category flies each of
-                its tags in its own colour; a single tag shows only where it is.
-              </p>
+              <span class="ov-head hl-head">Highlight markers</span>
+              <label class="chk">
+                <input type="checkbox" checked={!$liveOverrides.highlightsMuted}
+                  on:change={(e) => setOverride({ highlightsMuted: !(e.currentTarget as HTMLInputElement).checked })} />
+                Show them
+              </label>
               {#if $liveOverrides.mapHighlights.length}
                 <div class="hl-chips">
                   {#each $liveOverrides.mapHighlights as h (h.ref)}
@@ -300,19 +295,7 @@
                   <button class="hl-clear" on:click={() => setOverride({ mapHighlights: [] })}>clear</button>
                 </div>
               {/if}
-              <select class="hl-add" value="" on:change={(e) => { addHighlight(e.currentTarget.value); e.currentTarget.value = ''; }}>
-                <option value="" disabled>Add a highlight…</option>
-                <optgroup label="Whole category">
-                  {#each $tagCategories.filter((c) => c.enabled) as c (c.id)}
-                    <option value={c.id} disabled={isHighlighted(c.id)}>{c.longName}</option>
-                  {/each}
-                </optgroup>
-                <optgroup label="One tag">
-                  {#each highlightableTags as t (t.key)}
-                    <option value={t.key} disabled={isHighlighted(t.key)}>{t.catName} · {t.label}</option>
-                  {/each}
-                </optgroup>
-              </select>
+              <p class="hl-hint">Choose these in <strong>Find by tag</strong> on the rail — it knows what is actually on the map. This is the mute.</p>
             </div>
           </div>
         </aside>
