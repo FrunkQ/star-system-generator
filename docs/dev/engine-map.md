@@ -313,6 +313,29 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S10 Camera framing eases in LOG distance, and must travel with its target
+WHERE: `src/lib/holo/scene.ts:driveFocus` (`easeDistance`, `framedClose`, `_prevDesired`);
+`window.__camDebug = true` prints the shot, the chosen ladder level and the live distance.
+RULE: this scene spans ten orders of magnitude between a whole-system shot (~20 units) and a
+true-scale hull (~1e-9). Any approach must close a constant PROPORTION per frame, never a fixed
+fraction of an absolute gap, and must first carry the shot by the target's own motion.
+WHY: a linear lerp from 20 units was still millions of times too far after its 48 frames, so the
+drive never arrived. Three separate reports were that one arithmetic: "framed too far out" (it
+stopped mid-flight), "it wrests the camera away as I pan" (the drive stayed armed and re-placed the
+camera every frame - only the WHEEL escaped, because that sets userZoomOverride), and "it snaps
+back when time moves". Separately the ease flew through ABSOLUTE space, so a small fast mover
+outran it: measured, it closed to 1.3e-4 and found the target 6.5e-4 away on the next frame,
+repeatedly - which is why a station in low orbit could only be viewed with the clock paused.
+Measured after: settled distance 1.5e-3 -> 1.9e-8 scene units, hull 0.0002 px -> ~19 px.
+BLAST: measure the ease against the BODY, not `controls.target` - the target lerps in at 18% a
+frame and at close-up scales one of its steps dwarfs the camera's whole remaining distance, so the
+two fight and the shot crawls. Arrival must be a RATIO test: at 1e-9 units every absolute epsilon
+is either unreachable or instantly true, and an approach from below must not count as arrived.
+Also: any framing input that keys off an ASYNC-loaded asset is a race - `frameDistance` and the
+min-zoom both keyed off `shipModel`, so the same click gave a close-up or a system-wide shot
+depending on whether the download had landed. Derive from the authored data, which is there at
+once.
+
 ### RENDER-S9 A "normalised" model group is only normalised until someone sets its scale
 WHERE: `src/lib/constructs/modelViewer.ts:buildDisplayModel` (returns an OUTER group whose own
 transform is the caller's); consumed by `holo/scene.ts:attachShipModel` and the portrait viewer.
