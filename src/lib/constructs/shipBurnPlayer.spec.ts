@@ -4,6 +4,7 @@
 // their place: when, how hard, which way, nothing else.
 import { describe, it, expect } from 'vitest';
 import { compactBurns, shipBurnAt } from './shipBurn';
+import { computePlayerStarmapSnapshot } from '$lib/system/utils';
 
 const AU_S = 1 / 1.495978707e11; // 1 m/s expressed in AU/s
 const seg = (type: string, startTime: number, endTime: number, dvMs: number, vx = 1000) => ({
@@ -55,5 +56,54 @@ describe('compact burns for the player snapshot', () => {
   it('carries no route, destination or path - only the four numbers a plume needs', () => {
     const burns = compactBurns(ship([seg('Accel', 0, 10000, 100)]));
     expect(Object.keys(burns[0]).sort()).toEqual(['a', 'b', 'e', 's']);
+  });
+});
+
+// THE PLUMBING, not the unit. Everything above proves compactBurns/shipBurnAt in isolation and
+// stayed green while a player's ship showed no plume at all, because nothing asserted that the
+// snapshot a player actually RECEIVES carries the burns. The catalogue takes the whole map via
+// SYNC_STARMAP (its per-system callback is a no-op), so computePlayerStarmapSnapshot is the only
+// path that matters - and it is the only one that calls slimNode.
+describe('the snapshot a player actually receives', () => {
+  const mapWith = (construct: any) => ({
+    id: 'map', name: 'Map',
+    systems: [{ id: 'sys', name: 'Sys', system: { nodes: [
+      { id: 'star', name: 'Star', kind: 'body', roleHint: 'star' },
+      construct
+    ] } }]
+  }) as any;
+
+  const playerConstruct = (map: any) => {
+    const snap = computePlayerStarmapSnapshot(map);
+    return (snap as any).systems[0].system.nodes.find((n: any) => n.id === 'ship');
+  };
+
+  it('carries the burns through to the player, and lights the same plume the GM sees', () => {
+    const gm = ship([seg('Accel', 0, 10000, 60), seg('Brake', 10000, 20000, -60)],
+      { id: 'ship', name: 'Ship' });
+    const player = playerConstruct(mapWith(gm));
+
+    expect(player.driveBurns).toBeDefined();
+    expect(player.driveBurns).toHaveLength(2);
+    for (const t of [1, 5000, 9999, 10001, 15000, 19999]) {
+      const a = shipBurnAt(gm, t), b = shipBurnAt(player, t);
+      expect(b.thrusting).toBe(a.thrusting);
+      expect(b.braking).toBe(a.braking);
+      expect(b.accelMs2).toBeCloseTo(a.accelMs2, 9);
+    }
+  });
+
+  it('still strips the journeys themselves - the burns are a REPLACEMENT, not an addition', () => {
+    const player = playerConstruct(mapWith(
+      ship([seg('Accel', 0, 10000, 60)], { id: 'ship', name: 'Ship', draft_transit_plan: [{ secret: 1 }] })
+    ));
+    expect(player.scheduled_journeys).toBeUndefined();
+    expect(player.draft_transit_plan).toBeUndefined();
+  });
+
+  it('leaves a construct with no journeys alone rather than attaching an empty list', () => {
+    const player = playerConstruct(mapWith({ id: 'ship', name: 'Ship', kind: 'construct' }));
+    expect(player.driveBurns).toBeUndefined();
+    expect(shipBurnAt(player, 1000).thrusting).toBe(false);
   });
 });

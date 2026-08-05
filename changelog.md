@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.449-beta - 5th Aug 2026
+
+* Internal: proved the drive-burn path a player actually receives. The existing tests covered the burn maths in isolation and stayed green while a ship showed no plume, because nothing checked that the snapshot a player is SENT carries the burns. It does - burns cross, journeys and drafts stay behind. The ship diagnostic now also reports the live thrust and whether the node holds any burn data at all, so "the plume is not lit" can be told apart from "the ship is coasting".
+
 ## v2.1.448-beta - 5th Aug 2026
 
 * Selecting a ship in a 3D view now actually arrives at it. The camera's approach eased LINEARLY across a scene that spans ten orders of magnitude, so it never reached a true-scale hull - it stopped wherever its counter ran out, leaving the ship a speck in a shot most of the system wide. It also flew through absolute space, so a small fast mover (a station in low orbit, a ship under way) simply outran it: the camera closed to within a fraction of the distance and found the target further away again on the next frame, which is why the only way to look at one was to pause the clock. The approach now closes a constant proportion per frame and travels with the body. Measured on a true-scale station with the clock running: the settled shot went from 1.5e-3 scene units to 1.9e-8, and the hull from 0.0002 pixels to about 19.

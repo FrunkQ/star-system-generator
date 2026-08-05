@@ -1930,10 +1930,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             const drawn = Math.max(b.shipLen ?? 0, minPx * f * distToCam);
             const measured = Math.max(...new THREE.Box3().setFromObject(b.shipModel)
               .getSize(_dbgSize).toArray());
+            // The BURN too: a player's node carries `driveBurns` (compact) where the GM's carries
+            // journeys, and "the plume is not lit on the player view" cannot be told apart from
+            // "the ship is coasting right now" by looking. `hasBurnData` says whether this node
+            // knows about any burn at all, which separates a redaction fault from a quiet engine.
+            const _burn = shipBurnState(b.id);
+            const _node = currentSystem?.nodes.find((n) => n.id === b.id) as any;
             console.log('[shipdbg]', b.id, JSON.stringify({
               shipLen: b.shipLen, dist: distToCam, viewH, bodySize, minPx, framingThis, inFocus,
               drawn, onScreenPx: drawn / (f * distToCam),
-              measured, measuredPx: measured / (f * distToCam), ratio: measured / drawn
+              measured, measuredPx: measured / (f * distToCam), ratio: measured / drawn,
+              thrust01: _burn.thrust01, braking: _burn.braking,
+              hasBurnData: !!(_node?.driveBurns?.length || _node?.scheduled_journeys?.length)
             }));
           }
           // Work in WORLD units directly: the size that occupies minPx at this distance is
