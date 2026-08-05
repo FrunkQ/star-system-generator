@@ -2,6 +2,19 @@
 
 All notable changes are listed here:
 
+## v2.1.448-beta - 5th Aug 2026
+
+* Selecting a ship in a 3D view now actually arrives at it. The camera's approach eased LINEARLY across a scene that spans ten orders of magnitude, so it never reached a true-scale hull - it stopped wherever its counter ran out, leaving the ship a speck in a shot most of the system wide. It also flew through absolute space, so a small fast mover (a station in low orbit, a ship under way) simply outran it: the camera closed to within a fraction of the distance and found the target further away again on the next frame, which is why the only way to look at one was to pause the clock. The approach now closes a constant proportion per frame and travels with the body. Measured on a true-scale station with the clock running: the settled shot went from 1.5e-3 scene units to 1.9e-8, and the hull from 0.0002 pixels to about 19.
+* The same fault was what "wrestled the camera away" while panning: the approach stayed armed forever because it never arrived, re-placing the camera every frame, and only a nudge of the zoom wheel escaped it. It now finishes and hands the view back.
+* A ship's framing no longer depends on whether its 3D model has finished loading. The shot and the zoom floor both read the hull length from the authored dimensions, which are known immediately, so the same click gives the same shot every time instead of racing the download.
+* The auto-framing floor no longer holds the camera a thousand times further out than a true-scale hull's own framing distance, which used to haul the view back out the moment the approach finished.
+* New diagnostic to match window.__shipDebug: window.__camDebug logs what shot the camera is aiming for, which ladder level it chose, where it actually is and whether the approach is still running.
+
+## v2.1.447-beta - 5th Aug 2026
+
+* Ship models are drawn at the right size. A hull was scaled by its model file's own native size on top of the size the scene asked for, so the bundled space station drew 25 times too large - a 109 m station spanning a fifth of an AU across the inner system. The error was the model FILE's size, so every model was wrong by a different amount and in either direction, and a model carrying an orientation fix was correct, which is why it looked erratic rather than simply broken. The drive plume also sat at the middle of the hull instead of its stern.
+* The ship-scale diagnostic now reports what the hull ACTUALLY measures on screen, not just the size the scene intended. It previously reported a serene 7 pixels while the ship was really 204 pixels across, so measuring it confirmed the wrong answer.
+
 ## v2.1.446-beta - 5th Aug 2026
 
 * The ship picture in an info block is bigger. A hull is long and thin, so the space a planet's globe fills left a ship looking like a distant speck: the panel now gives a ship a taller band, and the camera frames the hull with only a whisker of margin instead of the generous fit a sphere implies.
