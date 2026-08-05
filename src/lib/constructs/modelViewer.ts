@@ -546,7 +546,10 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
     // a speck the moment it burns. (Fixed in 4c73c0b, re-broken by the orbit rewrite, restored.)
     // The hull is centred on the origin by buildDisplayModel, so the target is simply that.
     centre.set(0, 0, 0);
-    baseDist = (frameRadius / Math.sin((camera.fov * Math.PI) / 360)) * 1.12;
+    // Fit the hull's bounding SPHERE to the lens, with only a whisker of margin. A sphere is a
+    // generous fit for a long thin ship - the nose and tail touch it, everything between sits
+    // well inside - so a large margin on top of that reads as "tiny ship, lots of space".
+    baseDist = (frameRadius / Math.sin((camera.fov * Math.PI) / 360)) * 0.98;
     placeCamera();
   }
 

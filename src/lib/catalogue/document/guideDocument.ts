@@ -122,7 +122,9 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     // glyph > nothing, under every imagery mode except 'none' ("if a construct is told to be 3D,
     // display it first"). Same reserved-gap mechanism as a body's globe: '__bodygfx' is where the
     // consumers overlay the live turntable (ConstructModelGraphic). Bodies are untouched below.
-    blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: false, mode: 'sphere', heightFrac: 0.32 });
+    // A ship gets a TALLER band than a planet's disc: a hull is long and thin, so the same
+    // fraction of the page leaves it looking like a distant speck where a globe fills its space.
+    blocks.push({ kind: 'bodyDisc', id: '__bodygfx', body: subject, ringed: false, mode: 'sphere', heightFrac: 0.42 });
     // Attribution (owner decision 5): CC-BY models are allowed, so wherever the model is shown the
     // credit rides directly beneath it - GM panel and player document alike, same builder.
     const m = (subject as any).model;

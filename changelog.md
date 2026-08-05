@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.446-beta - 5th Aug 2026
+
+* The ship picture in an info block is bigger. A hull is long and thin, so the space a planet's globe fills left a ship looking like a distant speck: the panel now gives a ship a taller band, and the camera frames the hull with only a whisker of margin instead of the generous fit a sphere implies.
+
 ## v2.1.445-beta - 5th Aug 2026
 
 * Internal only: developer notes. Three findings banked for their owners, including a build-kit test that has started failing because a bundled starmap was edited by hand rather than through its generator. No change to the app.
