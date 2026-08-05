@@ -403,12 +403,26 @@ export type MapHighlights = HighlightRef[];
 - **Colour comes from the tag/category, not the highlight** — that is the whole point of
   the §3.2 colour model. The highlight only decides *what shows* and *what shape*.
 
-### 9.2 Where it is controlled — "Quick overrides"
+### 9.2 Where it is controlled — Find by tag, with the mute in Quick overrides
 
-The selector lives in the **Quick overrides** section of the Player Views modal
-(`liveOverrides.ts` / `PlayerViewModal.svelte`) — momentary, rides the `SYNC_PRESET`
-broadcast to the player window(s), never saved (matches the existing followGM /
-filterBypass / labelsHidden controls). Add:
+**SUPERSEDED 2026-08-05, and the reason is worth keeping.** This section originally put the
+selector in Quick overrides. In practice the app already had the right picker: **Find by
+tag** on the rail knows what is ACTUALLY on the map, with colours and counts, which is
+precisely the knowledge choosing a highlight needs — badging a tag nothing carries shows
+nothing. Building a second picker in Quick overrides duplicated that knowledge badly.
+
+So: the **highlight tray lives at the bottom of Find by tag** ("Show highlight markers on
+player views"). Drag a tag chip or a category bubble onto it, or press the `+` on a tag.
+**Quick overrides keeps only the MUTE** — one click to drop every badge mid-scene without
+losing the selection.
+
+This also settled a question the spec had not asked: there are TWO pickers and they are not
+duplicates. `TagFinder` offers only what exists (highlighting, finding); `TagPicker` offers
+the whole vocabulary including the engine's own namespaces (adding a tag by hand, where the
+first one has to come from somewhere). Choosing wrongly fails in both directions, so each
+component says which it is at the top of its file.
+
+The state still rides `liveOverrides` and the `SYNC_PRESET` broadcast exactly as below:
 
 ```ts
 // liveOverrides.ts — LiveOverrides gains:
@@ -443,6 +457,13 @@ a favourite highlight set is banked (could later live on the preset or as named 
 - A body/construct info block (all surfaces) shows the currently-highlighted tags it
   carries as a chip row directly under its name, in the same colours — so the map and the
   panel agree.
+
+### 9.3b A highlight FILTERS the starmap, by default
+
+Added 2026-08-05 (owner's call, no toggle): once anything is highlighted, systems carrying
+none of it fade back rather than vanishing, and a key names the colours — badges do not
+explain themselves at starmap zoom. Marker size follows the existing label scale (`labelK`)
+rather than introducing another control.
 
 ### 9.4 Starmap ROLL-UP
 
