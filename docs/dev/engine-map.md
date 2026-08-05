@@ -216,6 +216,47 @@ an inline `habMakeup.gas <= 0.5` at `SystemProcessor.ts:1302`, and another inlin
 classifier gate. B11 unified two of them. Until B36 closes, changing the threshold here changes
 some callers and not others; fix B36 before trusting this entry's WHERE.
 
+#### Positions and eclipses (C3/C9/G8) — added 2026-08-04 by the frame/suite-hygiene session
+
+### PHY-5 The 3D propagator returns satellites ALREADY in the parent's equator; nothing may rotate again
+WHERE: `physics/worldPositions.computeWorldPositions3D` (its `frame` op) → `system/satelliteFrame.ts`
+RULE: a regular satellite's elements are quoted in its PARENT'S EQUATOR, and `computeWorldPositions3D`
+applies that rotation itself. So the difference of two world positions is already the framed offset —
+a consumer must NOT apply `toParentEquator` to it. `satelliteTiltRad(node, parent)` is the ONLY
+spelling of the gate (star parent → 0; `orbit.frame: 'ecliptic'` → 0, which is the real Laplace
+handover, not a data error). The flat `computeWorldPositions` deliberately does NOT frame: it
+propagates ω-only in the reference plane, 2D is the plan view, and there is no out-of-plane axis to
+tilt into.
+WHY: C9. The rotation lived only in `holo/scene.ts`, so the propagator and the renderer answered
+"where is this moon" differently by the parent's whole axial tilt — 25.19° at Mars, 97.77° at Uranus
+— and G8's eclipse search was built on the propagator on the stated assumption the frames were
+already correct. A `framedWorldPositions3D` wrapper that corrected the output afterwards was DELETED
+rather than kept: a correction some callers apply and others do not is the same fault one layer up.
+BLAST: `holo/scene.ts` is the trap in both directions. Its body placement must keep rotating NOTHING;
+its `buildLocalOrbitRing` must keep rotating, because it samples `propagateState3D` directly and so
+holds a raw parent-relative offset rather than a world position — same helper, different input.
+Verify any change to this by reproducing the OLD path beside the new over the bundled maps: the
+RENDERED offset must not move (it did not, to 1.1e-10 of an orbit radius), while world positions do.
+CAVEAT: the gate reads the PARENT, so a CONSTRUCT orbiting a body is framed to that body's equator
+too. Right for a low orbiter, wrong far out for the same reason C5 gave for moons — Sol_Expanse's
+Phoebe station is `ecliptic`-less beside a moon that declares it. Authoring question, filed with C8.
+
+### PHY-6 An eclipse prediction is a reader's question, and its cache is DIRECTIONAL
+WHERE: `system/eclipses.nextEclipseCached`, `describeEclipse`; read by `catalogue/bodyFacts` and
+`components/BodyTechnicalDetails.svelte`
+RULE: the prediction is a forward search over the propagator. It is computed when a reader asks and
+NEVER from `process()` or any derivation pass. The cache holds until the date it predicted has gone
+by — but it is valid only FORWARD (`nowMs >= hit.from && nowMs < hit.validToMs`), so a clock moving
+BACKWARDS misses on every frame and every miss is a real search (up to 250 ms cold). Any surface
+reading it must therefore sample the clock on WALL time, not on the sim clock: a date only needs to
+be right to the second, whatever the time scale.
+WHY: B13 is the cautionary tale for the first half — a per-pass cost that also broke idempotence
+(PHY-1). The second half is what a GM scrubbing the timeline backwards would do to a panel that
+re-read per frame.
+BLAST: a THIRD surface now words this row (GM panel, player document, printed report). All three must
+build the string with `describeEclipse` — see UI-E1. Adding a fourth: sample the clock, reuse the
+builder, and pass no `formatDate` unless the campaign calendar is genuinely available.
+
 ---
 
 ## STUBS — owners, add your domain here
@@ -445,3 +486,30 @@ still means none.
 WHY: the order was photo-first and was corrected by owner steer ("if a construct is told to be 3D,
 display it first"). A28/A30 are the history: the wrong picture is worse than no picture.
 BLAST: any new construct-showing surface. Do not re-derive the chain locally — read these two.
+
+#### Body facts (G8) — added 2026-08-04 by the frame/suite-hygiene session
+
+### UI-E1 The GM technical block is NOT built from `bodyFacts`, so a shared row must share its BUILDER
+WHERE: `components/BodyTechnicalDetails.svelte` vs `catalogue/bodyFacts.ts`
+RULE: the player surfaces (document, panels, printed report) render rows from `bodyFacts`; the GM's
+read-only block is its own hand-written markup and always has been. A fact that must read the same in
+both therefore cannot be shared by adding it to `bodyFacts` — the shared thing has to be the function
+that words it, called from both. `describeEclipse` is the worked example: three surfaces, one string.
+WHY: G8 wrote `describeEclipse` precisely so "the same string reaches the GM panel, the printed player
+report and the info panels", then only the player-facing surfaces were wired — the GM block had every
+other orbital row and not that one, for 30 versions. The next person to add a shared row will hit the
+same shape and reach for `bodyFacts`, which does not reach the GM.
+BLAST: adding a row that both sides must show → put the WORDING in a function, call it twice, and
+check the two against each other with a real body. Do not copy the format string.
+
+### UI-E2 A panel showing a clock-driven derived value samples the clock on WALL time
+WHERE: `components/BodyTechnicalDetails.svelte` (the 1 Hz `eclipseNowMs` sampler), mirrored from
+`routes/catalogue/+page.svelte` (`docNowMs`)
+RULE: pass the display clock in as a prop, but do not react to it directly. Sample it on a wall-clock
+interval, and re-sample immediately when the SELECTED BODY changes so a new selection never waits for
+the tick. `nowMs === null` means the caller handed over no clock, which means NO ROW — never a guess.
+WHY: the GM clock is broadcast to the player views (`SYNC_TIME` in `SystemView`), so it changes every
+frame while playing and jumps arbitrarily while scrubbing. Reacting to it directly re-runs the derived
+value per frame; for anything cached forward-only (PHY-6) a backwards scrub then costs a full
+recompute per frame.
+BLAST: any other panel row derived from a search or a propagation rather than from stored fields.
