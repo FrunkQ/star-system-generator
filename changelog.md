@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.443-beta - 5th Aug 2026
+
+* Internal only: developer notes. The engine map gains the position and eclipse rules — where a moon gets rotated into its planet's equator, and why a panel showing a predicted date reads the clock once a second rather than every frame. No change to the app.
+
 ## v2.1.430-beta - 5th Aug 2026
 
 * **Choosing what to highlight now happens in Find by tag**, which already knows what is on the map, with colours and counts. Drag a tag chip or a category bubble into the tray at the bottom — "Show highlight markers on player views" — or press the + on a tag. Player Views → Quick overrides is now just the mute for it, so you can drop the badges mid-scene without losing the selection you built.
