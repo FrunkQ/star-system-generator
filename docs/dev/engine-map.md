@@ -496,13 +496,17 @@ BLAST: any new orbital-element source (Gaia, WDS, VizieR). Satellites are a sepa
 ### DATA-R4 The importer never invents and never overwrites — and both must reach the user
 WHERE: `convert.mjs` (`starNodeFromRow` skips, `BUNDLED_ARCHIVE_HOSTS` collisions), `RealSkyImportModal.svelte`
 RULE: a host missing mass, radius or temperature is SKIPPED with a named reason rather than guessed
-into existence, and a host already curated into a bundled system is returned as a COLLISION rather
-than converted. `convertArchiveRows` returns `{systems, collisions, skipped}` and the caller is
-required to SHOW the last two. Filtering them away to tidy the dialogue defeats the whole design.
-WHY: raw catalogue rows overwriting curated systems is exactly the drift DATA-R1 exists to prevent,
-arriving from the other direction; and a silently short import reads as a complete survey.
-BLAST: any new consumer of `convertArchiveRows`. The collision list is generated from the roster, so
-it is only as current as the last kit run (D15).
+into existence, and a host is treated as a COLLISION only when the TARGET MAP already holds it —
+under the id this import would mint, or under the bundled maps' stable id for the same star, which
+callers supply via `existingSystemIds`. `convertArchiveRows` returns `{systems, collisions, skipped}`
+and the caller must SHOW the last two; filtering them away to tidy the dialogue defeats the design.
+WHY: a silently short import reads as a complete survey. And the first version got the collision test
+wrong in the other direction — it skipped any host curated on a BUNDLED map whether or not the GM was
+importing into one, so "Local Neighbourhood" into a new starmap imported ZERO systems and 16.5→18 ly
+imported exactly one. Curation elsewhere is not a reason to withhold a star from a map that has none.
+BLAST: any new consumer of `convertArchiveRows` — passing no `existingSystemIds` means "empty target",
+which is right for a new map and wrong for an append. The host→bundled-id map is generated from the
+roster, so it is only as current as the last kit run (D15).
 
 ### DATA-R5 The shared real-sky core must stay plain, dependency-free ESM
 WHERE: `src/lib/import/realsky/{constants,positions,stars,planets,convert,query,clusterGate}.mjs`

@@ -47,6 +47,13 @@ const outFlag = process.argv.indexOf('--out');
 const outDir = outFlag > -1 ? resolve(process.argv[outFlag + 1]) : join(repo, 'static', 'example-starmaps');
 mkdirSync(outDir, { recursive: true });
 
+// Indentation of the generated JSON. The pin test compares BYTES, so the shipped
+// files must carry exactly what this writes — including JavaScript's own number
+// formatting. `0.00002` here is `2e-05` from Python's json.dump, and
+// `4.3e-9` is `4.3e-09`: the same values, bytes the pin test rejects. So the
+// maps can only ever be written by THIS script. Re-saving them from another
+// language silently makes them unreproducible (see DATA-R1).
+
 const appVersion = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf-8')).version;
 const BASE_MAP_VERSION = 2; // v1 = the hand-placed 20-system map; v2 = true-position rebuild
 

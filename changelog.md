@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.451-beta - 4th Aug 2026
+
+* **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
+* Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
+
 ## v2.1.450-beta - 5th Aug 2026
 
 * Framing a ship that is UNDER WAY now works. Every incoming snapshot rebuilt the scene and threw the camera's focus away with it - and a construct in transit rewrites the snapshot about twice a second, so on a player's screen the shot was abandoned and restarted continuously and never got near the ship. A ship in a stable orbit does not move the snapshot, which is why that case looked fine and this one did not. A refresh of the system already on screen now keeps the focus; only moving to a different system clears it.

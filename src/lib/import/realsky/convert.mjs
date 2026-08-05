@@ -6,13 +6,15 @@
 // is invented: a host missing a mass or radius is SKIPPED with a reason the
 // UI must show, never guessed into existence.
 //
-// Bundled-map protection: the bundled Local Neighbourhood carries deliberate
-// curation — stable ids, hierarchy, descriptions, conventions recorded in
-// scripts/starmap-build/. A host that belongs to a bundled system is
-// therefore returned as a COLLISION, not converted: overwriting curation
-// with raw catalogue rows is exactly the drift the build kit's pinning test
-// exists to prevent. The caller decides what to do with collisions (typically
-// "already on the bundled map — nothing to import").
+// Collision protection is about the TARGET MAP, not about the bundled maps.
+// A host is skipped only when the system it would produce is ALREADY ON THE
+// MAP being imported into — either under the same id, or under the stable id
+// the bundled starmaps give that star (`GJ 887` is `sys-lacaille9352` there).
+// Adding a second copy of a star the GM already has is the fault worth
+// preventing; refusing to import a star merely because some OTHER map curates
+// it is not, and shipped as a bug — the Local Neighbourhood preset produced an
+// empty map, because every host in it is curated somewhere the GM was not
+// looking. Callers pass `existingSystemIds`; a new map passes none.
 
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, EPOCH, G, LY_PER_PC, SOLAR_MASS_KG, SOLAR_RADIUS_KM, AU_KM, DEFAULT_MAP_CENTRE_PX } from './constants.mjs';
 import { hash01, radecToXyzLy, round, xyzToMapPx, inSphere } from './positions.mjs';
@@ -116,9 +118,10 @@ function planetNodeFromRow(row, slug, hostNode, mutualIncMax) {
 // exact sphere cut is applied again here — cheap, and it makes this function
 // safe to hand a whole cache file). Returns:
 //   systems    — StarSystemNode[] ready for a Starmap
-//   collisions — hosts curated in the bundled maps (never converted)
+//   collisions — hosts the TARGET MAP already holds (never duplicated), each
+//                naming the system id it is already there under
 //   skipped    — hosts/planets dropped, each with a human-readable reason
-export function convertArchiveRows(rows, { region, mapCentrePx = DEFAULT_MAP_CENTRE_PX, mutualIncMax = 1.2, generated = 'real-sky import' } = {}) {
+export function convertArchiveRows(rows, { region, mapCentrePx = DEFAULT_MAP_CENTRE_PX, mutualIncMax = 1.2, generated = 'real-sky import', existingSystemIds = [] } = {}) {
   if (!region) throw new Error('convertArchiveRows: a region {centre, radiusLy} is required');
   const centreXyz = (region.centre?.distLy ?? 0) > 0
     ? radecToXyzLy(region.centre.raDeg, region.centre.decDeg, region.centre.distLy)
@@ -132,6 +135,7 @@ export function convertArchiveRows(rows, { region, mapCentrePx = DEFAULT_MAP_CEN
 
   const systems = [], collisions = [], skipped = [];
   const usedSlugs = new Set();
+  const existing = new Set(existingSystemIds);
 
   for (const [hostname, hostRows] of byHost) {
     hostRows.sort((a, b) => (a.pl_orbsmax ?? 1e9) - (b.pl_orbsmax ?? 1e9));
@@ -140,14 +144,22 @@ export function convertArchiveRows(rows, { region, mapCentrePx = DEFAULT_MAP_CEN
     const xyz = radecToXyzLy(first.ra, first.dec, distLy);
     if (!inSphere(xyz, centreXyz, region.radiusLy)) continue; // outside the true sphere
 
-    if (BUNDLED_ARCHIVE_HOSTS[hostname]) {
-      collisions.push({ hostname, bundledSystemId: BUNDLED_ARCHIVE_HOSTS[hostname], planets: hostRows.length });
-      continue;
-    }
-
     let slug = hostSlug(hostname);
     if (usedSlugs.has(slug)) slug = `${slug}-${hash01(hostname).toFixed(4).slice(2)}`;
     usedSlugs.add(slug);
+
+    // Already on the target map? Either under the id this import would mint, or
+    // under the bundled maps' stable id for the same star — the catalogue calls
+    // it `GJ 887`, a bundled map calls it `sys-lacaille9352`, and importing a
+    // second copy beside it is what this prevents. With no target map (a new
+    // starmap) nothing is present, so nothing is skipped.
+    const ownId = `sys-${slug}`;
+    const bundledId = BUNDLED_ARCHIVE_HOSTS[hostname];
+    const presentAs = existing.has(ownId) ? ownId : (bundledId && existing.has(bundledId) ? bundledId : null);
+    if (presentAs) {
+      collisions.push({ hostname, systemId: presentAs, bundledSystemId: bundledId, planets: hostRows.length });
+      continue;
+    }
 
     const star = starNodeFromRow(first, slug);
     if (star.missing) {

@@ -11,15 +11,15 @@ export const REGION_PRESETS = [
     key: 'local',
     name: 'Local Neighbourhood',
     kind: 'archive',
-    centre: { raDeg: 0, decDeg: 0, distLy: 0 }, // Sol
+    centre: { raDeg: 0, decDeg: 0, distLy: 0 }, centreLabel: 'Sol',
     radiusLy: 16.5,
-    blurb: 'Every confirmed planet host within 16.5 light years of Sol — the same census as the bundled map, fetched live. Expect mostly collisions: the bundled map already curates these systems, which is the point of the demonstration.'
+    blurb: 'Every confirmed planet host within 16.5 light years of Sol, fetched live from the archive — the same census the bundled map curates by hand, built fresh from the catalogue.'
   },
   {
     key: 'extended',
     name: 'Extended Neighbourhood',
     kind: 'archive',
-    centre: { raDeg: 0, decDeg: 0, distLy: 0 }, // Sol
+    centre: { raDeg: 0, decDeg: 0, distLy: 0 }, centreLabel: 'Sol',
     radiusLy: 30,
     blurb: 'Confirmed planet hosts to 30 light years: everything the bundled map curates plus the next shell out — GJ 581, HD 219134, 61 Virginis, AU Microscopii and more arrive as new systems.'
   },
@@ -28,9 +28,9 @@ export const REGION_PRESETS = [
     name: 'Around TRAPPIST-1',
     kind: 'archive',
     // SIMBAD ICRS, resolved 2026-08-03 and baked so the preset works offline.
-    centre: { raDeg: 346.6224, decDeg: -5.0414, distLy: 40.66 },
+    centre: { raDeg: 346.6224, decDeg: -5.0414, distLy: 40.66 }, centreLabel: 'TRAPPIST-1',
     radiusLy: 15,
-    blurb: 'A 15 light-year sphere centred on TRAPPIST-1, forty light years from home: the same importer, somebody else’s neighbourhood. TRAPPIST-1 itself is bundled-map curation and reports as a collision; its neighbours import fresh.'
+    blurb: 'A 15 light-year sphere centred on TRAPPIST-1, forty light years from home: the same importer, somebody else’s neighbourhood.'
   },
   {
     key: 'sgra',

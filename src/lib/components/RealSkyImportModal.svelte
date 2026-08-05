@@ -62,13 +62,15 @@
 
   function refreshPreview() {
     if (!rows) { preview = null; return; }
-    const mapCentrePx = mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX;
-    const raw = convertArchiveRows(rows, { region: region(), mapCentrePx, generated: new Date().toISOString().slice(0, 10) });
-    // Never import a system id the map already has (re-importing a region, or
-    // a map that started from a real-sky import).
-    const existingIds = new Set(existingSystems.map((s) => s.id));
-    const duplicates = raw.systems.filter((s) => existingIds.has(s.id));
-    preview = { ...raw, systems: raw.systems.filter((s) => !existingIds.has(s.id)), duplicates };
+    // The converter decides what is already present, from the ids of the map
+    // being imported INTO — none for a new starmap, which is the whole point:
+    // a star curated on some other map is not a reason to withhold it here.
+    preview = convertArchiveRows(rows, {
+      region: region(),
+      mapCentrePx: mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX,
+      existingSystemIds: existingSystems.map((s) => s.id),
+      generated: new Date().toISOString().slice(0, 10)
+    });
     announceRadius();
   }
 
@@ -102,7 +104,7 @@
     presetKey = p.key;
     resolveError = null;
     if (p.kind === 'cluster-demo') { preview = null; return; }
-    centre = { ...(p.centre as any), label: p.name };
+    centre = { ...(p.centre as any), label: (p as any).centreLabel ?? p.name };
     radiusLy = p.radiusLy as number;
     void loadRowsFor(centre, radiusLy);
   }
@@ -136,9 +138,11 @@
   function countAt(r: number): number {
     if (!rows) return 0;
     const mapCentrePx = mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX;
-    const out = convertArchiveRows(rows, { region: { centre, radiusLy: r }, mapCentrePx, generated: 'count' });
-    const existingIds = new Set(existingSystems.map((s) => s.id));
-    return out.systems.filter((s: any) => !existingIds.has(s.id)).length;
+    const out = convertArchiveRows(rows, {
+      region: { centre, radiusLy: r }, mapCentrePx,
+      existingSystemIds: existingSystems.map((s) => s.id), generated: 'count'
+    });
+    return out.systems.length;
   }
 
   function applySuggestion(r: number) {
@@ -268,7 +272,7 @@
           {systemsCount} new {systemsCount === 1 ? 'system' : 'systems'} · {planetsCount} confirmed
           {planetsCount === 1 ? 'planet' : 'planets'}
           {#if preview.collisions.length}
-            · {preview.collisions.length} already curated on the bundled map (skipped)
+            · {preview.collisions.length} already on this map (skipped)
           {/if}
           {#if preview.skipped.length}
             · {preview.skipped.length} host{preview.skipped.length === 1 ? '' : 's'} missing data (skipped, never invented)
@@ -283,12 +287,6 @@
           {@const ov = overlapping()}
           {#if ov.length}
             <p class="warning">{ov.length} existing {ov.length === 1 ? 'system sits' : 'systems sit'} inside this footprint (inside the ring on the map): {ov.slice(0, 6).map((s) => s.name).join(', ')}{ov.length > 6 ? '…' : ''}. New systems import alongside them.</p>
-          {/if}
-          {#if preview.duplicates?.length}
-            <details>
-              <summary>Skipped: already on your map</summary>
-              <ul>{#each preview.duplicates as d}<li>{d.name}</li>{/each}</ul>
-            </details>
           {/if}
         {/if}
         {#if band !== 'green'}
@@ -306,10 +304,10 @@
         {/if}
         {#if preview.collisions.length}
           <details>
-            <summary>Skipped: already curated on the bundled Local Neighbourhood</summary>
+            <summary>Skipped: already on this map</summary>
             <ul>
               {#each preview.collisions as c}
-                <li>{c.hostname} ({c.planets} {c.planets === 1 ? 'planet' : 'planets'}) — bundled as {c.bundledSystemId}</li>
+                <li>{c.hostname} ({c.planets} {c.planets === 1 ? 'planet' : 'planets'}) — already here as {c.systemId}</li>
               {/each}
             </ul>
           </details>

@@ -64,14 +64,43 @@ describe('convertArchiveRows over the committed cache', () => {
   const region = { centre: SOL_CENTRE, radiusLy: 25 };
   const out = convertArchiveRows(cache, { region, generated: 'test' });
 
-  it('bundled hosts inside the region come back as collisions, never systems', () => {
-    const collided = new Set(out.collisions.map((c) => c.hostname));
-    expect(collided.has('Proxima Cen')).toBe(true);
+  // The bug this replaced: collisions were reported against the BUNDLED maps
+  // rather than the target map, so importing the Local Neighbourhood into a
+  // NEW starmap produced nothing at all — every host in it is curated on a map
+  // the GM was not importing into.
+  it('imports every host when the target map is empty', () => {
+    expect(out.collisions).toEqual([]);
+    const names = out.systems.map((s) => s.name);
+    expect(names).toContain('Proxima Cen');
+    expect(names).toContain('GJ 876');
+  });
+
+  it('a 16.5 ly new map is the whole local neighbourhood, not an empty map', () => {
+    const local = convertArchiveRows(cache, { region: { centre: SOL_CENTRE, radiusLy: 16.5 }, generated: 'test' });
+    expect(local.systems.length).toBeGreaterThan(15);
+    expect(local.collisions).toEqual([]);
+  });
+
+  it('skips a host the target map already holds under the bundled stable id', () => {
+    const onto = convertArchiveRows(cache, {
+      region: { centre: SOL_CENTRE, radiusLy: 25 }, generated: 'test',
+      existingSystemIds: Object.values(BUNDLED_ARCHIVE_HOSTS)
+    });
+    const collided = new Set(onto.collisions.map((c) => c.hostname));
+    expect(collided.has('Proxima Cen')).toBe(true);   // present as sys-alphacen
     expect(collided.has('GJ 876')).toBe(true);
-    const generatedIds = new Set(out.systems.map((s) => s.id));
-    for (const bundledId of Object.values(BUNDLED_ARCHIVE_HOSTS)) {
-      expect(generatedIds.has(bundledId)).toBe(false);
-    }
+    for (const c of onto.collisions) expect(c.systemId).toBeTruthy();
+    // …while a host the map does NOT hold still imports.
+    expect(onto.systems.map((s) => s.name)).toContain('GJ 581');
+  });
+
+  it('skips a host already present under the id this import would mint', () => {
+    const onto = convertArchiveRows(cache, {
+      region: { centre: SOL_CENTRE, radiusLy: 25 }, generated: 'test',
+      existingSystemIds: ['sys-gj-581']
+    });
+    expect(onto.collisions.map((c) => c.hostname)).toContain('GJ 581');
+    expect(onto.systems.map((s) => s.name)).not.toContain('GJ 581');
   });
 
   it('non-bundled hosts inside the region convert to well-formed systems', () => {
