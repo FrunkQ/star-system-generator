@@ -1573,7 +1573,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // put the hull at 50% of the frame with the min-zoom nearly touching it, which read as
     // "zoomed in too much" and left no room for the plume. Full length puts the ship at roughly
     // a quarter of the frame with its surroundings visible.
-    const radius = b.isConstruct ? ((b.shipModel && b.shipLen) ? b.shipLen : 0) : (b.radiusScene ?? 0);
+    // `shipLen` is set when the node is READ, not when the model attaches, so the shot is the same
+    // whether or not the binary has landed yet (a glyph-only construct still has none, and keeps
+    // the radius-less patch below).
+    const radius = b.isConstruct ? (b.shipLen ?? 0) : (b.radiusScene ?? 0);
     // Reach the FURTHEST context peer — for a barycentre member that is the partner star, so the pair
     // frames as a pair from either half (the barycentre point itself has no mesh here).
     let parentDist = 0;
@@ -1762,6 +1765,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   let _dbgAt = 0;
+  let _camDbgAt = 0; // throttle for the __camDebug framing readout
   const _dbgSize = new THREE.Vector3(); // scratch for the __shipDebug measured-extent readout
   const _shipLook = new THREE.Vector3();
   const _shipDelta = new THREE.Vector3();
@@ -1995,6 +1999,38 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  // THE FRAMING EASE WORKS IN LOG DISTANCE, and it has to. This scene spans ten orders of magnitude
+  // between a whole-system shot (~20 units) and a true-scale hull (~5e-10), and a linear lerp closes
+  // a fixed fraction of an ABSOLUTE gap - so from 20 units it was still millions of times too far
+  // away after its 48 frames, and the follow policy's own rate-limited steps then crawled the rest
+  // at a few percent per update. TWO reported faults were this one arithmetic: the shot "framed too
+  // far out" (it simply never arrived), and the view "wrestled the camera back" while panning
+  // (`focusDrive` stayed armed, re-placing the camera every frame; only the WHEEL escaped it,
+  // because that sets userZoomOverride). A ratio step closes the same PROPORTION every frame and
+  // lands in ~48 frames whether the gap is 2x or 1e10x.
+  const FRAME_EASE = 0.14;
+  const _easeVec = new THREE.Vector3();
+  // The ease must TRAVEL WITH the body it is flying to. A small fast mover - a station in low
+  // orbit, a ship under way - translates further in one frame than the whole close-up distance it
+  // is being framed at, so an ease that flies through absolute space is simply left behind: the
+  // camera closed to 1.3e-4 and found the target 6.5e-4 away again on the next frame, over and
+  // over, converging at a crawl and stalling outright once the body's per-frame motion matched the
+  // remaining distance. (Which is why the only way to look at one was to pause the clock.)
+  // Carrying the shot by the body's own motion first makes the ease independent of how fast it is
+  // going. The settled follow below already worked this way; only the approach did not.
+  const _prevDesired = new THREE.Vector3();
+  let _prevDesiredFor: string | null = null;
+  function easeDistance(cur: number, target: number): number {
+    const c = Math.max(1e-12, cur);
+    const t = Math.max(1e-12, target);
+    return c * Math.pow(t / c, FRAME_EASE);
+  }
+  /** Arrival is a RATIO test, not a difference - at 1e-9 units every absolute epsilon is either
+   *  unreachable or instantly true, and an approach from below must not count as arrived. */
+  function framedClose(cur: number, target: number): boolean {
+    return Math.abs(Math.log(Math.max(1e-12, cur) / Math.max(1e-12, target))) < 0.05;
+  }
+
   // Ease the camera to the configured framing — either the whole system or the focused body — at the
   // configured tilt (angle from vertical). Then keep the target gently centred so a followed body
   // stays in view as it orbits, without fighting the user's own rotate/zoom.
@@ -2037,6 +2073,29 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (focusDrive > 0) focusDrive--;
       return;
     }
+    // DIAGNOSTIC HOOK, the framing counterpart of __shipDebug. `window.__camDebug = true` prints
+    // the shot this function is aiming for and where the camera actually is, once a second: which
+    // ladder LEVEL was chosen, the framing distance that level implies, the live distance, the
+    // controls' floor, and whether the ease is still armed. Framing complaints ("too far out",
+    // "it snaps back", "it fights me") are indistinguishable by eye and trivially separable here.
+    // Carry an in-flight shot along with the body (see _prevDesired). Only while easing: once the
+    // drive expires the follow branches below do their own tracking, and a rebase cannot land in
+    // the middle of this because maybeRebase stands down while focusDrive is armed.
+    if (focusDrive > 0 && b && _prevDesiredFor === focusedId) {
+      _easeVec.subVectors(desiredTarget, _prevDesired);
+      camera.position.add(_easeVec);
+      controls.target.add(_easeVec);
+    }
+    if (b) { _prevDesired.copy(desiredTarget); _prevDesiredFor = focusedId; }
+    else _prevDesiredFor = null;
+    if ((window as any).__camDebug && performance.now() - _camDbgAt > 1000) {
+      _camDbgAt = performance.now();
+      console.log('[camdbg]', focusedId, JSON.stringify({
+        level: focusLevel, wantDist: dist, haveDist: camera.position.distanceTo(controls.target),
+        minDistance: controls.minDistance, focusDrive, followEngaged, userZoomOverride,
+        lockRotate, framingWhole, lastAutoDist
+      }));
+    }
     if (lockRotate) {
       // Heading locked = BE the GM orrery: the shot is target + distance on a FROZEN heading, placed
       // exactly every frame — rotation is impossible by construction, mid-ease included. (Lerping the
@@ -2046,9 +2105,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (focusDrive > 0) {
         // Ease: the target slides to the body while the DISTANCE eases to the level's framing.
         controls.target.lerp(desiredTarget, 0.18);
-        const curD = camera.position.distanceTo(controls.target);
-        camera.position.copy(controls.target).addScaledVector(headingDir, curD + (dist - curD) * 0.14);
-        focusDrive--;
+        // Distance measured to the BODY, not to the still-sliding target - see the free-heading
+        // branch below for why those two fighting stalled the ease.
+        const curD = camera.position.distanceTo(desiredTarget);
+        const nextD = easeDistance(curD, dist);
+        camera.position.copy(desiredTarget).addScaledVector(headingDir, nextD);
+        // Hold the drive until the shot is actually REACHED, exactly as the free-heading branch
+        // below does. Expiring after a fixed 48 frames stranded every LOCKED-heading view mid-
+        // flight - and lockRotation is on in the shipped player presets, so this was the whole
+        // player-facing 3D experience: the camera stopped wherever the counter ran out.
+        if (focusDrive > 1 || framedClose(nextD, dist) || userZoomOverride) focusDrive--;
         return;
       }
       // Follow: snap the target onto the body (the orrery's renderPan — no easing, or it lags) and
@@ -2065,8 +2131,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           sinceLastMs: now - lastAutoDistMs,
           // This is a camera DISTANCE, not the orrery's zoom scalar — the policy's default floor of
           // 0.05 would hold the camera thousands of radii from a true-scale world. Our floor is the
-          // controls' own minimum approach.
-          minValue: Math.max(1e-7, controls.minDistance)
+          // controls' own minimum approach, and NOTHING above it: a hard 1e-7 here sat a thousand
+          // times further out than a true-scale hull's own framing distance, so the moment the ease
+          // finished this policy hauled the camera back out to it — the "it snaps back as soon as
+          // time moves" report. The controls' minimum is already the honest floor (1e-10 for a
+          // modelled construct, set in focusBody).
+          minValue: Math.max(1e-11, controls.minDistance)
         });
         if (next !== null) { d = next; lastAutoDist = next; lastAutoDistMs = now; }
         else if (lastAutoDist > 0) d = lastAutoDist;
@@ -2081,12 +2151,28 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (focusDrive > 0) {
       controls.target.lerp(desiredTarget, 0.18);
       camera.position.lerp(desiredCam, 0.14);
-      // 48 frames of a 0.14 lerp closes about three orders of magnitude, which was always enough for
-      // readable-scale distances. Framing a TRUE-scale world spans six — the ease used to expire while
-      // the camera was still hundreds of radii out, leaving the planet a marker in an empty frame. So
-      // the drive only expires when the shot has actually been reached (or the user grabs the zoom):
-      // hold the counter at 1 while the distance is still >5% off the framed ideal.
-      const arrived = camera.position.distanceTo(controls.target) <= dist * 1.05;
+      // The lerp above swings the HEADING nicely but closes the radius linearly, which stalls
+      // across this scene's range (see easeDistance). Re-place the camera along the heading it
+      // just chose, at a geometrically eased distance, so the shot converges at any scale.
+      //
+      // Measured against `desiredTarget` - the BODY - and not against `controls.target`, which is
+      // itself still sliding in at a fixed 18% per frame. Measuring from the sliding target made
+      // the two fight: once the camera is within 1e-9 of the hull, one 18% step of the target is
+      // millions of times larger than the camera's remaining distance, so the distance sprang back
+      // every frame (measured: eased 9.9e-5 -> 2.0e-5, back to 9.4e-5 on the next frame) and the
+      // shot crawled in over tens of seconds instead of arriving. The target converges to the same
+      // point regardless, so the settled shot is identical.
+      _easeVec.subVectors(camera.position, desiredTarget);
+      const curD = _easeVec.length();
+      if (curD > 1e-12) {
+        camera.position.copy(desiredTarget)
+          .addScaledVector(_easeVec.multiplyScalar(1 / curD), easeDistance(curD, dist));
+      }
+      // The drive only expires when the shot has actually been reached (or the user grabs the
+      // zoom) - holding the counter at 1 until then. With the geometric step above that is now a
+      // handful of frames at any scale; it used to be indefinite, which is what kept re-placing
+      // the camera under a user trying to pan.
+      const arrived = framedClose(camera.position.distanceTo(desiredTarget), dist);
       if (focusDrive > 1 || arrived || userZoomOverride) focusDrive--;
       return;
     }
@@ -2134,11 +2220,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const bv = id ? bodies.find((x) => x.id === id) : undefined;
-    const rad = bv ? (bv.radiusScene || ((bv.shipModel && bv.shipLen) ? bv.shipLen : 0)) : 0;
+    const rad = bv ? (bv.radiusScene || bv.shipLen || 0) : 0;
     // The lower clamp tracks the body: a true-scale world is ~1e-5 scene units, and a fixed 0.004 clamp
     // would hold the camera thousands of radii out from the thing it just framed. A true-scale SHIP
     // is smaller again (~1e-9), so a modelled construct may take the floor further down.
-    const minFloor = bv?.shipModel ? 1e-10 : 1e-6;
+    const minFloor = bv?.shipLen ? 1e-10 : 1e-6;
     controls.minDistance = id ? Math.max(minFloor, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : unfocusedMinDist();
     focusDrive = id ? 48 : 0; // ~0.8 s of easing toward the framed shot
     visibleSet = getVisibleNodeIds(currentSystem, focusedId);
@@ -2684,7 +2770,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // G3: a construct carrying a 3D model loads it in the background; the sprite stands until
       // (and unless) it lands, and stands permanently on a machine that lacks the binary.
       if (isConstruct && ((node as any).model?.hash || (node as any).model?.url)) {
-        loadShipModel(bodies[bodies.length - 1], (node as any).model, (node as any).icon_color || '#ffd24d', shipLenScene(node), buildGen);
+        const sceneLen = shipLenScene(node);
+        // The hull's LENGTH is known from the authored dimensions the moment the node is read, so
+        // record it NOW rather than when the binary lands. Framing and the min-zoom both used to
+        // wait for `shipModel`, which made the shot a race against an async load: select a ship
+        // before its model arrived and `frameDistance` fell through to the radius-less 0.35-unit
+        // patch - a shot most of the system wide - while `controls.minDistance` stayed at 1e-6, so
+        // zooming in could not rescue it either. Same click a second later gave a proper close-up.
+        bodies[bodies.length - 1].shipLen = sceneLen;
+        loadShipModel(bodies[bodies.length - 1], (node as any).model, (node as any).icon_color || '#ffd24d', sceneLen, buildGen);
       }
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
