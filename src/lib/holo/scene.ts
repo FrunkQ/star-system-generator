@@ -1702,10 +1702,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           for (const mesh of occTargets) mesh.add(new THREE.Mesh(mesh.geometry, occMat));
         }
       }
-      g.scale.setScalar(sceneLen);
-      g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
+      // The plume is placed BEFORE the hull is scaled to the scene, because its stern-face default
+      // is read off a bounding box and `holder.position` is in the model's own NORMALISED space.
+      // Measuring after the scale mixed the two: the box came back in scene units (~1e-10 at true
+      // scale) and the plume was pinned to the hull's centre instead of its stern.
       v.shipFx = attachDrivePlume(g, (ref.nozzles ?? []) as [number, number, number][]);
       applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
+      g.scale.setScalar(sceneLen);
+      g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
       // The plume light's reach scales with the hull (light params ignore parent scale): a burning
       // ship glows over a few hull-lengths, never across the system - at true scale the old fixed
       // 3.2-unit reach would have lit planets from a 100 m exhaust.
@@ -1758,6 +1762,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   let _dbgAt = 0;
+  const _dbgSize = new THREE.Vector3(); // scratch for the __shipDebug measured-extent readout
   const _shipLook = new THREE.Vector3();
   const _shipDelta = new THREE.Vector3();
   const _lastOrigin = new THREE.Vector3(NaN, 0, 0); // detects a floating-origin rebase between frames
@@ -1905,12 +1910,26 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // drawn size depends on the dial, the camera distance and the viewport together, and
           // none of those can be read off a picture. `window.__shipDebug = true` in any window
           // logs the real numbers once a second, which settles it in one round instead of four.
+          //
+          // `measured` is the load-bearing field and it is NOT redundant with `drawn`. `drawn` is
+          // only what this function INTENDS; `measured` is the hull's actual world extent. An
+          // earlier version logged the intent alone, reported a serene onScreenPx of 7 while the
+          // hull was really 204 px across, and the arithmetic checked out to five figures against
+          // a picture of a station spanning a fifth of an AU - so "measure it, don't judge from a
+          // screenshot" still produced the wrong answer. `measured` is an AXIS-ALIGNED box round a
+          // hull that turns with its heading, so it reads up to ~1.7x the true length: a ratio
+          // near 1 is healthy, and the fault this caught showed a ratio of 25. A ratio well off 1
+          // means the render disagrees with this maths and the fault is upstream in the model
+          // group, not in the floor.
           if ((window as any).__shipDebug && performance.now() - _dbgAt > 1000) {
             _dbgAt = performance.now();
             const drawn = Math.max(b.shipLen ?? 0, minPx * f * distToCam);
+            const measured = Math.max(...new THREE.Box3().setFromObject(b.shipModel)
+              .getSize(_dbgSize).toArray());
             console.log('[shipdbg]', b.id, JSON.stringify({
               shipLen: b.shipLen, dist: distToCam, viewH, bodySize, minPx, framingThis, inFocus,
-              drawn, onScreenPx: drawn / (f * distToCam)
+              drawn, onScreenPx: drawn / (f * distToCam),
+              measured, measuredPx: measured / (f * distToCam), ratio: measured / drawn
             }));
           }
           // Work in WORLD units directly: the size that occupies minPx at this distance is

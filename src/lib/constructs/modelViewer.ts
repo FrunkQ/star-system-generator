@@ -358,12 +358,22 @@ export function buildDisplayModel(
   if (opts.orient) {
     // Bake the GM's alignment so consumers with no orient stage of their own (the scene) can
     // simply lookAt(velocity) and get engines-aft.
-    const baked = new THREE.Group();
     wrap.quaternion.set(...opts.orient);
-    baked.add(wrap);
-    return baked;
   }
-  return wrap;
+  // ALWAYS return an OUTER group, orient or no orient. The normalisation lives on `wrap`, so the
+  // returned object's own transform belongs entirely to the CALLER - the scene sets it to the
+  // hull's scene length and gets exactly that length.
+  //
+  // This used to return `wrap` itself whenever there was no orient, and `scene.ts` then did
+  // `g.scale.setScalar(sceneLen)` - overwriting the normalisation and drawing the hull at
+  // native * sceneLen. The bundled ISS normalises by 0.039, so it drew 25.6x oversize (a 109 m
+  // station spanning a fifth of an AU). The factor is the model FILE's native size, so every
+  // model was wrong by a different amount and in either direction, which is what made it look
+  // inconsistent rather than simply broken. Models WITH an orient took the wrapper path and were
+  // correct, which is why it reproduced only sometimes.
+  const outer = new THREE.Group();
+  outer.add(wrap);
+  return outer;
 }
 
 export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOptions = {}): ModelViewer {

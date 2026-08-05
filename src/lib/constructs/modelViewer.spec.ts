@@ -27,6 +27,24 @@ describe('buildDisplayModel', () => {
     expect(centre.length()).toBeLessThan(1e-3);
   });
 
+  // THE CONTRACT THE SCENE ACTUALLY RELIES ON, and the one the test above does NOT cover: the
+  // caller owns the returned object's transform. `scene.ts` does `g.scale.setScalar(sceneLen)` to
+  // draw a hull at a known scene length, which is only correct if the normalisation lives on a
+  // CHILD. It used to live on the returned group itself whenever there was no orient, so that
+  // setScalar overwrote it and the hull drew at native * sceneLen - 25.6x oversize for the
+  // bundled ISS. "Normalises to a unit long axis" stayed green throughout, because it measures
+  // the object without ever setting a scale on it, which is the one thing every caller does.
+  it('leaves its own transform free for the caller: setting scale on the result gives that length', () => {
+    for (const orient of [null, [0, 0, 0, 1] as [number, number, number, number]]) {
+      const built = buildDisplayModel(stlLikeMesh(), { hadMaterials: false, orient });
+      expect(built.scale.x).toBe(1); // nothing of ours is parked on the returned object
+      built.scale.setScalar(0.25);
+      built.updateMatrixWorld(true);
+      const size = new THREE.Box3().setFromObject(built).getSize(new THREE.Vector3());
+      expect(Math.max(size.x, size.y, size.z)).toBeCloseTo(0.25, 4);
+    }
+  });
+
   it('applies the tint finish to a material-less source: flat shading + crease-edge lines', () => {
     const built = buildDisplayModel(stlLikeMesh(), { hadMaterials: false, tintHex: '#ff0000' });
     let flat = 0, edges = 0;
