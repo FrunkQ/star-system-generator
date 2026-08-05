@@ -351,6 +351,77 @@ WHY: the store is content-addressed; mis-filing a payload under someone else's h
 every construct pointing at it.
 BLAST: adding another transport (the broadcast path shares this function deliberately).
 
+#### Real-sky import and the bundled starmaps — added 2026-08-04 by the importer stream
+
+### DATA-R1 A correction to a bundled map belongs in the KIT, never in the JSON
+WHERE: `scripts/starmap-build/build-starmaps.mjs`; pinned by `scripts/starmap-build/buildKit.spec.mjs`
+RULE: the three files in `static/example-starmaps/` are GENERATED. The pin test rebuilds into a temp
+directory and compares byte for byte, normalising only line endings and the `appVersion` stamp — so
+indentation and key order count. Fix the roster, the fiction overlay or the generator, then rebuild.
+The one honest exception is a stable-id rename, which cannot be regenerated (see DATA-R2).
+WHY: the two drifted for a month unnoticed (D4). Twelve fixes were applied straight to the JSON, so a
+routine `node build-starmaps.mjs` would have SUCCEEDED, printed its usual two lines, and silently
+reverted C3's ecliptic frame flags, Adrian's radius, both Project Hail Mary drives and a re-parenting.
+A working build that quietly undoes work is the failure mode here — not a broken one.
+BLAST: anything under `src/lib/import/realsky/` that the kit imports changes generator output, so the
+shipped maps must be regenerated in the SAME commit. Adding a planet host to the roster also
+regenerates `src/lib/generated/bundledArchiveHosts.mjs` (D15) — never hand-edit that file.
+
+### DATA-R2 Node ids are stable REFERENCES, and they feed the orbital phase hash
+WHERE: `build-starmaps.mjs` (`hash01(id + '|i')` …), `assertUniqueIds`; WS8 rebase reads `sys-*`
+RULE: `sys-sol`, `barnard-star` and friends are load-bearing: parents, barycentre members, orbits,
+routes, constructs and the campaign rebase all key on them. They are also the SEED for each body's
+inclination, argument, node and phase — so renaming an id silently moves the body in its orbit.
+Never renumber; a rename is a deliberate, reviewed act, not tidying.
+WHY: two duplicate-id pairs shipped for four months because nothing looked (D3) — `nodeById` is a
+`.find()`, so the second node is simply unreachable and anything pointing at that id resolves to the
+other one. The build now throws rather than de-duplicating, because a generator that quietly renames
+a clash hides the next one exactly as well as silence did.
+BLAST: any id change → expect element churn in the rebuilt map and check the pin-test diff is only
+what you intended. Imported systems reuse a bundled id ONLY via the collision path (DATA-R4).
+
+### DATA-R3 Inclinations are MUTUAL, never the catalogue's sky-plane value
+WHERE: `src/lib/import/realsky/convert.mjs` (`mutualIncMax`), `data/systems-real.mjs` header
+RULE: SSE's reference plane is the SYSTEM's own plane, so planets get a near-zero mutual inclination
+(default spread 1.2°). Discovery papers quote inclination against the SKY, where a transiting system
+reads ~90°. The two numbers are not interchangeable and the catalogue column is the wrong one.
+WHY: importing the published value stands a transiting system on its edge — every TRAPPIST-1 planet
+in a vertical line. Spotted in the old hand-built map by the owner before the rebuild.
+BLAST: any new orbital-element source (Gaia, WDS, VizieR). Satellites are a separate question — see
+`orbit.frame` and C3, which is about a moon's parent equator, not this.
+
+### DATA-R4 The importer never invents and never overwrites — and both must reach the user
+WHERE: `convert.mjs` (`starNodeFromRow` skips, `BUNDLED_ARCHIVE_HOSTS` collisions), `RealSkyImportModal.svelte`
+RULE: a host missing mass, radius or temperature is SKIPPED with a named reason rather than guessed
+into existence, and a host already curated into a bundled system is returned as a COLLISION rather
+than converted. `convertArchiveRows` returns `{systems, collisions, skipped}` and the caller is
+required to SHOW the last two. Filtering them away to tidy the dialogue defeats the whole design.
+WHY: raw catalogue rows overwriting curated systems is exactly the drift DATA-R1 exists to prevent,
+arriving from the other direction; and a silently short import reads as a complete survey.
+BLAST: any new consumer of `convertArchiveRows`. The collision list is generated from the roster, so
+it is only as current as the last kit run (D15).
+
+### DATA-R5 The shared real-sky core must stay plain, dependency-free ESM
+WHERE: `src/lib/import/realsky/{constants,positions,stars,planets,convert,query,clusterGate}.mjs`
+RULE: these files are imported by BOTH the Vite app and `scripts/starmap-build/build-starmaps.mjs`,
+which runs under plain `node`. No TypeScript, no `$lib` alias, no Svelte imports — use relative
+paths. App-only logic (`fillout.ts`, `stardefaults.ts`) is `.ts` and may use `$lib` freely.
+WHY: a `$lib/…` import inside `convert.mjs` type-checks, bundles and passes every browser test while
+breaking the build kit — and the kit is what regenerates the shipped maps, so the damage surfaces
+later, as DATA-R1's failure mode.
+BLAST: `node -e "import('./src/lib/import/realsky/convert.mjs')"` is the cheap check.
+
+### DATA-R6 The Exoplanet Archive is ALWAYS CORS-blocked in a browser; the proxy is the live path
+WHERE: `src/routes/api/realsky-tap/+server.ts`, `src/lib/import/realsky/catalogue.mjs`
+RULE: the archive's TAP endpoint sends no `Access-Control-Allow-Origin`, so a direct browser fetch
+fails deterministically — SIMBAD does send it and works direct. `loadArchiveRows` tries direct (for
+node, where CORS does not exist), then the same-origin proxy, then the bundled snapshot, and reports
+which answered. The proxy forwards SELECT-on-`pscomppars` only; it is not an open proxy.
+WHY: measured from the deployed origin after it looked like flaky availability. It was not
+intermittent: every region import in the browser had been served by the offline snapshot, silently.
+BLAST: adding Gaia or VizieR — check their CORS before assuming direct fetch works, and keep the
+"which source answered" label honest, because a stale snapshot must never read as live data.
+
 ### UI-*  (panels, editors, player views)
 _Unwritten. Candidates: which surfaces read the player snapshot; the four explanation surfaces that
 drift silently (physics page, Newton explainer, tags guide, classification doc)._
