@@ -13,6 +13,9 @@ where the previous session believed ship rendering was finished. Ask which surfa
 seen: GM 2D map, GM 3D holo, player 2D, player 3D, or the info-block portrait; and whether the
 ship is absent, an icon instead of a hull, or the wrong size.
 
+**Then read section 8 first.** The owner captured a debug trace after this note was written and
+it narrows the sizing fault to one condition in one function. Start there, not from scratch.
+
 **Then measure it. Do not judge from a screenshot.** In any view with the 3D scene running:
 
     window.__shipDebug = true
@@ -119,3 +122,57 @@ specific check at a time.
 - One worker session at a time plus a coordinator that owns the inbox. Stay inside G3's territory
   (`src/lib/constructs/**`, the construct parts of the scene, the model UI) unless told otherwise.
   G14 (remote players) is VTT territory - leave it alone.
+
+## 8. Measured trace from the owner, 2026-08-05, v2.1.446-beta - THE LEAD
+
+A focused construct in the 3D scene, many consecutive frames, abridged:
+
+    [shipdbg] sol-rocinante {"shipLen":1e-10,"dist":0.7130612925,"viewH":1215.515625,
+      "bodySize":0,"minPx":14,"framingThis":false,"inFocus":true,
+      "drawn":0.006803754932,"onScreenPx":14}
+
+What is measured, not inferred:
+
+- `onScreenPx` is pinned at exactly **14** on every frame - the ship is drawing at the focused
+  pixel floor, i.e. as a speck, and the hull's true size is contributing nothing.
+- `inFocus` is **true** but `framingThis` is **false**. The floor's release condition did not
+  fire even though this is the focused construct.
+- `dist` drifts downward across the trace while `onScreenPx` does not move at all.
+
+The arithmetic, which makes this conclusive rather than suggestive. The trace gives
+`viewH = 1215.52`; from an earlier capture `f * viewH = 0.8285`, so the scene runs a 45 degree
+vertical fov and `f = 6.816e-4`. While the floor binds,
+
+    drawn = minPx * f * dist        ->  onScreenPx = minPx, identically, at EVERY distance.
+
+Check against the trace: `14 * 6.816e-4 * 0.71306 = 6.8037e-3`, which is `drawn` to five figures.
+**So while the floor binds, zooming cannot change the ship's apparent size - not slowly, not at
+all.** That is the dead-zoom the owner has been describing.
+
+The true hull only takes over when `trueLen > minPx * f * dist`, i.e. at
+
+    dist* = 1e-10 / (14 * 6.816e-4) = 1.05e-8 scene units,
+
+against a current camera distance of 0.713 - about **seven orders of magnitude** closer than the
+camera is. Unless the orbit controls permit a distance of ~1e-8 units, true scale is unreachable
+by zooming and the ONLY escape from the floor is the `framingThis` branch.
+
+`framingThis` is `focusedId === b.id && followEngaged && !framingWhole` in `updateConstructs()`
+(`src/lib/holo/scene.ts`). The trace shows the first conjunct satisfied and the result false, so
+**`followEngaged` is false, or `framingWhole` is true, when a user simply selects a ship and
+zooms.** The release was written for follow mode; the owner is not in follow mode. That single
+condition is the most likely whole cause of "it does not work".
+
+Two things to settle before changing it, because the fix is a design choice and not a one-liner:
+
+1. **Can the camera actually get to ~1e-8 scene units?** Check the orbit controls' minimum
+   distance and the near-plane floor (`1e-11`). If the controls clamp well above that, then
+   releasing the floor makes the ship vanish rather than grow, and the answer is a graduated
+   floor - ease `minPx` out as the camera closes - not a hard release.
+2. **Is `shipLen: 1e-10` measured or clamped?** It is suspiciously round. At this scene's
+   normalisation that is roughly 50 m, which is right for a Rocinante, so it is probably real -
+   but confirm it against the construct's stated length before trusting it, since a
+   `Math.max(1e-10, ...)` guard would produce exactly this value for anything smaller.
+
+Do not "fix" this by raising `minPx`. A bigger speck is still a speck, and the complaint is that
+the ship does not respond to the camera.
