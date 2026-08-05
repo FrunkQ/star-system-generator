@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.450-beta - 5th Aug 2026
+
+* Framing a ship that is UNDER WAY now works. Every incoming snapshot rebuilt the scene and threw the camera's focus away with it - and a construct in transit rewrites the snapshot about twice a second, so on a player's screen the shot was abandoned and restarted continuously and never got near the ship. A ship in a stable orbit does not move the snapshot, which is why that case looked fine and this one did not. A refresh of the system already on screen now keeps the focus; only moving to a different system clears it.
+
 ## v2.1.449-beta - 5th Aug 2026
 
 * Internal: proved the drive-burn path a player actually receives. The existing tests covered the burn maths in isolation and stayed green while a ship showed no plume, because nothing checked that the snapshot a player is SENT carries the burns. It does - burns cross, journeys and drafts stay behind. The ship diagnostic now also reports the live thrust and whether the node holds any burn data at all, so "the plume is not lit" can be told apart from "the ship is coasting".

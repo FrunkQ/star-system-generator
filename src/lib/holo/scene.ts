@@ -2407,8 +2407,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     resetOriginForRebuild(); // everything absolute is about to be re-emitted; build it about the centre
     clearContent();
     buildGen++; // invalidate in-flight async loads (ship models) from the previous system
-    focusedId = null;
-    focusDrive = 0;
+    // A REFRESH of the system already on screen must not throw the camera away. This is called for
+    // every incoming snapshot, and a construct IN TRANSIT rewrites the snapshot about twice a
+    // second - so on a player watching a ship under way, the focus and the in-flight framing ease
+    // were wiped ~2x/second, restarting the approach from wherever it had reached and leaving the
+    // shot stranded far out. That is the whole of "it frames too far out, and inconsistently" for
+    // a moving ship: sometimes a rebuild landed late and the ease got further, sometimes early and
+    // it barely started. Only a genuinely DIFFERENT system clears the focus.
+    const sameSystem = !!system && !!currentSystem && (system as any).id === (currentSystem as any).id;
+    // Always dropped: resetOriginForRebuild has just shifted the frame, so last frame's position
+    // is not comparable with this one's. One frame without the motion carry costs nothing.
+    _prevDesiredFor = null;
+    if (!sameSystem) {
+      focusedId = null;
+      focusDrive = 0;
+      followEngaged = false;
+      lastAutoDist = 0;
+    }
     currentSystem = system;
     if (!system) return;
 
