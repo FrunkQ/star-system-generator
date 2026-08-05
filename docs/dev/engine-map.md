@@ -164,6 +164,17 @@ WHY: a shared component reading `$liveOverrides` works on the GM's screen and si
 on the player's — no error, just a feature that never appears.
 BLAST: any GM-side live control that a shared component consumes. Add it to `PresetOverrides` too.
 
+### TAG-16 There are TWO tag pickers and they are not duplicates
+WHERE: `components/TagFinder.svelte` (map-derived) vs `components/TagPicker.svelte` (full vocabulary)
+RULE: TagFinder offers only tags something ACTUALLY carries, with counts — for finding, and for
+choosing map highlights. TagPicker offers every category, engine namespace and declared tag whether
+or not anything carries it — for adding a tag by hand, and for authoring.
+WHY: picking the wrong one fails in BOTH directions. A manual-tagging picker filtered to what exists
+can never add the first instance of anything; a highlight picker full of unused tags offers things
+that will never appear on a map.
+BLAST: new tag-choosing UI → pick deliberately and say which in the component header. Do not "unify"
+them; the filtering IS the difference.
+
 ---
 
 ## PHYSICS — ordering and honesty
