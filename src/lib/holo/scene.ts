@@ -1889,10 +1889,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (b.shipModel) {
         b.shipModel.visible = showModel;
         if (showModel) {
-          // Floor the DRAWN size: full readable size when this ship is the focus, a smaller floor
-          // when it is not, mirroring the two states the glyph sprite has always had (12 px / 4 px)
-          // so an idle ship reads as a marker rather than shouting over the focused one.
-          const minPx = inFocus ? SHIP_MODEL_MIN_PX : SHIP_MODEL_IDLE_PX;
+          // THE FLOOR MUST LET GO WHEN THE CAMERA COMMITS TO THIS SHIP. A screen-size floor pins
+          // the hull to a constant number of pixels, which is right for a marker and WRONG for a
+          // close-up: while it is active, moving the camera cannot change the apparent size at
+          // all, so zooming did nothing until the true size finally overtook the floor and the
+          // ship leapt from a speck to enormous. Worse, `frameDistance` frames by the ship's TRUE
+          // length, so at 1:1 the camera flew to a distance suited to a 46 m hull while the hull
+          // was drawn at 14 px - the two pulling against each other is the "wrestles the view".
+          // So: framed => draw it at its real size and let the camera do the work, exactly as a
+          // true-scale body behaves; otherwise floor it so it stays findable.
+          const framingThis = focusedId === b.id && followEngaged && !framingWhole;
+          const minPx = framingThis ? 0 : inFocus ? SHIP_MODEL_MIN_PX : SHIP_MODEL_IDLE_PX;
           // Work in WORLD units directly: the size that occupies minPx at this distance is
           // minPx * f * dist, so the drawn size is simply the larger of that and the true size.
           // The previous form divided by the on-screen size to get a multiplier, and at TRUE

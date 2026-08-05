@@ -46,3 +46,29 @@ describe('ship screen-size floor', () => {
     expect(px(drawn, F, 31)).toBeCloseTo(14, 6); // the floor alone, not an exploded product
   });
 });
+
+// The floor must LET GO when the camera commits to a ship. While it is active the hull holds a
+// constant number of pixels, so moving the camera cannot change its apparent size - correct for a
+// marker, wrong for a close-up, and the reason focusing a ship "wrestled the view": the camera
+// framed the TRUE length while the hull was drawn at the floor, and zooming did nothing until the
+// true size finally overtook it and the ship leapt from a speck to enormous.
+describe('the floor releases when the camera frames the ship', () => {
+  const drawn = (trueLen: number, minPx: number, dist: number) => Math.max(trueLen, minPx * F * dist);
+  const iss = 2.9e-10;
+
+  it('framed: apparent size GROWS as the camera closes, like any real object', () => {
+    const far = px(drawn(iss, 0, 10), F, 10);
+    const near = px(drawn(iss, 0, 0.5), F, 0.5);
+    expect(near).toBeGreaterThan(far * 15); // 20x closer reads ~20x bigger
+  });
+
+  it('not framed: apparent size is pinned, so a distant ship stays findable', () => {
+    expect(px(drawn(iss, 7, 10), F, 10)).toBeCloseTo(7, 6);
+    expect(px(drawn(iss, 7, 0.5), F, 0.5)).toBeCloseTo(7, 6);
+  });
+
+  it('the two rules agree once the hull is genuinely bigger than the floor', () => {
+    const big = 0.5;
+    expect(drawn(big, 0, 2)).toBe(drawn(big, 14, 2));
+  });
+});
