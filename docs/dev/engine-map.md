@@ -313,6 +313,18 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S8 A ship's drawn size cannot be judged from a screenshot - measure it
+WHERE: `src/lib/holo/scene.ts:updateConstructs` (`window.__shipDebug = true` logs the numbers)
+RULE: the drawn size is `max(trueLength, minPx * f * cameraDistance)` - it depends on the
+body-size dial, the camera distance AND the viewport height together. A hull that looks "AU
+across" may be a correct 7 px on a screen you are not looking at, and one that looks right may
+be wrong. Turn the hook on and read `onScreenPx` before changing anything.
+WHY: this was misdiagnosed four times from screenshots - visibility rules, LOD thresholds and
+camera framing were all "fixed" while innocent. The one real fault (a division landing on the
+divide-by-zero guard at true scale) was found in seconds once the numbers were printed.
+BLAST: any change to the floor, the dial, or the framing. Note the floor RELEASES while the
+camera frames that ship (otherwise zoom cannot change the apparent size at all).
+
 ### RENDER-S7 Never swallow an exception on the path that decides whether a thing renders
 WHERE: `src/lib/holo/scene.ts` (`attachShipModel`, `loadShipModel`) - both now `console.warn`
 RULE: a try/catch around model building MUST report. The fallback (the glyph) is correct

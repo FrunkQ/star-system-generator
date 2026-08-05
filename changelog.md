@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.444-beta - 5th Aug 2026
+
+* A diagnostic for ship scale: setting window.__shipDebug = true in any window logs, once a second, what a ship's model is actually being drawn at - its true length, the camera distance, the viewport, the dial setting and the resulting size in SCREEN PIXELS. Ship scale has been misdiagnosed from screenshots several times, because the drawn size depends on all of those together and none of them can be read off a picture; measured at 1:1 the hull comes out at exactly the intended 7 pixels.
+
 ## v2.1.443-beta - 5th Aug 2026
 
 * Internal only: developer notes. The engine map gains the position and eclipse rules — where a moon gets rotated into its planet's equator, and why a panel showing a predicted date reads the clock once a second rather than every frame. No change to the app.

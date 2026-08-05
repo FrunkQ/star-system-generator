@@ -1757,6 +1757,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return Math.max(0.1, Math.min(4, n?.model?.nozzleScale ?? 1));
   }
 
+  let _dbgAt = 0;
   const _shipLook = new THREE.Vector3();
   const _shipDelta = new THREE.Vector3();
   const _lastOrigin = new THREE.Vector3(NaN, 0, 0); // detects a floating-origin rebase between frames
@@ -1900,6 +1901,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // true-scale body behaves; otherwise floor it so it stays findable.
           const framingThis = focusedId === b.id && followEngaged && !framingWhole;
           const minPx = framingThis ? 0 : inFocus ? SHIP_MODEL_MIN_PX : SHIP_MODEL_IDLE_PX;
+          // DIAGNOSTIC HOOK. Ship scale has been misdiagnosed from screenshots repeatedly - the
+          // drawn size depends on the dial, the camera distance and the viewport together, and
+          // none of those can be read off a picture. `window.__shipDebug = true` in any window
+          // logs the real numbers once a second, which settles it in one round instead of four.
+          if ((window as any).__shipDebug && performance.now() - _dbgAt > 1000) {
+            _dbgAt = performance.now();
+            const drawn = Math.max(b.shipLen ?? 0, minPx * f * distToCam);
+            console.log('[shipdbg]', b.id, JSON.stringify({
+              shipLen: b.shipLen, dist: distToCam, viewH, bodySize, minPx, framingThis, inFocus,
+              drawn, onScreenPx: drawn / (f * distToCam)
+            }));
+          }
           // Work in WORLD units directly: the size that occupies minPx at this distance is
           // minPx * f * dist, so the drawn size is simply the larger of that and the true size.
           // The previous form divided by the on-screen size to get a multiplier, and at TRUE
