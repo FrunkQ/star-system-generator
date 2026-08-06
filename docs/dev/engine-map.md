@@ -313,6 +313,22 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S14 A heading policy needs the FULL sphere, or it can be handed an impossible shot
+WHERE: `holo/scene.ts:applyPolarLimits` (3D: epsilon off each pole; a flat map stays pinned).
+RULE: any camera policy that derives a heading from REAL POSITIONS - host-relative framing, a
+route, a surface construct - can legitimately ask for a direction below the plane. The controls must
+be able to hold it. Clamp only what the VIEW KIND requires (a flat map is overhead by definition),
+never what the geometry might need.
+WHY: `maxPolarAngle` was `PI * 0.49`, so the camera could not go below the ecliptic at all - half of
+every system was unreachable. Once the shot became host-aware (R2) that stopped being a limitation
+and became a FAULT: for a moon or station on the underside of its world the wanted heading points
+downward, the controls refused to hold it, and the framing never settled - which reads as the
+autoframing "breaking" rather than as a clamp, because nothing reports it.
+BLAST: epsilon off each pole, not zero - at exactly 0 or PI the up vector is parallel to the view
+direction, the azimuth is undefined and OrbitControls resolves it by spinning. If a future policy
+still cannot be satisfied, make it SAY so (`hostWouldOcclude` is the pattern) rather than letting
+the camera chase a shot it can never reach.
+
 ### RENDER-S13 Every construct has an EXTENT, and anything self-drawn must be self-LIT
 WHERE: `holo/scene.ts:attachHullVolume` (the ellipsoid stand-in), consumed by `frameDistance` and
 `focusBody`'s min-zoom via `shipLen`.

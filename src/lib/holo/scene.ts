@@ -1465,8 +1465,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // exactly-overhead orbit camera is gimbal-degenerate (view axis parallel to `up`).
   const LOCK_POLAR = 0.02;
   function applyPolarLimits() {
-    controls.minPolarAngle = flatOverhead ? LOCK_POLAR : Math.min(0.06, framingAngleRad);
-    controls.maxPolarAngle = flatOverhead ? LOCK_POLAR : Math.PI * 0.49;
+    // A 3D view may go BELOW the plane. It is a hologram, not a map: half the system is under the
+    // ecliptic and there was no way to look at any of it.
+    //
+    // It is also load-bearing now, not just nicer. The shot is host-aware (R2): the camera is placed
+    // along host -> subject so the host cannot occlude what you selected. For a moon or a station on
+    // the UNDERSIDE of its world that heading points DOWNWARD, and a clamp at 0.49*PI made that shot
+    // literally unreachable - the framing kept asking for a position the controls refused to hold,
+    // so it never settled. Any policy that derives a heading from real positions needs the full
+    // sphere available, or it can be handed a target it cannot express.
+    //
+    // Epsilon off each pole, not zero: at exactly 0 or PI the camera's up vector is parallel to the
+    // view direction and the azimuth becomes undefined, which OrbitControls resolves by spinning.
+    // A flat map is still pinned overhead - that IS the map.
+    const POLE_EPS = 0.001;
+    controls.minPolarAngle = flatOverhead ? LOCK_POLAR : POLE_EPS;
+    controls.maxPolarAngle = flatOverhead ? LOCK_POLAR : Math.PI - POLE_EPS;
   }
   // Whole-framed FLAT map = a FIXED plan view (Alex: "just a fixed overhead — no pan/zoom"): freeze the
   // user's pan and zoom too. A whole-framed 3D holo keeps its orbit/zoom (it's a hologram, not a map).
