@@ -257,6 +257,17 @@ S2. THE LAW (decision 2026-08-06): readable size = a single KIND-BLIND monotone 
     by construction, not by tuning. An ordinary ship therefore never rivals a body (it is
     physically small), while a deliberately absurd construct - a Death Star, a 940 km station -
     honestly renders at the scale its size puts it. No caps, no per-kind exceptions.
+S2b. ONE FLOOR POLICY, not two - found by /scale-reference on its first render (2026-08-06) and
+    it bites at TRUE scale, which is the owner's current focus. `bodyRadiusScene` floors at 1e-7
+    scene units and `shipLengthScene` at 1e-10: a thousandfold apart. So at dial 0 a 10 km moonlet
+    renders 2.0e-7 while a physically LARGER 22 km station renders 5.9e-8 - the moonlet draws 3.4x
+    too big purely because of which floor it landed on. Each floor is defensible alone (the body
+    one predates true scale; the ship one was lowered for G3 hulls) and together they are an
+    ordering violation the dial cannot fix. P4 must apply ONE numerical floor across all kinds -
+    and, because the point of true scale is honesty, that floor should be the smallest the scene
+    can carry (the construct value), with legibility left to the SCREEN-space pixel floor where it
+    belongs. That is the same argument `bodyRadiusScene` already makes in its own comment against
+    scene-unit floors, applied consistently.
 S3. KNOWN COST (RENDER-S6 BLAST): mid-dial looks in saved presets shift. Bundled presets get
     re-eyeballed; the owner signs off the new bands on the reference screen (section 6) before
     this ships. Endpoints (dial 0 and 1) barely move for bodies; ships change most - that is the

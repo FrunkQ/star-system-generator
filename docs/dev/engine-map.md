@@ -333,9 +333,16 @@ before the work: a physically larger object must never render smaller, and a moo
 may read moon-sized (no construct cap - the owner's "you could construct a death star"). It is
 skipped because today's law FAILS it on purpose. P4 turns it on; if you are changing the law and
 it still fails, you are not done.
+SEE IT: `/scale-reference` renders the canonical object set (star..46 m ship) at every dial stop
+and four system widths, through the REAL law, and flags every ordering violation. Use it before and
+after any change to the law - it is the "did the look move?" check that a diff cannot give you.
 BLAST: changing a readable band moves saved presets' mid-dial looks (RENDER-S6). Delete the legacy
-column in the same commit that changes the law, or it will fight you. Design:
-`docs/dev/camera-framing-redesign.md` (S1/S2, phases P1/P4).
+column in the same commit that changes the law, or it will fight you. TWO FLOORS ARE ONE TOO MANY:
+bodies floor at 1e-7 scene units and constructs at 1e-10, so at TRUE scale a 10 km moonlet
+(floored, 2.0e-7) out-draws a 22 km station (unfloored, 5.9e-8) - an inversion the dial cannot fix,
+found by /scale-reference on its first render. A floor in SCENE units is the thing true scale
+exists to avoid; legibility belongs to the screen-space pixel floor. Design:
+`docs/dev/camera-framing-redesign.md` (S1/S2/S2b, phases P1/P4).
 
 ### RENDER-S10 Camera framing eases in LOG distance, and must travel with its target
 WHERE: `src/lib/holo/scene.ts:driveFocus` (`easeDistance`, `framedClose`, `_prevDesired`);
