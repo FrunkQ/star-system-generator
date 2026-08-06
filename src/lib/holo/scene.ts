@@ -47,8 +47,12 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
-import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, autoFrameStep, FRAME_LEVELS } from '$lib/viewport/camera';
-import { frameDistanceFor, wholeSystemDistance, beltDistance } from '$lib/viewport/shotSolver';
+import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, FRAME_LEVELS } from '$lib/viewport/camera';
+import { frameDistanceFor, wholeSystemDistance, beltDistance, headingDirection } from '$lib/viewport/shotSolver';
+import {
+  IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, blendToward, shotReached, isIdentity,
+  type ViewOffset, type Shot
+} from '$lib/viewport/cameraRig';
 import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { perfCount, perfFrame } from '$lib/perfTrace';
@@ -1101,7 +1105,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // Not mid-ease. The target lerps onto the body over ~48 frames while the distance closes at a similar
     // rate, so the test below would pass on most of those frames and re-emit on each — a hitch, to fix a
     // rounding error nobody can see on a camera that is still flying. One rebase when it settles is right.
-    if (focusDrive > 0) return;
+    if (reframing) return;
     const drift = controls.target.length(); // the target is in rebased units, so this IS the drift
     if (!shouldRebase(drift, camera.position.distanceTo(controls.target))) return;
     rebaseOriginBy(_rebaseDelta.copy(controls.target));
@@ -1355,11 +1359,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const outward = new THREE.Vector3();
   const camDir = new THREE.Vector3();      // target→camera offset direction (re-seating the auto-framed distance)
   const followOffset = new THREE.Vector3(); // target→camera offset carried with a followed body (heading + distance)
-  // Auto-frame bookkeeping, mirroring the orrery: once the user drives zoom we stop re-framing (never
-  // fight them) until the next explicit (re)selection re-engages it.
-  let userZoomOverride = false;
-  let lastAutoDist = 0;
-  let lastAutoDistMs = 0;
+  // P2 - BASE + OFFSET (RENDER-S12, viewport/cameraRig.ts). The system proposes a BASE shot every
+  // frame from live positions; the user's drag/wheel/turntable is measured back out of the camera
+  // as an OFFSET and re-applied to the next base. That is the whole camera model.
+  //
+  // What this REPLACED, and why none of it comes back: a 48-frame `focusDrive` counter that either
+  // expired mid-flight or stayed armed forever; `userZoomOverride`, a flag several writers had to
+  // remember to honour; `lastAutoDist` + the orrery's rate-limited auto-frame policy, whose floor
+  // sat a thousand times further out than a true-scale hull; and a `_prevDesired` patch to carry an
+  // in-flight shot along with a moving body. All six framing faults of 2026-08-05 lived in those.
+  // "The user has the view" is now a STATE (offset != identity), not a flag.
+  let viewOffset: ViewOffset = { ...IDENTITY_OFFSET };
+  let lastBase: Shot | null = null;   // previous frame's base, to read the user's manipulation against
+  let reframing = false;              // a cosmetic blend is running; it cannot change the destination
+  let reframePending = false;         // an explicit (re)frame: reset the offset on the next frame
   // The orrery's FOLLOW/MANUAL split: following holds until the USER takes the view (a pan drag) —
   // then it's theirs until the next explicit (re)selection re-engages the follow.
   let followEngaged = false;
@@ -1370,7 +1383,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let lockedHeading = 0;
   const headingDir = new THREE.Vector3();
   let focusedId: string | null = null;
-  let focusDrive = 0;
+  /** An explicit (re)frame: the ONE way the system takes the camera back from the user (R5). */
+  function requestReframe() {
+    reframePending = true;
+    reframing = true;
+  }
   let visibleSet = new Set<string>(); // which body names show — AND what can be clicked (one rule, both)
   let focusLevel = 1; // the click-ladder level for the focused body (see viewport/camera FRAME_LEVELS)
   let framingAngleRad = (64 * Math.PI) / 180; // camera tilt from vertical (0 = overhead)
@@ -1416,7 +1433,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     frameFillFrac = nextFill;
     applyPolarLimits();
     applyInteractionLocks();
-    focusDrive = 48; // re-ease into the new framing
+    requestReframe(); // a genuine framing change re-takes the camera
   }
 
   // The "2D map": the tilt is pinned top-down — it can never become a 3D view. Pan + zoom are enabled
@@ -1432,7 +1449,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     controls.mouseButtons.RIGHT = on ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN;
     controls.touches.ONE = on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     applyPolarLimits();
-    focusDrive = 48; // ease back to the pinned framing
+    requestReframe(); // back to the pinned framing
   }
 
   // Fix the heading: no spinning by drag, and driveFocus keeps the focus centred by PANNING. Off = the
@@ -1446,7 +1463,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       camDir.subVectors(camera.position, controls.target);
       lockedHeading = Math.hypot(camDir.x, camDir.z) > 1e-6 ? Math.atan2(camDir.x, camDir.z) : 0;
     }
-    focusDrive = 48;
+    requestReframe(); // the heading policy changed, so the shot did
   }
 
   // Info-panel reframe: how many pixels of the right edge are covered by the panel (0 = none). The
@@ -1465,17 +1482,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (!flatOverhead || e.buttons === 0) return; // pan is the primary drag only on a flat map
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) {
       followEngaged = false; // the user took the view (the orrery's MANUAL) — stop re-framing it
-      focusDrive = 0;        // and don't finish an in-flight ease against their drag
+      reframing = false;     // and don't finish an in-flight blend against their drag
     }
   }, { signal: pointer.signal });
   // The user driving zoom (wheel / pinch) takes the camera off auto-framing — the orrery's rule, so the
   // view never fights someone looking around. Cleared by the next explicit (re)frame (focusBody/pickBody).
   canvas.addEventListener('wheel', () => {
-    userZoomOverride = true;
+    reframing = false; // touching the zoom hands the camera over NOW; deriveOffset reads it
     // Grabbing the zoom mid-ease hands the camera over NOW - the 48-frame drive used to keep
     // lerping against the wheel for most of a second ("fights the mouse"), worst on a tight
     // ship close-up where a double-click restarts it.
-    if (focusDrive > 1) focusDrive = 1;
+
   }, { passive: true, signal: pointer.signal });
   canvas.addEventListener('pointerup', (e) => {
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return; // a drag = orbit, not a pick
@@ -1538,10 +1555,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function pickBody(id: string) {
     if (id === focusedId && !framingWhole) { // whole framing: clicks select, never re-frame
       focusLevel = nextFrameLevel(levelsForBody(id), focusLevel);
-      focusDrive = 48; // re-ease into the deeper shot
+      requestReframe();
       followEngaged = true;
-      userZoomOverride = false; // an explicit re-frame re-engages auto-framing
-      lastAutoDist = 0;
+
     }
     opts.onSelect?.(id);
   }
@@ -2006,196 +2022,132 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
-  // THE FRAMING EASE WORKS IN LOG DISTANCE, and it has to. This scene spans ten orders of magnitude
-  // between a whole-system shot (~20 units) and a true-scale hull (~5e-10), and a linear lerp closes
-  // a fixed fraction of an ABSOLUTE gap - so from 20 units it was still millions of times too far
-  // away after its 48 frames, and the follow policy's own rate-limited steps then crawled the rest
-  // at a few percent per update. TWO reported faults were this one arithmetic: the shot "framed too
-  // far out" (it simply never arrived), and the view "wrestled the camera back" while panning
-  // (`focusDrive` stayed armed, re-placing the camera every frame; only the WHEEL escaped it,
-  // because that sets userZoomOverride). A ratio step closes the same PROPORTION every frame and
-  // lands in ~48 frames whether the gap is 2x or 1e10x.
-  const FRAME_EASE = 0.14;
-  const _easeVec = new THREE.Vector3();
-  // The ease must TRAVEL WITH the body it is flying to. A small fast mover - a station in low
-  // orbit, a ship under way - translates further in one frame than the whole close-up distance it
-  // is being framed at, so an ease that flies through absolute space is simply left behind: the
-  // camera closed to 1.3e-4 and found the target 6.5e-4 away again on the next frame, over and
-  // over, converging at a crawl and stalling outright once the body's per-frame motion matched the
-  // remaining distance. (Which is why the only way to look at one was to pause the clock.)
-  // Carrying the shot by the body's own motion first makes the ease independent of how fast it is
-  // going. The settled follow below already worked this way; only the approach did not.
-  const _prevDesired = new THREE.Vector3();
-  let _prevDesiredFor: string | null = null;
-  function easeDistance(cur: number, target: number): number {
-    const c = Math.max(1e-12, cur);
-    const t = Math.max(1e-12, target);
-    return c * Math.pow(t / c, FRAME_EASE);
-  }
-  /** Arrival is a RATIO test, not a difference - at 1e-9 units every absolute epsilon is either
-   *  unreachable or instantly true, and an approach from below must not count as arrived. */
-  function framedClose(cur: number, target: number): boolean {
-    return Math.abs(Math.log(Math.max(1e-12, cur) / Math.max(1e-12, target))) < 0.05;
+  // THE CAMERA IS A BASE PLUS AN OFFSET (RENDER-S12; viewport/cameraRig.ts, shotSolver.ts).
+  //
+  //   base   - the shot the SYSTEM wants, recomputed from live positions EVERY frame.
+  //   offset - what the USER did to it (turn, zoom). Identity until they touch it.
+  //   camera = compose(base, offset)
+  //
+  // Read `deriveOffset` first: it measures the user's manipulation back out of the camera against
+  // last frame's base, so mouse input and system framing are never in competition - there is no
+  // arbitration, no priority, no flag. Six mechanisms used to sit between "here is where the camera
+  // goes" and the camera going there, and by eye every one produced the same symptom. Four cannot
+  // happen in this shape: a moving subject cannot outrun the shot (the base IS its position), a
+  // scene rebuild cannot disturb it (a rebuild is just a new base), the transition cannot strand
+  // the camera (it is cosmetic - interrupt it and the next frame still converges), and a policy
+  // floor cannot be expressed independently of the subject (zoom is a RATIO of the framed distance).
+  const REFRAME_BLEND = 0.18; // per-frame fraction of the remaining gap; cosmetic only
+  const _rigTarget = { x: 0, y: 0, z: 0 };
+  const _rigCam = { x: 0, y: 0, z: 0 };
+  const v3 = (v: THREE.Vector3) => ({ x: v.x, y: v.y, z: v.z });
+
+  /** The shot the system wants right now: target, unit heading, distance. Pure inputs, no state. */
+  function computeBase(): Shot | null {
+    const b = !framingWhole && focusedId && followEngaged ? bodies.find((x) => x.id === focusedId) : undefined;
+    // A focused belt isn't a body - it's an annulus about the star, framed specially.
+    const beltFocus = !framingWhole && focusedId && followEngaged && !b ? beltVisuals.find((x) => x.id === focusedId) : undefined;
+    const lens = { fovYDeg: camera.fov, aspect: camera.aspect };
+    // The HEADING POLICY is what used to be a whole branch of this function. A locked view freezes
+    // the azimuth (rotation impossible by construction); everything else approaches radially from
+    // the system centre. P3 swaps the free case to 'host-relative' - one line, because the policy
+    // is already implemented and tested in shotSolver.
+    const policy = lockRotate
+      ? ({ kind: 'fixed-azimuth', azimuth: lockedHeading } as const)
+      : ({ kind: 'radial' } as const);
+    const tilt = flatOverhead && lockRotate ? LOCK_POLAR : framingAngleRad;
+
+    if (b) {
+      const target = v3(b.mesh.position);
+      return {
+        target,
+        heading: headingDirection({ policy, tiltRad: tilt, subject: target, origin: v3(originShift) }),
+        dist: frameDistance(b)
+      };
+    }
+    if (framingWhole) {
+      const target = v3(originShift);
+      return {
+        target,
+        heading: headingDirection({ policy, tiltRad: tilt, subject: undefined, origin: target }),
+        dist: wholeSystemDistance(GRID_RADIUS, lens)
+      };
+    }
+    if (beltFocus) {
+      const target = v3(originShift);
+      return {
+        target,
+        heading: headingDirection({ policy, tiltRad: tilt, subject: undefined, origin: target }),
+        dist: beltDistance(beltFocus.outerScene, GRID_RADIUS)
+      };
+    }
+    return null; // nothing focused: the camera is entirely the user's
   }
 
-  // Ease the camera to the configured framing — either the whole system or the focused body — at the
-  // configured tilt (angle from vertical). Then keep the target gently centred so a followed body
-  // stays in view as it orbits, without fighting the user's own rotate/zoom.
   function driveFocus() {
-    const b = !framingWhole && focusedId && followEngaged ? bodies.find((x) => x.id === focusedId) : undefined;
-    // A focused belt isn't a body — it's an annulus about the star, framed specially below.
-    const beltFocus = !framingWhole && focusedId && followEngaged && !b ? beltVisuals.find((x) => x.id === focusedId) : undefined;
-    let dist: number;
-    if (b) {
-      const bp = b.mesh.position;
-      desiredTarget.copy(bp);
-      outward.copy(bp);
-      const r = outward.length();
-      if (r > 1e-4) outward.multiplyScalar(1 / r);
-      else outward.set(0, 0, 1); // star at origin: fall back to a fixed azimuth
-      dist = frameDistance(b);
-    } else if (framingWhole) {
-      desiredTarget.copy(originShift); // the system centre, wherever the floating origin has put it
-      outward.set(0, 0, 1); // azimuth reference for the whole-system framing
-      // Everything the scene draws sits inside a sphere of GRID_RADIUS about the origin, by construction
-      // (compressScalar maps the outermost body to exactly that). So the honest fit is the BOUNDING
-      // SPHERE, not a flat half-extent: at a tilt the near edge of the disc is closer to the camera than
-      // the centre and projects larger, which a flat estimate does not see — it left the outer orbits
-      // clipping off the bottom of a 64° shot. R / sin(half-fov) fits a sphere of radius R at any tilt.
-      // (The old fixed GRID_RADIUS * 1.5 ignored the lens altogether: at fov 45 it framed a half-extent
-      // of 7.5 out of the 12 that exist, so "frame whole system" cut off the outer third of everything.)
-      dist = wholeSystemDistance(GRID_RADIUS, { fovYDeg: camera.fov, aspect: camera.aspect });
-    } else if (focusedId && beltFocus) {
-      // A belt/ring-of-debris is centred on the star: keep the star centred and pull back so the
-      // whole annulus fits — same overhead-at-angle shot, framed to the ring rather than one body.
-      desiredTarget.copy(originShift); // a belt is centred on the star, not on the floating origin
-      outward.set(0, 0, 1);
-      dist = beltDistance(beltFocus.outerScene, GRID_RADIUS);
-    } else {
-      // No focus, per-body framing → leave the camera where the user put it. Still drain focusDrive
-      // so a stale ease counter doesn't permanently block the auto view-orbit turntable.
-      if (focusDrive > 0) focusDrive--;
+    const base = computeBase();
+    if (!base) {
+      // No focus: leave the camera exactly where the user put it, and forget the old base so the
+      // next selection measures their offset against a fresh shot rather than a stale one.
+      lastBase = null;
+      reframing = false;
       return;
     }
-    // DIAGNOSTIC HOOK, the framing counterpart of __shipDebug. `window.__camDebug = true` prints
-    // the shot this function is aiming for and where the camera actually is, once a second: which
-    // ladder LEVEL was chosen, the framing distance that level implies, the live distance, the
-    // controls' floor, and whether the ease is still armed. Framing complaints ("too far out",
-    // "it snaps back", "it fights me") are indistinguishable by eye and trivially separable here.
-    // Carry an in-flight shot along with the body (see _prevDesired). Only while easing: once the
-    // drive expires the follow branches below do their own tracking, and a rebase cannot land in
-    // the middle of this because maybeRebase stands down while focusDrive is armed.
-    if (focusDrive > 0 && b && _prevDesiredFor === focusedId) {
-      _easeVec.subVectors(desiredTarget, _prevDesired);
-      camera.position.add(_easeVec);
-      controls.target.add(_easeVec);
+
+    // 1. READ THE USER. Whatever they did with the mouse since the last frame (OrbitControls has
+    //    already applied it) becomes the offset, measured against the base it was composed from.
+    //    Measured about the BASE TARGET, not controls.target, so a pan cannot corrupt the reading.
+    if (lastBase && !reframePending) {
+      viewOffset = deriveOffset(lastBase, v3(camera.position), lastBase.target);
+      // A locked view cannot be rotated - that is the meaning of the lock. Keeping their ZOOM while
+      // discarding their rotation is the honest expression of it; the old code achieved the same by
+      // overwriting the camera every frame, which is why it read as "the view fights me".
+      if (lockRotate) viewOffset = { rot: { x: 0, y: 0, z: 0, w: 1 }, zoom: viewOffset.zoom };
     }
-    if (b) { _prevDesired.copy(desiredTarget); _prevDesiredFor = focusedId; }
-    else _prevDesiredFor = null;
+    if (reframePending) {
+      viewOffset = { ...IDENTITY_OFFSET }; // the one way the system takes the camera back (R5)
+      reframePending = false;
+    }
+    viewOffset = clampZoom(viewOffset, base.dist, controls.minDistance, controls.maxDistance);
+
+    // 2. COMPOSE. This is where the camera belongs this frame, at any subject speed.
+    const want = composeShot(base, viewOffset);
+
+    // DIAGNOSTIC (RENDER-S12). `window.__camDebug = true` prints the shot the system wants, where
+    // the camera actually is, and - the fields that matter in this model - whether the USER owns
+    // the view (offset != identity) and whether a cosmetic blend is running. Framing complaints
+    // ("too far out", "it snaps back", "it fights me") are indistinguishable by eye and trivially
+    // separable here.
     if ((window as any).__camDebug && performance.now() - _camDbgAt > 1000) {
       _camDbgAt = performance.now();
       console.log('[camdbg]', focusedId, JSON.stringify({
-        level: focusLevel, wantDist: dist, haveDist: camera.position.distanceTo(controls.target),
-        minDistance: controls.minDistance, focusDrive, followEngaged, userZoomOverride,
-        lockRotate, framingWhole, lastAutoDist
+        level: focusLevel, wantDist: want.dist, baseDist: base.dist,
+        haveDist: camera.position.distanceTo(controls.target),
+        minDistance: controls.minDistance, reframing,
+        offsetZoom: viewOffset.zoom, userHasView: !isIdentity(viewOffset),
+        followEngaged, lockRotate, framingWhole
       }));
     }
-    if (lockRotate) {
-      // Heading locked = BE the GM orrery: the shot is target + distance on a FROZEN heading, placed
-      // exactly every frame — rotation is impossible by construction, mid-ease included. (Lerping the
-      // camera as a free point let the ease's own transients rotate the settled shot.)
-      const pol = flatOverhead ? LOCK_POLAR : framingAngleRad;
-      headingDir.set(Math.sin(pol) * Math.sin(lockedHeading), Math.cos(pol), Math.sin(pol) * Math.cos(lockedHeading));
-      if (focusDrive > 0) {
-        // Ease: the target slides to the body while the DISTANCE eases to the level's framing.
-        controls.target.lerp(desiredTarget, 0.18);
-        // Distance measured to the BODY, not to the still-sliding target - see the free-heading
-        // branch below for why those two fighting stalled the ease.
-        const curD = camera.position.distanceTo(desiredTarget);
-        const nextD = easeDistance(curD, dist);
-        camera.position.copy(desiredTarget).addScaledVector(headingDir, nextD);
-        // Hold the drive until the shot is actually REACHED, exactly as the free-heading branch
-        // below does. Expiring after a fixed 48 frames stranded every LOCKED-heading view mid-
-        // flight - and lockRotation is on in the shipped player presets, so this was the whole
-        // player-facing 3D experience: the camera stopped wherever the counter ran out.
-        if (focusDrive > 1 || framedClose(nextD, dist) || userZoomOverride) focusDrive--;
+
+    // 3. MOVE. Cosmetic only: a blend that cannot change the destination. Interrupt it, rebuild the
+    //    scene, drop frames - the next frame still converges on `want`.
+    if (reframing) {
+      _rigTarget.x = controls.target.x; _rigTarget.y = controls.target.y; _rigTarget.z = controls.target.z;
+      _rigCam.x = camera.position.x; _rigCam.y = camera.position.y; _rigCam.z = camera.position.z;
+      const from = { target: _rigTarget, camera: _rigCam };
+      const to = { target: want.target, camera: want.camera };
+      if (shotReached(from, to)) {
+        reframing = false;
+      } else {
+        const step = blendToward(from, to, REFRAME_BLEND);
+        controls.target.set(step.target.x, step.target.y, step.target.z);
+        camera.position.set(step.camera.x, step.camera.y, step.camera.z);
+        lastBase = base;
         return;
       }
-      // Follow: snap the target onto the body (the orrery's renderPan — no easing, or it lags) and
-      // keep the user's distance, auto-framing it via the shared policy. Wheel zoom changes the
-      // distance; the heading cannot move.
-      let d = camera.position.distanceTo(controls.target);
-      controls.target.copy(desiredTarget);
-      if (!userZoomOverride) {
-        const now = performance.now();
-        const next = autoFrameStep({
-          current: lastAutoDist > 0 ? lastAutoDist : d,
-          ideal: dist,                       // the current ladder level's framing distance
-          userOverride: userZoomOverride,
-          sinceLastMs: now - lastAutoDistMs,
-          // This is a camera DISTANCE, not the orrery's zoom scalar — the policy's default floor of
-          // 0.05 would hold the camera thousands of radii from a true-scale world. Our floor is the
-          // controls' own minimum approach, and NOTHING above it: a hard 1e-7 here sat a thousand
-          // times further out than a true-scale hull's own framing distance, so the moment the ease
-          // finished this policy hauled the camera back out to it — the "it snaps back as soon as
-          // time moves" report. The controls' minimum is already the honest floor (1e-10 for a
-          // modelled construct, set in focusBody).
-          minValue: Math.max(1e-11, controls.minDistance)
-        });
-        if (next !== null) { d = next; lastAutoDist = next; lastAutoDistMs = now; }
-        else if (lastAutoDist > 0) d = lastAutoDist;
-      }
-      camera.position.copy(controls.target).addScaledVector(headingDir, d);
-      return;
     }
-    // Camera offset = tilt from vertical: up·cos(angle) + outward·sin(angle). angle 0 => overhead.
-    const ca = Math.cos(framingAngleRad);
-    const sa = Math.sin(framingAngleRad);
-    desiredCam.copy(desiredTarget).addScaledVector(UP, ca * dist).addScaledVector(outward, sa * dist);
-    if (focusDrive > 0) {
-      controls.target.lerp(desiredTarget, 0.18);
-      camera.position.lerp(desiredCam, 0.14);
-      // The lerp above swings the HEADING nicely but closes the radius linearly, which stalls
-      // across this scene's range (see easeDistance). Re-place the camera along the heading it
-      // just chose, at a geometrically eased distance, so the shot converges at any scale.
-      //
-      // Measured against `desiredTarget` - the BODY - and not against `controls.target`, which is
-      // itself still sliding in at a fixed 18% per frame. Measuring from the sliding target made
-      // the two fight: once the camera is within 1e-9 of the hull, one 18% step of the target is
-      // millions of times larger than the camera's remaining distance, so the distance sprang back
-      // every frame (measured: eased 9.9e-5 -> 2.0e-5, back to 9.4e-5 on the next frame) and the
-      // shot crawled in over tens of seconds instead of arriving. The target converges to the same
-      // point regardless, so the settled shot is identical.
-      _easeVec.subVectors(camera.position, desiredTarget);
-      const curD = _easeVec.length();
-      if (curD > 1e-12) {
-        camera.position.copy(desiredTarget)
-          .addScaledVector(_easeVec.multiplyScalar(1 / curD), easeDistance(curD, dist));
-      }
-      // The drive only expires when the shot has actually been reached (or the user grabs the
-      // zoom) - holding the counter at 1 until then. With the geometric step above that is now a
-      // handful of frames at any scale; it used to be indefinite, which is what kept re-placing
-      // the camera under a user trying to pan.
-      const arrived = framedClose(camera.position.distanceTo(desiredTarget), dist);
-      if (focusDrive > 1 || arrived || userZoomOverride) focusDrive--;
-      return;
-    }
-    // Free heading (3D): the camera TRAVELS WITH the body, keeping the offset the user has chosen —
-    // their heading and their distance — so a selected world stays framed as it moves along its orbit.
-    //
-    // This used to only re-aim: the target lerped onto the body while the camera stayed where it stood.
-    // Turning to track reads well for a second and then fails, because a body orbiting AWAY from a fixed
-    // camera gets further away every frame — the shot quietly retreated until the planet was a dot in an
-    // empty frame. Rotating in place cannot hold a distance; only travelling with the body can.
-    //
-    // Everything else still works BECAUSE the offset is what is preserved: dragging orbits the body
-    // (OrbitControls rewrites this same offset), the wheel changes its length, the turntable spins it,
-    // and re-clicking re-frames through the ladder above, which arms `focusDrive` and eases to the new
-    // distance. The target is COPIED, not lerped — a lerp lags a fast-moving moon off centre, which is
-    // why the locked-heading branch above copies too.
-    followOffset.subVectors(camera.position, controls.target);
-    controls.target.copy(desiredTarget);
-    camera.position.addVectors(controls.target, followOffset);
+    controls.target.set(want.target.x, want.target.y, want.target.z);
+    camera.position.set(want.camera.x, want.camera.y, want.camera.z);
+    lastBase = base;
   }
 
   // A planetary RING has no body of its own in the holo — selecting one (GM menu, follow-GM) frames
@@ -2218,9 +2170,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     focusedId = id;
     focusLevel = firstFrameLevel(levelsForBody(id)); // a NEW selection starts at its first existing level
     followEngaged = !!id; // a selection (re)engages the follow; a pan drag hands the view to the user
-    userZoomOverride = false; // an explicit (re)frame re-engages auto-framing, as in the orrery
+
     if (framingWhole) { visibleSet = getVisibleNodeIds(currentSystem, focusedId); return; } // whole: select only — the camera never moves
-    lastAutoDist = 0;
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const bv = id ? bodies.find((x) => x.id === id) : undefined;
@@ -2230,7 +2181,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // is smaller again (~1e-9), so a modelled construct may take the floor further down.
     const minFloor = bv?.shipLen ? 1e-10 : 1e-6;
     controls.minDistance = id ? Math.max(minFloor, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : unfocusedMinDist();
-    focusDrive = id ? 48 : 0; // ~0.8 s of easing toward the framed shot
+    if (id) requestReframe(); else { reframing = false; reframePending = false; }
     visibleSet = getVisibleNodeIds(currentSystem, focusedId);
   }
 
@@ -2246,10 +2197,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (framingWhole) return;            // fixed plan view: select-only
     const levels = levelsForBody(id);
     focusLevel = levels.includes(level) ? level : firstFrameLevel(levels);
-    focusDrive = 48; // ease into the GM's shot
+    requestReframe(); // ease into the GM's shot
     followEngaged = true;
-    userZoomOverride = false;
-    lastAutoDist = 0;
   }
 
   /**
@@ -2262,10 +2211,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const prev = prevFrameLevel(levelsForBody(focusedId), focusLevel);
     if (prev === focusLevel) return false;
     focusLevel = prev;
-    focusDrive = 48; // ease back out to the wider shot
+    requestReframe(); // back out to the wider shot
     followEngaged = true;
-    userZoomOverride = false; // an explicit re-frame re-engages auto-framing
-    lastAutoDist = 0;
+
     return true;
   }
 
@@ -2276,7 +2224,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    */
   function setViewportAU(cx: number, cy: number, halfExtentAU: number) {
     followEngaged = false;
-    focusDrive = 0;
+    reframing = false; reframePending = false; viewOffset = { ...IDENTITY_OFFSET }; lastBase = null;
     positionToScene({ x: cx, y: cy, z: 0 }, tmp);
     controls.target.copy(tmp);
     // Half-extent through the LOCAL radial compression ratio (global ratio when the centre ≈ origin).
@@ -2306,7 +2254,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function resetView() {
     focusedId = null;
-    focusDrive = 0;
+    reframing = false; reframePending = false; viewOffset = { ...IDENTITY_OFFSET }; lastBase = null;
     followEngaged = false;
     lockedHeading = 0; // HOME sits on x=0, azimuth 0
     controls.minDistance = unfocusedMinDist();
@@ -2413,13 +2361,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const sameSystem = !!system && !!currentSystem && (system as any).id === (currentSystem as any).id;
     // Always dropped: resetOriginForRebuild has just shifted the frame, so last frame's position
     // is not comparable with this one's. One frame without the motion carry costs nothing.
-    _prevDesiredFor = null;
+    lastBase = null; // the frame has shifted; last frame's base is not comparable
     if (!sameSystem) {
       focusedId = null;
-      focusDrive = 0;
+      reframing = false; reframePending = false; viewOffset = { ...IDENTITY_OFFSET }; lastBase = null;
       followEngaged = false;
-      lastAutoDist = 0;
-    }
+      }
     currentSystem = system;
     if (!system) return;
 
@@ -3281,7 +3228,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     driveFocus();
     // Turntable, paused during the focus ease — and never when the heading is locked: autoRotate spins the
     // camera independently of enableRotate, so the lock has to kill it too or the map still drifts round.
-    controls.autoRotate = !lockRotate && orbitSpeed > 0 && focusDrive === 0;
+    controls.autoRotate = !lockRotate && orbitSpeed > 0 && !reframing;
     updateSpin();
     updateSurfaceConstructs();
     updateStarFx(nowSec);
