@@ -295,6 +295,39 @@ function getConstructIconTexture(iconType: string | undefined, color: string): T
   return tex;
 }
 
+// The stand-in hull's SURFACE MARKINGS: the construct's glyph repeated over the shell in a
+// contrasting shade, rather than one badge stuck on the side. Painted markings read from every
+// angle and at every zoom, which a billboard cannot - and a hull with its own livery looks like a
+// craft, where a hull wearing a floating symbol looks like a label.
+const hullTexCache = new Map<string, THREE.CanvasTexture>();
+function getConstructHullTexture(iconType: string | undefined, color: string): THREE.CanvasTexture {
+  const shape = iconType || 'triangle';
+  const key = `${shape}|${color}`;
+  let tex = hullTexCache.get(key);
+  if (tex) return tex;
+  const S = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const ctx = c.getContext('2d')!;
+  const base = new THREE.Color(color);
+  // Deep enough that the marking reads as ON the hull rather than beside it, and light enough that
+  // the hull still reads as its own colour at a glance.
+  ctx.fillStyle = `#${base.clone().multiplyScalar(0.35).getHexString()}`;
+  ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = `#${base.clone().lerp(new THREE.Color(0xffffff), 0.45).getHexString()}`;
+  // Two per tile, offset, so the wrap never lines the glyphs up into a stripe round the hull.
+  traceConstructIcon(ctx, constructIconShape(shape), S * 0.3, S * 0.3, S * 0.34);
+  ctx.fill();
+  traceConstructIcon(ctx, constructIconShape(shape), S * 0.75, S * 0.72, S * 0.26);
+  ctx.fill();
+  tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 2); // a few times round the shell; more reads as noise at a distance
+  hullTexCache.set(key, tex);
+  return tex;
+}
+
 export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {}): HoloController {
   // preserveDrawingBuffer keeps the last frame readable after it is presented, which is what lets a
   // caller drawImage() this canvas into another one. Without it a WebGL canvas captured outside its
@@ -1741,9 +1774,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // is what the glyph it replaces never did (a sprite is unlit). It carries the construct's own
       // icon colour, so the shape reads as the same object the marker did.
       const col = new THREE.Color(tint);
+      const skin = wire ? null : getConstructHullTexture((node as any).icon_type, tint);
       const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color: col, emissive: col, emissiveIntensity: wire ? 1 : 0.55,
-        flatShading: true, metalness: 0.1, roughness: 0.7,
+        color: skin ? new THREE.Color(0xffffff) : col, map: skin,
+        // Emissive through the SAME map, so the markings glow with the hull rather than being
+        // washed flat by it - the scene's only real light is its star, so an unlit shell is black.
+        emissive: skin ? new THREE.Color(0xffffff) : col, emissiveMap: skin,
+        emissiveIntensity: wire ? 1 : 0.5,
+        flatShading: false, metalness: 0.1, roughness: 0.7,
         wireframe: wire, transparent: true, opacity: wire ? 0.8 : 0.95
       }));
       // A brighter edge so the silhouette survives against a bright body behind it.
@@ -1753,21 +1791,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       ));
       const g = new THREE.Group();
       g.add(mesh);
-      // THE SYMBOL, so a close-up still says WHAT this is. The shape gives the size, the colour ties
-      // it to the marker, and the glyph names the kind - the same triangle/circle/diamond/cross/
-      // square vocabulary the map marker uses (A34's ONE glyph vocabulary, so this cannot drift
-      // into a sixth shape of its own). A camera-facing sprite rather than a decal on a face: the
-      // ellipsoid deliberately has no front, so there is no "side" to put it on, and billboarding
-      // means it reads from wherever you happen to have flown.
-      //
-      // NOT a body graphic - this is the map's own construct marker, riding its hull. The
-      // "body graphics are info-block only" rule is about photos/discs/spheres for WORLDS.
-      const badge = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: getConstructIconTexture((node as any).icon_type, tint),
-        transparent: true, depthWrite: false, depthTest: false, opacity: 0.95
-      }));
-      badge.scale.setScalar(0.45); // fraction of the unit hull length; readable without masking it
-      g.add(badge);
       const sceneLen = shipLenScene(node);
       v.shipFx = attachDrivePlume(g, []);
       applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);

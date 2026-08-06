@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.464-beta - 6th Aug 2026
+
+* The stand-in shape for a construct with no 3D model now wears its symbol as repeated hull markings in a contrasting shade, rather than a single symbol pinned to one side. It reads from any angle and at any distance, and a craft with its own livery looks like a craft where one wearing a floating symbol looks like a label.
+
 ## v2.1.463-beta - 6th Aug 2026
 
 * You can no longer zoom through the object you selected. The view now stops a metre off its surface, whether that is a true-scale world, a chunky readable one or a ship's hull. This also fixes distant bodies dropping out of the picture at extreme close-ups: flying inside a planet drove the near clipping plane so small that the depth buffer could no longer tell surfaces apart.
