@@ -1382,6 +1382,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // in-flight shot along with a moving body. All six framing faults of 2026-08-05 lived in those.
   // "The user has the view" is now a STATE (offset != identity), not a flag.
   let viewOffset: ViewOffset = { ...IDENTITY_OFFSET };
+  // R5, MADE STRUCTURAL. The offset is read back OUT of the camera, which only works if the user is
+  // the only one who moves it - and in a scene this size that assumption keeps being wrong. Twice
+  // now something else nudged the camera between frames (a floating-origin rebase, then a writer I
+  // had not found) and the rig read that nudge as "the user zoomed out", applied it, and fed its own
+  // output back in: measured, offsetZoom ran 1.4, 2.9, 6.0, 12.3, 25.3, 52.2, 106, 217, 442, 902
+  // until it clamped at maxDistance and the view sat beyond Pluto.
+  //
+  // So the camera is no longer treated as evidence of intent. The rig reads it ONLY on a frame where
+  // the user actually did something - a drag, the wheel, or the turntable, which are the only things
+  // entitled to move the view. On every other frame the offset simply does not change, so no
+  // external writer can be mistaken for the user and no feedback loop can form, whatever moves the
+  // camera and for whatever reason. That is a weaker assumption than "nothing else writes the
+  // camera", and it is one the scene can actually keep.
+  let userDroveCamera = false;
   let lastBase: Shot | null = null;   // previous frame's base, to read the user's manipulation against
   let reframing = false;              // a cosmetic blend is running; it cannot change the destination
   let reframePending = false;         // an explicit (re)frame: reset the offset on the next frame
@@ -1491,16 +1505,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let downY = 0;
   canvas.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; }, { signal: pointer.signal });
   canvas.addEventListener('pointermove', (e) => {
-    if (!flatOverhead || e.buttons === 0) return; // pan is the primary drag only on a flat map
-    if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) {
-      followEngaged = false; // the user took the view (the orrery's MANUAL) — stop re-framing it
-      reframing = false;     // and don't finish an in-flight blend against their drag
-    }
+    if (e.buttons === 0) return;
+    if (Math.hypot(e.clientX - downX, e.clientY - downY) <= 6) return;
+    // ANY drag is the user driving the camera - in 3D it orbits, on a flat map it pans. Either way
+    // OrbitControls is about to move the camera on their behalf, so the rig may believe what it
+    // reads back next frame.
+    userDroveCamera = true;
+    reframing = false;       // don't finish an in-flight blend against their drag
+    if (flatOverhead) followEngaged = false; // a PAN is the orrery's MANUAL: it drops the follow
   }, { signal: pointer.signal });
   // The user driving zoom (wheel / pinch) takes the camera off auto-framing — the orrery's rule, so the
   // view never fights someone looking around. Cleared by the next explicit (re)frame (focusBody/pickBody).
   canvas.addEventListener('wheel', () => {
-    reframing = false; // touching the zoom hands the camera over NOW; deriveOffset reads it
+    userDroveCamera = true; // the rig may trust the camera next frame - see `userDroveCamera`
+    reframing = false;      // touching the zoom hands the camera over NOW; deriveOffset reads it
     // Grabbing the zoom mid-ease hands the camera over NOW - the 48-frame drive used to keep
     // lerping against the wheel for most of a second ("fights the mouse"), worst on a tight
     // ship close-up where a double-click restarts it.
@@ -2115,7 +2133,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // after one frame - which on screen is a selection that barely moves, or moves the wrong way.
     // The user interrupts a blend through the wheel/drag handlers, which clear `reframing` and let
     // this resume; that is the intended handover and it is why no flag is needed here.
-    if (lastBase && !reframePending && !reframing) {
+    // The turntable moves the camera on the user's behalf, so it counts as them.
+    if (controls.autoRotate) userDroveCamera = true;
+    if (lastBase && !reframePending && !reframing && userDroveCamera) {
+      userDroveCamera = false;
       viewOffset = deriveOffset(lastBase, v3(camera.position), lastBase.target);
       // A locked view cannot be rotated - that is the meaning of the lock. Keeping their ZOOM while
       // discarding their rotation is the honest expression of it; the old code achieved the same by

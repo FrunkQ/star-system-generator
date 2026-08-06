@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.458-beta - 6th Aug 2026
+
+* Fixes the 3D view still creeping away from a selected object. The camera worked out what you wanted by looking at where the camera was - which is only sound if nothing else ever moves it, and in a scene this size that keeps turning out to be untrue. Anything that nudged it was read as you zooming out, applied, and then read again, so the error compounded. It now looks at the camera only on a frame where you actually dragged, scrolled or the view was turning on its own. Nothing else can be mistaken for you.
+
 ## v2.1.457-beta - 6th Aug 2026
 
 * Fixes the 3D view drifting away from whatever you selected until the whole system was a speck. The view periodically re-centres its internal coordinates on you - a housekeeping step you are not meant to notice - and the camera was mistaking that shift for you having dragged it. It then moved further out, which made the next shift larger, so the error doubled every frame until it hit the far end of the scene. Selecting a body now frames it and stays there.

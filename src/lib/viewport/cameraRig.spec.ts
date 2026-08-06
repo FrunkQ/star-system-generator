@@ -150,9 +150,10 @@ describe('zoom is a ratio, clamped only by the controls (fault 5)', () => {
 // isolation and only fight each other across frames.
 describe('the frame loop: a re-frame must actually arrive (regression)', () => {
 	/** One frame of the scene's loop, in the same order scene.ts runs it. */
-	function frame(state: { cam: Vec3; target: Vec3; offset: any; lastBase: Shot | null; reframing: boolean; reframePending: boolean }, base: Shot) {
-		// 1. read the user back out - but NOT while the system itself is moving the camera
-		if (state.lastBase && !state.reframePending && !state.reframing) {
+	function frame(state: { cam: Vec3; target: Vec3; offset: any; lastBase: Shot | null; reframing: boolean; reframePending: boolean }, base: Shot, userActed = true) {
+		// 1. read the user back out - but ONLY when they actually acted, and never while the system
+		//    itself is moving the camera
+		if (state.lastBase && !state.reframePending && !state.reframing && userActed) {
 			state.offset = deriveOffset(state.lastBase, state.cam, state.lastBase.target);
 		}
 		if (state.reframePending) { state.offset = { ...IDENTITY_OFFSET }; state.reframePending = false; }
@@ -214,6 +215,36 @@ describe('the frame loop: a re-frame must actually arrive (regression)', () => {
 		// The user never touched anything, so the shot must still be the framed one.
 		expect(state.offset.zoom).toBeCloseTo(1, 6);
 		expect(dist(state.cam, state.target)).toBeCloseTo(0.85, 6);
+	});
+
+	// THE FEEDBACK LOOP, closed for good. Reading the offset back out of the camera only works if
+	// the user is the only thing that moves it, and that assumption failed twice - a floating-origin
+	// rebase, then another writer. Each time the rig read the nudge as intent, applied it, and fed
+	// its own output back in: offsetZoom 1.4, 2.9, 6.0, 12.3, 25.3, 52.2, 106, 217, 442, 902 until it
+	// clamped and the view sat beyond Pluto. The rig now reads the camera ONLY on a frame where the
+	// user actually acted, so an unknown writer cannot be mistaken for them.
+	it('ignores camera movement the user did not cause, however large', () => {
+		const base = shot(v(0, 0, 0), v(0, 1, 0), 0.065);
+		const state = { cam: v(0, 0.065, 0), target: v(0, 0, 0), offset: { ...IDENTITY_OFFSET }, lastBase: null as Shot | null, reframing: false, reframePending: false };
+		frame(state, base, true); // settle
+		for (let i = 0; i < 40; i++) {
+			// Something outside the rig shoves the camera outward by 2x every frame - the exact failure.
+			state.cam = v(state.cam.x * 2, state.cam.y * 2, state.cam.z * 2);
+			frame(state, base, false); // ...but the user did NOT touch anything
+		}
+		expect(state.offset.zoom).toBe(1);          // intent unchanged
+		expect(dist(state.cam, state.target)).toBeCloseTo(0.065, 9); // and the shot is restored
+	});
+
+	it('still reads the user when they DO act', () => {
+		const base = shot(v(0, 0, 0), v(0, 1, 0), 0.065);
+		const state = { cam: v(0, 0.065, 0), target: v(0, 0, 0), offset: { ...IDENTITY_OFFSET }, lastBase: null as Shot | null, reframing: false, reframePending: false };
+		frame(state, base, true);
+		state.cam = v(0, 0.26, 0);      // they wheel out to 4x
+		frame(state, base, true);       // user acted this frame
+		expect(state.offset.zoom).toBeCloseTo(4, 6);
+		frame(state, base, false);      // and it STICKS without further input
+		expect(dist(state.cam, state.target)).toBeCloseTo(0.26, 9);
 	});
 
 	it('hands control back afterwards, and then holds the user\'s zoom', () => {
