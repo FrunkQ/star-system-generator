@@ -200,6 +200,51 @@ usually far too small for the body rungs to say anything useful:
       (`routeExtent`) alongside parentDist/maxSatelliteDist.
   Further clicks wrap as they do today.
 
+THE LIGHT BOX - what a construct with NO 3D MODEL looks like close up (owner, 2026-08-06).
+"For an object that is just an icon the zoom in view does not make a great deal of sense (it needs a
+3d model). For that you can perhaps draw a light box conforming to the construct dimensions and pop
+the current icon on its side."
+
+Today a model-less construct is a SCREEN-FIXED glyph: it is the same size at every distance, so the
+close-up rung reveals nothing - you fly to it and the icon has not changed. Worse, it has no
+rendered extent at all, which is why the solver needs a `sizelessHalfExtent` patch (0.35 scene
+units, a number with no physical meaning) and why `focusBody` has to floor its min-zoom differently
+for constructs without models. Both of those are workarounds for an object that refuses to have a
+size.
+
+Give it one. Every construct already authors `physical_parameters.dimensionsM`.
+  - Draw a WIREFRAME HULL VOLUME at those dimensions, through the same scale law as everything else
+    (`shipLengthScene` for the long axis, the other two axes in the same proportion), oriented on
+    the ModelRef convention (longest axis = nose, +Z). At true scale it is honestly the size of the
+    ship; at the readable end it is a legible marker.
+  - SHAPE: a LOZENGE rather than a plain box (owner, 2026-08-06: "or a lozenge to make it not so
+    square"). A rectangular prism reads as a crate and, worse, reads as a PLACEHOLDER for a model
+    that failed to load rather than as a deliberate representation. A lozenge - tapered towards the
+    nose and stern, widest amidships - reads as a vessel at a glance, states its heading without a
+    label, and still bounds exactly the authored dimensions. Cheap: an 8-sided extrusion tapered at
+    both ends, or a scaled octahedron/capsule; a handful of vertices either way, which matters
+    because a busy system may draw dozens. Keep the true dimensions as the bounding volume so the
+    thing remains an honest size claim, not a stylised one.
+  - The construct's ICON goes on a face of the box, so the close-up still says WHAT it is. This is
+    the marker glyph the map already draws, relocated - NOT a body graphic, so it does not
+    contradict the standing "body graphics are info-block only, never on the map" rule. Worth
+    stating because that rule has come back twice.
+  - Same pixel LOD as a hull: below a few pixels the screen-fixed glyph stands in, above it the box
+    draws. Same render-style parity as a hull (a wireframe scene draws a wireframe box; the box IS
+    wireframe, so this mostly falls out).
+  - Tint from `icon_color`, as the glyph does.
+
+WHAT IT SIMPLIFIES, which is the real reason to do it: every construct then has a rendered extent
+derived from authored data, so
+  - `shipLen` is meaningful for ALL constructs, not only modelled ones (today it is set from
+    `shipLenScene` at read time only when a model ref exists);
+  - the solver's `sizelessHalfExtent` fallback becomes unreachable for constructs, and the
+    construct branch of `focusBody`'s min-zoom floor collapses into the ordinary one;
+  - the close-up rung means the same thing for every object in the scene, which is R11.
+So it removes two special cases rather than adding a feature. Belongs with P3b (the construct
+ladder), because "click 1 zooms in so it is centred" is meaningless until there is something to
+zoom to.
+
 ROUTE LINE. A construct in transit draws its route the way a body draws its orbit: the same kind
 of line, obeying the SAME show/hide toggle as orbit lines, and marked with its ACCELERATION and
 BRAKE points. It is the transit-mode sibling of the orbit ring, so it should reuse the ring's
@@ -322,7 +367,9 @@ P2. Motion layer: base+offset replaces driveFocus's branches; focusDrive/autoFra
     userZoomOverride/_prevDesired deleted (M4-M7). The riskiest phase; T2 lands with it.
 P3. Host-aware heading (D1's occlusion rule) - a visible behaviour change, small diff.
 P3b. Construct ladder (section 4a): close-up first, then host-or-route context. Bodies untouched.
-    Needs the solver's `routeExtent` input; no new rendering.
+    Needs the solver's `routeExtent` input. Ships WITH the light box, because the close-up rung is
+    meaningless for a model-less construct until it has one - and the box is what lets the ladder
+    be the same rule for every construct instead of two rules (R11).
 P3c. Transit route line (section 4a): reuse the orbit-ring path including A23 resampling, accel/
     brake markers, same visibility toggle. GATED ON Q5 (what crosses to players).
 P4. The new scale law (S2) - LAST, because it moves preset looks (S3) and needs the owner's
