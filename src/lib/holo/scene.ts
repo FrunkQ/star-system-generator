@@ -56,6 +56,13 @@ import { rendersAsGiant } from '$lib/physics/makeup';
 import { deriveAurora, auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
 import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import { AU_KM, G } from '$lib/constants';
+import {
+  GRID_RADIUS as SCALE_GRID_RADIUS, STAR_RADIUS as SCALE_STAR_RADIUS,
+  dialBlend as scaleDialBlend, bodyRadiusScene as scaleBodyRadiusScene,
+  starRadiusScene as scaleStarRadiusScene, shipLengthScene as scaleShipLengthScene,
+  markerScale as scaleMarkerScale, readableBodyRadius,
+  radiusKmOf, starRadiusKmOf, shipLengthMOf
+} from '$lib/rendering/scaleLaw';
 import type { System } from '$lib/types';
 
 const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
@@ -68,7 +75,10 @@ export type RenderStyle = 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-gl
 // carried a flat camera-facing-sprite path for it; it was cut so the map cannot draw one at all.
 // Belts & rings: individual tumbling rocks, or the GM orrery's flat translucent band.
 export type BeltStyle = 'rocks' | 'band';
-const GRID_RADIUS = 12; // scene units the outermost data maps to
+// GRID_RADIUS / STAR_RADIUS and the whole size law now live in `rendering/scaleLaw.ts` - pure,
+// testable, and the single copy (P1 of docs/dev/camera-framing-redesign.md). Re-exported here only
+// so the many existing references in this file keep reading naturally.
+const GRID_RADIUS = SCALE_GRID_RADIUS; // scene units the outermost data maps to
 // Orbit lines are sampled polylines, and the sample count is a TRUE-SCALE accuracy figure, not a
 // smoothness one: the body rides the real ellipse while the line is an N-gon cutting inside it, so the
 // gap between them oscillates as the body runs vertex-chord-vertex. At 96 samples that chord error on
@@ -79,7 +89,7 @@ const ORBIT_SAMPLES = 1024;
 const R0_AU = 0.35; // log-compression softening radius
 const DEFAULT_COMPRESSION = 0.65; // 0 = true scale, 1 = fully log-compressed (GM slider later)
 const AU_M = 1.495978707e11;
-const STAR_RADIUS = 0.5; // scene-unit radius of a star photosphere sphere
+const STAR_RADIUS = SCALE_STAR_RADIUS; // scene-unit radius of a star photosphere sphere
 
 export interface HoloController {
   setSystem(system: System | null): void;
@@ -598,8 +608,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // dial, stopping at 2%, below which a belt would cease to exist rather than read as fine dust.
   // NB sprites ONLY. The minimum body radius is not a sprite: the camera is sized off it, so scaling it
   // down puts the framing distance inside the near plane. Body visibility is a screen-space job.
+  // The size law lives in `rendering/scaleLaw.ts` (pure, tested - see scaleLaw.spec.ts). These are
+  // the scene's bindings of it: they supply the live dial and the system's true-scale factor and
+  // do nothing else. Do NOT reintroduce arithmetic here; it is the copy that goes stale.
   function markerScale(): number {
-    return bodySize >= 0.999 ? 1 : Math.max(0.02, bodySize);
+    return scaleMarkerScale(bodySize);
+  }
+  /** The live dial + system extent, as the pure law wants them. */
+  function scaleCtx() {
+    return { bodySize, rMax, gridRadius: GRID_RADIUS };
   }
 
   // Rendered sphere radius for a body, blending its readable size toward its true physical size.
@@ -611,32 +628,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // consequence ships shrink faster than planets at equal settings - their readable-to-true
   // ratio is larger, so each step multiplies them down harder.
   function dialBlend(trueScene: number, readable: number): number {
-    const t = Math.max(1e-12, trueScene);
-    const r = Math.max(1e-12, readable);
-    return Math.exp(Math.log(t) * (1 - bodySize) + Math.log(r) * bodySize);
+    return scaleDialBlend(trueScene, readable, bodySize);
   }
 
   function bodyRadiusScene(node: any, systemLevel: boolean): number {
-    const readable = systemLevel ? bodyRadius(node) : Math.min(bodyRadius(node), 0.1);
-    if (bodySize >= 0.999) return readable;
-    const km = node.physical_parameters?.radiusKm || node.radiusKm || 3000;
-    const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax); // physical radius at the true-scale factor
-    // NO scene-unit floor. This is the GM orrery's model, which is the gold standard for actual size:
-    // the body's TRUE radius in world units, with visibility guaranteed by a per-role PIXEL floor at
-    // draw time (updateTrueScaleFloor). A floor in scene units destroys the very thing true scale is
-    // for — 0.006 sat above every real body's true radius (Earth 1.1e-5, even Sol 1.2e-3), so Sol,
-    // Jupiter, Earth and Luna all drew at the identical clamped size. The camera adapts instead: the
-    // near plane and minimum zoom follow the framed body's size (see the render loop / focusBody).
-    return Math.max(1e-7, dialBlend(trueScene, readable));
+    return scaleBodyRadiusScene(radiusKmOf(node), systemLevel, scaleCtx());
   }
 
   // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
   // physical size (a star is still far larger than any planet, so it stays clearly visible).
   function starRadiusScene(node: any): number {
-    if (bodySize >= 0.999) return STAR_RADIUS;
-    const km = node.physical_parameters?.radiusKm || node.radiusKm || 696000;
-    const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-    return Math.max(1e-7, dialBlend(trueScene, STAR_RADIUS)); // true size; pixel floor at draw time (see bodyRadiusScene)
+    return scaleStarRadiusScene(starRadiusKmOf(node), scaleCtx());
   }
 
   function rebuildContent() {
@@ -1618,16 +1620,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // visibility is the pixel LOD's job - below a few pixels the ICON stands in, above it the hull
   // draws, at every dial position. Recomputed on rebuild like the bodies (the dial rebuilds).
   function shipLenScene(node: any): number {
-    const dims = node?.physical_parameters?.dimensionsM;
-    const lengthM = Math.max(...(Array.isArray(dims) ? dims.map((d: number) => Number(d) || 0) : [0]), 0) || 100;
-    const readable = Math.min(0.7, Math.max(0.14, 0.16 + 0.1 * (Math.log10(lengthM) - 1)));
-    if (bodySize >= 0.999) return readable;
-    const trueScene = ((lengthM / 1000) / AU_KM) * (GRID_RADIUS / rMax);
-    // Same geometric blend as the bodies (dialBlend): log spacing already shrinks a ship faster
-    // than a planet at equal dial settings, because its readable-to-true ratio is far larger -
-    // which is exactly the owner's "constructs should shrink smaller than planets". The earlier
-    // squared-weight hack this replaces was a linear-blend workaround.
-    return Math.max(1e-10, dialBlend(trueScene, readable));
+    return scaleShipLengthScene(shipLengthMOf(node), scaleCtx());
   }
   // A model smaller than this on screen is mush, so it is ENLARGED to it rather than hidden -
   // the same answer the bodies' true-scale floor gives (A9): keep the honest render and guarantee
@@ -3390,8 +3383,7 @@ function safeColor(node: any): number {
 // Non-physical size: stars are billboards; bodies get a small log-scaled sphere so a moon and a gas
 // giant differ without the giant swamping the plot.
 function bodyRadius(node: any): number {
-  const km = node.physical_parameters?.radiusKm || node.radiusKm || 3000;
-  return 0.14 + 0.1 * Math.max(0, Math.log10(km / 1000));
+  return readableBodyRadius(radiusKmOf(node));
 }
 
 // A black hole is a star-class 'star/BH' or 'star/BH_active'. Feeding = the active class, or any
