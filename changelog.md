@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.452-beta - 6th Aug 2026
+
+* New developer screen at /scale-reference: every class of object - star, gas giant, terrestrial, moon, asteroid, station, ship - with the size it actually renders at, across the whole body-size dial and four system widths. It runs the real sizing rule rather than a copy, so it cannot disagree with the 3D view, and it flags every place where a physically larger object draws smaller than a smaller one. It reports five such places today, including one at TRUE scale where a 10 km moonlet out-draws a 22 km station because bodies and ships have floors a thousand times apart.
+
 ## v2.1.451-beta - 6th Aug 2026
 
 * Internal, no visible change: the rule deciding how big anything draws in the 3D view is now one tested module instead of four copies hidden inside the scene. Pinned by a test that runs the old arithmetic beside the new one at every dial setting, so an accidental change in look fails a test rather than reaching a screen. First step of the camera and scale redesign.
