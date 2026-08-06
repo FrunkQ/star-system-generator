@@ -217,14 +217,34 @@ Give it one. Every construct already authors `physical_parameters.dimensionsM`.
     (`shipLengthScene` for the long axis, the other two axes in the same proportion), oriented on
     the ModelRef convention (longest axis = nose, +Z). At true scale it is honestly the size of the
     ship; at the readable end it is a legible marker.
-  - SHAPE: a LOZENGE rather than a plain box (owner, 2026-08-06: "or a lozenge to make it not so
-    square"). A rectangular prism reads as a crate and, worse, reads as a PLACEHOLDER for a model
-    that failed to load rather than as a deliberate representation. A lozenge - tapered towards the
-    nose and stern, widest amidships - reads as a vessel at a glance, states its heading without a
-    label, and still bounds exactly the authored dimensions. Cheap: an 8-sided extrusion tapered at
-    both ends, or a scaled octahedron/capsule; a handful of vertices either way, which matters
-    because a busy system may draw dozens. Keep the true dimensions as the bounding volume so the
-    thing remains an honest size claim, not a stylised one.
+  - SHAPE, in ascending order of ambition (owner, 2026-08-06). A plain rectangular prism reads as a
+    crate and, worse, as a PLACEHOLDER for a model that failed to load. So:
+      (i)  LOZENGE - tapered fore and aft, widest amidships. Reads as a vessel at a glance and
+           states its heading without a label. An 8-sided tapered extrusion or a scaled
+           octahedron: a handful of vertices, which matters when a busy system draws dozens.
+      (ii) PROCGEN FROM A FEW POLY SOLIDS - "a cool & simple procgen using a few poly solids".
+           Compose 3-6 primitives (hull spindle, nacelles, fin, ring, drum) by ROLE: a ship reads
+           elongated with drives aft, a station blocky or radial, a habitat as a drum or torus.
+           SEEDED BY THE CONSTRUCT'S STABLE ID, exactly as the procedural liveries already are
+           (`buildDisplayModel({ seed: v.id })`), so a given ship always looks like itself.
+    Either way the authored dimensions stay the BOUNDING volume, so the thing remains an honest
+    size claim rather than a stylised one. Build (i) first - it is the floor that guarantees every
+    construct has an extent - and treat (ii) as the look on top, since both feed the same slot.
+
+  WHY (ii) IS A SIMPLIFICATION AND NOT A FEATURE, which is the argument for doing it at all:
+    - A generated hull is just GEOMETRY, so it enters `buildDisplayModel` like an imported one and
+      inherits everything already built - the seven finishes, the wireframe/render-style parity,
+      the drive plumes, the nozzle placement, the info-block portrait. Nothing new to maintain.
+    - It therefore collapses the "modelled construct vs glyph construct" branch that runs right
+      through the scene (`showModel`, the shipLen/framing special cases, the pixel-LOD fallback,
+      the min-zoom floor). Every construct has a hull; some hulls happen to be generated. ONE path,
+      which is R11 and the whole point of this redesign.
+    - It costs NOTHING on the wire. The seed is the construct's id and the shape comes from
+      `dimensionsM` - both already on every snapshot - so GM and player generate the identical hull
+      independently, with no model binary, no hash, no fetch, no `SYNC_MODEL`. That is strictly
+      better than the imported-model path, which needs all four.
+    - It also answers A30 (a construct has a blank where every body has a graphic) for the many
+      constructs a GM will never model by hand.
   - The construct's ICON goes on a face of the box, so the close-up still says WHAT it is. This is
     the marker glyph the map already draws, relocated - NOT a body graphic, so it does not
     contradict the standing "body graphics are info-block only, never on the map" rule. Worth
