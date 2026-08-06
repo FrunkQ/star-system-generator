@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.459-beta - 6th Aug 2026
+
+* A construct with no 3D model is now drawn as a simple ellipsoid at its authored dimensions, instead of an icon that stays the same size however close you get. Zooming to one finally shows you something, and it is an honest something: the shape says how big the craft is without inventing detail the data does not have. It also fixes their framing, because the camera and the shape now read the same dimensions - previously a model-less construct had no size at all as far as the camera was concerned, and selecting one gave an arbitrary shot. Drive plumes work on them too.
+
 ## v2.1.458-beta - 6th Aug 2026
 
 * Fixes the 3D view still creeping away from a selected object. The camera worked out what you wanted by looking at where the camera was - which is only sound if nothing else ever moves it, and in a scene this size that keeps turning out to be untrue. Anything that nudged it was read as you zooming out, applied, and then read again, so the error compounded. It now looks at the camera only on a frame where you actually dragged, scrolled or the view was turning on its own. Nothing else can be mistaken for you.

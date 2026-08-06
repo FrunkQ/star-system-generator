@@ -1719,6 +1719,45 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
   }
 
+  /**
+   * The stand-in hull for a construct with no 3D model: an ellipsoid at the authored dimensions,
+   * normalised to a UNIT long axis so `updateConstructs` can scale it exactly as it scales a real
+   * hull (RENDER-S9's contract - the caller owns the transform).
+   */
+  function attachHullVolume(v: BodyVisual, node: any, tint: string) {
+    try {
+      const dims = node?.physical_parameters?.dimensionsM;
+      const d = Array.isArray(dims) ? dims.map((x: number) => Math.abs(Number(x)) || 0) : [];
+      const lengthM = shipLengthMOf(node);
+      // Proportions from the authored box; anything missing falls back to a plausible 2.5:1 hull
+      // rather than a sphere, which would read as a balloon.
+      const w = (d[1] || lengthM * 0.4) / lengthM;
+      const h = (d[2] || d[1] || lengthM * 0.4) / lengthM;
+      const geo = new THREE.SphereGeometry(0.5, 16, 12);
+      geo.scale(Math.max(0.02, w), Math.max(0.02, h), 1); // long axis = 1 unit, nose +Z by convention
+      const wire = renderStyle.startsWith('wire');
+      const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+        color: new THREE.Color(tint), flatShading: true, metalness: 0.1, roughness: 0.7,
+        wireframe: wire, transparent: true, opacity: wire ? 0.75 : 0.95
+      }));
+      const g = new THREE.Group();
+      g.add(mesh);
+      const sceneLen = shipLenScene(node);
+      v.shipFx = attachDrivePlume(g, []);
+      applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
+      g.scale.setScalar(sceneLen);
+      g.visible = false; // updateConstructs reveals it at the pixel LOD, exactly as for a real hull
+      for (const rig of v.shipFx.rigs) rig.light.distance = Math.max(1e-9, sceneLen * 8);
+      contentGroup.add(g);
+      v.shipModel = g;
+      v.shipLen = sceneLen;
+      v.shipPrev = v.mesh.position.clone();
+    } catch (e) {
+      // RENDER-S7: never silent on the path that decides whether a thing renders.
+      console.warn('[holo] hull volume could not be built for', v.id, e);
+    }
+  }
+
   /** Build + attach a hull from an already-parsed source. Synchronous by design. */
   function attachShipModel(v: BodyVisual, ref: ShipModelRef, tint: string, sceneLen: number, source: THREE.Object3D) {
     try {
@@ -2785,6 +2824,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // zooming in could not rescue it either. Same click a second later gave a proper close-up.
         bodies[bodies.length - 1].shipLen = sceneLen;
         loadShipModel(bodies[bodies.length - 1], (node as any).model, (node as any).icon_color || '#ffd24d', sceneLen, buildGen);
+      } else if (isConstruct) {
+        // NO MODEL: give it an ELLIPSOID at its authored dimensions. Every construct then has a
+        // real, honest extent, which is what makes the close-up rung mean the same thing for all of
+        // them (R11) - a screen-fixed glyph is identical at every distance, so flying to one showed
+        // nothing, and with no extent at all `frameDistance` fell through to `sizelessHalfExtent`
+        // (0.35 scene units, a number with no physical meaning).
+        //
+        // An ellipsoid rather than a box or a shaped hull: a box reads as a crate and as a
+        // placeholder for a model that failed to load, while an ellipsoid reads as "we know how big
+        // this is, not what it looks like" - which is exactly what the data supports. It also has no
+        // front, so it makes no claim about heading that the authored data cannot back.
+        //
+        // It is assigned to `shipModel`, so it inherits the pixel LOD, the framing, the min-zoom and
+        // the drive plume already built for hulls. That is the point: it removes the
+        // modelled-vs-glyph branch rather than adding a third case.
+        attachHullVolume(bodies[bodies.length - 1], node, (node as any).icon_color || '#ffd24d');
       }
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
