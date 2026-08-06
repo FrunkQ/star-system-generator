@@ -1940,6 +1940,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   let _dbgAt = 0;
   let _camDbgAt = 0; // throttle for the __camDebug framing readout
+  let _prevHaveDist = 0; // last frame's camera-to-target distance, for the creep readout
   const _dbgSize = new THREE.Vector3(); // scratch for the __shipDebug measured-extent readout
   const _shipLook = new THREE.Vector3();
   const _shipDelta = new THREE.Vector3();
@@ -2353,6 +2354,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // `controls.target`; the rig measures the offset from `lastBase.target`. If those two are
         // not the same point, a pure rotation CHANGES the measured distance and is read back as a
         // zoom. Any non-zero value here relative to the shot distance is that bug.
+        // THE CLOCK TEST (owner's hypothesis, and the signature fits: a constant RATIO per frame is
+        // what a constant angular rate gives, not what a fixed-step bug gives). `subjectMove` is how
+        // far the subject travelled since the last frame, as a fraction of the shot distance. If the
+        // creep is the clock, this is non-zero while the clock runs, goes to zero when it is paused,
+        // and scales with the time rate. `distDrift` is the fraction the camera-to-target distance
+        // changed over the same interval - if the two track each other, that is the mechanism.
+        subjectMove: lastBase ? Math.hypot(
+          base.target.x - lastBase.target.x,
+          base.target.y - lastBase.target.y,
+          base.target.z - lastBase.target.z) / Math.max(1e-12, base.dist) : 0,
+        distDrift: _prevHaveDist > 0
+          ? camera.position.distanceTo(controls.target) / _prevHaveDist - 1 : 0,
         targetDrift: lastBase ? Math.hypot(
           controls.target.x - lastBase.target.x,
           controls.target.y - lastBase.target.y,
@@ -2389,6 +2402,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     controls.target.set(want.target.x, want.target.y, want.target.z);
     camera.position.set(want.camera.x, want.camera.y, want.camera.z);
     lastBase = base;
+    _prevHaveDist = camera.position.distanceTo(controls.target);
   }
 
   // A planetary RING has no body of its own in the holo — selecting one (GM menu, follow-GM) frames

@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.470-beta - 7th Aug 2026
+
+* Internal: the 3D camera diagnostic now reports how far the thing you are watching moved since the last frame, and how much the camera's distance to it drifted over the same interval, both as fractions of the shot. If the two track each other, the drift is the clock moving the subject.
+
 ## v2.1.469-beta - 7th Aug 2026
 
 * Dragging a 3D view around no longer zooms it, and the wheel no longer feels like it is being fought. The view worked out how far you wanted to be by looking at how far the camera actually was - but something was creeping the camera inwards by a fraction of a percent every frame, so simply turning the view slowly pulled you in, and zooming out was undone before you finished. Distance is now taken only from the wheel; dragging turns the view and nothing else, so a creep from any source can no longer be mistaken for something you asked for.
