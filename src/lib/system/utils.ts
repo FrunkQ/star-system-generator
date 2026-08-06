@@ -1,6 +1,7 @@
 // src/lib/system/utils.ts
 import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode, Starmap } from '../types';
 import { compactBurns } from '$lib/constructs/shipBurn';
+import { compactRoute } from '$lib/constructs/shipRoute';
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
 import { systemProcessor } from '../core/SystemProcessor';
@@ -138,6 +139,13 @@ export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
     if (n?.kind === 'construct') {
       const burns = compactBurns(n);
       if (burns.length) n.driveBurns = burns;
+      // ...and the ROUTE, for the same reason and by the same rule (owner, 2026-08-06: the current
+      // flight plan DOES cross to players). Its segment BOUNDARIES only - a handful of points, not
+      // the pathPoint arrays that are half the reason the journeys are stripped at all. The GM's
+      // uncommitted `draft_transit_plan` still never crosses; "current flight plan" is the one the
+      // ship is actually flying.
+      const route = compactRoute(n);
+      if (route) n.route = route;
     }
     delete n.scheduled_journeys;
     delete n.draft_transit_plan;
