@@ -313,6 +313,36 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S12 The camera is a BASE the system writes plus an OFFSET only the user writes
+WHERE: `src/lib/viewport/cameraRig.ts` (+ `cameraRig.spec.ts`), `shotSolver.ts` (+ its spec).
+Phase P2 of `docs/dev/camera-framing-redesign.md`.
+RULE: base = the shot the solver wants, RECOMPUTED EVERY FRAME from live positions. offset = what
+the user did (a rotation and a distance RATIO), identity until they touch it. Rendered camera =
+compose(base, offset); `deriveOffset` reads their manipulation back each frame before the base is
+recomputed. Only an explicit re-frame resets the offset. Any transition is COSMETIC (`blendToward`)
+and cannot change the destination.
+WHY: six separate mechanisms used to sit between "here is where the camera goes" and the camera
+going there, and by eye every one produced the same symptom - wrong size, wrong place. Four of them
+become impossible here rather than merely fixed: a moving subject cannot outrun the shot (the base
+IS its position), a scene rebuild cannot disturb it (a rebuild is just a new base), a blend cannot
+strand the camera (interrupt it and the next frame still converges), and a policy floor cannot be
+expressed independently of the subject (zoom is a ratio of the framed distance).
+TESTS - what each is FOR, because they are regression tests for specific reported faults, not
+coverage: `cameraRig.spec.ts` has one test per fault from section 1 of the design, each written to
+fail against the OLD behaviour - a subject moving a million times its own framing distance per
+frame; 50 consecutive base replacements; a blend from 1e10x out in both directions, with dropped
+frames; a true-scale hull reachable through the zoom clamp. `shotSolver.spec.ts` holds the P1
+equivalence column (old closure verbatim) plus R3 scale-blindness and R1's fill fraction.
+SEE IT: `/scale-reference` renders the size law's whole table (RENDER-S11). `window.__camDebug`
+prints the live shot, chosen ladder level, actual distance and whether the drive is armed;
+`window.__shipDebug` prints intent AND measured size (read `ratio` - see RENDER-S8's caveat).
+BLAST: do not add a second writer of the camera. If something needs to move the view, it either
+proposes a BASE (a policy/solver input) or it is user input and writes the OFFSET - there is no
+third category, and inventing one is how the six mechanisms happened. Also: a test tolerance here
+must be relative to the shot's own scale, never an absolute epsilon - composing a 1e-9 offset onto
+a target at 0.1 loses absolute precision to cancellation (the thing the floating origin exists to
+prevent).
+
 ### RENDER-S11 The size law is one tested module; the scene binds it, never restates it
 WHERE: `src/lib/rendering/scaleLaw.ts` (pure) + `scaleLaw.spec.ts`; bound in `holo/scene.ts`
 (`scaleCtx()`, `bodyRadiusScene`, `starRadiusScene`, `shipLenScene`, `markerScale`, `bodyRadius`).
