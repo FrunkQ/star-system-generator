@@ -143,6 +143,62 @@ describe('zoom is a ratio, clamped only by the controls (fault 5)', () => {
 	});
 });
 
+// THE FRAME LOOP. Every test above exercises one function; this one runs the actual per-frame
+// SEQUENCE the scene runs - derive, compose, blend - which is where the real bug was. Reported as
+// "in the player view it zooms OUT when I select a body, not IN... it just looks like the zoom is
+// inverted", and it survived a green unit suite because compose/derive/blend are each correct in
+// isolation and only fight each other across frames.
+describe('the frame loop: a re-frame must actually arrive (regression)', () => {
+	/** One frame of the scene's loop, in the same order scene.ts runs it. */
+	function frame(state: { cam: Vec3; target: Vec3; offset: any; lastBase: Shot | null; reframing: boolean; reframePending: boolean }, base: Shot) {
+		// 1. read the user back out - but NOT while the system itself is moving the camera
+		if (state.lastBase && !state.reframePending && !state.reframing) {
+			state.offset = deriveOffset(state.lastBase, state.cam, state.lastBase.target);
+		}
+		if (state.reframePending) { state.offset = { ...IDENTITY_OFFSET }; state.reframePending = false; }
+		// 2. compose
+		const want = composeShot(base, state.offset);
+		// 3. move
+		if (state.reframing) {
+			const from = { target: state.target, camera: state.cam };
+			const to = { target: want.target, camera: want.camera };
+			if (shotReached(from, to)) state.reframing = false;
+			else {
+				const step = blendToward(from, to, 0.18);
+				state.target = step.target; state.cam = step.camera; state.lastBase = base; return;
+			}
+		}
+		state.target = want.target; state.cam = want.camera; state.lastBase = base;
+	}
+
+	it('flies all the way in when a body is selected from a wide shot', () => {
+		const base = shot(v(0, 0, 0), v(0, 1, 0), 0.001); // a close-up of a small world
+		// Camera starts on the whole-system shot, 20 units out, with nothing focused.
+		const state = { cam: v(0, 20, 0), target: v(0, 0, 0), offset: { ...IDENTITY_OFFSET }, lastBase: null as Shot | null, reframing: true, reframePending: true };
+		for (let i = 0; i < 200 && state.reframing; i++) frame(state, base);
+
+		const finalDist = Math.hypot(state.cam.x, state.cam.y, state.cam.z);
+		// It must ARRIVE at the framed distance - not stall a few percent from where it started,
+		// which is what "it zooms out instead of in" actually was: the blend stepped 18% inward,
+		// the next frame's deriveOffset read that intermediate position as "the user is zoomed
+		// out", re-applied it as the offset, and the shot collapsed onto where the camera already
+		// was. One step of blend, then done, for every selection.
+		expect(finalDist).toBeCloseTo(0.001, 6);
+		expect(state.reframing).toBe(false);
+	});
+
+	it('hands control back afterwards, and then holds the user\'s zoom', () => {
+		const base = shot(v(0, 0, 0), v(0, 1, 0), 0.001);
+		const state = { cam: v(0, 20, 0), target: v(0, 0, 0), offset: { ...IDENTITY_OFFSET }, lastBase: null as Shot | null, reframing: true, reframePending: true };
+		for (let i = 0; i < 200 && state.reframing; i++) frame(state, base);
+		// The user now wheels out to 3x the framed distance.
+		state.cam = v(0, 0.003, 0);
+		for (let i = 0; i < 5; i++) frame(state, base);
+		expect(Math.hypot(state.cam.x, state.cam.y, state.cam.z)).toBeCloseTo(0.003, 9);
+		expect(state.offset.zoom).toBeCloseTo(3, 6);
+	});
+});
+
 describe('R5: only the user writes the offset', () => {
 	it('a re-frame is the one way the system takes the camera back', () => {
 		const base = shot(v(0, 0, 0), v(0, 1, 0), 4);

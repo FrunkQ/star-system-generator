@@ -2096,7 +2096,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // 1. READ THE USER. Whatever they did with the mouse since the last frame (OrbitControls has
     //    already applied it) becomes the offset, measured against the base it was composed from.
     //    Measured about the BASE TARGET, not controls.target, so a pan cannot corrupt the reading.
-    if (lastBase && !reframePending) {
+    // NOT while `reframing`: during a blend the camera is being moved by the SYSTEM, so reading an
+    // offset out of it reads our own transition back as if it were the user's intent. That fed the
+    // blend's first 18% step straight back in as "the user is zoomed out", the composed shot
+    // collapsed onto where the camera already was, `shotReached` said yes, and the re-frame ended
+    // after one frame - which on screen is a selection that barely moves, or moves the wrong way.
+    // The user interrupts a blend through the wheel/drag handlers, which clear `reframing` and let
+    // this resume; that is the intended handover and it is why no flag is needed here.
+    if (lastBase && !reframePending && !reframing) {
       viewOffset = deriveOffset(lastBase, v3(camera.position), lastBase.target);
       // A locked view cannot be rotated - that is the meaning of the lock. Keeping their ZOOM while
       // discarding their rotation is the honest expression of it; the old code achieved the same by
