@@ -1440,9 +1440,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // direction it was turned: the surviving fragment was whatever one frame happened to hold.
   let userInputUntil = 0;
   const USER_INPUT_TAIL_MS = 500; // comfortably longer than OrbitControls' damping tail
-  function noteUserInput() {
+  // WHAT the user did, not just THAT they did something. "Both wheel directions zoomed in" is only
+  // diagnosable if the log says which way the wheel turned and what the distance did next, so each
+  // input records its kind, its direction and the camera distance AT THE MOMENT IT ARRIVED. The
+  // frame log then prints the current distance beside it, so cause and effect sit together.
+  let lastInput: { kind: string; dir: number; atMs: number; distAt: number } =
+    { kind: 'none', dir: 0, atMs: 0, distAt: 0 };
+  function noteUserInput(kind = 'other', dir = 0) {
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     userDroveCamera = true;
-    userInputUntil = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + USER_INPUT_TAIL_MS;
+    userInputUntil = now + USER_INPUT_TAIL_MS;
+    const distAt = camera.position.distanceTo(controls.target);
+    lastInput = { kind, dir, atMs: now, distAt };
+    if ((window as any).__camDebug && kind !== 'turntable') {
+      console.log('[caminput]', kind, dir > 0 ? 'OUT(+deltaY)' : dir < 0 ? 'IN(-deltaY)' : '', 'distAtEvent', distAt);
+    }
   }
   let lastBase: Shot | null = null;   // previous frame's base, to read the user's manipulation against
   let reframing = false;              // a cosmetic blend is running; it cannot change the destination
@@ -1572,14 +1584,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // ANY drag is the user driving the camera - in 3D it orbits, on a flat map it pans. Either way
     // OrbitControls is about to move the camera on their behalf, so the rig may believe what it
     // reads back next frame.
-    noteUserInput();
+    noteUserInput('drag');
     reframing = false;       // don't finish an in-flight blend against their drag
     if (flatOverhead) followEngaged = false; // a PAN is the orrery's MANUAL: it drops the follow
   }, { signal: pointer.signal });
   // The user driving zoom (wheel / pinch) takes the camera off auto-framing — the orrery's rule, so the
   // view never fights someone looking around. Cleared by the next explicit (re)frame (focusBody/pickBody).
-  canvas.addEventListener('wheel', () => {
-    noteUserInput();        // the rig may trust the camera while the damping settles
+  canvas.addEventListener('wheel', (e) => {
+    noteUserInput('wheel', Math.sign((e as WheelEvent).deltaY || 0)); // trust the camera while damping settles
     reframing = false;      // touching the zoom hands the camera over NOW; deriveOffset reads it
     // Grabbing the zoom mid-ease hands the camera over NOW - the 48-frame drive used to keep
     // lerping against the wheel for most of a second ("fights the mouse"), worst on a tight
@@ -2289,7 +2301,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // The user interrupts a blend through the wheel/drag handlers, which clear `reframing` and let
     // this resume; that is the intended handover and it is why no flag is needed here.
     // The turntable moves the camera on the user's behalf, so it counts as them.
-    if (controls.autoRotate) noteUserInput();
+    if (controls.autoRotate) noteUserInput('turntable');
     const nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (lastBase && !reframePending && !reframing && userDroveCamera) {
       if (nowMs > userInputUntil) userDroveCamera = false; // the tail has run out; stop trusting it
@@ -2328,7 +2340,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           controls.target.x - lastBase.target.x,
           controls.target.y - lastBase.target.y,
           controls.target.z - lastBase.target.z) / Math.max(1e-12, base.dist) : 0,
-        userTail: userDroveCamera, polarMax: controls.maxPolarAngle,
+        userTail: userDroveCamera,
+        // Cause beside effect: what the last input was, which way, how long ago, and the distance
+        // it started from - compare that against haveDist above.
+        input: lastInput.kind, inputDir: lastInput.dir,
+        msSinceInput: Math.round(nowMs - lastInput.atMs), distAtInput: lastInput.distAt,
+        polarMax: controls.maxPolarAngle,
         camPolar: Math.acos(Math.max(-1, Math.min(1, (camera.position.y - controls.target.y) /
           Math.max(1e-12, camera.position.distanceTo(controls.target))))),
         followEngaged, lockRotate, framingWhole
