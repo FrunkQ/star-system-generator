@@ -2305,11 +2305,28 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (lastBase && !reframePending && !reframing && userDroveCamera) {
       if (nowMs > userInputUntil) userDroveCamera = false; // the tail has run out; stop trusting it
+      const zoomBeforeDerive = viewOffset.zoom;
       viewOffset = deriveOffset(lastBase, v3(camera.position), lastBase.target);
       // A locked view cannot be rotated - that is the meaning of the lock. Keeping their ZOOM while
       // discarding their rotation is the honest expression of it; the old code achieved the same by
       // overwriting the camera every frame, which is why it read as "the view fights me".
       if (lockRotate) viewOffset = { rot: { x: 0, y: 0, z: 0, w: 1 }, zoom: viewOffset.zoom };
+
+      // A DRAG IS A ROTATION. It must never change the distance, so the zoom is taken from the
+      // camera ONLY when the wheel is what moved it. Anything else keeps the zoom it already had.
+      //
+      // This is not defensive coding, it is the actual fix, and it kills a whole class rather than
+      // one bug. Reading distance back out of the camera assumes nothing else alters it - an
+      // assumption that has now failed three times (a floating-origin rebase, an unfound writer,
+      // and this). Measured here: while dragging, the camera-to-target distance decayed by a
+      // constant ~0.72% PER FRAME - 6.51e-4, 6.47e-4, 6.42e-4 ... 2.33e-4 - and the derived zoom
+      // rode it all the way down to the min-distance clamp. A wheel-out then moved the camera out
+      // for one frame before the creep hauled it back, which is exactly "something fighting me to
+      // maintain the view". With zoom sourced only from wheel input, that creep cannot be mistaken
+      // for intent, whatever is causing it.
+      if (lastInput.kind !== 'wheel' || nowMs > userInputUntil) {
+        viewOffset = { rot: viewOffset.rot, zoom: zoomBeforeDerive };
+      }
     }
     if (reframePending) {
       viewOffset = { ...IDENTITY_OFFSET }; // the one way the system takes the camera back (R5)

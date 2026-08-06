@@ -313,6 +313,24 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S15 Take each camera quantity from the input that OWNS it, not from the camera
+WHERE: `holo/scene.ts:driveFocus` - rotation is derived from any drag, ZOOM only from the wheel.
+RULE: a drag rotates; only the wheel changes distance. Never infer a quantity from the camera when
+a specific input owns it, because then ANY other writer of the camera becomes indistinguishable
+from the user for that quantity.
+WHY: the rig read the whole offset - rotation AND distance - back out of the camera. Measured in the
+field with `__camDebug`: while dragging, camera-to-target distance decayed a constant ~0.72% PER
+FRAME (6.51e-4, 6.47e-4, 6.42e-4 ... 2.33e-4) and the derived zoom rode it down to the min-distance
+clamp, so turning the view slowly zoomed in and a wheel-out was hauled back before the gesture
+finished ("something fighting me to maintain the view"). The creep's own source was never found -
+and did not need to be, which is the point: three separate writers had already broken the "only the
+user moves the camera" assumption (a floating-origin rebase, an unfound writer, this creep), so the
+fix is to stop that assumption carrying the distance at all.
+BLAST: `targetDrift` in `__camDebug` disproved the obvious theory here (it read ~1e-20, so the
+rotation centre was NOT the problem) - check it before blaming the centre again. If a future gesture
+needs to change distance, give it its own input kind rather than widening what the camera is trusted
+for.
+
 ### RENDER-S14 A heading policy needs the FULL sphere, or it can be handed an impossible shot
 WHERE: `holo/scene.ts:applyPolarLimits` (3D: epsilon off each pole; a flat map stays pinned).
 RULE: any camera policy that derives a heading from REAL POSITIONS - host-relative framing, a

@@ -269,3 +269,34 @@ describe('R5: only the user writes the offset', () => {
 		expect(composeShot(base, reframed).camera).toEqual({ x: 0, y: 4, z: 0 });
 	});
 });
+
+// A DRAG IS A ROTATION. Measured in the field: while dragging, the camera-to-target distance decayed
+// ~0.72% per FRAME and the derived zoom rode it down to the min-distance clamp, so dragging
+// sideways slowly zoomed in and a wheel-out was immediately hauled back. Sourcing zoom only from
+// wheel input makes that creep - and any future one, whatever causes it - unable to masquerade as
+// intent. Rotation is still read from any drag.
+describe('a drag rotates and must never zoom', () => {
+	it('keeps the distance exactly while the camera is dragged around', () => {
+		const base = shot(v(0, 0, 0), v(0, 1, 0), 0.00065);
+		let offset = { ...IDENTITY_OFFSET };
+		let cam = composeShot(base, offset).camera;
+		for (let i = 0; i < 200; i++) {
+			// Simulate BOTH: the user rotating, and the observed inward creep of 0.72% a frame.
+			const rotated = { x: cam.z * 0.05 + cam.x * 0.999, y: cam.y, z: cam.z * 0.999 - cam.x * 0.05 };
+			cam = { x: rotated.x * 0.9928, y: rotated.y * 0.9928, z: rotated.z * 0.9928 };
+			const derived = deriveOffset(base, cam, base.target);
+			offset = { rot: derived.rot, zoom: offset.zoom }; // drag: take rotation, keep zoom
+			cam = composeShot(base, offset).camera;
+		}
+		// The shot distance is untouched after 200 frames of creep...
+		expect(Math.hypot(cam.x, cam.y, cam.z)).toBeCloseTo(0.00065, 12);
+		expect(offset.zoom).toBe(1);
+	});
+
+	it('...but a wheel still changes it, and it sticks', () => {
+		const base = shot(v(0, 0, 0), v(0, 1, 0), 0.00065);
+		const wheeled = deriveOffset(base, v(0, 0.0013, 0), base.target); // user pulls out to 2x
+		expect(wheeled.zoom).toBeCloseTo(2, 9);
+		expect(composeShot(base, wheeled).dist).toBeCloseTo(0.0013, 12);
+	});
+});
