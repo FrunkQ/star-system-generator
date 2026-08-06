@@ -1,6 +1,7 @@
 # Camera, framing and scale - redesign
 
-STATUS: DESIGN FINAL, BUILD NOT STARTED. Written 2026-08-05 at v2.1.450-beta, after a day spent
+STATUS: P1, P2 and part of P3b SHIPPED (v2.1.451-461-beta) and confirmed working by the owner.
+P3, the rest of P3b, P3c and P4 REMAIN - see section 7 for what each still owes. Written 2026-08-05 at v2.1.450-beta, after a day spent
 fixing the 3D scene's framing one mechanism at a time; all four open questions answered by the
 owner 2026-08-06 (section 9). Next step is Phase P1 (section 7). The owner's direction: "we have
 evolved complexity out of simplicity... time to step back, rethink and redesign now we have a
@@ -386,13 +387,21 @@ P1. Extract, no behaviour change: scaleLaw.ts (S1) + shotSolver.ts (solver repro
 P2. Motion layer: base+offset replaces driveFocus's branches; focusDrive/autoFrameStep-in-holo/
     userZoomOverride/_prevDesired deleted (M4-M7). The riskiest phase; T2 lands with it.
 P3. Host-aware heading (D1's occlusion rule) - a visible behaviour change, small diff.
-P3b. Construct ladder (section 4a): close-up first, then host-or-route context. Bodies untouched.
-    Needs the solver's `routeExtent` input. Ships WITH the light box, because the close-up rung is
-    meaningless for a model-less construct until it has one - and the box is what lets the ladder
-    be the same rule for every construct instead of two rules (R11).
+P3b. PARTLY SHIPPED @v2.1.459-461-beta. DONE: the stand-in hull for a model-less construct - an
+    ELLIPSOID at the authored dimensionsM (the owner chose an ellipsoid over the lozenge; it makes
+    no claim about heading, which the data cannot back anyway), self-lit in the construct's
+    icon_color with a brighter edge (a lit material drew black-on-black - the scene's only real
+    light is its star), carrying the map's own glyph as a billboard sprite. It set `shipLen` for
+    EVERY construct, so the framing self-fixed: `frameDistance` has a real radius and
+    `sizelessHalfExtent` is unreachable for constructs. ALSO DONE: a SURFACE construct frames its
+    HOST along the line host->construct, so it sits centred on the disc (its hull is not drawn at
+    all under surfaceLock, and framing to its own extent flew the camera inside the planet).
+    STILL TO DO: the click LADDER itself - click 1 close-up, click 2 host-or-route - and the
+    solver's `routeExtent` input for a ship in transit. The skipped P3b test in shotSolver.spec.ts
+    names the target.
 P3c. Transit route line (section 4a): reuse the orbit-ring path including A23 resampling, accel/
     brake markers, same visibility toggle. GATED ON Q5 (what crosses to players).
-P4. The new scale law (S2) - LAST, because it moves preset looks (S3) and needs the owner's
+P4. The new scale law (S2 + S2b's single floor) - LAST, because it moves preset looks (S3) and needs the owner's
     sign-off on the reference screen first. Turns on the skipped R9 tests in scaleLaw.spec.ts.
 
 ## 8. Adjacent defects, deliberately OUT of scope

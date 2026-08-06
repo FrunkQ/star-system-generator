@@ -313,6 +313,26 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S13 Every construct has an EXTENT, and anything self-drawn must be self-LIT
+WHERE: `holo/scene.ts:attachHullVolume` (the ellipsoid stand-in), consumed by `frameDistance` and
+`focusBody`'s min-zoom via `shipLen`.
+RULE: a construct with no 3D model still gets a rendered hull - an ellipsoid at its authored
+`dimensionsM`, normalised to a UNIT long axis (RENDER-S9's contract) and assigned to `shipModel` so
+it inherits the pixel LOD, framing, min-zoom and drive plumes already built for real hulls. Its
+material must be EMISSIVE, in the construct's `icon_color`.
+WHY: a screen-fixed glyph is identical at every distance, so the close-up rung showed nothing; and
+with no extent at all the solver fell through to `sizelessHalfExtent` (0.35 scene units, a number
+with no physical meaning), so selecting one gave an arbitrary shot. Giving it an extent from the
+same authored number the shape uses fixed BOTH at once - the camera and the geometry cannot
+disagree. The emissive part is not cosmetic: THE SCENE'S ONLY REAL LIGHT IS ITS STAR, so a lit
+material draws black-on-black in shadow or far out. The sprite it replaced never had that problem
+because a sprite is unlit - any future self-drawn marker geometry inherits the same trap.
+BLAST: a SURFACE construct is the exception and must NOT be framed to its own extent - its hull is
+suppressed entirely (`showModel` under `surfaceLock`) and its own size would fly the camera inside
+the planet. It frames its HOST along the line host->construct, so it sits centred on the disc.
+Adding any new construct-visual goes through this function, not a sixth branch; and glyphs come
+from `constructIcon.ts` (A34's one vocabulary), never a private copy.
+
 ### RENDER-S12 The camera is a BASE the system writes plus an OFFSET only the user writes
 WHERE: `src/lib/viewport/cameraRig.ts` (+ `cameraRig.spec.ts`), `shotSolver.ts` (+ its spec).
 Phase P2 of `docs/dev/camera-framing-redesign.md`.
