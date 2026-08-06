@@ -1753,6 +1753,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       ));
       const g = new THREE.Group();
       g.add(mesh);
+      // THE SYMBOL, so a close-up still says WHAT this is. The shape gives the size, the colour ties
+      // it to the marker, and the glyph names the kind - the same triangle/circle/diamond/cross/
+      // square vocabulary the map marker uses (A34's ONE glyph vocabulary, so this cannot drift
+      // into a sixth shape of its own). A camera-facing sprite rather than a decal on a face: the
+      // ellipsoid deliberately has no front, so there is no "side" to put it on, and billboarding
+      // means it reads from wherever you happen to have flown.
+      //
+      // NOT a body graphic - this is the map's own construct marker, riding its hull. The
+      // "body graphics are info-block only" rule is about photos/discs/spheres for WORLDS.
+      const badge = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: getConstructIconTexture((node as any).icon_type, tint),
+        transparent: true, depthWrite: false, depthTest: false, opacity: 0.95
+      }));
+      badge.scale.setScalar(0.45); // fraction of the unit hull length; readable without masking it
+      g.add(badge);
       const sceneLen = shipLenScene(node);
       v.shipFx = attachDrivePlume(g, []);
       applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
