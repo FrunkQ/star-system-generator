@@ -1736,10 +1736,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const geo = new THREE.SphereGeometry(0.5, 16, 12);
       geo.scale(Math.max(0.02, w), Math.max(0.02, h), 1); // long axis = 1 unit, nose +Z by convention
       const wire = renderStyle.startsWith('wire');
+      // SELF-LIT, and it has to be. The scene's only real light is the star, so a purely lit
+      // material leaves a construct in shadow - or simply far out - drawing black on black, which
+      // is what the glyph it replaces never did (a sprite is unlit). It carries the construct's own
+      // icon colour, so the shape reads as the same object the marker did.
+      const col = new THREE.Color(tint);
       const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color: new THREE.Color(tint), flatShading: true, metalness: 0.1, roughness: 0.7,
-        wireframe: wire, transparent: true, opacity: wire ? 0.75 : 0.95
+        color: col, emissive: col, emissiveIntensity: wire ? 1 : 0.55,
+        flatShading: true, metalness: 0.1, roughness: 0.7,
+        wireframe: wire, transparent: true, opacity: wire ? 0.8 : 0.95
       }));
+      // A brighter edge so the silhouette survives against a bright body behind it.
+      mesh.add(new THREE.LineSegments(
+        new THREE.EdgesGeometry(geo, 24),
+        new THREE.LineBasicMaterial({ color: col.clone().lerp(_white, 0.5), transparent: true, opacity: 0.85 })
+      ));
       const g = new THREE.Group();
       g.add(mesh);
       const sceneLen = shipLenScene(node);
@@ -2127,6 +2138,27 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
     if (b) {
       const target = v3(b.mesh.position);
+      // A SURFACE CONSTRUCT has no standalone shot worth taking: it is a point ON a world, its hull
+      // is not drawn at all (`showModel` suppresses it under surfaceLock), and framing to its own
+      // extent would fly the camera inside the planet. Frame the HOST instead, approached from
+      // straight above the construct - camera on the line host->construct - so the thing you
+      // selected sits dead centre on the disc, which is the only view that actually shows it.
+      const hostV = (b.surfaceLock || b.surfaceDeclared) && b.framingParentId ? bodyById.get(b.framingParentId) : undefined;
+      if (hostV) {
+        const hostPos = v3(hostV.mesh.position);
+        return {
+          target: hostPos,
+          // tilt PI/2 makes the heading exactly the outward direction, i.e. the construct's own
+          // radial from its world - no extra elevation, or it slides off centre.
+          heading: headingDirection({ policy: { kind: 'host-relative' }, tiltRad: Math.PI / 2, subject: target, host: hostPos }),
+          dist: frameDistanceFor({
+            radius: hostV.radiusScene ?? 0,
+            context: { level: 3 }, // the world close-up: it fills the frame, the construct is on it
+            lens,
+            policy: { fillFrac: frameFillFrac, minDistance: controls.minDistance }
+          })
+        };
+      }
       return {
         target,
         heading: headingDirection({ policy, tiltRad: tilt, subject: target, origin: v3(originShift) }),

@@ -7,6 +7,11 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.460-beta - 6th Aug 2026
+
+* The stand-in shape for a construct with no 3D model now glows in the construct's own icon colour, with a brighter edge, instead of drawing black on black. The scene's only real light is its star, so anything relying on being lit disappears in shadow or far from the sun - the marker it replaces never did, because a marker is self-lit.
+* Selecting a construct that sits ON a world now frames the WORLD, viewed from directly above the construct so it sits dead centre on the disc. Framing a surface construct to its own size flew the camera inside the planet, and its hull is not drawn at all in that case, so there was nothing to look at either way.
+
 ## v2.1.459-beta - 6th Aug 2026
 
 * A construct with no 3D model is now drawn as a simple ellipsoid at its authored dimensions, instead of an icon that stays the same size however close you get. Zooming to one finally shows you something, and it is an honest something: the shape says how big the craft is without inventing detail the data does not have. It also fixes their framing, because the camera and the shape now read the same dimensions - previously a model-less construct had no size at all as far as the camera was concerned, and selecting one gave an arbitrary shot. Drive plumes work on them too.
