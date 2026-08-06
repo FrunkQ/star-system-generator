@@ -1,9 +1,9 @@
 # Camera, framing and scale - redesign
 
 STATUS: P1, P2 and part of P3b SHIPPED (v2.1.451-461-beta) and confirmed working by the owner.
-P3, the rest of P3b, P3c and P4 REMAIN - see section 7 for what each still owes. Written 2026-08-05 at v2.1.450-beta, after a day spent
-fixing the 3D scene's framing one mechanism at a time; all four open questions answered by the
-owner 2026-08-06 (section 9). Next step is Phase P1 (section 7). The owner's direction: "we have
+P3, the rest of P3b, P3c and P4 REMAIN - see section 7 for what each still owes.
+Written 2026-08-05 at v2.1.450-beta, after a day spent fixing the 3D scene's framing one mechanism
+at a time; all four open questions answered by the owner 2026-08-06 (section 9). The owner's direction: "we have
 evolved complexity out of simplicity... time to step back, rethink and redesign now we have a
 clear set of requirements and a better insight into needs and layers."
 
