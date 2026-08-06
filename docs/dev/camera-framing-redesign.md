@@ -1,9 +1,10 @@
 # Camera, framing and scale - redesign
 
-STATUS: DESIGN ONLY. Written 2026-08-05 at v2.1.450-beta, after a day spent fixing the 3D scene's
-framing one mechanism at a time. Nothing in here is built. The owner's direction: "we have evolved
-complexity out of simplicity... time to step back, rethink and redesign now we have a clear set of
-requirements and a better insight into needs and layers."
+STATUS: DESIGN FINAL, BUILD NOT STARTED. Written 2026-08-05 at v2.1.450-beta, after a day spent
+fixing the 3D scene's framing one mechanism at a time; all four open questions answered by the
+owner 2026-08-06 (section 9). Next step is Phase P1 (section 7). The owner's direction: "we have
+evolved complexity out of simplicity... time to step back, rethink and redesign now we have a
+clear set of requirements and a better insight into needs and layers."
 
 Companion records: RENDER-S6/S8/S9/S10 in `docs/dev/engine-map.md` (the hard-won rules this design
 must keep), `docs/dev/g3-ship-models-handoff.md` section 1 (the sizing fault), and the G3 row of
@@ -39,7 +40,7 @@ maths - why hard?" That is the design. The job is to make the code shaped like t
 
 R1. SELECT FRAMES THE SUBJECT. Selecting any object (star, planet, moon, belt, construct, whether
     parked or under way) produces a shot with the subject centred at a stated screen-fill fraction
-    (default ~0.8 of the frame's minor axis for a close-up). Same click, same shot, every time -
+    (0.8 of the frame's minor axis for a close-up - confirmed 2026-08-06). Same click, same shot, every time -
     never a race against an async load (models, snapshots) and never dependent on the clock state.
 R2. THE SHOT IS HOST-AWARE. The camera is placed so the subject's host (parent body) does not sit
     between camera and subject; where a host exists the preferred heading shows subject WITH host
@@ -61,9 +62,11 @@ R7. ONE CODE PATH. Locked-heading (2D/projector), free-orbit 3D, whole-system, b
 R8. LADDER PRESERVED. The click-ladder levels (0 pair-context, 1 context, 2 satellites, 3
     close-up) survive as shot presets; `frameHalfExtent` already encodes them purely.
 R9. SIZE ORDERING IS HONEST (the scale law, section 5). At every dial position: a physically
-    larger object never renders smaller than a physically smaller one, and a construct never
-    approaches the rendered scale of a natural body (asteroids included). Log-type scaling -
-    larger things shrink slower - with ordering preserved.
+    larger object never renders smaller than a physically smaller one. Log-type scaling - larger
+    things shrink slower - with ordering preserved. Banding is by PHYSICAL size, kind-blind
+    (decision 2026-08-06): an ordinary ship never rivals a body because it IS small, but a
+    moon-sized construct legitimately reads moon-sized - "you could construct a death star, so
+    no strict limits".
 R10. MEASURABLE. The solver is pure and unit-tested; the live scene exposes the solver's intent
     beside the measured result (`__camDebug`, `__shipDebug` with `measured`/`ratio`), and a
     reference screen exists so a human can eyeball every object class at every dial stop
@@ -157,7 +160,12 @@ D4. POLICIES, NOT BRANCHES (R7). lockRotate, flatOverhead, framingWhole, belt fo
     each reduce to a policy value or an input override on the ONE solver + ONE motion layer:
       - lockRotate       -> heading: fixedAzimuth(lockedHeading); offset rotation disabled
       - flatOverhead     -> tiltRad = 0 (plan view), pan replaces rotate in offset space
-      - framingWhole     -> subject := system sphere (GRID_RADIUS * 1.06), no host, select-only
+      - framingWhole     -> subject := system sphere (GRID_RADIUS * 1.06), no host. Whole is the
+                            HOME shot, not a lock (decision 2026-08-06, changes today's
+                            select-only rule): in an interactive view, clicking an object selects
+                            it AND frames it like any other mode; stepping back out of the ladder
+                            returns to the whole shot. Non-interactive views cannot click, so
+                            GM-driven projector presets keep their fixed table view untouched.
       - belt focus       -> subject := annulus (existing outerScene * 1.9 as radius input)
       - follow-GM manual -> an explicit base override (setViewportAU), cleared by local re-select
     driveFocus's if/else tree, with its per-branch easing and floors, goes away.
@@ -183,12 +191,15 @@ larger when readable, but never rival bodies, and never invert.
 S1. EXTRACT `src/lib/rendering/scaleLaw.ts`: pure `renderedSize(class, trueSceneSize, dial)` with
     the current behaviour reproduced bit-for-bit first (equivalence-tested against the closures,
     then the closures delegate). No visual change in this step.
-S2. THE LAW: readable size = class band + log(true size) position within the band, with bands
-    ordered ship < asteroid/comet < moon < planet < star and NON-OVERLAPPING. Because each band
-    maps log(true) monotonically and bands do not overlap, ordering is preserved at the readable
-    end; the true end is ordered by physics; and the geometric dial blend of two monotone
-    endpoints stays monotone at every dial stop - R9 holds across the whole dial by construction,
-    not by tuning. Constructs occupy the lowest band, so a ship can NEVER reach body scale.
+S2. THE LAW (decision 2026-08-06): readable size = a single KIND-BLIND monotone map of
+    log(physical size), piecewise over PHYSICAL-size bands (ship-scale < asteroid-scale <
+    moon-scale < planet-scale < star-scale), bands non-overlapping in output. What an object IS
+    never enters the law - only how big it is. Because the map is monotone in log(true) end to
+    end, ordering is preserved at the readable end; the true end is ordered by physics; and the
+    geometric dial blend of two monotone endpoints stays monotone at every dial stop - R9 holds
+    by construction, not by tuning. An ordinary ship therefore never rivals a body (it is
+    physically small), while a deliberately absurd construct - a Death Star, a 940 km station -
+    honestly renders at the scale its size puts it. No caps, no per-kind exceptions.
 S3. KNOWN COST (RENDER-S6 BLAST): mid-dial looks in saved presets shift. Bundled presets get
     re-eyeballed; the owner signs off the new bands on the reference screen (section 6) before
     this ships. Endpoints (dial 0 and 1) barely move for bodies; ships change most - that is the
@@ -202,7 +213,9 @@ T1. Solver unit tests: fill fraction honoured at fov/aspect extremes; host never
 T2. Motion-layer tests: base recomputed under a moving subject (simulated orbit - the fault-3
     regression); offset survives base changes and rebuilds; explicit re-frame resets offset;
     cosmetic blend converges within N wall-clock steps at ANY scale (fault-2 regression);
-    a `setSystem` with the same id preserves focus (fault-6 regression, exists since v2.1.450).
+    a `setSystem` with the same id preserves focus (fault-6 regression, exists since v2.1.450);
+    whole mode: a click in an interactive view frames the object, stepping back out returns to
+    the whole shot, and a non-interactive view never moves (D4's whole-as-home decision).
 T3. Scale-law tests: monotonicity across every class boundary at dial = 0, 0.25, 0.5, 0.75, 1
     (property test over random true sizes); band non-overlap; equivalence snapshot for S1.
 T4. REFERENCE SCREEN `/scale-reference` (owner request, 2026-08-05): a diagnostic route rendering
@@ -237,16 +250,16 @@ P4. The new scale law (S2) - LAST, because it moves preset looks (S3) and needs 
   (F6 parity); owner wants them dovetailed on one render path. Separate design.
 - SHIP FACING/ORIENTATION: parked by the owner ("ignore facing for now - get it right 1:1 first").
 
-## 9. Open questions for the owner
+## 9. Decisions (owner, 2026-08-06) - all four questions closed, design is FINAL, build may start
 
-Q1. Close-up fill: 0.8 of the frame's minor axis as the default (R1)? Today's effective close-up
-    fill is lower (~0.5-0.6 with the "generous" full-length framing for ships).
-Q2. Host-aware heading (D1) changes the default approach direction for moons and orbiting ships -
-    today's shot is placed radially from the system centre. OK to change the default (with the
-    2D/projector locked-heading views exempt by policy)?
-Q3. Scale-law bands (S2): proposed order ship < asteroid < moon < planet < star with no overlap.
-    Are stations their own band above ships, or in the ship band? (A 940 km Ceres-station node
-    currently classes as a construct but is physically moon-sized - suggest classing bands by
-    PHYSICAL size with a construct CAP, so absurd-scale constructs stay honest.)
-Q4. Whole-system framing currently ignores selection (select-only). Keep, or should selecting in
-    whole mode nudge the camera at all?
+Q1. Close-up fill: 0.8 of the frame's minor axis. (R1 updated.)
+Q2. Host-aware heading: YES as the free-orbit default; locked-heading 2D/projector views exempt
+    by policy. The default approach direction for moons and orbiting ships changes visibly.
+    (D1 stands as designed.)
+Q3. Scale bands are PHYSICAL-SIZE bands, kind-blind, no construct cap: "you could construct a
+    death star - so no strict limits are needed". An ordinary ship stays small because it is
+    small; a moon-sized station honestly reads moon-sized. (R9 and S2 updated.)
+Q4. Whole-system framing is the HOME shot, not a lock: in an interactive view a click selects
+    AND frames the object like any other mode; backing out of the ladder returns to the whole
+    shot. Non-interactive views cannot click, so fixed projector tables are unaffected. This
+    CHANGES today's select-only behaviour. (D4 and T2 updated.)
