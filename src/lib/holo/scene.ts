@@ -2318,8 +2318,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       console.log('[camdbg]', focusedId, JSON.stringify({
         level: focusLevel, wantDist: want.dist, baseDist: base.dist,
         haveDist: camera.position.distanceTo(controls.target),
-        minDistance: controls.minDistance, reframing,
+        minDistance: controls.minDistance, maxDistance: controls.maxDistance, reframing,
         offsetZoom: viewOffset.zoom, userHasView: !isIdentity(viewOffset),
+        // THE ONE THAT SETTLES "dragging sideways zooms". OrbitControls rotates the camera about
+        // `controls.target`; the rig measures the offset from `lastBase.target`. If those two are
+        // not the same point, a pure rotation CHANGES the measured distance and is read back as a
+        // zoom. Any non-zero value here relative to the shot distance is that bug.
+        targetDrift: lastBase ? Math.hypot(
+          controls.target.x - lastBase.target.x,
+          controls.target.y - lastBase.target.y,
+          controls.target.z - lastBase.target.z) / Math.max(1e-12, base.dist) : 0,
+        userTail: userDroveCamera, polarMax: controls.maxPolarAngle,
+        camPolar: Math.acos(Math.max(-1, Math.min(1, (camera.position.y - controls.target.y) /
+          Math.max(1e-12, camera.position.distanceTo(controls.target))))),
         followEngaged, lockRotate, framingWhole
       }));
     }

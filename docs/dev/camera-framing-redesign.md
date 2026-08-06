@@ -408,6 +408,11 @@ P3b. PARTLY SHIPPED @v2.1.459-461-beta. DONE: the stand-in hull for a model-less
     not two; do them together.
 P3c. Transit route line (section 4a): reuse the orbit-ring path including A23 resampling, accel/
     brake markers, same visibility toggle. GATED ON Q5 (what crosses to players).
+P5. BANKED (owner, 2026-08-07): the STARMAP 3D view must also allow travel below the ecliptic.
+    Same rule as RENDER-S14, different scene - the starmap has its own camera, so widening the
+    system view's polar limits did nothing for it. Half of a 3D starmap is under the plane for the
+    same reason half a system is, and the rebuilt bundled maps carry real z depth, so it matters
+    more there than it used to.
 P4. The new scale law (S2 + S2b's single floor) - LAST, because it moves preset looks (S3) and needs the owner's
     sign-off on the reference screen first. Turns on the skipped R9 tests in scaleLaw.spec.ts.
 
