@@ -209,7 +209,27 @@ that A23 exists to fix (RENDER-S10's neighbourhood).
   - The accel/brake points are exactly what `driveBurns` already carries (when, how hard, which
     way) - see the redaction note below.
 
-DATA BOUNDARY - NEEDS A DECISION (Q5). This is the one part that is not free. `slimNode` strips
+DATA BOUNDARY - DECIDED 2026-08-06: PUBLISH THE FLIGHT PLAN (option (a)). The owner: "I honestly
+thought we transmitted the current flight plan for a construct - but if not we can change code to
+do that." So a player sees where a ship is going. This is a deliberate widening of the redaction
+boundary and it must be done in the RIGHT SHAPE, because the reason the journeys are stripped today
+is only half secrecy - the other half is SIZE, and that half does not go away:
+
+  - `scheduled_journeys` carries huge `pathPoint` arrays and the whole forward plan. `slimNode`
+    strips them so the snapshot stays small enough to cross a WebRTC data channel, and the
+    broadcast layer RE-STRINGIFIES the whole snapshot on every change (see the G3 handoff trap 4
+    and DATA-M rules). A ship in transit already rewrites that snapshot about twice a second.
+    Publishing the raw journeys would multiply the payload on the hottest path in the app.
+  - So publish a COMPACT ROUTE, exactly as `driveBurns` publishes a compact burn: origin, current
+    destination, arrival time, and the accel/brake points already in `driveBurns`. Sampled path
+    points only if the line cannot be drawn from the elements - and if they are needed, decimated,
+    not raw. New field alongside `driveBurns`, attached in `slimNode` before the strip, tested end
+    to end the way `shipBurnPlayer.spec.ts` now tests the burn path.
+  - What still must NOT cross: the GM's DRAFT plans (`draft_transit_plan`), cancelled/alternative
+    routes, and anything about journeys the GM has not committed. "Current flight plan" means the
+    committed one the ship is flying.
+
+Recorded for the implementer - the original options, kept because the reasoning matters: This is the one part that is not free. `slimNode` strips
 `scheduled_journeys` from every player snapshot ON PURPOSE: they carry the ship's FORWARD PLAN and
 huge path arrays, and the design note in `shipBurn.ts` is explicit that `driveBurns` publishes the
 observable burn ("when, how hard, which way, and nothing else - no destination, no route, no
@@ -223,9 +243,8 @@ R11 says the rule is the same everywhere, so the honest options are:
       ahead. Same rule everywhere, no forward plan crosses. The GM still sees the full route
       because the GM has the journeys - a difference in DATA, not in rule, which satisfies R11.
   (c) GM-ONLY LINE. Simple, but it IS a per-surface rule and so contradicts R11.
-Recommendation: (b). It keeps R11 intact, needs no new redaction surface, and reads correctly -
-players watching a ship see where it has been and that it is burning, and learn its destination
-when it arrives. Owner decides before this ships.
+CHOSEN: (a), in the compact shape above. R11 is satisfied literally - same rule, same data, every
+surface.
 
 D5. SCALE RULES, stated once (R3): every distance blend/compare in the camera path is in log
     space; the only lower bound is controls.minDistance, which itself derives from the subject's
@@ -339,8 +358,10 @@ Q4. Whole-system framing is the HOME shot, not a lock: in an interactive view a 
 Added 2026-08-06 after P1a: the construct ladder and the transit route line (section 4a), plus
 R11 "one rule across GM, player and system views" and R12 "always read the current view scaling".
 
-STILL OPEN:
-Q5. What does the transit ROUTE LINE publish to players? (a) the whole route incl. destination,
-    (b) the flown path + burns already made, nothing ahead [RECOMMENDED], or (c) GM-only, which
-    breaks R11. Today's redaction deliberately strips the forward plan; (a) widens that boundary
-    as a conscious choice. Blocks P3c only - P3b and everything before it can proceed.
+Q5. ANSWERED 2026-08-06: publish the current flight plan to players - option (a) - in the COMPACT
+    form described in section 4a (origin, destination, arrival, accel/brake points), never the raw
+    `scheduled_journeys`, because those carry huge path arrays on a snapshot the broadcast layer
+    re-stringifies about twice a second for a ship in transit. Uncommitted DRAFT plans still do not
+    cross. P3c is unblocked.
+
+NOTHING OPEN. The design is complete; P1 is shipped (v2.1.451-453-beta) and P2 is next.
