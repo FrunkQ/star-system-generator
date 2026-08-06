@@ -172,11 +172,24 @@ export function headingDirection(args: {
 		// back to a fixed azimuth rather than dividing by ~0.
 		outward = Math.hypot(radial.x, radial.y, radial.z) > 1e-4 ? norm(radial) : { x: 0, y: 0, z: 1 };
 	}
-	return {
+	// NORMALISED, and this is load-bearing rather than tidy. `UP*cos + outward*sin` is a unit vector
+	// ONLY when the two are orthogonal, i.e. when `outward` is horizontal. In general
+	//     |UP*cos(t) + outward*sin(t)| = sqrt(1 + outward.y * sin(2t))
+	// so any subject off the plane - a tilted orbit, a moon above its primary, a station on the
+	// underside of its world - returns a vector longer or shorter than 1.
+	//
+	// That was catastrophic in the base+offset camera (RENDER-S12): compose places the camera at
+	// |heading| * dist, derive reads the distance back as the zoom, so EVERY FRAME multiplied the
+	// zoom by |heading|. Measured in the field: Jupiter sits slightly below the plane, |heading| =
+	// 0.993, and the view crept inward 0.72% a frame until it pinned at the min-distance clamp; the
+	// ISS on a host-relative heading gave |heading| = 1.28 and the view ran away outward -
+	// 1.25e-9, 8.8e-8, 6.2e-6, 0.031, 7.9 - until it pinned at the max. Same bug, opposite signs,
+	// which is why it looked like two faults and like it tracked the clock (the geometry moves).
+	return norm({
 		x: UP.x * ca + outward.x * sa,
 		y: UP.y * ca + outward.y * sa,
 		z: UP.z * ca + outward.z * sa
-	};
+	});
 }
 
 /**

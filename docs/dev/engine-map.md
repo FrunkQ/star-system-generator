@@ -313,6 +313,25 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S16 A direction that feeds back must be UNIT, and prove it
+WHERE: `viewport/shotSolver.ts:headingDirection` (normalised); pinned in `shotSolver.spec.ts`.
+RULE: `UP*cos(t) + outward*sin(t)` is a unit vector ONLY when the two are orthogonal. In general its
+length is `sqrt(1 + outward.y * sin(2t))`, so any subject off the plane yields a vector that is not
+1. Normalise anything that is used as a DIRECTION, especially where it round-trips.
+WHY: the base+offset camera (RENDER-S12) places the camera at `|heading| * dist` and then reads the
+distance back as the zoom, so every frame multiplied the zoom by `|heading|`. Measured: Jupiter sits
+just below the plane, |heading| = 0.993, and the view crept inward 0.72% per frame to the
+min-distance clamp; the ISS on a host-relative heading gave |heading| = 1.28 and ran away outward -
+1.25e-9, 8.8e-8, 6.2e-6, 0.031, 7.9 - to the max in under a second. ONE fault, opposite signs, which
+is why it presented as two unrelated bugs and appeared to track the clock (the geometry moves as
+bodies orbit).
+BLAST: it hid for days because the old code used the same non-unit expression HARMLESSLY - it built
+a position directly and never fed the result back. The danger appeared only when a value became part
+of a loop. Any quantity that is both produced and re-measured needs its invariant asserted, not
+assumed: the test here checks |heading| == 1 across tilts, policies and off-plane subjects, and also
+asserts |heading|^600 == 1 so the REASON (ten seconds of compounding at 60fps) is guarded, not just
+the value.
+
 ### RENDER-S15 Take each camera quantity from the input that OWNS it, not from the camera
 WHERE: `holo/scene.ts:driveFocus` - rotation is derived from any drag, ZOOM only from the wheel.
 RULE: a drag rotates; only the wheel changes distance. Never infer a quantity from the camera when

@@ -197,3 +197,36 @@ describe('the construct click ladder (R8)', () => {
 		expect(firstFrameLevel(planet)).toBe(2);
 	});
 });
+
+// THE ONE THAT CAUSED BOTH THE CREEP AND THE RUNAWAY. UP*cos + outward*sin is unit ONLY when the
+// two are orthogonal; otherwise its length is sqrt(1 + outward.y * sin(2*tilt)). The base+offset
+// camera multiplies the zoom by that length every frame, so anything off the plane drifts
+// geometrically - inward when the subject is below it, outward when above.
+describe('headingDirection always returns a UNIT vector', () => {
+	it('is unit for every tilt and every subject position, on or off the plane', () => {
+		const subjects: Vec3[] = [
+			{ x: 3, y: 0, z: 0 },        // on the plane
+			{ x: 3, y: 2, z: 0 },        // above
+			{ x: 3, y: -2, z: 0 },       // below - the Jupiter case, |heading| was 0.993
+			{ x: 0.1, y: 5, z: 0.1 },    // steeply above - the ISS case, |heading| was 1.28
+			{ x: -2, y: -4, z: 1 }
+		];
+		for (const subject of subjects) {
+			for (const tiltRad of [0, 0.3, 0.7, 1.117 /* the scene's 64 degrees */, Math.PI / 2, 2.5, Math.PI]) {
+				for (const policy of [{ kind: 'radial' } as const, { kind: 'host-relative' } as const,
+					{ kind: 'fixed-azimuth', azimuth: 0.9 } as const]) {
+					const h = headingDirection({ policy, tiltRad, subject, host: { x: 0, y: 0, z: 0 } });
+					expect(Math.hypot(h.x, h.y, h.z)).toBeCloseTo(1, 12);
+				}
+			}
+		}
+	});
+
+	it('a non-unit heading would compound: |h|^N after N frames', () => {
+		// Guards the REASON, not just the value: this is what made 0.993 and 1.28 catastrophic.
+		const subject = { x: 0.1, y: 5, z: 0.1 };
+		const h = headingDirection({ policy: { kind: 'radial' }, tiltRad: 1.117, subject });
+		const len = Math.hypot(h.x, h.y, h.z);
+		expect(Math.pow(len, 600)).toBeCloseTo(1, 6); // ten seconds at 60fps must not drift
+	});
+});

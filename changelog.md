@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.471-beta - 7th Aug 2026
+
+* Fixes the 3D view drifting or running away from whatever you were looking at. Both were one fault: the direction the camera approaches from was very slightly the wrong LENGTH whenever the thing you selected sits off the plane of the system, and the view multiplied its distance by that length every single frame. Below the plane it crept inwards a fraction of a percent a frame until it hit the closest it could go; above it, it ran outward and hit the far end of the scene in under a second. Same fault, opposite directions, which is why it looked like two separate problems and why it seemed to depend on the clock - the geometry moves as things orbit.
+
 ## v2.1.470-beta - 7th Aug 2026
 
 * Internal: the 3D camera diagnostic now reports how far the thing you are watching moved since the last frame, and how much the camera's distance to it drifted over the same interval, both as fractions of the shot. If the two track each other, the drift is the clock moving the subject.
