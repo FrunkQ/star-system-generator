@@ -7,6 +7,11 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.466-beta - 7th Aug 2026
+
+* Actually allows a 3D view below the plane of the system. The previous attempt only took effect once you changed a framing setting, because the limit is also set when the view is first created and that copy still said "not below the plane". Both now say the same thing.
+* Fixes the zoom wheel behaving erratically - sometimes moving the same way whichever direction you turned it. A wheel or a drag is applied smoothly over many frames, but the view was only paying attention to the frame the event landed on and discarding everything after it, so what survived was whatever that single frame happened to hold. It now follows the whole gesture through.
+
 ## v2.1.465-beta - 6th Aug 2026
 
 * A 3D view can now be flown BELOW the plane of the system. It was pinned above it, so half of every system was unreachable - and worse, selecting something on the underside of its world asked the camera for a position it was not allowed to hold, so the view never settled and the framing appeared to break. A ship on the far side of a planet from you is now something you can simply go and look at. Flat maps stay pinned overhead, which is the point of a map.

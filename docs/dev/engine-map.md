@@ -324,6 +324,16 @@ every system was unreachable. Once the shot became host-aware (R2) that stopped 
 and became a FAULT: for a moon or station on the underside of its world the wanted heading points
 downward, the controls refused to hold it, and the framing never settled - which reads as the
 autoframing "breaking" rather than as a clamp, because nothing reports it.
+BLAST: A LIMIT SET IN TWO PLACES IS A LIMIT YOU HAVE NOT CHANGED. These are written at controls
+construction AND in `applyPolarLimits`, which only runs on a framing change - so a view nobody
+re-frames keeps whatever the constructor said. The first attempt at this fix edited only the
+function and appeared to do nothing. Grep for every writer of a controls limit before believing an
+edit landed.
+ALSO: user input has a TAIL. OrbitControls damps a wheel or drag over many frames, so anything
+gated on "the user acted THIS frame" catches the first damped step and overwrites the rest - the
+wheel then moves erratically, and can go the same way whichever direction it is turned, because the
+surviving fragment is whatever one frame held. Trust the camera for a window (~500 ms) after input,
+not for a frame.
 BLAST: epsilon off each pole, not zero - at exactly 0 or PI the up vector is parallel to the view
 direction, the azimuth is undefined and OrbitControls resolves it by spinning. If a future policy
 still cannot be satisfied, make it SAY so (`hostWouldOcclude` is the pattern) rather than letting

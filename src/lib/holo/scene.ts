@@ -357,8 +357,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const DEFAULT_MIN_DIST = 0.05;
   controls.minDistance = DEFAULT_MIN_DIST; // overview floor; focusBody tightens it to the focused body's size
   controls.maxDistance = GRID_RADIUS * 6;
-  controls.minPolarAngle = Math.PI * 0.06; // don't go fully top-down
-  controls.maxPolarAngle = Math.PI * 0.49; // or under the table
+  // The OPEN range: a 3D view may be flown under the ecliptic (RENDER-S14). These must match what
+  // `applyPolarLimits` sets, because that only runs on a FRAMING CHANGE - so whatever is written
+  // here is what the view actually has until the user alters a framing setting. Setting the old
+  // clamp here and the new one there meant the fix never applied to a view nobody re-framed.
+  controls.minPolarAngle = 0.001;
+  controls.maxPolarAngle = Math.PI - 0.001;
 
   // Ground reference grid: 'off' | 'plain' (even polar rings) | 'scaled' (rings at round AU radii,
   // labelled). 'scaled' depends on the live radial map (compression + rMax), so it rebuilds with the
@@ -1429,6 +1433,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // camera and for whatever reason. That is a weaker assumption than "nothing else writes the
   // camera", and it is one the scene can actually keep.
   let userDroveCamera = false;
+  // ...and it stays true for a WINDOW, not a frame. OrbitControls applies a wheel or a drag with
+  // DAMPING, so the motion the user started arrives over many frames after the event. Reading the
+  // camera only on the frame of the event caught the first damped step and then overwrote every one
+  // after it - which is why the wheel behaved erratically and could move the same way whichever
+  // direction it was turned: the surviving fragment was whatever one frame happened to hold.
+  let userInputUntil = 0;
+  const USER_INPUT_TAIL_MS = 500; // comfortably longer than OrbitControls' damping tail
+  function noteUserInput() {
+    userDroveCamera = true;
+    userInputUntil = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + USER_INPUT_TAIL_MS;
+  }
   let lastBase: Shot | null = null;   // previous frame's base, to read the user's manipulation against
   let reframing = false;              // a cosmetic blend is running; it cannot change the destination
   let reframePending = false;         // an explicit (re)frame: reset the offset on the next frame
@@ -1557,14 +1572,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // ANY drag is the user driving the camera - in 3D it orbits, on a flat map it pans. Either way
     // OrbitControls is about to move the camera on their behalf, so the rig may believe what it
     // reads back next frame.
-    userDroveCamera = true;
+    noteUserInput();
     reframing = false;       // don't finish an in-flight blend against their drag
     if (flatOverhead) followEngaged = false; // a PAN is the orrery's MANUAL: it drops the follow
   }, { signal: pointer.signal });
   // The user driving zoom (wheel / pinch) takes the camera off auto-framing — the orrery's rule, so the
   // view never fights someone looking around. Cleared by the next explicit (re)frame (focusBody/pickBody).
   canvas.addEventListener('wheel', () => {
-    userDroveCamera = true; // the rig may trust the camera next frame - see `userDroveCamera`
+    noteUserInput();        // the rig may trust the camera while the damping settles
     reframing = false;      // touching the zoom hands the camera over NOW; deriveOffset reads it
     // Grabbing the zoom mid-ease hands the camera over NOW - the 48-frame drive used to keep
     // lerping against the wheel for most of a second ("fights the mouse"), worst on a tight
@@ -2274,9 +2289,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // The user interrupts a blend through the wheel/drag handlers, which clear `reframing` and let
     // this resume; that is the intended handover and it is why no flag is needed here.
     // The turntable moves the camera on the user's behalf, so it counts as them.
-    if (controls.autoRotate) userDroveCamera = true;
+    if (controls.autoRotate) noteUserInput();
+    const nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (lastBase && !reframePending && !reframing && userDroveCamera) {
-      userDroveCamera = false;
+      if (nowMs > userInputUntil) userDroveCamera = false; // the tail has run out; stop trusting it
       viewOffset = deriveOffset(lastBase, v3(camera.position), lastBase.target);
       // A locked view cannot be rotated - that is the meaning of the lock. Keeping their ZOOM while
       // discarding their rotation is the honest expression of it; the old code achieved the same by
