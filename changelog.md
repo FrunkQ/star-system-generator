@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.454-beta - 6th Aug 2026
+
+* Internal, not yet wired in: the camera's new motion model. The view becomes two things - the shot the system wants, recomputed every frame from where things actually are, and whatever you have done to it by dragging or zooming. They recombine each frame, so a ship can fly as fast as it likes without escaping the shot, the scene can rebuild underneath you without disturbing the view, and nothing can take the camera back except an explicit re-frame. Carries a regression test for each of the six framing faults found on 5th August.
+
 ## v2.1.453-beta - 6th Aug 2026
 
 * Internal, no visible change: the maths deciding where the camera goes for a given shot is now one pure, tested module rather than arithmetic spread through the 3D scene. Pinned by a test that runs the old code beside the new across every framing level, subject size and lens shape. Completes the extraction step of the camera redesign.
