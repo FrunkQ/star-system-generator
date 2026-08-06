@@ -988,6 +988,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     originShift.copy(sceneOrigin).negate();
     camera.position.sub(delta);
     controls.target.sub(delta);
+    // ...and the camera rig's record of last frame's shot, which is expressed in scene coordinates
+    // like everything else here. MISSING THIS IS A RUNAWAY, not a glitch: `deriveOffset` measures
+    // the camera against `lastBase.target`, so a target left in the pre-rebase frame reads as the
+    // user having dragged the camera by the whole rebase delta. That offset is then applied to the
+    // new base, which moves the camera further out, which makes the next rebase delta bigger.
+    // Measured: the zoom offset doubled every frame - 1.1, 2.3, 4.6, 9.2, 18.7, 37.8, 76.5 - until
+    // it saturated at maxDistance and the view sat beyond Pluto.
+    if (lastBase) {
+      lastBase.target.x -= delta.x;
+      lastBase.target.y -= delta.y;
+      lastBase.target.z -= delta.z;
+    }
     emitOrbitRings(); // re-sampled about the new focus where the facets would otherwise show
     rebaseGrid();
     updatePositions(); // bodies + lights into the new frame (they are only recomputed on a time change)

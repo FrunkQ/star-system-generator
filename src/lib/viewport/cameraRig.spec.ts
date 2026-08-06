@@ -187,6 +187,35 @@ describe('the frame loop: a re-frame must actually arrive (regression)', () => {
 		expect(state.reframing).toBe(false);
 	});
 
+	// THE RUNAWAY. The scene uses a floating origin: every so often the whole world is shifted so the
+	// camera's target sits near (0,0,0). That shift moves camera AND target together, so the shot is
+	// unchanged - but `lastBase.target` is in scene coordinates too, and leaving it in the old frame
+	// made deriveOffset read the entire rebase delta as "the user dragged the camera out by that
+	// much". Applying that offset moved the camera further out, which made the next rebase delta
+	// bigger. Measured on a real system: 1.1, 2.3, 4.6, 9.2, 18.7, 37.8, 76.5 - doubling every frame
+	// until it saturated at maxDistance, leaving the view beyond Pluto.
+	it('survives a floating-origin rebase without the offset running away', () => {
+		const state = { cam: v(0, 0.85, 0), target: v(0, 0, 0), offset: { ...IDENTITY_OFFSET }, lastBase: null as Shot | null, reframing: false, reframePending: false };
+		let worldShift = 0;
+		for (let i = 0; i < 60; i++) {
+			// The subject drifts, and every few frames the origin is rebased under it.
+			worldShift += 0.01;
+			const base = shot(v(worldShift, 0, 0), v(0, 1, 0), 0.85);
+			frame(state, base);
+			if (i % 5 === 4) {
+				// A rebase: the world (camera, target AND the rig's remembered base) all shift together.
+				const d = { x: worldShift, y: 0, z: 0 };
+				state.cam = v(state.cam.x - d.x, state.cam.y, state.cam.z);
+				state.target = v(state.target.x - d.x, state.target.y, state.target.z);
+				if (state.lastBase) state.lastBase = shot(v(state.lastBase.target.x - d.x, state.lastBase.target.y, state.lastBase.target.z), state.lastBase.heading, state.lastBase.dist);
+				worldShift = 0;
+			}
+		}
+		// The user never touched anything, so the shot must still be the framed one.
+		expect(state.offset.zoom).toBeCloseTo(1, 6);
+		expect(dist(state.cam, state.target)).toBeCloseTo(0.85, 6);
+	});
+
 	it('hands control back afterwards, and then holds the user\'s zoom', () => {
 		const base = shot(v(0, 0, 0), v(0, 1, 0), 0.001);
 		const state = { cam: v(0, 20, 0), target: v(0, 0, 0), offset: { ...IDENTITY_OFFSET }, lastBase: null as Shot | null, reframing: true, reframePending: true };
