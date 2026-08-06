@@ -313,6 +313,30 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S11 The size law is one tested module; the scene binds it, never restates it
+WHERE: `src/lib/rendering/scaleLaw.ts` (pure) + `scaleLaw.spec.ts`; bound in `holo/scene.ts`
+(`scaleCtx()`, `bodyRadiusScene`, `starRadiusScene`, `shipLenScene`, `markerScale`, `bodyRadius`).
+RULE: how big anything draws is decided ONLY in scaleLaw.ts, from an explicit
+`{bodySize, rMax, gridRadius}` context. The scene supplies the live dial and calls it. Do not
+reintroduce sizing arithmetic in scene.ts, and do not read ambient dial state inside the law - a
+caller that cannot pass the context is a caller that is about to disagree about scale.
+WHY: the law was four closures inside `createHoloScene`: unreachable from outside, untestable, and
+already drifted (the construct readable band 0.14-0.7 OVERLAPS the body band, so a 46 m frigate
+out-draws a small moon at the readable end - the ordering inversion the redesign's R9 kills in P4).
+Scale faults are invisible without measurement (RENDER-S8), so an untestable law is one nobody can
+check.
+TESTS, and what each is for: `scaleLaw.spec.ts` holds the OLD closure bodies verbatim beside the
+new functions and demands EXACT equality across every dial stop x 4 system extents x real object
+sizes - that is the P1 extraction guard, and it is what makes "no behaviour change" a fact rather
+than a claim. It also carries `describe.skip('R9 ordering')`, the P4 acceptance test, written
+before the work: a physically larger object must never render smaller, and a moon-sized construct
+may read moon-sized (no construct cap - the owner's "you could construct a death star"). It is
+skipped because today's law FAILS it on purpose. P4 turns it on; if you are changing the law and
+it still fails, you are not done.
+BLAST: changing a readable band moves saved presets' mid-dial looks (RENDER-S6). Delete the legacy
+column in the same commit that changes the law, or it will fight you. Design:
+`docs/dev/camera-framing-redesign.md` (S1/S2, phases P1/P4).
+
 ### RENDER-S10 Camera framing eases in LOG distance, and must travel with its target
 WHERE: `src/lib/holo/scene.ts:driveFocus` (`easeDistance`, `framedClose`, `_prevDesired`);
 `window.__camDebug = true` prints the shot, the chosen ladder level and the live distance.

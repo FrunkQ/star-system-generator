@@ -59,8 +59,21 @@ R6. LIVE REBUILDS ARE INVISIBLE. A snapshot refresh of the SAME system preserves
 R7. ONE CODE PATH. Locked-heading (2D/projector), free-orbit 3D, whole-system, belt focus and
     follow-GM are POLICIES feeding one solver - not parallel branches with their own easing,
     floors and arrival rules. (Today: two branches in driveFocus, each with its own bugs.)
-R8. LADDER PRESERVED. The click-ladder levels (0 pair-context, 1 context, 2 satellites, 3
-    close-up) survive as shot presets; `frameHalfExtent` already encodes them purely.
+R8. LADDER PRESERVED, AND CONSTRUCT-AWARE. The click-ladder levels (0 pair-context, 1 context,
+    2 satellites, 3 close-up) survive as shot presets; `frameHalfExtent` already encodes them
+    purely. The BODY ladder is right as it stands ("we have planets click hierarchy perfect now")
+    and must not move. Constructs get their own rungs because they are usually far too small for
+    the body ladder to read - see section 4a.
+R11. ONE RULE EVERYWHERE. The ladder, the framing and the scale law behave IDENTICALLY on the GM
+    view, every player view and the system view (owner, 2026-08-06: "same rule across gm and
+    player views... and system - the point of this unification"). A surface may restrict
+    INTERACTION (a projector table is not clickable) but never redefine the rule. Any "just for
+    the player view" branch in framing or scale is a defect.
+R12. SCALE-AWARE THROUGHOUT. Every rule above must read the CURRENT view scaling - the body-size
+    dial, compression, the whole/close framing - rather than assuming readable scale (owner:
+    "it has to be very aware of the current view scaling"). This is why the scale law is a pure
+    module with an explicit context (P1) instead of closures reading ambient state: the ladder and
+    the solver take the same context, so they cannot disagree about how big anything currently is.
 R9. SIZE ORDERING IS HONEST (the scale law, section 5). At every dial position: a physically
     larger object never renders smaller than a physically smaller one. Log-type scaling - larger
     things shrink slower - with ordering preserved. Banding is by PHYSICAL size, kind-blind
@@ -170,6 +183,50 @@ D4. POLICIES, NOT BRANCHES (R7). lockRotate, flatOverhead, framingWhole, belt fo
       - follow-GM manual -> an explicit base override (setViewportAU), cleared by local re-select
     driveFocus's if/else tree, with its per-branch easing and floors, goes away.
 
+## 4a. The construct ladder and the transit route line (owner, 2026-08-06)
+
+Bodies keep today's ladder untouched (R8). Constructs get their own, because a construct is
+usually far too small for the body rungs to say anything useful:
+
+  CLICK 1 - CLOSE-UP. Zoom IN so the construct is centred and fills the frame at R1's 0.8. The
+    purpose is confirmation as much as inspection: it makes unmistakably clear WHAT you clicked,
+    and it starts you in close rather than hunting for a speck.
+  CLICK 2 - CONTEXT, and it depends on what the ship is doing:
+    - PARKED / IN ORBIT: frame it with its HOST, exactly as a moon's context rung does. (This is
+      today's level 1, so the shot already exists - only the ordering is new.)
+    - IN TRANSIT: frame it between ORIGIN and DESTINATION, so the whole journey is in shot with
+      the ship somewhere along it. This is a NEW shot: its extent comes from the route, not from
+      a parent body, and `frameHalfExtent` has no rung for it. It becomes a solver input
+      (`routeExtent`) alongside parentDist/maxSatelliteDist.
+  Further clicks wrap as they do today.
+
+ROUTE LINE. A construct in transit draws its route the way a body draws its orbit: the same kind
+of line, obeying the SAME show/hide toggle as orbit lines, and marked with its ACCELERATION and
+BRAKE points. It is the transit-mode sibling of the orbit ring, so it should reuse the ring's
+machinery - including the A23 focus-adaptive resampling, or a close-up will show the same faceting
+that A23 exists to fix (RENDER-S10's neighbourhood).
+  - Turns off with orbit lines, and turns off when the ship is not in transit.
+  - The accel/brake points are exactly what `driveBurns` already carries (when, how hard, which
+    way) - see the redaction note below.
+
+DATA BOUNDARY - NEEDS A DECISION (Q5). This is the one part that is not free. `slimNode` strips
+`scheduled_journeys` from every player snapshot ON PURPOSE: they carry the ship's FORWARD PLAN and
+huge path arrays, and the design note in `shipBurn.ts` is explicit that `driveBurns` publishes the
+observable burn ("when, how hard, which way, and nothing else - no destination, no route, no
+path") precisely so a plume can light without the plan crossing. A route line drawn on a player
+view publishes the destination and the arrival time, which is a real change to what players know.
+R11 says the rule is the same everywhere, so the honest options are:
+  (a) PUBLISH THE ROUTE. Players see where a ship is going. Simplest, matches R11 literally, and
+      is a legitimate setting for a game where traffic is public - but it is a deliberate
+      widening of the redaction boundary, not an implementation detail.
+  (b) PUBLISH THE FLOWN PATH ONLY. The line behind the ship plus burns already made; nothing
+      ahead. Same rule everywhere, no forward plan crosses. The GM still sees the full route
+      because the GM has the journeys - a difference in DATA, not in rule, which satisfies R11.
+  (c) GM-ONLY LINE. Simple, but it IS a per-surface rule and so contradicts R11.
+Recommendation: (b). It keeps R11 intact, needs no new redaction surface, and reads correctly -
+players watching a ship see where it has been and that it is burning, and learn its destination
+when it arrives. Owner decides before this ships.
+
 D5. SCALE RULES, stated once (R3): every distance blend/compare in the camera path is in log
     space; the only lower bound is controls.minDistance, which itself derives from the subject's
     authored size (1.15 * radius, floored 1e-10 for constructs / 1e-6 otherwise, as today after
@@ -234,8 +291,12 @@ P1. Extract, no behaviour change: scaleLaw.ts (S1) + shotSolver.ts (solver repro
 P2. Motion layer: base+offset replaces driveFocus's branches; focusDrive/autoFrameStep-in-holo/
     userZoomOverride/_prevDesired deleted (M4-M7). The riskiest phase; T2 lands with it.
 P3. Host-aware heading (D1's occlusion rule) - a visible behaviour change, small diff.
+P3b. Construct ladder (section 4a): close-up first, then host-or-route context. Bodies untouched.
+    Needs the solver's `routeExtent` input; no new rendering.
+P3c. Transit route line (section 4a): reuse the orbit-ring path including A23 resampling, accel/
+    brake markers, same visibility toggle. GATED ON Q5 (what crosses to players).
 P4. The new scale law (S2) - LAST, because it moves preset looks (S3) and needs the owner's
-    sign-off on the reference screen first.
+    sign-off on the reference screen first. Turns on the skipped R9 tests in scaleLaw.spec.ts.
 
 ## 8. Adjacent defects, deliberately OUT of scope
 
@@ -263,3 +324,12 @@ Q4. Whole-system framing is the HOME shot, not a lock: in an interactive view a 
     AND frames the object like any other mode; backing out of the ladder returns to the whole
     shot. Non-interactive views cannot click, so fixed projector tables are unaffected. This
     CHANGES today's select-only behaviour. (D4 and T2 updated.)
+
+Added 2026-08-06 after P1a: the construct ladder and the transit route line (section 4a), plus
+R11 "one rule across GM, player and system views" and R12 "always read the current view scaling".
+
+STILL OPEN:
+Q5. What does the transit ROUTE LINE publish to players? (a) the whole route incl. destination,
+    (b) the flown path + burns already made, nothing ahead [RECOMMENDED], or (c) GM-only, which
+    breaks R11. Today's redaction deliberately strips the forward plan; (a) widens that boundary
+    as a conscious choice. Blocks P3c only - P3b and everything before it can proceed.
