@@ -7,6 +7,11 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.463-beta - 6th Aug 2026
+
+* You can no longer zoom through the object you selected. The view now stops a metre off its surface, whether that is a true-scale world, a chunky readable one or a ship's hull. This also fixes distant bodies dropping out of the picture at extreme close-ups: flying inside a planet drove the near clipping plane so small that the depth buffer could no longer tell surfaces apart.
+* Bodies and craft now share one lower size limit. They had limits a thousandfold apart, so at true scale a 10 km moonlet drew three times larger than a physically bigger 22 km station. The developer scale reference reports one fewer ordering violation as a result; the remaining four are the readable-size overlap, still to come.
+
 ## v2.1.462-beta - 6th Aug 2026
 
 * The 3D view now approaches a selected object from its parent's side, so a moon or a station in low orbit can no longer end up hidden behind the very world it orbits. Previously the camera came in from the direction of the system centre and knew nothing about the parent. Where no such angle exists - a station skimming its primary, where the shot has to sit further out than the gap between them - it falls back to the old approach rather than pretending.

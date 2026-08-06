@@ -39,6 +39,20 @@ export interface ScaleContext {
 /** At or above this the dial is "fully readable" and the true term is not consulted at all. */
 export const READABLE_DIAL = 0.999;
 
+/**
+ * ONE numerical floor, for every kind (S2b of the redesign). Not a design floor - purely the point
+ * below which the scene's transforms stop carrying a size usefully. Legibility is the SCREEN-space
+ * pixel floor's job, which is the argument `bodyRadiusScene` already made against scene-unit floors.
+ *
+ * WHY IT MUST BE SHARED, measured by /scale-reference on its first render: bodies used to floor at
+ * 1e-7 scene units and constructs at 1e-10, a thousandfold apart. At true scale that made a 10 km
+ * moonlet render 2.0e-7 while a physically LARGER 22 km station rendered 5.9e-8 - the moonlet drew
+ * 3.4x too big purely because of which floor it landed on. Each floor was defensible alone (the
+ * body one predates true scale; the ship one was lowered for G3 hulls) and together they were an
+ * ordering violation (R9) that no dial setting could correct.
+ */
+export const NUMERICAL_FLOOR = 1e-10;
+
 /** AU per scene unit, i.e. the factor that turns a true physical size into scene units. */
 export function trueScaleFactor(ctx: ScaleContext): number {
 	return (ctx.gridRadius ?? GRID_RADIUS) / Math.max(1e-9, ctx.rMax);
@@ -87,7 +101,7 @@ export function bodyRadiusScene(radiusKm: number, systemLevel: boolean, ctx: Sca
 	const readable = systemLevel ? full : Math.min(full, 0.1);
 	if (ctx.bodySize >= READABLE_DIAL) return readable;
 	const trueScene = (radiusKm / AU_KM) * trueScaleFactor(ctx);
-	return Math.max(1e-7, dialBlend(trueScene, readable, ctx.bodySize));
+	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, readable, ctx.bodySize));
 }
 
 /** The authored stellar radius in km, with the law's default for a node that carries none. */
@@ -102,7 +116,7 @@ export function starRadiusKmOf(node: any): number {
 export function starRadiusScene(radiusKm: number, ctx: ScaleContext): number {
 	if (ctx.bodySize >= READABLE_DIAL) return STAR_RADIUS;
 	const trueScene = (radiusKm / AU_KM) * trueScaleFactor(ctx);
-	return Math.max(1e-7, dialBlend(trueScene, STAR_RADIUS, ctx.bodySize));
+	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, STAR_RADIUS, ctx.bodySize));
 }
 
 // --- Constructs ---------------------------------------------------------------------------------
@@ -144,7 +158,7 @@ export function shipLengthScene(lengthM: number, ctx: ScaleContext): number {
 	const readable = readableShipLength(lengthM);
 	if (ctx.bodySize >= READABLE_DIAL) return readable;
 	const trueScene = (lengthM / 1000 / AU_KM) * trueScaleFactor(ctx);
-	return Math.max(1e-10, dialBlend(trueScene, readable, ctx.bodySize));
+	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, readable, ctx.bodySize));
 }
 
 // --- Markers ------------------------------------------------------------------------------------

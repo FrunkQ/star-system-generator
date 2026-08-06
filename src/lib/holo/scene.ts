@@ -2319,11 +2319,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const bv = id ? bodies.find((x) => x.id === id) : undefined;
     const rad = bv ? (bv.radiusScene || bv.shipLen || 0) : 0;
-    // The lower clamp tracks the body: a true-scale world is ~1e-5 scene units, and a fixed 0.004 clamp
-    // would hold the camera thousands of radii out from the thing it just framed. A true-scale SHIP
-    // is smaller again (~1e-9), so a modelled construct may take the floor further down.
-    const minFloor = bv?.shipLen ? 1e-10 : 1e-6;
-    controls.minDistance = id ? Math.max(minFloor, Math.min(DEFAULT_MIN_DIST, rad * 1.15)) : unfocusedMinDist();
+    // THE ZOOM FLOOR IS THE SUBJECT'S SURFACE, PLUS A METRE (owner, 2026-08-06). You may fly right
+    // down to a world or a hull and stop just off it; you may not fly through it.
+    //
+    // This also removes the reason Earth disappeared at a ship close-up, which is why it replaces
+    // the logarithmic-depth-buffer work rather than sitting beside it. The near plane follows the
+    // working distance (2% of it), so a camera allowed inside a planet drove `near` to ~4e-10
+    // against a `far` fixed at 2000 - a ~5e12 depth ratio, far beyond what a 24-bit depth buffer can
+    // resolve, so bodies and their occluders stopped separating in depth. Stopping at the surface
+    // keeps the ratio sane BY CONSTRUCTION, at every scale, without every hand-written
+    // ShaderMaterial having to opt into anything.
+    //
+    // `rad` is the RENDERED radius (a construct's is half its drawn hull), so the floor tracks the
+    // body-size dial: at true scale you get within a metre of a real 6371 km world, and at the
+    // readable end you stop off the inflated globe you can actually see. One metre is converted
+    // through the same true-scale factor everything else uses - no invented constant.
+    const oneMetreScene = (0.001 / AU_KM) * (GRID_RADIUS / Math.max(1e-9, rMax));
+    const surfaceStop = (bv?.isConstruct ? rad / 2 : rad) + oneMetreScene;
+    controls.minDistance = id ? Math.max(1e-10, surfaceStop) : unfocusedMinDist();
     if (id) requestReframe(); else { reframing = false; reframePending = false; }
     visibleSet = getVisibleNodeIds(currentSystem, focusedId);
   }

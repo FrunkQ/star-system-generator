@@ -411,9 +411,28 @@ P3c. Transit route line (section 4a): reuse the orbit-ring path including A23 re
 P4. The new scale law (S2 + S2b's single floor) - LAST, because it moves preset looks (S3) and needs the owner's
     sign-off on the reference screen first. Turns on the skipped R9 tests in scaleLaw.spec.ts.
 
-## 8. Adjacent defects, deliberately OUT of scope
+## 8. Adjacent defects (owner routed these 2026-08-06)
 
-- FAR PLANE / DEPTH RESOLUTION: near adapts to ~4e-10 while far is fixed at 2000; at ship
+- DRIVE PLUME NOT LIT ON PLAYER VIEWS -> DO IT IN P3c. "That will be related to the P3c, best done
+  there as that is where the data lives." Correct: `driveBurns` and the route are the same journey
+  data crossing the same redaction boundary, so the plume, the route line and the accel/brake marks
+  are one job. The redaction path is already proven sound end to end (shipBurnPlayer.spec), so what
+  remains is scene-side: the thrust threshold and the player-side shipCapability map.
+
+- ZOOM FLOOR = SURFACE + 1 m -> replaces the depth-buffer work. "Depth buffer issue probably fine -
+  the actual thing we want to do is limit zoom to current selected object surface+1m level." This
+  is the better fix and not merely a cheaper one: the reason Earth vanished at a ship close-up is
+  that `near` is driven to ~4e-10 while `far` is fixed at 2000, and a ~5e12 depth ratio exceeds what
+  the depth buffer can resolve. Stopping the camera at the SUBJECT'S SURFACE keeps `near` sane by
+  construction, so the ratio never gets there. It also removes flying through the inside of a
+  planet, which was never wanted. A logarithmic depth buffer stays available if a case turns up
+  that this does not cover, but it is no longer the plan (it would need every hand-written
+  ShaderMaterial to opt in).
+
+- WIREFRAME / BLUEPRINT RATIONALISATION -> AFTER P4. "It treads into the player view designer and
+  we don't want to clog context with that just yet." Its own session, with the designer in view.
+
+- FAR PLANE / DEPTH RESOLUTION (superseded by the zoom floor above): near adapts to ~4e-10 while far is fixed at 2000; at ship
   close-ups the depth ratio (~5e12) exceeds the depth buffer and Earth visibly drops out. Fix is
   `logarithmicDepthBuffer` (or reverse-Z), which every hand-written ShaderMaterial in the scene
   must opt into - a rendering workstream, not a camera one.

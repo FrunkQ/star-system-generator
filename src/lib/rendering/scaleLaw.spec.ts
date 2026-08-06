@@ -13,7 +13,7 @@ import { AU_KM } from '$lib/constants';
 import {
 	GRID_RADIUS, STAR_RADIUS, dialBlend, readableBodyRadius, bodyRadiusScene,
 	starRadiusScene, readableShipLength, shipLengthScene, markerScale,
-	radiusKmOf, starRadiusKmOf, shipLengthMOf, trueScaleFactor
+	radiusKmOf, starRadiusKmOf, shipLengthMOf, trueScaleFactor, NUMERICAL_FLOOR
 } from './scaleLaw';
 
 // --- the old closures, verbatim -----------------------------------------------------------------
@@ -23,16 +23,21 @@ const legacyDialBlend = (trueScene: number, readable: number, bodySize: number) 
 	return Math.exp(Math.log(t) * (1 - bodySize) + Math.log(r) * bodySize);
 };
 const legacyBodyRadius = (km: number) => 0.14 + 0.1 * Math.max(0, Math.log10(km / 1000));
+// S2b, THE ONE DELIBERATE DIVERGENCE from P1's byte-for-byte extraction. The bodies' floor was
+// 1e-7 scene units and the constructs' 1e-10 - a thousandfold apart - so at true scale a 10 km
+// moonlet rendered 2.0e-7 while a physically LARGER 22 km station rendered 5.9e-8, an ordering
+// violation (R9) no dial setting could fix. /scale-reference found it on its first render. Both now
+// use NUMERICAL_FLOOR. Everything else in this column still pins the law unchanged.
 const legacyBodyRadiusScene = (km: number, systemLevel: boolean, bodySize: number, rMax: number) => {
 	const readable = systemLevel ? legacyBodyRadius(km) : Math.min(legacyBodyRadius(km), 0.1);
 	if (bodySize >= 0.999) return readable;
 	const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-	return Math.max(1e-7, legacyDialBlend(trueScene, readable, bodySize));
+	return Math.max(NUMERICAL_FLOOR, legacyDialBlend(trueScene, readable, bodySize));
 };
 const legacyStarRadiusScene = (km: number, bodySize: number, rMax: number) => {
 	if (bodySize >= 0.999) return STAR_RADIUS;
 	const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-	return Math.max(1e-7, legacyDialBlend(trueScene, STAR_RADIUS, bodySize));
+	return Math.max(NUMERICAL_FLOOR, legacyDialBlend(trueScene, STAR_RADIUS, bodySize));
 };
 const legacyShipLenScene = (lengthM: number, bodySize: number, rMax: number) => {
 	const readable = Math.min(0.7, Math.max(0.14, 0.16 + 0.1 * (Math.log10(lengthM) - 1)));
@@ -142,5 +147,24 @@ describe.skip('R9 ordering (P4 acceptance - today\'s law fails these)', () => {
 		const rock = bodyRadiusScene(470, true, ctx) * 2;
 		expect(station / rock).toBeGreaterThan(0.5);
 		expect(station / rock).toBeLessThan(2);
+	});
+});
+
+// S2b ACCEPTANCE. The exact pair /scale-reference flagged: at TRUE scale a 10 km moonlet must not
+// out-draw a physically larger 22 km station. This is a real fix, not a tolerance change - before
+// the shared floor the ratio was 3.4x the wrong way.
+describe('S2b: one numerical floor across kinds', () => {
+	it('a 10 km moonlet no longer out-draws a 22 km station at true scale', () => {
+		const ctx = { bodySize: 0, rMax: 30 };
+		const moonlet = bodyRadiusScene(5, true, ctx) * 2;   // 5 km radius = 10 km across
+		const station = shipLengthScene(22000, ctx);          // 22 km long
+		expect(station).toBeGreaterThan(moonlet);
+	});
+
+	it('every kind bottoms out at the same value', () => {
+		const tiny = { bodySize: 0, rMax: 1e6 }; // a system wide enough to floor everything
+		expect(bodyRadiusScene(1, true, tiny)).toBe(NUMERICAL_FLOOR);
+		expect(starRadiusScene(1, tiny)).toBe(NUMERICAL_FLOOR);
+		expect(shipLengthScene(1, tiny)).toBe(NUMERICAL_FLOOR);
 	});
 });
