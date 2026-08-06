@@ -47,7 +47,8 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
-import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, frameHalfExtent, autoFrameStep, FRAME_LEVELS } from '$lib/viewport/camera';
+import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, autoFrameStep, FRAME_LEVELS } from '$lib/viewport/camera';
+import { frameDistanceFor, wholeSystemDistance, beltDistance } from '$lib/viewport/shotSolver';
 import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { perfCount, perfFrame } from '$lib/perfTrace';
@@ -1597,12 +1598,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const gp = bodyById.get(gpId);
       if (gp) pairContextDist = Math.max(pairContextDist, b.mesh.position.distanceTo(gp.mesh.position));
     }
-    // 0 = a radius-less construct at level 3: give it a small patch (its glyph is screen-fixed anyway).
-    const half = frameHalfExtent({ level: focusLevel, radius, parentDist, maxSatelliteDist, pairContextDist, config: { ...FRAME_LEVELS, fillFrac: frameFillFrac } })
-      || Math.max(0.35, controls.minDistance * 3);
-    const tan = Math.tan((camera.fov * Math.PI) / 360);
-    const dist = half / Math.max(1e-6, tan * Math.min(1, camera.aspect));
-    return Math.max(controls.minDistance * 1.05, dist);
+    // The geometry itself lives in `viewport/shotSolver.ts` - pure and tested (shotSolver.spec.ts).
+    // This function's remaining job is to MEASURE the scene: which bodies are the context peers,
+    // how far away they are, and what the lens currently is. A radius-less construct at level 3
+    // still gets its small patch (its glyph is screen-fixed anyway) - that is the solver's
+    // `sizelessHalfExtent` policy.
+    return frameDistanceFor({
+      radius,
+      context: { level: focusLevel, parentDist, maxSatelliteDist, pairContextDist },
+      lens: { fovYDeg: camera.fov, aspect: camera.aspect },
+      policy: { fillFrac: frameFillFrac, minDistance: controls.minDistance }
+    });
   }
 
   // Constructs render at fixed SCREEN size (sizeAttenuation: false): full-size when the focus rule
@@ -2058,16 +2064,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // clipping off the bottom of a 64° shot. R / sin(half-fov) fits a sphere of radius R at any tilt.
       // (The old fixed GRID_RADIUS * 1.5 ignored the lens altogether: at fov 45 it framed a half-extent
       // of 7.5 out of the 12 that exist, so "frame whole system" cut off the outer third of everything.)
-      const wholeR = GRID_RADIUS * 1.06; // a little border so the outermost orbit is not flush with the edge
-      const halfV = (camera.fov * Math.PI) / 360;
-      const halfH = Math.atan(Math.tan(halfV) * Math.max(1e-6, camera.aspect));
-      dist = wholeR / Math.max(1e-6, Math.sin(Math.min(halfV, halfH)));
+      dist = wholeSystemDistance(GRID_RADIUS, { fovYDeg: camera.fov, aspect: camera.aspect });
     } else if (focusedId && beltFocus) {
       // A belt/ring-of-debris is centred on the star: keep the star centred and pull back so the
       // whole annulus fits — same overhead-at-angle shot, framed to the ring rather than one body.
       desiredTarget.copy(originShift); // a belt is centred on the star, not on the floating origin
       outward.set(0, 0, 1);
-      dist = Math.max(GRID_RADIUS * 0.4, beltFocus.outerScene * 1.9);
+      dist = beltDistance(beltFocus.outerScene, GRID_RADIUS);
     } else {
       // No focus, per-body framing → leave the camera where the user put it. Still drain focusDrive
       // so a stale ease counter doesn't permanently block the auto view-orbit turntable.
