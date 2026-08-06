@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.462-beta - 6th Aug 2026
+
+* The 3D view now approaches a selected object from its parent's side, so a moon or a station in low orbit can no longer end up hidden behind the very world it orbits. Previously the camera came in from the direction of the system centre and knew nothing about the parent. Where no such angle exists - a station skimming its primary, where the shot has to sit further out than the gap between them - it falls back to the old approach rather than pretending.
+
 ## v2.1.461-beta - 6th Aug 2026
 
 * The stand-in shape for a construct with no 3D model now carries its map symbol, so a close-up still tells you what the thing is rather than just how big it is. Same triangle/circle/diamond/cross/square vocabulary the map marker uses, in the same colour.

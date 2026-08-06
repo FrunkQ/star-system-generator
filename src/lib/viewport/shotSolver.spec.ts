@@ -5,7 +5,7 @@
 // tests for those are written here now (skipped where today's code cannot pass them) so each phase
 // has a definition of done that predates the work.
 import { describe, it, expect } from 'vitest';
-import { frameHalfExtent, FRAME_LEVELS } from './camera';
+import { frameHalfExtent, FRAME_LEVELS, frameLevelsFrom, firstFrameLevel, nextFrameLevel } from './camera';
 import {
 	frameDistanceFor, distanceForHalfExtent, wholeSystemDistance, beltDistance,
 	headingDirection, hostWouldOcclude, cameraPosition, type Vec3
@@ -169,5 +169,31 @@ describe.skip('P3b: a construct in transit frames its route', () => {
 		});
 		// The route, not the parent, sets the shot.
 		expect(withRoute).toBeGreaterThan(distanceForHalfExtent(1, LENS, 1e-10));
+	});
+});
+
+// R8/section 4a: the CONSTRUCT click ladder. The owner asked for "1st click - zoom in so it is in
+// the centre... 2nd click zoom out to show host (in orbit)". A construct has no satellites and no
+// body radius, so frameLevelsFrom already yields exactly that order - close-up, then host context.
+// Pinned so a change to the shared ladder cannot silently reorder it, and so the remaining piece
+// (the IN-TRANSIT variant, which frames origin-to-destination instead of the host) is visible as
+// the only gap.
+describe('the construct click ladder (R8)', () => {
+	const constructLevels = () => frameLevelsFrom({ hasParent: true, hasSatellites: false, hasRadius: false });
+
+	it('click 1 is the close-up, click 2 is the host context', () => {
+		const levels = constructLevels();
+		expect(firstFrameLevel(levels)).toBe(3);       // centred on the construct itself
+		expect(nextFrameLevel(levels, 3)).toBe(1);     // then its host, in orbit
+	});
+
+	it('a construct with no host at all still starts on its close-up', () => {
+		const levels = frameLevelsFrom({ hasParent: false, hasSatellites: false, hasRadius: false });
+		expect(firstFrameLevel(levels)).toBe(3);
+	});
+
+	it('the BODY ladder is untouched - planets still open on planet-plus-moons', () => {
+		const planet = frameLevelsFrom({ hasParent: true, hasSatellites: true, hasRadius: true });
+		expect(firstFrameLevel(planet)).toBe(2);
 	});
 });

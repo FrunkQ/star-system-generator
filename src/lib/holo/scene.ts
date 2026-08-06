@@ -48,7 +48,7 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
 // overhead AND 3D at its configured tilt) frames a click exactly like the orrery does.
 import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, FRAME_LEVELS } from '$lib/viewport/camera';
-import { frameDistanceFor, wholeSystemDistance, beltDistance, headingDirection } from '$lib/viewport/shotSolver';
+import { frameDistanceFor, wholeSystemDistance, beltDistance, headingDirection, hostWouldOcclude } from '$lib/viewport/shotSolver';
 import {
   IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, blendToward, shotReached, isIdentity,
   type ViewOffset, type Shot
@@ -2174,10 +2174,27 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           })
         };
       }
+      // P3/R2: HOST-AWARE HEADING. Approach along host -> subject, so the subject sits in FRONT of
+      // its host and the host can never be the thing between you and what you selected. The old
+      // radial approach came outward from the SYSTEM CENTRE and knew nothing about the parent, so a
+      // moon or a station in low orbit could end up squarely behind its own world.
+      //
+      // The occlusion guarantee is structural, not a heuristic: with the camera on the subject's far
+      // side and closer to it than the host is, the host cannot intrude (`hostWouldOcclude` states
+      // the condition). Where it CANNOT hold - a station skimming its primary, where the framing
+      // distance exceeds the separation - fall back to the radial shot rather than pretend, because
+      // at that point no heading both frames the subject and clears the host.
+      const dist = frameDistance(b);
+      const hostFraming = !lockRotate && b.framingParentId ? bodyById.get(b.framingParentId) : undefined;
+      const hostPos = hostFraming ? v3(hostFraming.mesh.position) : undefined;
+      const sep = hostPos ? Math.hypot(target.x - hostPos.x, target.y - hostPos.y, target.z - hostPos.z) : 0;
+      const useHost = !!hostPos && !hostWouldOcclude({ dist, subjectRadius: b.radiusScene ?? b.shipLen ?? 0, hostSeparation: sep });
       return {
         target,
-        heading: headingDirection({ policy, tiltRad: tilt, subject: target, origin: v3(originShift) }),
-        dist: frameDistance(b)
+        heading: useHost
+          ? headingDirection({ policy: { kind: 'host-relative' }, tiltRad: tilt, subject: target, host: hostPos })
+          : headingDirection({ policy, tiltRad: tilt, subject: target, origin: v3(originShift) }),
+        dist
       };
     }
     if (framingWhole) {
