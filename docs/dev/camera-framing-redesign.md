@@ -386,7 +386,10 @@ P1. Extract, no behaviour change: scaleLaw.ts (S1) + shotSolver.ts (solver repro
     modules ships here too - it makes P2/P3 reviewable.
 P2. Motion layer: base+offset replaces driveFocus's branches; focusDrive/autoFrameStep-in-holo/
     userZoomOverride/_prevDesired deleted (M4-M7). The riskiest phase; T2 lands with it.
-P3. Host-aware heading (D1's occlusion rule) - a visible behaviour change, small diff.
+P3. SHIPPED @v2.1.462-beta. Host-aware heading selected in computeBase, with a documented fallback
+    to radial where no heading can both frame the subject and clear the host (hostWouldOcclude).
+    It really was the one-line caller change the design predicted - the policy was written and
+    tested in P1.
 P3b. PARTLY SHIPPED @v2.1.459-461-beta. DONE: the stand-in hull for a model-less construct - an
     ELLIPSOID at the authored dimensionsM (the owner chose an ellipsoid over the lozenge; it makes
     no claim about heading, which the data cannot back anyway), self-lit in the construct's
@@ -396,9 +399,13 @@ P3b. PARTLY SHIPPED @v2.1.459-461-beta. DONE: the stand-in hull for a model-less
     `sizelessHalfExtent` is unreachable for constructs. ALSO DONE: a SURFACE construct frames its
     HOST along the line host->construct, so it sits centred on the disc (its hull is not drawn at
     all under surfaceLock, and framing to its own extent flew the camera inside the planet).
-    STILL TO DO: the click LADDER itself - click 1 close-up, click 2 host-or-route - and the
-    solver's `routeExtent` input for a ship in transit. The skipped P3b test in shotSolver.spec.ts
-    names the target.
+    ALSO FOUND: the click LADDER for a parked construct was ALREADY correct and needed no work -
+    a construct has no satellites and no body radius, so `frameLevelsFrom` already yields [3, 1],
+    i.e. click 1 the close-up and click 2 the host context, exactly as asked. Now pinned by tests
+    in shotSolver.spec.ts along with the body ladder being untouched.
+    STILL TO DO: only the IN-TRANSIT rung - frame origin-to-destination instead of the host - which
+    needs the route data P3c introduces. P3b's remainder and P3c are therefore ONE piece of work,
+    not two; do them together.
 P3c. Transit route line (section 4a): reuse the orbit-ring path including A23 resampling, accel/
     brake markers, same visibility toggle. GATED ON Q5 (what crosses to players).
 P4. The new scale law (S2 + S2b's single floor) - LAST, because it moves preset looks (S3) and needs the owner's
