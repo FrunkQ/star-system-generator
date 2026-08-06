@@ -275,6 +275,27 @@ that A23 exists to fix (RENDER-S10's neighbourhood).
   - The accel/brake points are exactly what `driveBurns` already carries (when, how hard, which
     way) - see the redaction note below.
 
+THE PLUME AS A LIGHT SOURCE (owner, 2026-08-07: "would be great if the drive plume was a light
+source at its start"). IT ALREADY IS, and the code is right: `attachDrivePlume` puts a PointLight on
+each nozzle HOLDER - so at the plume's start, exactly as asked - coloured with the exhaust, with
+`intensity = 7 * thrust^2 * share` so a station-keeping puff whispers and a full torch is the
+brightest thing on the ship. What is wrong is its REACH:
+
+    rig.light.distance = Math.max(1e-9, sceneLen * 8)   // 8 hull lengths
+
+That was written to stop a 100 m exhaust lighting planets, and at the readable end of the dial it is
+right. At TRUE scale it is self-defeating: `sceneLen` for a 46 m hull is ~2e-10 scene units, so the
+light's range is ~1.6e-9 - and with `decay: 2` it falls to nothing across a distance far smaller
+than the hull it is meant to illuminate. The light is on, correct, and lighting a volume you cannot
+see. So at 1:1 - the case the owner cares about most - the plume never appears to light anything.
+
+Fix belongs with P3c because it is the same journey/burn data: the reach should be expressed in
+HULL LENGTHS of the thing being lit rather than in scene units of the emitter, i.e. scale with the
+hull actually being illuminated, and the intensity should be checked against the scene's other
+lights at true scale (a star at 1:1 is itself tiny, so "bright" is relative to a very dim scene).
+Worth checking at the same time whether the ellipsoid stand-in hulls should be lit by it at all -
+they are emissive (RENDER-S13), so a plume will not visibly light one without extra work.
+
 DATA BOUNDARY - DECIDED 2026-08-06: PUBLISH THE FLIGHT PLAN (option (a)). The owner: "I honestly
 thought we transmitted the current flight plan for a construct - but if not we can change code to
 do that." So a player sees where a ship is going. This is a deliberate widening of the redaction
