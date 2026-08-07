@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.482-beta - 3rd Aug 2026
+
+* **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
+
 ## v2.1.481-beta - 8th Aug 2026
 
 * While following the GM's clock, the player map now shows the campaign date -- bottom-left, where the local time controls would otherwise be, formatted through the campaign's own calendar so it always reads the same as the GM's clock bar. A free-running local clock stays deliberately unlabelled.

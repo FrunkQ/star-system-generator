@@ -436,7 +436,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // is that a derived magnitude is visible — and a dozen sprites is nothing. The backdrop stays a
   // Points cloud because its 1,600 members are all alike.
   const skyGroup = new THREE.Group();
-  skyGroup.renderOrder = -1; // in front of the backdrop (-1 too, added first), behind everything else
+  // renderOrder sorts WITHIN a pass, and these are transparent, so this only orders them against the
+  // backdrop — it does NOT put them behind the opaque bodies. Occlusion is the depth test's job; see
+  // the note on the sprite materials.
+  skyGroup.renderOrder = -1;
   scene.add(skyGroup);
   let skyStars: SkyStar[] = [];
   let skyMode: SkyMode = 'off';
@@ -506,8 +509,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // World-space size, not screen-space: at a fixed 860 the camera's own wander of a few tens of
       // units changes the angular size by ~3%, so a per-frame resize would buy nothing.
       const size = (3.2 + 9.5 * b) * (1 + 0.55 * skyBoost);
+      // DEPTH-TESTED, and this is the whole of the occlusion fix. These are transparent, and THREE
+      // draws the entire transparent pass AFTER the opaque one whatever `renderOrder` says — that
+      // only sorts within a pass. So a sky sprite with depthTest off paints straight over the globe,
+      // which is what put Sol's flare on top of Earth. Tested against the depth buffer it is cut at
+      // the limb per pixel, which is also the honest picture: a star behind a planet is occulted.
+      // depthWrite stays off so the sky never occludes itself.
       const dot = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: skyDot(), color: col, transparent: true, depthWrite: false, depthTest: false,
+        map: skyDot(), color: col, transparent: true, depthWrite: false, depthTest: true,
         blending: THREE.AdditiveBlending, opacity: Math.min(1, (0.45 + 0.55 * b) * (1 + 1.7 * skyBoost))
       }));
       dot.position.copy(pos);
@@ -517,7 +526,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // SPIKES SCALE WITH BRIGHTNESS, longer on the brighter stars exactly as real astrophotography
       // does — which is what turns the derived magnitude from merely correct into readable.
       const spike = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: skySpike(), color: col, transparent: true, depthWrite: false, depthTest: false,
+        map: skySpike(), color: col, transparent: true, depthWrite: false, depthTest: true,
         blending: THREE.AdditiveBlending, opacity: Math.min(1, (0.3 + 0.5 * b) * (1 + 1.7 * skyBoost))
       }));
       spike.position.copy(pos);
@@ -531,7 +540,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // at a fixed 860 the camera's own wander changes this by about 3%, so a per-frame resize would
       // buy nothing — but a window resize changes it a lot, which is why resize() rebuilds the sky.
       const worldPerPx = (2 * Math.tan((camera.fov * Math.PI) / 360) * SKY_RADIUS) / Math.max(1, viewH);
-      const label = makeGridLabel(st.name, skyLabelPx * worldPerPx);
+      // Depth-tested like its star: a name still floating over the planet while the star it points at
+      // is hidden behind it is worse than no name, because it labels empty sky.
+      const label = makeGridLabel(st.name, skyLabelPx * worldPerPx, true);
       if (label) {
         label.position.copy(pos).add(new THREE.Vector3(size * 0.9, size * 0.5, 0));
         skyGroup.add(label);
@@ -2871,7 +2882,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * class of bug. Grid labels are unchanged on screen: the same glyph height, the same left anchor,
    * only a canvas that fits them.
    */
-  function makeGridLabel(text: string, worldHeight = 0.28): THREE.Sprite | null {
+  function makeGridLabel(text: string, worldHeight = 0.28, depthTest = false): THREE.Sprite | null {
     const c = document.createElement('canvas');
     const ctx = c.getContext('2d');
     if (!ctx) return null;
@@ -2888,7 +2899,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     ctx.fillText(text, PAD, 22);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false });
+    // Grid labels default to depthTest FALSE — a ground-plane scale readout must stay legible even
+    // when a body is in front of it. A far-field constellation name is the opposite case: it belongs
+    // to a star that CAN be behind the planet, so it opts in (see the note in rebuildSkyStars).
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest });
     const sp = new THREE.Sprite(mat);
     sp.scale.set(worldHeight * (c.width / c.height), worldHeight, 1);
     sp.center.set(0, 0.5);
