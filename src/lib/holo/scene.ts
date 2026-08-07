@@ -1137,8 +1137,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return 2 * Math.PI * Math.hypot(r.abs[bi], r.abs[bi + 1], r.abs[bi + 2]) * Math.abs(warpOrbitParam(0.05, s));
   }
 
+  /**
+   * The working distance, snapped to a sqrt(2) ladder.
+   *
+   * The refinement's sample density is chosen from this, and re-emitting is triggered by the FOCUS
+   * MOVING as well as by zoom - so a camera merely following a body round its orbit re-emitted every
+   * few frames with a working distance a hair different each time, which changed the density
+   * everywhere and redistributed all 1024 vertices. That is the "orbit lines vibrate a lot" report:
+   * not motion in the line, but the line being re-derived slightly differently each time it was asked.
+   * Quantised, a re-emit that has not meaningfully changed produces the IDENTICAL buffer, so the
+   * shimmer stops without re-emitting any less often - which is the better half of "animate it less
+   * often", since a rarer wrong answer is still a visible jump.
+   */
+  function quantiseDist(d: number): number {
+    return 2 ** (Math.round(Math.log2(Math.max(1e-300, d)) * 2) / 2);
+  }
+
   function emitOrbitRings() {
-    lastRingCamDist = camera.position.distanceTo(controls.target);
+    lastRingCamDist = quantiseDist(camera.position.distanceTo(controls.target));
     lastRingFocus.addVectors(sceneOrigin, controls.target); // the focus, in absolute scene units
     lastRingCoreArc = Infinity;
     for (const r of orbitRings) {
@@ -1287,7 +1303,35 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * clean master makes the correction idempotent, which is the same reason the rings keep a master at
    * all - and it gets the rebase for free, since the origin is subtracted in this pass.
    */
+  let _routeDbgAt = -Infinity;
   function updateRouteLines() {
+    // `window.__routeDebug = true` answers "why is there no line" in ONE log line, because there are
+    // five independent ways to get no line and none of them can be told from the others by looking:
+    // the route never crossed to this surface, it crossed but the clock is outside its window, it
+    // built but nothing is selected, it is selected but the name rule hides it, or it drew with no
+    // vertices. Each field below is exactly one of those. `built` false with `hasRouteField` true
+    // means the scene never saw the data the snapshot carried; `inWindow` false with a window far
+    // from `clock` is RENDER-S18 again, on a surface that seeds its clock somewhere else.
+    if ((window as any).__routeDebug && performance.now() - _routeDbgAt > 1000) {
+      _routeDbgAt = performance.now();
+      const constructs = (currentSystem?.nodes ?? []).filter((n: any) => n.kind === 'construct');
+      console.log('[routedbg]', JSON.stringify({
+        clock: timeMs, focusedId, lines: routeLines.length, constructs: constructs.length,
+        each: constructs.map((n: any) => {
+          const line = routeLines.find((r) => r.id === n.id);
+          return {
+            id: n.id,
+            hasRouteField: !!n.route, hasJourneys: !!n.scheduled_journeys?.length,
+            derivable: !!routeOf(n),
+            built: !!line,
+            window: line ? { s: line.route.s, e: line.route.e } : null,
+            inWindow: !!line && timeMs >= line.route.s && timeMs <= line.route.e,
+            focused: n.id === focusedId, named: visibleSet.has(n.id),
+            verts: line?.count ?? 0, visible: !!line?.obj.visible
+          };
+        })
+      }));
+    }
     for (const r of routeLines) {
       const show = r.id === focusedId && visibleSet.has(r.id) && timeMs >= r.route.s && timeMs <= r.route.e;
       r.obj.visible = show;
