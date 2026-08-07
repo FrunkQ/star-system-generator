@@ -11,6 +11,10 @@ All notable changes are listed here:
 
 * **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
 
+## v2.1.489-beta - 8th Aug 2026
+
+* **New: "Save a diagnostic file" — one file that says what went wrong.** In **Settings > System > Reporting a problem**, and also offered whenever a load is stopped or fails to finish. It saves a zip containing a report of what the app was doing (memory against the limit the browser allows, your device, how long each part of loading took, how big the map is and in what units) alongside a copy of your starmap, so a problem can be reproduced rather than guessed at. When a load fails part-way it carries **both** the saved map and the half-updated one, which is what distinguishes a problem with the data from a device that simply cannot keep up. It saves to your device; nothing is sent anywhere, the file itself explains what is in it, and you can delete the map from the zip and still send something useful. Post it to FrunkQ on the Discord -- it also works as a backup of your campaign.
+
 ## v2.1.488-beta - 8th Aug 2026
 
 * **A load that gets stuck can no longer cost you your campaign.** If the app is still loading and something has locked up, the loading screen now has a **Stop load** button, and it names the system it is working on -- so if it does stick, that name says where. And if a load never finishes at all, the next visit no longer tries the same thing again: it says where loading stopped and offers three ways out -- try again, start without loading the map, or **download a copy of your saved map as a file**. That last one reads the map straight out of storage without drawing anything, so a map that will not load can still be rescued. Nothing is deleted at any point.

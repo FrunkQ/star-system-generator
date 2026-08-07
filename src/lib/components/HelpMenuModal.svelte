@@ -64,6 +64,14 @@
           <span class="hi-title">Discord — questions &amp; feedback ↗</span>
           <span class="hi-desc">Ask, report bugs, share systems.</span>
         </a>
+        <!-- Findable without being told about it: a user reporting a problem looks in Help, not in
+             Settings. The button itself stays in Settings > System, where the data tools live. -->
+        <div class="help-item help-note">
+          <span class="hi-title">Reporting a problem</span>
+          <span class="hi-desc">Settings &gt; System &gt; <em>Reporting a problem</em> saves a diagnostic file describing
+            what the app was doing, with a copy of your starmap so the problem can be reproduced. Post it on the
+            Discord — it also works as a backup.</span>
+        </div>
       </div>
     </div>
   </div>
@@ -115,6 +123,9 @@
     padding: 10px 12px; cursor: pointer; text-decoration: none; color: var(--text, #e8e8e8); font: inherit;
   }
   .help-item:hover { background: var(--bg-control-hover); border-color: var(--accent); }
+  /* An instruction, not a destination — it must not offer a click it cannot honour. */
+  .help-note { cursor: default; }
+  .help-note:hover { background: var(--bg-control); border-color: var(--border); }
   .hi-title { font-weight: 600; color: var(--accent); font-size: 0.92rem; }
   .hi-desc { color: var(--text-muted, #cfcfcf); font-size: 0.82rem; line-height: 1.4; }
 </style>

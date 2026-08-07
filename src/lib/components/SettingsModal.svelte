@@ -475,6 +475,16 @@
             {/if}
           </div>
 
+          <h4 class="advanced-head">Reporting a problem</h4>
+          <div class="form-group">
+            <p class="section-hint">Saves a file describing what the app is doing right now — how much memory it is
+              using, what your device is, how long things took, and a copy of your starmap so the problem can be
+              reproduced. It saves to this device; nothing is sent anywhere, and the file explains what is inside it.</p>
+            <button class="section-btn" on:click={() => dispatch('diagnostics')}>Save a diagnostic file (.zip)…</button>
+            <p class="section-hint">Post it to FrunkQ on the Discord with a note about what went wrong. It doubles as a
+              backup of your campaign, so it is worth keeping either way.</p>
+          </div>
+
           <!-- WS8: only shown while a pre-upgrade snapshot exists. This is the "go straight back" the upgrade
                screen promises, and it lives here because Your data is where copies of a campaign belong. -->
           {#if preUpgradeName}

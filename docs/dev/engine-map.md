@@ -15,6 +15,12 @@ code says; it says what the code cannot.
 4. If you learn something that cost you more than ten minutes to work out, ADD IT. One entry, same
    shape. That is how this file gets built — nobody is writing it in one pass.
 
+**DIAGNOSING RATHER THAN CHANGING? START AT `docs/dev/debug-tools.md`.** It indexes every instrument
+that already exists — `[sse-perf]` counters and memory providers, `[sse-load]` stage stamps, the holo
+scene's `__camDebug`/`__shipDebug`/`__routeDebug`/`__ringDebug` hooks, the memory gauge, and the user
+diagnostic bundle — with the question each one answers and how to switch it on. Extend those; do not
+invent a parallel instrument.
+
 **ENTRY FORMAT** (keep it):
 ```
 ### <ID> <short imperative claim>
@@ -717,6 +723,38 @@ WHY: the user's only exit from a map that would not load was resetting Chrome da
 was destroyed by the workaround, not by the bug. A rescue that ran the same pipeline would hang the
 same way. This is why it is offered on the safe-mode screen, BEFORE any retry.
 BLAST: adding assets/bundling to this path would reintroduce the dependency. Keep it dumb.
+
+### UI-L6 A load-failure bundle needs the STORED map and the LIVE one, and they answer different questions
+WHERE: `io/diagnosticBundle.ts` (`starmap` vs `liveStarmap`, `map.source`, `map.hasInMemoryCopy`)
+RULE: `recalcAllSystems` rewrites `node.system` IN PLACE, so mid-load the in-memory map is a half
+re-derived mixture that never existed on disk. Ship BOTH: the stored copy is the reproducible INPUT
+(test-load it — if it loads elsewhere, the fault is the device or the scale, not the data); the live
+copy shows how far the engine got and what it produced. `starmap.json` is ALWAYS the loadable one so
+the file to reach for never depends on which failure produced the bundle.
+WHY: shipping only the live map hands a debugger a state nobody can reproduce and that no code path
+ever created; shipping only the stored map throws away the evidence of where processing stopped. The
+first version of this bundled whichever map the caller happened to hold, which during a stop was the
+half-derived one — presented as if it were the input.
+BLAST: any new "here is the data" export from a mutating pipeline. Ask whether the caller's object
+is the INPUT or the STATE, and say which in the file. If storage cannot be read, the live copy takes
+the loadable name and `map.source` must say `in-memory` — never let a fallback impersonate the input.
+
+### UI-L5 A diagnostic that carries a user's campaign is built on consent, not on convenience
+WHERE: `io/diagnosticBundle.ts` (+ `diagnosticBundle.spec.ts`); offered after Stop load, in safe mode,
+and on demand from Settings → System
+RULE: four properties, all load-bearing, all pinned by the spec: built ONLY when the user asks;
+downloaded to their own device with NOTHING uploaded from here; a `README.txt` that states what is
+inside; and the campaign confined to `starmap.json` so they can delete that one file and still send a
+useful report. The per-system summary carries shapes and counts, never bodies.
+WHY: the zip contains the whole campaign including GM notes, because the map IS the reproduction of a
+load hang — there is no useful diagnostic without it. That makes the honesty of the README the thing
+standing between "helpful" and "took their data", and it is why the campaign is one deletable file
+rather than smeared through the report.
+BLAST: adding a field → ask whether it belongs in `report.json` (shape, timing, environment) or is
+campaign content (which already travels once, in `starmap.json`). Any upload, telemetry or "send it
+for me" convenience breaks the consent property and needs the owner's decision, not a refactor.
+Also: a missing map must degrade to a SMALLER bundle, never to no bundle — storage failing is when a
+diagnostic matters most.
 
 ### DATA-*  (starmaps, import, rulepacks)
 _Unwritten. Candidates: `tests/fixtures/*` and `tests/output/*` are GENERATED, never hand-edited;

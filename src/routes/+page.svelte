@@ -24,7 +24,8 @@
   import { guideConfigStore } from '$lib/catalogue/guideConfig';
   import { crtControls } from '$lib/catalogue/crtControls';
   import { starmapStore } from '$lib/starmapStore';
-  import { perfStage } from '$lib/perfTrace';
+  import { perfStage, perfEnabled } from '$lib/perfTrace';
+  import { APP_VERSION } from '$lib/constants';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
   import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
@@ -1095,6 +1096,90 @@
 
   let physicsProgress: { done: number; total: number; joke: string; current: string } | null = null;
   let recalcCancelRequested = false;
+  let loadProcessed: string[] = [];   // systems fully re-derived this load, in order
+
+  // --- Diagnostic bundle -------------------------------------------------------------------------
+  // A load hang is the one fault a user cannot usefully report: the app is frozen, a phone has no
+  // console, and the visible evidence is a stopped progress bar (which may read 100% — UI-L1). So
+  // whenever a load is stopped or refuses to finish, offer to package the evidence: the map itself,
+  // how far loading got, the device's memory, and the perf counters. It downloads to their machine;
+  // nothing is uploaded, and they choose whether to send it.
+  let diagnosticOffer: { reason: string; stalledOn: string | null; starmap: unknown | null; detail: string } | null = null;
+  let diagnosticBuilding = false;
+  let diagnosticDone = false;
+  // On-demand from Settings → System: the same pack, built while the app is WORKING. This is the
+  // one a bug report should carry — it says what was on screen, what the device is, what memory and
+  // storage look like, and every counter collected so far, with the map that reproduces it.
+  async function buildDiagnosticsOnDemand() {
+    let storage: { usageBytes: number; quotaBytes: number } | null = null;
+    try {
+      const { storageReport } = await import('$lib/storagePersistence');
+      const r = await storageReport();
+      storage = { usageBytes: r.usageBytes, quotaBytes: r.quotaBytes };
+    } catch { /* storage API unavailable; the rest of the report is still worth having */ }
+    await downloadDiagnosticBundle({
+      reason: 'requested by the user from Settings',
+      stalledOn: null,
+      starmap: $starmapStore ?? null,
+      runtime: {
+        openSystem: ($systemStore as any)?.name ?? null,
+        view: $systemStore ? 'system view' : 'starmap',
+        storage,
+        perfTracingOn: perfEnabled()
+      }
+    });
+  }
+
+  // `src.starmap` is always the LIVE map (the store, or the one the recalc was mutating). The STORED
+  // copy is re-read here, so the two are never confused at a call site — see engine map UI-L6.
+  async function downloadDiagnosticBundle(ctx?: { reason: string; stalledOn: string | null; starmap: unknown | null; runtime?: any }) {
+    const src = ctx ?? diagnosticOffer;
+    if (!src) return;
+    diagnosticBuilding = true;
+    try {
+      const { buildDiagnosticBundle } = await import('$lib/io/diagnosticBundle');
+      // ALWAYS PREFER A FRESH READ FROM STORAGE, and this is not a detail: `recalcAllSystems`
+      // rewrites `node.system` IN PLACE as it goes, so the in-memory map at the moment of a stop is
+      // half re-derived — a mixture that never existed on disk and that nobody can load to reproduce
+      // anything. The stored copy is the exact INPUT that failed, so it can be test-loaded elsewhere,
+      // which is what separates "this map's data breaks the loader" from "this device is too slow".
+      // The in-memory map is only a fallback for when storage itself cannot be read — a report with
+      // an imperfect map still beats no report.
+      let map: unknown | null = null;
+      try { map = await loadSavedStarmap(); } catch { map = null; }
+      let mapSource: 'stored' | 'in-memory' | 'none' = map ? 'stored' : 'none';
+      // BOTH COPIES SHIP WHEN THEY DIFFER, and for a mid-load failure they always do: the stored one
+      // is the input to test-load, the in-memory one shows how far the engine got and what it had
+      // produced when it stopped. Together they say whether the data or the device is at fault.
+      const live = src.starmap ?? null;
+      if (!map && live) { map = live; mapSource = 'in-memory'; }
+      const perf = (window as any).__ssePerf ?? {};
+      const { bytes, filename } = buildDiagnosticBundle({
+        reason: src.reason,
+        starmap: map ?? null,
+        liveStarmap: live,
+        stages: perf.loadStages ?? [],
+        counters: perf.counters ?? {},
+        processed: loadProcessed,
+        stalledOn: src.stalledOn,
+        guardStage: loadGuardTripped(),
+        runtime: src.runtime ?? null,
+        mapSource
+      }, APP_VERSION);
+      const blob = new Blob([bytes], { type: 'application/zip' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      diagnosticDone = true;
+    } catch (e) {
+      console.warn('[sse-load] diagnostic bundle failed', e);
+      alert('Sorry — the diagnostic file could not be built. Saving your campaign to a file from the File menu still works.');
+    } finally {
+      diagnosticBuilding = false;
+    }
+  }
 
   // --- Memory warning (perf comb, 2026-08) -------------------------------------------------------
   // The app has genuinely hit out-of-memory in a live session, and a tab dies without a word when it
@@ -1149,6 +1234,7 @@
     await new Promise((r) => setTimeout(r, 30));
     let stoppedBefore: string | null = null;
     let stoppedIndex = 0;
+    loadProcessed = [];
     for (let i = 0; i < systems.length; i++) {
       const node = systems[i];
       // The Stop button can only be HEARD between systems (one system's process() is synchronous);
@@ -1164,6 +1250,7 @@
           node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack);
         }
       } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
+      loadProcessed.push(nameOf(i));
       perfStage(`physics:${nameOf(i)}`); // sinceLastMs ≈ this system's processing cost
       physicsProgress = {
         done: i + 1, total: systems.length,
@@ -1183,11 +1270,17 @@
     if (stoppedBefore) {
       const kept = stoppedIndex;
       console.warn('[sse-load] recalc stopped by user:', kept, 'of', systems.length, 're-derived; next was', stoppedBefore);
-      alert(
-        `Stopped the physics refresh.\n\n` +
-        `${kept} of ${systems.length} systems were re-derived with the current engine; the rest keep the physics they were saved with (they still work, but engine updates won't show on them until a full load completes).\n\n` +
-        `Next in line was "${stoppedBefore}" — if the load was stuck, that is the system to report.`
-      );
+      // Offer the diagnostic bundle rather than an alert that only the user can read: a load hang
+      // is the one fault a user cannot usefully report (frozen app, no console on a phone), so the
+      // moment they stop one is the moment to capture the evidence.
+      diagnosticOffer = {
+        reason: 'the user stopped the load',
+        stalledOn: stoppedBefore,
+        starmap,
+        detail: `${kept} of ${systems.length} systems were refreshed with the current engine before you stopped. ` +
+          `The rest keep the physics they were saved with — they still work, they just will not show the latest engine changes until a full load finishes. ` +
+          `It was about to start "${stoppedBefore}".`
+      };
     }
     return starmap;
   }
@@ -1636,6 +1729,34 @@
     </div>
   {/if}
 
+  {#if diagnosticOffer}
+    <div class="physics-overlay" role="alertdialog" aria-modal="true" aria-label="Load stopped">
+      <div class="physics-card">
+        <h2>Load stopped</h2>
+        <p class="physics-guard-detail">{diagnosticOffer.detail}</p>
+        <p class="physics-guard-detail">
+          You can save a diagnostic file that shows where loading got to, what your device had to work
+          with, and includes a copy of the map itself. It saves to this device — nothing is sent anywhere,
+          and you choose whether to share it.
+        </p>
+        <div class="physics-guard-actions">
+          <button type="button" class="physics-guard-btn primary" disabled={diagnosticBuilding} on:click={downloadDiagnosticBundle}>
+            {diagnosticBuilding ? 'Building the file…' : (diagnosticDone ? 'Save it again' : 'Save a diagnostic file (.zip)')}
+          </button>
+          <button type="button" class="physics-guard-btn" on:click={() => { diagnosticOffer = null; diagnosticDone = false; }}>
+            {diagnosticDone ? 'Done — carry on' : 'No thanks, carry on'}
+          </button>
+        </div>
+        {#if diagnosticDone}
+          <p class="physics-joke">Saved. Post it to FrunkQ on the Discord with a note about what you were doing — the
+            file also works as a backup of your campaign, so keep a copy.</p>
+        {:else}
+          <p class="physics-joke">It contains your campaign, including GM notes. The file explains what is inside it.</p>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
   {#if loadGuardPrompt}
     <div class="physics-overlay" role="alertdialog" aria-modal="true" aria-label="The last load did not finish">
       <div class="physics-card">
@@ -1648,8 +1769,13 @@
           <button type="button" class="physics-guard-btn primary" on:click={async () => { loadGuardPrompt = null; await handleLoadStarmap(); }}>Try loading again</button>
           <button type="button" class="physics-guard-btn" on:click={() => { loadGuardPrompt = null; loadGuardClear(); showNewStarmapModal = true; }}>Start without loading it</button>
           <button type="button" class="physics-guard-btn" on:click={downloadStoredStarmap}>Download a copy (.json)</button>
+          <button type="button" class="physics-guard-btn" disabled={diagnosticBuilding} on:click={() => downloadDiagnosticBundle({
+            reason: `the previous load never finished (safe mode; stopped at "${loadGuardPrompt}")`,
+            stalledOn: null,
+            starmap: null
+          })}>{diagnosticBuilding ? 'Building the file…' : 'Save a diagnostic file (.zip)'}</button>
         </div>
-        <p class="physics-joke">If it keeps stopping at the same place, that name is the thing to report.</p>
+        <p class="physics-joke">If it keeps stopping at the same place, send the diagnostic file to FrunkQ on the Discord.</p>
       </div>
     </div>
   {/if}
@@ -1762,6 +1888,7 @@
       on:editsensors={() => { settingsReturnSection = 'technology'; showSensorsModal = true; }}
       on:edittags={() => { settingsReturnSection = 'tagging'; showTagEditor = true; }}
       on:llm={() => { settingsReturnSection = 'system'; showLlmSettingsModal = true; }}
+      on:diagnostics={buildDiagnosticsOnDemand}
       on:about={() => showAbout = true}
     />
   {/if}

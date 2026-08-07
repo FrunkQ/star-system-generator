@@ -2,6 +2,12 @@
 
 This document provides a comprehensive map of the application's architecture, layering, and core simulation logic.
 
+**Diagnosing something rather than building it? Start at [`debug-tools.md`](debug-tools.md).** It indexes
+every instrument that already exists — the `[sse-perf]` frame/memory/counter trace, `[sse-load]` load
+stage stamps, the holo scene's `__camDebug` / `__shipDebug` / `__routeDebug` / `__ringDebug` hooks, the
+memory gauge, and the user-facing diagnostic bundle — with the question each one answers and how to
+switch it on. The traps that are invisible in the code live in [`engine-map.md`](engine-map.md).
+
 ---
 
 ## 1. Core Architecture Layers
@@ -71,6 +77,13 @@ The system is built as a **Layered Simulation Pipeline**, separating data-driven
 1.  **Plan**: The `TransitPlanner` uses the Physics layer to solve for a valid route.
 2.  **Schedule**: The resulting `TransitPlan` is pushed into the construct's `scheduled_journeys` log.
 3.  **Execute**: As time advances, `scheduler.ts` samples the log to update the construct's visual position and status (Orbiting -> Transit -> Arrived).
+
+### The Cold Load (Storage -> Re-derive -> Render)
+1.  **Read**: the saved starmap is read from IndexedDB on startup and auto-loaded.
+2.  **Re-derive**: `recalcAllSystems` strips baked-in derived data and re-runs `SystemProcessor.process()` over **every** system, so a stored map picks up the current engine rather than whatever was baked in when it was saved. It rewrites `node.system` **in place**, one system at a time, behind the progress overlay.
+3.  **Render**: the store is set and the starmap view draws its first frame.
+
+**The overlay covers step 2 only, and is cleared after step 3** — so a hang in the store update or the first render leaves a progress bar reading 100%. That is a real reported fault, not a hypothetical. Steps are stamped (`[sse-load]`), the load is interruptible (**Stop load**), and an unfinished load is remembered so it is not retried blindly on the next visit. See `debug-tools.md` and engine-map `UI-L1`–`UI-L6`.
 
 ---
 
