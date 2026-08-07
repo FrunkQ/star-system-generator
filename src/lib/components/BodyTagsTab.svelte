@@ -285,7 +285,8 @@
   .secret-btn { border: 1px solid var(--border); background: transparent; color: var(--text-faint); border-radius: 3px; font-size: 0.62em; padding: 1px 4px; cursor: pointer; align-self: center; }
   .secret-btn:hover { color: var(--text); }
   .tags-list { display: flex; flex-wrap: wrap; gap: 5px; }
-  .tag-chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; display: flex; align-items: center; gap: 5px; color: #fff; }
+  /* THE TAG PILL — geometry from the tokens, so this chip and the map markers stay one shape. */
+  .tag-chip { border: none; border-radius: var(--tag-pill-radius); padding: var(--tag-pill-pad-y) var(--tag-pill-pad-x); font-size: var(--tag-pill-font-size); cursor: pointer; display: flex; align-items: center; gap: var(--tag-pill-gap); color: #fff; }
   .tag-chip.active:hover { filter: brightness(1.12); }
   .tag-chip.locked { cursor: default; }
   .x { font-weight: bold; font-size: 1.1em; line-height: 0.5; }

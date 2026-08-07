@@ -40,19 +40,31 @@
   // MAP HIGHLIGHTS — a system badges the union of what everything INSIDE it carries, not just its
   // star. The interesting cases are never on the star: a faction holding one moon, a refuelling stop
   // at a gas giant. Several factions in one system is a real answer, so they all show.
-  import { rollUpMarkers, capMarkers } from '$lib/tags/mapHighlights';
+  import { rollUpMarkers, capMarkers, type MapHighlights } from '$lib/tags/mapHighlights';
+  import type { TagCategory } from '$lib/tags/tagCategories';
+  // A system's badge IS the panel's tag chip, drawn small — see tags/tagPill.ts. The pill's width is
+  // now MEASURED; it used to be guessed from the character count, so a wide label overflowed its own
+  // rect and a narrow one sat in a rect too big for it.
+  import { tagPillMetrics, tagPillSvg, tagPillText, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG } from '$lib/tags/tagPill';
+  const markerPill = tagPillMetrics(6);
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
-  const systemMarkers = (sysNode: any) =>
-    capMarkers(rollUpMarkers(sysNode?.system?.nodes ?? [], activeHighlights, $tagCategories));
+  // THE SELECTION IS PASSED IN, NEVER CLOSED OVER. `{@const hl = systemMarkers(systemNode)}` inside the
+  // each-block only re-evaluates when a value it MENTIONS changes; a helper that reads `activeHighlights`
+  // out of scope hides that dependency from the compiler, so the badges were computed once — against an
+  // empty selection — and never again. The fade worked throughout, because its expression names
+  // `highlightsActive` directly, which is why the map looked half-alive: systems dimmed, nothing badged.
+  const systemMarkers = (sysNode: any, highlights: MapHighlights, cats: TagCategory[]) =>
+    capMarkers(rollUpMarkers(sysNode?.system?.nodes ?? [], highlights, cats));
   // A HIGHLIGHT IS A FILTER on the starmap, by default and with no extra control: once something is
   // highlighted, the systems carrying none of it fade back. "Show me where the refuelling is" then
   // reads as a map answer instead of a hunt for small badges. Clearing the selection restores
   // everything — it is a visual emphasis, never a hide.
   $: highlightsActive = activeHighlights.length > 0;
-  const systemMatches = (sysNode: any) =>
-    rollUpMarkers(sysNode?.system?.nodes ?? [], activeHighlights, $tagCategories).length > 0;
+  // Same rule as systemMarkers above: the caller names the reactive values, so the dependency is visible.
+  const systemMatches = (sysNode: any, highlights: MapHighlights, cats: TagCategory[]) =>
+    rollUpMarkers(sysNode?.system?.nodes ?? [], highlights, cats).length > 0;
   // The KEY. Badges alone do not explain themselves at starmap zoom, so the selection is listed with
   // its colours. Built from the same resolution the markers use, so it cannot disagree with them.
   $: highlightKey = (() => {
@@ -1304,25 +1316,23 @@
       {/each}
 
           {#each starmap.systems as systemNode}
-        {@const hl = systemMarkers(systemNode)}
+        {@const hl = systemMarkers(systemNode, activeHighlights, $tagCategories)}
         {#if hl.shown.length}
-          <g class="hl-markers" transform="translate({systemNode.position.x + 8 * labelK}, {systemNode.position.y - 10 * labelK}) scale({labelK})" pointer-events="none">
+          <g class="hl-markers" transform="translate({systemNode.position.x + 8 * labelK}, {systemNode.position.y - 10 * labelK}) scale({labelK})" pointer-events="none" style="font-size:{markerPill.fontPx}px; font-family:{markerPill.fontFamily}">
             {#each hl.shown as m, i (m.key)}
               {#if m.style === 'ring' || m.style === 'both'}
                 <circle cx={-8} cy={10} r={9 + i * 2.5} fill="none" stroke={m.color} stroke-width="1.4" />
               {/if}
               {#if m.style !== 'ring'}
-                <g transform="translate(0, {i * 9})">
-                  <rect x="0" y="-4.5" width={(m.style === 'pin' || m.style === 'flag' ? m.monogram : m.label).length * 3.6 + 6} height="9" rx="2.5" fill={m.color} />
-                  <text x="3" y="2" class="hl-text" fill={m.textColor}>{m.style === 'pin' || m.style === 'flag' ? m.monogram : m.label}</text>
-                </g>
+                {@const p = tagPillSvg(tagPillText(m), 0, i * markerPill.rowStep, markerPill)}
+                <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={p.rx} fill={m.color} />
+                <text x={p.textX} y={p.textY} class="hl-text" fill={m.textColor}>{tagPillText(m)}</text>
               {/if}
             {/each}
             {#if hl.overflow}
-              <g transform="translate(0, {hl.shown.length * 9})">
-                <rect x="0" y="-4.5" width="16" height="9" rx="2.5" fill="rgba(30,34,42,0.9)" />
-                <text x="3" y="2" class="hl-text" fill="#cfd6e0">+{hl.overflow}</text>
-              </g>
+              {@const p = tagPillSvg(`+${hl.overflow}`, 0, hl.shown.length * markerPill.rowStep, markerPill)}
+              <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={p.rx} fill={TAG_PILL_OVERFLOW_BG} />
+              <text x={p.textX} y={p.textY} class="hl-text" fill={TAG_PILL_OVERFLOW_FG}>+{hl.overflow}</text>
             {/if}
           </g>
         {/if}
@@ -1330,7 +1340,7 @@
         <g
           role="button"
           tabindex="0"
-          class:hl-dim={highlightsActive && !systemMatches(systemNode)}
+          class:hl-dim={highlightsActive && !systemMatches(systemNode, activeHighlights, $tagCategories)}
           on:pointerdown={(e) => handleSystemPointerDown(e, systemNode.id)}
           on:click={(e) => handleStarClick(e, systemNode.id)}
           on:dblclick={() => handleStarDblClick(systemNode.id)}
@@ -2141,7 +2151,8 @@
   .jc-buttons button.danger { background: var(--status-bad, #e0484d); color: #fff; }
   .jc-buttons button.primary { background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); }
 
-  .hl-text { font-size: 6px; font-family: system-ui, sans-serif; dominant-baseline: middle; }
+  /* Size and family are set on the .hl-markers group from the shared pill metrics — never restated here. */
+  .hl-text { dominant-baseline: middle; }
   .hl-markers { pointer-events: none; }
 
   /* A highlight filters by emphasis: unmatched systems fade, they never vanish. */

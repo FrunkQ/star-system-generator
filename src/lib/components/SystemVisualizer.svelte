@@ -96,6 +96,10 @@
   // Either way the tags being matched are whatever this view was handed, and a player view is handed
   // the redacted snapshot — so a secret tag cannot badge here regardless of what is selected.
   import { markersFor, capMarkers, type HighlightMarker, type MapHighlights } from '$lib/tags/mapHighlights';
+  // A marker IS the panel's tag chip, drawn small — see tags/tagPill.ts. Nothing here re-invents its
+  // padding, radius or font; only the size at which the shared shape is drawn belongs to this view.
+  import { tagPillMetrics, drawTagPill, tagPillText, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG } from '$lib/tags/tagPill';
+  const MARKER_PILL_FONT_PX = 9;
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   export let highlights: MapHighlights | null = null;
@@ -1372,38 +1376,26 @@
               }
 
               // PILLS fan to the right of the body, stacked downward — a stable order, so a body's badges
-              // do not reshuffle between frames.
+              // do not reshuffle between frames. Shape comes from tagPill: this is the SAME object as
+              // the chip in the Tags panel, drawn at map size, not a canvas lookalike of it.
               const pills = shown.filter((m) => m.style !== 'ring');
               if (!pills.length && !overflow) return;
               const prevFont = ctx.font;
               const prevAlign = ctx.textAlign;
-              ctx.font = '9px system-ui, sans-serif';
-              ctx.textAlign = 'left';
-              let py = y + 9;
+              const prevBaseline = ctx.textBaseline;
+              const pm = tagPillMetrics(MARKER_PILL_FONT_PX);
+              let py = y + pm.height / 2 + 2;
               const px = x + Math.max(discRadiusPx, 3) + 5;
               for (const m of pills) {
-                  const text = m.style === 'pin' || m.style === 'flag' ? m.monogram : m.label;
-                  const w = ctx.measureText(text).width + 8;
-                  ctx.fillStyle = m.color;
-                  if (typeof (ctx as any).roundRect === 'function') {
-                      ctx.beginPath(); (ctx as any).roundRect(px, py - 7, w, 11, 3); ctx.fill();
-                  } else {
-                      ctx.fillRect(px, py - 7, w, 11);
-                  }
-                  ctx.fillStyle = m.textColor;
-                  ctx.fillText(text, px + 4, py + 1);
-                  py += 13;
+                  drawTagPill(ctx, tagPillText(m), px, py, pm, m.color, m.textColor);
+                  py += pm.rowStep;
               }
               if (overflow) {
-                  const text = `+${overflow}`;
-                  const w = ctx.measureText(text).width + 8;
-                  ctx.fillStyle = 'rgba(30,34,42,0.9)';
-                  ctx.fillRect(px, py - 7, w, 11);
-                  ctx.fillStyle = '#cfd6e0';
-                  ctx.fillText(text, px + 4, py + 1);
+                  drawTagPill(ctx, `+${overflow}`, px, py, pm, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG);
               }
               ctx.font = prevFont;
               ctx.textAlign = prevAlign;
+              ctx.textBaseline = prevBaseline;
           }
 
           // Draw labels child → parent (deepest hierarchy depth first) so a parent's label paints LAST

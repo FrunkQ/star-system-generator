@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.492-beta - 8th Aug 2026
+
+* **Fixed: highlight badges never appeared on the starmap.** Choosing a tag to highlight correctly faded back the systems that do not carry it -- so the map clearly responded -- but the coloured badges naming the tag were never drawn, on any system, ever. The selection was read once when the map was first built and then never looked at again, so the badges were always working from an empty selection. They now appear as soon as you add a tag and update as you change it.
+* **Tag markers on the maps are now the same shape as the tag chips in the panels.** A marker on a map and a chip in a body's Tags tab are the same thing, and they now look like it -- the same corner rounding, the same padding, the same typeface -- just drawn smaller on a map. Previously the orrery and the starmap each drew their own approximation of a chip.
+* **Fixed: a starmap badge did not fit its own text.** Badge width was estimated from the NUMBER of letters rather than measured, so a wide name overflowed its own coloured rectangle by up to half its width again, and a narrow one sat in a rectangle nearly twice the size it needed. Widths are now measured.
+
 ## v2.1.491-beta - 7th Aug 2026
 
 * Housekeeping, no product change: the observations inbox records the owner's sign-off pass. The satellite reference frame (moons and rings sitting in their parent's equator), the orbit-line sweep on a followed ship, the 3D body picture inside the view filter, the distance grids and the charted-star sky are all confirmed on screen rather than only in numbers; the ship-appearance follow-ups are closed. Two new observations captured: the Traveller importer producing over-flattened gas giants, and a fault to be detailed on Epsilon Indi A b in the real-sky importer.

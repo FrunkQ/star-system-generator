@@ -204,6 +204,54 @@ that will never appear on a map.
 BLAST: new tag-choosing UI → pick deliberately and say which in the component header. Do not "unify"
 them; the filtering IS the difference.
 
+### TAG-17 A helper that reads a reactive value OUT OF SCOPE is invisible to the compiler, and `{@const}` will not re-run
+WHERE: `components/Starmap.svelte` — `systemMarkers` / `systemMatches`, called from
+`{@const hl = systemMarkers(systemNode, activeHighlights, $tagCategories)}` inside the systems each-block.
+RULE: pass reactive values as ARGUMENTS at the call site. A `{@const}` re-evaluates only when a value
+its own expression MENTIONS changes; a helper that closes over `activeHighlights` hides that dependency,
+so the const is computed once and never again.
+WHY: the starmap roll-up markers (§9.4 of the tagging design) shipped at v2.1.4xx and had NEVER RENDERED.
+`systemMarkers(systemNode)` closed over the selection, so every system's badges were computed against the
+empty selection at mount and frozen there. The FADE worked throughout, because its expression names
+`highlightsActive` directly — which is exactly what made it hard to see: the map visibly responded to a
+highlight (31 of 42 systems dimmed) while the thing the feature is FOR never appeared. Measured after the
+fix: 11 marker groups, 14 pills, matching the 42−31 that were not dimmed.
+BLAST: any `{@const}` calling a `const` helper in this file or another legacy-mode (`$:`) component — the
+same shape appears wherever a helper is defined once and used in a template. A continuous
+`requestAnimationFrame` renderer does NOT have this bug and is why the ORRERY was fine:
+`SystemVisualizer` re-reads `activeHighlights` every frame. Declarative surfaces need the dependency
+made explicit; imperative ones re-read for free. Do not "fix" the canvas by copying this.
+
+### TAG-18 The tag pill is ONE shape, and two of its four implementations cannot share code
+WHERE: `tags/tagPill.ts` (the authority), `styles/tokens.css` `--tag-pill-*`, guarded by `tagPill.spec.ts`
+RULE: a panel chip and a map marker are the same object. Geometry is defined ONCE as proportions in em
+(padX 0.625, padY/radius 0.3125, gap 0.46875) against a 12.8px base; every surface scales that, never
+restates it. CSS consumers read the tokens; canvas and SVG consumers call `tagPillMetrics(fontPx)`.
+WHY: there were FOUR shapes that merely resembled each other — CSS chips at radius 4/pad 8, the orrery's
+canvas rect at radius 3/pad 4, the starmap's SVG rect at radius 2.5/pad 3, and the CSS chip itself
+duplicated between `BodyTagsTab` and `TagFinder` with `0.8em` against `0.8rem`. The starmap's was worse
+than merely different: its width was `label.length * 3.6 + 6`, a CHARACTER COUNT, so `WWWWWWWW`
+overflowed its own rect by 17.5px (50%) while `iiiiiiii` sat in one 45% too wide.
+BLAST: CSS and TS cannot import from each other, so the spec parses `tokens.css` and asserts the four
+values still equal `TAG_PILL_BASE` — a red test is the only thing standing between them. Adding a fifth
+surface → call `tagPillMetrics`, do not copy numbers. **A ZERO MEASUREMENT IS NOT A MEASUREMENT:**
+`measureTagPillText` falls back to an estimate when a context answers 0 for non-empty text, because jsdom
+and other stub 2D contexts do exactly that and a null check sails straight past them.
+
+### TAG-19 A canvas surface CANNOT be verified in a worker session, and the reason is not the screenshot
+WHERE: any `requestAnimationFrame` renderer — `SystemVisualizer.drawSystem`, `holo/scene.ts`
+RULE: the Browser pane runs with `document.hidden === true` / `visibilityState: 'hidden'`, so rAF never
+fires. Measured 2026-08-08: **0 frames in 1500 ms**, and the whole 674x720 orrery canvas reads back
+ZERO OPAQUE PIXELS. Nothing is drawn, so nothing can be read back either — `getImageData` is not a way
+round it.
+WHY: the standing rule says "screenshots time out", which reads as a capture problem and invites people
+to keep trying. The mechanism is upstream of capture: the frame was never rendered. DECLARATIVE surfaces
+(SVG, DOM) are unaffected and ARE verifiable headlessly — the starmap markers in TAG-17 were confirmed
+live this way, by reading real `getBBox` widths against `measureText`.
+BLAST: if your change lands on a canvas, verify the PRIMITIVE instead (import the real module from the
+dev server, draw into your own context, probe pixels) and hand back an explicit list for a human eye.
+Do not report a canvas change as visually confirmed.
+
 ---
 
 ## PHYSICS — ordering and honesty

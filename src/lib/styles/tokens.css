@@ -58,6 +58,17 @@
   --font-ui: system-ui, 'Segoe UI', Arial, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
 
+  /* ---------- CHROME: the TAG PILL ----------
+     One shape wherever a tag appears — a panel chip and a map marker are the same object.
+     CSS consumers use these; canvas and SVG consumers cannot read CSS and go through
+     src/lib/tags/tagPill.ts, whose spec asserts it still agrees with these four values.
+     Values unchanged from the chips that have always shipped. */
+  --tag-pill-radius: var(--radius-sm);   /* 4px  */
+  --tag-pill-pad-y: var(--space-1);      /* 4px  */
+  --tag-pill-pad-x: var(--space-2);      /* 8px  */
+  --tag-pill-font-size: 0.8rem;          /* 12.8px at a 16px root — the ratio base */
+  --tag-pill-gap: 6px;
+
   /* =========================================================================
      DOMAIN — colour as information. PRESERVED. Source: src/lib/rendering/colors.ts,
      SystemVisualizer.svelte, BodyStarTab.svelte, ConstructGeneralTab.svelte.

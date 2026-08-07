@@ -287,7 +287,8 @@ Click to filter. Drag onto the highlight tray to badge it on the maps.">
   .bubble.open { background: var(--c); color: #fff; }
   .bcnt { font-size: 0.68em; opacity: 0.7; }
   .cat-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px; background: var(--bg-control); border-radius: 6px; }
-  .chip { border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: #fff; }
+  /* THE TAG PILL — geometry from the tokens, so this chip and the map markers stay one shape. */
+  .chip { border: none; border-radius: var(--tag-pill-radius); padding: var(--tag-pill-pad-y) var(--tag-pill-pad-x); font-size: var(--tag-pill-font-size); cursor: pointer; display: inline-flex; align-items: center; gap: var(--tag-pill-gap); color: #fff; }
   .chip:hover { filter: brightness(1.12); }
   .chip.active { outline: 2px solid #fff; }
   .cnt { font-size: 0.72em; opacity: 0.85; background: rgba(0,0,0,0.22); border-radius: 8px; padding: 0 5px; }
