@@ -39,6 +39,12 @@ means two implementations exist. Record it as a CAVEAT on the entry whose WHERE 
 PHY-4 carries the worked example — and route the fix to the inbox. Never resolve it by editing the
 map to agree with itself.
 
+**SOMETHING CAN WORK AND STILL BE A MISALIGNMENT.** `## OPEN MISALIGNMENTS` at the foot of this file
+lists places where one concept has two implementations that currently AGREE. None of them is a bug
+today; every one of them is where the next bug comes from, and the point of listing them is that the
+next person to touch that area finds out before they add the third copy. Do NOT go and fix them
+speculatively — record, and resolve when the area is open anyway.
+
 ---
 
 ## TAGS — lifecycle and provenance
@@ -1255,3 +1261,92 @@ frame while playing and jumps arbitrarily while scrubbing. Reacting to it direct
 value per frame; for anything cached forward-only (PHY-6) a backwards scrub then costs a full
 recompute per frame.
 BLAST: any other panel row derived from a search or a propagation rather than from stored fields.
+
+---
+
+## OPEN MISALIGNMENTS
+
+**READ THIS BEFORE YOU DECIDE A SUBSYSTEM IS CLEAN.** These are places where one concept has two or
+more implementations that AGREE TODAY. Nothing here is a bug; a working mess is fine. They are listed
+because agreement is being held by something incidental — an ordering, a repair, a coincidence of
+data — and the failure, when it comes, will look like a fault in whichever copy you did not know
+about. NOT a work list. Resolve one only when you are in that area for another reason, and if you do,
+say so here.
+
+Format: **WHAT** / where / **WHY IT HOLDS TODAY** / **WHAT WOULD BREAK IT**.
+
+### M1 "Is this a giant?" and "does this have a surface?" are two helpers with overlapping answers
+`physics/makeup.rendersAsGiant` (`gas > 0.5 || isFluidGiant`, i.e. mass > 8 M⊕ AND density < 2.5) vs
+`physics/radiation.hasSolidSurface` (`gas <= 0.5`). An ICE giant is ice-dominated with a low gas
+fraction, so it is exactly the body the two could disagree about.
+HOLDS because `SystemProcessor.reconcileGiantMakeup` runs TWICE (`:455` and `:849`, idempotent) and
+rewrites a gas-poor fluid-giant makeup to gas 0.6–0.92 before either helper is consulted; where the
+makeup is absent entirely, `makeupFractions` infers it from density and lands gas-dominated anyway.
+Checked on the bundled Sol: Uranus and Neptune correctly carry NO `hazard/radiation` tag.
+BREAKS IF: `rendersAsGiant`'s consumers are RENDERING code (`planetAppearance`, `apparentColor`,
+`holo/scene`, `catalogue/smallBodyShape`) and none of them requires the body to have been through
+`process()`. Anything that draws a body from raw or partly-processed data steps outside the repair.
+Also breaks if the reconcile is moved, made conditional, or its 0.6 floor is lowered towards 0.5.
+
+### M2 One expression, `makeup.gas` against 0.5, answers at least FOUR different questions
+30 executable sites across 14 files. The questions are: *has ground* (`radiation.hasSolidSurface`,
+`SystemProcessor:1345`, `cloudDecks:226`, `tagDefaults.SURFACE`), *is a giant* (`albedo:126`,
+`SystemProcessor:1036,1163`, `makeup:37,63,102`), *draws as a giant* (`rendersAsGiant`, `apparentColor`),
+and *has a surface to rust / to weather* (`cloudDecks:299,363`, `temperature:280`).
+HOLDS because the threshold happens to be the same number for all four — see PHY-4's caveat for the
+two places it already is NOT.
+BREAKS IF: anyone "unifies" them on the strength of the shared constant. They are four questions that
+share a boundary, not one question in four spellings, and B36 is scoped as the has-ground one only.
+
+### M3 THREE incommensurable word-vocabularies sit in one info block, and B28's inbox entry is stale
+On Mars: `hazard/radiation = years`, `surface/irradiation = high`, `surface/age = old`. On Io:
+`hazard/radiation = hours` beside `surface/irradiation = low`. The first is TIME-TO-LETHAL-DOSE
+(`RadiationHazard = 'hours'|'days'|'weeks'|'months'|'years'|'chronic'|'background'`,
+`radiation.ts:126`), the second a low/moderate/high index (`SystemProcessor:993`), the third
+young/moderate/ancient (`:983`).
+HOLDS because each is individually correct and they genuinely answer different questions — which is
+PHY-2's whole point, and B28 chose deliberately not to feed the belt into the weathering model.
+BREAKS IF: someone reads them as comparable, which a GM scanning tags will. NOTE FOR WHOEVER OPENS
+THIS: **B28's own closing note describes a five-word set (`background/elevated/high/severe/lethal`)
+that no longer exists** — the vocabulary has already turned over once since the entry was written, so
+trust `radiation.ts:126`, not the inbox. B20/B29 own the settlement.
+
+### M4 One preset field, `draft.grid`, is bound by TWO pickers offering different option sets
+`components/PlayerPresetEditor.svelte:411` renders `MAP_OVERLAY_OPTIONS` (7 options, hexes included),
+`:513` renders `SYSTEM_OVERLAY_OPTIONS` (4, hexes filtered out) — both `bind:value={draft.grid}`.
+HOLDS at RENDER time because `mapOverlay.forSystemScale` folds a hex value to `square` for the system
+views (`SystemVisualizer:46`, `holo/scene:1752`), so a stray hex grid never draws inside a system.
+BREAKS IF: the EDITOR is where it is lossy, not the renderer. Choose Traveller hex for the starmap,
+then open the system tab: that `<select>` has no matching option, and touching it writes the system's
+choice back over the starmap's. A37 recorded this unnumbered and it was never picked up. The fix is
+two fields or one filtered writer, not a third option list.
+
+### M5 Three generation paths seed an rng from `Date.now()`, inside a codebase built on reproducibility
+`system/modifiers.ts:55`, `:215`, `:429` — `new SeededRNG(sys.seed + Date.now())`, with the comment
+"Use a new RNG seed to avoid determinism issues".
+HOLDS because these are one-shot AUTHORING actions (a GM adding or re-rolling a body); the result is
+stored, and nothing replays them. Same licence as the `Math.random` sites in `SystemView.svelte`.
+BREAKS IF: any of it is ever called from a load, an import, a rebuild or a replay — then the same
+input produces a different system every time and no test can pin it. DATA-G1 is the rule these sit
+outside of; the comment is the honest signal that someone already met the tension and moved on.
+
+### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
+- **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
+  `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s
+  15% soft edge means it really closes at 0.575, not 0.5.
+- **TAG-1 CAVEAT**: `SystemProcessor.ts:899` is a hand-rolled NAMESPACE strip outside
+  `stripForReprocess` (for a stated reason), and four sites strip "legacy" against three different
+  definitions of legacy.
+- **DATA-G1 BLAST**: three `hash01` copies, one at a different modulus (`1e6` vs `1e5`); two different
+  classes both exported as `SeededRNG`.
+- **PHY-8 BLAST**: `calculateTotalStellarRadiation` survives as a third, flare-less sum — deliberate,
+  it feeds atmospheric escape, and it must not be promoted into a dose.
+- **PHY-13 BLAST**: eight hand-written belt exclusions with no shared predicate, plus three MORE
+  `roleHint === 'belt'` tests that answer unrelated questions.
+
+### Checked and NOT a misalignment, so nobody re-checks it
+- `attachHullVolume` and the read-time path at `holo/scene.ts:3529` both write `v.shipLen`, but they
+  cover DISJOINT populations (model-less constructs vs model-carrying ones) and compute it from the
+  same `shipLenScene(node)`. Two writers, no overlap.
+- `hasSolidSurface` on an ICE giant: the B11 class-regex bug is genuinely gone. Uranus and Neptune
+  infer gas-dominated from density and correctly take no surface hazard tag.
