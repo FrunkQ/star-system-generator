@@ -159,16 +159,32 @@ describe('heading policies', () => {
 	});
 });
 
-// P3b - the construct ladder's transit rung (section 4a). The input exists; the ladder that feeds
-// it does not, so this is skipped. Un-skip with P3b.
-describe.skip('P3b: a construct in transit frames its route', () => {
+// P3b/P3c - the construct ladder's transit rung (section 4a). A ship under way frames its journey at
+// the context rung instead of the host it left.
+describe('P3c: a construct in transit frames its route', () => {
+	const shot = (context: any) =>
+		frameDistanceFor({ radius: 1e-9, context, lens: LENS, policy: { fillFrac: 0.8, minDistance: 1e-10 } });
+
 	it('frames origin-to-destination rather than a host', () => {
-		const withRoute = frameDistanceFor({
-			radius: 1e-9, context: { level: 1, parentDist: 0.001, routeExtent: 4 },
-			lens: LENS, policy: { fillFrac: 0.8, minDistance: 1e-10 }
-		});
+		const withRoute = shot({ level: 1, parentDist: 0.001, routeExtent: 4 });
 		// The route, not the parent, sets the shot.
 		expect(withRoute).toBeGreaterThan(distanceForHalfExtent(1, LENS, 1e-10));
+		expect(withRoute).toBeGreaterThan(shot({ level: 1, parentDist: 0.001 }) * 100);
+	});
+
+	it('leaves a PARKED construct on the host rung, which P3b confirmed was already right', () => {
+		expect(shot({ level: 1, parentDist: 0.001, routeExtent: 0 })).toBe(shot({ level: 1, parentDist: 0.001 }));
+	});
+
+	it('does not touch the CLOSE-UP rung - click 1 is still the ship, however long its journey', () => {
+		expect(shot({ level: 3, parentDist: 0.001, routeExtent: 4 })).toBe(shot({ level: 3 }));
+	});
+
+	it('holds at every scale, from a readable dial to a true-scale hull (R3)', () => {
+		// The rung is a ratio, so the same route reaches the same relative shot whatever the units.
+		const big = shot({ level: 1, routeExtent: 4 });
+		const small = shot({ level: 1, routeExtent: 4e-9 });
+		expect(big / 4).toBeCloseTo(small / 4e-9, 6);
 	});
 });
 

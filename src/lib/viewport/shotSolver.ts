@@ -39,9 +39,14 @@ export interface FramingContext {
 	/** Level 0 only: out to whatever the pair as a whole orbits. */
 	pairContextDist?: number;
 	/**
-	 * P3b: half-extent of a construct's ROUTE, for a ship in transit whose context rung frames
-	 * origin-to-destination rather than a host. Unused until the construct ladder lands; wired
-	 * through now so adding it is a caller change, not a signature change.
+	 * P3b/P3c: distance from the subject to the FURTHEST point of its committed route - a ship in
+	 * transit frames origin-to-destination rather than a host.
+	 *
+	 * A distance from the SUBJECT, in the same terms as `parentDist`, and not the route's own size:
+	 * the shot centres on the ship, which sits somewhere along its course rather than at the middle
+	 * of it, so the half-extent that actually holds the whole journey is the reach to the far end.
+	 * Measuring the route about its own centre instead would frame a ship near either end with half
+	 * its journey off screen - exactly the shot the rung exists to give.
 	 */
 	routeExtent?: number;
 }
@@ -73,11 +78,16 @@ export function frameDistanceFor(args: {
 }): number {
 	const { radius, context, lens, policy } = args;
 	const cfg: FrameLevelConfig = { ...(args.config ?? FRAME_LEVELS), fillFrac: policy.fillFrac };
+	// The context rung frames the ROUTE where there is one. It enters as `parentDist` rather than as a
+	// fourth branch inside frameHalfExtent because it is the same question that rung always asks -
+	// "how far out must I be to hold my context" - with a different context. A ship under way has its
+	// journey for context; its old host is no longer where it lives.
+	const contextDist = Math.max(context.parentDist ?? 0, context.routeExtent ?? 0);
 	const half =
 		frameHalfExtent({
 			level: context.level,
 			radius,
-			parentDist: context.parentDist,
+			parentDist: contextDist,
 			maxSatelliteDist: context.maxSatelliteDist,
 			pairContextDist: context.pairContextDist,
 			config: cfg

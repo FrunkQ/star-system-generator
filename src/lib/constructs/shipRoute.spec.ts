@@ -9,7 +9,7 @@
 // fixtures below are built the way the planner really builds them - geometry in `pathPoints`, states
 // left as the placeholders they often are - and one test asserts exactly that failure cannot return.
 import { describe, it, expect } from 'vitest';
-import { compactRoute, routeOf, isUnderWay, routeHalfExtentAU, routePolyline } from './shipRoute';
+import { compactRoute, routeOf, isUnderWay, routePolyline } from './shipRoute';
 import { computePlayerStarmapSnapshot } from '$lib/system/utils';
 
 /** A segment as the planner really emits one: geometry in pathPoints, states often placeholders. */
@@ -187,20 +187,6 @@ describe('routeOf reads either source, so GM and player draw the same course (R1
 		expect(isUnderWay(gm, -1)).toBe(false);
 		expect(isUnderWay(gm, 15000)).toBe(true);
 		expect(isUnderWay(gm, 30001)).toBe(false);
-	});
-});
-
-describe('routeHalfExtentAU - the construct ladder\'s in-transit rung', () => {
-	it('measures the route, not the distance from the origin', () => {
-		// The quarter arc spans 1 AU in each of x and y, so its half-extent is 0.5.
-		expect(routeHalfExtentAU(compactRoute(ship(ARC_LEG)))).toBeCloseTo(0.5, 3);
-		// A leg far from the star still measures its own length, not its distance out.
-		const far = compactRoute(ship([seg('Accel', 0, 1000, [{ x: 100, y: 0 }, { x: 101, y: 0 }])]))!;
-		expect(routeHalfExtentAU(far)).toBeCloseTo(0.5, 9);
-	});
-
-	it('is zero for no route, so the caller falls back to the host rung', () => {
-		expect(routeHalfExtentAU(null)).toBe(0);
 	});
 });
 

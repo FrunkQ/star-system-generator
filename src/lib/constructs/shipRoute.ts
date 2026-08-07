@@ -279,19 +279,10 @@ export function isUnderWay(construct: any, timeMs: number): boolean {
 	return !!r && timeMs >= r.s && timeMs <= r.e;
 }
 
-/**
- * Half-extent of the route in AU - the construct ladder's IN-TRANSIT rung (`routeExtent`), which
- * frames origin-to-destination rather than a host. Measured about the route's own centre so a long
- * outbound leg does not drag the shot off to one side.
- */
-export function routeHalfExtentAU(route: CompactRoute | null): number {
-	if (!route || route.p.length < 2) return 0;
-	let minX = Infinity, minY = Infinity, minZ = Infinity;
-	let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-	for (const n of route.p) {
-		minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
-		minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
-		minZ = Math.min(minZ, n.z); maxZ = Math.max(maxZ, n.z);
-	}
-	return Math.max(maxX - minX, maxY - minY, maxZ - minZ) / 2;
-}
+// THE LADDER'S IN-TRANSIT REACH IS NOT MEASURED HERE, and the absence is deliberate. It has to be a
+// distance from the SHIP to the far end of its course, in SCENE units through the live compression -
+// the same space every other framing distance is measured in - so it belongs beside `parentDist` and
+// `maxSatelliteDist` in the scene, not in a pure module that knows only AU. An earlier version of
+// this file offered `routeHalfExtentAU`, the route's size about its OWN centre; it framed a ship near
+// either end of its journey with half the journey off screen, which is the one thing that rung is
+// for. See `FramingContext.routeExtent` in viewport/shotSolver.ts.

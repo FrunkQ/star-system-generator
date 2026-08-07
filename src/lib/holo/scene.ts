@@ -1833,7 +1833,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (!b) return [3];
     const pid = b.framingParentId ?? null;
     return frameLevelsFrom({
-      hasParent: contextPeerIds(currentSystem, b.id, pid).some((pid2) => bodyById.has(pid2)),
+      // A ship under way HAS a context rung even where its host has gone: its journey is the context.
+      // Without this a construct whose parent is no longer drawn would offer the close-up alone, and
+      // the second click would wrap straight back to it.
+      hasParent: contextPeerIds(currentSystem, b.id, pid).some((pid2) => bodyById.has(pid2))
+        || routeLines.some((r) => r.id === b.id && timeMs >= r.route.s && timeMs <= r.route.e),
       hasSatellites: bodies.some((x) => x.framingParentId === id),
       hasRadius: !b.isConstruct && (b.radiusScene ?? 0) > 0, // a radius-less root keeps whole-system-first
       // A barycentre member's context is only its PARTNER, so it gets one rung further out — the orbit
@@ -1876,6 +1880,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const gp = bodyById.get(gpId);
       if (gp) pairContextDist = Math.max(pairContextDist, b.mesh.position.distanceTo(gp.mesh.position));
     }
+    // ...and for a ship UNDER WAY, the context rung is its JOURNEY rather than the host it left
+    // (section 4a). Measured here with the peers above rather than in shipRoute, because it has to be
+    // in SCENE units through the live compression - the same space `b.mesh.position` is in - and only
+    // the scene knows that. Reaching to the far end, not to the route's middle: see routeExtent.
+    let routeExtent = 0;
+    for (const rl of routeLines) {
+      if (rl.id !== b.id || timeMs < rl.route.s || timeMs > rl.route.e) continue;
+      for (const k of rl.route.p) routeExtent = Math.max(routeExtent, b.mesh.position.distanceTo(positionToScene(k, tmp)));
+    }
     // The geometry itself lives in `viewport/shotSolver.ts` - pure and tested (shotSolver.spec.ts).
     // This function's remaining job is to MEASURE the scene: which bodies are the context peers,
     // how far away they are, and what the lens currently is. A radius-less construct at level 3
@@ -1883,7 +1896,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // `sizelessHalfExtent` policy.
     return frameDistanceFor({
       radius,
-      context: { level: focusLevel, parentDist, maxSatelliteDist, pairContextDist },
+      context: { level: focusLevel, parentDist, maxSatelliteDist, pairContextDist, routeExtent },
       lens: { fovYDeg: camera.fov, aspect: camera.aspect },
       policy: { fillFrac: frameFillFrac, minDistance: controls.minDistance }
     });
