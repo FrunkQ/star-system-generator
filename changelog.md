@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.474-beta - 7th Aug 2026
+
+* Internal: fitting a ship's course to publish it was costing 3.4 ms per ship on a long haul, on two paths that both run about twice a second -- the broadcast to players and the 3D scene rebuild. Down to 1.3 ms by walking the two point lists together instead of comparing every point against every other, which is possible because both already run in order along the route.
+
 ## v2.1.473-beta - 7th Aug 2026
 
 * **A ship under way now draws its course.** Select it and you see the route it is flying, curving the way the flight actually curves, coloured the way the GM's flat map colours it -- green where it is accelerating, yellow where it coasts, red where it brakes -- so you can see at a glance where the burns are. The line is drawn through the vessel itself, and it sharpens as you zoom in rather than turning into straight facets. Clicking a moving ship a second time now frames the whole journey, origin to destination, instead of the place it left.
