@@ -11,6 +11,10 @@ All notable changes are listed here:
 
 * **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
 
+## v2.1.485-beta - 8th Aug 2026
+
+* Internal: the residual orbit-line sweep while following a station (smooth at real time, buzzing at speed) is diagnosed and banked in the observations inbox -- the ship rides the true curve while the drawn ring is a 1024-sided polygon, so at station zoom the line's corner-cutting sweeps past the ship once per polygon edge. A different mechanism from the vibration fixed in v2.1.484, recorded with its numbers and fix direction.
+
 ## v2.1.484-beta - 8th Aug 2026
 
 * **Fixed (third time, measured this time): the vibrating orbit line while following a station.** The diagnostic run confirmed both halves: the shaking line is a satellite's ring around its planet -- a different construction from the sun-circling rings the two earlier fixes repaired -- and the shake is single-precision rounding, measured at 4.7 pixels per step at that zoom. Such a ring's points are now combined with its planet's position at double precision, rounded once, exactly as the sun-circling rings already were; the switch happens automatically whenever the rounding would exceed a quarter of a pixel, so distant rings keep the cheap path.
