@@ -146,3 +146,49 @@ describe('computeWorldPositions3D — the satellite reference frame', () => {
     expect(a).toEqual(b);
   });
 });
+
+// A construct under way is placed by the GM's STAMPED VECTOR, not by the orbit it left. The guard
+// used to require `scheduled_journeys`, which `slimNode` deletes from every player snapshot - so on
+// a player the vector was unreachable and a ship in transit drew at its parked position while the
+// GM showed it out in space. These pin the redaction shape, not just the maths: the player fixture
+// is deliberately the one with no journeys.
+describe('a construct with a stamped vector position', () => {
+  const parked = {
+    id: 'ship', kind: 'construct', parentId: 'planet', physical_parameters: { massKg: 1e6 },
+    orbit: { hostId: 'planet', hostMu: 5e12, t0: 0, elements: { a_AU: 0.001, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } }
+  };
+  const withShip = (extra: any) => {
+    const sys = makeSystem();
+    sys.nodes.push({ ...parked, ...extra });
+    return sys;
+  };
+
+  it('uses the vector on a PLAYER snapshot, where the journeys have been stripped', () => {
+    const t = 4.2e8;
+    const sys = withShip({ vector_position_au: { x: 7, y: -3 } });
+    const p = computeWorldPositions3D(sys, t).get('ship')!;
+    expect(p).toEqual({ x: 7, y: -3, z: 0 });
+    // ...and emphatically NOT its parked orbit, which is what it fell back to before.
+    const orbital = computeWorldPositions3D(withShip({}), t).get('ship')!;
+    expect(Math.hypot(p.x - orbital.x, p.y - orbital.y)).toBeGreaterThan(1);
+  });
+
+  it('uses it on the GM too, where the journeys are present but no sampler is passed', () => {
+    // This is exactly how the holo calls it: computeWorldPositions3D(system, timeMs), no sampler.
+    const sys = withShip({ vector_position_au: { x: 7, y: -3 }, scheduled_journeys: [{ plans: [] }] });
+    expect(computeWorldPositions3D(sys, 4.2e8).get('ship')!).toEqual({ x: 7, y: -3, z: 0 });
+  });
+
+  it('falls back to its orbit once the vector is cleared, so a parked ship parks', () => {
+    const t = 4.2e8;
+    const sys = withShip({});
+    const p = computeWorldPositions3D(sys, t).get('ship')!;
+    const planet = computeWorldPositions3D(sys, t).get('planet')!;
+    expect(Math.hypot(p.x - planet.x, p.y - planet.y)).toBeCloseTo(0.001, 6);
+  });
+
+  it('keeps the flat orrery walk in step with the 3D one', () => {
+    const sys = withShip({ vector_position_au: { x: 7, y: -3 } });
+    expect(computeWorldPositions(sys, 4.2e8).get('ship')!).toEqual({ x: 7, y: -3 });
+  });
+});

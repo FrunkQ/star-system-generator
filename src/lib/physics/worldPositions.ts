@@ -57,13 +57,27 @@ function walkPositions<V>(
     if (!node) return ops.zero;
 
     // Constructs mid-journey are positioned absolutely by their kinematics, not the hierarchy.
-    if (node.kind === 'construct' && (node.scheduled_journeys || []).length) {
-      const s = sampleConstruct?.(system, node, timeMs);
-      if (s) {
-        const v = ops.lift(s.position_au);
-        out.set(nodeId, v);
-        return v;
+    if (node.kind === 'construct') {
+      if ((node.scheduled_journeys || []).length) {
+        const s = sampleConstruct?.(system, node, timeMs);
+        if (s) {
+          const v = ops.lift(s.position_au);
+          out.set(nodeId, v);
+          return v;
+        }
       }
+      // A STAMPED VECTOR STANDS ON ITS OWN, and gating it on the journeys was a redaction fault
+      // wearing a physics costume. `slimNode` deletes `scheduled_journeys` from every player
+      // snapshot, so on a player this guard could never be entered - a ship under way fell straight
+      // through to parent-plus-orbit and drew at its PARKED position, back at the host it left,
+      // while the GM showed it out in space. The vector is the GM's own answer, stamped by
+      // SystemView's reconcile tick and re-sent with each snapshot; the ship therefore steps with
+      // the GM's clock rather than running one of its own, which is the intended boundary (transit
+      // is GM land). `visibleNodes` already treats a stamped vector as "this construct is placed",
+      // so this makes the position agree with the visibility that was always keyed off it.
+      // Self-cleaning: the reconcile tick clears the field when a ship parks, and deliberately
+      // KEEPS it for a Deep Space drifter - where using it is also the right answer, since an
+      // adrift ship must not snap back to the orbit it abandoned.
       if (node.vector_position_au) {
         const v = ops.lift(node.vector_position_au);
         out.set(nodeId, v);
