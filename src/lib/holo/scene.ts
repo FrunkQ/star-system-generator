@@ -969,7 +969,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // `abs` = the ring's vertices in ABSOLUTE scene units, kept in float64. A heliocentric ring is the one
   // line a body is judged against, and its buffer is float32, so on a rebase it is re-emitted from this
   // master copy rather than left where it was. See rebaseStaticGeometry.
-  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array; node?: any; refined?: boolean; local?: Float64Array; absMode?: boolean }[] = [];
+  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array; node?: any; refined?: boolean; local?: Float64Array; absMode?: boolean; sample?: (u: number, out: THREE.Vector3) => void }[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -3215,7 +3215,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // to the clearance — exactly as its own placement does (radiusScene is 0 for one).
           const selfRad = node.kind === 'construct' ? 0 : bodyRadiusScene(node, false);
           const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, selfRad, compression, ringColor(node), orbitTiltRad) : null;
-          if (ring) { contentGroup.add(ring.loop); orbitRings.push({ id: node.id, obj: ring.loop, trackParentId: node.parentId, local: ring.local }); }
+          if (ring) { contentGroup.add(ring.loop); orbitRings.push({ id: node.id, obj: ring.loop, trackParentId: node.parentId, local: ring.local, sample: ring.sample }); }
         }
       }
 
@@ -3565,7 +3565,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (kHelio <= 0) continue;
       const self = bodyById.get(node.id);
       const ring = buildBaryMemberRing(node, kHelio, self?.radiusScene ?? 0, baryCoR.get(node.id) ?? 0, ringColor(node));
-      if (ring) { contentGroup.add(ring.loop); orbitRings.push({ id: node.id, obj: ring.loop, trackParentId: node.parentId, local: ring.local }); }
+      if (ring) { contentGroup.add(ring.loop); orbitRings.push({ id: node.id, obj: ring.loop, trackParentId: node.parentId, local: ring.local, sample: ring.sample }); }
     }
     visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
@@ -3695,6 +3695,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Orbit rings follow the name rule: visible exactly when the body's name is (getVisibleNodeIds).
   // Moon rings also track their parent's current scene position.
   const _ringParent = new THREE.Vector3();
+  const _ringFocusLocal = new THREE.Vector3(); // the focus in a local ring's parent frame
+  const _ringSample = new THREE.Vector3(); // scratch for the local dense-arc sampler
   function updateOrbitRings() {
     for (const r of orbitRings) {
       // A construct glued to a surface is not on its orbit, so it must not draw one. The lock is live
@@ -3727,10 +3729,54 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (attr) {
             const arr = attr.array as Float32Array;
             const n = Math.min(arr.length, r.local.length);
-            for (let i = 0; i < n; i += 3) {
-              arr[i] = r.local[i] + _ringParent.x;
-              arr[i + 1] = r.local[i + 1] + _ringParent.y;
-              arr[i + 2] = r.local[i + 2] + _ringParent.z;
+            // THE DENSE ARC, for the local-ring family (A23's machinery, transplanted). The f64
+            // path above killed the random per-frame stepping; what remained was a smooth SWEEP:
+            // the followed body rides the TRUE curve while the line is a fixed 1024-gon, so the
+            // ship-to-chord distance breathes zero-max-zero once per vertex crossing (~5.4 s of
+            // game time for the ISS) - a slow wave at real time, a buzz at speed. The owner's
+            // Pluto precedent is exact: the barycentre's heliocentric ring got smooth the day A23
+            // re-sampled its propagator about the focus, and this family has a propagator too
+            // (the `sample` closure - the builder's own pipeline). Same warp, same sag budget,
+            // same fractional centre; re-emitted every frame, so the arc slides with the focus.
+            let sagS = 1;
+            let uCentre = 0;
+            if (r.sample) {
+              // The focus, in this ring's parent-local frame (everything here is origin-relative).
+              _ringFocusLocal.copy(controls.target).sub(_ringParent);
+              let best = Infinity, bi = 0;
+              for (let i = 0; i < n; i += 3) {
+                const dx = r.local[i] - _ringFocusLocal.x, dy = r.local[i + 1] - _ringFocusLocal.y, dz = r.local[i + 2] - _ringFocusLocal.z;
+                const d = dx * dx + dy * dy + dz * dz;
+                if (d < best) { best = d; bi = i; }
+              }
+              const prev = (bi - 3 + n) % n, next = (bi + 3) % n;
+              const dFwd = distToSegment(_ringFocusLocal, r.local, bi, next);
+              const dBack = distToSegment(_ringFocusLocal, r.local, prev, bi);
+              const camD = camera.position.distanceTo(controls.target);
+              if (Math.min(dFwd, dBack) <= camD * RING_ADAPT_NEAR) {
+                const samples = n / 3;
+                const curveR = Math.max(1e-12, Math.hypot(r.local[bi], r.local[bi + 1], r.local[bi + 2]));
+                const tol = Math.max(1e-13, camD * RING_SAG_FRAC);
+                sagS = Math.max(1e-5, Math.min(1, (samples * Math.sqrt((8 * tol) / curveR)) / (2 * Math.PI)));
+                const frac = dFwd <= dBack ? segmentT(_ringFocusLocal, r.local, bi, next) : segmentT(_ringFocusLocal, r.local, prev, bi) - 1;
+                uCentre = (bi / 3 + frac) / samples;
+              }
+            }
+            if (r.sample && sagS < 0.999) {
+              const samples = n / 3;
+              for (let i = 0; i < samples; i++) {
+                const u = uCentre + warpOrbitParam(i / samples - 0.5, sagS);
+                r.sample(u, _ringSample);
+                arr[3 * i] = _ringSample.x + _ringParent.x;
+                arr[3 * i + 1] = _ringSample.y + _ringParent.y;
+                arr[3 * i + 2] = _ringSample.z + _ringParent.z;
+              }
+            } else {
+              for (let i = 0; i < n; i += 3) {
+                arr[i] = r.local[i] + _ringParent.x;
+                arr[i + 1] = r.local[i + 1] + _ringParent.y;
+                arr[i + 2] = r.local[i + 2] + _ringParent.z;
+              }
             }
             attr.needsUpdate = true;
             (r.obj as any).geometry?.computeBoundingSphere?.();
@@ -4313,7 +4359,7 @@ function moonSpread(off: number, localScale: number, parentRadius: number): numb
  * Local by construction, so the numbers stay small whatever the parent's distance: a floating-origin
  * rebase never has to touch these, the object is simply positioned at the parent each frame.
  */
-function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor: (off: number) => number): { loop: THREE.LineLoop; local: Float64Array } | null {
+function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor: (off: number) => number): { loop: THREE.LineLoop; local: Float64Array; sample: (u: number, out: THREE.Vector3) => void } | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
@@ -4337,13 +4383,30 @@ function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor:
   // grid already follow (rebaseStaticGeometry), applied to the local-frame family.
   const local = new Float64Array(pts.length * 3);
   for (let i = 0; i < pts.length; i++) { local[3 * i] = pts[i].x; local[3 * i + 1] = pts[i].y; local[3 * i + 2] = pts[i].z; }
+  // The SAMPLER: orbit parameter u in [0,1) -> a point on this ring, through the IDENTICAL pipeline
+  // the master above was built with (propagate -> equator tilt -> radial spread -> axis swap). This
+  // is what lets updateOrbitRings re-sample the ring non-uniformly about the camera's focus - the
+  // A23 dense arc, extended to the local-ring family. A23 could always assume a propagator on its
+  // (heliocentric) rings; this family had the propagator too and simply never got the machinery,
+  // which is why a followed station's own orbit line still swept and buzzed after the f32 fix: the
+  // ship rides the true curve, the line was a fixed 1024-gon, and at station zoom one chord's sag
+  // is tens of pixels. u = i/N reproduces master vertex i exactly, by construction.
+  const _eqS = { x: 0, y: 0, z: 0 };
+  const sample = (u: number, out: THREE.Vector3) => {
+    const raw = propagateState3D(node, t0 + u * period).r;
+    const r = tiltRad ? toParentEquator(raw.x, raw.y, raw.z, tiltRad, _eqS) : raw;
+    const off = Math.hypot(r.x, r.y, r.z);
+    if (off < 1e-12) { out.set(0, 0, 0); return; }
+    const k = distFor(off) / off;
+    out.set(r.x * k, r.z * k, r.y * k); // physics(x,y,z) -> scene(x,z,y), as the master
+  };
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false }); // see buildOrbitRing
-  return { loop: new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat), local };
+  return { loop: new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat), local, sample };
 }
 
 // `orbitTiltRad` is the caller's `satelliteTiltRad(node, parent)` — the gate is made there, once, and
 // NOT repeated here. It used to be made in both places in two different spellings.
-function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, orbitTiltRad = 0): { loop: THREE.LineLoop; local: Float64Array } | null {
+function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, orbitTiltRad = 0): { loop: THREE.LineLoop; local: Float64Array; sample: (u: number, out: THREE.Vector3) => void } | null {
   return buildLocalOrbitRing(node, color, orbitTiltRad, (off) => {
     const spreadDist = moonSpread(off, localScale, parentRadius);
     const trueDist = off * kHelio;
@@ -4367,7 +4430,7 @@ function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, paren
  * equator) and no toytown fan-out. The clearance that holds the pair apart at readable body sizes is the
  * only departure from physics, and it is the same rule the member's own placement uses.
  */
-function buildBaryMemberRing(node: any, kHelio: number, memberRadius: number, partnerRadius: number, color: number): { loop: THREE.LineLoop; local: Float64Array } | null {
+function buildBaryMemberRing(node: any, kHelio: number, memberRadius: number, partnerRadius: number, color: number): { loop: THREE.LineLoop; local: Float64Array; sample: (u: number, out: THREE.Vector3) => void } | null {
   const clearance = (memberRadius + partnerRadius) * 0.62;
   return buildLocalOrbitRing(node, color, 0, (off) => Math.max(clearance, off * kHelio));
 }

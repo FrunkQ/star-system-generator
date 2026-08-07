@@ -11,6 +11,10 @@ All notable changes are listed here:
 
 * **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
 
+## v2.1.486-beta - 8th Aug 2026
+
+* **Fixed: a followed station's orbit line swept back and forth at real time and buzzed at speed.** The line was drawn as a fixed 1024-sided polygon while the station rides the true curve, so the gap between ship and line breathed once per polygon edge -- about every five seconds of game time for the ISS, blurring into vibration at faster clock rates. Satellite orbit lines now re-draw the stretch nearest the camera from the orbit itself, packed dense exactly where you are looking -- the same treatment that made the Pluto-Charon lines smooth -- and slide it with you every frame. Distant orbit lines are untouched and cost nothing extra.
+
 ## v2.1.485-beta - 8th Aug 2026
 
 * Internal: the residual orbit-line sweep while following a station (smooth at real time, buzzing at speed) is diagnosed and banked in the observations inbox -- the ship rides the true curve while the drawn ring is a 1024-sided polygon, so at station zoom the line's corner-cutting sweeps past the ship once per polygon edge. A different mechanism from the vibration fixed in v2.1.484, recorded with its numbers and fix direction.
