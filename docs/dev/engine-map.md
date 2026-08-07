@@ -313,6 +313,36 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S21 "The orbit line vibrates" was TWO mechanisms in one line, in two ring FAMILIES
+WHERE: `holo/scene.ts` - `emitOrbitRing` (A23, heliocentric) and `updateOrbitRings`' near path
+(f64 composition + the dense arc, local rings); `buildLocalOrbitRing` returns the `sample(u)`
+closure the latter re-samples through.
+RULE: THERE ARE TWO RING FAMILIES AND THEY SHARE ALMOST NO CODE. Heliocentric rings keep a float64
+ABSOLUTE master and enter A23's focus-adaptive refinement. Local rings (a moon's, a barycentre
+member's) are built in the PARENT's frame from a radial spread rule and are positioned at the
+parent each frame. Ask which family a report is about BEFORE reading any refinement code: three of
+four fixes for this one report were aimed at A23, which the reported ring never enters.
+WHY: one symptom, four rounds, two real causes.
+  (1) FLOAT32 COMPOSITION (fixed v2.1.484). A local ring's vertices carry the ring's own radius,
+  and the GPU composes them with the parent's translation at single precision - measured live via
+  `window.__ringDebug`: `f32JitterPx` 4.75 at a true-scale ISS close-up. Random per-frame stepping.
+  Fix: near rings re-emit vertex+parent in FLOAT64, rounded once, object translation zeroed - the
+  floating-origin discipline this family had been left out of. The near test IS that prediction
+  (switch when the step would exceed a quarter pixel), so far rings keep the cheap path.
+  (2) CHORD-SAG ALIASING (fixed v2.1.486). The followed body rides the TRUE curve while the line is
+  a fixed 1024-gon, so ship-to-chord distance breathes zero-max-zero once per vertex crossing
+  (~5.4 s of game time for the ISS: 92 min / 1024). A smooth sweep at 1 s = 1 s; at 1 s = 1 h the
+  ~670 Hz crossing sampled at 60 fps aliases into a buzz. Fix: A23's dense arc, transplanted -
+  local rings HAVE a propagator, they simply never got the machinery. Same warp, same sag budget,
+  same fractional centre, re-emitted per frame so the arc SLIDES with the focus.
+BLAST: the two look identical by eye and are told apart by the CLOCK - random jitter is present
+when time is stopped, chord-sag aliasing vanishes when time is stopped and scales with rate. Ask
+that first. Do not raise `ORBIT_SAMPLES` globally (A23's own argument: the count needed grows
+without bound as you zoom, and costs the whole buffer at every zoom). Do not confuse either with
+"re-emit less often" - a rarer re-emit is a BIGGER step; smoothness comes from continuity
+(fractional centre, per-frame slide), not from cadence. `u = i/N` must reproduce the uniform master
+exactly, or a ring changes shape as it crosses the near threshold.
+
 ### RENDER-S20 A far-field sprite must be DEPTH-TESTED; `renderOrder` cannot put it behind a body
 WHERE: `src/lib/holo/scene.ts:rebuildSkyStars` (the sky dot / spike / label materials), and
 `makeGridLabel`'s `depthTest` argument.
@@ -346,9 +376,20 @@ the 2D orrery and player views drew transiting ships parked, so a moving constru
 rendered in 3D - and the moment one was, three faults surfaced at once (facing 180 out, colour
 smear, zoom crawl), none catchable by the unit tests because all were about what the eye sees.
 Concrete traps found on that first render, kept here because each will read as reasonable again:
-- three's `Object3D.lookAt` points the object's MINUS-Z at the target; ModelRef noses are PLUS-Z.
-  Any new oriented visual must state which axis it is aiming and look at the point that puts it
-  there (`lookAt(pos - delta)` to put +Z on the motion).
+- three's `Object3D.lookAt` SWAPS its arguments for a non-camera, so a MESH's PLUS-Z points at the
+  target (`_m1.lookAt(_target, _position, up)` in Object3D.js) - `lookAt(pos + delta)` puts +Z on
+  the motion, which is the ModelRef nose. A v2.1.479 "fix" inverted this to `pos - delta` on the
+  CAMERA convention and was wrong; verify against three's source, not against intuition.
+- ORIENTATION FROM MOTION FAILS WHEN NOTHING MOVES, which is not the rare case: a player view
+  between snapshot stamps, or with the GM's clock paused, has zero frame-to-frame delta, so a
+  motion-derived heading never fires and the hull holds its BUILD-DEFAULT pose. That, not the
+  lookAt convention and not the nose axis, was what three successive "facing is wrong" reports
+  actually were. Derive a heading from something that exists when still - here the route's tangent
+  at the ship's own clock (`routeStateAt`, same curve the line draws); keep motion as the fallback
+  for craft with no course.
+- WHICH END OF A HULL IS THE NOSE is an authoring choice no importer can detect. `noseSign` reads
+  it from the GM's placed nozzles (they mark the stern; mean z-sign, so a mid-hull RCS cannot flip
+  a ship whose mains are aft). No nozzles = trust nose = +Z.
 - vertex colours interpolate PER SEGMENT: a sparse polyline smears a colour change across half a
   span. A hard edge needs the boundary vertex written twice, once in each colour, and the phase
   sampled at the segment MIDPOINT (windows are inclusive at both ends).

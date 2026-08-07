@@ -1,7 +1,11 @@
 # Camera, framing and scale - redesign
 
-STATUS: P1, P2 and part of P3b SHIPPED (v2.1.451-461-beta) and confirmed working by the owner.
-P3, the rest of P3b, P3c and P4 REMAIN - see section 7 for what each still owes.
+STATUS: P1, P2, P3, P3b and P3c ALL SHIPPED AND CONFIRMED BY THE OWNER (v2.1.451-486-beta).
+ONLY P4 (the scale law) REMAINS, plus banked P5 - see section 7. P4 is gated on the owner's eye:
+it moves saved presets' mid-dial looks, so /scale-reference is signed off BEFORE it ships.
+Companion reading before touching any of this: RENDER-S17 through S21 in engine-map.md, which are
+the traps this phase found the hard way - and section 7's P3c entry, which lists the field reports
+and their real causes (three of the four had a cause nobody had proposed).
 Written 2026-08-05 at v2.1.450-beta, after a day spent fixing the 3D scene's framing one mechanism
 at a time; all four open questions answered by the owner 2026-08-06 (section 9). The owner's direction: "we have
 evolved complexity out of simplicity... time to step back, rethink and redesign now we have a
@@ -476,15 +480,38 @@ P3c. SHIPPED @v2.1.473-477-beta and CONFIRMED BY THE OWNER on a live player view
     drive plume lit. The path to that verification is itself a lesson: no bundled example carries a
     construct with a journey, so no test in this repo can render a route line, and the two field
     faults above were found by `__routeDebug` / `__shipDebug` traces, not by tests or reasoning.
-    NEXT CANDIDATE, researched and sized (2026-08-08), awaiting the owner's go: move constructs
-    WITH display time on player views. The compact route's knots carry (t,x,y,z), so the route IS a
-    time-to-position function already on every snapshot - `routeStateAt(route, tMs)` in shipRoute
-    (~20 lines), one precedence branch in worldPositions (GM sampler -> route-in-window -> stamped
-    vector -> orbit). Ship then sits exactly ON its drawn line (both from routePointAt), and burns,
-    plume and position become consistent at whatever time the player displays. Adrift ships are the
-    one fiddly case (no route; linear extrapolation from the stamped vector diverges from the GM's
-    conic coast over long scrubs) - ship linear + declare it, upgrade only if seen wrong. Extends
-    the physics-page fudge entry by one sentence.
+    THE FOLLOW-ON SHIPPED TOO (v2.1.480): constructs MOVE with display time on a followed player
+    view. The compact route's knots carry (t,x,y,z), so the route is already a time-to-position
+    function on every snapshot - `routeStateAt` evaluates the SAME curve the line draws, so a
+    moving ship sits exactly on its course by construction. The gate is the SAMPLER, not a flag
+    (owner's rule, and the player-setup disclaimer): the orrery passes journey kinematics, a
+    FOLLOWED view passes the route sampler, a free-scrubbing view passes none - scrubbing is for
+    looking around, so traffic holds its GM-stamped truth rather than replaying against a clock the
+    GM does not own. STILL OPEN: adrift ships (no route) do not move between stamps; linear
+    extrapolation from the stamped vector diverges from the GM's conic coast over long scrubs -
+    ship linear + declare it on the physics page, or port `coastConicAt`, only if seen wrong.
+
+    THE TAIL OF FIELD REPORTS (2026-08-08, all closed) is the phase's real lesson, because every
+    one was settled by an instrument and none by reasoning - and three of them had a cause nobody
+    had proposed:
+    - FACING (owner: "facing is perfect" @v2.1.484 after three wrong theories). Not the lookAt
+      convention (three swaps its args for meshes - a v2.1.479 "fix" inverted correct code), not
+      the nose axis (`noseSign` from the nozzles was already right). `[routedbg]` reported
+      `deltaTowardDest: 0` - THE SHIP HAD NOT MOVED. With the GM's clock paused the stamps stop, so
+      heading-from-motion never fired and the hull held its build-default pose. The heading now
+      comes from the ROUTE'S TANGENT at the ship's own clock, which exists whether or not anything
+      moves. See RENDER-S19.
+    - TWO CLOCKS (v2.1.482). A ship was drawn at its GM-stamped position while its plume was judged
+      at the local clock, hours ahead - "no burn showing" on a ship the GM had mid-accel.
+      `shipClock(node)` is now the instant the ship is DRAWN at, and every time-judged thing about
+      it (plume, brake flip, route-line visibility, the in-transit rung) reads that one function.
+    - THE CLOCK ANCHOR (v2.1.477, RENDER-S18). `[routedbg]` measured the player clock two months
+      short of the route window: the line was built, tessellated and correct, and hidden by
+      `inWindow` alone. Note this was never only about ships - PLANET positions propagate to the
+      same clock, so player views had been drawing whole systems stale, and only constructs escaped
+      because their position is stamped rather than calculated.
+    - THE ORBIT LINE (v2.1.484 + v2.1.486, RENDER-S21): one symptom, two mechanisms, two ring
+      families. Worth reading before touching either ring path.
 P5. BANKED (owner, 2026-08-07): the STARMAP 3D view must also allow travel below the ecliptic.
     Same rule as RENDER-S14, different scene - the starmap has its own camera, so widening the
     system view's polar limits did nothing for it. Half of a 3D starmap is under the plane for the
