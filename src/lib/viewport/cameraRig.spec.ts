@@ -3,7 +3,7 @@
 // caught the original bug, expressed against the model that replaces it.
 import { describe, it, expect } from 'vitest';
 import {
-	IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, blendToward, shotReached,
+	IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, wheelZoomSpeed, blendToward, shotReached,
 	quatFromUnitVectors, applyQuat, isIdentity, type Shot
 } from './cameraRig';
 import type { Vec3 } from './shotSolver';
@@ -298,5 +298,57 @@ describe('a drag rotates and must never zoom', () => {
 		const wheeled = deriveOffset(base, v(0, 0.0013, 0), base.target); // user pulls out to 2x
 		expect(wheeled.zoom).toBeCloseTo(2, 9);
 		expect(composeShot(base, wheeled).dist).toBeCloseTo(0.0013, 12);
+	});
+});
+
+// The wheel's notch size adapts to the gulf (wheelZoomSpeed). The reported symptom was "zoom out
+// from a construct STOPS": it never stopped - at a fixed 5%/notch, a true-scale close-up is ~400
+// notches from the system view, most through featureless black, which is indistinguishable from a
+// dead wheel. These pin the shape of the adaptation, not a feel.
+describe('wheelZoomSpeed - the notch adapts to how deep the camera is', () => {
+	it('is the plain 1x at scene scale and above', () => {
+		expect(wheelZoomSpeed(12, 12)).toBe(1);
+		expect(wheelZoomSpeed(120, 12)).toBe(1); // zoomed OUT past the scene: no boost either
+	});
+
+	it('grows with the LOG of the depth, and caps', () => {
+		const shallow = wheelZoomSpeed(0.1, 12);
+		const deep = wheelZoomSpeed(1e-5, 12);
+		const abyssal = wheelZoomSpeed(1e-9, 12);
+		expect(shallow).toBeGreaterThan(1);
+		expect(deep).toBeGreaterThan(shallow);
+		expect(abyssal).toBeGreaterThanOrEqual(deep);
+		expect(abyssal).toBeLessThanOrEqual(8); // capped: a notch may be big, never a teleport
+	});
+
+	it('stays near today\'s feel at readable scales', () => {
+		// Within ~2 decades of the scene there is always something in frame, and the app's whole
+		// existing zoom feel was built at speed 1. The adaptation must be gentle there - the deep
+		// stretch is where it earns its keep.
+		expect(wheelZoomSpeed(6, 12)).toBeLessThan(1.5);
+		expect(wheelZoomSpeed(1.2, 12)).toBeLessThan(2);
+	});
+
+	it('is a function of the RATIO alone (R3), and never degenerate', () => {
+		expect(wheelZoomSpeed(1e-9, 12)).toBeCloseTo(wheelZoomSpeed(1e-11, 0.12), 12);
+		expect(wheelZoomSpeed(0, 12)).toBe(1);
+		expect(wheelZoomSpeed(1, 0)).toBe(1);
+		expect(wheelZoomSpeed(NaN, 12)).toBe(1);
+	});
+
+	it('makes the abyss crossable', () => {
+		// The acceptance criterion behind the whole function, split the way the constraint really
+		// splits. The DEEP stretch (true-scale ship to the readable threshold, seven decades of
+		// featureless black) must go by fast - that is the stretch that read as a dead wheel. The
+		// TOP two decades keep something in frame, so they may stay leisurely; the total is only
+		// bounded loosely. Walk a camera out applying OrbitControls' rule (distance / 0.95^speed
+		// per notch, speed re-read each notch exactly as the scene binds it) and count.
+		const climb = (from: number, to: number) => {
+			let d = from, n = 0;
+			while (d < to && n < 500) { d /= Math.pow(0.95, wheelZoomSpeed(d, 12)); n++; }
+			return n;
+		};
+		expect(climb(1e-9, 0.12)).toBeLessThan(80); // the black stretch: was ~310 at fixed speed 1
+		expect(climb(1e-9, 12)).toBeLessThan(140); // the whole climb: was ~450
 	});
 });

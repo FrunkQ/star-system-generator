@@ -51,7 +51,7 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, FRAME_LEVELS } from '$lib/viewport/camera';
 import { frameDistanceFor, wholeSystemDistance, beltDistance, headingDirection, hostWouldOcclude } from '$lib/viewport/shotSolver';
 import {
-  IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, blendToward, shotReached, isIdentity,
+  IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, wheelZoomSpeed, blendToward, shotReached, isIdentity,
   type ViewOffset, type Shot
 } from '$lib/viewport/cameraRig';
 import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
@@ -1228,29 +1228,50 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         bow.push(n);
         total += n;
       }
-      // Share out the ceiling proportionally if the ideal density would overrun the buffer.
-      const squeeze = total + 1 > ROUTE_MAX_VERTS ? (ROUTE_MAX_VERTS - 1) / total : 1;
+      // Share out the ceiling proportionally if the ideal density would overrun the buffer. The
+      // headroom of 24 covers the boundary-vertex duplicates below (one per phase change, and
+      // phase changes are bounded by the knot count).
+      const squeeze = total + 24 > ROUTE_MAX_VERTS ? (ROUTE_MAX_VERTS - 24) / total : 1;
+
+      // Tessellate first, colour second. Colour has to be decided PER LINE SEGMENT and not per
+      // vertex: vertex colours interpolate linearly along each segment, and a straight span carries
+      // as few as two vertices, so per-vertex colouring smeared green into yellow across half the
+      // journey ("smoothly graduated", the owner's report) instead of switching at the burn knot.
+      const pts: RouteNode[] = [];
+      for (let i = 0; i < knots.length - 1; i++) {
+        const n = Math.max(2, Math.round(bow[i] * squeeze));
+        for (let k = 0; k < n; k++) pts.push(routePointAt(r.route, i, k / n));
+      }
+      pts.push(knots[knots.length - 1]);
 
       let w = 0;
-      const write = (p: { x: number; y: number; z: number; t: number }) => {
+      const put = (p: RouteNode, c: THREE.Color) => {
         if (w >= ROUTE_MAX_VERTS) return;
         positionToSceneAbs(p, _routeP);
         pos[3 * w] = _routeP.x;
         pos[3 * w + 1] = _routeP.y;
         pos[3 * w + 2] = _routeP.z;
-        // The burn state at this point's OWN time, read through the same dual-source function the
-        // plume uses - so the colours a player sees are the colours the GM sees (R11).
-        const burn = shipBurnAt(r.node, p.t);
-        const c = !burn.thrusting ? ROUTE_COAST : burn.braking ? ROUTE_BRAKE : ROUTE_ACCEL;
         col[3 * w] = c.r; col[3 * w + 1] = c.g; col[3 * w + 2] = c.b;
         w++;
       };
-
-      for (let i = 0; i < knots.length - 1; i++) {
-        const n = Math.max(2, Math.round(bow[i] * squeeze));
-        for (let k = 0; k < n; k++) write(routePointAt(r.route, i, k / n));
+      // Each segment takes the burn state at its own MIDPOINT time - read through the same
+      // dual-source function the plume uses, so a player's colours are the GM's (R11). Midpoint
+      // rather than endpoint because the burn windows are inclusive at both ends: sampled AT the
+      // knot, the accel's final instant still reports thrusting and the boundary lands one segment
+      // late. At a phase change the boundary vertex is written TWICE, once in each phase's colour -
+      // coincident vertices, so the interpolation happens over zero length and the change is a hard
+      // edge exactly at the burn knot (which is always a vertex: boundaries are forced knots).
+      let prev: THREE.Color | null = null;
+      for (let i = 0; i < pts.length; i++) {
+        let c = prev ?? ROUTE_COAST;
+        if (i < pts.length - 1) {
+          const burn = shipBurnAt(r.node, (pts[i].t + pts[i + 1].t) / 2);
+          c = !burn.thrusting ? ROUTE_COAST : burn.braking ? ROUTE_BRAKE : ROUTE_ACCEL;
+        }
+        if (prev && c !== prev) put(pts[i], prev); // close the old phase at the boundary
+        put(pts[i], c);
+        prev = c;
       }
-      write(knots[knots.length - 1]);
 
       r.count = w;
       cols.needsUpdate = true;
@@ -2384,9 +2405,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // the ship held a stale heading and ignored its own orbit line. 0.1% of the hull per
           // frame is real motion at every dial position.
           const moveEps = Math.max(1e-24, ((b.shipLen ?? 0.2) * 1e-3) ** 2);
+          // lookAt SEMANTICS, learned the moment a moving construct was first actually rendered
+          // (nothing ever exercised this path before v2.1.477: the GM system view is the 2D orrery,
+          // and player views drew transiting ships PARKED): three's Object3D.lookAt points the
+          // object's MINUS-Z at the target, and the ModelRef convention is nose = PLUS-Z. So
+          // looking AT (position + delta) faced the nose exactly backwards - a ship boosting away
+          // from its origin stared straight back at it. Look at (position - delta) and -Z takes the
+          // retrograde, which puts the nose (+Z) on the motion. The braking negate then flips it
+          // engines-first, exactly as before - it was always correct RELATIVE to the accel case.
           if (!rebased && _shipDelta.lengthSq() > moveEps) {
             if (burn.braking) _shipDelta.negate();
-            b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
+            b.shipModel.lookAt(_shipLook.copy(b.mesh.position).sub(_shipDelta));
           }
           // Drive plume: length and light scale with the fraction of the ship's OWN drive in use -
           // quadratic so a station-keeping puff whispers and a 100% torch burn is SUPER bright and
@@ -3788,6 +3817,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateBelts();
     updateOrbitRings();
     updateRouteLines();
+    // The wheel's notch size adapts to how far below scene scale the camera is (wheelZoomSpeed):
+    // OrbitControls' fixed ~5%/notch is ~400 notches from a true-scale ship close-up back to the
+    // system, most of them through featureless black - which reads as "the wheel stopped working",
+    // not as slowness, because there is nothing in frame to show progress against.
+    controls.zoomSpeed = wheelZoomSpeed(camera.position.distanceTo(controls.target), GRID_RADIUS);
     controls.update();
     // Near plane follows the working distance. Framing a true-scale world puts the camera ~1e-5 scene
     // units out, far inside the fixed 0.01 near plane — the framed body would be clipped away as the

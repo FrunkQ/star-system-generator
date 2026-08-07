@@ -123,6 +123,28 @@ export function deriveOffset(base: Shot, actualCamera: Vec3, actualTarget?: Vec3
 	return { rot: quatFromUnitVectors(base.heading, scale(v, 1 / d)), zoom: d / base.dist };
 }
 
+/**
+ * How fast a wheel notch should zoom, given where the camera is.
+ *
+ * OrbitControls moves a fixed RATIO per notch (~5% at speed 1). That is the right shape - R3 says
+ * everything here works in ratios - but the wrong size when the scene spans ten orders of
+ * magnitude: from a true-scale ship close-up (~1e-9) back to system scale is ~400 notches, most of
+ * them through featureless black, which a user cannot tell apart from the wheel having stopped
+ * working. So the notch size adapts to the gulf: a constant at readable scales, growing with the
+ * LOG of how far below scene scale the camera currently is. A pure function of the ratio alone, so
+ * it is scale-blind in exactly the way the rest of this module is.
+ */
+export function wheelZoomSpeed(dist: number, sceneScale: number): number {
+	if (!(dist > 0) || !(sceneScale > 0)) return 1;
+	// 0.75/decade, capped at 8. Tuned against two constraints that pull opposite ways: at readable
+	// scales (within ~2 decades of the scene, where something is always in frame) the notch stays
+	// near today's feel, while the DEEP stretch - true-scale ship out to readable, seven decades of
+	// nothing - crosses in ~60 notches instead of ~310. The integral of 1/speed over the climb is
+	// what the acceptance test counts; push the coefficient up before the cap if it ever needs to
+	// be faster, because the cap only governs the last couple of decades.
+	return Math.min(8, 1 + 0.75 * Math.max(0, Math.log10(sceneScale / dist)));
+}
+
 /** Clamp the user's zoom so they cannot leave the scene's usable range. Ratios throughout (R3). */
 export function clampZoom(offset: ViewOffset, baseDist: number, minDistance: number, maxDistance: number): ViewOffset {
 	if (!(baseDist > 0)) return offset;
