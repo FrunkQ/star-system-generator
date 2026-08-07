@@ -427,8 +427,10 @@ P3b. PARTLY SHIPPED @v2.1.459-461-beta. DONE: the stand-in hull for a model-less
     STILL TO DO: only the IN-TRANSIT rung - frame origin-to-destination instead of the host - which
     needs the route data P3c introduces. P3b's remainder and P3c are therefore ONE piece of work,
     not two; do them together.
-P3c. SHIPPED @v2.1.473-beta, awaiting the owner's eyes on a player view (see the caveat below).
-    The route line, the in-transit rung, and both plume faults - one piece of work as predicted.
+P3c. SHIPPED @v2.1.473-477-beta and CONFIRMED BY THE OWNER on a live player view (2026-08-08:
+    route line drawn, drive plume lit). The route line, the in-transit rung, and both plume
+    faults - one piece of work as predicted. It took to 477 because the first clock fix (473's
+    epochT0 seed) was wrong twice over - see the clock-anchor entry below and RENDER-S18.
     WHAT CHANGED FROM THE PLAN, and why each is a correction rather than a compromise:
     - GEOMETRY COMES FROM `pathPoints`, NOT the segment states (RENDER-S17). `calculateFastPlan`
       leaves accel-end, coast-start, coast-end and brake-start as `{r:{x:0,y:0}}`, so the route this
@@ -456,17 +458,33 @@ P3c. SHIPPED @v2.1.473-beta, awaiting the owner's eyes on a player view (see the
     - TWO PLAYER-SIDE FAULTS FOUND, both root causes rather than symptoms. A ship in transit was
       drawn at its PARKED position on every player view, because the `vector_position_au` fallback
       was gated on `scheduled_journeys` and `slimNode` deletes those. And the plume never lit
-      because the catalogue seeds its clock from `Date.now()` while the GM seeds from the system's
-      `epochT0` - the burns crossed correctly and were judged against the wrong calendar
-      (RENDER-S18). Neither was on the redaction path everyone was searching.
+      because the catalogue's clock ran on the WRONG CALENDAR (RENDER-S18) - measured in the field
+      at two months adrift, with the route line fully built and hidden by `inWindow` alone. The
+      first fix (seed from `epochT0`, skip while following the GM) was wrong twice: epochT0 is the
+      REFERENCE epoch the GM scrubs away from, and "following" only means a heartbeat snaps the
+      clock later. The working anchor (477): the GM's clock if a heartbeat has arrived, else the
+      newest `vector_epoch_ms` on any construct - stamped by the GM's own reconcile tick, riding
+      every snapshot - else epochT0 as a last resort. Note this was never only about ships: PLANET
+      positions are propagated to this clock, so player views had been drawing the whole system
+      months stale, and only constructs escaped (their position is stamped, not calculated) - which
+      is exactly why nothing ever looked wrong. Neither fault was on the redaction path everyone
+      was searching.
     - PLUME REACH now follows the DRAWN hull, not the authored one: `updateConstructs` rescales the
       hull every frame for the pixel LOD, so at true scale the light's cutoff sat a thousandfold
       inside the hull it was lighting.
-    CAVEAT, stated because a green build is not evidence here: none of the above has been seen on a
-    player view by anyone. The 3D scene is only exercised by a player view (the GM system view is
-    the 2D orrery), the bundled examples carry no construct with a journey, so no test in this repo
-    renders a route line. The unit and plumbing tests cover the data, the fit, the rung and the
-    redaction; the LOOK is unverified.
+    VERIFIED 2026-08-08 by the owner on a live player view: route line drawn (green under accel),
+    drive plume lit. The path to that verification is itself a lesson: no bundled example carries a
+    construct with a journey, so no test in this repo can render a route line, and the two field
+    faults above were found by `__routeDebug` / `__shipDebug` traces, not by tests or reasoning.
+    NEXT CANDIDATE, researched and sized (2026-08-08), awaiting the owner's go: move constructs
+    WITH display time on player views. The compact route's knots carry (t,x,y,z), so the route IS a
+    time-to-position function already on every snapshot - `routeStateAt(route, tMs)` in shipRoute
+    (~20 lines), one precedence branch in worldPositions (GM sampler -> route-in-window -> stamped
+    vector -> orbit). Ship then sits exactly ON its drawn line (both from routePointAt), and burns,
+    plume and position become consistent at whatever time the player displays. Adrift ships are the
+    one fiddly case (no route; linear extrapolation from the stamped vector diverges from the GM's
+    conic coast over long scrubs) - ship linear + declare it, upgrade only if seen wrong. Extends
+    the physics-page fudge entry by one sentence.
 P5. BANKED (owner, 2026-08-07): the STARMAP 3D view must also allow travel below the ecliptic.
     Same rule as RENDER-S14, different scene - the starmap has its own camera, so widening the
     system view's polar limits did nothing for it. Half of a 3D starmap is under the plane for the

@@ -7,6 +7,10 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.478-beta - 8th Aug 2026
+
+* Internal: P3c signed off -- the transit route line and the drive plume confirmed working on a live player view. Design doc updated with the verified status and the researched follow-on (moving ships along their route with the display clock).
+
 ## v2.1.477-beta - 7th Aug 2026
 
 * **Fixed: player views were showing the system at the wrong DATE.** The view opened its clock at today's real-world date, while everything the GM publishes is stamped in the campaign's own calendar -- measured in the field two months apart. Ships still appeared in the right place, because their position is sent rather than calculated, which is exactly why nothing looked wrong; but the planets were drawn where they had been two months earlier, the drive plume never lit, and a ship's transit route was built correctly and then hidden because the clock had not reached its start yet. The view now takes the campaign's date from the GM's clock where it has it, and otherwise from the timestamp the GM leaves on any ship it places -- so a system with traffic carries the right date whether or not the session is following the GM's clock.
