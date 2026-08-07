@@ -119,6 +119,22 @@
   let previewSystemId: string | null = null; // starmap-level: clicked-but-not-entered system
   $: previewNode = starmap?.systems.find((s) => s.id === previewSystemId) || null;
   $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
+
+  // SEED THE CLOCK FROM THE SYSTEM'S OWN EPOCH, exactly as the GM's view does
+  // (`currentTime = newSystem?.epochT0 || Date.now()`). This surface used to open at Date.now() and
+  // stay there unless the preset happened to follow the GM's clock - so on any system whose epoch is
+  // not about now, the clock was in a DIFFERENT EPOCH from every time the GM publishes. Positions
+  // survived that (a construct in transit is placed by a stamped vector, not by the clock), but
+  // anything judged against a game-clock WINDOW silently missed every time: the drive plume never
+  // lit, and a transit route line would never have drawn either. The data was correct and complete;
+  // it was being compared against the wrong calendar. Keyed on the system ID so it seeds on a change
+  // of system and never fights the running clock, and skipped while following the GM, whose
+  // heartbeat owns the clock outright.
+  let clockSeededFor: string | null = null;
+  $: if (selectedSystemNode && selectedSystemNode.id !== clockSeededFor) {
+    clockSeededFor = selectedSystemNode.id;
+    if (!followGMActive) currentTime = (selectedSystemNode.system as any)?.epochT0 || Date.now();
+  }
   // G9: the OTHER charted systems, as stars in this system's sky. Derived here rather than in the
   // scene because it is starmap knowledge, and recomputed only when the map or the viewed system
   // changes — never per frame. `off` skips the work entirely.
