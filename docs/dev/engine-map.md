@@ -313,6 +313,27 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S19 A code path that has never RENDERED has never been tested by anyone's eyes
+WHERE: the moving-construct path in `holo/scene.ts:updateConstructs` (facing, plume, route line);
+first actually rendered v2.1.477, first faults v2.1.479.
+RULE: before trusting visual code, ask what has ever EXERCISED it on screen. The GM system view is
+the 2D orrery and player views drew transiting ships parked, so a moving construct had never been
+rendered in 3D - and the moment one was, three faults surfaced at once (facing 180 out, colour
+smear, zoom crawl), none catchable by the unit tests because all were about what the eye sees.
+Concrete traps found on that first render, kept here because each will read as reasonable again:
+- three's `Object3D.lookAt` points the object's MINUS-Z at the target; ModelRef noses are PLUS-Z.
+  Any new oriented visual must state which axis it is aiming and look at the point that puts it
+  there (`lookAt(pos - delta)` to put +Z on the motion).
+- vertex colours interpolate PER SEGMENT: a sparse polyline smears a colour change across half a
+  span. A hard edge needs the boundary vertex written twice, once in each colour, and the phase
+  sampled at the segment MIDPOINT (windows are inclusive at both ends).
+- a fixed ratio-per-notch zoom is ~400 notches across this scene's ten decades, and the empty
+  stretch reads as a DEAD WHEEL, not as slowness. `wheelZoomSpeed` (cameraRig) scales the notch
+  with log-depth below scene scale; keep any new zoom gesture on the same curve.
+BLAST: no bundled example carries a construct with a journey, so this path still cannot appear in
+any test or local preview without hand-building a transit. Changes here need the owner's eyes on a
+live player view - plan the round-trip in, not as an afterthought.
+
 ### RENDER-S18 A time WINDOW is only meaningful against the clock that issued it
 WHERE: `routes/catalogue/+page.svelte` (seeds from the system's `epochT0`, as `SystemView` does);
 readable in `__shipDebug` as `clock` / `burnWindow` / `clockInBurn`.
