@@ -17,7 +17,7 @@ import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
-import { routeOf, routePointAt, type CompactRoute } from '$lib/constructs/shipRoute';
+import { routeOf, routePointAt, routeStateAt, type CompactRoute } from '$lib/constructs/shipRoute';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -138,6 +138,10 @@ export interface HoloController {
   setPortrait(colorHex: string | null, fixed?: boolean): void; // isolated-body PORTRAIT key light in the star's
   // colour at a fixed 3/4 angle (camera-relative; `fixed` = WORLD-fixed for a tidally-locked body). null = off.
   setUserSpin(on: boolean): void; // isolated-body thumbnail: allow hand-drag to spin (rotate only, no zoom)
+  // Move transiting constructs along their published route as the clock runs. ON only while the view
+  // FOLLOWS the GM's clock: route playback against an arbitrary local clock would show traffic where
+  // it is not (the owner's rule, 2026-08-08 - a scrubbing player is looking around, not tracking).
+  setTransitMotion(on: boolean): void;
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -194,6 +198,13 @@ interface BodyVisual {
   shipPrev?: THREE.Vector3;  // last frame's position, for the motion direction
   shipFx?: ShipFx | null;    // the drive plume at the stern, driven by the sampled burn
   shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
+  // WHICH END IS THE NOSE, as a sign on the model's +Z. The ModelRef convention says nose = +Z, but
+  // which end of the long axis is the nose is UNKNOWABLE from geometry - it is an authoring choice,
+  // and nothing rendered motion until v2.1.477, so a backwards guess had never been visible. The
+  // GM's placed NOZZLES settle it from authored data: they mark the stern, so the nose is the other
+  // end (+1 = convention, -1 = this model is authored nose-to-minus-Z). No nozzles = trust the
+  // convention.
+  noseSign?: number;
 }
 
 interface PlumeRig { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; halo: THREE.Sprite; light: THREE.PointLight }
@@ -2120,6 +2131,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Measuring after the scale mixed the two: the box came back in scene units (~1e-10 at true
       // scale) and the plume was pinned to the hull's centre instead of its stern.
       v.shipFx = attachDrivePlume(g, (ref.nozzles ?? []) as [number, number, number][]);
+      // The nozzles mark the STERN, so their mean z-sign says which end the nose is (see noseSign
+      // on BodyVisual). Placed nozzles clustered on +Z mean the model is authored nose-to-minus-Z,
+      // and the facing code aims the OTHER end at the motion. Derived, not guessed - and only the
+      // mean matters, so a mid-hull RCS thruster cannot flip a ship whose main drives are aft.
+      const nz = (ref.nozzles ?? []) as [number, number, number][];
+      v.noseSign = nz.length && nz.reduce((s, p) => s + p[2], 0) > 0 ? -1 : 1;
       applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
@@ -2371,6 +2388,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               hasBurnData: !!(_node?.driveBurns?.length || _node?.scheduled_journeys?.length),
               clock: timeMs, burnWindow: _win,
               clockInBurn: !!_win && timeMs >= _win.s && timeMs <= _win.e,
+              noseSign: b.noseSign ?? 1, // -1 = nozzles say this model is authored nose-to-minus-Z
               // The plume light's reach, in hull lengths of what is actually DRAWN - a number well
               // under 1 means it is lighting the inside of its own hull (the P3c reach fault).
               lightReachHulls: (b.shipFx?.rigs?.[0]?.light.distance ?? 0) / Math.max(1e-30, drawn)
@@ -2405,17 +2423,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // the ship held a stale heading and ignored its own orbit line. 0.1% of the hull per
           // frame is real motion at every dial position.
           const moveEps = Math.max(1e-24, ((b.shipLen ?? 0.2) * 1e-3) ** 2);
-          // lookAt SEMANTICS, learned the moment a moving construct was first actually rendered
-          // (nothing ever exercised this path before v2.1.477: the GM system view is the 2D orrery,
-          // and player views drew transiting ships PARKED): three's Object3D.lookAt points the
-          // object's MINUS-Z at the target, and the ModelRef convention is nose = PLUS-Z. So
-          // looking AT (position + delta) faced the nose exactly backwards - a ship boosting away
-          // from its origin stared straight back at it. Look at (position - delta) and -Z takes the
-          // retrograde, which puts the nose (+Z) on the motion. The braking negate then flips it
-          // engines-first, exactly as before - it was always correct RELATIVE to the accel case.
+          // lookAt SEMANTICS, verified in three's source (Object3D.lookAt): for a NON-camera the
+          // arguments are swapped internally, so a mesh's PLUS-Z points AT the target - looking at
+          // (position + delta) puts +Z on the motion, which is the ModelRef convention's nose. (A
+          // fix that "corrected" this to minus-delta shipped in v2.1.479 on the camera-convention
+          // reading of lookAt and was wrong; the field report it answered had a different cause,
+          // below.) noseSign then handles the model whose VISUAL nose is authored on -Z: which end
+          // of the long axis is the nose is an authoring choice no importer can detect, and it was
+          // invisible until constructs first moved on screen - but the GM's placed nozzles mark the
+          // stern, so the sign is derived from authored data rather than assumed. The braking
+          // negate composes on top: a torch ship brakes engines-first whichever way it is authored.
           if (!rebased && _shipDelta.lengthSq() > moveEps) {
             if (burn.braking) _shipDelta.negate();
-            b.shipModel.lookAt(_shipLook.copy(b.mesh.position).sub(_shipDelta));
+            _shipDelta.multiplyScalar(b.noseSign ?? 1);
+            b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
           }
           // Drive plume: length and light scale with the fraction of the ship's OWN drive in use -
           // quadratic so a station-keeping puff whispers and a 100% torch burn is SUPER bright and
@@ -2925,7 +2946,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const isSystemLevel = (n: any) => n.parentId === rootId || rootBaryIds.has(n.parentId);
 
     const baryRingPending: any[] = [];
-    const pos0 = computeWorldPositions3D(system, timeMs);
+    const pos0 = computeWorldPositions3D(system, timeMs, transitMotion ? routeSampler : undefined);
     rMax = 0;
     for (const p of pos0.values()) rMax = Math.max(rMax, Math.hypot(p.x, p.y, p.z));
     if (rMax <= 0) rMax = 1;
@@ -3358,10 +3379,28 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     emitRouteLines(camera.position.distanceTo(controls.target));
   }
 
+  // TRANSIT MOTION (follow-GM only). When on, transiting constructs are placed by evaluating their
+  // published route at the display clock - the position half of the route line, so a moving ship
+  // sits exactly ON its drawn course by construction. The gate is the SAMPLER, not the data: a
+  // free-scrubbing player passes no sampler and a transiting ship holds its GM-stamped truth,
+  // because scrubbing is for looking around, not for replaying live traffic against a clock the GM
+  // does not control (the owner's rule, 2026-08-08 - the player-setup disclaimer says exactly this).
+  // Null outside the route's window, so departure and arrival fall back to the stamped vector.
+  let transitMotion = false;
+  function setTransitMotion(on: boolean) {
+    if (on === transitMotion) return;
+    transitMotion = on;
+    updatePositions(); // take effect NOW, not at the next clock tick (the clock may be paused)
+  }
+  const routeSampler = (_sys: System, node: any, tMs: number) => {
+    const rs = routeStateAt(routeOf(node), tMs);
+    return rs ? { position_au: { x: rs.x, y: rs.y } } : null;
+  };
+
   const tmpParent = new THREE.Vector3();
   function updatePositions() {
     if (!currentSystem) return;
-    const positions = computeWorldPositions3D(currentSystem, timeMs);
+    const positions = computeWorldPositions3D(currentSystem, timeMs, transitMotion ? routeSampler : undefined);
     for (const b of bodies) {
       const p = positions.get(b.id);
       if (!p) continue;
@@ -3894,7 +3933,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
 }
 
 // ---- helpers ----
