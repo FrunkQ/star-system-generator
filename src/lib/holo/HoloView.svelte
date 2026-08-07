@@ -7,6 +7,9 @@
   import type { System } from '$lib/types';
   import type { HoloController } from '$lib/holo/scene';
   import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
+  import type { MapHighlights } from '$lib/tags/mapHighlights';
 
   const dispatch = createEventDispatcher<{ focus: string }>();
 
@@ -19,6 +22,13 @@
   // Momentary GM overrides (NOT part of the saved style): quick label show/hide and a filter bypass
   // to briefly drop the visual filter if it's hard to read.
   export let labelsVisible: boolean = true;
+  // MAP HIGHLIGHTS. `system` is already the audience's snapshot (the player window receives it
+  // redacted), so the badges cannot leak a secret tag — markersFor is deliberately audience-blind.
+  // A player window has its OWN store instances (TAG-15), so this arrives as a PROP and falls back to
+  // the store only for the GM's own screen.
+  export let highlights: MapHighlights | null = null;
+  /** The GM's chosen look for this view; an individual highlight can still override it. */
+  export let markerStyle: 'label' | 'pin' | 'flag' | undefined = undefined;
   export let filterBypass: boolean = false;
   export let orbitPaused: boolean = false; // momentarily stop the auto view-orbit turntable
   // A pre-rendered static info-card canvas composited INTO the scene so the GPU filter warps/tints it
@@ -141,6 +151,11 @@
   $: controller?.setViewInset(viewInsetRight);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
   $: if (controller) { labelsVisible; filterBypass; orbitPaused; skyStars; applyStyle(style); }
+  // Prop first, store second (TAG-15): in a player window every store is a fresh empty instance, so the
+  // value only ever arrives over the broadcast as a prop. Named in the expression, not closed over, or
+  // the reactive statement would not re-run when the selection changes (TAG-17).
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
+  $: controller?.setHighlights(activeHighlights, $tagCategories, markerStyle ?? 'label');
 </script>
 
 <div class="holo-root" bind:this={container}>

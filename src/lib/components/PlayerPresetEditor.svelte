@@ -542,6 +542,16 @@
                   <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
                 {/if}
                 <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
+                <!-- ONE field, both maps. The colour is never chosen here: it always comes from the tag
+                     or its category, so a faction flies its own colour whichever shape is picked. -->
+                <label>Highlighted tags
+                  <select bind:value={draft.markerStyle}>
+                    <option value="label">Tag chips — as they look in the panels</option>
+                    <option value="pin">Map pins — initials on a pin</option>
+                    <option value="flag">Flags — a chip on a staff</option>
+                  </select>
+                </label>
+                <p class="hint">How a tag you have highlighted appears on the players' system map and starmap. Every shape carries its text, so it still reads under a CRT or colour-blind filter. Choose what to highlight in <strong>Find by tag</strong>.</p>
                 {#if draft.systemView === 'holo3d'}
                   <!-- 3D only: a flat map has no tilt to set, and no turntable to spin. -->
                   <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
@@ -779,7 +789,7 @@
               <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} dropLines={draft.starmapDropLines !== false} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
                 flat={draft.starmapView === 'diagram2d'}
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
-                background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+                background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} markerStyle={draft.markerStyle} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <!-- D9: the starmap DOCUMENT — same engine + theme as the system document, real filter. -->
               <FilteredDocumentView stage="starmap" starmap={$starmapStore} {rulePack}
@@ -801,7 +811,11 @@
                  can't drift from what players actually get. -->
             {:else if (draft.systemView === 'holo3d' || draft.systemView === 'diagram2d') && previewSystem && rulePack}
               <div class="holo-wrap">
+                <!-- markerStyle is previewed live: the GM is choosing a LOOK, so they have to see it.
+                     The selection itself comes from the live overrides, exactly as the players' view
+                     will read it, so the preview cannot show a different set of badges. -->
                 <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle} skyStars={previewSkyStars}
+                  markerStyle={draft.markerStyle}
                   focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
                 {#if infoPreview && !draft.hideInfoPanel}
                   <!-- Info-block preview (D6): the SAME DocPanel players get, docked like the live view.

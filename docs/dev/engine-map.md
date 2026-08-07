@@ -238,6 +238,33 @@ surface → call `tagPillMetrics`, do not copy numbers. **A ZERO MEASUREMENT IS 
 `measureTagPillText` falls back to an estimate when a context answers 0 for non-empty text, because jsdom
 and other stub 2D contexts do exactly that and a null check sails straight past them.
 
+### TAG-20 The player's system view is HoloView at BOTH tiers, and a marker must be added in FOUR places
+WHERE: `catalogue/+page.svelte:effectiveSystemTier` (holo3d AND diagram2d → `'holo'`), `holo/scene.ts`
+`drawLabel`, `starmap/starmapScene.ts` `drawLabel`, `catalogue/document/guideDocument.ts`.
+RULE: a tag badge has FOUR renderers and they are not interchangeable. GM 2D orrery =
+`SystemVisualizer` canvas. GM starmap = `Starmap.svelte` SVG. PLAYER system view, 2D *and* 3D =
+`holo/scene.ts` label sprites. PLAYER starmap, 2D *and* 3D = `starmapScene.ts` label sprites. The
+textual guide is a fifth, through the document block model. `SystemVisualizer` serves ONLY the lo-fi
+`'static'` tier on a player view.
+WHY: a previous session wired `SystemVisualizer` believing it was the player's 2D map. It is not —
+RENDER-B2 records the same trap one level up for the starmap. "The 2D system view" names two different
+renderers depending on who is looking.
+BLAST: adding anything per-body to a player view → all four, plus the document. The scene-side badges
+ride the EXISTING label sprite rather than adding a second sprite, so they inherit position and
+visibility for free; the cost is that the sprite grows downward, so `sprite.center` must be re-derived
+from the NAME's share of the canvas or the name drifts away from its body.
+
+### TAG-21 Resolve markers where the AUDIENCE is known, not in the renderer
+WHERE: `starmapScene.SmSystem.markers` (handed in), vs `holo/scene.setHighlights` (resolved inside)
+RULE: `markersFor`/`rollUpMarkers` are audience-blind (TAG-13). Whoever CALLS them decides whether GM
+tags or a player's redacted snapshot go in, so resolve as close to that decision as possible.
+`Starmap3DView` resolves and passes `SmSystem.markers`; the holo scene is handed the selection and
+resolves per body only because it already owns the system it was given.
+WHY: it keeps the scene modules free of tag imports and makes the redaction boundary greppable — one
+call site per surface, each visibly holding either the snapshot or the raw system.
+BLAST: do NOT add an audience flag to either function. If a new surface needs markers, give it the
+tags it should badge and let it resolve, or resolve for it upstream.
+
 ### TAG-19 A canvas surface CANNOT be verified in a worker session, and the reason is not the screenshot
 WHERE: any `requestAnimationFrame` renderer — `SystemVisualizer.drawSystem`, `holo/scene.ts`
 RULE: the Browser pane runs with `document.hidden === true` / `visibilityState: 'hidden'`, so rAF never
@@ -251,6 +278,11 @@ live this way, by reading real `getBBox` widths against `measureText`.
 BLAST: if your change lands on a canvas, verify the PRIMITIVE instead (import the real module from the
 dev server, draw into your own context, probe pixels) and hand back an explicit list for a human eye.
 Do not report a canvas change as visually confirmed.
+UPDATE (2026-08-08, same session): the owner OPENED the pane on request and everything worked
+immediately — 60 fps, `document.hidden === false`, screenshots fine, canvas readback fine, all three
+marker shapes confirmed on the live 3D player view. So the pane is not permanently unavailable to
+worker sessions; it is unavailable while it is not DISPLAYED. Measure `document.hidden` and say which
+state you are in rather than assuming the pane is broken — and it is worth asking.
 
 ---
 

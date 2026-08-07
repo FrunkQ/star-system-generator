@@ -6,6 +6,9 @@
   //   - hi-tech console: the live projector orbital map, tap a body for player-safe data.
   // v1 is local-only: same-machine BroadcastChannel, zero network (spec COMPANION-APP-SPEC.md §3).
   import { onMount, onDestroy, beforeUpdate, afterUpdate } from 'svelte';
+  // The category list resolves a highlighted tag's colour and label. `mapHighlights` here comes off the
+  // BROADCAST (see the SYNC_PRESET handler), not off a local store — this window may be the player's.
+  import { tagCategories } from '$lib/tags/tagCategories';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
@@ -777,7 +780,8 @@
           // filter-composited quad; the unfiltered aside shows it.
           blocks: displaySystem ? buildGuideDocument(displaySystem, docSelectedId ?? selectedBody.id, {
             nowMs: docNowMs,
-            panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack, liveReadings: !!activePreset?.liveReadings
+            panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack, liveReadings: !!activePreset?.liveReadings,
+            highlights: mapHighlights, tagCategories: $tagCategories
           }) : undefined,
           theme: activePreset ? makeDocTheme({
             font: presetFont, headingFont: activePreset.headingFont, fontScale: infoFontScale,
@@ -1151,6 +1155,7 @@
           gridDepth={typeof activePreset.starmapGridDepth === 'number' ? activePreset.starmapGridDepth : (activePreset.starmapGridDepth ? 1 : 0)} gridFalloff={activePreset.starmapGridFalloff ?? 0.5}
           background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
           labelSize={activePreset.labelSize}
+          highlights={mapHighlights} markerStyle={activePreset.markerStyle ?? 'label'}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} dropLines={activePreset.starmapDropLines !== false} mono={activePreset.starmapMono}
           overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} zExaggeration={activePreset.zExaggeration ?? 1}
@@ -1214,7 +1219,7 @@
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
-          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} on:focus={handleFocus} />
+          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} on:focus={handleFocus} />
         {:else}
           <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
             <SystemVisualizer

@@ -124,3 +124,62 @@ describe('buildGuideDocument', () => {
     expect(back.text).toContain('↑');
   });
 });
+
+// The chip row under a body's name (design 9.3). The point of it is AGREEMENT: whatever the GM has
+// chosen to badge on the maps is named in the panel too, in the same colours, on every surface.
+describe('map-highlight chips under the name', () => {
+  const cats: any[] = [
+    { id: 'frontier', label: 'Frontier', color: '#6fae8f', textColor: '#06160f',
+      tags: [{ key: 'frontier/fuel-depot', label: 'Fuel depot' }, { key: 'frontier/ice-mining', label: 'Ice mining' }] }
+  ];
+  const tagged: any = {
+    ...system,
+    nodes: system.nodes.map((n: any) =>
+      n.id === 'earth' ? { ...n, tags: [{ key: 'frontier/fuel-depot' }, { key: 'atmosphere/breathable' }] } : n)
+  };
+  const chipRow = (blocks: any[]) => {
+    const h = blocks.findIndex((b) => b.kind === 'heading' && b.level === 1);
+    return h >= 0 && blocks[h + 1]?.kind === 'tags' ? blocks[h + 1] : null;
+  };
+
+  it('names a highlighted tag directly under the heading, in the tag colour', () => {
+    const blocks = buildGuideDocument(tagged, 'earth', {
+      highlights: [{ ref: 'frontier/fuel-depot' }], tagCategories: cats
+    });
+    const row = chipRow(blocks);
+    expect(row).toBeTruthy();
+    expect(row.tags.map((t: any) => t.label)).toEqual(['Fuel depot']);
+    expect(row.tags[0].color).toBe('#6fae8f'); // the category's colour, exactly as the map uses
+  });
+
+  it('shows ONLY what is highlighted, not the body\'s whole tag list', () => {
+    const row = chipRow(buildGuideDocument(tagged, 'earth', {
+      highlights: [{ ref: 'frontier/fuel-depot' }], tagCategories: cats
+    }));
+    expect(row.tags.map((t: any) => t.label)).not.toContain('Breathable');
+  });
+
+  it('a whole category highlighted still only names what the body carries', () => {
+    const row = chipRow(buildGuideDocument(tagged, 'earth', {
+      highlights: [{ ref: 'frontier' }], tagCategories: cats
+    }));
+    expect(row.tags.map((t: any) => t.label)).toEqual(['Fuel depot']); // not Ice mining — Earth has none
+  });
+
+  it('adds nothing when there is no selection, or when the body carries none of it', () => {
+    expect(chipRow(buildGuideDocument(tagged, 'earth', { tagCategories: cats }))).toBeNull();
+    expect(chipRow(buildGuideDocument(tagged, 'mars', {
+      highlights: [{ ref: 'frontier/fuel-depot' }], tagCategories: cats
+    }))).toBeNull();
+  });
+
+  // TAG-13: the builder is audience-blind. A player's document is built from the redacted snapshot, so
+  // a secret tag is already gone by the time it gets here — proven by the tag simply not being present.
+  it('cannot badge a tag that was redacted before it arrived', () => {
+    const redacted: any = { ...tagged, nodes: tagged.nodes.map((n: any) =>
+      n.id === 'earth' ? { ...n, tags: [{ key: 'atmosphere/breathable' }] } : n) };
+    expect(chipRow(buildGuideDocument(redacted, 'earth', {
+      highlights: [{ ref: 'frontier/fuel-depot' }], tagCategories: cats
+    }))).toBeNull();
+  });
+});

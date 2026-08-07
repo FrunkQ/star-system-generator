@@ -109,14 +109,35 @@ Physics tags and your own hand-added tags are unaffected.
 
 ## Showing them on the maps
 
-Under **Player Views → Quick overrides**, *Highlight on the maps* takes a live selection of anything
-you want made visible: a whole category, a single tag, or several at once. Whatever you pick is
-badged on your maps and on the players' at the same time, in each tag's own colour.
+At the bottom of **Find by tag** is a tray, *Show highlight markers on player views*. Drag a tag chip
+or a category bubble onto it, or press the `+` on a tag. That takes a live selection of anything you
+want made visible: a whole category, a single tag, or several at once. Whatever you pick is badged on
+your maps and on the players' at the same time, in each tag's own colour. **Player Views → Quick
+overrides** keeps the mute — one click drops every badge mid-scene without losing the selection.
+
+Find by tag is the picker because it already knows what is actually on the map, with counts: badging
+a tag nothing carries would show nothing.
 
 Pick the Faction category and every faction flies its own flag. Pick `frontier/refuelling` alone and
 the players see exactly where they can top up, and nothing else. On the starmap a system shows the
 union of everything inside it, so a faction holding one moon lights the whole system, and a contested
-system honestly shows more than one flag.
+system honestly shows more than one flag. Once anything is highlighted the starmap fades back the
+systems carrying none of it, and a key names the colours.
+
+The same badges appear under a body's name in its info block, so the map and the panel always agree.
+
+### Choosing how they look
+
+Each player view picks its own look, under **Player Views → edit a preset → System → Highlighted
+tags**:
+
+- **Tag chips** — exactly as they look in the panels. The map and the panel agree completely.
+- **Map pins** — a pin carrying the tag's initials. The fewest pixels, best when a lot is highlighted.
+- **Flags** — the chip flown from a short staff. The most readable at a glance, and the tallest.
+
+The colour is never part of this choice: it always comes from the tag or its category, so a faction
+flies its own colour whichever shape you pick. Every shape carries its text, so a highlight still
+reads under a CRT or colour-blind filter.
 
 The selection is momentary — it is never saved into a preset — and secret tags can never appear, so
 leaving a faction highlighted is safe.

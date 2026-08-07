@@ -23,7 +23,17 @@ const hexOf = (n: number) => '#' + (n >>> 0).toString(16).padStart(6, '0');
 
 // WS7: `z` is the system's DEPTH in map units (absent/0 = on the reference plane). It is rendered as
 // scene height, multiplied by the DISPLAY-ONLY exaggeration — which never touches distance maths.
-export interface SmSystem { id: string; name: string; x: number; y: number; z?: number; stars: { color: string; bh?: 'quiescent' | 'active'; edd?: number }[] }
+export interface SmSystem {
+  id: string; name: string; x: number; y: number; z?: number;
+  stars: { color: string; bh?: 'quiescent' | 'active'; edd?: number }[];
+  /**
+   * Roll-up highlight badges for this system, ALREADY RESOLVED by the caller (design 9.4). Resolved
+   * outside the scene deliberately: markersFor/rollUpMarkers are audience-blind (TAG-13), so whoever
+   * builds this list is the one that decides whether GM tags or a player's redacted snapshot go in.
+   * The scene only draws what it is handed.
+   */
+  markers?: HighlightMarker[];
+}
 // WS3: routes carry their NAME so the 3D/flat starmap can label them like the 2D editor does — and,
 // because the label rides the shared label pipeline, it obeys the Hide-labels override too.
 export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?: string }
@@ -31,6 +41,10 @@ export interface SmRoute { fromId: string; toId: string; dashed?: boolean; name?
 // so existing importers keep working.
 export type { MapOverlay as GridMode } from '$lib/map/mapOverlay';
 import { isLattice as isLatticeMode, normaliseOverlay, isHexFamily, hasSubsectors, type MapOverlay } from '$lib/map/mapOverlay';
+// Starmap ROLL-UP badges: a system flies the union of what everything inside it carries (design 9.4).
+// Same pill shape as the panel chip and the system view — see tags/tagPill.ts.
+import { capMarkers, type HighlightMarker } from '$lib/tags/mapHighlights';
+import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName } from '$lib/tags/tagPill';
 import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
 import { niceSeries, formatNice } from '$lib/map/niceInterval';
 
@@ -42,6 +56,8 @@ interface LabelSprite {
   text: string;
   aspect: number;      // canvas width / height
   heightRatio: number; // canvas full height / text height — converts labelSizePx to sprite size
+  /** Roll-up badges drawn UNDER the system name, in the same canvas. */
+  markers: HighlightMarker[];
   // Optional own colour, overriding the shared label colour. Route names use it so they read as
   // belonging to the LINE rather than to the stars they sit between.
   color?: string;
@@ -629,7 +645,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const setLabelsVisible = (on: boolean) => { labelsVisible = on; };
 
   // A name label as an in-scene sprite (added to `content`, so it warps/tints with the stars).
-  function makeLabelSprite(name: string, color?: string): LabelSprite | undefined {
+  function makeLabelSprite(name: string, color?: string, markers: HighlightMarker[] = []): LabelSprite | undefined {
     if (!name) return undefined;
     const canvas = document.createElement('canvas');
     const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false });
@@ -637,7 +653,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     sprite.center.set(0.5, -0.35); // anchor below the text so it floats above the star glyph
     sprite.renderOrder = 999;
     sprite.visible = false;
-    const ls: LabelSprite = { sprite, canvas, text: name, aspect: 1, heightRatio: 1, color };
+    const ls: LabelSprite = { sprite, canvas, text: name, aspect: 1, heightRatio: 1, color, markers };
     drawLabel(ls);
     content.add(sprite);
     return ls;
@@ -650,19 +666,70 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     if (!ctx) return;
     ctx.font = font;
     const textW = Math.max(1, Math.ceil(ctx.measureText(ls.text).width));
-    const cw = textW + pad * 2, ch = Math.ceil(fontPx * 1.35) + pad * 2;
-    ls.canvas.width = Math.max(2, Math.round(cw * dpr));
-    ls.canvas.height = Math.max(2, Math.round(ch * dpr));
+    const nameH = Math.ceil(fontPx * 1.35) + pad * 2;
+
+    // ROLL-UP BADGES under the system name, in this same canvas — one sprite, so a badge cannot drift
+    // from the system it belongs to. Sized off the label's font, so the hierarchy holds at any scale.
+    const { shown: capped, overflow } = capMarkers(ls.markers ?? []);
+    const pm = tagPillMetrics(fontPx * 0.55);
+    const badges = capped
+      .filter((m) => m.style !== 'ring')
+      .map((m) => {
+        const text = tagPillText(m);
+        return {
+          text, style: m.style, color: m.color, textColor: m.textColor,
+          step: markerStackStep(m.style as MarkerStyleName, pm),
+          width: m.style === 'pin' ? pm.height : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
+        };
+      });
+    if (overflow) {
+      const text = `+${overflow}`;
+      badges.push({ text, style: 'label', color: TAG_PILL_OVERFLOW_BG, textColor: TAG_PILL_OVERFLOW_FG,
+                    step: pm.rowStep, width: tagPillWidth(text, pm, ctx) });
+    }
+    const badgeW = badges.length ? Math.max(...badges.map((b) => b.width)) : 0;
+    const badgeH = badges.reduce((n, b) => n + b.step, 0);
+
+    const cw = Math.max(textW + pad * 2, Math.ceil(badgeW) + pad * 2);
+    const ch = nameH + Math.ceil(badgeH);
+    const newW = Math.max(2, Math.round(cw * dpr));
+    const newH = Math.max(2, Math.round(ch * dpr));
+    const resized = ls.canvas.width !== newW || ls.canvas.height !== newH;
+    ls.canvas.width = newW;
+    ls.canvas.height = newH;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
     ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 4;
     ctx.fillStyle = ls.color || labelColor;
-    ctx.fillText(ls.text, cw / 2, ch / 2);
+    ctx.fillText(ls.text, cw / 2, nameH / 2);
+
+    if (badges.length) {
+      ctx.shadowBlur = 0;
+      let top = nameH;
+      for (const b of badges) {
+        if (b.style === 'pin') drawTagPin(ctx, b.text, cw / 2, top + b.step, pm, b.color, b.textColor);
+        else if (b.style === 'flag') drawTagFlag(ctx, b.text, (cw - b.width) / 2, top + b.step, pm, b.color, b.textColor);
+        else drawTagPill(ctx, b.text, (cw - b.width) / 2, top + b.step / 2, pm, b.color, b.textColor);
+        top += b.step;
+      }
+    }
+
     ls.aspect = cw / ch;
     ls.heightRatio = ch / fontPx;
-    const map = (ls.sprite.material as THREE.SpriteMaterial).map;
-    if (map) map.needsUpdate = true;
+    // Hold the NAME's gap above the glyph constant as the sprite grows downward with badges.
+    ls.sprite.center.set(0.5, -0.35 * (nameH / ch));
+    // RENDER-B1: GL texture storage is allocated ONCE, so uploading a canvas of a different pixel size
+    // silently never lands and the quad keeps stretching the stale bitmap. This path was the one copy
+    // of the pair that had never been fixed — latent only because a label's size never used to change.
+    const smat = ls.sprite.material as THREE.SpriteMaterial;
+    if (resized || !smat.map) {
+      smat.map?.dispose();
+      smat.map = new THREE.CanvasTexture(ls.canvas);
+      smat.needsUpdate = true;
+    } else {
+      smat.map.needsUpdate = true;
+    }
   }
 
   function clearContent() {
@@ -738,7 +805,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         tick.position.set(foot.x, 0.012, foot.z);
         content.add(tick);
       }
-      placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name) });
+      placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name, undefined, sys.markers ?? []) });
     }
     // Routes: an emissively-GLOWING filament — a soft additive halo quad + a bright additive core
     // line — so the link reads like a lit hyperlane in both the 2D (overhead) and 3D starmap.

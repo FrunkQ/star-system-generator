@@ -177,6 +177,13 @@ export interface PlayerPreset {
   lockOverhead: boolean; // force top-down (recreates the flat 2D projector from the 3D engine)
   whole: boolean;        // frame the whole system vs the focused body
   labelSize: number;     // in-scene body-label font size (px); the font is the theme `font`
+  // How a highlighted tag reads on THIS view. The colour always comes from the tag or its category —
+  // this only chooses the shape, and every shape carries its text so it survives a CRT or colour-blind
+  // filter. An individual highlight may still override it (HighlightRef.style).
+  //   'label' — the tag chip itself, under the body name. The panel and the map agree exactly.
+  //   'pin'   — a map pin with the tag's initials. Fewest pixels, best when a lot is highlighted.
+  //   'flag'  — the chip flown from a short staff. Most readable at a glance; tallest.
+  markerStyle: 'label' | 'pin' | 'flag';
   hideInfoPanel: boolean; // system page: never show the body info panel (a clean display; tap still frames)
   inspectorWidthPct: number; // desktop body info-panel width as a FRACTION of the viewport width (0..1).
                              // A proportion, not a pixel count: the GM authors on one screen and players

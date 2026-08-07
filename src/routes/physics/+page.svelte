@@ -32,6 +32,7 @@
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
     ['tags', 'Tags'],
+    ['overrides', 'GM overrides'],
     ['reasons', 'Reasons to visit'],
     ['generation', 'Auto-generation'],
     ['baseline', 'Test fixtures (Sol & Testion)'],
@@ -880,6 +881,41 @@
         tag with a friendly label + a plain-language description of the physics behind it (see
         <code>tagPresentation.ts</code>). Tags that merely duplicated a class were removed (Ocean World →
         planet/ocean, etc.). The full layering is documented in <code>docs/classification-and-tags.md</code>.</p>
+    </section>
+
+    <section id="overrides">
+      <h2>When you disagree with the physics — GM overrides</h2>
+      <p>Everything above describes what the engine <em>works out</em>. None of it is binding on you. A tag you add
+        by hand <strong>wins</strong>, and it keeps winning: re-processing the system, editing the world, importing
+        it again — the override survives all of them, and the engine's own answer for that tag is suppressed rather
+        than left sitting alongside it. This is the one place in the model where the answer is not derived, so it is
+        worth knowing exactly how far it reaches.</p>
+
+      <p><strong>What an override does and does not change.</strong> It replaces the <em>tag</em>, not the physics
+        behind it. Tagging a world <code>habitability/marginal</code> does not alter its temperature, its
+        atmosphere, or anything computed from them — the number a later pass reads is still the derived one. So an
+        override is a statement about how the world should <em>read</em>, not a way to edit the model. If you want
+        the physics itself to move, change an input (composition, orbit, mass) and let the engine re-derive.</p>
+
+      <p><strong>How to tell them apart.</strong> Every tag records where it came from, and the Tags tab groups them
+        by exactly that:</p>
+      <ul class="tags">
+        <li><strong>Derived from the physics</strong> — recomputed on every run. Locked: change the inputs, not the tag.</li>
+        <li><strong>Your override</strong> — a physics-namespace tag you added by hand. Shown outlined, and it
+          suppresses the engine's twin. Delete it and the derived answer comes straight back.</li>
+        <li><strong>Recorded at generation</strong> — written once when the world was made and never re-derived
+          (<code>origin/*</code>, <code>spin/*</code>). You may delete one permanently; nothing will restore it.</li>
+        <li><strong>Your tag</strong> — anything of your own that the engine has no opinion about at all.</li>
+      </ul>
+
+      <p><strong>One honesty rule worth calling out.</strong> Some generated tags are a claim that a value was
+        <em>inferred</em> rather than measured — <code>spin/axis-inferred</code> is the standard case. Type a real
+        obliquity in and that claim is retired automatically, because leaving it would mean the world carried a note
+        saying "we guessed this" about a figure you supplied.</p>
+
+      <p>The Newton trace (the "show the working" panel on a body) labels an overridden line as an override rather
+        than quietly printing your value as though the engine had derived it — the trace is a record of how an
+        answer was reached, so a hand-set answer has to say so.</p>
     </section>
 
     <section id="reasons">

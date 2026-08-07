@@ -5,6 +5,10 @@
   import type { MapOverlay } from '$lib/map/mapOverlay';
   import type { Starmap } from '$lib/types';
   import type { StarmapController, SmSystem, SmRoute } from './starmapScene';
+  import { rollUpMarkers, type MapHighlights } from '$lib/tags/mapHighlights';
+  import type { MarkerStyleName } from '$lib/tags/tagPill';
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
   import { systemVisualStars } from './systemStars';
   import { drawHud } from '$lib/catalogue/infoCard';
 
@@ -38,6 +42,12 @@
   export let background: 'space' | 'green' | 'blue' | 'black' = 'space';
   export let angleDeg = 58;
   export let labelSize = 12;
+  // ROLL-UP BADGES (design 9.4). Resolved HERE rather than in the scene, because this is the layer that
+  // knows whose tags these are: `starmap` is already the audience's snapshot, so a secret tag has been
+  // removed before it could ever become a badge (TAG-9/TAG-13). Prop first, store second — a player
+  // window's stores are fresh empty instances (TAG-15).
+  export let highlights: MapHighlights | null = null;
+  export let markerStyle: MarkerStyleName = 'label';
   export let filter = 'none';
   export let filterParams: Record<string, number | boolean | string> | undefined = undefined;
   export let selectable = false; // live view: tapping a system fires `select`
@@ -72,9 +82,15 @@
   // drops its depth CUES in that case (A12) because a number affecting no distance is noise; there is
   // no equivalent here, since this scene's only text is system names, route names and the planar
   // distance rings. Do not add a depth read-out to this view without revisiting A14.
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
+  // Every reactive value is NAMED in this expression rather than closed over in a helper, or the
+  // badges would be computed once and frozen — the fault TAG-17 records on the 2D starmap.
   $: smSystems = ((starmap?.systems ?? []) as any[]).map<SmSystem>((s) => ({
     id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0, z: s.position?.z ?? 0,
-    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd }))
+    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd })),
+    markers: activeHighlights.length
+      ? rollUpMarkers(s.system?.nodes ?? [], activeHighlights, $tagCategories, markerStyle)
+      : []
   }));
   $: smRoutes = ((starmap?.routes ?? []) as any[]).map<SmRoute>((r) => ({ fromId: r.sourceSystemId, toId: r.targetSystemId, dashed: r.lineStyle === 'dashed', name: r.name }));
 

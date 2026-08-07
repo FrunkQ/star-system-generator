@@ -13,6 +13,10 @@ import {
   tagPillSvg,
   tagPillText,
   measureTagPillText,
+  markerStackStep,
+  tagPinSvg,
+  tagFlagSvg,
+  TAG_PILL_STEM,
   TAG_PILL_AVG_GLYPH
 } from './tagPill';
 
@@ -138,10 +142,52 @@ describe('placement', () => {
 describe('what a marker prints', () => {
   const mk = (style: string) => ({ style, label: 'Trade Union', monogram: 'TU' });
 
-  it('the monogram shapes carry initials and the rest carry the label', () => {
+  it('a pin carries initials; everything else carries the label', () => {
     expect(tagPillText(mk('pin'))).toBe('TU');
-    expect(tagPillText(mk('flag'))).toBe('TU');
+    // A flag is a PILL on a staff, so it has room for the full name — only the pin is monogrammed.
+    expect(tagPillText(mk('flag'))).toBe('Trade Union');
     expect(tagPillText(mk('label'))).toBe('Trade Union');
     expect(tagPillText(mk('both'))).toBe('Trade Union');
+  });
+});
+
+describe('the familiar shapes are the pill plus something, never a different object', () => {
+  const m = tagPillMetrics(10);
+
+  it('a pin and a flag reach further above their anchor than a plain pill', () => {
+    expect(markerStackStep('pin', m)).toBeGreaterThan(markerStackStep('label', m));
+    expect(markerStackStep('flag', m)).toBeGreaterThan(markerStackStep('pin', m));
+  });
+
+  it('the stack step covers what the drawer actually reaches, so shapes cannot overlap', () => {
+    const gap = m.fontPx * TAG_PILL_RATIO.gap;
+    // A flag's staff is its full drawn extent above the foot.
+    expect(markerStackStep('flag', m)).toBeCloseTo(m.fontPx * TAG_PILL_STEM + m.height + gap, 6);
+    // A pin rises tail + 1.35r above its point.
+    expect(markerStackStep('pin', m)).toBeCloseTo(m.fontPx * TAG_PILL_STEM + (m.height / 2) * 1.35 + gap, 6);
+  });
+
+  it('every shape scales with the font, so they stay one family', () => {
+    const half = tagPillMetrics(5);
+    for (const s of ['label', 'pin', 'flag'] as const) {
+      expect(markerStackStep(s, half)).toBeCloseTo(markerStackStep(s, m) / 2, 6);
+    }
+  });
+
+  it('a pin head is centred on its anchor x and sits above the point it marks', () => {
+    const p = tagPinSvg(50, 200, m);
+    expect(p.textX).toBe(50);
+    expect(p.textY).toBeLessThan(200);          // head above the point
+    expect(p.path).toContain('A');              // an arc, not a rectangle
+    expect(p.path.trim().endsWith('Z')).toBe(true);
+    expect(p.fontSize).toBe(m.fontPx);
+  });
+
+  it("a flag's pill sits at the top of its staff, and the staff stands on the anchor", () => {
+    const f = tagFlagSvg('Refuelling', 50, 200, m);
+    expect(f.staff.y + f.staff.height).toBeCloseTo(200, 6);   // foot on the anchor
+    expect(f.pill.y).toBeGreaterThanOrEqual(f.staff.y - 0.001); // pill within the staff's span
+    expect(f.pill.x).toBeGreaterThan(f.staff.x);               // flies to the right of the staff
+    expect(f.pill.rx).toBeCloseTo(m.radius, 6);                // still the pill's own corner
   });
 });

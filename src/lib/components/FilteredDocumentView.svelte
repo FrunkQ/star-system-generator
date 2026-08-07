@@ -6,6 +6,8 @@
   // the eye sees — either a planet/star on the schematic (2D hit box) or a navigator row. Mirrors
   // FilteredListView's filter + warp plumbing; lazy-imports the shader so it code-splits.
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import type { FilteredCanvasController } from '$lib/holo/filteredCanvas';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
@@ -56,6 +58,11 @@
   // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
   // Optional: without it the construct block simply omits those rows.
   export let rulePack: import('$lib/types').RulePack | null = null;
+  // MAP HIGHLIGHTS -> the chip row under the body's name (design 9.3), so the panel and the map name the
+  // same things in the same colours. Prop first, store second: a player window runs in its own document
+  // where every store is a fresh empty instance (TAG-15), so the value only reaches it as a prop.
+  export let highlights: import('$lib/tags/mapHighlights').MapHighlights | null = null;
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
   // A29: show a construct's current fuel/cargo/crew, not just its capacity. Preset-driven.
   export let liveReadings = false;
   // G8: the campaign clock, so a printed report carries the same "Next eclipse" row the live panel does.
@@ -169,6 +176,7 @@
       ? buildStarmapDocument(starmap, { selectedId, layout: starmapLayout, colorful: accent === 'rainbow', fieldIcons: starmapFieldIcons })
       : (system ? buildGuideDocument(system, selectedId, {
           units, tempUnit, colorful, imagery, rulePack, liveReadings, nowMs: nowMs ?? undefined, formatDate,
+          highlights: activeHighlights, tagCategories: $tagCategories,
           image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
         }) : []);
     // GENUINE header/footer: reserve a band for the tip banners (and the company/footer stamps) so the

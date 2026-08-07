@@ -6,6 +6,8 @@
   // (renderDocument) across every info block, so appearance changes stay aligned by construction.
   // The canvas sizes itself to its CONTENT height; the host provides the frame and scrolling.
   import { onMount, onDestroy } from 'svelte';
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
   import type { System } from '$lib/types';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { renderDocument } from '$lib/catalogue/document/renderDocument';
@@ -45,6 +47,11 @@
   // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
   // Optional: without it the construct block simply omits those rows.
   export let rulePack: import('$lib/types').RulePack | null = null;
+  // MAP HIGHLIGHTS -> the chip row under the body's name (design 9.3), so the panel and the map name the
+  // same things in the same colours. Prop first, store second: a player window runs in its own document
+  // where every store is a fresh empty instance (TAG-15), so the value only reaches it as a prop.
+  export let highlights: import('$lib/tags/mapHighlights').MapHighlights | null = null;
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
   // A29: show a construct's current fuel/cargo/crew, not just its capacity. Preset-driven.
   export let liveReadings = false;
 
@@ -91,6 +98,7 @@
     if (!canvas || w <= 0 || !system) return;
     const blocks = buildGuideDocument(system, selectedId, {
       panel: true, noHeading: !showHeading, units, tempUnit, imagery, tagStyle, photoFrame, rulePack, liveReadings,
+      highlights: activeHighlights, tagCategories: $tagCategories,
       nowMs: nowMs ?? undefined, formatDate,
       image: loaded?.img ?? null, imageAspect: loaded?.aspect, imageFocus: loaded?.focus ?? null
     });

@@ -91,6 +91,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   lockOverhead: false,
   whole: false,
   labelSize: 11,
+  markerStyle: 'label', // the chip itself — the map and the panel agree by default
   hideInfoPanel: false,
   inspectorWidthPct: 0.26,
   infoFontScale: 1

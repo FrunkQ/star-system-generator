@@ -17,6 +17,12 @@ import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
+// Highlight badges on the player's system view. The pill shape is the SAME object as the panel's tag
+// chip (tags/tagPill.ts) — nothing here re-invents its padding, radius or proportions. markersFor is
+// audience-blind by design (TAG-13): the tags handed in are already the player's redacted snapshot.
+import { markersFor, capMarkers, type MapHighlights, type HighlightMarker } from '$lib/tags/mapHighlights';
+import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_STEM, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName } from '$lib/tags/tagPill';
+import type { TagCategory } from '$lib/tags/tagCategories';
 import { routeOf, routePointAt, routeStateAt, type CompactRoute } from '$lib/constructs/shipRoute';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -131,6 +137,8 @@ export interface HoloController {
   setLabelSize(px: number): void; // in-scene label font size
   setLabelFont(font: string | null): void; // in-scene label font-family (theme font)
   setLabelsVisible(on: boolean): void; // momentary show/hide of in-scene labels (not saved)
+  /** Highlight badges under each body's name. Tags must already be redacted for the audience (TAG-13). */
+  setHighlights(highlights: MapHighlights, categories: TagCategory[], style?: MarkerStyleName): void;
   setHud(canvas: HTMLCanvasElement | null): void; // static info-card overlay, composited INTO the filter
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
@@ -162,6 +170,10 @@ interface LabelSprite {
   text: string;
   aspect: number;    // canvas width / height — keeps the sprite from stretching
   heightRatio: number; // canvas full height / on-screen text height — converts labelSizePx to sprite size
+  /** Highlight badges drawn UNDER the name, in the same canvas — see drawLabel. */
+  markers: HighlightMarker[];
+  /** Fraction of the canvas height occupied by the name, so the name keeps its gap above the body. */
+  nameFraction: number;
 }
 
 interface BodyVisual {
@@ -829,6 +841,35 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let labelFontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
   function redrawAllLabels() { for (const b of bodies) if (b.label) drawLabel(b.label); }
   function setLabelColor(hex: string | null) { labelColor = hex || '#cfefff'; redrawAllLabels(); }
+
+  // HIGHLIGHT SELECTION. Held here and re-resolved per body, so changing it live re-badges the scene
+  // without a rebuild — setSystem is expensive and a highlight change touches only the label canvases.
+  let highlights: MapHighlights = [];
+  let highlightCategories: TagCategory[] = [];
+  let highlightStyle: MarkerStyleName = 'label';
+  function markersForNode(node: any): HighlightMarker[] {
+    if (!highlights.length) return [];
+    return markersFor(node?.tags, highlights, highlightCategories, highlightStyle);
+  }
+  function setHighlights(next: MapHighlights, categories: TagCategory[], style: MarkerStyleName = 'label') {
+    // Cheap identity guard: this is fed from a reactive statement that fires on unrelated changes too,
+    // and a needless redraw here rebuilds a canvas texture per body.
+    const same =
+      highlightCategories === categories &&
+      highlightStyle === style &&
+      highlights.length === next.length &&
+      highlights.every((h, i) => h.ref === next[i].ref && h.style === next[i].style);
+    if (same) return;
+    highlights = next ?? [];
+    highlightCategories = categories ?? [];
+    highlightStyle = style;
+    const byId = new Map((currentSystem?.nodes ?? []).map((n: any) => [n.id, n]));
+    for (const b of bodies) {
+      if (!b.label) continue;
+      b.label.markers = markersForNode(byId.get(b.id));
+      drawLabel(b.label);
+    }
+  }
   function setLabelSize(px: number) { labelSizePx = Math.max(6, Math.min(40, px)); } // applied via sprite scale
   function setLabelFont(font: string | null) { labelFontFamily = font && font.trim() ? font : 'ui-monospace, SFMono-Regular, Menlo, monospace'; redrawAllLabels(); }
   function setLabelsVisible(on: boolean) { labelsVisible = on; }
@@ -888,7 +929,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   // Build a label sprite for a body and add it to the scene (so the filter processes it). The text is
   // drawn to a canvas at high resolution; on-screen size is set each frame from labelSizePx.
-  function makeLabelSprite(text: string): LabelSprite | undefined {
+  function makeLabelSprite(text: string, markers: HighlightMarker[] = []): LabelSprite | undefined {
     if (!text) return undefined;
     const canvas = document.createElement('canvas');
     const mat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false });
@@ -896,7 +937,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     sprite.center.set(0.5, -0.25); // anchor below the text so the label floats just above the body
     sprite.renderOrder = 999;      // always drawn on top of the bodies
     sprite.visible = false;
-    const ls: LabelSprite = { sprite, canvas, text, aspect: 1, heightRatio: 1 };
+    const ls: LabelSprite = { sprite, canvas, text, aspect: 1, heightRatio: 1, markers, nameFraction: 1 };
     drawLabel(ls);
     scene.add(sprite);
     return ls;
@@ -912,8 +953,36 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (!ctx) return;
     ctx.font = font;
     const textW = Math.max(1, Math.ceil(ctx.measureText(ls.text).width));
-    const cw = textW + pad * 2;
-    const ch = Math.ceil(fontPx * 1.35) + pad * 2;
+    const nameH = Math.ceil(fontPx * 1.35) + pad * 2;
+
+    // HIGHLIGHT BADGES, stacked under the name in the SAME canvas — one sprite, so they cannot drift
+    // from the name they belong to and they inherit its position and visibility for free. Sized off the
+    // label's own font so the hierarchy holds at every label size: a badge is smaller than the name.
+    const { shown: capped, overflow } = capMarkers(ls.markers ?? []);
+    const pm = tagPillMetrics(fontPx * 0.6);
+    // Rings are drawn round the body by the caller, not in this canvas.
+    const badges: { text: string; style: string; color: string; textColor: string; step: number; width: number }[] =
+      capped
+        .filter((m) => m.style !== 'ring')
+        .map((m) => {
+          const text = tagPillText(m);
+          return {
+            text, style: m.style, color: m.color, textColor: m.textColor,
+            step: markerStackStep(m.style as any, pm),
+            // A pin is as wide as its head; a flag adds its staff to the pill.
+            width: m.style === 'pin' ? pm.height : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
+          };
+        });
+    if (overflow) {
+      const text = `+${overflow}`;
+      badges.push({ text, style: 'label', color: TAG_PILL_OVERFLOW_BG, textColor: TAG_PILL_OVERFLOW_FG,
+                    step: pm.rowStep, width: tagPillWidth(text, pm, ctx) });
+    }
+    const pillW = badges.length ? Math.max(...badges.map((b) => b.width)) : 0;
+    const pillsH = badges.reduce((n, b) => n + b.step, 0);
+
+    const cw = Math.max(textW + pad * 2, Math.ceil(pillW) + pad * 2);
+    const ch = nameH + Math.ceil(pillsH);
     const newW = Math.max(2, Math.round(cw * dpr));
     const newH = Math.max(2, Math.round(ch * dpr));
     const resized = ls.canvas.width !== newW || ls.canvas.height !== newH;
@@ -927,9 +996,34 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 4;
     ctx.fillStyle = labelColor;
-    ctx.fillText(ls.text, cw / 2, ch / 2);
+    ctx.fillText(ls.text, cw / 2, nameH / 2);
+
+    if (badges.length) {
+      ctx.shadowBlur = 0;                                 // the badge is its own background
+      let top = nameH;                                    // top of the current badge's row
+      for (const b of badges) {
+        // A pin and a flag are anchored by their POINT/FOOT, which sits at the BOTTOM of the row —
+        // pointing down the stack toward the body the sprite floats above. A pill is centred in it.
+        if (b.style === 'pin') {
+          drawTagPin(ctx, b.text, cw / 2, top + b.step, pm, b.color, b.textColor);
+        } else if (b.style === 'flag') {
+          drawTagFlag(ctx, b.text, (cw - b.width) / 2, top + b.step, pm, b.color, b.textColor);
+        } else {
+          drawTagPill(ctx, b.text, (cw - b.width) / 2, top + b.step / 2, pm, b.color, b.textColor);
+        }
+        top += b.step;
+      }
+      ctx.font = font;                                    // the badge drawers leave their own font set
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+    }
+
     ls.aspect = cw / ch;
     ls.heightRatio = ch / fontPx; // sprite full height ÷ text height
+    // The sprite's anchor is a fraction of its FULL height, so growing it downward with badges would
+    // otherwise lift the name away from the body. Hold the name's gap constant instead.
+    ls.nameFraction = nameH / ch;
+    ls.sprite.center.set(0.5, -0.25 * ls.nameFraction);
     // Same immutable-storage rule as the HUD (see setHud): resizing the canvas element does NOT resize
     // the GL texture storage behind it, so a label whose pixel size changed (new font, new text width)
     // needs a fresh texture or its update silently never lands.
@@ -3505,7 +3599,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const isConstruct = node.kind === 'construct';
       // Every body gets a label element; which ones actually show is decided per-frame by the focus
       // visibility rule (getVisibleNodeIds) — so a planet's moons name themselves once it's selected.
-      const label = makeLabelSprite(String(node.name ?? ''));
+      const label = makeLabelSprite(String(node.name ?? ''), markersForNode(node));
       // Spin: sidereal rotation from the data, composed onto a fixed axial tilt each frame. Stars
       // spin too (their sunspots turn); the corona is a billboard child, unaffected by the spin.
       // Constructs are camera-facing sprites — no spin. The SIGN of rotation_period_hours encodes
@@ -4243,7 +4337,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
 }
 
 // ---- helpers ----

@@ -202,7 +202,120 @@ export function tagPillSvg(text: string, x: number, y: number, m: TagPillMetrics
   };
 }
 
-/** What a marker actually prints: the monogram shapes carry initials, the rest carry the label. */
+/** What a marker actually prints: the PIN carries initials, everything else carries the label. */
 export function tagPillText(marker: { style: string; label: string; monogram: string }): string {
-  return marker.style === 'pin' || marker.style === 'flag' ? marker.monogram : marker.label;
+  return marker.style === 'pin' ? marker.monogram : marker.label;
 }
+
+// ---------------------------------------------------------------------------------------------
+// THE FAMILIAR SHAPES — a pin and a flag, for player-facing maps.
+//
+// Both are the PILL with something added, never a different object: same colour, same corner radius,
+// same padding, same text. A pin is the pill rounded into a map teardrop carrying initials; a flag is
+// the pill flown from a short staff. That way a player who has learnt what green means on one view
+// reads it instantly on another, and the GM's panel chip is still recognisably the same badge.
+//
+// Legibility WITHOUT colour is required (design 9.3) — a CRT or colour-blind filter can flatten the
+// hue — so every shape carries text. Nothing here is decided by the renderer: which shape is used is
+// the GM's per-view choice, or the individual highlight's override.
+// ---------------------------------------------------------------------------------------------
+
+/** Height of a flag's staff, and a pin's tail, as a multiple of the font size. */
+export const TAG_PILL_STEM = 1.35;
+
+/**
+ * A map pin: a circular head carrying 1-2 initials, on a short tail whose POINT sits at (x, y) — the
+ * thing being marked. Returns the head's diameter.
+ */
+export function drawTagPin(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  m: TagPillMetrics,
+  bg: string,
+  fg: string
+): number {
+  const r = m.height / 2;
+  const tail = m.fontPx * TAG_PILL_STEM;
+  const cy = y - tail - r * 0.35;
+
+  ctx.fillStyle = bg;
+  // ONE path, traced identically to tagPinSvg: across the top of the head from left to right, then
+  // down to the point. A single path rather than a circle plus a triangle, so a semi-transparent tag
+  // colour does not show a seam where the two would have overlapped.
+  ctx.beginPath();
+  ctx.moveTo(x - r, cy);
+  ctx.arc(x, cy, r, Math.PI, 0, false);
+  ctx.lineTo(x, y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.font = m.font;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = fg;
+  ctx.fillText(text, x, cy);
+  return r * 2;
+}
+
+/**
+ * A flag: the pill flown from a short staff planted at (x, y). Returns the width of the flag body, so
+ * a caller can fan several without measuring twice.
+ */
+export function drawTagFlag(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  m: TagPillMetrics,
+  bg: string,
+  fg: string
+): number {
+  const staff = m.fontPx * TAG_PILL_STEM + m.height;
+  const staffW = Math.max(1, m.fontPx * 0.09);
+
+  ctx.fillStyle = bg;
+  ctx.fillRect(x - staffW / 2, y - staff, staffW, staff);
+  return drawTagPill(ctx, text, x + staffW / 2, y - staff + m.height / 2, m, bg, fg);
+}
+
+/** SVG geometry for the same two shapes, so the starmap and the orrery cannot draw them differently. */
+export interface TagPinSvg {
+  path: string;
+  textX: number;
+  textY: number;
+  fontSize: number;
+}
+export function tagPinSvg(x: number, y: number, m: TagPillMetrics): TagPinSvg {
+  const r = m.height / 2;
+  const tail = m.fontPx * TAG_PILL_STEM;
+  const cy = y - tail - r * 0.35;
+  return {
+    // Circle head + a wedge to the point. Drawn as two arcs so the tail meets the head tangentially.
+    path: `M ${x - r} ${cy} A ${r} ${r} 0 1 1 ${x + r} ${cy} L ${x} ${y} Z`,
+    textX: x,
+    textY: cy,
+    fontSize: m.fontPx
+  };
+}
+export function tagFlagSvg(text: string, x: number, y: number, m: TagPillMetrics) {
+  const staff = m.fontPx * TAG_PILL_STEM + m.height;
+  const staffW = Math.max(0.5, m.fontPx * 0.09);
+  const pill = tagPillSvg(text, x + staffW / 2, y - staff + m.height / 2, m);
+  return { staff: { x: x - staffW / 2, y: y - staff, width: staffW, height: staff }, pill };
+}
+
+/**
+ * Vertical room one marker needs above its anchor, including the gap to the next — used to stack
+ * several without overlap. Derived from what each drawer actually reaches, not guessed: a pin rises
+ * `tail + 1.35r` above its point, a flag the full height of its staff.
+ */
+export function markerStackStep(style: MarkerStyleName, m: TagPillMetrics): number {
+  const gap = m.fontPx * TAG_PILL_RATIO.gap;
+  if (style === 'pin') return m.fontPx * TAG_PILL_STEM + (m.height / 2) * 1.35 + gap;
+  if (style === 'flag') return m.fontPx * TAG_PILL_STEM + m.height + gap;
+  return m.rowStep;
+}
+
+export type MarkerStyleName = 'label' | 'ring' | 'both' | 'pin' | 'flag';

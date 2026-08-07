@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.493-beta - 8th Aug 2026
+
+* **New: highlighted tags now show on the players' views, and you choose how they look.** Highlighting a tag badged it on your own maps only. It now reaches the players' system map (2D and 3D alike), their starmap, and the textual guide — where the highlighted tags a world carries are listed as chips directly under its name, so the map and the page always agree.
+* **New: three looks for a highlight, per player view.** In **Player Views → edit a preset → System → Highlighted tags**: **Tag chips** (exactly as they appear in the panels), **Map pins** (a pin carrying the tag's initials — the fewest pixels when a lot is highlighted), or **Flags** (the chip flown from a short staff — the most readable at a glance). The colour is never part of the choice: it always comes from the tag or its category, so a faction flies its own colour whichever shape you pick, and every shape carries its text so it still reads under a CRT or colour-blind filter. The preset preview shows your choice live.
+* **The physics page now explains GM overrides** — what an override changes and what it deliberately does not (it replaces the tag, never the physics behind it), how to tell a derived tag from your own, and why typing a real axial tilt retires the "inferred" note.
+* The tag guide's "Showing them on the maps" was out of date — it still sent you to Quick overrides to pick a highlight, when that moved to the **Find by tag** tray some time ago. Rewritten, and it now covers the starmap fade, the colour key and the new marker looks.
+
 ## v2.1.492-beta - 8th Aug 2026
 
 * **Fixed: highlight badges never appeared on the starmap.** Choosing a tag to highlight correctly faded back the systems that do not carry it -- so the map clearly responded -- but the coloured badges naming the tag were never drawn, on any system, ever. The selection was read once when the map was first built and then never looked at again, so the badges were always working from an empty selection. They now appear as soon as you add a tag and update as you change it.

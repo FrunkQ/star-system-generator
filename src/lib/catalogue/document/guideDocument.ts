@@ -8,6 +8,7 @@ import type { System, CelestialBody } from '$lib/types';
 import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
 import { bodyFacts, bodyGlyph } from '../bodyFacts';
 import { describeTag, tagContextLabel } from '$lib/tags/tagPresentation';
+import { markersFor } from '$lib/tags/mapHighlights';
 import type { DocBlock, TagItem, TagStyle } from './blocks';
 import {
   isBary, isStar, isBeltish, dominantOf, displayLabel, membersOf, moonsOf, listBodiesOf,
@@ -27,6 +28,11 @@ export interface GuideDocOpts {
   imageFocus?: import('./blocks').ImageFocus | null; // subject box → frame to the body's edge, not the pic's
   hideInfo?: boolean;                    // clean display: schematic only, no per-body file block
   tagStyle?: TagStyle;                   // how tags render: pills / list / grouped (default pills)
+  // MAP HIGHLIGHTS. What the GM has chosen to badge on the maps, named under the body's own heading so
+  // the panel and the map agree (design 9.3). Pass the same selection the maps are given; tags reaching
+  // this builder are already redacted for whoever is reading (TAG-9/TAG-13).
+  highlights?: import('$lib/tags/mapHighlights').MapHighlights;
+  tagCategories?: import('$lib/tags/tagCategories').TagCategory[];
   panel?: boolean;                       // INFO-BLOCK-ONLY: heading + facts + tags + description. Drops the
   // schematic, body graphic, parent-nav and drill-in lists — for the 2D/3D side panel, where the live
   // map already IS the schematic/body/navigator. One builder → the document AND the 2D/3D info block.
@@ -103,6 +109,17 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
 
   if (!panel) blocks.push({ kind: 'rule' }); // the panel's frame is its own separator
   if (!opts.noHeading) blocks.push({ kind: 'heading', level: 1, text: title, sub, id: selected.id });
+
+  // 1b) HIGHLIGHT CHIPS, directly under the name (design 9.3). The point is that the map and the panel
+  // AGREE: whatever the GM has chosen to badge on the maps is named here, in the same colours, on every
+  // surface including the textual guide. Only the highlighted ones — the full Tags block is still below.
+  // `subject.tags` is whatever this document was built from, so a player's copy is already redacted.
+  if (subject && opts.highlights?.length) {
+    const badges = markersFor((subject as any).tags, opts.highlights, opts.tagCategories ?? []);
+    if (badges.length) {
+      blocks.push({ kind: 'tags', tags: badges.map((m) => ({ label: m.label, color: m.color })), style: 'pills' });
+    }
+  }
 
   // 2) Back-to-parent navigator row (the old Guide's "↑ parent" button). Not in the side panel — the
   // live 2D/3D map is the navigator there.
