@@ -17,6 +17,7 @@ import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
+import { routeOf, routePointAt, type CompactRoute } from '$lib/constructs/shipRoute';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -1143,6 +1144,163 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const r of orbitRings) {
       if (!r.abs) continue;
       lastRingCoreArc = Math.min(lastRingCoreArc, emitOrbitRing(r, lastRingCamDist, lastRingFocus));
+    }
+    emitRouteLines(lastRingCamDist);
+  }
+
+  // ---- Transit route lines (P3c) -----------------------------------------------------------------
+  // A ship under way draws its course the way a body draws its orbit. It shares this file's ring
+  // discipline - built in ABSOLUTE scene units through the same projector, re-emitted on a rebase, and
+  // hidden by the same visibility pass - but it keeps its own list rather than joining `orbitRings`,
+  // because the two differ in the one place that matters: a ring re-emits from a float64 master of
+  // FIXED vertices, while a route re-emits by EVALUATING A CURVE at whatever density the camera wants.
+  // Folding that into `emitOrbitRing` would have made it a function with two unrelated jobs, which is
+  // how the six camera mechanisms of section 1 happened.
+  //
+  // WHY A CURVE AND NOT THE PUBLISHED POINTS. The knots are few (see shipRoute.ts) and the flown path
+  // is an arc; straight chords between knots cut its corner. `routePointAt` is the same centripetal
+  // Catmull-Rom the publisher fitted its knots against, so the line drawn here is the line the
+  // tolerance was measured on - and because it is analytic it can be subdivided as far as a close-up
+  // needs. That is this line's answer to A23, which cannot apply: A23 re-samples a PROPAGATOR, and a
+  // player has none (the journeys are stripped).
+  const ROUTE_MAX_VERTS = 2048;
+  const ROUTE_SAG_FRAC = 1 / 2000; // allowed chord sag as a fraction of the working distance (A23's)
+  // `abs` = the tessellated curve in ABSOLUTE scene units, float64, exactly as an orbit ring keeps its
+  // master - so a rebase costs one pass instead of re-evaluating the curve, and so the per-frame ship
+  // anchor below can be applied to a CLEAN copy every frame rather than accumulating onto itself.
+  let routeLines: { id: string; obj: THREE.Line; route: CompactRoute; node: any; abs: Float64Array; count: number }[] = [];
+  const _routeP = new THREE.Vector3();
+  const _routeQ = new THREE.Vector3();
+
+  /** Accel green, coast yellow, brake red - the 2D orrery's own vocabulary for a committed route. */
+  const ROUTE_ACCEL = new THREE.Color(0x33ff66);
+  const ROUTE_COAST = new THREE.Color(0xffe066);
+  const ROUTE_BRAKE = new THREE.Color(0xff5544);
+
+  /**
+   * Re-tessellate every route line for the current working distance and origin.
+   *
+   * Density is chosen per SPAN from how far that span's curve bows off its own chord: sag falls as
+   * 1/n^2, so n = sqrt(bow / tolerance) puts every span at the same visual straightness for the least
+   * total vertices. The tolerance is a fraction of the camera's working distance, exactly as A23's
+   * is - so this is scale-blind (R3) and a close-up subdivides where a wide shot does not.
+   */
+  function emitRouteLines(camDist: number) {
+    const tol = Math.max(1e-13, camDist * ROUTE_SAG_FRAC);
+    for (const r of routeLines) {
+      const knots = r.route.p;
+      if (knots.length < 2) continue;
+      const cols = r.obj.geometry.getAttribute('color') as THREE.BufferAttribute;
+      const pos = r.abs;
+      const col = cols.array as Float32Array;
+
+      // How much each span bows, measured once in scene units so the budget below is spent where the
+      // curve actually bends rather than evenly along a route that is mostly straight.
+      const bow: number[] = [];
+      let total = 0;
+      for (let i = 0; i < knots.length - 1; i++) {
+        positionToSceneAbs(routePointAt(r.route, i, 0.5), _routeP);
+        positionToSceneAbs(knots[i], _routeQ);
+        const ax = _routeQ.x, ay = _routeQ.y, az = _routeQ.z;
+        positionToSceneAbs(knots[i + 1], _routeQ);
+        const b = Math.hypot(
+          _routeP.x - (ax + _routeQ.x) / 2,
+          _routeP.y - (ay + _routeQ.y) / 2,
+          _routeP.z - (az + _routeQ.z) / 2
+        );
+        const n = Math.max(2, Math.min(256, Math.ceil(Math.sqrt(b / tol))));
+        bow.push(n);
+        total += n;
+      }
+      // Share out the ceiling proportionally if the ideal density would overrun the buffer.
+      const squeeze = total + 1 > ROUTE_MAX_VERTS ? (ROUTE_MAX_VERTS - 1) / total : 1;
+
+      let w = 0;
+      const write = (p: { x: number; y: number; z: number; t: number }) => {
+        if (w >= ROUTE_MAX_VERTS) return;
+        positionToSceneAbs(p, _routeP);
+        pos[3 * w] = _routeP.x;
+        pos[3 * w + 1] = _routeP.y;
+        pos[3 * w + 2] = _routeP.z;
+        // The burn state at this point's OWN time, read through the same dual-source function the
+        // plume uses - so the colours a player sees are the colours the GM sees (R11).
+        const burn = shipBurnAt(r.node, p.t);
+        const c = !burn.thrusting ? ROUTE_COAST : burn.braking ? ROUTE_BRAKE : ROUTE_ACCEL;
+        col[3 * w] = c.r; col[3 * w + 1] = c.g; col[3 * w + 2] = c.b;
+        w++;
+      };
+
+      for (let i = 0; i < knots.length - 1; i++) {
+        const n = Math.max(2, Math.round(bow[i] * squeeze));
+        for (let k = 0; k < n; k++) write(routePointAt(r.route, i, k / n));
+      }
+      write(knots[knots.length - 1]);
+
+      r.count = w;
+      cols.needsUpdate = true;
+      r.obj.geometry.setDrawRange(0, w);
+    }
+  }
+
+  /**
+   * Slide the drawn line onto the ship, tapering the correction away over its neighbours.
+   *
+   * The owner's requirement, and it is not cosmetic: "the line would always go through the vessel".
+   * The line and the hull come from the same course but not from the same arithmetic - the hull sits
+   * where the GM STAMPED it (a point of the dense flown path), the line is a curve fitted through a
+   * dozen knots - so they may differ by the fit tolerance, a fifth of a percent of the route. That is
+   * invisible across a whole route and glaring when the ship is framed, which is exactly the shot the
+   * construct ladder now offers. Correcting only the nearest vertex would kink; the cosine taper
+   * spreads it over a handful either side, so the line meets the ship and nothing else moves visibly.
+   */
+  function anchorRouteToShip(r: { id: string }, pos: Float32Array, count: number) {
+    const b = bodyById.get(r.id);
+    if (!b || count < 2) return;
+    // Nearest drawn vertex to the ship, which is where the two are meant to coincide.
+    let bi = -1, best = Infinity;
+    for (let i = 0; i < count; i++) {
+      const d = (pos[3 * i] - b.mesh.position.x) ** 2 + (pos[3 * i + 1] - b.mesh.position.y) ** 2 + (pos[3 * i + 2] - b.mesh.position.z) ** 2;
+      if (d < best) { best = d; bi = i; }
+    }
+    if (bi < 0) return;
+    const dx = b.mesh.position.x - pos[3 * bi], dy = b.mesh.position.y - pos[3 * bi + 1], dz = b.mesh.position.z - pos[3 * bi + 2];
+    const reach = Math.max(2, Math.round(count * 0.08));
+    for (let k = -reach; k <= reach; k++) {
+      const i = bi + k;
+      if (i < 0 || i >= count) continue;
+      const f = 0.5 * (1 + Math.cos((Math.PI * k) / reach)); // 1 at the ship, 0 at the edge of the reach
+      pos[3 * i] += dx * f; pos[3 * i + 1] += dy * f; pos[3 * i + 2] += dz * f;
+    }
+  }
+
+  /**
+   * The route line's visibility, its rebase and its anchor - all per frame, and all cheap because only
+   * ONE route can be visible at a time.
+   *
+   * It draws only for the SELECTED construct (the owner's call, 2026-08-07: a dozen ships under way
+   * would otherwise web the system over), only while it is actually under way, and otherwise under the
+   * same name rule every orbit line obeys.
+   *
+   * The buffer is rewritten from the float64 master every frame rather than only on a rebase, because
+   * the ship anchor has to be re-applied against the ship's CURRENT position and applying a taper on
+   * top of an already-tapered buffer would walk the line away a little more each frame. Writing from a
+   * clean master makes the correction idempotent, which is the same reason the rings keep a master at
+   * all - and it gets the rebase for free, since the origin is subtracted in this pass.
+   */
+  function updateRouteLines() {
+    for (const r of routeLines) {
+      const show = r.id === focusedId && visibleSet.has(r.id) && timeMs >= r.route.s && timeMs <= r.route.e;
+      r.obj.visible = show;
+      if (!show || !r.count) continue;
+      const attr = r.obj.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const out = attr.array as Float32Array;
+      for (let i = 0; i < r.count * 3; i += 3) {
+        out[i] = r.abs[i] - sceneOrigin.x;
+        out[i + 1] = r.abs[i + 1] - sceneOrigin.y;
+        out[i + 2] = r.abs[i + 2] - sceneOrigin.z;
+      }
+      anchorRouteToShip(r, out, r.count);
+      attr.needsUpdate = true;
     }
   }
 
@@ -2602,6 +2760,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     ringVisuals = [];
     beltVisuals = [];
     orbitRings = [];
+    routeLines = [];
     baryScene = new Map();
     starLights = [];
     starVisuals = [];
@@ -2687,7 +2846,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // transit sampler rather than by its orbit, so a ring drawn from that orbit would be a line it is
       // not on; and a construct sitting ON a surface has no orbit to draw — that one is decided per
       // frame in updateOrbitRings, because the surface lock is itself live (a construct can lift off).
-      const isJourneying = node.kind === 'construct' && ((node as any).scheduled_journeys || []).length > 0;
+      // A construct with a committed course draws that instead of an orbit (P3c). `routeOf` reads
+      // either source - the GM's journeys or the player's published compact route - so a ship that is
+      // journeying on the GM is still journeying on a snapshot that has had its journeys stripped,
+      // which the old `scheduled_journeys.length` test could never see.
+      const route = node.kind === 'construct' ? routeOf(node) : null;
+      if (route) {
+        const line = buildRouteLine(ringColor(node));
+        contentGroup.add(line);
+        routeLines.push({ id: node.id, obj: line, route, node, abs: new Float64Array(2048 * 3), count: 0 });
+      }
+      const isJourneying = route !== null;
       if (node.orbit && !isJourneying) {
         if (node.parentId && nodesById.get(node.parentId)?.kind === 'barycenter') {
           // A member orbits the PAIR's common point, not the star. Deferred: the clearance that holds the
@@ -3068,6 +3237,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     }
     visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
+    // Route lines last: their density is chosen from the working distance, and their anchor needs the
+    // ship's scene position, so neither is known until the camera exists and the bodies are placed.
+    emitRouteLines(camera.position.distanceTo(controls.target));
   }
 
   const tmpParent = new THREE.Vector3();
@@ -3528,6 +3700,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateRings();
     updateBelts();
     updateOrbitRings();
+    updateRouteLines();
     controls.update();
     // Near plane follows the working distance. Framing a true-scale world puts the camera ~1e-5 scene
     // units out, far inside the fixed 0.01 near plane — the framed body would be clipped away as the
@@ -3546,7 +3719,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // around where the camera was looking — so a real zoom re-chooses the one, and a body carrying the
       // camera along its orbit eventually walks out of the other. Only while rebased: an un-rebased scene
       // is always uniform and this must not touch it. One ring re-propagates, so it is cheap to be eager.
-      if (sceneOrigin.lengthSq() > 0) {
+      // A ROUTE LINE re-tessellates on zoom whether or not the scene has rebased: its density is
+      // chosen from the working distance alone, and unlike a ring it has no uniform master to fall
+      // back on, so a wide-shot tessellation left in place would facet visibly on the way in.
+      if (sceneOrigin.lengthSq() > 0 || routeLines.length) {
         const zoomed = dT > lastRingCamDist * 1.6 || dT < lastRingCamDist / 1.6;
         const strayed = _ringFocus.addVectors(sceneOrigin, controls.target).distanceTo(lastRingFocus)
           > lastRingCoreArc * RING_FOCUS_SLACK;
@@ -3660,6 +3836,29 @@ function buildOrbitRing(node: any, project: Projector, color: number): { loop: T
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ORBIT_SAMPLES * 3), 3));
   return { loop: new THREE.LineLoop(geo, mat), abs };
+}
+
+/**
+ * A transit route line: an empty buffer at the ceiling, filled by `emitRouteLines` every time the
+ * working distance changes. Unlike an orbit ring it keeps no float64 master, because it is not
+ * re-emitted from fixed vertices - it is re-evaluated from the route's knots, which are the master
+ * and live in AU on the node.
+ *
+ * Vertex colours, so one line can carry the burn phases (accel/coast/brake) in a single draw call
+ * the way the 2D orrery's per-segment strokes do. depthWrite OFF for the reason buildOrbitRing gives.
+ */
+function buildRouteLine(color: number): THREE.Line {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(2048 * 3), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(2048 * 3), 3));
+  geo.setDrawRange(0, 0);
+  const mat = new THREE.LineBasicMaterial({
+    color, vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false
+  });
+  const line = new THREE.Line(geo, mat);
+  line.frustumCulled = false; // the buffer is rewritten under it; a stale bounding sphere must not cull it
+  line.visible = false;
+  return line;
 }
 
 /**
