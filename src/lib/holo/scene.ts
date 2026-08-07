@@ -56,7 +56,7 @@ import {
 } from '$lib/viewport/cameraRig';
 import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
-import { perfCount, perfFrame } from '$lib/perfTrace';
+import { perfCount, perfFrame, perfProvider } from '$lib/perfTrace';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { deriveAurora, auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
@@ -349,6 +349,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setClearColor(0x05070c, 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // GPU-side resource gauge for the perf trace: geometries/textures three still holds alive. If these
+  // climb across setSystem cycles while the scene shows the same thing, something survives clearContent
+  // — the leak detector for the rebuild-per-snapshot path. Read only when a [sse-perf] line prints.
+  perfProvider('gl', () => ({
+    geometries: renderer.info.memory.geometries,
+    textures: renderer.info.memory.textures,
+    programs: renderer.info.programs?.length ?? 0
+  }));
 
   const scene = new THREE.Scene();
   // Background as scene.background (a colour-managed Color), NOT renderer.setClearColor: a bare clear
@@ -3105,7 +3113,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     bhDiscInfo.clear();
   }
 
+  // Timed wrapper (perf comb, 2026-08): every call is a FULL teardown + rebuild, and a construct in
+  // transit rewrites the snapshot ~2x/s — so the split below is the go/no-go evidence for a future
+  // same-system PATCH path. `.same` counts rebuilds of the system already on screen (a patch could
+  // have absorbed them); `.new` counts genuine system changes (a rebuild is the right answer).
+  // `.ms` accumulates wall time, so avg cost = ms / (same + new).
   function setSystem(system: System | null) {
+    const t0 = performance.now();
+    perfCount(!!system && !!currentSystem && (system as any).id === (currentSystem as any).id
+      ? 'holo.setSystem.same' : 'holo.setSystem.new');
+    setSystemBuild(system);
+    perfCount('holo.setSystem.ms', Math.round(performance.now() - t0));
+  }
+
+  function setSystemBuild(system: System | null) {
     perfCount('holo.setSystem'); // a full scene rebuild — the prime suspect for the random slowdowns
     resetOriginForRebuild(); // everything absolute is about to be re-emitted; build it about the centre
     clearContent();

@@ -670,6 +670,54 @@ presets move if this changes — endpoints do not.
 _Unwritten. Candidates: which tags autopilot matches by slug and what breaks if they move; readiness
 and tardiness sources; belt mass is a debris-density proxy, not gravitational mass._
 
+#### Load path and instruments (P1) — added 2026-08-07 by the performance/memory comb
+
+### UI-L1 A progress bar at 100% is not a finished load, and the overlay outlives the work it reports
+WHERE: `routes/+page.svelte:recalcAllSystems` (the overlay is cleared AFTER the loop) + `handleLoadStarmap`
+RULE: the physics overlay reports ONE stage of a load. It is torn down only after `starmapStore.set`
+and the first render, so a hang in either of those leaves a completed bar on screen. When diagnosing
+a stuck load, read the STAGE (`[sse-load]` / `window.__ssePerf.loadStages`), never the bar.
+WHY: a user's phone froze showing "Running the physics… 2/2 systems, 100%" and the report — and the
+requested fix — was "add a skip button for the loading screen". The physics had finished; the hang
+was downstream, on a map whose two systems are 85,103 ly apart. A skip button would have fixed
+nothing and the real suspect (first-render work scaling with map extent) would have been missed.
+The first joke string is `PHYSICS_JOKES[0]`, so an overlay that never advanced looks identical to
+one that never started — the opening frame is not evidence of progress either.
+BLAST: any new load stage → add a `perfStage` call and a `loadGuardStage` label, or it becomes
+another invisible place to hang. Anything that reads "the bar was at N%" as a diagnosis.
+
+### UI-L2 A load guard must clear on a TIMER as well as on a painted frame
+WHERE: `routes/+page.svelte:handleLoadStarmap` (double-rAF `clearOnce('painted')` + 15s `clearOnce('alive')`)
+RULE: a guard that arms before an auto-load and blocks the next startup if unfinished MUST have two
+independent clears: a painted frame AND a wall-clock timer. Never the paint alone.
+WHY: a hidden or non-compositing tab paints NO frames, so a load that completed perfectly in a
+background tab left the guard armed and the safe-mode screen appeared on the next visit — the guard
+locking out the app it exists to protect. Found live within minutes of building it. A timer can only
+fire if the main thread is alive, so it cannot mask the real fault: a genuinely hung render blocks
+both paths, which is exactly the case the guard is for.
+BLAST: any other "did this finish?" flag keyed on rendering. Note the symmetric trap in UI-L3 — a
+hidden tab also changes TIMING, not just painting.
+
+### UI-L3 A per-item yield in a loop costs 1s per item in a hidden tab
+WHERE: `routes/+page.svelte:recalcAllSystems` (`if (!document.hidden) await setTimeout(30)`)
+RULE: browsers clamp `setTimeout` to ~1 Hz in a background tab, so a `setTimeout(30)` yield inside a
+per-item loop silently becomes 1000 ms per item. Gate any repaint yield on `!document.hidden` — with
+nothing painting and no user able to click, there is nothing to yield FOR.
+WHY: measured on the bundled 44-system map — 31-47 ms per system foreground, 1000 ms per system
+hidden: 2 s becomes 44 s, and scales with the map. It presents as "loading takes far too long"
+with no slow code anywhere, because the cost is entirely in the yields. Found by the `[sse-load]`
+stage stamps on the first run, not by reading the code.
+BLAST: every other progress loop that yields to repaint (imports, exports, batch processing).
+
+### UI-L4 An emergency data path must not depend on anything that could be the fault
+WHERE: `routes/+page.svelte:downloadStoredStarmap` (storage → JSON → download, no render, no engine)
+RULE: the recovery route for un-loadable data reads storage and writes a file, touching no renderer,
+no processor and no store. Plain JSON, which the ordinary `.json` load path reads back.
+WHY: the user's only exit from a map that would not load was resetting Chrome data — the campaign
+was destroyed by the workaround, not by the bug. A rescue that ran the same pipeline would hang the
+same way. This is why it is offered on the safe-mode screen, BEFORE any retry.
+BLAST: adding assets/bundling to this path would reintroduce the dependency. Keep it dumb.
+
 ### DATA-*  (starmaps, import, rulepacks)
 _Unwritten. Candidates: `tests/fixtures/*` and `tests/output/*` are GENERATED, never hand-edited;
 bundled-map collision protection in the real-sky importer; stable-id rules._

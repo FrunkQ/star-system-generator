@@ -24,6 +24,8 @@
   import { guideConfigStore } from '$lib/catalogue/guideConfig';
   import { crtControls } from '$lib/catalogue/crtControls';
   import { starmapStore } from '$lib/starmapStore';
+  import { perfStage } from '$lib/perfTrace';
+  import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
   import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
@@ -640,7 +642,15 @@
     await refreshPreUpgradeSnapshot();
     hasSavedStarmap = await hasPersistedStarmap();
     if (hasSavedStarmap) {
-      await handleLoadStarmap();
+      // Safe-mode brake: if the guard stamp survived from last time, the previous load never
+      // reached a painted frame — auto-loading again would just repeat the hang. Ask instead.
+      const tripped = loadGuardTripped();
+      if (tripped) {
+        console.warn('[sse-load] previous load did not complete; last stage:', tripped);
+        loadGuardPrompt = tripped;
+      } else {
+        await handleLoadStarmap();
+      }
     } else {
       showNewStarmapModal = true;
     }
@@ -1052,7 +1062,61 @@
   // On load we re-run the FULL physics + tagging pipeline over every system, so a stored starmap
   // picks up the current model (new tags, sharpened PoI, ring/* derivation, …) rather than whatever
   // was baked in when it was last saved. A progress overlay (one tick per system) keeps it honest.
-  let physicsProgress: { done: number; total: number; joke: string } | null = null;
+  //
+  // --- Load guard (perf comb, 2026-08) -----------------------------------------------------------
+  // A saved map that hangs the load must never brick the app: the map auto-loads on startup, so a
+  // deterministic hang repeats on every visit and the user's only way out used to be wiping browser
+  // data — losing the map (it happened; a low-end phone, two systems 85 kly apart, frozen at 100%).
+  // The guard is a localStorage stage stamp: armed before the auto-load, advanced through the
+  // stages, cleared only after the first starmap frame PAINTS. If it is still set on the next
+  // startup, the previous load never finished — so we do not auto-load, and instead offer: try
+  // again, start without the map (data untouched), or download the stored map as a file.
+  // The stamp doubles as the diagnosis: it names the last stage that started.
+  const LOAD_GUARD_KEY = 'sse-load-guard';
+  let loadGuardArmed = false;
+  let loadGuardPrompt: string | null = null; // non-null = show the safe-mode screen (value = stalled stage)
+  function loadGuardArm(stage: string) { if (!browser) return; loadGuardArmed = true; loadGuardStage(stage); }
+  function loadGuardStage(stage: string) { if (browser && loadGuardArmed) { try { localStorage.setItem(LOAD_GUARD_KEY, stage); } catch { /* private mode */ } } }
+  function loadGuardClear() { loadGuardArmed = false; if (browser) { try { localStorage.removeItem(LOAD_GUARD_KEY); } catch { /* private mode */ } } }
+  function loadGuardTripped(): string | null { if (!browser) return null; try { return localStorage.getItem(LOAD_GUARD_KEY); } catch { return null; } }
+  // Emergency export: the stored map straight to a .json file WITHOUT rendering anything — the
+  // escape hatch for a map that cannot load. Plain JSON on purpose: it is what the ordinary .json
+  // load path reads back, and this path must not depend on any machinery that might be the hang.
+  async function downloadStoredStarmap() {
+    const saved = await loadSavedStarmap();
+    if (!saved) { alert('No starmap found in browser storage.'); return; }
+    const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(saved.name || 'starmap').replace(/[^\w\- ]+/g, '').trim() || 'starmap'}-recovered.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  let physicsProgress: { done: number; total: number; joke: string; current: string } | null = null;
+  let recalcCancelRequested = false;
+
+  // --- Memory warning (perf comb, 2026-08) -------------------------------------------------------
+  // The app has genuinely hit out-of-memory in a live session, and a tab dies without a word when it
+  // does. Warn ONCE at 80% of the browser's allocation limit and once more at 90%; re-arm only after
+  // usage falls back below 65%, so a session hovering at the line is not nagged every poll. The
+  // gauge itself (with the limit) lives in Settings → System → Memory.
+  let memWarnLevel: 0 | 1 | 2 = 0;   // highest warning already shown this excursion
+  let memBanner: { critical: boolean; text: string } | null = null;
+  $: {
+    const m = $memoryReading;
+    if (m.supported) {
+      if (m.frac < MEMORY_REARM_FRAC) {
+        memWarnLevel = 0;
+      } else if (m.frac >= MEMORY_CRITICAL_FRAC && memWarnLevel < 2) {
+        memWarnLevel = 2;
+        memBanner = { critical: true, text: `Memory is nearly exhausted — using ${formatMB(m.usedMB)} of the ${formatMB(m.limitMB)} this browser allows (${Math.round(m.frac * 100)}%). Save your campaign to a file NOW; the tab may be closed by the browser without warning. Reloading the tab after saving frees the memory.` };
+      } else if (m.frac >= MEMORY_WARN_FRAC && memWarnLevel < 1) {
+        memWarnLevel = 1;
+        memBanner = { critical: false, text: `Memory is running low — using ${formatMB(m.usedMB)} of the ${formatMB(m.limitMB)} this browser allows (${Math.round(m.frac * 100)}%). A good moment to save your campaign to a file.` };
+      }
+    }
+  }
   const PHYSICS_JOKES = [
     'Re-lighting the stars…', 'Nudging electrons back into orbit…', 'Asking the gas giants to hold still…',
     'Negotiating with the second law of thermodynamics…', 'Convincing the moons to stay tidally locked…',
@@ -1075,10 +1139,22 @@
   async function recalcAllSystems(starmap: StarmapType): Promise<StarmapType> {
     const systems = starmap.systems ?? [];
     if (!selectedRulepack || systems.length === 0) return starmap;
-    physicsProgress = { done: 0, total: systems.length, joke: PHYSICS_JOKES[0] };
-    await tick();
+    recalcCancelRequested = false;
+    const nameOf = (i: number) => systems[i]?.name || `system ${i + 1}`;
+    physicsProgress = { done: 0, total: systems.length, joke: PHYSICS_JOKES[0], current: nameOf(0) };
+    perfStage('physics.start');
+    // Let the overlay PAINT (with the first system's name on it) before any synchronous physics
+    // runs: tick() flushes the DOM but does not paint, and a hang inside process() would otherwise
+    // freeze a blank card with no name to report. One frame's delay buys the diagnosis.
+    await new Promise((r) => setTimeout(r, 30));
+    let stoppedBefore: string | null = null;
+    let stoppedIndex = 0;
     for (let i = 0; i < systems.length; i++) {
       const node = systems[i];
+      // The Stop button can only be HEARD between systems (one system's process() is synchronous);
+      // while a system blocks, the overlay shows its name — that screenshot is the diagnosis.
+      if (recalcCancelRequested) { stoppedBefore = nameOf(i); stoppedIndex = i; break; }
+      loadGuardStage(`physics: ${nameOf(i)}`);
       try {
         if (node?.system?.nodes) {
           // STRIP baked-in derived data first (same as file import), THEN re-derive. Without the strip
@@ -1088,18 +1164,61 @@
           node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack);
         }
       } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
-      physicsProgress = { done: i + 1, total: systems.length, joke: i % 3 === 2 ? PHYSICS_JOKES[(i + 1) % PHYSICS_JOKES.length] : physicsProgress.joke };
-      await new Promise((r) => setTimeout(r, 30));   // yield so the bar repaints + the run reads as real
+      perfStage(`physics:${nameOf(i)}`); // sinceLastMs ≈ this system's processing cost
+      physicsProgress = {
+        done: i + 1, total: systems.length,
+        joke: i % 3 === 2 ? PHYSICS_JOKES[(i + 1) % PHYSICS_JOKES.length] : physicsProgress.joke,
+        current: i + 1 < systems.length ? nameOf(i + 1) : nameOf(i)
+      };
+      // Yield so the bar repaints + the run reads as real — but only while VISIBLE. A hidden tab
+      // throttles timers to 1s, so this yield turned a background-tab load into ~1s PER SYSTEM
+      // (measured: 46ms/system foreground, 1000ms hidden) — which itself reads as a hang. Hidden,
+      // nothing paints and nobody clicks Stop, so there is nothing to yield for.
+      if (typeof document === 'undefined' || !document.hidden) {
+        await new Promise((r) => setTimeout(r, 30));
+      }
     }
+    perfStage('physics.done');
     physicsProgress = null;
+    if (stoppedBefore) {
+      const kept = stoppedIndex;
+      console.warn('[sse-load] recalc stopped by user:', kept, 'of', systems.length, 're-derived; next was', stoppedBefore);
+      alert(
+        `Stopped the physics refresh.\n\n` +
+        `${kept} of ${systems.length} systems were re-derived with the current engine; the rest keep the physics they were saved with (they still work, but engine updates won't show on them until a full load completes).\n\n` +
+        `Next in line was "${stoppedBefore}" — if the load was stuck, that is the system to report.`
+      );
+    }
     return starmap;
   }
 
   async function handleLoadStarmap() {
+    loadGuardArm('reading browser storage');
+    perfStage('load.storageRead.start');
     const savedStarmap = await loadSavedStarmap();
+    perfStage('load.storageRead.done');
     if (savedStarmap) {
       starmapStore.set(await recalcAllSystems(savedStarmap));
+      // The first render is a known hang stage (it, not the physics, was where the reported phone
+      // lockup sat — the bar read 2/2, 100%). Two independent clears, whichever fires first:
+      // a PAINTED frame (double-rAF fires after the browser presents one), or 15s of a LIVE main
+      // thread. The timer matters: a hidden or non-compositing tab paints no frames at all, so a
+      // load that completed in a background tab would otherwise trip the guard falsely on the next
+      // visit (found live). A timer can only fire if JS is actually running — a genuinely hung
+      // render blocks BOTH paths, which is exactly the case the guard exists for.
+      loadGuardStage('first starmap render');
+      await tick();
+      let guardCleared = false;
+      const clearOnce = (how: string) => () => {
+        if (guardCleared) return;
+        guardCleared = true;
+        perfStage(`load.complete(${how})`);
+        loadGuardClear();
+      };
+      requestAnimationFrame(() => requestAnimationFrame(clearOnce('painted')));
+      setTimeout(clearOnce('alive'), 15000);
     } else {
+      loadGuardClear();
       alert('No starmap found in browser storage.');
     }
   }
@@ -1494,6 +1613,13 @@
 
   <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json,.zip" />
 
+  {#if memBanner}
+    <div class="mem-banner" class:critical={memBanner.critical} role="alert">
+      <span>{memBanner.text}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (memBanner = null)}>×</button>
+    </div>
+  {/if}
+
   {#if physicsProgress}
     <div class="physics-overlay" role="status" aria-live="polite">
       <div class="physics-card">
@@ -1503,7 +1629,27 @@
           <span>{physicsProgress.done} / {physicsProgress.total} systems</span>
           <span>{Math.round((physicsProgress.done / physicsProgress.total) * 100)}%</span>
         </div>
-        <p class="physics-joke">{physicsProgress.joke}</p>
+        <p class="physics-current">{physicsProgress.current}</p>
+        <p class="physics-joke">{recalcCancelRequested ? 'Stopping after this system…' : physicsProgress.joke}</p>
+        <button class="physics-stop" type="button" disabled={recalcCancelRequested} on:click={() => (recalcCancelRequested = true)}>Stop load</button>
+      </div>
+    </div>
+  {/if}
+
+  {#if loadGuardPrompt}
+    <div class="physics-overlay" role="alertdialog" aria-modal="true" aria-label="The last load did not finish">
+      <div class="physics-card">
+        <h2>The last load didn't finish</h2>
+        <p class="physics-guard-detail">
+          Loading stopped at: <strong>{loadGuardPrompt}</strong>.
+          Your starmap is still saved in this browser — nothing has been lost.
+        </p>
+        <div class="physics-guard-actions">
+          <button type="button" class="physics-guard-btn primary" on:click={async () => { loadGuardPrompt = null; await handleLoadStarmap(); }}>Try loading again</button>
+          <button type="button" class="physics-guard-btn" on:click={() => { loadGuardPrompt = null; loadGuardClear(); showNewStarmapModal = true; }}>Start without loading it</button>
+          <button type="button" class="physics-guard-btn" on:click={downloadStoredStarmap}>Download a copy (.json)</button>
+        </div>
+        <p class="physics-joke">If it keeps stopping at the same place, that name is the thing to report.</p>
       </div>
     </div>
   {/if}
@@ -1907,6 +2053,62 @@
     margin-top: 8px;
   }
   .physics-joke { margin: 18px 0 0; color: var(--text-muted, #aab); font-style: italic; min-height: 1.4em; }
+  /* The system being processed RIGHT NOW — if the load hangs, this name is the diagnosis, so it is
+     styled to survive a phone screenshot. */
+  .physics-current { margin: 10px 0 0; font-size: 0.85rem; color: var(--text, #e8e8e8); overflow-wrap: anywhere; }
+  .physics-stop {
+    margin-top: 20px;
+    padding: 8px 18px;
+    background: var(--bg-control, #1c1f27);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 6px;
+    color: var(--text, #e8e8e8);
+    cursor: pointer;
+  }
+  .physics-stop:hover:not(:disabled) { border-color: var(--accent, #6aa0d8); }
+  .physics-stop:disabled { opacity: 0.5; cursor: default; }
+  .physics-guard-detail { margin: 0 0 18px; color: var(--text-muted, #aab); }
+  .physics-guard-actions { display: flex; flex-direction: column; gap: 10px; }
+  .physics-guard-btn {
+    padding: 10px 18px;
+    background: var(--bg-control, #1c1f27);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 6px;
+    color: var(--text, #e8e8e8);
+    cursor: pointer;
+  }
+  .physics-guard-btn:hover { border-color: var(--accent, #6aa0d8); }
+  .physics-guard-btn.primary { border-color: var(--accent, #6aa0d8); }
+  .mem-banner {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5000; /* above the physics overlay: a memory warning must survive any screen */
+    max-width: min(560px, calc(100vw - 24px));
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-control, #1c1f27);
+    border: 1px solid #ffb061;
+    border-radius: 8px;
+    color: var(--text, #e8e8e8);
+    font-size: 0.85rem;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+  }
+  .mem-banner.critical { border-color: #ff6a6a; }
+  .mem-banner-close {
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    color: var(--text-muted, #aab);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+  }
+  .mem-banner-close:hover { color: var(--text, #e8e8e8); }
   .allbodies-overlay {
     position: fixed;
     inset: 0;

@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { perfCount } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
 import type { PanState } from '$lib/viewport/stores';
 
@@ -288,10 +289,16 @@ class BroadcastService {
    * a NEW listener needs the current state even though it hasn't changed.
    */
   public sendIfChanged(msg: BroadcastMessage) {
+    // Perf trace: this stringify runs on EVERY reactive tick that reaches here, sent or not — on a
+    // several-hundred-KB starmap snapshot that is a real, previously invisible main-thread cost.
+    // `.strMs` accumulates it; `.bytes` is the payload size of what actually went out, which is what
+    // crosses the 16KB-framed DataChannel. avg payload = bytes / sent.
+    const t0 = performance.now();
     const json = JSON.stringify((msg as { payload?: unknown }).payload ?? null, (key, value) =>
       BroadcastService.VOLATILE_KEYS.has(key) ? undefined : value
     );
-    if (this.lastSentByType.get(msg.type) === json) return;
+    perfCount(`bc.${msg.type}.strMs`, Math.round(performance.now() - t0));
+    if (this.lastSentByType.get(msg.type) === json) { perfCount(`bc.${msg.type}.unchanged`); return; }
     const now = Date.now();
     const wait = BroadcastService.SEND_MIN_INTERVAL_MS - (now - (this.lastSentAtByType.get(msg.type) ?? 0));
     if (wait > 0) {
@@ -313,6 +320,8 @@ class BroadcastService {
     }
     this.lastSentByType.set(msg.type, json);
     this.lastSentAtByType.set(msg.type, now);
+    perfCount(`bc.${msg.type}.sent`);
+    perfCount(`bc.${msg.type}.bytes`, json.length);
     this.sendMessage(msg);
   }
 

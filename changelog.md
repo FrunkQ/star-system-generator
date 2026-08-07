@@ -11,6 +11,13 @@ All notable changes are listed here:
 
 * **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
 
+## v2.1.488-beta - 8th Aug 2026
+
+* **A load that gets stuck can no longer cost you your campaign.** If the app is still loading and something has locked up, the loading screen now has a **Stop load** button, and it names the system it is working on -- so if it does stick, that name says where. And if a load never finishes at all, the next visit no longer tries the same thing again: it says where loading stopped and offers three ways out -- try again, start without loading the map, or **download a copy of your saved map as a file**. That last one reads the map straight out of storage without drawing anything, so a map that will not load can still be rescued. Nothing is deleted at any point.
+* **Fixed: loading was many times slower in a background tab.** The loading loop pauses briefly after each system so the progress bar can keep up -- but browsers slow those pauses right down in a tab you are not looking at, turning a fraction of a second per system into a full second each. On the bundled map that was 44 seconds instead of 2, with no slow work anywhere; it now only pauses while the tab is actually visible.
+* **New: a memory readout in Settings (System), and a warning before you run out.** It shows how much memory this tab is using against the limit the browser will allow, and warns you once at 80% and again at 90% -- in time to save your campaign to a file, which along with reloading the tab is the reliable way to bring it down. (Chrome and Edge report this; other browsers do not, and it says so rather than guessing.)
+* Internal: switchable performance tracing for the memory and slowdown hunt -- add `?perf=1` to the address, and the console reports frame rate, memory, 3D resource counts and per-stage load timings every five seconds. Off unless asked for.
+
 ## v2.1.487-beta - 8th Aug 2026
 
 * Internal: engine documentation brought up to date at the close of the camera and framing work. A stale entry that recorded a reverted fix (and would have sent the next reader the wrong way) is corrected, the orbit-line story is written up as one report with two distinct causes in two different families of line, and the design document now records what actually shipped along with the field reports that shaped it.

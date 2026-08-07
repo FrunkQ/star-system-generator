@@ -6,6 +6,7 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
+  import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
 
   let clearing = false;
   async function clearEverything() {
@@ -455,6 +456,25 @@
             {/if}
           </div>
 
+          <h4 class="advanced-head">Memory</h4>
+          <div class="form-group">
+            {#if $memoryReading.supported}
+              <p class="store-line">
+                Using <strong>{formatMB($memoryReading.usedMB)}</strong> of
+                <strong>{formatMB($memoryReading.limitMB)}</strong> the browser will allow
+                (<strong class={$memoryReading.frac >= MEMORY_WARN_FRAC ? 'warn' : 'ok'}>{Math.round($memoryReading.frac * 100)}%</strong>)
+              </p>
+              <div class="mem-bar" role="img" aria-label="Memory usage {Math.round($memoryReading.frac * 100)} percent">
+                <div class="mem-fill" class:warn={$memoryReading.frac >= MEMORY_WARN_FRAC} style="width:{Math.min(100, Math.round($memoryReading.frac * 100))}%"></div>
+              </div>
+              <p class="section-hint">Live memory used by this tab. If it climbs towards the limit the app will warn
+                you; saving your campaign to a file and reloading the tab is the reliable way to bring it down.</p>
+            {:else}
+              <p class="store-line">This browser doesn't report memory usage.</p>
+              <p class="section-hint">Chrome and Edge show a live figure here; other browsers offer no way to read it.</p>
+            {/if}
+          </div>
+
           <!-- WS8: only shown while a pre-upgrade snapshot exists. This is the "go straight back" the upgrade
                screen promises, and it lives here because Your data is where copies of a campaign belong. -->
           {#if preUpgradeName}
@@ -595,6 +615,16 @@
   .store-line { font-size: 0.82rem; margin: 2px 0; color: var(--text-muted); }
   .store-line .ok { color: #6ad48b; }
   .store-line .warn { color: #ffb061; }
+  .mem-bar {
+    height: 8px;
+    margin: 6px 0 4px;
+    background: var(--bg-control, #1c1f27);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .mem-fill { height: 100%; background: #6ad48b; transition: width 0.4s ease; }
+  .mem-fill.warn { background: #ffb061; }
   .advanced-head { margin: 22px 0 8px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8a8f9a); border-top: 1px solid var(--border); padding-top: 14px; }
   .danger-head { color: var(--status-bad, #d04545); border-top-color: color-mix(in srgb, var(--status-bad, #d04545) 40%, var(--border)); }
   .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
