@@ -313,6 +313,31 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S20 A far-field sprite must be DEPTH-TESTED; `renderOrder` cannot put it behind a body
+WHERE: `src/lib/holo/scene.ts:rebuildSkyStars` (the sky dot / spike / label materials), and
+`makeGridLabel`'s `depthTest` argument.
+RULE: three draws the whole TRANSPARENT pass AFTER the opaque one, and `renderOrder` only sorts
+WITHIN a pass. So a transparent backdrop sprite carrying `depthTest: false` paints over every body in
+the scene no matter how negative its `renderOrder`. Far-field sprites use `depthTest: true` with
+`depthWrite: false` - the same pair the generic starfield has always used - which cuts them at a
+body's limb per pixel and lets them not occlude each other.
+WHY: G9's charted stars were built `depthTest: false, renderOrder: -1` on the belief that made them a
+backdrop, and Sol's diffraction flare rendered on top of Earth. Measured both ways: a bright star
+placed directly behind the framed body changes 209 px with the test off and 0 with it on; through a
+composer chain, 168 and 0. Labels take the same treatment for a different reason - a name still
+floating over a planet whose star is hidden behind it is labelling empty sky - which is why
+`makeGridLabel` takes the flag rather than assuming: an AU scale ring on the ground plane SHOULD stay
+readable through a body, and defaults to `false` for exactly that.
+BLAST: anything else added to `skyGroup`; any new "always on top" overlay reaching for
+`depthTest: false`; and **the near-plane floor in RENDER-S4** - `near` is `min(0.01, dist*0.02)` with
+a 1e-11 floor, and below roughly 1e-4 the depth range collapses so hard that everything past a few
+units quantises onto the far plane and far-field sprites stop drawing at all. The generic starfield
+shares that limit, so the two fail together rather than differently, but a change to that floor
+should be checked against the sky.
+FILTER: the occlusion happens in the RenderPass, so it is filter-independent - `EffectComposer`'s
+render target carries a depth buffer (`renderTarget1.depthBuffer === true`), and the scene renders
+identically down `composer.render()` and the bare `renderer.render()` branch.
+
 ### RENDER-S19 A code path that has never RENDERED has never been tested by anyone's eyes
 WHERE: the moving-construct path in `holo/scene.ts:updateConstructs` (facing, plume, route line);
 first actually rendered v2.1.477, first faults v2.1.479.
