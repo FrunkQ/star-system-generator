@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.491-beta - 7th Aug 2026
+
+* Housekeeping, no product change: the observations inbox records the owner's sign-off pass. The satellite reference frame (moons and rings sitting in their parent's equator), the orbit-line sweep on a followed ship, the 3D body picture inside the view filter, the distance grids and the charted-star sky are all confirmed on screen rather than only in numbers; the ship-appearance follow-ups are closed. Two new observations captured: the Traveller importer producing over-flattened gas giants, and a fault to be detailed on Epsilon Indi A b in the real-sky importer.
+
 ## v2.1.451-beta - 4th Aug 2026
 
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
