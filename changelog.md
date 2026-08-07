@@ -11,6 +11,10 @@ All notable changes are listed here:
 
 * **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
 
+## v2.1.483-beta - 8th Aug 2026
+
+* Internal: two diagnostics ahead of two persistent reports. `window.__ringDebug` prints, once a second, which FAMILY of orbit line the focused body even has (a station's ring around a planet is built differently from a planet's ring around the sun -- the two earlier vibration fixes only ever touched the second kind) plus a live prediction, in pixels, of the wobble that single-precision rounding would cause at the current zoom -- so one clock-run says whether the remaining vibration is that mechanism or something else. And `window.__routeDebug` now carries the ship-facing diagnostic for every ship in transit regardless of what is selected -- the first facing trace came back describing whatever happened to be selected, which was a parked station.
+
 ## v2.1.482-beta - 8th Aug 2026
 
 * **Fixed (properly this time): orbit lines vibrating while the view rides a moving body.** The previous fix steadied the line's detail level but not its centre -- the high-detail stretch of the line snapped from point to point as the camera moved, redistributing the whole line in visible steps. The centre now moves continuously and the high-detail stretch re-draws every frame, so it slides with the motion instead of stepping. (The earlier fix also only applied to sun-circling orbits; this covers the case actually reported, a station orbiting a planet with the camera following.)

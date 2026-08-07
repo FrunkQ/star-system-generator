@@ -1220,6 +1220,49 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * cadence.) Cost: only rings that are actually refined re-propagate (typically one, 1024 samples),
    * and a ring that stops qualifying clears its own flag through the return value.
    */
+  /**
+   * `window.__ringDebug = true`: why is the FOCUSED body's orbit line misbehaving, in one line/s.
+   *
+   * Exists because the "orbit lines vibrate" report survived TWO fixes (476, 482) - both aimed at
+   * the A23 refinement, which only heliocentric rings ever enter. A satellite's ring (the ISS case)
+   * is a MOON ring: parent-local float32 vertices positioned at the parent every frame, no float64
+   * master, no refinement - a different mechanism entirely. The suspect there is plain float32:
+   * vertex-plus-parent magnitudes quantise in steps of ~2^-23 x magnitude, and at a true-scale
+   * close-up that step is PIXELS. This prints the prediction (`f32JitterPx`) so one clock-run
+   * settles it against the eye: if the number matches the wobble, the mechanism is confirmed; if it
+   * is tiny while the line still shakes, the mechanism is something else and the fix is not yet
+   * known. kind says which family the focused ring even is - the question the first two fixes
+   * never asked.
+   */
+  let _ringDbgAt = 0;
+  function logRingDebug() {
+    if (!(window as any).__ringDebug || performance.now() - _ringDbgAt < 1000) return;
+    _ringDbgAt = performance.now();
+    const camD = camera.position.distanceTo(controls.target);
+    const r = orbitRings.find((x) => x.id === focusedId);
+    const parentB = r?.trackParentId ? bodyById.get(r.trackParentId) : undefined;
+    const attr = r ? ((r.obj as any).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined) : undefined;
+    const arr = attr?.array as Float32Array | undefined;
+    const vertMag = arr ? Math.hypot(arr[0], arr[1], arr[2]) : null;
+    // The magnitude float32 has to carry for a NEAR vertex of this ring, worst case: the local
+    // vertex plus the parent's position (the GPU composes both at single precision).
+    const worldMag = (parentB?.mesh.position.length() ?? 0) + (vertMag ?? 0);
+    const viewWorld = 2 * camD * Math.tan((camera.fov * Math.PI) / 360);
+    console.log('[ringdbg]', JSON.stringify({
+      focusedId,
+      kind: !r ? 'no-ring' : r.abs ? 'heliocentric' : 'moon/local',
+      refined: r?.refined ?? false,
+      camDist: camD,
+      sceneOriginLen: sceneOrigin.length(),
+      targetDrift: controls.target.length(),
+      parentPosLen: parentB?.mesh.position.length() ?? null,
+      vertMag,
+      // Predicted on-screen step size of float32 rounding at this zoom, in pixels. >1 = the
+      // mechanism is visible; the report was "vibrates a lot", so expect several.
+      f32JitterPx: worldMag > 0 && viewWorld > 0 ? (2 ** -23 * worldMag / viewWorld) * viewH : 0
+    }));
+  }
+
   function emitRefinedRings() {
     let any = false;
     for (const r of orbitRings) {
@@ -1407,15 +1450,37 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         clock: timeMs, focusedId, lines: routeLines.length, constructs: constructs.length,
         each: constructs.map((n: any) => {
           const line = routeLines.find((r) => r.id === n.id);
+          const sc = shipClock(n);
+          // The FACING CHAIN rides here too, because __shipDebug only reports the FOCUSED construct
+          // (only the focus draws its model) - the first field trace for the facing fault came back
+          // describing a parked station the owner happened to have selected, while the burning ship
+          // it was about went unlogged. A transiting construct is interesting whether or not it is
+          // selected, so its chain must not depend on the selection.
+          const b = bodyById.get(n.id);
+          const facing = line && b ? (() => {
+            positionToScene(line.route.p[line.route.p.length - 1], _dbgDest);
+            const dx = b.mesh.position.x - (b.shipPrev?.x ?? b.mesh.position.x);
+            const dy = b.mesh.position.y - (b.shipPrev?.y ?? b.mesh.position.y);
+            const dz = b.mesh.position.z - (b.shipPrev?.z ?? b.mesh.position.z);
+            const tx = _dbgDest.x - b.mesh.position.x, ty = _dbgDest.y - b.mesh.position.y, tz = _dbgDest.z - b.mesh.position.z;
+            return {
+              noseSign: b.noseSign ?? 1,
+              nozzleMeanZ: b.nozzleMeanZ ?? null,
+              deltaTowardDest: dx * dx + dy * dy + dz * dz === 0 ? 0 : Math.sign(dx * tx + dy * ty + dz * tz),
+              modelDrawn: !!b.shipModel?.visible
+            };
+          })() : null;
           return {
             id: n.id,
             hasRouteField: !!n.route, hasJourneys: !!n.scheduled_journeys?.length,
             derivable: !!routeOf(n),
             built: !!line,
             window: line ? { s: line.route.s, e: line.route.e } : null,
-            inWindow: !!line && timeMs >= line.route.s && timeMs <= line.route.e,
+            shipClock: sc,
+            inWindow: !!line && sc >= line.route.s && sc <= line.route.e,
             focused: n.id === focusedId, named: visibleSet.has(n.id),
-            verts: line?.count ?? 0, visible: !!line?.obj.visible
+            verts: line?.count ?? 0, visible: !!line?.obj.visible,
+            facing
           };
         })
       }));
@@ -3962,6 +4027,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateRings();
     updateBelts();
     updateOrbitRings();
+    logRingDebug();
     updateRouteLines();
     // The wheel's notch size adapts to how far below scene scale the camera is (wheelZoomSpeed):
     // OrbitControls' fixed ~5%/notch is ~400 notches from a true-scale ship close-up back to the
