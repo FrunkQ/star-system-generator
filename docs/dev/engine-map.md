@@ -30,8 +30,14 @@ WHY: the failure it prevents — ideally the one that actually happened, with it
 BLAST: what else to check when you change this.
 ```
 
-**STATUS:** started 2026-08-04 by the tagging stream, seeded with the tagging + tag-lifecycle
-domain only. Every other domain is a stub awaiting its owner. Coordinator owns the shape.
+**STATUS:** started 2026-08-04 by the tagging stream. TAGS, PHYSICS, RENDER, DATA and UI are written;
+TRANSIT was opened 2026-08-07 by a backfill sweep over closed inbox items. Two RENDER candidates are
+still unwritten and named in that section's stub. Coordinator owns the shape.
+
+**CONTRADICTIONS ARE FINDINGS, NOT TIDY-UPS.** Two entries claiming single authority over one concept
+means two implementations exist. Record it as a CAVEAT on the entry whose WHERE has been falsified —
+PHY-4 carries the worked example — and route the fix to the inbox. Never resolve it by editing the
+map to agree with itself.
 
 ---
 
@@ -45,6 +51,17 @@ allowed (`tagCategories.ts` edit ops, `coi.ts` toggle).
 WHY: the rule used to be restated at 34 call sites and 25 of them deleted hand-added tags, so a GM
 override could not exist. `importFixup` also deleted one on save.
 BLAST: adding a strip anywhere → route it here. Grep `tags.filter` before assuming a site is new.
+CAVEAT (2026-08-07, backfill sweep): "ONLY" is not literally true, and the exception is a NAMESPACE
+strip. `SystemProcessor.ts:899` clears `structure/`, `hydrosphere/`, `climate/polar-ice`,
+`climate/steam-world`, `activity/sublimating` and `activity/cryovolcanism` with a hand-written
+exemption list, and its own comment gives the honest reason: it needs a SECOND exemption axis
+`stripForReprocess` cannot express — keys another pass owns (`applyCloudDeckTags` strips its own) as
+well as keys no pass can re-create. It does honour `survivesRederive`, so the manual-tag protection
+this entry exists for is intact; what is not intact is "one module decides". Separately, FOUR sites
+strip LEGACY tags (`SystemProcessor.ts:77`, `:899`, `starmapSanitizer.ts:12`, `importFixup.ts:134`)
+against THREE different definitions of legacy — `LEGACY_DUPLICATE_TAGS` (SystemProcessor),
+`isLegacyTag` (`tagPresentation.ts:400`), `isInterferingTag` (`importFixup.ts:64`). TAG-7's ordering
+trap applies to whichever of them runs first on a given path, which is not the same one every time.
 
 ### TAG-2 Sparing a tag on strip is only half; the emit must be guarded
 WHERE: `tagLifecycle.emit`, used across `core/SystemProcessor.ts`
@@ -221,6 +238,21 @@ the same question answered in at least three more places — `physics/radiation.
 an inline `habMakeup.gas <= 0.5` at `SystemProcessor.ts:1302`, and another inline copy in B25's
 classifier gate. B11 unified two of them. Until B36 closes, changing the threshold here changes
 some callers and not others; fix B36 before trusting this entry's WHERE.
+CAVEAT RECHECKED 2026-08-07 (backfill sweep), and B36's own "they now all use the same BOUNDARY, so
+nothing is currently wrong" IS FALSE — TWO of the copies disagree at the edge, in opposite ways:
+  - `SURFACE()` here is `{ lt: ['makeup.gas', 0.5] }` and `reasonsToVisit.ts:252` evaluates `lt` as
+    STRICT `<`. `radiation.hasSolidSurface` (now at `:35`) and `SystemProcessor.ts:1345` are `<= 0.5`.
+    A body at exactly gas 0.5 therefore HAS a surface for radiation, habitability and classification
+    and HAS NOT for every resource/frontier claim. Authored makeup can land there; `reconcileGiantMakeup`
+    clamps to [0.6, 0.92] so the inferred path cannot.
+  - B25's classifier gate is a BAND `[0, 0.5]`, and `classification.bandFit` has a 15% relative soft
+    edge, while `fingerprintScore` fails a gate only on `bandFit <= 0`. So the eyeball gate really
+    admits gas up to **0.575**, not 0.5. That is a gate that does not close where it says it does —
+    an eligibility test written in the vocabulary of a defining band inherits the band's tolerance
+    (see PHY-10). No bundled body sat in 0.500–0.575 when B25 measured its diff; nothing keeps it
+    that way.
+Do not "harmonise" these by nudging one number: pick the boundary, then make every site CALL
+`hasSolidSurface`, which is what B36 asks for and what would have made both divergences impossible.
 
 #### Positions and eclipses (C3/C9/G8) — added 2026-08-04 by the frame/suite-hygiene session
 
@@ -263,6 +295,129 @@ BLAST: a THIRD surface now words this row (GM panel, player document, printed re
 build the string with `describeEclipse` — see UI-E1. Adding a fourth: sample the clock, reuse the
 builder, and pass no `formatDate` unless the campaign calendar is genuinely available.
 
+#### Backfilled from closed inbox items — added 2026-08-07 by the engine-map backfill session
+
+### PHY-7 A module that declares itself THE single evaluation has no rival, upstream least of all
+WHERE: `physics/cloudDecks.ts` header ("THE single evaluation"); the only caller that matters is
+`physics/temperature.solveThermalState`, which passes its result INTO `deriveAlbedo`.
+RULE: `deriveAlbedo` takes `decks` as an argument. It does not, and must not, work out for itself
+whether a world has clouds. Anything else that needs to know asks the published
+`structure/cloud-deck` tags. One question, one function, one answer, and a caller that cannot obtain
+it is a caller that is about to invent it.
+WHY: B1. `albedo.ts` used to derive its own decks from a `teqK < boil * 1.6` shortcut while
+`cloudDecks.ts` already claimed the title. They disagreed on Adrian — albedo declared a CO2 deck,
+the column physics reported none — and because albedo feeds Teq feeds the profile feeds the decks,
+the CRUDE model sat upstream of the careful one and set the loop's answer. The rival was not a second
+opinion; it was the operative one.
+BLAST: this is why the solve exists as a FIXED POINT rather than a pipeline, and why every evaluation
+inside it runs against a SHALLOW PROBE (`{...body, equilibriumTempK, temperatureK: undefined}`) rather
+than the body: reading the body would let a previous `process()` leak into this one (PHY-1). Same
+shape as B13's residual — "a magnetism derived early for some bodies and late for others would be two
+evaluations of one question". If you need a value the solve produces, move INTO the solve or read its
+committed output; do not approximate it beside it. Commit anything the solve READS before calling it.
+
+### PHY-8 Never write a second sum of a quantity that already has one
+WHERE: `physics/radiation.calculateStellarRadiationComponents` (takes a `'current' | 'near' | 'far'`
+distance selector); `calculateSurfaceRadiation` calls it three times. The deletion is commented in
+place at `radiation.ts:375`.
+RULE: a mean and its endpoints must come from ONE function evaluated at different inputs. Then
+`min <= mean <= max` holds by construction. Two functions that "use the same model" hold it by luck.
+WHY: B8. `calculateTotalStellarRadiationRange` was the second sum and had no flare term, so the mean
+carried a dose the endpoints did not. 105 of 420 ranged bodies sat outside their own range, worst
+19.75%. B8's OWN suggested test refuted its own hypothesis — it blamed the spectral mix and asked for
+a binary, and multi-star systems turned out to be the MILDER case (34 offenders vs 71); had it only
+been checked on a binary it would have been closed as negligible on the wrong evidence.
+BLAST: `calculateTotalStellarRadiation` still exists and is still a bare sum with no flare term and no
+spectral split — that is deliberate, it answers a DIFFERENT question (atmospheric-escape forcing,
+`SystemProcessor.ts:592`), and it must not be quietly promoted into a dose. Check what a sum is FOR
+before reusing it. Any new min/max/mean triple: one function, three inputs.
+
+### PHY-9 A placeholder zero is a CLAIM, not an absence
+WHERE: `core/BodyFactory.ts` (the "NOT defaulted, deliberately" block); `physics/magnetism.rotationFactor`
+(`if (!h) return 0.6; // unknown -> middling`); the star editor's "not set" note.
+RULE: never default a physical field to 0 to avoid NaN. Zero rotation, zero tilt and zero field each
+ASSERT something — this world does not spin, stands upright, has no magnetosphere — and a derivation
+handed one cannot tell it from a measurement. Leave the field off. Readers already guard with `??`/`||`.
+Clearing an input in the UI must DELETE the field, not write zero, or the honest state is unreachable
+once you leave it.
+WHY: B9a, and the shape of the investigation is the lesson. The triage's headline mechanism ("a zero
+rotation produces a zero field by construction") was WRONG — `rotationFactor` has always had an
+unknown branch and 0 is falsy, so it took it; and `deriveMagnetism` never runs on a star at all. The
+real cause was **two star-creation paths and only one of them read the pack**: `generation/star.ts`
+drew from the class's `mag_gauss` band, `generateFromConfig.starSeedToBody` — the path the generation
+wizard uses — set nothing, so the placeholder survived to the screen. Both now go through
+`starFieldFromPack`. The zeros were the visible symptom of a duplication.
+BLAST: `starFieldFromPack` / `starTiltFromPack` now have THREE callers (`generation/star.ts`,
+`generateFromConfig.ts`, `import/realsky/stardefaults.ts`); a fourth creation path that sets neither
+repeats this exactly. Before adding a default, ask what the value would be ASSERTING. Also read
+`docs/dev/generation-duplication-map.md` before touching generation at all.
+
+### PHY-10 A precondition is not a defining trait, and writing one as the other inverts the score
+WHERE: `types.ts:Fingerprint.gate` vs `Fingerprint.match`; scored in `system/classification.fingerprintScore`;
+prototypes built from BOTH in `classification.audit.spec.ts`.
+RULE: `gate` = eligibility (failing rules the type out entirely, passing earns nothing). `match` =
+what DEFINES the type. Never express a gate as a match band.
+WHY: B25. The score is the MEAN fit across match bands, so a band that is always-true for every
+survivor pulls a weak defining band UP by averaging — fit 0.11 gains 37%, a perfect fit gains 8%. It
+rewards the worst matches most. Adding `makeup.gas` as a match band did remove the fifteen gas-dominated
+eyeballs and turned SIX temperate rocky worlds INTO eyeballs (Ross 128 b at 292 K became a "hot
+eyeball" whose band starts at 320). A weight cannot undo it: the distortion is fit-dependent and a
+weight is a flat multiplier.
+BLAST: the overlap audit builds each type's prototype from its bands, so a gated type scores 0 against
+ITSELF and reports as shadowed unless the prototype satisfies the gate too — that fired the moment the
+gate landed and is why `prototype()` spreads `fp.gate` as well as `fp.match`. And see PHY-4's second
+caveat: a gate written as a numeric BAND inherits `bandFit`'s 15% soft edge, so `[0, 0.5]` does not
+actually close at 0.5.
+
+### PHY-11 A quantity that never SETTLES is non-idempotence, even when nothing physical moves
+WHERE: `core/SystemProcessor.settled` (a 1e-12 relative no-change test), applied to every barycentre
+semi-major axis and mean motion; the effective-mass pre-pass at the top of `processBarycenters`.
+RULE: where a derivation is a ROUND TRIP — separation is the sum of the members' axes, each axis is
+then re-derived from that sum — double precision lands one ulp from where it started, every pass,
+for ever. Guard the assignment, do not chase the arithmetic. And where a value nests, compute it in
+its OWN pre-pass, deepest-first, before anything reads it.
+WHY: B13. Both faults are PHY-1's, but neither is a read-before-write and neither is findable by
+reading the pass order. The ulp round trip alone blocks any idempotence test. The nesting one is worse
+and silent: Alpha Centauri lists its OUTER barycentre first, so on a fresh load the system barycentre
+summed Proxima plus a STALE AB total — 2.43e29 against the true 4.20e30 — which moved every orbit in
+the system and flipped both primaries from no stability verdict to "Very Unstable" on the second pass.
+BLAST: the pre-pass also breaks a genuine circularity, so do not fold it back into the main loop: an
+inner barycentre needs its parent's mass for its own orbit while the parent needs the inner one's mass
+for its total. One duplicate writer was DELETED rather than guarded — a barycentre that is a member of
+another had its mean motion written twice, two formulas one ulp apart, last writer wins (Algol). Two
+writers of one field is the fault; `settled()` is for a single writer that cannot converge.
+
+### PHY-12 There is exactly ONE read-before-write edge left, it is opt-in, and it is not orderable
+WHERE: `SystemProcessor.ts:587-599` — the `body.evolveAtmosphere` branch in pass 2a reads
+`body.magneticField`, which pass 2b derives.
+RULE: turning `evolveAtmosphere` on for a body reintroduces the B13 class. The circle is real:
+field → escape → atmosphere → thermal → temperature → fluid layers → field. It cannot be ordered away,
+only broken, and breaking it needs a design decision nobody has made.
+WHY: `idempotence.test.ts` is green ONLY because no bundled body, either starmap, or any shipped
+example carries the flag, and Mars's field is 0 on both passes so the aging check passes either way.
+The test does not cover this; it is silent about it. Deriving magnetism early for opted-in bodies and
+late for the rest would be two evaluations of one question — PHY-7 — so the residual was documented
+rather than papered over.
+BLAST: any starmap or fixture that sets `evolveAtmosphere`. Any change that makes escape non-optional.
+`processEnvironment` also still ends with a dead `retainsAtmosphere` local that reads the field
+(`SystemProcessor.ts:645`) — unused, so it cannot drift; do not "wire it up".
+
+### PHY-13 A belt's or ring's `massKg` is a debris-density proxy, never a point mass
+WHERE: `physics/stability.ts:413` (excluded from the mutual-Hill sibling set, pinned by
+`stability.spec.ts`) and `:257`; `orbits.ts:528` `isDistributed` (gates the Lagrange points);
+`resonance.ts:96`; `barycenterReconcile.ts:37,154,159`; `twoBodyCoast.ts:149`. Eight sites.
+RULE: any consumer that treats mass GRAVITATIONALLY must skip `roleHint === 'belt' | 'ring'`. The
+number is how much stuff is spread round the annulus, not what sits at a point.
+WHY: an 80-Earth-mass "belt" would wreck Hill spacing and spuriously flag its neighbouring planet as
+unstable — the spec's own subject. The failure is a plausible-looking verdict on an innocent body, so
+nothing reports it.
+BLAST: those eight carry the test by hand and there is no shared predicate, so a NINTH consumer
+inherits the bug by default rather than by mistake. Grep `roleHint === 'belt'` before adding any
+mass-consuming pass. Do not fold in the OTHER belt exclusions while unifying: `transit/scheduler.ts:46`
+and `eclipses.ts:443` also skip belts, for unrelated reasons (not an independent transit target; not
+an eclipsing body), and `twoBodyCoast.ts:149` additionally skips MOONS, which has nothing to do with
+distributed mass. Same expression, four different questions.
+
 ---
 
 ## STUBS — owners, add your domain here
@@ -270,9 +425,62 @@ builder, and pass no `formatDate` unless the campaign calendar is genuinely avai
 Keep the entry format. One entry per trap, not per file.
 
 ### RENDER-*  (appearance / planetAppearance / holo scene)
-_Unwritten. Candidates: the floating-origin rule (scene coordinates are relative to camera focus, so
-(0,0,0) is not the star); immutable GL texture caveat (A1); "a proximity test against a sampled curve
-must be against its SEGMENTS, never its samples"._
+_Partly written. STILL UNWRITTEN: the floating-origin rule (scene coordinates are relative to camera
+focus, so (0,0,0) is not the star); "a proximity test against a sampled curve must be against its
+SEGMENTS, never its samples". A1 is now RENDER-B1._
+
+#### Backfilled from closed inbox items — added 2026-08-07 by the engine-map backfill session
+
+### RENDER-B1 GL texture storage is IMMUTABLE — a resized canvas silently never lands
+WHERE: `holo/scene.ts:setHud` (the `else` branch that recreates the texture), the label path at
+`scene.ts:933-943`, and the same pair in `starmap/starmapScene.ts:setHud`.
+RULE: swapping a canvas of a DIFFERENT PIXEL SIZE into a live `CanvasTexture` fails silently — WebGL2
+allocates storage once (`texStorage2D`), so the upload lands against the old-size allocation and the
+quad keeps stretching the stale bitmap. Dispose and recreate the texture whenever the canvas
+dimensions change. Same size, changed pixels → `needsUpdate` is correct and cheap.
+WHY: A1, and the diagnosis is the transferable part. The report was "the guide-tip banner does not
+reflow, it is a bitmap being stretched", and three sessions went into the RE-MEASURE path — whether
+`viewW/viewH` refreshed, whether the ResizeObserver fired, whether a hidden tab suppressed it. One
+real mechanism was even found and fixed there (RO notifications deliver BEFORE paint) and it was not
+the fault. **Every guard upstream was working and irrelevant: the rebuild always ran and never reached
+the screen.** When a redraw demonstrably happens and the picture does not change, suspect the UPLOAD
+before you suspect the trigger.
+BLAST: anything that draws into a canvas backing a live texture and can change its size — labels
+(font, text width), the HUD, any future sprite or badge. Note the DOCUMENT path was never affected
+because `setSource` recreates per frame, so "it works in the document view" proves nothing about the
+scenes. Textures are not the only immutable-once-allocated resource; the same reasoning applies to any
+GPU buffer sized at creation.
+
+### RENDER-B2 The player's "2D starmap" is the 3D renderer locked overhead, and `Starmap2DView` is mounted NOWHERE
+WHERE: `starmap/Starmap3DView.svelte` with `flat` set, over `starmap/starmapScene.ts` — the
+`starmapView === 'holo3d' || 'diagram2d'` branch at `routes/catalogue/+page.svelte:1148`, which says so
+in a comment and then sets `angleDeg` to 0 and `flat` to true for the 2D case.
+`starmap/Starmap2DView.svelte` carries a header saying it is dead. (A37 quoted this as `:1021`; the
+file has moved since, which is the general warning about a line number in a `.svelte` route.)
+RULE: there is ONE starmap renderer, ONE lattice generator (`map/latticeGeometry.ts`) and ONE overlay
+vocabulary (`map/mapOverlay.ts`, `normaliseOverlay` folding every persisted spelling). Neither
+`components/Grid.svelte` (the GM's 2D SVG grid) nor `holo/scene.ts`'s ground-plane lattice is involved
+in the player starmap. Establish WHICH surface a report is about before touching a grid.
+WHY: A37 asked for every grid style to be added to `Starmap2DView` as "the larger half of the item".
+That work could never have appeared on screen — the trap the item itself warned about one level up
+("fixing the wrong square branch will look like a fix and change nothing"). The component is left in
+place, annotated, because whether it is a discarded prototype or an intended lighter renderer is not a
+docs decision.
+ALSO, because it is the same shape one level down and the two are easy to swap: the PLAYER's 2D SYSTEM
+map is likewise `holo/scene.ts` locked overhead + flat/unlit (`catalogue/+page.svelte:793`,
+`effectiveSystemTier` maps both `holo3d` and `diagram2d` to `'holo'`) — NOT `SystemVisualizer.svelte`,
+which is the GM's 2D orrery and is still very much mounted (SystemView, the projector, the `/p/` share
+route, and the catalogue's static tier). So "the 2D system view" names two different renderers
+depending on who is looking; RENDER-S19's "a transiting ship drew PARKED on player views" lived on that
+seam. Four surfaces, one grid vocabulary, and `components/Grid.svelte` is a fifth that shares neither.
+BLAST: A PER-VERTEX EFFECT NEEDS GEOMETRY SEGMENTED TO ITS OWN SCALE. `addLattice` fades per vertex
+and drops a segment whose BOTH ends have faded out; a square grid line spans the whole lattice
+(half-extent 12 x 2.4 = 28.8, fade ends at 12 x 1.9 = 22.8), so every line was culled and squares
+looked unimplemented while hex — whose edges are one hex wide — looked fine. That is what
+`LatticeOpts.maxSegment` exists for, and `latticeGeometry.spec.ts` asserts an unsegmented square
+lattice keeps ZERO edges through the real fade radius. Any new per-vertex fade, falloff or clip
+inherits this. Squares take the THINNED cell and hexes the true one, deliberately: thinning a hex
+lattice moves the centres a system is snapped to.
 
 #### Ship models (G3) — added 2026-08-04 by the ship-appearance stream
 
@@ -673,8 +881,58 @@ BLAST: changing either endpoint; adding a new object class to the dial. Mid-dial
 presets move if this changes — endpoints do not.
 
 ### TRANSIT-*  (journeys, autopilot, routing)
-_Unwritten. Candidates: which tags autopilot matches by slug and what breaks if they move; readiness
-and tardiness sources; belt mass is a debris-density proxy, not gravitational mass._
+
+_Belt mass is PHY-13. Route geometry and the ship's own clock are RENDER-S17 and RENDER-S18 — read
+both before touching a published route._
+
+#### Opened 2026-08-07 by the engine-map backfill session. Verified against the code, not the inbox.
+
+### TRANSIT-1 Autopilot takes FLIGHT PARAMETERS out of user-editable tag data, by slug
+WHERE: `constructs/coi.constructReadiness` (STATUS tags' `readiness`) and `constructTardiness` (the
+OWNER tag's `tardiness`); consumed in `transit/autopilotAdapter.ts:180` and `:333`. Slug matches also
+sit in `components/AutopilotTab.svelte:92-100` and `constructs/inheritance.DRIVE_RANK`.
+RULE: `readiness` and `tardiness` are NUMBERS ON TAG DEFINITIONS the GM can edit in Settings → CoIs,
+and they travel inside the starmap. They are not cosmetic: readiness 0 refuses the journey outright
+(`stuckReason: 'not operational'`), a fractional readiness MULTIPLIES `maxG` so a damaged ship limps,
+and tardiness stretches dwell. A GM editing the CoI list is editing ship performance.
+WHY: the coupling runs the wrong way round from how it reads. `readiness` looks like a display
+property on a status chip; it is a thrust multiplier. And the slug matches are silent on failure —
+delete `purpose/mining` and `suggestedAction()` simply returns a different default and `defaultRate()`
+falls back to a size-scaled guess. Nothing says a capability stopped being recognised.
+BLAST: TAG-12 protects the CATEGORIES from deletion, NOT the individual tags inside them, and
+`coiCategories` deliberately does NOT filter on `enabled` — so disabling the Status category leaves
+readiness working while deleting one status tag does not. `constructTardiness` returns the FIRST
+matching owner tag in the CATEGORY's order, which is only unambiguous because `owner` is `single`.
+Adding a new slug-coupled behaviour: give it the TRANSIT-2 repair, or accept that it fails silently.
+
+### TRANSIT-2 Three status slugs and one readiness number are ENGINE CONSTANTS living in user data
+WHERE: `constructs/coi.normalizeCoIs` (the `def.id === 'status'` block); pinned by
+`tags/tagCategories.spec.ts:85-88`.
+RULE: `status/in-transit-interstellar`, `status/in-transit-system` and `status/adrift` are RE-ADDED on
+every normalise if missing, stamped `derived: true`, and `status/adrift` has its `readiness: 0`
+RE-WRITTEN each time. The engine repairs the vocabulary it depends on rather than trusting the file.
+`status/active` is deleted on sight — operational is the absence of a blocker, not a tag.
+WHY: `derivedStatusKey` MIRRORS journey state into these keys, so they are the engine writing to
+itself through the user's tag store. A stale or hand-edited imported CoI set missing `status/adrift`
+would leave an adrift ship with readiness 1 — fully operational, and freely dispatchable.
+BLAST: this repair is the ONLY one of its kind. `purpose/*`, `drive/*` and `resource/*` are matched by
+slug with no equivalent (TRANSIT-1). If you add an engine-meaningful tag, either add it to this block
+or expect it to go missing. Do not "clean up" the re-add as redundant — it is load-bearing on import.
+
+### TRANSIT-3 A leg's arrival is its OWN departure plus transit, never the requested start
+WHERE: `transit/autopilotAdapter.solveLeg` (the `departMs` line and the `elapsedDays` cap).
+RULE: the Most Efficient family can commit a DELAYED launch window — `startTime` up to ~1000 days
+after `startMs`, which IS the "wait for alignment" behaviour a thrifty ship deliberately chooses. So
+arrival must be anchored on `chosen.startTime`, and any per-leg time cap must count the WAIT as well
+as the flight.
+WHY: anchoring on the requested `startMs` understated every delayed leg and stacked the following legs
+on top of the wait — a schedule that is internally consistent and wrong, with no error anywhere. The
+cap has the mirror trap: a plan that waits 300 days and flies 200 busts a 250-day limit.
+BLAST: one solver both COSTS the reorder search and COMMITS the legs, so they cannot disagree — the
+`light` flag selects a cheaper quote tier, not a different model. Do not add a second estimator for
+the search. Tardiness slack (`autopilotPlanner.ts:268`) is a deterministic FNV hash of
+`(construct id, leg index, arrival timestamp)` for the same reason a scrubbed timeline must replay
+identically — see DATA-G1, and note `hash01` there is NOT the same constant as the engine's.
 
 #### Load path and instruments (P1) — added 2026-08-07 by the performance/memory comb
 
@@ -780,8 +1038,32 @@ Also: a missing map must degrade to a SMALLER bundle, never to no bundle — sto
 diagnostic matters most.
 
 ### DATA-*  (starmaps, import, rulepacks)
-_Unwritten. Candidates: `tests/fixtures/*` and `tests/output/*` are GENERATED, never hand-edited;
-bundled-map collision protection in the real-sky importer; stable-id rules._
+_Partly written. STILL UNWRITTEN: `tests/fixtures/*` and `tests/output/*` are GENERATED, never
+hand-edited._
+
+#### Backfilled from closed inbox items — added 2026-08-07 by the engine-map backfill session
+
+### DATA-G1 A new random draw takes its OWN id-seeded stream, or every written-down seed stops reproducing
+WHERE: `generation/star.starTiltFromPack` / `starFieldFromPack` (callers pass
+`new SeededRNG(\`${id}-tilt\`)` / `-mag`); `generation/planet.ts:269`; the deterministic
+`hash01(body.id + '|…')` in `SystemProcessor.ts:37` and `import/realsky/positions.mjs:17`.
+RULE: never add a draw to the SHARED per-run rng. Its stream position depends on how many draws ran
+before it, so one insertion shifts every subsequent draw and silently re-rolls every planet in every
+saved seed. Seed from the BODY ID. For anything that must also be stable across re-processing, use
+`hash01(id + '|<purpose>')` rather than an rng at all — a per-run rng's order depends on iteration
+order, which is not a promise this codebase makes.
+WHY: B9a had to add a stellar field draw and verified byte-identical output for three legacy seeds
+BEFORE shipping it; had it drawn from the system stream, every existing campaign's planets would have
+moved and nothing would have reported it. Same family as TAG-8, different mechanism: TAG-8 is the rule
+LIST re-ordering, this is the STREAM being displaced.
+BLAST: DATA-R2 depends on this — `hash01(id + '|i')` is the SEED for inclination, argument, node and
+phase, so the recipe is load-bearing for the bundled maps. THERE ARE THREE `hash01` COPIES AND THEY DO
+NOT ALL AGREE: `SystemProcessor.ts` and `positions.mjs` are both `% 100000`, `transit/autopilotPlanner.ts`
+is `% 1_000_000`. The first two MUST stay identical (DATA-R5 forbids `positions.mjs` importing from the
+app, which is why it is copied — the comment says "same recipe", nothing enforces it). There are also
+two DIFFERENT classes both exported as `SeededRNG` (`lib/rng.ts`, `lib/traveller/rng.ts`); check which
+one an import resolves to before reasoning about a stream. `Math.random` is fine for one-shot AUTHORING
+(a GM clicking "add a planet"), never on a path that must replay.
 
 #### Ship-model binaries (G3) — added 2026-08-04 by the ship-appearance stream
 
@@ -928,6 +1210,24 @@ still means none.
 WHY: the order was photo-first and was corrected by owner steer ("if a construct is told to be 3D,
 display it first"). A28/A30 are the history: the wrong picture is worse than no picture.
 BLAST: any new construct-showing surface. Do not re-derive the chain locally — read these two.
+
+### UI-C3 One shape TABLE, two emitters — and a duplicated table drifts at its FALLBACK first
+WHERE: `constructs/constructIcon.ts` — `constructIconShape` (resolver), `traceConstructIcon` (canvas
+path), `constructIconPath` (SVG string), `CONSTRUCT_ICON_SHAPES`; pinned by `constructIcon.spec.ts`.
+Six consumers: `holo/scene.ts`, `SystemVisualizer.svelte`, `Starmap.svelte`, `ConstructPortrait.svelte`,
+`ConstructModelGraphic.svelte`, `catalogue/document/renderDocument.ts`.
+RULE: the vector surface shares the shape TABLE and gets its own EMITTER; it does not get its own
+table. A sixth shape must fall out of both emitters at once. Never trace a construct glyph at a call
+site — RENDER-S13's rule for hulls, one layer down for markers.
+WHY: A34 filed this as "four copies, they agree today, nothing enforces it". They did not agree.
+`Starmap.svelte`'s SVG copy fell back to a DIAMOND where the resolver and both canvas copies fall back
+to a TRIANGLE — so a construct with no authored `icon_type`, THE COMMONEST CASE, drew as a different
+shape on the starmap than everywhere else. The drift the item was filed to prevent had already
+happened and nobody had noticed, because it only showed on the DEFAULT.
+BLAST: this is the general lesson, not a construct-icon one. When you duplicate a lookup, the branch
+that diverges first is the one no author ever selects — the fallback, the empty case, the "or else".
+Review of a duplicated table looks at the entries; the drift is under them. The spec asserts the
+triangle fallback explicitly for that reason.
 
 #### Body facts (G8) — added 2026-08-04 by the frame/suite-hygiene session
 
