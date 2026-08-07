@@ -120,20 +120,45 @@
   $: previewNode = starmap?.systems.find((s) => s.id === previewSystemId) || null;
   $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
 
-  // SEED THE CLOCK FROM THE SYSTEM'S OWN EPOCH, exactly as the GM's view does
-  // (`currentTime = newSystem?.epochT0 || Date.now()`). This surface used to open at Date.now() and
-  // stay there unless the preset happened to follow the GM's clock - so on any system whose epoch is
-  // not about now, the clock was in a DIFFERENT EPOCH from every time the GM publishes. Positions
-  // survived that (a construct in transit is placed by a stamped vector, not by the clock), but
-  // anything judged against a game-clock WINDOW silently missed every time: the drive plume never
-  // lit, and a transit route line would never have drawn either. The data was correct and complete;
-  // it was being compared against the wrong calendar. Keyed on the system ID so it seeds on a change
-  // of system and never fights the running clock, and skipped while following the GM, whose
-  // heartbeat owns the clock outright.
-  let clockSeededFor: string | null = null;
-  $: if (selectedSystemNode && selectedSystemNode.id !== clockSeededFor) {
-    clockSeededFor = selectedSystemNode.id;
-    if (!followGMActive) currentTime = (selectedSystemNode.system as any)?.epochT0 || Date.now();
+  // ANCHOR THE LOCAL CLOCK TO GAME TIME (RENDER-S18). This surface opens at `Date.now()`, but
+  // everything the GM publishes about a ship - a burn window, a route's start and end - is stamped in
+  // GAME-clock milliseconds. Measured in the field: a local clock at 5 Nov 2025 against a route
+  // window opening 1 Jan 2026, so the route line was fully built, tessellated and correct, and hidden
+  // because the clock was two months short of it. The drive plume was dark for the same reason, which
+  // is why it read as a redaction fault for weeks - POSITIONS SURVIVE A WRONG EPOCH (a construct in
+  // transit is placed by a stamped vector, not by the clock), so nothing else looks wrong.
+  //
+  // WHERE "NOW" COMES FROM, in order, and why it is not simply `epochT0`:
+  //   1. The GM's own clock if a heartbeat has arrived. It is the definition of game time.
+  //   2. Else the newest `vector_epoch_ms` on a construct. The GM's reconcile tick stamps it with
+  //      THEIR clock every time it places a ship, and it rides every snapshot - so any system with
+  //      traffic carries the GM's current time whether or not the session is following them.
+  //   3. Else `epochT0`, which is the system's REFERENCE epoch and not its now - the GM scrubs
+  //      forward from it, so it can be years adrift. A last resort, not the answer.
+  // Anchoring is one-shot per system: it fixes the CALENDAR, and the local clock then runs at its
+  // own rate from there. Deliberately NOT skipped while following the GM - "following" only means a
+  // heartbeat will snap it later, and until the first one arrives the view is in the wrong year.
+  let clockAnchoredFor: string | null = null;
+  function gameNowOf(sys: any): number | null {
+    let stamp: number | null = null;
+    for (const n of sys?.nodes ?? []) {
+      const t = (n as any).vector_epoch_ms;
+      if (Number.isFinite(t)) stamp = stamp === null ? t : Math.max(stamp, t);
+    }
+    return stamp ?? (Number.isFinite(sys?.epochT0) ? sys.epochT0 : null);
+  }
+  $: if (selectedSystemNode && selectedSystemNode.id !== clockAnchoredFor) {
+    const anchor = gmTime?.currentTime ?? gameNowOf(selectedSystemNode.system);
+    if (anchor !== null && anchor !== undefined) {
+      clockAnchoredFor = selectedSystemNode.id; // only count it as anchored once we HAD an answer
+      if ((globalThis as any).__routeDebug) {
+        console.log('[clockanchor]', JSON.stringify({
+          from: gmTime?.currentTime != null ? 'gm-heartbeat' : 'construct-stamp-or-epoch',
+          was: currentTime, now: anchor, movedDays: (anchor - currentTime) / 86400000
+        }));
+      }
+      currentTime = anchor;
+    }
   }
   // G9: the OTHER charted systems, as stars in this system's sky. Derived here rather than in the
   // scene because it is starmap knowledge, and recomputed only when the map or the viewed system
