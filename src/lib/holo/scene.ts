@@ -2008,7 +2008,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it at the pixel LOD, exactly as for a real hull
-      for (const rig of v.shipFx.rigs) rig.light.distance = Math.max(1e-9, sceneLen * 8);
+      for (const rig of v.shipFx.rigs) rig.light.distance = Math.max(1e-12, sceneLen * PLUME_REACH_HULLS); // seed; updateConstructs re-states it against the DRAWN hull
       contentGroup.add(g);
       v.shipModel = g;
       v.shipLen = sceneLen;
@@ -2061,7 +2061,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // The plume light's reach scales with the hull (light params ignore parent scale): a burning
       // ship glows over a few hull-lengths, never across the system - at true scale the old fixed
       // 3.2-unit reach would have lit planets from a 100 m exhaust.
-      for (const rig of v.shipFx.rigs) rig.light.distance = Math.max(1e-9, sceneLen * 8);
+      for (const rig of v.shipFx.rigs) rig.light.distance = Math.max(1e-12, sceneLen * PLUME_REACH_HULLS); // seed; updateConstructs re-states it against the DRAWN hull
       contentGroup.add(g);
       v.shipModel = g;
       v.shipLen = sceneLen;
@@ -2124,6 +2124,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // to be slowing never reads as a burn. Throttled: one ship, four checks a second.
   const BRAKE_ACCEL_MS2 = 0.05;
   const FULL_PLUME_MS2 = 10; // fallback ceiling (~1 g) when the ship's own capability is unknown
+  // How far a drive plume throws light, in HULL LENGTHS of the hull being lit. Written as a count
+  // rather than a scene distance on purpose: the scene spans ten orders of magnitude, so the only
+  // reach that means the same thing at both ends is one expressed in the subject's own size (R3).
+  // Eight keeps a torch lighting its own ship and its immediate neighbourhood without a 100 m
+  // exhaust washing over a planet, which is what the original number was chosen for.
+  const PLUME_REACH_HULLS = 8;
   // Per-construct drive data from the HOST, which holds the rule pack the engine definitions
   // live in - the scene itself never reads pack data. accelMs2 drives thrust01 = the fraction of
   // the ship's OWN drive being used; exhaustHex (pack data, G15(4)) colours the plume, absent =
@@ -2282,12 +2288,27 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // knows about any burn at all, which separates a redaction fault from a quiet engine.
             const _burn = shipBurnState(b.id);
             const _node = currentSystem?.nodes.find((n) => n.id === b.id) as any;
+            // ...and the CLOCK the burns are judged against, which `hasBurnData` alone cannot
+            // separate from a quiet engine. A burn window is stated in GAME-clock milliseconds; a
+            // surface running a clock of its own compares them against a different epoch entirely
+            // and every window misses, so the data can be present and correct and the plume still
+            // dark. `clockInBurn` false while `hasBurnData` is true and `burnWindow` is nowhere
+            // near `clock` IS that fault, and it is not visible in any other field.
+            const _burns: any[] = _node?.driveBurns ?? [];
+            const _win = _burns.length
+              ? { s: _burns[0].s, e: _burns[_burns.length - 1].e }
+              : (() => { const r = routeOf(_node); return r ? { s: r.s, e: r.e } : null; })();
             console.log('[shipdbg]', b.id, JSON.stringify({
               shipLen: b.shipLen, dist: distToCam, viewH, bodySize, minPx, framingThis, inFocus,
               drawn, onScreenPx: drawn / (f * distToCam),
               measured, measuredPx: measured / (f * distToCam), ratio: measured / drawn,
               thrust01: _burn.thrust01, braking: _burn.braking,
-              hasBurnData: !!(_node?.driveBurns?.length || _node?.scheduled_journeys?.length)
+              hasBurnData: !!(_node?.driveBurns?.length || _node?.scheduled_journeys?.length),
+              clock: timeMs, burnWindow: _win,
+              clockInBurn: !!_win && timeMs >= _win.s && timeMs <= _win.e,
+              // The plume light's reach, in hull lengths of what is actually DRAWN - a number well
+              // under 1 means it is lighting the inside of its own hull (the P3c reach fault).
+              lightReachHulls: (b.shipFx?.rigs?.[0]?.light.distance ?? 0) / Math.max(1e-30, drawn)
             }));
           }
           // Work in WORLD units directly: the size that occupies minPx at this distance is
@@ -2297,7 +2318,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // zero. Once the clamp fired the result stopped tracking distance, so the hull was
           // drawn AU across and grew as you zoomed: the two faults reported together.
           const minWorld = minPx * f * distToCam;
-          b.shipModel.scale.setScalar(Math.max(b.shipLen ?? 0, minWorld));
+          const drawnLen = Math.max(b.shipLen ?? 0, minWorld);
+          b.shipModel.scale.setScalar(drawnLen);
+          // THE PLUME LIGHT'S REACH FOLLOWS THE HULL THAT IS ACTUALLY DRAWN, not the authored one.
+          // It was set once at build from `shipLenScene` - the ship's TRUE length - while this line
+          // rescales the hull every frame to hold the pixel LOD. At true scale that floor does most
+          // of the work: a 46 m ship whose true length is ~2e-10 scene units is drawn at ~1e-6 to
+          // stay a few pixels wide, so the light's cutoff sat a thousandfold inside the hull it was
+          // meant to illuminate and lit a volume nobody could see. Expressed here in hull lengths of
+          // the LIT object (the owner's ask), it means the same thing at every scale and dial stop.
+          for (const rig of b.shipFx?.rigs ?? []) rig.light.distance = Math.max(1e-12, drawnLen * PLUME_REACH_HULLS);
           b.shipModel.position.copy(b.mesh.position);
           if (!b.shipPrev) b.shipPrev = b.mesh.position.clone();
           _shipDelta.copy(b.mesh.position).sub(b.shipPrev);
