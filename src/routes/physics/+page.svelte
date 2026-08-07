@@ -1041,7 +1041,11 @@
           re-sent each time, so the full path would be thousands of numbers on the busiest channel in the app.
           The same estimate is used on the GM's own 3D view, so both see the identical line; the GM's flat map
           still draws the full path point for point. The line is also pinned to the ship itself, so it passes
-          through the vessel exactly even where the estimate and the true path differ.</li>
+          through the vessel exactly even where the estimate and the true path differ. While a player view is
+          <strong>following the GM's clock</strong>, ships in transit are also <em>positioned</em> along this
+          same re-estimated course, so a moving ship sits exactly on its drawn line; a player scrubbing their
+          own clock sees orbits move but transit traffic hold its last GM-reported position, because live
+          traffic is the GM's clock to run, not the viewer's.</li>
         <li>Coasting/adrift transit trajectories drop moons <em>while the clock is moving</em>: the gravity field used to integrate a drifting ship live (and its forecast line) includes only stars and planets, because re-integrating the full satellite census on every clock-slider frame is impractical in a browser. A moon's pull on a heliocentric coast is negligible anyway, and the star and any planet the ship passes still bend the path. Once the clock settles, the forecast upgrades to a one-shot, moon-inclusive plot — fast estimates while you scrub, the accurate path when you stop.</li>
       </ul>
     </section>

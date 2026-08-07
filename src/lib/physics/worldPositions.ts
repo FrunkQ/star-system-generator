@@ -58,7 +58,15 @@ function walkPositions<V>(
 
     // Constructs mid-journey are positioned absolutely by their kinematics, not the hierarchy.
     if (node.kind === 'construct') {
-      if ((node.scheduled_journeys || []).length) {
+      // The sampler is consulted when the node carries EITHER description of its course: the GM's
+      // journeys, or the compact `route` a player snapshot gets instead (`slimNode` strips the
+      // journeys, so on a player the old journeys-only gate starved the sampler of the very nodes
+      // it exists for). Which sampler runs is the CALLER'S policy: the orrery passes the full
+      // journey kinematics, a followed player view passes the route sampler, and a free-scrubbing
+      // player view passes none at all - a scrubbing player is looking around, not tracking live
+      // traffic, so a transiting ship holds its GM-stamped truth rather than replaying its course
+      // against a clock the GM does not control (the owner's rule, 2026-08-08).
+      if ((node.scheduled_journeys || []).length || (node.route?.p?.length ?? 0) >= 2) {
         const s = sampleConstruct?.(system, node, timeMs);
         if (s) {
           const v = ops.lift(s.position_au);

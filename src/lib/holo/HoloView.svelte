@@ -37,6 +37,10 @@
   // drives the plume as a fraction of the ship's OWN capability; exhaustHex (engine-def pack
   // data, G15(4)) colours it.
   export let shipAccel: Record<string, { accelMs2: number; exhaustHex?: string }> | null = null;
+  // P3c follow-GM: move transiting constructs along their published route as the clock runs. The
+  // host turns this on ONLY while following the GM's clock - route playback against an arbitrary
+  // local clock would show traffic where it is not.
+  export let transitMotion = false;
 
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
@@ -128,6 +132,7 @@
   // the value is unchanged, so re-applying the whole style on any tweak is cheap.
   $: controller?.setSystem(system);
   $: controller?.setShipCapability(shipAccel);
+  $: controller?.setTransitMotion(transitMotion);
   $: controller?.setTime(currentTime);
   $: controller?.focusBody(focusedBodyId);
   $: if (controller) applyStyle(style);

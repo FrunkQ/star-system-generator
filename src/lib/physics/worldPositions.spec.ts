@@ -192,3 +192,43 @@ describe('a construct with a stamped vector position', () => {
     expect(computeWorldPositions(sys, 4.2e8).get('ship')!).toEqual({ x: 7, y: -3 });
   });
 });
+
+// The sampler gate (P3c follow-GM). The sampler is consulted when the node carries EITHER
+// description of its course - the GM's journeys or a player's compact route - and which sampler (or
+// none) is the CALLER'S policy. These pin the gate itself; the route sampler's maths is pinned in
+// shipRoute.spec.ts (routeStateAt).
+describe('the construct sampler gate', () => {
+  const routeNode = {
+    id: 'ship', kind: 'construct', parentId: 'planet', physical_parameters: { massKg: 1e6 },
+    route: { s: 0, e: 1000, p: [{ t: 0, x: 3, y: 0, z: 0 }, { t: 1000, x: 4, y: 0, z: 0 }] },
+    vector_position_au: { x: 3.5, y: 0 }
+  };
+  const withNode = (n: any) => {
+    const sys = makeSystem();
+    sys.nodes.push(n);
+    return sys;
+  };
+
+  it('consults the sampler for a route-only node - the player case the journeys gate starved', () => {
+    const sys = withNode(routeNode);
+    const p = computeWorldPositions3D(sys, 500, () => ({ position_au: { x: 9, y: 9 } })).get('ship')!;
+    expect(p).toEqual({ x: 9, y: 9, z: 0 });
+  });
+
+  it('falls back to the stamped vector when NO sampler is passed - the free-scrub case', () => {
+    const sys = withNode(routeNode);
+    expect(computeWorldPositions3D(sys, 500).get('ship')!).toEqual({ x: 3.5, y: 0, z: 0 });
+  });
+
+  it('falls back to the stamped vector when the sampler answers null (outside the window)', () => {
+    const sys = withNode(routeNode);
+    expect(computeWorldPositions3D(sys, 500, () => null).get('ship')!).toEqual({ x: 3.5, y: 0, z: 0 });
+  });
+
+  it('never consults the sampler for a construct with neither journeys nor route', () => {
+    let asked = 0;
+    const sys = withNode({ id: 'ship', kind: 'construct', parentId: 'planet', physical_parameters: { massKg: 1e6 }, vector_position_au: { x: 7, y: -3 } });
+    computeWorldPositions3D(sys, 500, () => { asked++; return { position_au: { x: 9, y: 9 } }; });
+    expect(asked).toBe(0);
+  });
+});

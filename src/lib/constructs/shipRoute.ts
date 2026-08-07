@@ -277,11 +277,46 @@ export function compactRoute(construct: any): CompactRoute | null {
  * The route to DRAW, from whichever source this node has: the compact form on a player's snapshot,
  * or derived from the journeys on the GM's. One reader, so the two views cannot draw different
  * courses - R11, and the same dual-source shape `shipBurnAt` uses for the plume.
+ *
+ * MEMOISED on the journeys array's identity, because this is now on a per-frame path (a followed
+ * view places every transiting construct through `routeStateAt` each clock tick) and the fit costs
+ * ~1.3 ms on a long haul. The scheduler replaces the whole array whenever a journey changes
+ * (`{ ...construct, scheduled_journeys: updated }`), so array identity IS plan identity, and a
+ * WeakMap lets dead snapshots collect. The published-route path needs no cache - it is a field read.
  */
+const _derived = new WeakMap<object, CompactRoute | null>();
 export function routeOf(construct: any): CompactRoute | null {
 	const published: CompactRoute | undefined = construct?.route;
 	if (published?.p?.length >= 2) return published;
-	return compactRoute(construct);
+	const key = construct?.scheduled_journeys;
+	if (!key || typeof key !== 'object') return null; // nothing to derive from
+	const hit = _derived.get(key);
+	if (hit !== undefined) return hit;
+	const r = compactRoute(construct);
+	_derived.set(key, r);
+	return r;
+}
+
+/**
+ * Where the route puts the ship at `tMs` - the position HALF of what the line already is. The knots
+ * carry (t, x, y, z), so the route is a time-to-position function, not just a shape: find the span
+ * containing tMs and evaluate the SAME curve the line is drawn with at the same fraction. A ship
+ * placed by this therefore sits exactly ON its drawn course by construction, and agrees with the
+ * GM's dense-path placement to within the fit tolerance - the declared re-estimate on the physics
+ * page, in its second role.
+ *
+ * Null outside the window (and for no route), so the caller falls back to the stamped truth: this
+ * function is only ever the answer while the ship is actually under way at the asked time.
+ */
+export function routeStateAt(route: CompactRoute | null, tMs: number): RouteNode | null {
+	if (!route || route.p.length < 2) return null;
+	if (!(tMs >= route.s && tMs <= route.e)) return null;
+	const p = route.p;
+	let i = 0;
+	while (i < p.length - 2 && p[i + 1].t <= tMs) i++;
+	const a = p[i], b = p[i + 1];
+	const u = b.t > a.t ? (tMs - a.t) / (b.t - a.t) : 0;
+	return routePointAt(route, i, u);
 }
 
 /** Is this construct under way at `timeMs`? Used to decide whether the line draws at all. */

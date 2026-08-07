@@ -9,7 +9,7 @@
 // fixtures below are built the way the planner really builds them - geometry in `pathPoints`, states
 // left as the placeholders they often are - and one test asserts exactly that failure cannot return.
 import { describe, it, expect } from 'vitest';
-import { compactRoute, routeOf, isUnderWay, routePolyline } from './shipRoute';
+import { compactRoute, routeOf, isUnderWay, routePolyline, routeStateAt } from './shipRoute';
 import { computePlayerStarmapSnapshot } from '$lib/system/utils';
 
 /** A segment as the planner really emits one: geometry in pathPoints, states often placeholders. */
@@ -218,5 +218,41 @@ describe('the route reaches the player', () => {
 	it('attaches nothing to a construct that is not going anywhere', () => {
 		const player = playerNode(mapWith({ id: 'ship', name: 'Ship', kind: 'construct' }));
 		expect(player.route).toBeUndefined();
+	});
+});
+
+// The route as a TIME-to-position function (routeStateAt) - the position half of the line, used to
+// place a ship on a followed player view. The contract that matters: it agrees with the drawn curve
+// by construction, and it answers null outside its window so the caller falls back to the stamped
+// truth (a scrubbing player must NOT see traffic replayed against their own clock).
+describe('routeStateAt places the ship on its own drawn line', () => {
+	const route = () => compactRoute(ship(ARC_LEG))!;
+
+	it('is null outside the window - before departure, after arrival, and with no route', () => {
+		expect(routeStateAt(route(), -1)).toBeNull();
+		expect(routeStateAt(route(), 30001)).toBeNull();
+		expect(routeStateAt(null, 15000)).toBeNull();
+	});
+
+	it('lands exactly on the knots at their own times', () => {
+		const r = route();
+		const first = routeStateAt(r, r.p[0].t)!;
+		const last = routeStateAt(r, r.p[r.p.length - 1].t)!;
+		expect(Math.hypot(first.x - r.p[0].x, first.y - r.p[0].y)).toBeLessThan(1e-12);
+		expect(Math.hypot(last.x - r.p[r.p.length - 1].x, last.y - r.p[r.p.length - 1].y)).toBeLessThan(1e-12);
+	});
+
+	it('stays on the flown arc mid-span, and progresses monotonically along it', () => {
+		const r = route();
+		let prevAngle = -Infinity;
+		for (const t of [1000, 8000, 15000, 22000, 29000]) {
+			const p = routeStateAt(r, t)!;
+			// On the unit arc to within the fit tolerance...
+			expect(Math.hypot(p.x, p.y)).toBeCloseTo(1, 2);
+			// ...and always further along it than the earlier sample.
+			const a = Math.atan2(p.y, p.x);
+			expect(a).toBeGreaterThan(prevAngle);
+			prevAngle = a;
+		}
 	});
 });
