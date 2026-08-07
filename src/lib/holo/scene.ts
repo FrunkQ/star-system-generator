@@ -969,7 +969,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // `abs` = the ring's vertices in ABSOLUTE scene units, kept in float64. A heliocentric ring is the one
   // line a body is judged against, and its buffer is float32, so on a rebase it is re-emitted from this
   // master copy rather than left where it was. See rebaseStaticGeometry.
-  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array; node?: any; refined?: boolean }[] = [];
+  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array; node?: any; refined?: boolean; local?: Float64Array; absMode?: boolean }[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -2325,6 +2325,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const _dbgDest = new THREE.Vector3(); // scratch for the __shipDebug facing-chain readout
   const _shipLook = new THREE.Vector3();
   const _shipDelta = new THREE.Vector3();
+  const _shipTan = new THREE.Vector3(); // scratch for the route-tangent heading
   const _lastOrigin = new THREE.Vector3(NaN, 0, 0); // detects a floating-origin rebase between frames
 
   // G3: a torch ship BRAKES engines-first, so during a deceleration burn the nose points backwards
@@ -2592,17 +2593,39 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // the ship held a stale heading and ignored its own orbit line. 0.1% of the hull per
           // frame is real motion at every dial position.
           const moveEps = Math.max(1e-24, ((b.shipLen ?? 0.2) * 1e-3) ** 2);
+          // THE HEADING COMES FROM THE ROUTE'S TANGENT where the ship has a route - measured, not
+          // inferred (2026-08-08, the deltaTowardDest:0 trace): a ship between snapshot stamps does
+          // not move AT ALL, so heading-from-motion never fired on a player view with the GM's
+          // clock paused, and the hull sat in its build-default pose - which is what three field
+          // reports of "facing the wrong way" actually were. The route knows the course direction
+          // at any instant without needing the ship to move; motion-delta remains only as the
+          // fallback for routeless craft (a station drifting, a ship the GM nudges by hand).
+          //
           // lookAt SEMANTICS, verified in three's source (Object3D.lookAt): for a NON-camera the
           // arguments are swapped internally, so a mesh's PLUS-Z points AT the target - looking at
-          // (position + delta) puts +Z on the motion, which is the ModelRef convention's nose. (A
-          // fix that "corrected" this to minus-delta shipped in v2.1.479 on the camera-convention
-          // reading of lookAt and was wrong; the field report it answered had a different cause,
-          // below.) noseSign then handles the model whose VISUAL nose is authored on -Z: which end
-          // of the long axis is the nose is an authoring choice no importer can detect, and it was
-          // invisible until constructs first moved on screen - but the GM's placed nozzles mark the
-          // stern, so the sign is derived from authored data rather than assumed. The braking
-          // negate composes on top: a torch ship brakes engines-first whichever way it is authored.
-          if (!rebased && _shipDelta.lengthSq() > moveEps) {
+          // (position + heading) puts +Z on the course, which is the ModelRef convention's nose.
+          // (A fix that "corrected" this to minus-delta shipped in v2.1.479 on the camera
+          // convention reading of lookAt and was wrong.) noseSign handles the model whose VISUAL
+          // nose is authored on -Z, derived from the GM's placed nozzles (they mark the stern).
+          // The braking negate composes on top: a torch ship brakes engines-first either way.
+          let heading = false;
+          const rl = routeLines.length ? routeLines.find((x) => x.id === b.id) : undefined;
+          if (rl) {
+            const sc = shipClock(rl.node);
+            if (sc >= rl.route.s && sc <= rl.route.e) {
+              // Tangent by central difference on the SAME curve the line draws, through the live
+              // compression (positionToScene), so the nose lies along the drawn course exactly.
+              const dtT = Math.max(1000, (rl.route.e - rl.route.s) / 512);
+              const p0 = routeStateAt(rl.route, Math.max(rl.route.s, sc - dtT));
+              const p1 = routeStateAt(rl.route, Math.min(rl.route.e, sc + dtT));
+              if (p0 && p1) {
+                positionToScene(p1, _shipLook);
+                _shipDelta.copy(_shipLook).sub(positionToScene(p0, _shipTan));
+                heading = _shipDelta.lengthSq() > 0;
+              }
+            }
+          }
+          if (heading || (!rebased && _shipDelta.lengthSq() > moveEps)) {
             if (burn.braking) _shipDelta.negate();
             _shipDelta.multiplyScalar(b.noseSign ?? 1);
             b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
@@ -3192,7 +3215,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // to the clearance — exactly as its own placement does (radiusScene is 0 for one).
           const selfRad = node.kind === 'construct' ? 0 : bodyRadiusScene(node, false);
           const ring = kP > 0 ? buildMoonOrbitRing(node, kP, compressScalar(rP), parentRad, selfRad, compression, ringColor(node), orbitTiltRad) : null;
-          if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
+          if (ring) { contentGroup.add(ring.loop); orbitRings.push({ id: node.id, obj: ring.loop, trackParentId: node.parentId, local: ring.local }); }
         }
       }
 
@@ -3542,7 +3565,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (kHelio <= 0) continue;
       const self = bodyById.get(node.id);
       const ring = buildBaryMemberRing(node, kHelio, self?.radiusScene ?? 0, baryCoR.get(node.id) ?? 0, ringColor(node));
-      if (ring) { contentGroup.add(ring); orbitRings.push({ id: node.id, obj: ring, trackParentId: node.parentId }); }
+      if (ring) { contentGroup.add(ring.loop); orbitRings.push({ id: node.id, obj: ring.loop, trackParentId: node.parentId, local: ring.local }); }
     }
     visibleSet = getVisibleNodeIds(system, focusedId);
     updatePositions();
@@ -3671,6 +3694,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   // Orbit rings follow the name rule: visible exactly when the body's name is (getVisibleNodeIds).
   // Moon rings also track their parent's current scene position.
+  const _ringParent = new THREE.Vector3();
   function updateOrbitRings() {
     for (const r of orbitRings) {
       // A construct glued to a surface is not on its orbit, so it must not draw one. The lock is live
@@ -3678,10 +3702,55 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       r.obj.visible = visibleSet.has(r.id) && !bodyById.get(r.id)?.surfaceLock;
       if (r.obj.visible && r.trackParentId) {
         const p = bodyById.get(r.trackParentId);
-        if (p) r.obj.position.copy(p.mesh.position);
+        if (p) _ringParent.copy(p.mesh.position);
         else {
           const bp = baryScene.get(r.trackParentId); // a barycentre parent has no mesh to track
-          if (bp) r.obj.position.copy(bp);
+          if (bp) _ringParent.copy(bp);
+          else continue;
+        }
+        // A NEAR local-frame ring is re-emitted in DOUBLE precision, vertex + parent composed in
+        // f64 and rounded ONCE, with the object's own translation zeroed. Measured need ([ringdbg]
+        // 2026-08-08): the f32 vertex + f32 matrix-translation composition steps by ~4.7 px at a
+        // true-scale close-up - the "orbit lines vibrate" report. Near the origin the re-emitted
+        // vertices have tiny magnitudes, so their f32 error is invisible; the far side is imprecise
+        // but distant, which is the floating-origin principle this family had been left out of.
+        // FAR rings keep the cheap translation path - their projected error is sub-pixel by the
+        // same argument - so the per-frame cost is one buffer for the ring actually being watched.
+        // "Near" is decided by the JITTER PREDICTION itself - the same arithmetic the [ringdbg]
+        // instrument validated in the field - not by a distance heuristic: switch to the f64 path
+        // exactly when the f32 step would exceed a quarter pixel at the current zoom.
+        const ringR = r.local ? Math.hypot(r.local[0], r.local[1], r.local[2]) : 0;
+        const pxWorld = (2 * camera.position.distanceTo(controls.target) * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
+        const near = !!r.local && 2 ** -23 * (_ringParent.length() + ringR) > pxWorld * 0.25;
+        if (r.local && near) {
+          const attr = (r.obj as any).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
+          if (attr) {
+            const arr = attr.array as Float32Array;
+            const n = Math.min(arr.length, r.local.length);
+            for (let i = 0; i < n; i += 3) {
+              arr[i] = r.local[i] + _ringParent.x;
+              arr[i + 1] = r.local[i + 1] + _ringParent.y;
+              arr[i + 2] = r.local[i + 2] + _ringParent.z;
+            }
+            attr.needsUpdate = true;
+            (r.obj as any).geometry?.computeBoundingSphere?.();
+            r.obj.position.set(0, 0, 0);
+            r.absMode = true;
+          }
+        } else {
+          if (r.absMode) {
+            // Back to the translation path: restore the local vertices once, then track cheaply.
+            const attr = (r.obj as any).geometry?.getAttribute?.('position') as THREE.BufferAttribute | undefined;
+            if (attr && r.local) {
+              const arr = attr.array as Float32Array;
+              const n = Math.min(arr.length, r.local.length);
+              for (let i = 0; i < n; i++) arr[i] = r.local[i];
+              attr.needsUpdate = true;
+              (r.obj as any).geometry?.computeBoundingSphere?.();
+            }
+            r.absMode = false;
+          }
+          r.obj.position.copy(_ringParent);
         }
       }
     }
@@ -4244,7 +4313,7 @@ function moonSpread(off: number, localScale: number, parentRadius: number): numb
  * Local by construction, so the numbers stay small whatever the parent's distance: a floating-origin
  * rebase never has to touch these, the object is simply positioned at the parent each frame.
  */
-function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor: (off: number) => number): THREE.LineLoop | null {
+function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor: (off: number) => number): { loop: THREE.LineLoop; local: Float64Array } | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
@@ -4259,13 +4328,22 @@ function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor:
     pts.push(new THREE.Vector3(r.x * k, r.z * k, r.y * k)); // physics(x,y,z) → scene(x,z,y)
   }
   if (pts.length < 3) return null;
+  // The FLOAT64 master, kept alongside the float32 buffer the GPU reads. A parent-local ring's
+  // vertices carry the ring's own radius as magnitude, and the GPU composes them with the parent's
+  // translation at SINGLE precision - measured on a live player view (2026-08-08, [ringdbg]): at a
+  // true-scale ISS close-up the rounding step is ~4.7 PIXELS, which is the "orbit lines vibrate"
+  // report in its entirety. The master lets updateOrbitRings re-emit a NEAR ring's vertices
+  // origin-relative in float64, rounded once - the same discipline the heliocentric rings and the
+  // grid already follow (rebaseStaticGeometry), applied to the local-frame family.
+  const local = new Float64Array(pts.length * 3);
+  for (let i = 0; i < pts.length; i++) { local[3 * i] = pts[i].x; local[3 * i + 1] = pts[i].y; local[3 * i + 2] = pts[i].z; }
   const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false }); // see buildOrbitRing
-  return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat);
+  return { loop: new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat), local };
 }
 
 // `orbitTiltRad` is the caller's `satelliteTiltRad(node, parent)` — the gate is made there, once, and
 // NOT repeated here. It used to be made in both places in two different spellings.
-function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, orbitTiltRad = 0): THREE.LineLoop | null {
+function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, orbitTiltRad = 0): { loop: THREE.LineLoop; local: Float64Array } | null {
   return buildLocalOrbitRing(node, color, orbitTiltRad, (off) => {
     const spreadDist = moonSpread(off, localScale, parentRadius);
     const trueDist = off * kHelio;
@@ -4289,7 +4367,7 @@ function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, paren
  * equator) and no toytown fan-out. The clearance that holds the pair apart at readable body sizes is the
  * only departure from physics, and it is the same rule the member's own placement uses.
  */
-function buildBaryMemberRing(node: any, kHelio: number, memberRadius: number, partnerRadius: number, color: number): THREE.LineLoop | null {
+function buildBaryMemberRing(node: any, kHelio: number, memberRadius: number, partnerRadius: number, color: number): { loop: THREE.LineLoop; local: Float64Array } | null {
   const clearance = (memberRadius + partnerRadius) * 0.62;
   return buildLocalOrbitRing(node, color, 0, (off) => Math.max(clearance, off * kHelio));
 }
