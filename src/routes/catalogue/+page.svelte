@@ -147,6 +147,18 @@
     }
     return stamp ?? (Number.isFinite(sys?.epochT0) ? sys.epochT0 : null);
   }
+  // The campaign's own "now", kept fresh for the clock-reset button: the GM heartbeat where
+  // connected (updates ~1/s), else the newest construct stamp on the viewed system. Null when
+  // nothing knows - a bare local map has no campaign clock to return to.
+  $: campaignNow = gmTime?.currentTime ?? (selectedSystemNode ? gameNowOf(selectedSystemNode.system) : null);
+  // Adrift = worth offering the way home. The threshold is deliberately generous (an hour of game
+  // time): the free-running clock diverges within seconds of opening, and a button that is ALWAYS
+  // lit is furniture, not an affordance.
+  $: clockAdrift = campaignNow !== null && Math.abs(currentTime - campaignNow) > 3600_000;
+  function resetClockToCampaign() {
+    const now = gmTime?.currentTime ?? (selectedSystemNode ? gameNowOf(selectedSystemNode.system) : null);
+    if (now !== null && now !== undefined) currentTime = now;
+  }
   $: if (selectedSystemNode && selectedSystemNode.id !== clockAnchoredFor) {
     const anchor = gmTime?.currentTime ?? gameNowOf(selectedSystemNode.system);
     if (anchor !== null && anchor !== undefined) {
@@ -1186,7 +1198,7 @@
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
         {#if effectiveSystemTier === 'holo'}
-          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} on:focus={handleFocus} />
+          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} on:focus={handleFocus} />
         {:else}
           <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
             <SystemVisualizer
@@ -1233,6 +1245,12 @@
             <button class="tc-btn" on:click={() => (isPlaying = !isPlaying)} aria-label={isPlaying ? 'Pause' : 'Play'} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
             <input class="tc-slider" type="range" min="0" max={RATE_STEPS.length - 1} step="1" bind:value={rateIndex} aria-label="Time rate" />
             <span class="tc-rate">1 s ≈ {RATE_STEPS[rateIndex].label}</span>
+            <!-- Back to the campaign's own clock. A free-running local clock diverges from the GM's
+                 by design (this is the mess-about mode); the way home fades in once it has. The
+                 anchor is the GM's live heartbeat when connected, else the newest time the GM
+                 stamped on any placed construct - the same order the clock-anchor seed uses. -->
+            <button class="tc-btn tc-reset" class:on={clockAdrift} on:click={resetClockToCampaign}
+              aria-label="Reset to campaign time" title="Reset to campaign time">↺</button>
           {:else}
             <!-- Collapsed: this button SHOWS a pause glyph while running, so it must actually pause.
                  It used only to expand the panel, which meant a control that looked like pause and did
@@ -1241,6 +1259,8 @@
             <button class="tc-btn tc-icon" on:click={() => { isPlaying = !isPlaying; timeExpanded = true; }}
               aria-label={isPlaying ? 'Pause and show time controls' : 'Play and show time controls'}
               title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
+            <button class="tc-btn tc-reset" class:on={clockAdrift} on:click={resetClockToCampaign}
+              aria-label="Reset to campaign time" title="Reset to campaign time">↺</button>
           {/if}
         </div>
       {/if}
@@ -1517,6 +1537,9 @@
   }
   .tc-btn:hover { background: rgba(40, 60, 96, 0.9); }
   .tc-rate { padding: 0 4px; white-space: nowrap; min-width: 68px; }
+  /* The way back to campaign time: absent until the clock has wandered, then fades in. */
+  .tc-reset { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+  .tc-reset.on { opacity: 1; pointer-events: auto; }
   .tc-slider { width: 130px; accent-color: #6aa0ff; }
   .time-controls:not(.expanded) { padding: 0; background: none; border: none; }
   .console-hint {
