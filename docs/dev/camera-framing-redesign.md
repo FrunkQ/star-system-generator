@@ -427,8 +427,46 @@ P3b. PARTLY SHIPPED @v2.1.459-461-beta. DONE: the stand-in hull for a model-less
     STILL TO DO: only the IN-TRANSIT rung - frame origin-to-destination instead of the host - which
     needs the route data P3c introduces. P3b's remainder and P3c are therefore ONE piece of work,
     not two; do them together.
-P3c. Transit route line (section 4a): reuse the orbit-ring path including A23 resampling, accel/
-    brake markers, same visibility toggle. GATED ON Q5 (what crosses to players).
+P3c. SHIPPED @v2.1.473-beta, awaiting the owner's eyes on a player view (see the caveat below).
+    The route line, the in-transit rung, and both plume faults - one piece of work as predicted.
+    WHAT CHANGED FROM THE PLAN, and why each is a correction rather than a compromise:
+    - GEOMETRY COMES FROM `pathPoints`, NOT the segment states (RENDER-S17). `calculateFastPlan`
+      leaves accel-end, coast-start, coast-end and brake-start as `{r:{x:0,y:0}}`, so the route this
+      phase's first commit published ran straight through the star. `pathPoints` is also what the
+      SHIP is placed from, so the line and the vessel now agree by construction.
+    - KNOTS READ AS A CURVE, not joined by chords. The flown path is an RK4 conic with a drift
+      ramp; chords between a handful of points cut its corner by a large fraction of its radius,
+      and subdividing a chord recovers nothing. A centripetal Catmull-Rom carries the bend from the
+      knot spacing at no cost on the wire, and fitting knots so the CURVE tracks the path converges
+      as the fourth power of spacing rather than the square - a whole transfer in a dozen knots.
+    - A23 CANNOT TRANSFER, and the design was wrong to assume it could: A23 re-samples a
+      PROPAGATOR, and a player has none. The curve replaces it - being analytic, the scene
+      tessellates it per span from the working distance, which is the same scale-blind rule A23
+      uses and gives the same result for the same reason.
+    - THE LINE IS ANCHORED TO THE SHIP, tapered over its neighbours (the owner's requirement,
+      2026-08-07: "the line would always go through the vessel"). The hull sits where the GM
+      stamped it, the line is a curve through a dozen knots, so they differ by the fit tolerance -
+      invisible across a route, glaring at the close-up rung this phase also added.
+    - SELECTED CONSTRUCT ONLY (owner, 2026-08-07). Simplifies rather than restricts: one line, one
+      tessellation, and a system with a dozen ships under way does not web over.
+    - `routeExtent` IS A REACH FROM THE SHIP, not the route's half-size. The shot centres on the
+      ship, which sits somewhere along its course rather than at the middle of it. `routeHalfExtentAU`
+      is gone with that correction; the measurement lives beside the other framing distances in the
+      scene, where the live compression is known.
+    - TWO PLAYER-SIDE FAULTS FOUND, both root causes rather than symptoms. A ship in transit was
+      drawn at its PARKED position on every player view, because the `vector_position_au` fallback
+      was gated on `scheduled_journeys` and `slimNode` deletes those. And the plume never lit
+      because the catalogue seeds its clock from `Date.now()` while the GM seeds from the system's
+      `epochT0` - the burns crossed correctly and were judged against the wrong calendar
+      (RENDER-S18). Neither was on the redaction path everyone was searching.
+    - PLUME REACH now follows the DRAWN hull, not the authored one: `updateConstructs` rescales the
+      hull every frame for the pixel LOD, so at true scale the light's cutoff sat a thousandfold
+      inside the hull it was lighting.
+    CAVEAT, stated because a green build is not evidence here: none of the above has been seen on a
+    player view by anyone. The 3D scene is only exercised by a player view (the GM system view is
+    the 2D orrery), the bundled examples carry no construct with a journey, so no test in this repo
+    renders a route line. The unit and plumbing tests cover the data, the fit, the rung and the
+    redaction; the LOOK is unverified.
 P5. BANKED (owner, 2026-08-07): the STARMAP 3D view must also allow travel below the ecliptic.
     Same rule as RENDER-S14, different scene - the starmap has its own camera, so widening the
     system view's polar limits did nothing for it. Half of a 3D starmap is under the plane for the

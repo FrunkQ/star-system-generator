@@ -313,6 +313,42 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S18 A time WINDOW is only meaningful against the clock that issued it
+WHERE: `routes/catalogue/+page.svelte` (seeds from the system's `epochT0`, as `SystemView` does);
+readable in `__shipDebug` as `clock` / `burnWindow` / `clockInBurn`.
+RULE: any surface that judges published game-clock data - a burn window, a route's start and end,
+a scheduled arrival - must run a clock in the SAME epoch the publisher used. Seed it from the
+system's own `epochT0`, never from `Date.now()`.
+WHY: the GM opens a system at `newSystem?.epochT0 || Date.now()`; the catalogue opened at
+`Date.now()` and stayed there unless the active preset happened to follow the GM's clock. On any
+system whose epoch is not about now, every window the GM published missed - the drive plume never
+lit on a player view, and the P3c route line would have been invisible for the same reason.
+BLAST: THIS IS WHY IT READ AS A REDACTION FAULT FOR WEEKS. The data crossed, `shipBurnPlayer.spec`
+proved end to end that it crossed, and the torch stayed dark - so every suspect was on the
+redaction path and none of them was the fault. POSITIONS SURVIVE A WRONG CLOCK (a construct in
+transit is placed by a stamped vector, RENDER-S17's neighbour) so the view looks entirely healthy;
+only time-judged things fail, and they fail SILENTLY and TOTALLY rather than approximately. Any
+new published-with-timestamps field inherits this. Check the epoch before you check the pipe.
+
+### RENDER-S17 Build a fixture the way the PRODUCER builds it, not the way the type allows
+WHERE: `constructs/shipRoute.ts` (geometry from `pathPoints`), pinned in `shipRoute.spec.ts`.
+RULE: `TransitSegment` declares `startState` and `endState`, so a route built from them type-checks
+and reads correctly. But `calculateFastPlan` writes literal `{ r: {x:0,y:0}, v: {x:0,y:0} }` for
+accel-end, coast-start, coast-end and brake-start, filling only the first start and the final end.
+Geometry comes from `pathPoints`, which is the only description always populated - and which is
+also what the SHIP is placed from (`samplePlanPathAtTime`), so the line and the vessel agree by
+construction rather than by coincidence.
+WHY: the published route ran origin -> STAR -> STAR -> STAR -> destination, straight through the
+middle of the system, and the suite was green throughout: its fixture handed every segment real
+states, which the real planner never writes. That is RENDER-S8's trap in DATA form - the instrument
+agreeing with the intent rather than with the input.
+BLAST: a hand-written fixture is a claim about the producer, and a type is not that claim. Two
+planners fill the same interface differently here (`calculateLambertPlan` writes real positions),
+so "it works on my test system" can mean "it works in Economy mode". When a field is optional in
+practice but required by type, fixture the WORSE case. Also: chords between such points are not the
+course - the flown path is an arc, so the knots are read as a centripetal Catmull-Rom, and A23's
+refinement cannot help because A23 re-samples a propagator and a player has none.
+
 ### RENDER-S16 A direction that feeds back must be UNIT, and prove it
 WHERE: `viewport/shotSolver.ts:headingDirection` (normalised); pinned in `shotSolver.spec.ts`.
 RULE: `UP*cos(t) + outward*sin(t)` is a unit vector ONLY when the two are orthogonal. In general its
