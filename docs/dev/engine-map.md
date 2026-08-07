@@ -724,6 +724,29 @@ was destroyed by the workaround, not by the bug. A rescue that ran the same pipe
 same way. This is why it is offered on the safe-mode screen, BEFORE any retry.
 BLAST: adding assets/bundling to this path would reintroduce the dependency. Keep it dumb.
 
+### UI-L7 A loop sized in MAP units is unbounded, because zoom is fitted to the map's own extent
+WHERE: `components/Grid.svelte` (the `MIN_CELL_PX` gate + `MAX_CELLS` cap); pinned by `Grid.gate.spec.ts`
+RULE: any draw loop that steps in MAP units over `view / zoom` runs a number of times set by the
+DISTANCE BETWEEN THE FURTHEST TWO SYSTEMS, not by anything on screen. It must be gated on the cell's
+SCREEN size before the loop is entered. `starmapScene.renderMapGrid` already does this for the 3D
+map ("too dense to be useful"), which is why that view never had the fault.
+WHY: measured on the reported map (two systems 85,103 ly apart, auto-fitted to zoom 2.6e-4): the
+square grid asked for 61,422 x 46,066 lines and built a 4.95 MB path string; the HEX grid asked for
+81,896 x 53,193 = **4.36 billion** iterations — at the 664k hexes/sec measured on a fast desktop,
+1.8 hours of blocked main thread growing a ~670 GB string, so it OOMs on any device. The user could
+never load the app again and cleared browser data to escape, destroying the campaign. THE GIVEAWAY
+WAS A LIE: this runs after the physics pass, so the progress bar reads 100% and the fault reads as
+"the physics is slow" — see UI-L1.
+BLAST: the same shape is anywhere a loop steps in map/world units under a fitted zoom — grids,
+lattices, rulers, scale bars, tick marks, snap overlays. Note `Starmap.svelte` passes Grid a
+HARDCODED `viewWidth={800} viewHeight={600}` rather than the real viewport, so the loop bound is not
+even the true visible area; that is a separate latent bug, left alone.
+GATE VS CAP, and do not collapse them into one number: the gate is a judgement about what is worth
+drawing, the cap is a guarantee no future gate change can reintroduce an unbounded loop — so the CAP
+MUST SIT ABOVE HONEST USE or it silently truncates real grids instead of catching runaways. The
+first pair tried here (3 px / 40,000) failed exactly that way: the densest legible hex view genuinely
+wants 82,112 cells. The spec asserts the two constants against EACH OTHER for that reason.
+
 ### UI-L6 A load-failure bundle needs the STORED map and the LIVE one, and they answer different questions
 WHERE: `io/diagnosticBundle.ts` (`starmap` vs `liveStarmap`, `map.source`, `map.hasInMemoryCopy`)
 RULE: `recalcAllSystems` rewrites `node.system` IN PLACE, so mid-load the in-memory map is a half

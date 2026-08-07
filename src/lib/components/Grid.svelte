@@ -15,18 +15,56 @@
   let subsectorPaths = '';
   let hexLabels: Array<{x: number, y: number, text: string, title?: string}> = [];
 
+  // LEGIBILITY GATE — and it is a CRASH GUARD, which is why it comes first.
+  //
+  // Every loop below is sized in MAP units and iterates `view / zoom / cell` times, so its cost
+  // grows without limit as the view zooms out. Zoom is fitted to the map's own extent, so the
+  // driver is really how far apart the furthest two systems are. MEASURED on a map with two
+  // systems 85,103 ly apart (a real user report): zoom settles at 2.6e-4, which is 61,422 x 46,066
+  // lines for the square grid — it built a 4.95 MB path string — and 81,896 x 53,193 = 4.36 BILLION
+  // hexes for the hex grid. At 664k hexes/second on a fast desktop that is 1.8 HOURS of blocking
+  // the main thread while growing a ~670 GB string, so it dies of memory long before it finishes.
+  // That is the reported "it takes too long to load and then crashes", and it lands AFTER the
+  // physics has completed, which is why the progress bar sits at 100% while the app is gone.
+  //
+  // The gate is legibility, not a magic cap: at that zoom a 50-unit cell is 0.013 SCREEN pixels, so
+  // those billions of hexes are drawing a grey haze at best. Below a few pixels a grid is noise, and
+  // the correct render is nothing. `starmapScene.renderMapGrid` already reasons exactly this way for
+  // the 3D starmap ("too dense to be useful"), which is why that view never had this fault — this
+  // brings the 2D map into line rather than inventing a new rule.
+  //
+  // MAX_CELLS is a backstop UNDER the gate, not a second opinion: the gate decides what is worth
+  // drawing, the cap guarantees that no future change to the gate can reintroduce an unbounded loop.
+  // It must therefore sit ABOVE honest use, or it silently truncates real grids instead of catching
+  // runaways. At the densest LEGIBLE zoom the hex grid genuinely wants 82,112 cells (355 x 231) —
+  // that is today's behaviour and must not change — so the ceiling is set well clear of it. The
+  // first attempt at this pair was 40,000 and would have cut a legitimate grid in half; the spec
+  // caught it, which is why it asserts the two constants against each other rather than in isolation.
+  const MIN_CELL_PX = 3;       // below this a grid is a haze, not a grid (0.013 px on the crash map)
+  const MAX_CELLS = 250000;    // hard ceiling on emitted cells, ~3x the densest legitimate view
+  $: cellPx = gridSize * zoom;
+  $: gridLegible = cellPx >= MIN_CELL_PX;
+
   $: {
-    if (gridType === 'grid') {
+    if (!gridLegible) {
+      // Zoomed too far out for the grid to mean anything. Draw nothing rather than a haze - and,
+      // critically, never enter the loops.
+      gridPaths = '';
+      hexPaths = '';
+      subsectorPaths = '';
+      hexLabels = [];
+    } else if (gridType === 'grid') {
       let paths = '';
       const startX = Math.floor((-panX / zoom - originX) / gridSize) * gridSize + originX;
       const endX = startX + viewWidth / zoom;
       const startY = Math.floor((-panY / zoom - originY) / gridSize) * gridSize + originY;
       const endY = startY + viewHeight / zoom;
 
-      for (let x = startX; x < endX; x += gridSize) {
+      let drawn = 0;
+      for (let x = startX; x < endX && drawn < MAX_CELLS; x += gridSize, drawn++) {
         paths += `M ${x} ${startY} L ${x} ${endY} `;
       }
-      for (let y = startY; y < endY; y += gridSize) {
+      for (let y = startY; y < endY && drawn < MAX_CELLS; y += gridSize, drawn++) {
         paths += `M ${startX} ${y} L ${endX} ${y} `;
       }
       gridPaths = paths;
@@ -50,8 +88,12 @@
       const startRow = Math.floor((-panY / zoom - originY) / hexHeight);
       const endRow = startRow + viewHeight / zoom / hexHeight + 2;
 
-      for (let col = startCol; col < endCol; col++) {
-        for (let row = startRow; row < endRow; row++) {
+      // The cap is tested on the INNER loop, because the explosion here is the PRODUCT of the two:
+      // capping columns alone still lets one column emit tens of thousands of rows.
+      let drawn = 0;
+      for (let col = startCol; col < endCol && drawn < MAX_CELLS; col++) {
+        for (let row = startRow; row < endRow && drawn < MAX_CELLS; row++) {
+          drawn++;
           const x = col * horizDist + originX;
           const y = row * hexHeight + (Math.abs(col) % 2) * (hexHeight / 2) + originY;
 

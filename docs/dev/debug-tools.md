@@ -162,6 +162,34 @@ saves." That is the whole instruction, and it works whether or not the user can 
 
 ---
 
+## 7. Reproducing a user's map locally — the technique that found the 85,103 ly crash
+
+You do not have to wait for someone's file. The app auto-loads from IndexedDB on startup, so you can
+write any map into storage and get the user's exact path, including the load overlay:
+
+```js
+// in the app's console: back up first, then write a repro map
+const put = (k, v) => new Promise((res) => { const r = indexedDB.open('stargen_storage');
+  r.onsuccess = () => { const tx = r.result.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(true); }; });
+await put('saved_starmap', myMap);   // then reload
+```
+
+Coordinates are `system.position = {x, y, z}` in PIXELS (`scale.pixelsPerUnit`, 43.30127 px/ly on the
+bundled maps). Grid overlay state is `localStorage['starmap-ui-store']`.
+
+**AND VARY THE SETTINGS, not just the data.** The 85,103 ly map loaded perfectly until the snap-grid
+overlay was switched on — the grid was the whole fault, and a repro that only copied the map would
+have cleared the app of a bug it definitely had. When a reproduction does not reproduce, the missing
+variable is usually a setting the reporter never thought to mention.
+
+**Time a suspect loop directly rather than running it**, when running it would hang the tab:
+replicate its body in the console, run it time-boxed for one second, and extrapolate. That is how
+"4.36 billion iterations" became "1.8 hours and 670 GB, so it OOMs on any device" — a statement
+strong enough to act on, obtained without ever hanging anything.
+
+---
+
 ## What is NOT instrumented yet
 
 Honest gaps, so nobody assumes coverage that does not exist:
@@ -169,9 +197,9 @@ Honest gaps, so nobody assumes coverage that does not exist:
 - **Cold-load bundle cost on a low-end device** — `npm run build` prints chunk sizes, but nothing
   measures parse/execute time on the device, planet texture generation (equirect canvases are CPU
   drawn at load) or belt particle budgets against the `beltDetail` knob.
-- **First-render cost as a function of map extent** — the suspect in the reported 85,103 ly hang. The
-  3D lattice has density guards (`starmapScene.renderMapGrid`); the 2D starmap canvas, the scale bar
-  and hex numbering are unaudited.
+- **Other loops sized in map units.** `Grid.svelte` was the crash (UI-L7) and is now gated, but the
+  scale bar, rulers and any future snap overlay share the shape and are unaudited. `Starmap.svelte`
+  also passes Grid a hardcoded `viewWidth={800} viewHeight={600}` rather than the real viewport.
 - **A same-system PATCH path** does not exist; `holo.setSystem.same` measures the opportunity, not a
   fix.
 - **Baselines** — no captured before-column yet for the GM view, a player view idle, a player view
