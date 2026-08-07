@@ -1032,6 +1032,16 @@
         <li>The resonant-pumping thresholds (e ≥ 0.004, planet-mass host) are calibrated cutoffs — tuned so Enceladus fires and Ganymede/Dione don't. A resonance-maintained eccentricity now feeds the numeric tidal-heat model (it dissipates from zero forcing, where a transient eccentricity must clear an onset first), with the global-mean contribution still capped at a calibrated few kelvin.</li>
         <li>The solar-seasonal geyser branch is a trigger condition (cold + surface ice), not a sublimation-energy model.</li>
         <li>Predicted fates (infall/ejection/collision) are heuristic outcomes read off the dominant instability driver, not N-body integrations.</li>
+        <li>A drawn transit route is a <strong>re-estimate, not the flown path</strong>. Planning a journey produces
+          several hundred to several thousand path points; what travels to a player view is about a dozen corner
+          points, chosen so that a smooth curve drawn through them tracks the real path to within roughly a fifth
+          of a percent of the journey's own length. The 3D view then rebuilds that curve and subdivides it as you
+          zoom in, so it stays smooth rather than turning into straight facets. The reason is data rather than
+          physics: a ship under way rewrites what players receive about twice a second, and the whole snapshot is
+          re-sent each time, so the full path would be thousands of numbers on the busiest channel in the app.
+          The same estimate is used on the GM's own 3D view, so both see the identical line; the GM's flat map
+          still draws the full path point for point. The line is also pinned to the ship itself, so it passes
+          through the vessel exactly even where the estimate and the true path differ.</li>
         <li>Coasting/adrift transit trajectories drop moons <em>while the clock is moving</em>: the gravity field used to integrate a drifting ship live (and its forecast line) includes only stars and planets, because re-integrating the full satellite census on every clock-slider frame is impractical in a browser. A moon's pull on a heliocentric coast is negligible anyway, and the star and any planet the ship passes still bend the path. Once the clock settles, the forecast upgrades to a one-shot, moon-inclusive plot — fast estimates while you scrub, the accurate path when you stop.</li>
       </ul>
     </section>
