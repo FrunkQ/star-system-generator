@@ -969,7 +969,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // `abs` = the ring's vertices in ABSOLUTE scene units, kept in float64. A heliocentric ring is the one
   // line a body is judged against, and its buffer is float32, so on a rebase it is re-emitted from this
   // master copy rather than left where it was. See rebaseStaticGeometry.
-  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array; node?: any }[] = [];
+  let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array; node?: any; refined?: boolean }[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
   let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
@@ -1113,6 +1113,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return Math.hypot(px - ex * t, py - ey * t, pz - ez * t);
   }
 
+  /** Where along segment [i, j] the point projects, clamped 0..1 - the fractional-centre input. */
+  function segmentT(p: THREE.Vector3, a: Float64Array, i: number, j: number): number {
+    const ex = a[j] - a[i], ey = a[j + 1] - a[i + 1], ez = a[j + 2] - a[i + 2];
+    const ee = ex * ex + ey * ey + ez * ez;
+    if (!(ee > 0)) return 0;
+    const t = ((p.x - a[i]) * ex + (p.y - a[i + 1]) * ey + (p.z - a[i + 2]) * ez) / ee;
+    return Math.max(0, Math.min(1, t));
+  }
+
   /** Emit one ring for the current origin, re-sampling about the focus when the facets would show. */
   function emitOrbitRing(r: { obj: THREE.Object3D; abs?: Float64Array; node?: any }, camDist: number, focus: THREE.Vector3): number {
     if (!r.abs) return Infinity;
@@ -1124,10 +1133,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const d = dx * dx + dy * dy + dz * dz;
       if (d < best) { best = d; bi = i; }
     }
-    // ...then how close the CURVE actually comes, via the two segments meeting at that vertex.
+    // ...then how close the CURVE actually comes, via the two segments meeting at that vertex - and
+    // WHERE along them, because the refinement is centred on that point. The centre used to be the
+    // vertex itself, and that snap was the residual "orbit lines vibrate" report (2026-08-08): a
+    // camera riding a moving focus crosses the re-emit slack every few frames, and each re-emit
+    // re-centred the dense arc a whole vertex along, redistributing all 1024 samples in a visible
+    // step. The FRACTIONAL centre makes the emitted geometry a continuous function of the focus, so
+    // consecutive re-emits slide the arc instead of snapping it.
     const n = r.abs.length;
     const prev = (bi - 3 + n) % n, next = (bi + 3) % n;
-    const dNear = Math.min(distToSegment(focus, r.abs, bi, next), distToSegment(focus, r.abs, prev, bi));
+    const dFwd = distToSegment(focus, r.abs, bi, next);
+    const dBack = distToSegment(focus, r.abs, prev, bi);
+    const dNear = Math.min(dFwd, dBack);
+    const centreFrac = dFwd <= dBack ? segmentT(focus, r.abs, bi, next) : segmentT(focus, r.abs, prev, bi) - 1;
     const period = r.node ? orbitPeriodMs(r.node.orbit) : 0;
     let s = 1;
     if (period > 0 && dNear <= camDist * RING_ADAPT_NEAR) {
@@ -1146,7 +1164,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (!attr) return Infinity;
     const arr = attr.array as Float32Array;
     const t0 = r.node.orbit.t0 || 0;
-    const uCentre = bi / 3 / ORBIT_SAMPLES;
+    const uCentre = (bi / 3 + centreFrac) / ORBIT_SAMPLES;
     for (let i = 0; i < ORBIT_SAMPLES; i++) {
       const u = uCentre + warpOrbitParam(i / ORBIT_SAMPLES - 0.5, s);
       positionToSceneAbs(propagateState3D(r.node, t0 + u * period).r, tmp);
@@ -1182,9 +1200,35 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     lastRingCoreArc = Infinity;
     for (const r of orbitRings) {
       if (!r.abs) continue;
-      lastRingCoreArc = Math.min(lastRingCoreArc, emitOrbitRing(r, lastRingCamDist, lastRingFocus));
+      const core = emitOrbitRing(r, lastRingCamDist, lastRingFocus);
+      r.refined = core !== Infinity;
+      lastRingCoreArc = Math.min(lastRingCoreArc, core);
     }
     emitRouteLines(lastRingCamDist);
+  }
+
+  /**
+   * Re-emit the currently REFINED rings every frame, dense arc centred on the live focus.
+   *
+   * The event-driven path above re-emits when the focus has strayed a quarter of the dense arc - the
+   * right economy for a parked camera, and the wrong one for a camera RIDING a body: the focus then
+   * crosses that slack continuously, and each re-emit used to shift the whole arc in one step. With
+   * the fractional centre the emitted geometry is a continuous function of the focus, so re-emitting
+   * every frame makes the arc SLIDE with the motion - the step disappears because there is no step.
+   * ("Animate it less often" was the owner's suggestion; this is the opposite, and the reason is that
+   * a rarer re-emit is a bigger step, not a smaller one - smoothness comes from continuity, not
+   * cadence.) Cost: only rings that are actually refined re-propagate (typically one, 1024 samples),
+   * and a ring that stops qualifying clears its own flag through the return value.
+   */
+  function emitRefinedRings() {
+    let any = false;
+    for (const r of orbitRings) {
+      if (!r.refined || !r.abs) continue;
+      any = true;
+      _ringFocus.addVectors(sceneOrigin, controls.target);
+      r.refined = emitOrbitRing(r, lastRingCamDist, _ringFocus) !== Infinity;
+    }
+    if (any) perfCount('holo.ringRefineFrame');
   }
 
   // ---- Transit route lines (P3c) -----------------------------------------------------------------
@@ -1377,7 +1421,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       }));
     }
     for (const r of routeLines) {
-      const show = r.id === focusedId && visibleSet.has(r.id) && timeMs >= r.route.s && timeMs <= r.route.e;
+      // The window test runs on the SHIP'S clock (shipClock), not the raw display clock: a
+      // scrubbing player's ship holds its GM-stamped truth, so its committed course must stay
+      // drawn with it - the line vanishing while the ship still sat mid-flight was the same
+      // two-clocks fault as the dark plume.
+      const show = r.id === focusedId && visibleSet.has(r.id) && (() => { const c = shipClock(r.node); return c >= r.route.s && c <= r.route.e; })();
       r.obj.visible = show;
       if (!show || !r.count) continue;
       const attr = r.obj.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -1925,7 +1973,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Without this a construct whose parent is no longer drawn would offer the close-up alone, and
       // the second click would wrap straight back to it.
       hasParent: contextPeerIds(currentSystem, b.id, pid).some((pid2) => bodyById.has(pid2))
-        || routeLines.some((r) => r.id === b.id && timeMs >= r.route.s && timeMs <= r.route.e),
+        || routeLines.some((r) => { const c = shipClock(r.node); return r.id === b.id && c >= r.route.s && c <= r.route.e; }),
       hasSatellites: bodies.some((x) => x.framingParentId === id),
       hasRadius: !b.isConstruct && (b.radiusScene ?? 0) > 0, // a radius-less root keeps whole-system-first
       // A barycentre member's context is only its PARTNER, so it gets one rung further out — the orbit
@@ -1974,7 +2022,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // the scene knows that. Reaching to the far end, not to the route's middle: see routeExtent.
     let routeExtent = 0;
     for (const rl of routeLines) {
-      if (rl.id !== b.id || timeMs < rl.route.s || timeMs > rl.route.e) continue;
+      const shipC = rl.id === b.id ? shipClock(rl.node) : NaN;
+      if (rl.id !== b.id || !(shipC >= rl.route.s && shipC <= rl.route.e)) continue;
       for (const k of rl.route.p) routeExtent = Math.max(routeExtent, b.mesh.position.distanceTo(positionToScene(k, tmp)));
     }
     // The geometry itself lives in `viewport/shotSolver.ts` - pure and tested (shotSolver.spec.ts).
@@ -2235,6 +2284,30 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     shipCapability = map;
     for (const b of bodies) applyExhaustColour(b, map?.[b.id]?.exhaustHex);
   }
+  /**
+   * The instant a construct is DRAWN at - which is not always the display clock.
+   *
+   * Everything time-judged about a ship (plume, burn flip, route-line visibility, the in-transit
+   * ladder rung) must be evaluated at the same instant its POSITION describes, or the view
+   * contradicts itself. Found in the field (2026-08-08): a free-running player clock races hours
+   * past the GM within minutes at the default 1 s = 1 h, so a ship drawn at the GM's stamped
+   * position - mid-ACCELERATION on the GM's map - showed no plume, because the burn was being
+   * judged at a local clock already deep into the coast. The ship and its torch were on two
+   * different clocks.
+   *
+   * So: when route playback places the ship (follow-GM, display time inside the route window), the
+   * ship's clock IS the display clock. Otherwise the ship sits where the GM's stamp put it, and its
+   * clock is the stamp's own time. A construct with neither (an orbiting station) lives on the
+   * display clock like every body.
+   */
+  function shipClock(node: any): number {
+    if (transitMotion) {
+      const r = routeOf(node);
+      if (r && timeMs >= r.s && timeMs <= r.e) return timeMs;
+    }
+    const stamp = node?.vector_epoch_ms;
+    return Number.isFinite(stamp) ? stamp : timeMs;
+  }
   let _burnCache = { id: '', atMs: -Infinity, braking: false, thrust01: 0 };
   function shipBurnState(id: string): { braking: boolean; thrust01: number } {
     const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -2243,7 +2316,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // The planner's own segment labels say whether this is a burn and which way it points -
     // shipBurnAt reads them. (It replaced a velocity-difference that always measured zero; the
     // note in shipBurn.ts explains why, because the trap will look reasonable again one day.)
-    const burn = shipBurnAt(node, timeMs);
+    const burn = shipBurnAt(node, shipClock(node));
     const cap = Math.max(0.01, shipCapability?.[id]?.accelMs2 ?? FULL_PLUME_MS2);
     const thrust01 = burn.thrusting && burn.accelMs2 > BRAKE_ACCEL_MS2 ? Math.min(1, burn.accelMs2 / cap) : 0;
     _burnCache = { id, atMs: now, braking: burn.braking && thrust01 > 0, thrust01 };
@@ -2400,8 +2473,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               measured, measuredPx: measured / (f * distToCam), ratio: measured / drawn,
               thrust01: _burn.thrust01, braking: _burn.braking,
               hasBurnData: !!(_node?.driveBurns?.length || _node?.scheduled_journeys?.length),
-              clock: timeMs, burnWindow: _win,
-              clockInBurn: !!_win && timeMs >= _win.s && timeMs <= _win.e,
+              clock: timeMs, shipClock: shipClock(_node), burnWindow: _win,
+              clockInBurn: !!_win && (() => { const c = shipClock(_node); return c >= _win.s && c <= _win.e; })(),
               // THE FACING CHAIN, one field per link, because the 480 report exhausted inference:
               // every consistent (nozzle-end, nose-end) assignment predicts a correct facing, so
               // one of the assumed facts is false and only measurement says which. nozzleMeanZ is
@@ -3921,6 +3994,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const strayed = _ringFocus.addVectors(sceneOrigin, controls.target).distanceTo(lastRingFocus)
           > lastRingCoreArc * RING_FOCUS_SLACK;
         if (zoomed || strayed) emitOrbitRings();
+        else emitRefinedRings(); // a refined arc SLIDES with the focus every frame - see the note there
       }
     }
     if (portraitOn) updatePortraitLight(); // AFTER controls.update so the camera basis is current this frame

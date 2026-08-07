@@ -11,6 +11,11 @@ All notable changes are listed here:
 
 * **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
 
+## v2.1.482-beta - 8th Aug 2026
+
+* **Fixed (properly this time): orbit lines vibrating while the view rides a moving body.** The previous fix steadied the line's detail level but not its centre -- the high-detail stretch of the line snapped from point to point as the camera moved, redistributing the whole line in visible steps. The centre now moves continuously and the high-detail stretch re-draws every frame, so it slides with the motion instead of stepping. (The earlier fix also only applied to sun-circling orbits; this covers the case actually reported, a station orbiting a planet with the camera following.)
+* **Fixed: a ship shown mid-burn by the GM had no plume on the player view -- the ship and its torch were on two different clocks.** A player's free-running clock races hours past the GM's within minutes (the default rate is 1 s = 1 h), and while the ship itself is drawn where the GM's last report put it, its engine state was being judged at the local clock -- long past the burn. Everything time-judged about a ship (plume, burn colour flip, route-line visibility, journey framing) is now evaluated at the same instant its drawn position describes: the display clock when following the GM, else the time of the GM's report.
+
 ## v2.1.481-beta - 8th Aug 2026
 
 * While following the GM's clock, the player map now shows the campaign date -- bottom-left, where the local time controls would otherwise be, formatted through the campaign's own calendar so it always reads the same as the GM's clock bar. A free-running local clock stays deliberately unlabelled.
