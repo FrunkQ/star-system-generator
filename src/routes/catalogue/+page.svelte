@@ -89,6 +89,7 @@
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
   import { RATE_STEPS, DEFAULT_RATE_INDEX } from '$lib/player/timeRates';
+  import { unixMsToMasterSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { inverseBoxCox } from '$lib/physics/scaling';
   import { perfCount } from '$lib/perfTrace';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
@@ -159,6 +160,21 @@
     const now = gmTime?.currentTime ?? (selectedSystemNode ? gameNowOf(selectedSystemNode.system) : null);
     if (now !== null && now !== undefined) currentTime = now;
   }
+  // The campaign clock READOUT, shown only while following the GM (a free-running local clock is
+  // deliberately unlabelled - naming an arbitrary time would dress the mess-about mode up as the
+  // campaign's). Formatted through the campaign's OWN calendar - `temporal` rides the player
+  // snapshot and this is the same resolver the GM's clock bar uses, so the two surfaces cannot
+  // disagree about what a date is called. Driven off docNowMs (the 1 Hz wall clock) rather than the
+  // per-frame time: a readout is only ever read to the second, and the calendar maths is bigint.
+  $: followClockLabel = (() => {
+    if (!followGMActive) return null;
+    const t = (starmap as any)?.temporal;
+    const calendar = t?.temporal_registry?.[t?.activeCalendarKey];
+    if (calendar) {
+      try { return resolveCalendar(unixMsToMasterSeconds(docNowMs), calendar).formatted; } catch { /* fall through */ }
+    }
+    return new Date(docNowMs).toUTCString().replace(/ GMT$/, '');
+  })();
   $: if (selectedSystemNode && selectedSystemNode.id !== clockAnchoredFor) {
     const anchor = gmTime?.currentTime ?? gameNowOf(selectedSystemNode.system);
     if (anchor !== null && anchor !== undefined) {
@@ -1239,6 +1255,12 @@
       <!-- Player time controls (Field Guide): collapsed to a play/pause icon; click to expand a rate
            slider (arbitrary — just to see movement). Hidden while following the GM (time is INHERITED
            from the GM's clock — positions match their map) and on non-interactive presets. -->
+      {#if followClockLabel}
+        <!-- Campaign time, in the campaign's own calendar. Sits where the local time controls
+             would be - the two are mutually exclusive by construction (controls hide while
+             following; this shows only then). -->
+        <div class="follow-clock" title="Campaign time — following the GM's clock">{followClockLabel}</div>
+      {/if}
       {#if presetInteractive && !followGMActive}
         <div class="time-controls" class:expanded={timeExpanded} use:clickOutside={() => (timeExpanded = false)}>
           {#if timeExpanded}
@@ -1540,6 +1562,22 @@
   /* The way back to campaign time: absent until the clock has wandered, then fades in. */
   .tc-reset { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
   .tc-reset.on { opacity: 1; pointer-events: auto; }
+  /* Campaign clock readout (follow-GM only) - same chrome as the time controls it replaces. */
+  .follow-clock {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    z-index: 20;
+    font-family: system-ui, sans-serif;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: #9fb0c8;
+    background: rgba(8, 11, 18, 0.72);
+    border: 1px solid rgba(120, 180, 255, 0.25);
+    border-radius: 8px;
+    padding: 6px 10px;
+    pointer-events: none;
+  }
   .tc-slider { width: 130px; accent-color: #6aa0ff; }
   .time-controls:not(.expanded) { padding: 0; background: none; border: none; }
   .console-hint {

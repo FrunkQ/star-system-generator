@@ -7,6 +7,11 @@ All notable changes are listed here:
 * **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
 * Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
 
+## v2.1.481-beta - 8th Aug 2026
+
+* While following the GM's clock, the player map now shows the campaign date -- bottom-left, where the local time controls would otherwise be, formatted through the campaign's own calendar so it always reads the same as the GM's clock bar. A free-running local clock stays deliberately unlabelled.
+* Internal: the facing diagnostic now reports the whole chain -- where the drives sit in model space, the nose direction derived from them, and whether the ship's actual frame-to-frame motion points at its destination. The 480 facing report exhausted what reasoning can settle: every consistent reading of the model predicts a correct facing, so one assumed fact is wrong and only measurement says which.
+
 ## v2.1.480-beta - 8th Aug 2026
 
 * **Ships in transit now MOVE on a player view that follows the GM's clock** -- run the clock, scrub it, pause it, and every ship under way slides along its drawn course to match, sitting exactly on its line with burns and plume agreeing at the displayed moment. A player scrubbing their OWN clock still sees orbits move while transit traffic holds its last GM-reported position, exactly as the player-setup disclaimer says: scrubbing is for looking around; live traffic runs on the GM's clock.

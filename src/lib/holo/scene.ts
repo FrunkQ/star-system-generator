@@ -205,6 +205,7 @@ interface BodyVisual {
   // end (+1 = convention, -1 = this model is authored nose-to-minus-Z). No nozzles = trust the
   // convention.
   noseSign?: number;
+  nozzleMeanZ?: number | null; // the evidence noseSign was derived from (null = no nozzles placed)
 }
 
 interface PlumeRig { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; halo: THREE.Sprite; light: THREE.PointLight }
@@ -2136,7 +2137,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // and the facing code aims the OTHER end at the motion. Derived, not guessed - and only the
       // mean matters, so a mid-hull RCS thruster cannot flip a ship whose main drives are aft.
       const nz = (ref.nozzles ?? []) as [number, number, number][];
-      v.noseSign = nz.length && nz.reduce((s, p) => s + p[2], 0) > 0 ? -1 : 1;
+      v.nozzleMeanZ = nz.length ? nz.reduce((s, p) => s + p[2], 0) / nz.length : null;
+      v.noseSign = v.nozzleMeanZ !== null && v.nozzleMeanZ > 0 ? -1 : 1;
       applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
       g.scale.setScalar(sceneLen);
       g.visible = false; // updateConstructs reveals it when it is big enough on screen (pixel LOD)
@@ -2195,6 +2197,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let _camDbgAt = 0; // throttle for the __camDebug framing readout
   let _prevHaveDist = 0; // last frame's camera-to-target distance, for the creep readout
   const _dbgSize = new THREE.Vector3(); // scratch for the __shipDebug measured-extent readout
+  const _dbgDest = new THREE.Vector3(); // scratch for the __shipDebug facing-chain readout
   const _shipLook = new THREE.Vector3();
   const _shipDelta = new THREE.Vector3();
   const _lastOrigin = new THREE.Vector3(NaN, 0, 0); // detects a floating-origin rebase between frames
@@ -2388,7 +2391,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               hasBurnData: !!(_node?.driveBurns?.length || _node?.scheduled_journeys?.length),
               clock: timeMs, burnWindow: _win,
               clockInBurn: !!_win && timeMs >= _win.s && timeMs <= _win.e,
-              noseSign: b.noseSign ?? 1, // -1 = nozzles say this model is authored nose-to-minus-Z
+              // THE FACING CHAIN, one field per link, because the 480 report exhausted inference:
+              // every consistent (nozzle-end, nose-end) assignment predicts a correct facing, so
+              // one of the assumed facts is false and only measurement says which. nozzleMeanZ is
+              // where the drives actually sit in model space (null = none placed, noseSign never
+              // fired); noseSign is what was derived; deltaTowardDest is the MOTION's sign - +1
+              // means the ship's frame-to-frame delta points at its destination (prograde), -1
+              // means the delta itself is backwards and the facing code is innocent.
+              noseSign: b.noseSign ?? 1,
+              nozzleMeanZ: b.nozzleMeanZ ?? null,
+              deltaTowardDest: (() => {
+                const rt = routeOf(_node);
+                if (!rt || !b.shipPrev) return null;
+                positionToScene(rt.p[rt.p.length - 1], _dbgDest);
+                const dx = b.mesh.position.x - b.shipPrev.x, dy = b.mesh.position.y - b.shipPrev.y, dz = b.mesh.position.z - b.shipPrev.z;
+                if (dx * dx + dy * dy + dz * dz === 0) return 0; // parked between stamps: no verdict
+                const tx = _dbgDest.x - b.mesh.position.x, ty = _dbgDest.y - b.mesh.position.y, tz = _dbgDest.z - b.mesh.position.z;
+                return Math.sign(dx * tx + dy * ty + dz * tz);
+              })(),
               // The plume light's reach, in hull lengths of what is actually DRAWN - a number well
               // under 1 means it is lighting the inside of its own hull (the P3c reach fault).
               lightReachHulls: (b.shipFx?.rigs?.[0]?.light.distance ?? 0) / Math.max(1e-30, drawn)
