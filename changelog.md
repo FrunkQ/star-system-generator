@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.497-beta - 7th Aug 2026
+
+* Housekeeping, no product change: dynamic system aging is held until the accretion engine's own phase, since the two belong together. The board records that the existing aging machinery is shaped around the accretion engine's own planets rather than hand-built ones, so re-ageing an authored system is genuinely unsolved rather than nearly done.
+
 ## v2.1.496-beta - 7th Aug 2026
 
 * Housekeeping, no product change: the custom starmap background is now fully scoped. It will be offered on the GM's 2D starmap and the player's 2D starmap; the 3D map keeps its own starfield, because a flat picture cannot go on it without being warped onto a sphere.
