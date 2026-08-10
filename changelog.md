@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.494-beta - 7th Aug 2026
+
+* Housekeeping, no product change: a new feature request is on the board — a GM will be able to upload their own galaxy image behind the starmap, with scale and fade controls, and the current Milky Way picture becomes the supplied default.
+
 ## v2.1.493-beta - 8th Aug 2026
 
 * **New: highlighted tags now show on the players' views, and you choose how they look.** Highlighting a tag badged it on your own maps only. It now reaches the players' system map (2D and 3D alike), their starmap, and the textual guide — where the highlighted tags a world carries are listed as chips directly under its name, so the map and the page always agree.
