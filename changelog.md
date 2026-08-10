@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.495-beta - 7th Aug 2026
+
+* Housekeeping, no product change: dynamic system aging is on the board as a design investigation — a slider that re-ages an existing system, star and planets together, and can run backwards. Recorded with the finding that most of the machinery already exists, so the work is smaller than it looks.
+
 ## v2.1.494-beta - 7th Aug 2026
 
 * Housekeeping, no product change: a new feature request is on the board — a GM will be able to upload their own galaxy image behind the starmap, with scale and fade controls, and the current Milky Way picture becomes the supplied default.
