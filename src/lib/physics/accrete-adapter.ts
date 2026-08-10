@@ -1,7 +1,14 @@
-// ⚠️ PRESERVE — do NOT delete in the Phase-A cleanup. The Accrete procedural disk-accretion engine
-// (this adapter + src/lib/vendor/accrete-js) is being KEPT for v3 generation, even though its only
-// current caller (EvolutionTimeline) is being removed. After the cleanup it stays as a standalone,
-// caller-less module to harvest in v3.
+// ⚠️ PRESERVE — do NOT delete. The Accrete procedural disk-accretion engine (this adapter +
+// src/lib/vendor/accrete-js) is KEPT, and so is its caller EvolutionTimeline.
+//
+// UPDATED 2026-08-07 BY OWNER DECISION. An earlier version of this note said EvolutionTimeline "is
+// being removed" and that this would become a caller-less module. THAT PLAN IS CANCELLED — the whole
+// evolutionary/Accrete path stays, including the wizard and the timeline. It is still user-reachable:
+// SettingsModal.svelte:506 offers "Evolutionary (Alpha Physics)" and routes/+page.svelte:896 branches
+// into it. The alpha labelling is NOT permission to delete it.
+//
+// Read as: this looks like an abandoned experiment and is not. See engine-map.md GEN-1.
+// Dynamic system ageing (inbox G17) is shelved to V4 and will be built WITH this engine, not around it.
 import { StarSystem, Planetismal } from '../vendor/accrete-js/src/index.js';
 import { type StarSeed, ageStar, getStarLifespanGyr } from './stellar-evolution';
 import type { CelestialBody, Orbit, Node, ID } from '../types';

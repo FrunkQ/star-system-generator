@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.498-beta - 7th Aug 2026
+
+* The experimental Evolutionary (Alpha Physics) generator, its wizard and its timeline are confirmed as KEPT. A note inside the code still said the timeline was on its way out, which was no longer true and could have led to it being deleted during a tidy-up; that note now says plainly that all of it stays. No change to how anything behaves.
+
 ## v2.1.497-beta - 7th Aug 2026
 
 * Housekeeping, no product change: dynamic system aging is held until the accretion engine's own phase, since the two belong together. The board records that the existing aging machinery is shaped around the accretion engine's own planets rather than hand-built ones, so re-ageing an authored system is genuinely unsolved rather than nearly done.

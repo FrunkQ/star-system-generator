@@ -1273,6 +1273,28 @@ intermittent: every region import in the browser had been served by the offline 
 BLAST: adding Gaia or VizieR — check their CORS before assuming direct fetch works, and keep the
 "which source answered" label honest, because a stale snapshot must never read as live data.
 
+### GEN-*  (generation engines, seeds, system creation)
+
+### GEN-1 The evolutionary / Accrete generation path is LIVE and deliberately preserved — never "clean it up"
+WHERE: `physics/accrete-adapter.ts` + `vendor/accrete-js`, `components/EvolutionTimeline.svelte`,
+`components/EvolutionaryWizard.svelte`, reached from `SettingsModal.svelte:506`
+(`<option value="evolutionary">Evolutionary (Alpha Physics)</option>`, disclaimer-gated at `:131`)
+via `routes/+page.svelte:896` -> `:1788`.
+RULE: The whole chain is user-reachable and the OWNER HAS RULED THAT ALL OF IT IS KEPT (2026-08-07).
+It reads as abandoned alpha experiment — an "Alpha Physics" label, a disclaimer, a vendored engine,
+a component nothing else imports — and it is not. Do not delete, prune, tree-shake or fold it into
+another generator, and do not treat its alpha labelling as permission.
+WHY: two people in one conversation independently believed it had already been removed, and
+`accrete-adapter.ts`'s own header still said its caller "is being removed" long after that plan
+lapsed — a stale in-code instruction to delete something the owner wants kept is the most expensive
+kind of wrong comment, because it reads as authority. See [[G17]].
+BLAST: `accrete-adapter` is ALSO the intended harvest for V3/V4 generation, so anything that changes
+`StarSeed`, `CelestialBody` or the rule-pack disk config must keep it compiling even while it has few
+callers. Note its data model is Accrete's own (`Planetismal`: axis / eccentricity / earthMass), NOT
+`CelestialBody` — which is why [[G17]]'s ageing work cannot simply reuse
+`recalculatePlanetAgedState` on a hand-authored body. Related: `generation-duplication-map.md`
+(two live system generators — this is the second one).
+
 ### UI-*  (panels, editors, player views)
 _Unwritten. Candidates: which surfaces read the player snapshot; the four explanation surfaces that
 drift silently (physics page, Newton explainer, tags guide, classification doc)._
