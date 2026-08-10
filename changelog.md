@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.499-beta - 7th Aug 2026
+
+* Housekeeping, no product change: the custom starmap background grows a second, more useful mode. As well as a decorative backdrop that stays put, a picture will be able to be PINNED TO THE MAP, so it pans and zooms with the stars and stays in constant registration with them — which is what makes sector maps and empire borders possible.
+
 ## v2.1.498-beta - 7th Aug 2026
 
 * The experimental Evolutionary (Alpha Physics) generator, its wizard and its timeline are confirmed as KEPT. A note inside the code still said the timeline was on its way out, which was no longer true and could have led to it being deleted during a tidy-up; that note now says plainly that all of it stays. No change to how anything behaves.
