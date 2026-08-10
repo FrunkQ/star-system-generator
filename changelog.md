@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.500-beta - 7th Aug 2026
+
+* Housekeeping, no product change: the custom starmap background is fully specified and ready to build. An uploaded sector map simply sits behind the existing grids and rings, which stay as they are.
+
 ## v2.1.499-beta - 7th Aug 2026
 
 * Housekeeping, no product change: the custom starmap background grows a second, more useful mode. As well as a decorative backdrop that stays put, a picture will be able to be PINNED TO THE MAP, so it pans and zooms with the stars and stays in constant registration with them — which is what makes sector maps and empire borders possible.
