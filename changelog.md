@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.496-beta - 7th Aug 2026
+
+* Housekeeping, no product change: the custom starmap background is now fully scoped. It will be offered on the GM's 2D starmap and the player's 2D starmap; the 3D map keeps its own starfield, because a flat picture cannot go on it without being warped onto a sphere.
+
 ## v2.1.495-beta - 7th Aug 2026
 
 * Housekeeping, no product change: dynamic system aging is on the board as a design investigation — a slider that re-ages an existing system, star and planets together, and can run backwards. Recorded with the finding that most of the machinery already exists, so the work is smaller than it looks.
