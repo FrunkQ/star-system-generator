@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.511-beta - 11th Aug 2026
+
+* Investigation, no product change: Pluto losing its methane clouds when its nitrogen frost was modelled turns out to be correct, not a regression. Pluto's air is already saturated in methane at ground level, so the methane there is frost rather than cloud — a cloud whose base is the ground is fog — and the app says so separately and correctly. Triton keeps its clouds because its air is dry at the surface and only saturates well above it, which is a real difference rather than the two sitting either side of a threshold. Real Pluto does have a haze, but it is made by sunlight breaking up its air rather than by anything condensing, and that is a kind of weather the app does not model at all. Written up as a feature to consider rather than a fix.
+
+## v2.1.506-beta - 11th Aug 2026
+
 ## v2.1.510-beta - 11th Aug 2026
 
 * Pluto and Charon no longer eclipse each other every six days. Both were authored with the orbit of their shared centre of gravity around the Sun rather than their own orbit around each other — the tilt and the eccentricity both — which left the pair permanently lined up with the Sun. With the real figures in, the app now finds what actually happens: mutual eclipses come in seasons a few years long, twice per 248-year orbit, roughly 124 years apart. That is the pattern that produced the famous run of events in the late 1980s.
