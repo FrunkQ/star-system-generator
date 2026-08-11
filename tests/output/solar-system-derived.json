@@ -11610,8 +11610,8 @@
         "n_rad_per_s": 0.000011513962834212866,
         "elements": {
           "a_AU": 0.00001405886379192334,
-          "e": 0.2488,
-          "i_deg": 17.16,
+          "e": 0.0002,
+          "i_deg": 112.78,
           "omega_deg": 0,
           "Omega_deg": 0,
           "M0_rad": 4.492323280371092
@@ -11714,7 +11714,7 @@
         },
         "main": "N2",
         "pressure_bar": 0.00001,
-        "scaleHeightKm": 17.44468934872547,
+        "scaleHeightKm": 17.444689246330537,
         "molarMassKg": 0.02788
       },
       "axial_tilt_deg": 119.5,
@@ -11724,17 +11724,17 @@
         "url": "/images/planet_types/web20ultra-short20period20planet.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.0006795414690533081,
+      "stellarRadiation": 0.0006795414530984908,
       "radiationShieldingAtmo": 0.00007177742387742825,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.29805918401063275,
-      "particleRadiation": 0.04168716264798807,
-      "stellarRadiationMin": 0.000422040782192138,
-      "stellarRadiationMax": 0.0011663503952202667,
-      "surfaceRadiationMin": 2.2110052445960107,
-      "surfaceRadiationMax": 2.5831333387967796,
-      "equilibriumTempMinK": 31.962906541931044,
-      "equilibriumTempMaxK": 41.211167709315305,
+      "photonRadiation": 0.2980591770125611,
+      "particleRadiation": 0.041687161669223566,
+      "stellarRadiationMin": 0.00042204084202856053,
+      "stellarRadiationMax": 0.0011663501203185642,
+      "surfaceRadiationMin": 2.2110052745120745,
+      "surfaceRadiationMax": 2.5831332013557944,
+      "equilibriumTempMinK": 31.962907674846367,
+      "equilibriumTempMaxK": 41.21116528100963,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.615882615041098,
       "calculatedRotationPeriod_s": 545701.3712524395,
@@ -11746,7 +11746,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 36.02626506884294,
+      "equilibriumTempK": 36.02626485737959,
       "albedoBreakdown": {
         "albedo": 0.579,
         "surfaceAlbedo": 0.579,
@@ -11757,11 +11757,11 @@
         "note": "Cloud-free N2 frost over bare ground."
       },
       "greenhouseTempK": 0.00005526266059632093,
-      "temperatureK": 36.026320331503534,
+      "temperatureK": 36.02632012004018,
       "temperatureProfile": {
         "meanK": 36,
-        "totalMinK": 6,
-        "totalMaxK": 66,
+        "totalMinK": 7,
+        "totalMaxK": 65,
         "components": [
           {
             "source": "latitude",
@@ -11772,8 +11772,8 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 26,
-            "highK": 46
+            "lowK": 31,
+            "highK": 41
           },
           {
             "source": "diurnal",
@@ -11784,8 +11784,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 6,
-        "max": 66
+        "min": 7,
+        "max": 65
       },
       "hydrosphere": {
         "layers": []
@@ -11806,8 +11806,8 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "surfaceRadiation": 2.339746346658621,
-      "orbitalRadiation": 0.3397707345266541,
+      "surfaceRadiation": 2.3397463386817847,
+      "orbitalRadiation": 0.3397707265492454,
       "beltInnerEdgeRadii": 3.2021,
       "geoActivity": {
         "regime": "inactive",
@@ -12035,7 +12035,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 160.66263738462024,
+        "minLeoKm": 160.66263644158025,
         "leoMoeBoundaryKm": 215.37516817319738,
         "meoHeoBoundaryKm": 215.37516817319738,
         "heoUpperBoundaryKm": 215.37516817319738,
@@ -12064,8 +12064,8 @@
         "n_rad_per_s": 0.000011513962834212866,
         "elements": {
           "a_AU": 0.00011594113620807666,
-          "e": 0.2488,
-          "i_deg": 17.16,
+          "e": 0.0002,
+          "i_deg": 112.78,
           "omega_deg": 180,
           "Omega_deg": 0,
           "M0_rad": 4.492323280371092
@@ -12125,10 +12125,6 @@
           "source": "rule:d7"
         },
         {
-          "key": "science/impact-record",
-          "source": "rule:d21"
-        },
-        {
           "key": "frontier/fuel-depot",
           "source": "rule:d27"
         },
@@ -12145,17 +12141,17 @@
         "url": "/images/planet_types/web20sub-earth.jpg"
       },
       "isNameUserDefined": true,
-      "stellarRadiation": 0.0006795379618123546,
+      "stellarRadiation": 0.0006795378302368258,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.2980790410169662,
-      "particleRadiation": 0.04168993988921106,
-      "stellarRadiationMin": 0.0004220386039605175,
-      "stellarRadiationMax": 0.0011663443754671558,
-      "surfaceRadiationMin": 2.211019301980259,
-      "surfaceRadiationMax": 2.583172187733578,
-      "equilibriumTempMinK": 36.230254250012614,
-      "equilibriumTempMaxK": 46.713244995090434,
+      "photonRadiation": 0.2980789833014159,
+      "particleRadiation": 0.04168993181699701,
+      "stellarRadiationMin": 0.0004220390974182073,
+      "stellarRadiationMax": 0.001166342108418508,
+      "surfaceRadiationMin": 2.2110195487091038,
+      "surfaceRadiationMax": 2.583171054209254,
+      "equilibriumTempMinK": 36.23026484032921,
+      "equilibriumTempMaxK": 46.713222295689135,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.28715577993442903,
       "calculatedRotationPeriod_s": 545701.3712524395,
@@ -12167,7 +12163,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 40.811895703138404,
+      "equilibriumTempK": 40.81189372758757,
       "albedoBreakdown": {
         "albedo": 0.305,
         "surfaceAlbedo": 0.305,
@@ -12177,11 +12173,11 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 40.811895703138404,
+      "temperatureK": 40.81189372758757,
       "temperatureProfile": {
         "meanK": 41,
-        "totalMinK": 7,
-        "totalMaxK": 75,
+        "totalMinK": 8,
+        "totalMaxK": 73,
         "components": [
           {
             "source": "latitude",
@@ -12192,8 +12188,8 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 30,
-            "highK": 52
+            "lowK": 36,
+            "highK": 46
           },
           {
             "source": "diurnal",
@@ -12204,8 +12200,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 7,
-        "max": 75
+        "min": 8,
+        "max": 73
       },
       "hydrosphere": {
         "layers": []
@@ -12226,8 +12222,8 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "surfaceRadiation": 2.3397689809061775,
-      "orbitalRadiation": 0.3397689809061773,
+      "surfaceRadiation": 2.339768915118413,
+      "orbitalRadiation": 0.3397689151184129,
       "beltInnerEdgeRadii": 1,
       "geoActivity": {
         "regime": "inactive",

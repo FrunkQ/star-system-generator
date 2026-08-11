@@ -2,7 +2,7 @@
  "id": "starmap-local-neighbourhood",
  "name": "Local Neighbourhood",
  "description": "The Sun’s real neighbourhood: every known star system within about 13 light years, every confirmed planet host out to about 16.5 light years, and a few famous landmarks beyond (Altair, Vega, Zeta Reticuli, TRAPPIST-1). Positions are true 3D positions from Gaia, Hipparcos and SIMBAD astrometry; planets are limited to those listed as confirmed by the NASA Exoplanet Archive (July 2026). Star and planet parameters are real where measured and physics-derived where not.",
- "appVersion": "2.1.504-beta",
+ "appVersion": "2.1.506-beta",
  "baseMapVersion": 2,
  "distanceUnit": "ly",
  "unitIsPrefix": false,
@@ -2655,8 +2655,8 @@
        "n_rad_per_s": 0.000011513962834212866,
        "elements": {
         "a_AU": 0.00001405886379192334,
-        "e": 0.2488,
-        "i_deg": 17.16,
+        "e": 0.0002,
+        "i_deg": 112.78,
         "omega_deg": 0,
         "Omega_deg": 0,
         "M0_rad": 4.492323280371092
@@ -2737,8 +2737,8 @@
        "n_rad_per_s": 0.000011513962834212866,
        "elements": {
         "a_AU": 0.00011594113620807666,
-        "e": 0.2488,
-        "i_deg": 17.16,
+        "e": 0.0002,
+        "i_deg": 112.78,
         "omega_deg": 0,
         "Omega_deg": 0,
         "M0_rad": 1.3507306267812993

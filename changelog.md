@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.510-beta - 11th Aug 2026
+
+* Pluto and Charon no longer eclipse each other every six days. Both were authored with the orbit of their shared centre of gravity around the Sun rather than their own orbit around each other — the tilt and the eccentricity both — which left the pair permanently lined up with the Sun. With the real figures in, the app now finds what actually happens: mutual eclipses come in seasons a few years long, twice per 248-year orbit, roughly 124 years apart. That is the pattern that produced the famous run of events in the late 1980s.
+* One caveat stated plainly: the seasons are in the right rhythm but not yet on the right dates, because the orbit's orientation is still unspecified. The app finds the next season in the 2080s where the real answer is nearer the 2100s. Anchoring that needs one more figure and is written up.
+* Pluto's quoted temperature range shifts very slightly, from 6-66 K to 7-65 K, as a knock-on. The reason is a separate issue found while measuring this one and is written up rather than patched.
+
+## v2.1.505-beta - 11th Aug 2026
+
 ## v2.1.509-beta - 11th Aug 2026
 
 * Investigation, no product change: the report that some worlds are labelled both rocky and giant at the same time turns out not to be true of the app. The contradictory pairs live in the saved files but are discarded and re-derived the moment a system loads, and the classifier cannot produce two base types even in principle. Iota Horologii b, one of the named cases, loads correctly as a Super Jupiter and nothing else. The one genuine instance was Epsilon Indi A b, fixed in the previous release. Four fictional worlds do carry two labels each — Vulcan, Altair IV, Reach and LV-426 — but each is a specific type plus its family, written that way on purpose.
