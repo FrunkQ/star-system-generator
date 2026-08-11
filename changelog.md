@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.514-beta - 11th Aug 2026
+
+* The twelve example systems a GM can load now have a check on them, which they never have had — and it found two real faults the moment it ran. Pluto and Charon in the Expanse Solar System still had the wrong orbit around each other, the same fault fixed elsewhere earlier today, and that is now corrected there too. The Traveller example has a moon, Cerebus Alpha, attached to something that is not in the file, which cuts it off from its star so the app cannot work out its temperature or anything else about it. Putting that one back together means inventing several figures, so it is reported rather than guessed at.
+* The check covers the things a system must have to work at all: no two objects sharing an identity, every object attached to something that exists, one centre per system, and a mass and size on everything that needs one.
+
+## v2.1.509-beta - 11th Aug 2026
+
 ## v2.1.513-beta - 11th Aug 2026
 
 * Housekeeping, no product change: a check of the Moon's orbital plane in the standalone example systems found it had already been put right nine days earlier, along with a full sweep of all twelve files. The record said otherwise, so it is now corrected. The sweep was re-run from scratch to confirm, and it agrees — including on Iapetus, which looks like it needs the same correction and does not, because its published figure is already measured against Saturn's equator rather than the flat of the Solar System.
