@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.506-beta - 7th Aug 2026
+
+* Planning, no product change: the V4 biosphere becomes an extensible rule set rather than a fixed list, so unfamiliar kinds of life can arise on their own. A world may or may not develop life, but it will always develop the same life, and every biosphere has an end — which is what lets the age slider be dragged in both directions and always agree with itself.
+
 ## v2.1.505-beta - 7th Aug 2026
 
 * Planning, no product change: the V4 biosphere thinking is written up. Life would be modelled as something that consumes an energy source, raw molecules and a solvent, and gives back both more life and a changed world — so a biosphere reshapes its planet the way weathering or tectonics does, rather than being a score attached to a finished one.

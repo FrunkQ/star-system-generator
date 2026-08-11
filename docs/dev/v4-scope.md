@@ -158,6 +158,51 @@ internal/radiogenic heat, and now radiation dose. Little of this needs new physi
 existing outputs wired as inputs to a metabolism, which is why the abstraction is worth more than any
 individual entry above.
 
+### A SCHEMA, NOT A LIST — and the scrubbing constraint that decides the whole design
+
+Owner, 2026-08-07: *"That looks like an extensible rules engine that we could generalise for any
+solvent and make other versions of 'life' even when unexpected. There will have to be a
+pseudo-randomness to this — so a planet may or may not develop weird life, but if it does it always
+dies to make scrubbing work."*
+
+**Part one — the seven metabolisms above are INSTANCES, and the deliverable is the SCHEMA.** Define
+the shape (energy source, substrate molecules, solvent, outputs, rates, tolerances) as rule-pack DATA
+in the gas/liquids pattern, and the engine can then evaluate combinations NOBODY AUTHORED against a
+given world. That is where "weird life even when unexpected" comes from: emergence out of a general
+rule, not a hidden list of surprises. A GM adds an eighth metabolism the same way they add a liquid.
+
+**Part two — and this is the one that constrains everything: SCRUBBING REQUIRES DETERMINISM, AND A
+FEEDBACK LOOP IS PATH-DEPENDENT. THOSE TWO PULL AGAINST EACH OTHER.** Name it early, because it is the
+hard problem of this feature:
+- A scrubbable timeline wants `state(T) = f(seed, T)` — computable at any instant without replaying
+  history. That is exactly the property that makes [[G17]] tractable at all: `ageStar` is pure in
+  ABSOLUTE age.
+- A feedback loop gives `state(T) = f(state(T-1))` — life changed the air, which changed what could
+  live. **That is path dependence, and with bistability it means the same instant can have two valid
+  answers depending on the route taken.** `solveThermalState` already has this ("bright condensate is
+  bistable"), and a life loop is worse.
+
+**THE OWNER'S OWN FRAMING IS THE RESOLUTION, AND IT SHOULD BE TAKEN LITERALLY RATHER THAN POETICALLY:
+LIFE AS A GEOLOGICAL *EVENT*. Geological events have DATES.** So model a biosphere not as a state
+being continuously integrated, but as a **list of dated epochs computed ONCE from the seed and the
+planet's parameters** — emerged at 1.2 Gyr, oxygenated at 2.4, collapsed at 2.5, recovered at 2.8,
+ended at 4.1. Everything the owner asked for then falls out:
+- **Scrubbing is a lookup, not a simulation** — "which epoch is 3.6 Gyr in" is a search over a short
+  list, and it is identical every time, in both directions.
+- **Pseudo-randomness is free and safe** — rolled ONCE from the seed when the events are computed, so
+  a world may or may not develop weird life and always develops the SAME weird life.
+- **"It always dies" becomes structural rather than a rule to enforce** — every epoch has an end,
+  because a list of events with no terminator cannot be scrubbed past.
+- **The feedback still happens** — it is applied while COMPUTING the epoch list, once, in forward
+  order, where path dependence is correct and cheap. It is only the SCRUBBING that must be pure.
+- **It matches machinery that exists.** `EvolutionTimeline` already works on precomputed
+  `AccreteSnapshot`s rather than integrating live; this is the same pattern applied to biology.
+
+**Recommendation to be confirmed when V4 opens (not decided here):** compute the epoch list at
+generation time, store it on the body, and let the scrubber read it. Resist any design where dragging
+the slider RUNS the ecology — that is the version that will be slow, irreproducible, and impossible to
+debug.
+
 **A planetary EVENT system** feeds this — the owner suggests a local REBOUND-ish mechanism, explicitly
 open to something better being researched instead.
 
