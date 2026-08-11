@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.509-beta - 11th Aug 2026
+
+* Investigation, no product change: the report that some worlds are labelled both rocky and giant at the same time turns out not to be true of the app. The contradictory pairs live in the saved files but are discarded and re-derived the moment a system loads, and the classifier cannot produce two base types even in principle. Iota Horologii b, one of the named cases, loads correctly as a Super Jupiter and nothing else. The one genuine instance was Epsilon Indi A b, fixed in the previous release. Four fictional worlds do carry two labels each — Vulcan, Altair IV, Reach and LV-426 — but each is a specific type plus its family, written that way on purpose.
+* Noted while measuring the above: Jupiter, Saturn, Uranus and Neptune carry no composition figures at all in the bundled data, along with about half of everything else in it. Nothing displays wrongly today, but any check asking "how much gas does this world have" gets zero for Jupiter, which is a missing answer being read as a real one. Written up for a decision.
+
+## v2.1.504-beta - 11th Aug 2026
+
 ## v2.1.508-beta - 11th Aug 2026
 
 * Imported giant planets are no longer described as rock and metal. A super-Jupiter really is dense — past about one Jupiter mass a giant stops growing and is squeezed by its own gravity — and the import rule read that density as rock before it ever looked at the mass. Epsilon Indi A b now reads 85% gas in both bundled starmaps, agreeing with the Super Jupiter the app was already calling it. Six planets in the catalogue were affected; the other five are ones you would meet by importing real stars yourself.

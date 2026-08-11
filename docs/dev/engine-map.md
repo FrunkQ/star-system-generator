@@ -1320,6 +1320,27 @@ convention of these archives, not an accident of this one, so check provenance b
 column that looks independent. `estimateRadiusRe` is currently DEAD for both bundled maps for the
 same reason: every row already carries a `pl_rade`, so the fallback never fires.
 
+### DATA-R8 A stored `classes` array is a FOSSIL — audit classification on LOADED data, never on the JSON
+WHERE: `src/lib/system/importFixup.ts` (`stripBody`, the `autoClassify` branch);
+`src/lib/system/classification.ts` (`classifyByFingerprint`)
+RULE: `fixUpImportedSystem` sets `body.classes = []` for every body EXCEPT one pinned with
+`autoClassify: false`, and the processor re-derives from scratch. So the `classes` array sitting in
+`static/example-starmaps/**` and `static/examples/**` records what some earlier build believed, not
+what the app shows today — and the same goes for every other name in `DERIVED_FIELDS`. An audit of
+classification MUST run the real load path (`systemProcessor.process(fixUpImportedSystem(sys, pack), pack)`),
+because reading the file answers a different question. The one exception is a body pinned with
+`autoClassify: false`, which really does keep what it was authored with.
+WHY: D11 reported four bodies carrying a rocky AND a giant base class at once (`planet/desert +
+planet/cloudless-gas-giant`, `planet/ice + planet/ice-giant`, …) and offered two candidate causes.
+Measured on loaded data, all four contradictions turned out not to exist — the pairs are stale strings
+the load path deletes, and Iota Horologii b loads as `planet/super-jupiter` alone. Both candidate
+causes were also wrong: `classifyByFingerprint` takes `[0]` of the sorted bases and then appends only
+`kind === 'modifier'`, so it cannot emit two bases at all.
+BLAST: any audit of `classes` or `image`; and note the legacy rules path in `classifyBody` carries a
+hand-maintained `baseArchetypes` Set that lists ~17 of the rulepack's 64 `kind: 'base'` fingerprints —
+a second answer to "which classes are mutually exclusive", dormant only because the starter pack
+ships fingerprints. It is the shape that produced those fossils.
+
 ### GEN-*  (generation engines, seeds, system creation)
 
 ### GEN-1 The evolutionary / Accrete generation path is LIVE and deliberately preserved — never "clean it up"
