@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.502-beta - 7th Aug 2026
+
+* The performance and memory work is closed. The load crash that could brick a campaign is fixed, and the instruments, the stop-load brake and the sendable diagnostic file all remain. The 3D view's scene-rebuild rate was something an agent spotted in a trace rather than anything a user has hit, so rather than chase it, the meters that would diagnose it are documented where the next person will find them.
+
 ## v2.1.501-beta - 7th Aug 2026
 
 * Diagnosed, not yet fixed: an imported super-Jupiter such as Epsilon Indi A b is described as mostly rock and metal, even while the app correctly calls it a Super Jupiter. The cause is that imported worlds have their composition guessed from density before mass is considered, and a giant that heavy is genuinely dense — it is squeezed by its own gravity, not made of rock. The same four-line rule is also why imported super-Earths all come out as 55% ice, so the two will be fixed together.

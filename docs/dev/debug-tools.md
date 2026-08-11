@@ -201,6 +201,13 @@ Honest gaps, so nobody assumes coverage that does not exist:
   scale bar, rulers and any future snap overlay share the shape and are unaudited. `Starmap.svelte`
   also passes Grid a hardcoded `viewWidth={800} viewHeight={600}` rather than the real viewport.
 - **A same-system PATCH path** does not exist; `holo.setSystem.same` measures the opportunity, not a
-  fix.
+  fix. **Deliberate — the owner ruled 2026-08-07 that the rebuild rate is not a problem yet.** Do not
+  build one speculatively; see engine-map RENDER-S22.
+- **WHY a rebuild fired is NOT recorded, and this is the one real gap in this area.** `setSystem`
+  counts tell you four rebuilds happened in five seconds; nothing tells you which upstream change
+  caused each. The camera work already paid for this lesson — `__camDebug` only became useful once it
+  recorded WHICH INPUT caused each change (that is what settled RENDER-S15). A reason label on the
+  `setSystem` counter is the first thing to add if this area ever needs chasing.
 - **Baselines** — no captured before-column yet for the GM view, a player view idle, a player view
-  with a ship in transit, or any phone. That is the next session's first job (inbox **P1**).
+  with a ship in transit, or any phone. **Parked with the item above**, not abandoned: they belong to a
+  dedicated performance-tuning pass rather than to a bug hunt (inbox **P1**).

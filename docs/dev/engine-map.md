@@ -613,6 +613,33 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S22 The scene-rebuild path is INSTRUMENTED — switch the meters on before theorising about it
+WHERE: `perfTrace.ts` (`?perf=1`, `localStorage['sse-perf']='1'`, or `window.__ssePerf.enable()`);
+counters registered by `holo/scene.ts` and `broadcast.ts`. Full index: `docs/dev/debug-tools.md`.
+RULE: `setSystem` rebuilds the WHOLE 3D scene, and a ship in transit rewrites the snapshot ~2x/second,
+so rebuild pressure is the first thing to suspect for any holo-view slowness — and it is already
+measured, so **never reason about it from a screenshot or a frame rate alone.** The meters that answer
+this area, and the question each one actually answers:
+- `holo.setSystem.same` — rebuilds of the system ALREADY on screen. **This is the wasted work**, and
+  therefore the go/no-go number for a patch-instead-of-rebuild path. `.new` is legitimate.
+- `holo.setSystem.ms` — total rebuild wall time; average is `.ms / (.same + .new)`.
+- `renderer.info.memory` via the `perfProvider` registry — geometries / textures / programs beside the
+  JS heap. **This is the leak detector for the rebuild path**: counts that climb with `.same` mean a
+  rebuild is not releasing what it replaced.
+- `bc.<TYPE>.strMs` / `.bytes` / `.sent` / `.unchanged` — the payload cost. Note `sendIfChanged`
+  stringifies the whole payload on EVERY reactive tick to fingerprint it, sent or not.
+- `holo.ringRefineFrame` — should be quiet unless a ring is being refined.
+WHY: a live player view measured 10.4 then 2.0 fps with `holo.setSystem: 4` and `sync.starmap: 3`
+inside one 5-second window (inbox P1). **The owner has ruled this NOT A PROBLEM YET** — it has not been
+reported by a user — so the standing position is: leave behaviour alone, keep the meters good, and
+revisit only if it is actually seen or in a dedicated tuning pass. Do not "optimise" this path
+speculatively; a same-system PATCH path deliberately does not exist.
+BLAST: **The known metering gap, and it is the one thing to add if this ever needs chasing: nothing
+records WHY a rebuild fired.** You can see that four happened; you cannot see which upstream change
+caused each. That is the same lesson the camera work already paid for — counting events was not enough
+there either until `__camDebug` began recording WHICH INPUT caused each change, which is what settled
+RENDER-S15. Apply that shape to `setSystem` (a reason label on the counter) before theorising.
+
 ### RENDER-S21 "The orbit line vibrates" was TWO mechanisms in one line, in two ring FAMILIES
 WHERE: `holo/scene.ts` - `emitOrbitRing` (A23, heliocentric) and `updateOrbitRings`' near path
 (f64 composition + the dense arc, local rings); `buildLocalOrbitRing` returns the `sample(u)`
