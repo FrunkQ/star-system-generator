@@ -203,6 +203,52 @@ generation time, store it on the body, and let the scrubber read it. Resist any 
 the slider RUNS the ecology — that is the version that will be slow, irreproducible, and impossible to
 debug.
 
+### IT IS THE ATMOSPHERE REACTION SYSTEM, EXTENDED — verified, not asserted
+
+Owner, 2026-08-07: *"It's kinda like the atmo system now — where you can add 'reactions'. It is getting
+to the stage where I can begin to reuse physics systems I have already built."* **Checked against the
+code, and he is right — the fit is closer than the remark claims.**
+
+`src/lib/types.ts:561-567` already defines exactly this shape:
+```ts
+// A reaction PRODUCT declares its recipe (NH4SH from NH3 + H2S). The product's effective fraction
+// derives from its constituents at process time: min(constituents) x yield, constituents depleted
+// by the amount converted. ... One generation only — a product cannot itself react further. This is
+// NOT a chemistry database: only reactions someone cares about are defined, and users add their own
+// ("Krypton + Unobtanium = pink bubblegum").
+export interface GasReaction { from: string[]; yield?: number; }
+```
+Pack data at `static/rulepacks/starter-sf/atmospheres.json`, e.g.
+`HCN: { reaction: { from: ["N2","CH4"], yield: 0.002 } }`.
+
+**So four things a biosphere needs ALREADY EXIST and are proven in shipped code:** reactants declared
+as data; a yield; constituents DEPLETED by what is converted (a real budget, not bookkeeping); and
+user extension as an explicit design goal — the "pink bubblegum" comment is the *have fun, stay
+plausible* licence already written into the engine.
+
+**WHAT A METABOLISM ADDS ON TOP — three fields and one lifted restriction:**
+1. **An energy input.** A gas reaction here is spontaneous or photochemical; a metabolism must name
+   its energy source (starlight, tidal, radiogenic, radiation, chemical gradient) — all of which the
+   engine already derives.
+2. **A solvent requirement.** Gated on a liquid actually being present in the right phase, which the
+   liquids/`phaseAtP` work already answers.
+3. **Self-catalysis.** The output includes MORE OF THE AGENT, so the yield is not fixed — it grows
+   with the population. **That, precisely, is the difference between chemistry and life**, and it is
+   the only genuinely new mechanic.
+
+**AND THE RESTRICTION THAT MUST BE LIFTED IS THE INTERESTING PART, BECAUSE IT IS DELIBERATE:
+`GasReaction` is explicitly ONE GENERATION ONLY — "a product cannot itself react further".** A
+biosphere's entire point is the opposite: its output changes the world, which changes what happens
+next. **So the cascade the atmosphere system deliberately forbids is exactly what a biosphere
+requires** — which is the same path-dependence problem named above, arriving from a different
+direction and confirming it is the real constraint rather than a worry.
+
+**The epoch-list design resolves this cleanly and should be stated as the rule: lift the
+one-generation limit ONLY while COMPUTING the epoch list** — forward, once, at generation time, where
+cascading is correct and affordable — **and never at read time.** Scrubbing still reads dated events.
+The atmosphere system's existing behaviour is untouched; the biosphere borrows its shape and runs the
+cascade in the one place that can afford it.
+
 **A planetary EVENT system** feeds this — the owner suggests a local REBOUND-ish mechanism, explicitly
 open to something better being researched instead.
 

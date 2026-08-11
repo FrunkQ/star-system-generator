@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.507-beta - 7th Aug 2026
+
+* Planning, no product change: the V4 biosphere would extend the atmosphere's existing reaction system rather than being built beside it. A living thing is described the same way a chemical reaction already is — these ingredients, this much yield, ingredients used up — with an energy source, a solvent, and the one thing that makes it alive: it makes more of itself.
+
 ## v2.1.506-beta - 7th Aug 2026
 
 * Planning, no product change: the V4 biosphere becomes an extensible rule set rather than a fixed list, so unfamiliar kinds of life can arise on their own. A world may or may not develop life, but it will always develop the same life, and every biosphere has an end — which is what lets the age slider be dragged in both directions and always agree with itself.
