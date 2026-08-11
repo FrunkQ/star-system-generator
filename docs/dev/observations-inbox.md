@@ -662,6 +662,15 @@ noticed.
   methane at the ground, so the methane is frost rather than cloud, and the app reports the frost.
   The haze real Pluto has is photochemical and is not modelled.
 - **D11 (v2.1.505)** — no reader-facing change; the contradiction was never visible in the app.
+- **C7 (v2.1.509)** — no reader-facing change; it was already fixed on 2026-08-02 and the entry was
+  stale. The developer-facing point worth keeping is Iapetus: a catalogue inclination already
+  referenced to a host's equator must NOT be re-framed by the Laplace rule, which exists for
+  inventing a plane rather than reinterpreting someone else's number.
+- **D9 (v2.1.510)** — READER-FACING in one place only: the Expanse Solar System example had the same
+  Pluto/Charon orbit fault as the bundled maps and is now corrected, so its eclipse row changes the
+  same way D14's did. The Traveller example's Cerebus Alpha is knowingly broken (cut off from its
+  star, so no temperature or eclipse answer) and is left that way with the fault recorded — worth a
+  note if anyone documents the examples list.
 
 ## Standing rules any worker session must follow
 
