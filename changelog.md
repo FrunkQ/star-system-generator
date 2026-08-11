@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.508-beta - 11th Aug 2026
+
+* Imported giant planets are no longer described as rock and metal. A super-Jupiter really is dense — past about one Jupiter mass a giant stops growing and is squeezed by its own gravity — and the import rule read that density as rock before it ever looked at the mass. Epsilon Indi A b now reads 85% gas in both bundled starmaps, agreeing with the Super Jupiter the app was already calling it. Six planets in the catalogue were affected; the other five are ones you would meet by importing real stars yourself.
+* Still open, and now measured rather than argued about: every imported super-Earth comes out 55% ice. For three quarters of the catalogue's planets the radius is one the archive calculated from the mass, so the density that picks the composition is not independent of the mass it is meant to be weighed against. What an import should claim instead is a judgement about the data rather than a bug, so it is written up for a decision.
+
 ## v2.1.507-beta - 7th Aug 2026
 
 * Planning, no product change: the V4 biosphere would extend the atmosphere's existing reaction system rather than being built beside it. A living thing is described the same way a chemical reaction already is — these ingredients, this much yield, ingredients used up — with an energy source, a solvent, and the one thing that makes it alive: it makes more of itself.

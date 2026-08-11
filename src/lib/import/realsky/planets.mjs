@@ -13,10 +13,25 @@ export function estimateRadiusRe(massMe) {
   return 12; // giants: ~Jupiter-sized regardless of mass
 }
 
+// Above this mass a planet is an envelope, whatever its bulk density says.
+// One constant, used twice on purpose: the ceiling on the density test IS the
+// giant threshold, not a second number that happens to match it.
+const GIANT_MASS_ME = 40;
+
+// Bulk makeup from the catalogue's mass and density.
+//
+// The density test is a sound proxy for "rocky" only BELOW the giant threshold.
+// Past about one Jupiter mass a giant stops growing and then compresses, so
+// mass keeps climbing into a near-constant volume: eps Ind A b is 6.5 Jupiter
+// masses at 1.16 Jupiter radii, a genuine 5.56 g/cc, and the catalogue figure is
+// RIGHT. Without the ceiling the first branch fired on it and returned 62% rock
+// while the classifier — reading the same mass and radius — correctly called it
+// a super-Jupiter, and the last branch, which already held the right answer, was
+// never reached. An ordering fault, not a missing model (D17).
 export function defaultMakeup(massMe, densityGcc) {
-  if (densityGcc != null && densityGcc > 4) return { rock: 0.62, metal: 0.33, ice: 0.05 };
+  if (densityGcc != null && densityGcc > 4 && massMe < GIANT_MASS_ME) return { rock: 0.62, metal: 0.33, ice: 0.05 };
   if (massMe < 4) return { rock: 0.65, metal: 0.30, ice: 0.05 };
-  if (massMe < 40) return { ice: 0.55, gas: 0.25, rock: 0.20 };
+  if (massMe < GIANT_MASS_ME) return { ice: 0.55, gas: 0.25, rock: 0.20 };
   return { gas: 0.85, ice: 0.10, rock: 0.05 };
 }
 

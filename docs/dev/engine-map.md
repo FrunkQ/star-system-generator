@@ -1300,6 +1300,26 @@ intermittent: every region import in the browser had been served by the offline 
 BLAST: adding Gaia or VizieR — check their CORS before assuming direct fetch works, and keep the
 "which source answered" label honest, because a stale snapshot must never read as live data.
 
+### DATA-R7 The archive's DENSITY is usually not evidence — it is the mass again, in disguise
+WHERE: `src/lib/import/realsky/planets.mjs` (`defaultMakeup`, `estimateRadiusRe`); the `pl_dens` column
+RULE: pscomppars BACK-FILLS `pl_rade` from `pl_bmasse` when no radius was measured, using essentially
+the same Chen-Kipping relation `estimateRadiusRe` implements four lines above — 135 of the 182
+committed cache rows reproduce it to within 1%, most to within 0.3%. `pl_dens` is then computed from
+that pair (174 of the 179 rows carrying one reproduce exactly from the row's own mass and radius). So
+for three quarters of the catalogue a density test is a MASS test wearing a density costume:
+`pl_dens > 4` is true over 0.162–3.50 Me and false everywhere else below the giant threshold. Treat
+`pl_dens` as evidence only once the radius is known to have been MEASURED, and never as a proxy for
+"rocky" above the giant threshold, where a high density means hydrogen squeezed by self-gravity.
+WHY: the density branch was tested before mass, so eps Ind A b — 6.5 Jupiter masses at 1.16 Jupiter
+radii, a genuine 5.56 g/cc, all three figures correct — imported as 62% rock while the classifier,
+reading the same mass and radius, called it a Super Jupiter (D17). The same circular number underlies
+the uniform 55% ice every 4–40 Me planet receives (D7): the map cannot express a rocky super-Earth,
+by construction, and no measurement in it disagrees.
+BLAST: any new consumer of `pl_dens`, and any second catalogue — computed/back-filled columns are a
+convention of these archives, not an accident of this one, so check provenance before trusting a
+column that looks independent. `estimateRadiusRe` is currently DEAD for both bundled maps for the
+same reason: every row already carries a `pl_rade`, so the fallback never fires.
+
 ### GEN-*  (generation engines, seeds, system creation)
 
 ### GEN-1 The evolutionary / Accrete generation path is LIVE and deliberately preserved — never "clean it up"
