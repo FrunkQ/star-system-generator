@@ -118,6 +118,62 @@ whereas the physics is anchored to measurable bodies and is not.
 
 ---
 
+## RECOVERED PRIOR ART — the owner's earlier "Generation Engine V2" thinking, found 2026-08-07
+
+The owner asked whether early design notes survived. **They do, in two places, and they were written
+BEFORE SSE2 shipped — so they are prior art, not a plan.** Both are recorded here because the second
+one is a hard technical constraint on the V4 spine.
+
+### (a) The integrator warning — `design-docs/docs/Design Review.html`
+
+Sibling directory `C:\Development\star-system-explorer-v2\design-docs\` (NOT in this repo, so it is
+not backed up by our git history — worth knowing). In its physics-audit section:
+
+> Use n-body only for Stellar Dance & v2 protoplanetary accretion. Both are already there. **Don't
+> expand the use of full n-body into long-term planetary evolution unless you switch to a symplectic
+> integrator (Wisdom-Holman or REBOUND-style mercurius) — RK4 over Gyr will eat your energy.**
+
+**THIS IS THE MOST IMPORTANT RECOVERED LINE, because it is a direct constraint on exactly what V4
+proposes.** A scrubbable Gyr-scale timeline IS long-term planetary evolution, so the naive path —
+run the existing RK4 machinery for longer — is ruled out in advance with the reason given: RK4 does not
+conserve energy over those spans, so orbits drift for numerical reasons and the timeline becomes
+untrustworthy. **The owner's own "maybe REBOUND+" instinct is therefore right, and this note says
+WHY.** Whoever opens V4 should treat "which integrator" as a decision to be made deliberately and
+early, not discovered late. Related and corroborating: "RK4-on-generation" is already banked as
+pending in the aging/classifier notes.
+
+The same section names a second, smaller item: transit ballistics could use n-body summation, and
+**`nBodyNodes` is still an implemented-but-never-passed parameter** — verified at
+`src/lib/transit/math.ts:19,38-39`, where the summation loop exists and no caller supplies it. Still
+unused, still available.
+
+### (b) `PlanetaryGeneration.md` — DELETED, recoverable from git
+
+Removed in commit `54b8652`. Recover with:
+`git show 54b8652^:PlanetaryGeneration.md`
+
+Its "future improvements" list maps onto the V4 scope the owner described today with striking
+closeness — **these are the same ideas, written down before SSE2 existed**:
+
+- **System History and Events → Cataclysmic Events:** *"a history of cataclysmic events, such as
+  asteroid impacts, nearby supernovae, or stellar mergers… lasting impact on the planets."* **This is
+  the event-driven engine, and it already names stellar mergers.**
+- **Ancient Civilizations:** ruins, derelict megastructures — the seed of "civilisation & technology".
+- **Atmospheric Composition Evolution:** atmospheres evolving via outgassing, solar-wind stripping
+  **"and the presence of life"** — which is *life as a geological event*, already written down.
+- **More Complex Biospheres** — the biosphere refresh.
+- **Planet Migration** — hot Jupiters that formed far out and moved in. Not in today's list; a genuine
+  addition the timeline would make possible.
+- **Frost line**, **volcanism and tectonics**, **pulsars and quasars**, **more data-driven generation
+  in rule packs rather than hard-coded**.
+
+**CAUTION, AND IT MATTERS: THAT LIST PREDATES SSE2, SO SEVERAL ITEMS ARE ALREADY BUILT.** Do not treat
+it as a backlog. `geoActivity.ts` covers volcanism and tectonics; `zones.ts` covers the frost line;
+atmospheric evolution partly exists (bodies carry an `evolveAtmosphere` flag); and the data-driven
+rule-pack move has happened repeatedly since. **Check each one against the code before scoping it.**
+The value in the document is the ideas that were NOT built — events, civilisations, migration — plus
+the confirmation that the direction has been stable for a long time.
+
 ## What ALREADY EXISTS that feeds this — check before building
 
 Grounded, so V4 does not rebuild what is sitting there. **All of it is in the module tree that

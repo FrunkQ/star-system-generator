@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.504-beta - 7th Aug 2026
+
+* Planning, no product change: early design notes written before this version of the app existed have been recovered and folded into the V4 thinking, including a warning that a long timeline needs a different kind of orbital integrator than the one used today.
+
 ## v2.1.503-beta - 7th Aug 2026
 
 * Planning, no product change: the development roadmap is re-cut around three horizons — finishing the current line, the work already in flight, and a longer-term V4 built around a new planetary generation system with a timeline. The V4 thinking is written down separately and is deliberately parked.
