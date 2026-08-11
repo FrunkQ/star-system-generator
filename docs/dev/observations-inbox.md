@@ -437,6 +437,80 @@ its own G10 ground), C7 (Sol_Expanse frame flag sweep, renderer-adjacent).
 **VTT session** (deliberately slow-rolled): G14 when it resumes (model binaries over broadcast are
 explicitly its territory per the G3 design).
 
+---
+
+# ROADMAP, RE-CUT 2026-08-07 at v2.1.503-beta — THIS SUPERSEDES THE 2026-08-03 PLAN BELOW
+
+The 2026-08-03 list is kept underneath for history and is **no longer the plan**: its items 1 and 2
+(C9, and the suite/worktree hygiene batch) both shipped, and the day's decisions moved several others.
+Read this section instead.
+
+**There are now THREE horizons, and keeping them apart is the point of this re-cut.**
+**V2.x closeout** — finish the current line. **V3** — what is already in flight. **V4** — parked
+entirely, in `docs/dev/v4-scope.md`, and **ignored until it opens**.
+
+## The long view: V4 is one theme, and it changes how we scope two things NOW
+
+`docs/dev/v4-scope.md` holds it. In short: the owner resurrects his experimental generation system
+(Accrete-based, possibly REBOUND), whose defining property is that **generation has a TIMELINE** —
+and everything else hangs off that: the stellar timeline slider ([[G17]]), nebulae, planetary and
+accretion discs, stellar mergers, star clusters scaling up to the galaxy, a full World Builder's
+Handbook Traveller importer, civilisation and technology, and a biosphere refresh where
+human-habitability becomes the DEFAULT rather than the whole model.
+
+**Only two things bite before then, and both are cautions rather than tasks:**
+- **[[G11]] must be scoped CHEAPLY.** The Traveller importer is getting a full rebuild in V4, so
+  G11's investigation should be *diagnose and fix what is broken now* — [[D6]] and [[D16]] are live
+  faults — **not** *specify the importer's final form*. Put that sentence in its prompt.
+- **`engine-map.md` GEN-1 is load-bearing, not housekeeping.** The evolutionary/Accrete path is the
+  V4 foundation. Nobody prunes it.
+
+## WAVE 1 — retire the two full sessions and reload (do first)
+
+| Session | Action |
+|---|---|
+| **Astronomy data — bundled starmaps, real-sky import, catalogue pipeline** | **RETIRE at 80%+. Spawn a fresh context.** It takes the biggest single block left: **[[D7]] + [[D17]] MERGED** (one four-line function, `defaultMakeup`, wrong at BOTH ends — diagnosed 2026-08-07), then [[D8]], [[D9]], [[D11]], [[D13]], [[D14]], [[C7]], plus the `pl_rade`/defaultMakeup circularity it named itself. **Re-import and diff after the makeup fix — that function has already written its verdict into the bundled maps.** |
+| **SSE2 physics engine & its documentation** | **RETIRE at 90%. Spawn a fresh physics session** for [[B34]], [[B37]], [[B39]], and the radiation arc [[B20]] [[B21]] [[B32]] [[B35]], plus [[D12]] and [[D1]]. |
+| **Doc-debt agent** (the one that swept to zero at v2.1.385) | **RELOAD.** The debt is real and measured: the four explanation surfaces got ONE update since v2.1.443, and **no user doc mentions the Stop-load button, the safe-mode screen, the Memory panel or the diagnostic bundle** — all shipped, all user-facing. `GettingStarted.md` is ~190 versions stale. |
+| **SSE V2 performance and memory analysis** | **RETIRE — its work is done.** [[P1]] closed v2.1.502; the rebuild rate is parked by owner decision with metering and `engine-map` RENDER-S22 in place. |
+| **Engine-map docs backfill** | Done — it wrote `TRANSIT-*` and the misalignment appendix. Nothing pending. |
+
+## WAVE 2 — close the sessions already in flight
+
+| Session | Remaining |
+|---|---|
+| **Scene, grids and sky — the 3D render surfaces** | [[A45]] (snap-grid picker missing `subsector-hex`), the `StarmapController` interface missing `setGridSkirt`/`setGridFalloff`, and the third spelling of "parent's tilt" in the two ring builders. Small — this one can finish. |
+| **SSE2 — positions, eclipses & suite hygiene** | [[B36]] (the "has a solid surface" duplication — five sites, all agreeing today, and unifying MOVES BODIES via the habitability gate; they offered exactly this shape), the Laplace-radius construct frame **settled together with [[C8]]**, and suite health as the tree gets busier. |
+| **Ship Model Handoff** | **P4 only** — the scale law, gated on the owner experimenting with `/scale-reference`. Then retire. |
+| **Tags: provenance, control and surfacing** | **OWNER-DRIVEN. Assign it NOTHING through this plan.** See the note above; a recommendation to move its player-view surfaces elsewhere was overruled. |
+
+## WAVE 3 — new sessions, in value order
+
+1. **UI closeout** — [[A42]]+[[A47]] (removal, with the preset-fallback gate), [[A48]] (the 99-control
+   regroup), then **[[G16]] AFTER A48** (custom starmap background: fully scoped, map-fixed mode is
+   the main job), [[A43]], and the `changelog.md` head re-sort. Features as capacity allows:
+   [[F11]], [[G5]], [[G1]], [[G7]], [[G6]].
+2. **Traveller importer** — [[G11]] *scoped cheaply per the V4 note*, with [[D6]] and [[D16]] as its
+   live faults. [[B39]] is its evidence: absent rotation reads as ZERO spin, so the flat giants come
+   from a value the importer WRITES.
+3. **Classification consistency** — [[D11]], [[D12]], [[B34]], and [[B36]] if the positions session
+   does not take it. One question: *what is this body, and do all the deciders agree?*
+
+## HELD, deliberately
+
+- **VTT integration** — last, by owner decision. [[G14]] (model binaries to remote players) rides with it.
+- **V4** — `docs/dev/v4-scope.md`. [[G17]] is shelved there and is NOT a separate design job.
+
+## Still mine (coordinator)
+
+~11 findings below still await numbers; the `changelog.md` head is out of order (v2.1.451 above
+v2.1.482); and the engine-map id convention is now settled BY DEMONSTRATION — `GEN-*` was opened with
+a topic letter, which is the rule going forward.
+
+---
+
+### SUPERSEDED — the 2026-08-03 list, kept for history only
+
 **NEW SESSION — collated, prompt from scratch, roughly in order:**
 1. **C9** — `computeWorldPositions3D` does not apply C3's satellite frame; the rotation lives only
    in the renderer. Invalidates G8's eclipse geometry for inclined satellites. HIGHEST VALUE.

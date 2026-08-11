@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.503-beta - 7th Aug 2026
+
+* Planning, no product change: the development roadmap is re-cut around three horizons — finishing the current line, the work already in flight, and a longer-term V4 built around a new planetary generation system with a timeline. The V4 thinking is written down separately and is deliberately parked.
+
 ## v2.1.502-beta - 7th Aug 2026
 
 * The performance and memory work is closed. The load crash that could brick a campaign is fixed, and the instruments, the stop-load brake and the sendable diagnostic file all remain. The 3D view's scene-rebuild rate was something an agent spotted in a trace rather than anything a user has hit, so rather than chase it, the meters that would diagnose it are documented where the next person will find them.
