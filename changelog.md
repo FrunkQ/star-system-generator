@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.505-beta - 7th Aug 2026
+
+* Planning, no product change: the V4 biosphere thinking is written up. Life would be modelled as something that consumes an energy source, raw molecules and a solvent, and gives back both more life and a changed world — so a biosphere reshapes its planet the way weathering or tectonics does, rather than being a score attached to a finished one.
+
 ## v2.1.504-beta - 7th Aug 2026
 
 * Planning, no product change: early design notes written before this version of the app existed have been recovered and folded into the V4 thinking, including a warning that a long timeline needs a different kind of orbital integrator than the one used today.

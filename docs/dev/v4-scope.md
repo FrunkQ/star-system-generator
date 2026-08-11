@@ -104,12 +104,73 @@ overhaul and the cloud decks), so this is an existing architecture applied to a 
 anything novel. It also lands squarely on the standing rule that a GM-editable look or behaviour lever
 belongs in pack data, not in code.
 
+### The abstraction the owner proposed, 2026-08-07 — life as METABOLISM, not as a score
+
+His framing, and it is the right one: *"an abstract 'life' creation system — effectively identify
+energy source + complex molecules + solvent = life, which will CONSUME energy & molecules and produce
+life + 'something' — likely terraforming."* Plus the licence: *"we can get fun and inventive — stay
+plausible but have fun."*
+
+**Why this framing is worth keeping rather than refining into something more conventional:** it makes
+life a PROCESS WITH A BUDGET — inputs consumed, outputs emitted — instead of a number attached to a
+finished world. Three things fall out for free:
+
+- **It is substrate-agnostic.** "Solvent", not "water". The engine ALREADY models non-water solvents
+  with phase awareness (the liquids overhaul, `phaseAtP`, the `hydrosphere/*` phase tags), so ammonia,
+  methane/ethane and supercritical-CO2 biospheres need no special-casing — they are the same rule with
+  a different solvent.
+- **The outputs ARE the terraforming.** Gases change composition, which changes greenhouse, which
+  changes temperature. Solids change the surface, which changes albedo. That is the feedback loop, and
+  it needs no separate "terraforming system".
+- **BIOSIGNATURES BECOME DERIVED RATHER THAN ASSERTED.** Today `science/biosignature` is emitted by a
+  rule-pack rule (`rule:d18`). Under this model it becomes what it is in real astrobiology —
+  ATMOSPHERIC DISEQUILIBRIUM, a gas present that should not persist without something replenishing it.
+  That is a genuine upgrade in honesty for a tag that currently guesses.
+
+**THE ONE HARD WARNING, AND THIS PROJECT HAS ALREADY PAID FOR IT ONCE: THIS IS A FIXED POINT.** Life
+changes the atmosphere; the atmosphere changes the temperature; the temperature changes what life is
+possible. That loop has to be SOLVED, not evaluated once. `solveThermalState` is already exactly such
+a fixed point, and its three hard-won rules apply here unchanged — especially **"bright condensate is
+bistable"**. A life loop is MORE bistable than the thermal one, not less. Read [[B5]] before designing
+this: it was deliberately stopped at its gate because joining the thermal fixed point turned out to
+cost far more than the triage assumed, and this proposal joins the same fixed point from the other
+side. **Daisyworld (Lovelock & Watson) is the canonical toy model of precisely this loop and is the
+right thing to read first** — it is deliberately simple, it demonstrates the regulation AND the
+collapse, and it is a better starting point than a detailed ecology.
+
+### Fun-but-plausible instances — all reusing machinery that already exists
+
+Written as pack DATA (the gas/liquids pattern), so a GM can add their own. Each names the real
+metabolism it is based on, because "plausible" is the constraint:
+
+| Metabolism | Consumes | Emits | The terraforming consequence |
+|---|---|---|---|
+| Oxygenic photosynthesis | starlight, CO2, water | O2 | **The best story beat available.** O2 accumulates, poisons the anaerobes that made it, oxidises the methane greenhouse and can tip the world into a snowball. A real mass extinction caused by success. |
+| Methanogenesis | chemical energy (H2 + CO2) | CH4 | Strong greenhouse — life WARMS a cold world. The real answer to the faint young Sun. |
+| Anoxygenic photosynthesis | light, H2S | sulfur | Tints the world purple/green; no oxygen ever appears. |
+| Chemosynthesis at vents | tidal or radiogenic heat, H2S | sulfur compounds | Works with NO light and under ice — the Europa case, and the engine already derives tidal heating and subsurface oceans. |
+| Titan-style acetylene metabolism | acetylene + hydrogen in a methane solvent | methane | Depletes atmospheric hydrogen — a real proposed Titan signature (McKay & Smith), and detectable as an absence. |
+| **Radiosynthesis** | **ionising radiation** | biomass | **Turns the radiation model into a RESOURCE rather than only a hazard.** Melanin-based radiotrophy is a live hypothesis, and the engine now has a serious radiation model (Io at 36 Sv/day, belts, shielding). A biosphere in a giant's belt is the payoff. |
+| Biotic weathering / "fungus made soil" | rock, water, CO2 | soil, drawn-down CO2 | The owner's own example. Resurfacing as a geological process, cooling the world by weathering. |
+
+**Energy inputs the engine ALREADY derives and could feed straight in:** stellar flux, tidal heating,
+internal/radiogenic heat, and now radiation dose. Little of this needs new physics — it needs the
+existing outputs wired as inputs to a metabolism, which is why the abstraction is worth more than any
+individual entry above.
+
 **A planetary EVENT system** feeds this — the owner suggests a local REBOUND-ish mechanism, explicitly
 open to something better being researched instead.
 
 **The framing worth keeping, because it is the actual design idea:** *life as a geological event.*
 Fungus gave us soil — effectively resurfacing a planet, in the same way tectonics does. That makes
 biology a terrain process on the timeline rather than a score attached to a finished world.
+
+**AND THE METABOLISM MODEL BELOW IS NOT A SECOND IDEA — IT IS THE MECHANISM FOR THIS ONE.** The owner
+confirmed the two are the same thing (2026-08-07): "life as a geological event" is the FRAMING, and
+"energy + complex molecules + solvent, consumed, emitting something" is HOW a geological event is
+actually computed. Consumption and emission on a budget is what makes biology a planetary process with
+the same standing as tectonics or weathering, rather than a label. Design them together; neither is
+complete alone.
 
 And the owner's own note on how tightly to hold this: *"At least no-one can tell me my biosphere stuff
 is wrong as no-one knows the truth… we can have 'fun' with life stuff as there is 'no truth' to stick
