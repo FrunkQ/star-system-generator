@@ -7,26 +7,18 @@ All notable changes are listed here:
 * The twelve example systems a GM can load now have a check on them, which they never have had — and it found two real faults the moment it ran. Pluto and Charon in the Expanse Solar System still had the wrong orbit around each other, the same fault fixed elsewhere earlier today, and that is now corrected there too. The Traveller example has a moon, Cerebus Alpha, attached to something that is not in the file, which cuts it off from its star so the app cannot work out its temperature or anything else about it. Putting that one back together means inventing several figures, so it is reported rather than guessed at.
 * The check covers the things a system must have to work at all: no two objects sharing an identity, every object attached to something that exists, one centre per system, and a mass and size on everything that needs one.
 
-## v2.1.509-beta - 11th Aug 2026
-
 ## v2.1.513-beta - 11th Aug 2026
 
 * Housekeeping, no product change: a check of the Moon's orbital plane in the standalone example systems found it had already been put right nine days earlier, along with a full sweep of all twelve files. The record said otherwise, so it is now corrected. The sweep was re-run from scratch to confirm, and it agrees — including on Iapetus, which looks like it needs the same correction and does not, because its published figure is already measured against Saturn's equator rather than the flat of the Solar System.
-
-## v2.1.508-beta - 11th Aug 2026
 
 ## v2.1.512-beta - 11th Aug 2026
 
 * The starmap builder now says when a world has moons but no axial tilt, because that silently undoes the work that puts moons in the right plane. It currently names six worlds in the science-fiction map — Polyphemus, Gargantua, Reach, Tribute, Andor and Calpamos — between them carrying eleven moons that are drawn in the flat system plane instead. Giving invented worlds a tilt is an authoring choice rather than a repair, so the builder reports it and leaves it; the real Solar System worlds are all fine.
 * Found while measuring that, and written up rather than patched: axial tilt is stored under two different names, and the seasonal-temperature calculation reads the one the bundled maps never fill in. Every world in both bundled maps is therefore having its seasons worked out from an assumed 25 degrees — including Uranus, whose 98-degree tilt is the entire reason it has the seasons it does. Nothing looks obviously wrong on screen, which is why it went unnoticed.
 
-## v2.1.507-beta - 11th Aug 2026
-
 ## v2.1.511-beta - 11th Aug 2026
 
 * Investigation, no product change: Pluto losing its methane clouds when its nitrogen frost was modelled turns out to be correct, not a regression. Pluto's air is already saturated in methane at ground level, so the methane there is frost rather than cloud — a cloud whose base is the ground is fog — and the app says so separately and correctly. Triton keeps its clouds because its air is dry at the surface and only saturates well above it, which is a real difference rather than the two sitting either side of a threshold. Real Pluto does have a haze, but it is made by sunlight breaking up its air rather than by anything condensing, and that is a kind of weather the app does not model at all. Written up as a feature to consider rather than a fix.
-
-## v2.1.506-beta - 11th Aug 2026
 
 ## v2.1.510-beta - 11th Aug 2026
 
@@ -34,14 +26,10 @@ All notable changes are listed here:
 * One caveat stated plainly: the seasons are in the right rhythm but not yet on the right dates, because the orbit's orientation is still unspecified. The app finds the next season in the 2080s where the real answer is nearer the 2100s. Anchoring that needs one more figure and is written up.
 * Pluto's quoted temperature range shifts very slightly, from 6-66 K to 7-65 K, as a knock-on. The reason is a separate issue found while measuring this one and is written up rather than patched.
 
-## v2.1.505-beta - 11th Aug 2026
-
 ## v2.1.509-beta - 11th Aug 2026
 
 * Investigation, no product change: the report that some worlds are labelled both rocky and giant at the same time turns out not to be true of the app. The contradictory pairs live in the saved files but are discarded and re-derived the moment a system loads, and the classifier cannot produce two base types even in principle. Iota Horologii b, one of the named cases, loads correctly as a Super Jupiter and nothing else. The one genuine instance was Epsilon Indi A b, fixed in the previous release. Four fictional worlds do carry two labels each — Vulcan, Altair IV, Reach and LV-426 — but each is a specific type plus its family, written that way on purpose.
 * Noted while measuring the above: Jupiter, Saturn, Uranus and Neptune carry no composition figures at all in the bundled data, along with about half of everything else in it. Nothing displays wrongly today, but any check asking "how much gas does this world have" gets zero for Jupiter, which is a missing answer being read as a real one. Written up for a decision.
-
-## v2.1.504-beta - 11th Aug 2026
 
 ## v2.1.508-beta - 11th Aug 2026
 
