@@ -372,8 +372,38 @@ function assertUniqueIds(file, obj) {
   if (clashes.length) throw new Error(`${file}: ${clashes.length} duplicate node id(s)\n  ${clashes.join('\n  ')}`);
 }
 
+// A body with satellites and NO axial tilt silently disables the satellite-frame work: C3 settled
+// that a regular moon's elements are quoted in its PARENT'S EQUATOR, and `satelliteTiltRad` reads
+// the parent's `axial_tilt_deg` to get there — so a missing tilt resolves to zero and every moon is
+// drawn in the system plane whatever its frame flag says. Nothing required a tilt and nothing said
+// when one was absent, which is how six fiction hosts and eleven moons went four months unnoticed
+// (D8). This WARNS rather than throwing, unlike the duplicate-id check: an absent tilt is missing
+// AUTHORING, not a broken generator, and the roster must stay buildable while it is decided.
+function warnMissingTilts(file, obj) {
+  const gaps = [];
+  for (const s of obj.systems ?? []) {
+    const nodes = s.system?.nodes ?? [];
+    const satsOf = new Map();
+    for (const n of nodes) {
+      if (!n.parentId || n.kind !== 'body') continue;
+      if (n.roleHint !== 'moon' && n.roleHint !== 'planet') continue;
+      satsOf.set(n.parentId, (satsOf.get(n.parentId) ?? 0) + 1);
+    }
+    for (const n of nodes) {
+      if (n.kind !== 'body' || n.roleHint === 'star') continue;
+      const sats = satsOf.get(n.id) ?? 0;
+      if (sats && n.axial_tilt_deg == null) gaps.push(`${s.name} [${s.id}]: "${n.name}" has ${sats} satellite(s) and no axial_tilt_deg`);
+    }
+  }
+  if (gaps.length) {
+    console.warn(`!! ${file}: ${gaps.length} host(s) with satellites but no axial tilt — their moons render in the system plane (D8)`);
+    for (const g of gaps) console.warn(`   ${g}`);
+  }
+}
+
 function write(file, obj) {
   assertUniqueIds(file, obj);
+  warnMissingTilts(file, obj);
   writeFileSync(join(outDir, file), JSON.stringify(obj, null, 1) + '\n');
   const count = obj.systems.length;
   const planets = obj.systems.reduce((s, x) => s + x.system.nodes.filter((n) => n.roleHint === 'planet').length, 0);

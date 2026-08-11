@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.512-beta - 11th Aug 2026
+
+* The starmap builder now says when a world has moons but no axial tilt, because that silently undoes the work that puts moons in the right plane. It currently names six worlds in the science-fiction map — Polyphemus, Gargantua, Reach, Tribute, Andor and Calpamos — between them carrying eleven moons that are drawn in the flat system plane instead. Giving invented worlds a tilt is an authoring choice rather than a repair, so the builder reports it and leaves it; the real Solar System worlds are all fine.
+* Found while measuring that, and written up rather than patched: axial tilt is stored under two different names, and the seasonal-temperature calculation reads the one the bundled maps never fill in. Every world in both bundled maps is therefore having its seasons worked out from an assumed 25 degrees — including Uranus, whose 98-degree tilt is the entire reason it has the seasons it does. Nothing looks obviously wrong on screen, which is why it went unnoticed.
+
+## v2.1.507-beta - 11th Aug 2026
+
 ## v2.1.511-beta - 11th Aug 2026
 
 * Investigation, no product change: Pluto losing its methane clouds when its nitrogen frost was modelled turns out to be correct, not a regression. Pluto's air is already saturated in methane at ground level, so the methane there is frost rather than cloud — a cloud whose base is the ground is fog — and the app says so separately and correctly. Triton keeps its clouds because its air is dry at the surface and only saturates well above it, which is a real difference rather than the two sitting either side of a threshold. Real Pluto does have a haze, but it is made by sunlight breaking up its air rather than by anything condensing, and that is a kind of weather the app does not model at all. Written up as a feature to consider rather than a fix.
