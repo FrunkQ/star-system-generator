@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.513-beta - 11th Aug 2026
+
+* Housekeeping, no product change: a check of the Moon's orbital plane in the standalone example systems found it had already been put right nine days earlier, along with a full sweep of all twelve files. The record said otherwise, so it is now corrected. The sweep was re-run from scratch to confirm, and it agrees — including on Iapetus, which looks like it needs the same correction and does not, because its published figure is already measured against Saturn's equator rather than the flat of the Solar System.
+
+## v2.1.508-beta - 11th Aug 2026
+
 ## v2.1.512-beta - 11th Aug 2026
 
 * The starmap builder now says when a world has moons but no axial tilt, because that silently undoes the work that puts moons in the right plane. It currently names six worlds in the science-fiction map — Polyphemus, Gargantua, Reach, Tribute, Andor and Calpamos — between them carrying eleven moons that are drawn in the flat system plane instead. Giving invented worlds a tilt is an authoring choice rather than a repair, so the builder reports it and leaves it; the real Solar System worlds are all fine.
