@@ -628,6 +628,13 @@ things the debt lines had wrong — see the note in [[D5]].
 - **E3/E1 (v2.1.411-beta)** - no reader-facing change. Developer-facing only: `vitest run` exits 0 again, and `src/setup.ts` answers root-relative fetches with a 404 rather than throwing.
 - **E2/E4 (v2.1.411-beta)** - no reader-facing change. The worktree-per-session recipe is in this file's standing rules; if a contributor-facing document ever describes how to work on this repo, it belongs there too.
 - **G8 GM panel (v2.1.413-beta)** - READER-FACING: the GM's read-only body block now shows a "Next Eclipse" row with the orbital rows, the same one the player views already had. Anywhere that lists what the GM inspector shows needs it; the row's own tooltip carries the honesty caveat (elements held fixed, no nodal precession, so it is when they next line up rather than an ephemeris).
+- **Vercel analytics throttle (v2.1.530-beta)** - READER-FACING, and it is a DATA-COLLECTION change, so it
+  should be said out loud rather than left in the changelog. The app now records ONE anonymous analytics
+  event per browser per 24h instead of one per route change, and to do so it keeps a single timestamp in
+  `localStorage` under `sse-analytics-last-sent`. Nothing new is collected and strictly less is sent.
+  **Check whether `AboutModal`, `README.md` or any privacy/about text describes what is tracked** - if it
+  does, it needs this, including the new local timestamp. Rationale for the 24h window (it matches
+  Vercel's own unique-visitor re-hash) is in the code comment at `src/routes/+layout.svelte`.
 - **Engine map PHY-5/PHY-6, UI-E1/UI-E2 (v2.1.443-beta)** - no reader-facing change. Developer-facing only: `docs/dev/engine-map.md` now carries the satellite-frame invariant, the eclipse cache's directionality, and the two UI rules that follow from them.
 
 ## docs/dev/engine-map.md — the traps file (started 2026-08-04)

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.531-beta - 7th Aug 2026
+
+* Housekeeping: the analytics change above is logged as needing a mention wherever the app describes what it records, so the About text and the readme can be checked against it.
+
 ## v2.1.530-beta - 7th Aug 2026
 
 * Visitor analytics now record one anonymous event per browser per day instead of one for every screen you move between. Moving around the app is exactly what it is for, and counting each move told us nothing extra while rapidly using up the free allowance. Nothing new is collected, and rather less is: a single timestamp is kept on your own device so the app knows it has already counted you today.
