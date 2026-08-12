@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.523-beta - 7th Aug 2026
+
+* Planned: where life appears on a world is decided rather than scattered. It gathers along the shorelines, where land meets its liquid, and only where that liquid is actually liquid — so the coverage you set fills the most hospitable ground first and spreads outward, skipping the frozen poles and the scorched middle. Worlds whose life runs on ammonia or methane get their own habitable band, not ours.
+
 ## v2.1.522-beta - 7th Aug 2026
 
 * Planned: the fixed list of life types goes away and becomes ordinary tags — microbial, fungal, flora, fauna, sentient — so your own rule packs can use them and invent new ones. Each kind carries how much of the world it covers, and how it should be drawn: a tint, or points of light on the coastlines for a world that has built cities.
