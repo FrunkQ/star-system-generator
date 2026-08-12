@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.522-beta - 7th Aug 2026
+
+* Planned: the fixed list of life types goes away and becomes ordinary tags — microbial, fungal, flora, fauna, sentient — so your own rule packs can use them and invent new ones. Each kind carries how much of the world it covers, and how it should be drawn: a tint, or points of light on the coastlines for a world that has built cities.
+
 ## v2.1.521-beta - 7th Aug 2026
 
 * Planned in more detail: the biosphere colours become a stack you control. Each kind of life — microbes, fungi, plants, and anything you invent, such as a technological one that reads as dark with lights — gets its own coverage and colours, and you set which sits on top of which, because a more advanced biosphere gradually paints over the one before it. Driven by tags, so the same machinery that says a world has life is the machinery that colours it.
