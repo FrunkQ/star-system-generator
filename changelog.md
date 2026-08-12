@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.519-beta - 7th Aug 2026
+
+* Clarified for the planned starmap import: bringing in the nearby stars themselves is unconditional, but filling in imagined worlds around them stays your choice, as it is today. A straight import gives you the real stars with their real planets, and the starless ones simply arrive starless.
+
 ## v2.1.518-beta - 7th Aug 2026
 
 * Decided, not yet built: importing the real sky will bring in the nearby stars themselves, not only the ones already known to have planets — and will fill in plausible worlds around the rest. Sol, when it falls inside the region, comes in with its real planets rather than invented ones. It is a starmap importer; the planets are the add-on.
