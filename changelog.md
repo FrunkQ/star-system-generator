@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.520-beta - 7th Aug 2026
+
+* On the board, not yet built: a Biospheres section in settings, with a vegetation slider that tints the land of worlds whose life reached it — in a colour taken from their own star, so plants under a red dwarf are not green. A simple first version; the full treatment of life comes later.
+
 ## v2.1.519-beta - 7th Aug 2026
 
 * Clarified for the planned starmap import: bringing in the nearby stars themselves is unconditional, but filling in imagined worlds around them stays your choice, as it is today. A straight import gives you the real stars with their real planets, and the starless ones simply arrive starless.
