@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.529-beta - 7th Aug 2026
+
+* A note on how this project is built, written down for everyone working on it: the aim is general rules that hold anywhere, not a careful reproduction of our own solar system. Our worlds are how we check the rules are sound — never the thing the rules are bent to fit. Complexity should come from simple things layered, not from special cases.
+
 ## v2.1.528-beta - 7th Aug 2026
 
 * The biosphere appearance design is complete and ready to be built. Plant colour follows a single rule that explains our own world rather than making an exception of it: a bright sun delivers more light than life can use, so plants can afford to throw a band away — which is why ours are green — while life under a dim red dwarf can waste nothing and comes out near black. As ever, the colours remain yours to edit.

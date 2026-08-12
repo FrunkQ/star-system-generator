@@ -31,6 +31,14 @@ Two immediate consequences the owner named himself:
 
 ## THE ARCHITECTURAL RULE FOR ALL OF IT: BUILD ONE SYSTEM, PARAMETERISED — NOT THREE
 
+**This is now a PROJECT-WIDE mantra, not a V4 rule — see the first entry under "Standing rules any
+worker session must follow" in `observations-inbox.md`.** Owner, 2026-08-07: *"flexible systems over
+point solutions… should be the mantra for everything. We are not interested in fine-tuning the system
+to create Sol system accurately — we are looking to take the general rules from here, proposed science
+for exoplanets, and generalise them up to create complexity out of layered simplicity."* The rest of
+this section is that mantra applied to the V4 tiers specifically.
+
+
 Owner, 2026-08-07, and this governs everything below it: *"Bear in mind system reuse… try and create
 systems that can be reused — eg: galaxy type selection would be like star type selection now… and star
 systems and star clusters… otherwise the same system with a different scale (kpc instead of ly)."*

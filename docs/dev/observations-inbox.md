@@ -693,6 +693,24 @@ noticed.
 
 ## Standing rules any worker session must follow
 
+- **FLEXIBLE SYSTEMS OVER POINT SOLUTIONS. THIS IS THE MANTRA FOR EVERYTHING AND IT OUTRANKS THE RULES
+  BELOW IT.** Owner, 2026-08-07: *"We are not interested in fine-tuning the system to create Sol system
+  accurately — we are looking to take the general rules from here, proposed science for exoplanets, and
+  generalise them up to create complexity out of layered simplicity."*
+  **What that means in practice:** when you find yourself writing a branch for a particular body, star
+  type, morphology or scale, stop — that is a point solution. Express the difference as DATA in a
+  definition, or extend the SCHEMA so it can be expressed. Three designs in one day came out of this and
+  each replaced three implementations with one: a single topology parameterised by scale (system →
+  cluster → galaxy, AU → ly → kpc); one reaction shape serving both chemistry and metabolism, extended by
+  three fields; and one definition record per life morphology with no branches anywhere, where "sentient"
+  is simply a strong light range and a weak colour range.
+  **THE ONE THING THIS MUST NOT BE READ AS: LICENCE TO ABANDON THE ANCHORS.** Sol is a CALIBRATION
+  ANCHOR, not a TARGET, and the difference is the whole point. If a general law produces a wildly wrong
+  Earth, Venus or Io, **the law is wrong and the anchor has done its job** — that is how [[B5]], [[B6]],
+  [[B17]] and [[B22]] were all settled. What is forbidden is the opposite move: tuning constants until
+  Sol comes out perfect at the cost of the general law. [[B12]] is the model — an anchor TABLE proved a
+  constant did not matter anywhere, so it was left alone rather than fitted. **Check against every
+  anchor; fit to none of them.**
 - **Physics and data drive tags; tags drive the image.** Do not add rendering code to make something look a
   particular way. If a look needs a new lever, the lever is rule-pack DATA.
 - **NEVER STOP, SHORTEN OR SKIP WORK BECAUSE YOU THINK YOU ARE RUNNING OUT OF CONTEXT. YOUR ESTIMATE
