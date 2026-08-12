@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.516-beta - 7th Aug 2026
+
+* **Fixed: dragging to pan the GM starmap no longer highlights the star names you drag across.** A drag on the map is a pan, and the browser was also treating it as selecting text, so a cluster of labels lit up mid-drag. The map's description box is untouched — that is still text you can select and copy.
+* Noted for later: the Hayashi limit does not appear to be modelled, so a very cool star aged into a red giant can be given a temperature no real star can have. And generated moons need a proper rethink rather than another patch — counts, masses and types are all decided in ways that let a moon outweigh its own planet.
+
 ## v2.1.515-beta - 7th Aug 2026
 
 * Noted, not yet fixed: dragging to pan the GM starmap highlights the star names it passes over, as though you were selecting text. Cosmetic, and a one-line fix — the same guard the map's own grid numbering already uses.

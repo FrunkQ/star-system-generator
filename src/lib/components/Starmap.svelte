@@ -2003,6 +2003,13 @@
     height: 100%;
     border: 1px solid #ccc;
     background-color: #000; /* Default background */
+    /* A drag is a PAN here, never a text selection. Without this the browser treats a
+       left-drag across the map as selecting the system labels it passes over, and a
+       cluster of names lights up highlighted (A49). Scoped to the svg deliberately —
+       the description box outside it is prose a GM may want to select and copy.
+       Same guard the map's own hex numbering already carries (Grid.svelte). */
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .starmap.with-background {
