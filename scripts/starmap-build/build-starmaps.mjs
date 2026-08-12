@@ -141,7 +141,7 @@ function planetNodes(st, sysDef, hostNode) {
       id, parentId: hostNode.id, name, kind: 'body', roleHint: 'planet',
       massKg: massMe * EARTH_MASS_KG,
       radiusKm: Math.round(radiusRe * EARTH_RADIUS_KM),
-      makeup: defaultMakeup(massMe, row.pl_dens),
+      makeup: defaultMakeup(massMe, row.pl_dens, id, row.pl_rade),
       autoClassify: true,
       orbit: {
         hostId: hostNode.id, hostMu: G * hostNode.massKg, t0: EPOCH,

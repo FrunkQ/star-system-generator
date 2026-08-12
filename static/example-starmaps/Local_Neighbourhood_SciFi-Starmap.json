@@ -2,7 +2,7 @@
  "id": "starmap-local-neighbourhood-scifi",
  "name": "Local Neighbourhood (Science Fiction)",
  "description": "The same real stars as the Local Neighbourhood map, at their true positions — but populated with the famous science fiction set among them. Sol runs on The Expanse; Pandora circles Alpha Centauri A; Reach guards Epsilon Eridani; the Nostromo is still answering that beacon at Zeta Reticuli. This map is deliberately fictional: the planets, stations and ships come from the novels, films and games, not from the catalogues. Stars without a famous fictional tenant keep their real confirmed planets.",
- "appVersion": "2.1.514-beta",
+ "appVersion": "2.1.516-beta",
  "baseMapVersion": 2,
  "distanceUnit": "ly",
  "unitIsPrefix": false,
@@ -4757,9 +4757,9 @@
       "massKg": 8.12192e+25,
       "radiusKm": 23955,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.81,
+       "ice": 0.14,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -5818,9 +5818,9 @@
       "massKg": 3.8818e+25,
       "radiusKm": 15482,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.88,
+       "ice": 0.07,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -5848,9 +5848,9 @@
       "massKg": 3.64292e+25,
       "radiusKm": 14908,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.89,
+       "ice": 0.06,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -6708,9 +6708,9 @@
       "massKg": 2.1499200000000002e+26,
       "radiusKm": 42495,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.81,
+       "ice": 0.14,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -6888,8 +6888,8 @@
       "massKg": 1.2337463102926e+28,
       "radiusKm": 80912,
       "makeup": {
-       "gas": 0.85,
-       "ice": 0.1,
+       "gas": 0.91,
+       "ice": 0.04,
        "rock": 0.05
       },
       "autoClassify": true,
@@ -7910,9 +7910,9 @@
       "massKg": 4.1804e+25,
       "radiusKm": 16182,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.88,
+       "ice": 0.07,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -8300,9 +8300,9 @@
       "massKg": 4.598440000000001e+25,
       "radiusKm": 17138,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.91,
+       "ice": 0.04,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -8376,8 +8376,8 @@
       "massKg": 3.9859496178684004e+26,
       "radiusKm": 61162,
       "makeup": {
-       "gas": 0.85,
-       "ice": 0.1,
+       "gas": 0.84,
+       "ice": 0.11,
        "rock": 0.05
       },
       "autoClassify": true,
@@ -8452,9 +8452,9 @@
       "massKg": 6.622948e+25,
       "radiusKm": 21215,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.84,
+       "ice": 0.11,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -8528,9 +8528,9 @@
       "massKg": 1.027184e+26,
       "radiusKm": 27523,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.87,
+       "ice": 0.08,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -8558,9 +8558,9 @@
       "massKg": 9.5552e+25,
       "radiusKm": 26376,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.82,
+       "ice": 0.13,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -8634,9 +8634,9 @@
       "massKg": 4.078876e+25,
       "radiusKm": 15991,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.87,
+       "ice": 0.08,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -8664,8 +8664,8 @@
       "massKg": 1.3555520312000001e+27,
       "radiusKm": 89194,
       "makeup": {
-       "gas": 0.85,
-       "ice": 0.1,
+       "gas": 0.86,
+       "ice": 0.09,
        "rock": 0.05
       },
       "autoClassify": true,
@@ -8694,8 +8694,8 @@
       "massKg": 4.319090742e+27,
       "radiusKm": 84734,
       "makeup": {
-       "gas": 0.85,
-       "ice": 0.1,
+       "gas": 0.89,
+       "ice": 0.06,
        "rock": 0.05
       },
       "autoClassify": true,
@@ -8724,9 +8724,9 @@
       "massKg": 8.719120000000001e+25,
       "radiusKm": 24974,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.87,
+       "ice": 0.08,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -8906,8 +8906,8 @@
       "massKg": 1.8790905341379602e+27,
       "radiusKm": 87920,
       "makeup": {
-       "gas": 0.85,
-       "ice": 0.1,
+       "gas": 0.84,
+       "ice": 0.11,
        "rock": 0.05
       },
       "autoClassify": true,
@@ -8982,9 +8982,9 @@
       "massKg": 2.6276800000000002e+25,
       "radiusKm": 12296,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.8,
+       "ice": 0.15,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {
@@ -9012,9 +9012,9 @@
       "massKg": 5.19564e+25,
       "radiusKm": 18412,
       "makeup": {
-       "ice": 0.55,
-       "gas": 0.25,
-       "rock": 0.2
+       "gas": 0.91,
+       "ice": 0.04,
+       "rock": 0.05
       },
       "autoClassify": true,
       "orbit": {

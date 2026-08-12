@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.533-beta - 12th Aug 2026
+
+* Imported planets heavier than about four Earths are now treated as gas giants rather than as ice-rich super-Earths, and each one gets its own composition rather than all of them sharing a single figure. Nineteen worlds in each bundled map change, and no imported world reads 55% ice any more. The envelope fractions are the ones the app already uses for a giant it has to guess at, so this is the existing rule applied more widely rather than a new one.
+* The reason the old figure was meaningless is worth stating: for three quarters of the catalogue's planets the radius is one the archive worked out from the mass, so the density that used to choose the composition was just the mass again in disguise. Mass now decides directly, and the variation between worlds is fixed by each planet's own identity, so re-importing the same region reproduces the same worlds.
+* Where a radius really was measured, the measurement still wins: 55 Cancri e and the two inner planets of HD 219134 are genuinely dense and stay rocky. Nothing can make a true giant rocky, however it is measured.
+
+## v2.1.515-beta - 12th Aug 2026
+
 ## v2.1.532-beta - 12th Aug 2026
 
 * Correction to yesterday's notes, no product change: the claim that the app fails to recognise Jupiter as a giant was wrong. It recognises it correctly. The measurement behind the claim read a stored field that is usually empty, rather than the function the app actually calls, which works the composition out from mass and size when nothing is stored. Retracted, and the developer note that warns about this class of mistake has been widened to cover it.
