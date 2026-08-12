@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.525-beta - 7th Aug 2026
+
+* Planned: each kind of life will carry a range it starts within, so a fresh world gets a plausible spread of it rather than the same number everywhere — and you can then tune any single planet by hand without the engine undoing you.
+
 ## v2.1.524-beta - 7th Aug 2026
 
 * The biosphere appearance design is settled. Every kind of life carries both a colour and a glow, so a world can have luminous purple fungi on orange ground as readily as green fields and city lights; you decide which layer sits above which. One question is left open on purpose — what colour plants should be under a star that is not the Sun.
