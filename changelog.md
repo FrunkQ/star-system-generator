@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.517-beta - 7th Aug 2026
+
+* Noted, not yet fixed: a map imported from the real sky has no Sol and no Alpha Centauri. Both have the same cause — the importer asks the archive for stars that are known to have planets, and Sol is not in an exoplanet catalogue while Alpha Centauri A and B have no confirmed planets of their own. Proxima does, which is why it turns up alone under the Alpha Centauri name.
+
 ## v2.1.516-beta - 7th Aug 2026
 
 * **Fixed: dragging to pan the GM starmap no longer highlights the star names you drag across.** A drag on the map is a pan, and the browser was also treating it as selecting text, so a cluster of labels lit up mid-drag. The map's description box is untouched — that is still text you can select and copy.
