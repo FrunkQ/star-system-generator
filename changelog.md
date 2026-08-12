@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.515-beta - 7th Aug 2026
+
+* Noted, not yet fixed: dragging to pan the GM starmap highlights the star names it passes over, as though you were selecting text. Cosmetic, and a one-line fix — the same guard the map's own grid numbering already uses.
+
 ## v2.1.514-beta - 11th Aug 2026
 
 * The twelve example systems a GM can load now have a check on them, which they never have had — and it found two real faults the moment it ran. Pluto and Charon in the Expanse Solar System still had the wrong orbit around each other, the same fault fixed elsewhere earlier today, and that is now corrected there too. The Traveller example has a moon, Cerebus Alpha, attached to something that is not in the file, which cuts it off from its star so the app cannot work out its temperature or anything else about it. Putting that one back together means inventing several figures, so it is reported rather than guessed at.
