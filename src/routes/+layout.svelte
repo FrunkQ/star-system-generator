@@ -11,7 +11,39 @@
 
 	// Vercel Web Analytics — anonymous visitor counts (user community OK'd tracking #s).
 	// Requires Web Analytics enabled in the Vercel project too.
-	injectAnalytics({ mode: dev ? 'development' : 'production' });
+	//
+	// ONE EVENT PER BROWSER PER DAY, NOT ONE PER ROUTE CHANGE. This app invites heavy
+	// back-and-forth between routes (/physics, /projector, /catalogue) while a GM tweaks and
+	// re-reads, and Vercel counts every route change as a billable Web Analytics event — which
+	// burns the 50,000/month Hobby allowance for no extra information, because all we want is the
+	// raw volume of visitors.
+	//
+	// The window is 24h and the stamp is in localStorage ON PURPOSE, because that is what MATCHES
+	// VERCEL'S OWN DEFINITION: it re-hashes unique visitors every 24 hours. A per-tab sessionStorage
+	// flag gets this wrong in both directions — three open tabs count three times, and a tab left
+	// open across days (exactly how this app gets used during a campaign) counts once for a visitor
+	// Vercel would legitimately count each day. A timestamp keyed to the same 24h period yields one
+	// event per browser per Vercel-visitor-day.
+	//
+	// Storage failures (private mode, storage disabled) fall through and SEND. Over-counting a rare
+	// case is better than losing the metric entirely.
+	const ANALYTICS_STAMP = 'sse-analytics-last-sent';
+	const ANALYTICS_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+	injectAnalytics({
+		mode: dev ? 'development' : 'production',
+		beforeSend: (event) => {
+			if (!browser) return event;
+			try {
+				const last = Number(localStorage.getItem(ANALYTICS_STAMP)) || 0;
+				if (Date.now() - last < ANALYTICS_WINDOW_MS) return null;
+				localStorage.setItem(ANALYTICS_STAMP, String(Date.now()));
+			} catch {
+				// storage unavailable — send rather than silently stop counting
+			}
+			return event;
+		}
+	});
 
 	// DEV BUILD STAMP — commit + time are baked in at build time and change every build.
 	// TEMPORARILY suppressed on beta while real users are testing (it was distracting). To bring it

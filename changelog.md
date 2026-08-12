@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.530-beta - 7th Aug 2026
+
+* Visitor analytics now record one anonymous event per browser per day instead of one for every screen you move between. Moving around the app is exactly what it is for, and counting each move told us nothing extra while rapidly using up the free allowance. Nothing new is collected, and rather less is: a single timestamp is kept on your own device so the app knows it has already counted you today.
+
 ## v2.1.529-beta - 7th Aug 2026
 
 * A note on how this project is built, written down for everyone working on it: the aim is general rules that hold anywhere, not a careful reproduction of our own solar system. Our worlds are how we check the rules are sound — never the thing the rules are bent to fit. Complexity should come from simple things layered, not from special cases.
