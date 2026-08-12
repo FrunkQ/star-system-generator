@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.526-beta - 7th Aug 2026
+
+* Settled for the biosphere colours: plants take a colour from their own star, and the reasoning holds up — a world under a bright sun can afford to throw a band of light away, which is why ours are green, while life under a dim red dwarf can waste nothing and comes out near black. Recorded alongside it that the planet texture generator is due a rewrite, and that this feature should wait for it rather than be built twice.
+
 ## v2.1.525-beta - 7th Aug 2026
 
 * Planned: each kind of life will carry a range it starts within, so a fresh world gets a plausible spread of it rather than the same number everywhere — and you can then tune any single planet by hand without the engine undoing you.
