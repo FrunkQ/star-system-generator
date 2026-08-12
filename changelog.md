@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.528-beta - 7th Aug 2026
+
+* The biosphere appearance design is complete and ready to be built. Plant colour follows a single rule that explains our own world rather than making an exception of it: a bright sun delivers more light than life can use, so plants can afford to throw a band away — which is why ours are green — while life under a dim red dwarf can waste nothing and comes out near black. As ever, the colours remain yours to edit.
+
 ## v2.1.527-beta - 7th Aug 2026
 
 * Clarified for the planned biosphere colours: the work includes reworking how planet surfaces are drawn, since today they are patches of colour with no notion of where land meets water and no way to show lights at all. Recorded so the job is sized honestly rather than mistaken for a settings slider.
