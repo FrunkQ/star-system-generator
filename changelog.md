@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.532-beta - 12th Aug 2026
+
+* Correction to yesterday's notes, no product change: the claim that the app fails to recognise Jupiter as a giant was wrong. It recognises it correctly. The measurement behind the claim read a stored field that is usually empty, rather than the function the app actually calls, which works the composition out from mass and size when nothing is stored. Retracted, and the developer note that warns about this class of mistake has been widened to cover it.
+
 ## v2.1.531-beta - 7th Aug 2026
 
 * Housekeeping: the analytics change above is logged as needing a mention wherever the app describes what it records, so the About text and the readme can be checked against it.

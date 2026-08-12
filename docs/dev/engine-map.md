@@ -1336,6 +1336,13 @@ Measured on loaded data, all four contradictions turned out not to exist — the
 the load path deletes, and Iota Horologii b loads as `planet/super-jupiter` alone. Both candidate
 causes were also wrong: `classifyByFingerprint` takes `[0]` of the sorted bases and then appends only
 `kind === 'modifier'`, so it cannot emit two bases at all.
+THE SAME TRAP HAS A SECOND FORM, ONE LAYER DOWN: reading a stored FIELD where the app calls an
+ACCESSOR that derives when the field is absent. `body.makeup` is empty on 107 of the 226 non-star
+bundled bodies including Jupiter — and it does not matter, because every consumer calls
+`makeupFractions(body)` (`physics/makeup.ts`), which infers a composition from mass and radius when
+the field is missing and returns gas 0.80 for all four Sol giants. An audit of `n.makeup?.gas ?? 0`
+concluded the giant test was dead for Jupiter; through the accessor it is true for every giant. Before
+concluding a field is unset, check whether anything reads it directly at all.
 BLAST: any audit of `classes` or `image`; and note the legacy rules path in `classifyBody` carries a
 hand-maintained `baseArchetypes` Set that lists ~17 of the rulepack's 64 `kind: 'base'` fingerprints —
 a second answer to "which classes are mutually exclusive", dormant only because the starter pack
