@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.518-beta - 7th Aug 2026
+
+* Decided, not yet built: importing the real sky will bring in the nearby stars themselves, not only the ones already known to have planets — and will fill in plausible worlds around the rest. Sol, when it falls inside the region, comes in with its real planets rather than invented ones. It is a starmap importer; the planets are the add-on.
+
 ## v2.1.517-beta - 7th Aug 2026
 
 * Noted, not yet fixed: a map imported from the real sky has no Sol and no Alpha Centauri. Both have the same cause — the importer asks the archive for stars that are known to have planets, and Sol is not in an exoplanet catalogue while Alpha Centauri A and B have no confirmed planets of their own. Proxima does, which is why it turns up alone under the Alpha Centauri name.
