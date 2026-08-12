@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.521-beta - 7th Aug 2026
+
+* Planned in more detail: the biosphere colours become a stack you control. Each kind of life — microbes, fungi, plants, and anything you invent, such as a technological one that reads as dark with lights — gets its own coverage and colours, and you set which sits on top of which, because a more advanced biosphere gradually paints over the one before it. Driven by tags, so the same machinery that says a world has life is the machinery that colours it.
+
 ## v2.1.520-beta - 7th Aug 2026
 
 * On the board, not yet built: a Biospheres section in settings, with a vegetation slider that tints the land of worlds whose life reached it — in a colour taken from their own star, so plants under a red dwarf are not green. A simple first version; the full treatment of life comes later.
