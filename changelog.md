@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.527-beta - 7th Aug 2026
+
+* Clarified for the planned biosphere colours: the work includes reworking how planet surfaces are drawn, since today they are patches of colour with no notion of where land meets water and no way to show lights at all. Recorded so the job is sized honestly rather than mistaken for a settings slider.
+
 ## v2.1.526-beta - 7th Aug 2026
 
 * Settled for the biosphere colours: plants take a colour from their own star, and the reasoning holds up — a world under a bright sun can afford to throw a band of light away, which is why ours are green, while life under a dim red dwarf can waste nothing and comes out near black. Recorded alongside it that the planet texture generator is due a rewrite, and that this feature should wait for it rather than be built twice.
