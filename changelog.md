@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.524-beta - 7th Aug 2026
+
+* The biosphere appearance design is settled. Every kind of life carries both a colour and a glow, so a world can have luminous purple fungi on orange ground as readily as green fields and city lights; you decide which layer sits above which. One question is left open on purpose — what colour plants should be under a star that is not the Sun.
+
 ## v2.1.523-beta - 7th Aug 2026
 
 * Planned: where life appears on a world is decided rather than scattered. It gathers along the shorelines, where land meets its liquid, and only where that liquid is actually liquid — so the coverage you set fills the most hospitable ground first and spreads outward, skipping the frozen poles and the scorched middle. Worlds whose life runs on ammonia or methane get their own habitable band, not ours.
