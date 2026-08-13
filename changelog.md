@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.543-beta - 7th Aug 2026
+
+* A lead on the frozen player view reported yesterday: it happens on phones and tablets but not on laptops, which points at the graphics context being dropped under memory pressure — the picture freezes on its last frame while your pinches are still arriving, so it feels like the controls have died when really the image has. The app currently has no way of noticing that happening, which is the first thing to change.
+
 ## v2.1.542-beta - 7th Aug 2026
 
 * Under investigation, reported by a user: the player view can stop responding to pan and zoom after it finishes rendering, until the page is reloaded. Recorded with what is needed to catch it — the diagnostic file from Settings, or the browser console captured while it is still stuck rather than afterwards.
