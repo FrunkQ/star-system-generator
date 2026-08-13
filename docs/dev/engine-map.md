@@ -1320,7 +1320,26 @@ convention of these archives, not an accident of this one, so check provenance b
 column that looks independent. `estimateRadiusRe` is currently DEAD for both bundled maps for the
 same reason: every row already carries a `pl_rade`, so the fallback never fires.
 
-### DATA-R8 A stored `classes` array is a FOSSIL — audit classification on LOADED data, never on the JSON
+### DATA-R8 NEVER CONCLUDE ANYTHING ABOUT A BODY FROM A FIELD YOU READ DIRECTLY — find who reads it
+THE CUE, and it is the whole point of this entry: **you are about to say "field X is unset / wrong /
+contradictory" on the strength of having read X out of a JSON file or off a node.** Stop there. Ask
+who READS X in the running app. If the answer is "an accessor that derives X when it is missing", or
+"nobody, the load path deletes it first", then what you measured is not what the app sees and the
+conclusion is wrong — not approximately, but backwards.
+
+THE TEST, in order: (1) does the load path STRIP this field (`DERIVED_FIELDS` in `importFixup.ts`)?
+(2) is there an ACCESSOR — `makeupFractions(body)`, not `body.makeup` — that derives it when absent?
+(3) only if both are no, is the stored value the answer.
+
+THIS ENTRY EXISTS IN THIS FORM BECAUSE ITS FIRST FORM FAILED. It was written after the `classes`
+case, titled and scoped around `classes`, and filed here in the DATA (import) section — so when the
+same worker hit the identical fault ONE DAY LATER on `makeup`, none of that matched what they were
+looking at, and they shipped a wrong finding and had to retract it (v2.1.532). A rule named after the
+field it was learned from only catches that field. It is named after the MISTAKE now, and the two
+instances are demoted to examples. There are pointer comments at `makeupFractions` and at
+`DERIVED_FIELDS` for anyone who never reaches this file at all.
+
+EXAMPLE 1 — a stored `classes` array is a FOSSIL.
 WHERE: `src/lib/system/importFixup.ts` (`stripBody`, the `autoClassify` branch);
 `src/lib/system/classification.ts` (`classifyByFingerprint`)
 RULE: `fixUpImportedSystem` sets `body.classes = []` for every body EXCEPT one pinned with
@@ -1336,8 +1355,8 @@ Measured on loaded data, all four contradictions turned out not to exist — the
 the load path deletes, and Iota Horologii b loads as `planet/super-jupiter` alone. Both candidate
 causes were also wrong: `classifyByFingerprint` takes `[0]` of the sorted bases and then appends only
 `kind === 'modifier'`, so it cannot emit two bases at all.
-THE SAME TRAP HAS A SECOND FORM, ONE LAYER DOWN: reading a stored FIELD where the app calls an
-ACCESSOR that derives when the field is absent. `body.makeup` is empty on 107 of the 226 non-star
+EXAMPLE 2 — a stored FIELD where the app calls an ACCESSOR that derives when it is absent.
+`body.makeup` is empty on 107 of the 226 non-star
 bundled bodies including Jupiter — and it does not matter, because every consumer calls
 `makeupFractions(body)` (`physics/makeup.ts`), which infers a composition from mass and radius when
 the field is missing and returns gas 0.80 for all four Sol giants. An audit of `n.makeup?.gas ?? 0`
@@ -1347,6 +1366,30 @@ BLAST: any audit of `classes` or `image`; and note the legacy rules path in `cla
 hand-maintained `baseArchetypes` Set that lists ~17 of the rulepack's 64 `kind: 'base'` fingerprints —
 a second answer to "which classes are mutually exclusive", dormant only because the starter pack
 ships fingerprints. It is the shape that produced those fossils.
+
+### DATA-R9 Cross-matching star catalogues: DISTANCE discriminates, POSITION does not — and never subtract two parallaxes
+WHERE: `src/lib/import/realsky/convert.mjs` (`matchHostToStar`), `census.mjs`
+(`projectedSeparationAu`, `groupIntoSystems`)
+RULE: two facts about the nearest stars, both measured (2026-08-13) and both counter-intuitive.
+(a) POSITIONS DISAGREE BY ARCMINUTES, and worst for the famous stars. Catalogues quote positions at
+different EPOCHS, so the offset is proper motion times the epoch gap — and the stars a local map is
+made of are precisely the high-proper-motion ones. Measured against SIMBAD: Barnard's star is out by
+161 arcsec, Kapteyn's by 134, Proxima by 60. Match on DISTANCE (every true match agreed to better
+than 1.5%; 10% is a wide margin) with a GENEROUS angular gate of ~300 arcsec, and take the closest.
+(b) A 3D SEPARATION BUILT FROM TWO PARALLAXES IS NOISE. Each star's distance carries its own
+parallax error, so differencing two positions inside one system amplifies it: Sirius A and B differ
+by 1.2% in parallax, which at 8.6 ly fabricates 6,856 AU of separation for a pair genuinely ~20 AU
+apart, and eps Ind's brown-dwarf companion reads 11,698 AU against a true ~1,460. Use PROJECTED
+separation — angular separation times the MEAN distance — which cancels the shared error and
+recovers both (16 AU, 1,475 AU). Then require the parallaxes to AGREE (~10%) before calling two
+stars companions at all, or a chance line-of-sight alignment becomes a binary (Wolf 28 + HD 4628 did).
+WHY: an arcsecond-scale position tolerance silently drops exactly the stars a user would notice —
+Alpha Centauri came back with none of Proxima's planets on the first run — and a distance-difference
+grouping invents companions while missing real ones.
+BLAST: any second catalogue (Gaia, VizieR, WDS) joined to another; anything deciding whether two
+stars share a system. The period tier that makes that decision is `clusterGate`'s
+`ORBIT_AUTHOR_MAX_PERIOD_YR`, and it is calibrated: with projected separation it reproduces the
+hand-curated bundled groupings and puts Proxima in Alpha Centauri at 0.977 Myr.
 
 ### GEN-*  (generation engines, seeds, system creation)
 

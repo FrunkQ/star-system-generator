@@ -105,6 +105,33 @@ export function simbadResolveAdql(name) {
   );
 }
 
+// THE STELLAR CENSUS — the query that makes this a STARMAP importer (D18).
+//
+// The archive query above returns PLANET HOSTS, so a star with no confirmed planet was never in the
+// result set: no Sol, no Alpha Centauri A or B, while Proxima arrived because it happens to have
+// planets. This is the primary query now, and `archivePlanetsAdql` becomes an enrichment join.
+//
+// SIMBAD rather than Gaia for the near field, and the reason is measured (DATA-R6): SIMBAD sends
+// `Access-Control-Allow-Origin: *` and answers a browser directly, while the archive is always
+// CORS-blocked and Gaia is unverified. Gaia's cone stays below for the wide-field presets, where its
+// depth is the point.
+//
+// Planets are excluded in the query AND again in `census.normaliseStarRows`, because SIMBAD's own
+// `otype` is not reliable here: 40 Eridani b, a planet, is typed 'err'.
+export const SIMBAD_STAR_COLUMNS = ['main_id', 'ra', 'dec', 'plx_value', 'sp_type', 'otype'];
+
+export function simbadStarsAdql(region, { count = false } = {}) {
+  const distPc = '(1000.0/plx_value)';
+  const clauses = [
+    'plx_value > 0',
+    'ra is not null',
+    "otype not in ('Pl', 'Pl?')",
+    regionWhere(region, distPc)
+  ];
+  const cols = count ? 'count(*) as systems' : SIMBAD_STAR_COLUMNS.join(', ');
+  return `select ${cols} from basic where ${clauses.join(' AND ')}${count ? '' : ' order by plx_value desc'}`;
+}
+
 // ---------------------------------------------------------------- Gaia
 // The bulk population. parallax_over_error guards the distance shell against
 // junk parallaxes; the magnitude cut is the "Bright stars" preset's lever.

@@ -70,6 +70,18 @@ describe('normaliseStarRows', () => {
 		for (const d of dropped) { expect(d.id).toBeTruthy(); expect(d.reason).toBeTruthy(); }
 	});
 
+	// ORDER MATTERS, and getting it wrong reintroduced the exact absence D18 exists to fix. A
+	// container sits at essentially its primary's position, so running duplicate-detection FIRST let
+	// "* alf Cen" swallow "* alf Cen A" — leaving a system called "alf Cen B" with A missing.
+	it('never lets a container swallow its own component', () => {
+		const { stars } = normaliseStarRows([ALF_CEN, ALF_CEN_A, ALF_CEN_B]);
+		const ids = stars.map((s) => s.id);
+		expect(ids).toContain('* alf Cen A');
+		expect(ids).toContain('* alf Cen B');
+		expect(ids).not.toContain('* alf Cen');
+		expect(stars.length).toBe(2);
+	});
+
 	it('treats one object under two identifiers as one star', () => {
 		const alias = { ...ALF_CEN_A, id: 'HD 128620' };
 		expect(isSameObject(ALF_CEN_A, alias)).toBe(true);
@@ -111,6 +123,15 @@ describe('groupIntoSystems', () => {
 		const tight = groupIntoSystems([ALF_CEN_A, ALF_CEN_B, PROXIMA], { maxPeriodYr: 1000 });
 		expect(wide.length).toBe(1);
 		expect(tight.length).toBe(2);            // Proxima splits off; A+B (84 yr) stay together
+	});
+
+	// Projected separation deliberately ignores the line of sight — which is what makes it immune to
+	// parallax noise, and what would otherwise pair any two stars that happen to line up. Wolf 28 and
+	// HD 4628 were grouped exactly that way before the parallax-agreement gate went in.
+	it('does not pair a chance line-of-sight alignment', () => {
+		const near = S('near star', 100.0, -20.0, 300, 'M3V', 'PM*', 0.3);
+		const farBehind = { ...near, id: 'far star', plxMas: 120 };   // same sky spot, 2.5x further away
+		expect(groupIntoSystems([near, farBehind]).length).toBe(2);
 	});
 
 	it('returns every star exactly once', () => {

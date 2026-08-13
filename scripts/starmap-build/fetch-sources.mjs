@@ -76,12 +76,37 @@ async function fetchSimbad() {
   return out;
 }
 
+// --- SIMBAD: the STELLAR CENSUS, published for the in-app importer ----------
+// D18: the importer is a STARMAP importer, so its primary query is "which STARS
+// are in this region", not "which planet hosts". SIMBAD answers a browser
+// directly (it sends CORS headers, unlike the Exoplanet Archive), so the live
+// path needs no proxy — but the dialogue must still work at the table with no
+// network, so the same 12.7 pc bound the planet snapshot uses is published as a
+// stellar snapshot beside it.
+//
+// Planets are excluded here AND again in census.normaliseStarRows: SIMBAD's own
+// otype is not reliable for this (40 Eridani b, a planet, is typed 'err').
+const starCols = 'main_id, ra, dec, plx_value, sp_type, otype';
+const starQuery = encodeURIComponent(
+  `select ${starCols} from basic where plx_value > 0 and ra is not null ` +
+  `and otype not in ('Pl', 'Pl?') and (1000.0/plx_value) <= 12.7 order by plx_value desc`
+);
+const starUrl = `https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=${starQuery}`;
+
 const archive = await tap(psUrl, 'NASA Exoplanet Archive pscomppars (<12.7 pc)');
 writeFileSync(join(cacheDir, 'archive-pscomppars.json'), JSON.stringify(archive, null, 1));
 // Also published as a static asset: the in-app real-sky importer falls back to
 // it when the live TAP service is unreachable (src/lib/import/realsky/catalogue.mjs).
 writeFileSync(join(here, '..', '..', 'static', 'realsky', 'pscomppars.json'), JSON.stringify(archive, null, 1));
 console.log(`  ${archive.length} planet rows cached (+ static/realsky copy).`);
+
+const stars = await tap(starUrl, 'SIMBAD stellar census (<12.7 pc)');
+const starRows = stars.data
+  ? stars.data.map(([main_id, ra, dec, plx_value, sp_type, otype]) => ({ main_id, ra, dec, plx_value, sp_type, otype }))
+  : stars;
+writeFileSync(join(cacheDir, 'simbad-stars.json'), JSON.stringify(starRows, null, 1));
+writeFileSync(join(here, '..', '..', 'static', 'realsky', 'stars.json'), JSON.stringify(starRows, null, 1));
+console.log(`  ${starRows.length} stellar rows cached (+ static/realsky copy).`);
 
 const simbad = await fetchSimbad();
 writeFileSync(join(cacheDir, 'simbad-roster.json'), JSON.stringify(simbad, null, 1));

@@ -9,8 +9,8 @@
   // refuses to invent or overwrite, and this dialogue is where that shows.
   import { createEventDispatcher } from 'svelte';
   import { REGION_PRESETS } from '$lib/import/realsky/presets.mjs';
-  import { loadArchiveRows } from '$lib/import/realsky/catalogue.mjs';
-  import { convertArchiveRows } from '$lib/import/realsky/convert.mjs';
+  import { loadArchiveRows, loadStarRows } from '$lib/import/realsky/catalogue.mjs';
+  import { convertRegion } from '$lib/import/realsky/convert.mjs';
   import { runTap, simbadResolveAdql } from '$lib/import/realsky/query.mjs';
   import { buildSgrAStarSystem, SGR_A_MAP_META } from '$lib/import/realsky/sgrastar.mjs';
   import { parallaxMasToLy } from '$lib/import/realsky/positions.mjs';
@@ -36,6 +36,12 @@
   let centre: Centre = SOL;
   let radiusLy = 16.5;
   let fillOut = false;
+
+  // D18 — the STAR catalogue is the source and the archive is joined onto it, so a star with no
+  // confirmed planet arrives like any other. `rows` is still the archive; `starRows` is the census.
+  export let rulePack: any = null;
+  let starRows: any[] | null = null;
+  let solPreset: any = null;
 
   let rows: any[] | null = null;
   let rowsCentreKey = '';
@@ -65,12 +71,15 @@
     // The converter decides what is already present, from the ids of the map
     // being imported INTO — none for a new starmap, which is the whole point:
     // a star curated on some other map is not a reason to withhold it here.
-    preview = convertArchiveRows(rows, {
-      region: region(),
-      mapCentrePx: mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX,
-      existingSystemIds: existingSystems.map((s) => s.id),
-      generated: new Date().toISOString().slice(0, 10)
-    });
+    preview = convertRegion(
+      { starRows: starRows ?? [], planetRows: rows, solPreset, statTemplates: rulePack?.statTemplates ?? null },
+      {
+        region: region(),
+        mapCentrePx: mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX,
+        existingSystemIds: existingSystems.map((s) => s.id),
+        generated: new Date().toISOString().slice(0, 10)
+      }
+    );
     announceRadius();
   }
 
@@ -88,8 +97,19 @@
     loading = true; loadError = null;
     try {
       // Fetch generously (the max slider radius) so slider moves never refetch.
-      const result = await loadArchiveRows({ centre: c, radiusLy: Math.max(r, 41) });
-      rows = result.rows; source = result.source; sourceWarning = result.warning;
+      const wide = { centre: c, radiusLy: Math.max(r, 41) };
+      // The STAR census is the primary query now; the archive is the enrichment join. Both are
+      // fetched at the max slider radius so a slider move never refetches.
+      const [starResult, result] = await Promise.all([loadStarRows(wide), loadArchiveRows(wide)]);
+      starRows = starResult.rows;
+      rows = result.rows;
+      // Sol is not in an exoplanet archive - our planets are not exoplanets - and must never be
+      // handed an invented system, so it comes from the shipped preset when the region reaches it.
+      if (!solPreset) {
+        try { solPreset = await (await fetch('/examples/Sol_2030-System.json')).json(); } catch { solPreset = null; }
+      }
+      source = result.source;
+      sourceWarning = starResult.warning ?? result.warning;
       rowsCentreKey = centreKey(c);
       refreshPreview();
     } catch (e) {
@@ -138,10 +158,13 @@
   function countAt(r: number): number {
     if (!rows) return 0;
     const mapCentrePx = mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX;
-    const out = convertArchiveRows(rows, {
-      region: { centre, radiusLy: r }, mapCentrePx,
-      existingSystemIds: existingSystems.map((s) => s.id), generated: 'count'
-    });
+    const out = convertRegion(
+      { starRows: starRows ?? [], planetRows: rows, solPreset, statTemplates: rulePack?.statTemplates ?? null },
+      {
+        region: { centre, radiusLy: r }, mapCentrePx,
+        existingSystemIds: existingSystems.map((s) => s.id), generated: 'count'
+      }
+    );
     return out.systems.length;
   }
 

@@ -1797,7 +1797,7 @@
         on:realSkyImport={() => (showRealSkyImportModal = true)}
     />
     {#if showRealSkyImportModal}
-      <RealSkyImportModal on:import={handleRealSkyImport} on:close={() => (showRealSkyImportModal = false)} />
+      <RealSkyImportModal rulePack={effectiveRulePack} on:import={handleRealSkyImport} on:close={() => (showRealSkyImportModal = false)} />
     {/if}
   {:else if $starmapStore && currentSystemId}
     <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->

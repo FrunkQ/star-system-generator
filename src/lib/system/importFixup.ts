@@ -16,6 +16,12 @@ import { spinProvenanceTags } from '$lib/generation/spinProvenance';
 
 // Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
 // so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
+//
+// DATA-R8: EVERY NAME IN THIS LIST IS A FOSSIL IN A SAVED FILE. Reading one out of
+// `static/example-starmaps/**` or `static/examples/**` and concluding anything from it measures what
+// some earlier build believed, not what the app shows — the load path deletes it and re-derives.
+// Audit through `systemProcessor.process(fixUpImportedSystem(sys, pack), pack)` instead. This has
+// produced two wrong findings (`classes`, then `makeup`) on consecutive days.
 const DERIVED_FIELDS = [
   'calculatedGravity_ms2', 'calculatedRotationPeriod_s', 'orbital_period_days', 'distanceToHost_km',
   'equilibriumTempK', 'equilibriumTempMinK', 'equilibriumTempMaxK', 'greenhouseTempK', 'temperatureK',

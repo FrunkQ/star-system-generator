@@ -137,6 +137,10 @@ export function inferMakeupFromDensity(density_gcc: number): Makeup {
 // The normalised makeup fractions for a body: explicit if present, else inferred from its bulk
 // density. The measured density is gravity-COMPRESSED, so we decompress by mass first — a small,
 // dense body is iron (Mercury), not compressed rock. Used by the classifier + the body panel.
+// DATA-R8: THIS is the composition, not `body.makeup`. The stored field is empty on 107 of the 226
+// non-star bundled bodies — Jupiter among them — and it does not matter, because every consumer
+// calls this. If you are about to conclude that a body "has no composition" or that some test
+// keyed on gas fraction is dead, measure through HERE and not through the field.
 export function makeupFractions(body: CelestialBody): Required<Makeup> {
   if (body.makeup) return normalizeMakeup(body.makeup);
   const massKg = body.massKg || 0;

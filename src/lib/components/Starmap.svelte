@@ -1662,6 +1662,7 @@
 
   {#if showRealSkyModal}
       <RealSkyImportModal
+          {rulePack}
           mode="append"
           anchorPx={realSkyAnchor}
           existingSystems={starmap.systems}

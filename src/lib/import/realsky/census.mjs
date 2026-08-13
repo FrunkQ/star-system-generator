@@ -103,18 +103,13 @@ export function normaliseStarRows(rows, { resolutionFloorAu = 20000 } = {}) {
     return true;
   });
 
-  // Exact duplicates — same object under two identifiers.
-  const unique = [];
-  for (const r of notPlanets) {
-    const twin = unique.find((u) => isSameObject(u, r));
-    if (twin) { dropped.push({ id: r.id, reason: `duplicate of ${twin.id}` }); continue; }
-    unique.push(r);
-  }
-
-  // Containers, once we know which components survived.
-  const stars = unique.filter((r) => {
+  // CONTAINERS FIRST, and the order matters. A container sits at essentially its primary's position,
+  // so running duplicate-detection first lets the container swallow its own component: "* alf Cen A"
+  // was dropped as a duplicate of "* alf Cen", leaving a system called "alf Cen B" with A missing —
+  // the exact absence D18 exists to fix, reintroduced by the fix.
+  const withoutContainers = notPlanets.filter((r) => {
     if (!CONTAINER_OTYPES.test(r.otype ?? '')) return true;
-    const comps = unique.filter((o) => o !== r && !CONTAINER_OTYPES.test(o.otype ?? '')
+    const comps = notPlanets.filter((o) => o !== r && !CONTAINER_OTYPES.test(o.otype ?? '')
       && projectedSeparationAu(o, r) < resolutionFloorAu);
     if (comps.length) {
       dropped.push({ id: r.id, reason: `multiple-star container; components present (${comps.map((c) => c.id).join(', ')})` });
@@ -122,6 +117,14 @@ export function normaliseStarRows(rows, { resolutionFloorAu = 20000 } = {}) {
     }
     return true;   // the only record of its system — keep it
   });
+
+  // Then true duplicates: the same object under two identifiers.
+  const stars = [];
+  for (const r of withoutContainers) {
+    const twin = stars.find((u) => isSameObject(u, r));
+    if (twin) { dropped.push({ id: r.id, reason: `duplicate of ${twin.id}` }); continue; }
+    stars.push(r);
+  }
 
   return { stars, dropped };
 }
@@ -133,12 +136,19 @@ export function normaliseStarRows(rows, { resolutionFloorAu = 20000 } = {}) {
  * than this. Defaults to `ORBIT_AUTHOR_MAX_PERIOD_YR`, which is also what decides whether an orbit
  * is worth authoring at all — one line, one meaning.
  */
-export function groupIntoSystems(stars, { maxPeriodYr = ORBIT_AUTHOR_MAX_PERIOD_YR } = {}) {
+export function groupIntoSystems(stars, { maxPeriodYr = ORBIT_AUTHOR_MAX_PERIOD_YR, maxParallaxFrac = 0.1 } = {}) {
   const parent = stars.map((_, i) => i);
   const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
 
   for (let i = 0; i < stars.length; i++) {
     for (let j = i + 1; j < stars.length; j++) {
+      // COMPANIONS SHARE A DISTANCE. Projected separation deliberately ignores the line of sight,
+      // which is what makes it immune to parallax noise — and which would otherwise pair any two
+      // stars that happen to line up. Wolf 28 and HD 4628 were grouped exactly that way. A physical
+      // pair agrees on parallax to a few per cent (the widest real case here is Proxima against
+      // Alpha Cen A at 3.4%); a chance alignment does not.
+      const meanPlx = (stars[i].plxMas + stars[j].plxMas) / 2;
+      if (Math.abs(stars[i].plxMas - stars[j].plxMas) / meanPlx > maxParallaxFrac) continue;
       const aAu = projectedSeparationAu(stars[i], stars[j]);
       // Cheap reject before the sqrt: nothing this far apart orbits in under a Myr at stellar mass.
       if (aAu > 5e5) continue;
