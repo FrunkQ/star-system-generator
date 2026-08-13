@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.550-beta - 13th Aug 2026
+
+* Planning, no product change: a design outline for a piece of tidying to do before the generators are rewritten. Worlds and stars can be picked by type, and separately the app works out a type from a world's physics — the same question answered forwards and backwards. For planets those two share one description of what each type IS, and agree. For stars they do not: there is no description of a star type in terms of physics at all, only two informal ladders and three separate tables of typical figures that disagree in places.
+* Nothing is broken today, and the outline says so plainly — the places the tables disagree are figures nothing sorts on. The reason to do it first is that rewriting the generators is exactly when a fourth table would get invented, and when picking a type and getting a different one back would start happening quietly.
+
 ## v2.1.549-beta - 13th Aug 2026
 
 * The real-sky import dialogue now describes what it actually does. Its wording still promised "every confirmed planet host" and "only planets the archive lists as confirmed" — true of the old behaviour, and the exact opposite of the new one, since the whole point of the change is that stars without planets now come too. Spotted by the owner in the running dialogue.
