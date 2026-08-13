@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.546-beta - 13th Aug 2026
+
+* Brown dwarfs are selectable as a star type but the generator had no figures for them, so an L, T or Y dwarf it had to fill in fell back to a Sun-like 0.92 solar masses and 5,600 K. The three classes now have their own mass, size and temperature ranges, matching the ones the star editor already offered.
+* Groundwork for the real-sky importer, no change yet to what it brings back: the parts that turn a list of stars into systems. Two things a raw star catalogue gets wrong are handled — it lists multiple-star systems and their member stars as if both were stars, and its distances are precise enough to place a star but not to measure the gap between two of them, which for Sirius A and B invents a 6,856 AU separation for a pair genuinely about 20 apart. Which stars share a system is decided by the rule the app already uses for how long they take to orbit each other, so it stays consistent with everything else and remains adjustable.
+
 ## v2.1.545-beta - 7th Aug 2026
 
 * Likely cause found for pinch-zoom failing on phones and tablets: the view recognises a deliberate zoom from a mouse wheel only, and a pinch is not a wheel. So the pinch moves the camera and the view quietly puts it back, which is why turning the map still works while zooming does not, and why a laptop is unaffected. Not yet fixed — the finding is handed to the session that owns that code.
