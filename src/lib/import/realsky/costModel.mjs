@@ -3,7 +3,7 @@
 // Pure functions, kept OUT of the dialogue component so they can be tested against counts the
 // catalogue does not happen to produce today.
 //
-// RE-DERIVED FOR THE STELLAR CENSUS (D18, v2.1.543). This file used to say its thresholds were
+// RE-DERIVED FOR THE STELLAR CENSUS (D18, v2.1.547). This file used to say its thresholds were
 // calibrated against "confirmed-planet hosts", "a small population, so today every import lands in
 // the green band" — and that was exactly true: before the pipeline inverted, a 41 ly import returned
 // 92 systems and every band was green. A stellar census is several times larger, so the guardrails
