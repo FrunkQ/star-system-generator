@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.549-beta - 13th Aug 2026
+
+* The real-sky import dialogue now describes what it actually does. Its wording still promised "every confirmed planet host" and "only planets the archive lists as confirmed" — true of the old behaviour, and the exact opposite of the new one, since the whole point of the change is that stars without planets now come too. Spotted by the owner in the running dialogue.
+
 ## v2.1.548-beta - 7th Aug 2026
 
 * Decided for the cosmic web: it will be built the way cosmologists actually describe it — as a foam of bubbles, where the empty voids are the bubbles, galaxies gather on the films between them, and clusters sit where several films meet. One simple rule produces voids, sheets, filaments and clusters together, so none of them has to be drawn by hand.

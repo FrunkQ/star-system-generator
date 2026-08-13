@@ -240,9 +240,9 @@
         alongside everything already on the map. The ring on the map shows the footprint as you
         adjust the radius.
       {:else}
-        Build a starmap from the astronomy catalogues: true 3D positions, and only planets the
-        NASA Exoplanet Archive lists as confirmed. Pick a worked example, or centre on any star
-        SIMBAD knows.
+        Build a starmap from the astronomy catalogues: every known star in the region at its true
+        3D position, with the planets the NASA Exoplanet Archive lists as confirmed attached where
+        it has them. Pick a worked example, or centre on any star SIMBAD knows.
       {/if}
     </p>
 
