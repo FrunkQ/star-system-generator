@@ -613,6 +613,35 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S23 A working MOUSE path is no evidence at all about TOUCH
+WHERE: `viewport/cameraRig.ts:ownsDistance` (exported, pinned in `cameraRig.spec.ts`), bound by the
+pointer/wheel listeners in `holo/scene.ts`. Reported as C10.
+RULE: name the SET of inputs a rule admits, in one exported place, and pin it. Never spell an input
+rule as a test against ONE member (`kind !== 'wheel'`) — the member is the mouse, and the set is
+what has to include touch. A pinch fires NO wheel event: it arrives as two pointers, and three's
+OrbitControls consumes it as a dolly (`touches.TWO` defaults to `DOLLY_PAN`), so the camera really
+does move and only the rig's own bookkeeping is missing.
+WHY: RENDER-S15's rule (each camera quantity comes from the input that OWNS it) was RIGHT, and its
+expression silently excluded every phone and tablet for as long as the rule has existed. On a
+pinch, OrbitControls dollied, `pointermove` noted the gesture as `'drag'` — the ROTATE kind — and
+the next frame's reconciliation restored the previous zoom. So pinch did nothing while rotate
+worked, on mobile only, and a page REFRESH appeared to fix it: nothing was broken, the camera was
+being politely corrected. A user reported it as "I can't zoom in or zoom out anymore".
+BLAST: **DESKTOP DEVELOPMENT NEVER EXERCISES TOUCH, AND AGENT SESSIONS CANNOT EXERCISE IT AT ALL** —
+the Browser pane emulates touch points but a genuine two-finger pinch is not reliably reproducible,
+and the pane often will not composite for a worker session. This is RENDER-S19's lesson in a second
+family: a path nothing has ever EXERCISED has never been tested, and the test suite passing says
+nothing about it. Any new input path needs a real device in the loop, planned in rather than hoped
+for. Check the OTHER surfaces when touching one: the 2D orrery and both starmaps share
+`input/gestures.ts` (which handles pinch properly and wires `onZoom`), the 3D starmap has no
+base/offset rig at all so nothing second-guesses its dolly, and `holo/scene.ts` was the sole
+casualty precisely BECAUSE it is the only surface that reconciles the camera against intent.
+ALSO: nothing listened for `webglcontextlost` until this entry's commit. It was investigated here
+as a cause and refuted, but the blindness was real — a dropped context freezes the last frame,
+throws nothing, and reaches no instrument. It is now counted into `[sse-perf]` (`holo.glContextLost`
+/ `holo.glContextRestored`) and the `gl` provider. RECOVERY IS NOT BUILT: rebuild on restore when a
+counter proves it happens, not before.
+
 ### RENDER-S22 The scene-rebuild path is INSTRUMENTED — switch the meters on before theorising about it
 WHERE: `perfTrace.ts` (`?perf=1`, `localStorage['sse-perf']='1'`, or `window.__ssePerf.enable()`);
 counters registered by `holo/scene.ts` and `broadcast.ts`. Full index: `docs/dev/debug-tools.md`.

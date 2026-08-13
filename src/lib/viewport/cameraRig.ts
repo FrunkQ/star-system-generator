@@ -191,3 +191,23 @@ export function shotReached(from: { target: Vec3; camera: Vec3 }, to: { target: 
 	const b = scale(sub(to.camera, to.target), 1 / td);
 	return dot(a, b) > 1 - tol * tol;
 }
+
+/**
+ * WHICH INPUT KINDS OWN THE CAMERA'S DISTANCE.
+ *
+ * RENDER-S15's rule - take each camera quantity from the input that OWNS it - applied to distance:
+ * a drag rotates and must never change it, so the rig reads distance back off the camera only when
+ * a ZOOM gesture put it there. Anything else keeps the zoom it already had, which is what makes an
+ * unexplained camera creep unable to masquerade as intent.
+ *
+ * IT LIVES HERE, EXPORTED AND PINNED, BECAUSE THE SET IS THE PART THAT GOES WRONG. Written inline
+ * in the scene as `kind !== 'wheel'` it was correct for a mouse and silently excluded every touch
+ * device: a pinch fires no wheel event, so every pinch-zoom was reverted the next frame on every
+ * phone and tablet (C10 - "I can't zoom in or zoom out anymore", cleared by a refresh because
+ * nothing was broken, only continuously corrected). One tested definition is what stops the next
+ * input kind inheriting the same blind spot - the scene binds it, never restates it (RENDER-S11's
+ * discipline, applied to input rather than to size).
+ */
+export function ownsDistance(kind: string): boolean {
+	return kind === 'wheel' || kind === 'pinch';
+}

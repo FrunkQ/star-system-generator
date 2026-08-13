@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.551-beta - 13th Aug 2026
+
+* **Fixed: on phones and tablets, pinch-to-zoom did nothing on the 3D system view.** Rotating and tilting always worked, which is why it read as "I can't zoom in or zoom out any more", and why reloading the page appeared to fix it -- nothing was ever broken. The view kept a rule that only the mouse wheel is allowed to change how close you are, so a pinch moved the camera and the view politely put it back a frame later. Every kind of zoom gesture now counts, and the rule is written down and tested in one place so the next kind of input cannot be left out the same way. Desktop behaviour is unchanged.
+* Fixed: lifting your fingers out of a pinch could select whatever was under them, because a two-finger gesture was being judged by the same "did it move far enough to be a drag" test as a single tap.
+* Internal: the app now notices if a device's graphics context is dropped -- a real possibility on a phone under memory pressure, and previously invisible: the picture would freeze with nothing in any log to explain it. It is recorded in the performance trace and the diagnostic bundle. Recovering from it automatically is deliberately left until we know it actually happens.
+
 ## v2.1.550-beta - 13th Aug 2026
 
 * Planning, no product change: a design outline for a piece of tidying to do before the generators are rewritten. Worlds and stars can be picked by type, and separately the app works out a type from a world's physics — the same question answered forwards and backwards. For planets those two share one description of what each type IS, and agree. For stars they do not: there is no description of a star type in terms of physics at all, only two informal ladders and three separate tables of typical figures that disagree in places.

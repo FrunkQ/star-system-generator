@@ -57,7 +57,7 @@ import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLO
 import { frameLevelsFrom, firstFrameLevel, nextFrameLevel, prevFrameLevel, FRAME_LEVELS } from '$lib/viewport/camera';
 import { frameDistanceFor, wholeSystemDistance, beltDistance, headingDirection, hostWouldOcclude } from '$lib/viewport/shotSolver';
 import {
-  IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, wheelZoomSpeed, blendToward, shotReached, isIdentity,
+  IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, wheelZoomSpeed, blendToward, shotReached, isIdentity, ownsDistance,
   type ViewOffset, type Shot
 } from '$lib/viewport/cameraRig';
 import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
@@ -367,8 +367,34 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   perfProvider('gl', () => ({
     geometries: renderer.info.memory.geometries,
     textures: renderer.info.memory.textures,
-    programs: renderer.info.programs?.length ?? 0
+    programs: renderer.info.programs?.length ?? 0,
+    ...(glContextLost ? { contextLost: glContextLost } : {}),
+    ...(glContextRestored ? { contextRestored: glContextRestored } : {})
   }));
+
+  // WEBGL CONTEXT LOSS, AS AN INSTRUMENT. Nothing in this app listened for it before (C10, where it
+  // was investigated as a cause and refuted). The blindness is the point rather than the fault: a
+  // mobile GPU CAN drop a context under memory pressure, and if it ever does, the app currently
+  // cannot tell - the canvas holds its last image, no exception is thrown, nothing reaches
+  // [sse-perf] or the diagnostic bundle, and the user has an unreportable freeze that a refresh
+  // "fixes". Counting it makes the next report answerable in one line instead of a session.
+  //
+  // preventDefault on the loss event is what PERMITS a restore; without it the browser may never
+  // fire `webglcontextrestored`. The actual recovery (rebuilding the scene on restore) is
+  // deliberately NOT built here - build it when a counter says it happens, not before.
+  let glContextLost = 0;
+  let glContextRestored = 0;
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    glContextLost++;
+    perfCount('holo.glContextLost');
+    console.warn('[holo] WebGL context LOST - the scene is frozen from here; a reload restores it.');
+  });
+  canvas.addEventListener('webglcontextrestored', () => {
+    glContextRestored++;
+    perfCount('holo.glContextRestored');
+    console.warn('[holo] WebGL context restored - the scene is NOT rebuilt automatically yet (C10).');
+  });
 
   const scene = new THREE.Scene();
   // Background as scene.background (a colour-managed Color), NOT renderer.setClearColor: a bare clear
@@ -2038,9 +2064,44 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const pointer = new AbortController();
   let downX = 0;
   let downY = 0;
-  canvas.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; }, { signal: pointer.signal });
+  // LIVE TOUCH POINTS, because a PINCH is a third kind of input and neither of the other two
+  // listeners can see it. It is not a wheel (no wheel event is fired by touch hardware) and it must
+  // not be treated as a drag (that is the ROTATE kind, and noting it as such is what discarded its
+  // own zoom - C10). OrbitControls does dolly on it: `touches.TWO` is three's DOLLY_PAN default and
+  // is never overridden here, so the camera really does move and the rig simply has to be told by
+  // WHAT, or `ownsDistance` puts the distance back the next frame.
+  const activePointers = new Map<number, { x: number; y: number }>();
+  let pinchSpan = 0;
+  const spanOf = () => {
+    const it = activePointers.values();
+    const a = it.next().value, b = it.next().value;
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  };
+  const dropPointer = (e: PointerEvent) => {
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) pinchSpan = 0; // the gesture is over; the next one re-measures
+  };
+  canvas.addEventListener('pointerdown', (e) => {
+    downX = e.clientX; downY = e.clientY;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activePointers.size === 2) pinchSpan = spanOf(); // the baseline this gesture is measured from
+  }, { signal: pointer.signal });
   canvas.addEventListener('pointermove', (e) => {
     if (e.buttons === 0) return;
+    const pt = activePointers.get(e.pointerId);
+    if (pt) { pt.x = e.clientX; pt.y = e.clientY; }
+    if (activePointers.size >= 2) {
+      // A PINCH. Its own sign, on the WHEEL'S convention so both zoom kinds report alike: fingers
+      // spreading = zooming IN = negative, matching a wheel's -deltaY. The threshold is a couple of
+      // pixels, enough that resting fingers do not register as a gesture.
+      const span = spanOf();
+      if (pinchSpan > 0 && span > 0 && Math.abs(span - pinchSpan) > 2) {
+        noteUserInput('pinch', Math.sign(pinchSpan - span));
+        pinchSpan = span;
+        reframing = false;   // as the wheel does: touching the zoom hands the camera over NOW
+      }
+      return;                // NOT a drag - see the note above the pointer map
+    }
     if (Math.hypot(e.clientX - downX, e.clientY - downY) <= 6) return;
     // ANY drag is the user driving the camera - in 3D it orbits, on a flat map it pans. Either way
     // OrbitControls is about to move the camera on their behalf, so the rig may believe what it
@@ -2049,6 +2110,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     reframing = false;       // don't finish an in-flight blend against their drag
     if (flatOverhead) followEngaged = false; // a PAN is the orrery's MANUAL: it drops the follow
   }, { signal: pointer.signal });
+  canvas.addEventListener('pointercancel', dropPointer, { signal: pointer.signal });
   // The user driving zoom (wheel / pinch) takes the camera off auto-framing — the orrery's rule, so the
   // view never fights someone looking around. Cleared by the next explicit (re)frame (focusBody/pickBody).
   canvas.addEventListener('wheel', (e) => {
@@ -2060,6 +2122,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   }, { passive: true, signal: pointer.signal });
   canvas.addEventListener('pointerup', (e) => {
+    const wasPinching = activePointers.size >= 2;
+    dropPointer(e); // BEFORE the early return below, or a lifted finger stays in the map forever
+    if (wasPinching) return; // lifting out of a pinch is not a tap, whatever the travel says
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return; // a drag = orbit, not a pick
     const rect = canvas.getBoundingClientRect();
     // Shader-space uv of the cursor (y up). If a distorting filter is active the on-screen image is
@@ -2914,7 +2979,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // for one frame before the creep hauled it back, which is exactly "something fighting me to
       // maintain the view". With zoom sourced only from wheel input, that creep cannot be mistaken
       // for intent, whatever is causing it.
-      if (lastInput.kind !== 'wheel' || nowMs > userInputUntil) {
+      // ...and the test is `ownsDistance`, not a literal 'wheel'. Written as the literal, this line
+      // reverted every PINCH on every touch device: the gesture dollied the camera, the rig was not
+      // told a zoom had happened, and the distance was politely put back the next frame (C10).
+      if (!ownsDistance(lastInput.kind) || nowMs > userInputUntil) {
         viewOffset = { rot: viewOffset.rot, zoom: zoomBeforeDerive };
       }
     }

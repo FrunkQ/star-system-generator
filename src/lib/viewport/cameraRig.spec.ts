@@ -4,8 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	IDENTITY_OFFSET, composeShot, deriveOffset, clampZoom, wheelZoomSpeed, blendToward, shotReached,
-	quatFromUnitVectors, applyQuat, isIdentity, type Shot
-} from './cameraRig';
+	quatFromUnitVectors, applyQuat, isIdentity, type Shot, ownsDistance } from './cameraRig';
 import type { Vec3 } from './shotSolver';
 
 const v = (x: number, y: number, z: number): Vec3 => ({ x, y, z });
@@ -350,5 +349,34 @@ describe('wheelZoomSpeed - the notch adapts to how deep the camera is', () => {
 		};
 		expect(climb(1e-9, 0.12)).toBeLessThan(80); // the black stretch: was ~310 at fixed speed 1
 		expect(climb(1e-9, 12)).toBeLessThan(140); // the whole climb: was ~450
+	});
+});
+
+// C10: PINCH-ZOOM WAS REVERTED ON EVERY TOUCH DEVICE. The rig reads the distance back off the
+// camera only when a zoom gesture put it there (RENDER-S15); that set was written inline in the
+// scene as `kind !== 'wheel'`, which is right for a mouse and wrong for every phone, because a
+// pinch fires no wheel event. OrbitControls dollied the camera, the rig was never told a zoom had
+// happened, and the distance was put back the next frame - so pinch did nothing while rotate
+// worked, and a refresh appeared to "fix" it because nothing was ever broken.
+//
+// This is the regression test for the SET, which is the part that goes wrong. A drag must not own
+// the distance (that fault is already paid for - a ~0.72%/frame creep rode the derived zoom to the
+// min-distance clamp), and every ZOOM gesture must, whatever hardware it arrives from.
+describe('ownsDistance - which inputs may move the camera in and out (C10)', () => {
+	it('accepts BOTH zoom gestures: the wheel and the pinch', () => {
+		expect(ownsDistance('wheel')).toBe(true);
+		expect(ownsDistance('pinch')).toBe(true);
+	});
+
+	it('rejects a drag - a drag rotates, and must never change the distance', () => {
+		expect(ownsDistance('drag')).toBe(false);
+	});
+
+	it('rejects everything that is not a zoom, including the turntable and the unknown', () => {
+		// The turntable moves the camera on the user's behalf but is not them reaching for the
+		// distance; 'other' is noteUserInput's default and must never be trusted with it.
+		for (const kind of ['turntable', 'other', '', 'zoom', 'Wheel', 'PINCH']) {
+			expect(ownsDistance(kind)).toBe(false);
+		}
 	});
 });
