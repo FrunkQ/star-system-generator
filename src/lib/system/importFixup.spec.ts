@@ -69,8 +69,19 @@ describe('fixUpImportedSystem', () => {
     expect(p.makeup).toEqual({ rock: 0.7, metal: 0.3 });
     expect(p.hydrosphere.composition).toBe('water');
     expect(p.atmosphere.composition.O2).toBe(0.21);
-    // tags: only the authored one survives
-    expect(p.tags.map((t: any) => t.key)).toEqual(['faction/empire']);
+    // Tags: the authored one survives every strip, and NOTHING derived does — except the spin
+    // provenance tag, which is ADDED here rather than kept. This body has no `axial_tilt_deg`, so
+    // the fix-up infers one (D8: an exoplanet's obliquity is unmeasurable and fiction data rarely
+    // carries one), and D2a requires that an inferred value be distinguishable from a measured one.
+    // The tag is the mechanism, so its presence is the assertion that the inference is HONEST.
+    expect(p.tags.map((t: any) => t.key).sort()).toEqual(['faction/empire', 'spin/axis-inferred']);
+    expect(p.axial_tilt_deg).toBeGreaterThanOrEqual(0);
+    // …and an AUTHORED tilt is never overwritten, nor labelled as inferred.
+    const authored = { id: 'a', name: 'a', kind: 'body', roleHint: 'planet', parentId: 'star',
+      massKg: EARTH_MASS_KG, radiusKm: 6371, axial_tilt_deg: 23.44, tags: [] } as any;
+    fixUpImportedSystem({ id: 's2', name: 's2', nodes: [authored] } as unknown as System);
+    expect(authored.axial_tilt_deg).toBe(23.44);
+    expect(authored.tags.map((t: any) => t.key)).toEqual([]);
 
     // STAR spectral class must survive — the processor never re-derives it, so wiping it would
     // leave the star colourless (renders white). The planet's class is still cleared (re-derived).

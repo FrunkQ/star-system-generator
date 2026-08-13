@@ -1,6 +1,7 @@
 // src/lib/generation/planet.ts
 import type { CelestialBody, Barycenter, RulePack, Orbit } from '../types';
 import { SeededRNG } from '../rng';
+import { inferAxialTilt } from '../physics/axialTilt';
 import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
@@ -266,18 +267,13 @@ export function _generatePlanetaryBody(
     // Its own rng stream, keyed on the body id: drawing from the shared stream would shift every
     // subsequent draw and silently re-roll every planet in every saved seed (the B9a precedent).
     if (planet.axial_tilt_deg == null) {
-        const tiltRng = new SeededRNG(`${planet.id}-tilt`);
-        const sigma = pack.generation_parameters?.axial_tilt_disc_sigma_deg ?? 15;
-        const catastropheChance = pack.generation_parameters?.axial_tilt_catastrophe_chance ?? 0.1;
-        let tilt: number;
-        let tipped = false;
-        if (tiltRng.nextFloat() < catastropheChance) {
-            tilt = Math.acos(2 * tiltRng.nextFloat() - 1) * (180 / Math.PI);
-            tipped = true;
-        } else {
-            tilt = Math.min(89.9, sigma * Math.sqrt(-2 * Math.log(1 - tiltRng.nextFloat())));
-        }
-        planet.axial_tilt_deg = Math.round(tilt * 10) / 10;
+        // The model itself now lives in `physics/axialTilt.ts`, unchanged — same seed string, same
+        // two populations, same knobs. It moved because B10 fixed this for GENERATED worlds only,
+        // and the identical hole was still open on the import and hand-authored routes (D8): 45
+        // real-sky exoplanets and ~50 fiction worlds with no tilt at all. One model, three routes.
+        const spin = inferAxialTilt(planet.id, pack);
+        planet.axial_tilt_deg = spin.tiltDeg;
+        const tipped = spin.tipped;
         // D2a's constraint: an INVENTED number must be distinguishable from a MEASURED one, or a
         // generated world sitting in the same starmap as Earth asserts its obliquity just as firmly.
         // Shared with SystemView's manual route — spinProvenance.ts holds which values qualify and

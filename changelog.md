@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.539-beta - 13th Aug 2026
+
+* Worlds that nobody ever gave an axial tilt now get a plausible one, and say that it was worked out rather than measured. Two groups needed it: real exoplanets, whose tilt is essentially impossible to observe and will never appear in a catalogue, and invented worlds where nobody wrote one down. 56 worlds in the Local Neighbourhood map and 87 in the science-fiction one gain a tilt; the real Solar System is untouched, because a tilt that was actually recorded is never overwritten.
+* The model is the one the generator was already using for the worlds it invents, moved somewhere all three routes can reach it — it had only ever run for randomly generated systems. Most worlds come out modestly tilted, a median of 19 degrees with roughly four in five under 30, because a world forms from a flat disc; about one in ten is knocked onto its side or turned over entirely by a large impact, which is how the real Solar System got Uranus and Venus. Both halves are adjustable per starmap.
+* Each world's tilt is fixed by its own identity, so reloading or re-importing gives the same worlds back rather than re-rolling them. Previously any world without a tilt was quietly assumed to be tilted 25 degrees — the same figure for every one of them, with nothing to say it had been assumed.
+
 ## v2.1.538-beta - 13th Aug 2026
 
 * Removing an automatic centre-of-gravity marker no longer strands whatever was attached to it. When two worlds are close enough to swing about a shared point the app makes one of these markers, and when the arrangement changes it takes it away again — but it only ever reattached the two worlds it was made for. Anything else hanging off it was left pointing at something that no longer existed, which cuts that world off from its star entirely: no temperature, no eclipses, nothing. A moon in the bundled Traveller example is in exactly that state, which is how this was found.

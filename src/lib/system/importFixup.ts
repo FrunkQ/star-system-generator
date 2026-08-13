@@ -11,6 +11,8 @@ import type { System, CelestialBody, Tag, RulePack } from '$lib/types';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
 import { makeupFractions } from '$lib/physics/makeup';
 import { survivesRederive } from '$lib/tags/tagLifecycle';
+import { inferAxialTilt, bodyCanHaveTilt } from '$lib/physics/axialTilt';
+import { spinProvenanceTags } from '$lib/generation/spinProvenance';
 
 // Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
 // so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
@@ -176,12 +178,43 @@ function backfillGiantAtmosphere(body: CelestialBody): void {
   delete (atm as any).molarMassKg;                              // recomputed from the new mix
 }
 
+// A world that arrives with no spin axis gets a plausible one, from the SAME model the generator
+// uses — and says so.
+//
+// D8, and it is two populations rather than the six fiction worlds the entry started from:
+//  - 45 real-sky imported exoplanets. Obliquity is essentially unmeasurable for an exoplanet, so no
+//    catalogue will ever carry one; the alternative to inferring is having none, forever.
+//  - ~50 hand-authored fiction worlds, where nobody ever wrote one down.
+// Sol is untouched: all 9 planets and 19 moons carry real, measured obliquities, and an authored
+// value is never overwritten.
+//
+// WHY THIS IS NOT INVENTING DATA, which is the line D2a draws: the value is DERIVED (deterministic
+// from the body's id, so a reload or re-import reproduces it) and it is TAGGED `spin/axis-inferred`,
+// which is exactly the mechanism `spinProvenance.ts` exists to provide — "an invented number must be
+// distinguishable from a measured one, or a generated world sitting in the same starmap as Earth
+// asserts its obliquity just as firmly". What it replaces is worse on both counts: the seasonal term
+// silently substituted a flat 25 deg for any body with no tilt, which is an invented number with no
+// provenance at all, and it was the same 25 deg for every world.
+function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack): void {
+  if (!bodyCanHaveTilt(body.roleHint)) return;      // belts, rings, stars, constructs have no spin axis
+  if (body.axial_tilt_deg != null) return;          // authored or measured — never overwritten
+  if (!body.id) return;
+  const { tiltDeg, tipped } = inferAxialTilt(body.id, pack);
+  body.axial_tilt_deg = tiltDeg;
+  body.tags = body.tags ?? [];
+  for (const t of spinProvenanceTags(body)) {
+    if (!body.tags.some((x) => x.key === t.key)) body.tags.push(t);
+  }
+  if (tipped && !body.tags.some((x) => x.key === 'spin/tipped')) body.tags.push({ key: 'spin/tipped' });
+}
+
 export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
   for (const node of system.nodes) {
     if (node.kind !== 'body') continue;
     stripBody(node as CelestialBody, classNames);
     backfillGiantAtmosphere(node as CelestialBody);
+    inferMissingAxialTilt(node as CelestialBody, pack);
   }
   // NOTE: we used to DELETE every auto-barycentre here and let the processor regenerate them. But a
   // nested auto-barycentre (e.g. a planet + an oversized moon that v1 promoted) carries the pair's REAL
