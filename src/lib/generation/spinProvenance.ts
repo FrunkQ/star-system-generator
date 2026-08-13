@@ -23,12 +23,14 @@ import type { Tag } from '../types';
 //                          pass 2 reads the field for atmospheric escape and radiation shielding
 //                          before pass 3 overwrites it, which is inbox B13 and the reason the
 //                          duplication map lists removing these rolls as unsafe for now.
-// Typed STRUCTURALLY rather than as Pick<CelestialBody, …>, and not by choice: `axial_tilt_deg` is
-// not declared on CelestialBody at all, so the Pick does not compile. Every site that reads or writes
-// it does so through an untyped access — the same drift that left Orbit.frame untyped until C3(c)
-// needed it. Adding it to the interface is the right fix and is deliberately not done here: it would
-// newly type-check dozens of existing accesses in one go, which is its own change with its own
-// fallout, not a rider on this one.
+// Typed STRUCTURALLY rather than as Pick<CelestialBody, …>. That used to be forced — `axial_tilt_deg`
+// was not declared on CelestialBody at all, so the Pick did not compile — and that gap turned out to
+// be the ROOT of a real bug rather than untidiness: with the real field untyped and the vestigial
+// `obliquity_deg` declared and looking authoritative, the seasonal-temperature term read the declared
+// one while every data source wrote the undeclared one, and the seasons of every bundled world were
+// computed from a 25° default for months. `axial_tilt_deg` is declared now (v2.1.520-beta) and
+// `obliquity_deg` is gone; declaring it REMOVED 41 pre-existing type errors rather than adding any.
+// The structural typing stays because it is honest about what this function needs.
 export function spinProvenanceTags(body: {
 	axial_tilt_deg?: number | null;
 	rotation_period_hours?: number | null;

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.537-beta - 13th Aug 2026
+
+* Housekeeping with a point, no product change: axial tilt is now a declared part of what a world IS. It never had been — which is precisely why a second, redundant name for it grew alongside and quietly took over the seasons calculation for months. The redundant name is gone and the real one is written down, so the next person is steered to it. Declaring it also cleared 41 existing type errors rather than creating any.
+
+## v2.1.519-beta - 13th Aug 2026
+
 ## v2.1.536-beta - 13th Aug 2026
 
 * Seasons now follow the orbit that actually moves a world nearer to and further from its star. The calculation had been using whatever the world orbits directly — which is right for a planet, and wrong for anything else. Pluto was being given its six-day dance around Charon instead of its 248-year journey around the Sun, so it lost the very thing it is known for: an atmosphere that freezes onto the ground as it moves away. Its seasonal swing widens accordingly.

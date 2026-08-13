@@ -266,6 +266,16 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   tidallyLocked?: boolean;      // one face permanently toward its primary (planet or star)
   starTidallyLocked?: boolean;  // locked specifically to its STAR → a permanent substellar face (eyeball)
   oblateness?: number;          // DERIVED equatorial flattening f=(a−c)/a from spin vs the breakup limit; renderers draw the squashed shape
+  /** Axial tilt in degrees — the angle between the spin axis and the orbit normal. Drives the
+   *  seasonal temperature swing, the moon-orbit reference plane (`satelliteFrame`) and how the
+   *  renderers tip the body. THIS IS THE ONLY NAME FOR IT.
+   *
+   *  It was untyped for a long time and that is what let a second name grow beside it: every read and
+   *  write went through an untyped access, so nothing steered anyone to the right field, while the
+   *  vestigial `obliquity_deg` WAS declared here and looked authoritative. The seasonal term read the
+   *  declared one, the bundled data set the undeclared one, and neither side had a reason to notice
+   *  (see `spinProvenance.ts`, which recorded the gap and left it). */
+  axial_tilt_deg?: number;
   /** @deprecated A second name for `axial_tilt_deg`, kept only so `importFixup` can recover it from
    *  older saves and delete it. Nothing reads it. Write `axial_tilt_deg`. */
   obliquity_deg?: number;
