@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.542-beta - 7th Aug 2026
+
+* Under investigation, reported by a user: the player view can stop responding to pan and zoom after it finishes rendering, until the page is reloaded. Recorded with what is needed to catch it — the diagnostic file from Settings, or the browser console captured while it is still stuck rather than afterwards.
+
 ## v2.1.541-beta - 7th Aug 2026
 
 * Decided for the larger map scales: galaxies, clusters and the cosmic web will be generated rather than imported, since there is little usable real data at those sizes. They will be fields of coloured points arranged into the shapes those structures actually take, explored by moving the camera rather than by running the clock — and the cosmic web is drawn as bubbles, where the bubbles are the empty voids and the film between them is where everything lives.
