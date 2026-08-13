@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.544-beta - 7th Aug 2026
+
+* Correction on the frozen player view: it is not a crash. The recording shows the orbits still turning after it happens, so the picture is alive and only the controls have stopped answering. That rules out the graphics context being lost, which yesterday looked like the best explanation, and points instead at either the camera or the view being starved of frames.
+
 ## v2.1.543-beta - 7th Aug 2026
 
 * A lead on the frozen player view reported yesterday: it happens on phones and tablets but not on laptops, which points at the graphics context being dropped under memory pressure — the picture freezes on its last frame while your pinches are still arriving, so it feels like the controls have died when really the image has. The app currently has no way of noticing that happening, which is the first thing to change.
