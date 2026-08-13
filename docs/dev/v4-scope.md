@@ -85,7 +85,14 @@ would have to duplicate.
 - Stellar mergers
 - "others?" — left open on purpose
 
-**And the scale-up:** *"Star Clusters + starmap + pretty picture = the galaxy."*
+**The scale-up has MOVED OUT OF V4 — it is now V3.1, and it grew.** What began here as *"Star Clusters
++ starmap + pretty picture = the galaxy"* is tracked as inbox **[[G20]]** and extends TWO further tiers:
+galaxies placed on a map to form galaxy clusters, and clusters placed into filaments on a cosmic web.
+Same abstraction, same physical design, only the scale and the backdrop change. **Do not plan it from
+this file** — G20 carries the analysis, including the four things that do NOT carry up (orbits stop
+being the motion model; the clock has nothing to show above the galaxy tier; "one parent" is genuinely
+fuzzy up there; and the catalogue story does not extend, because galaxies and filaments are not in the
+stellar catalogues the importer reads).
 
 ## Traveller, properly this time
 

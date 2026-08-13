@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.540-beta - 7th Aug 2026
+
+* Planned for a following release: the map grows upwards. The same map you use for a star system and for a neighbourhood of stars will scale to a galaxy, then to a cluster of galaxies, then to the filaments of the cosmic web — the same design each time, with only the scale and the backdrop changing.
+
 ## v2.1.539-beta - 13th Aug 2026
 
 * Worlds that nobody ever gave an axial tilt now get a plausible one, and say that it was worked out rather than measured. Two groups needed it: real exoplanets, whose tilt is essentially impossible to observe and will never appear in a catalogue, and invented worlds where nobody wrote one down. 56 worlds in the Local Neighbourhood map and 87 in the science-fiction one gain a tilt; the real Solar System is untouched, because a tilt that was actually recorded is never overwritten.
