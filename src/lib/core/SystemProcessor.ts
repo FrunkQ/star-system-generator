@@ -629,7 +629,16 @@ export class SystemProcessor implements ISystemProcessor {
             starTidallyLocked: body.starTidallyLocked,
             orbitalPeriodHours: (body.orbital_period_days ?? 0) * 24,
             eccentricity: body.orbit?.elements.e,
-            obliquityDeg: body.obliquity_deg,
+            // ONE FIELD. `axial_tilt_deg` is the axial tilt everywhere else — 77 sites, including the
+            // editor, the renderers and `satelliteFrame`'s moon-plane rule — while `obliquity_deg` was
+            // a second name for the same quantity read ONLY here. The bundled data sets only the
+            // first, so this read was undefined for every body in both maps and the seasonal term fell
+            // back to its 25° default: Earth's seasons computed at 25° rather than 23.44, Uranus's at
+            // 25° rather than 97.77, Venus's at 25° rather than 177.36. Meanwhile the ubox importer
+            // set only `obliquity_deg`, so ITS bodies had seasons but no visible tilt and no satellite
+            // framing — the same split, landing the other way up. `importFixup` recovers the legacy
+            // field into this one on load, so nothing already saved loses its tilt.
+            obliquityDeg: body.axial_tilt_deg,
             hasLiquidOcean: surfaceLiquidWater,
             tidalRawIndex,
             iceFrac: makeupFractions(body).ice

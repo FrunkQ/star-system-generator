@@ -94,6 +94,16 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
     body.overrides = body.overrides || {};
     body.overrides.radiogenicHeatK = legacyRadiogenic;
   }
+  // MIGRATION: axial tilt had TWO field names for one quantity. `axial_tilt_deg` is the one the
+  // editor, the renderers and the moon-plane rule all use; `obliquity_deg` was read only by the
+  // seasonal-temperature term, and the two importers disagreed about which to write (ubox wrote only
+  // the second, so its worlds had seasons but no visible tilt). Everything reads `axial_tilt_deg`
+  // now, so recover the legacy name into it rather than leaving those saves tiltless.
+  const legacyObliquity = (body as any).obliquity_deg;
+  if (typeof legacyObliquity === 'number' && Number.isFinite(legacyObliquity) && body.axial_tilt_deg == null) {
+    body.axial_tilt_deg = legacyObliquity;
+  }
+  delete (body as any).obliquity_deg;
   for (const f of DERIVED_FIELDS) {
     // A star's effective temperature AND its luminosity (radiationOutput) are authored INPUTS that
     // define it (like mass/radius) and are never re-derived on load — keep them; strip for everyone else.

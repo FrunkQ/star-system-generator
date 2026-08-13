@@ -266,7 +266,9 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   tidallyLocked?: boolean;      // one face permanently toward its primary (planet or star)
   starTidallyLocked?: boolean;  // locked specifically to its STAR → a permanent substellar face (eyeball)
   oblateness?: number;          // DERIVED equatorial flattening f=(a−c)/a from spin vs the breakup limit; renderers draw the squashed shape
-  obliquity_deg?: number;       // axial tilt — drives seasonal variation
+  /** @deprecated A second name for `axial_tilt_deg`, kept only so `importFixup` can recover it from
+   *  older saves and delete it. Nothing reads it. Write `axial_tilt_deg`. */
+  obliquity_deg?: number;
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
   // F-OVR: GM overrides for otherwise-derived scalars. A key being PRESENT means the GM pinned that
   // value — it is saved and fed into the derivation instead of the computed default, with a reset that

@@ -247,7 +247,7 @@ export function convertSc(sources: string[], options: ScImportOptions = {}): ScI
     }
 
     const rot = rotationHours(b); if (rot != null) node.rotation_period_hours = rot;
-    const obl = num(b.keys.Obliquity); if (obl != null) { (node as any).axial_tilt_deg = +obl.toFixed(2); node.obliquity_deg = +obl.toFixed(2); }
+    const obl = num(b.keys.Obliquity); if (obl != null) { (node as any).axial_tilt_deg = +obl.toFixed(2); }
 
     if (role === 'star') {
       node.temperatureK = num(b.keys.Temperature) ?? 5778;

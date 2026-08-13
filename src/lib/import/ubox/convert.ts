@@ -184,7 +184,6 @@ function buildNode(
       const tilt = obliquityDeg(parseQuat(e.Orientation), parseVec3(e.RotationAxis), parseVec3(e.Position), parseVec3(e.Velocity));
       // measured against the body's heliocentric orbit normal; good enough for planets/moons
       (node as CelestialBody & { axial_tilt_deg?: number }).axial_tilt_deg = +tilt.toFixed(2);
-      node.obliquity_deg = +tilt.toFixed(2);
     }
   } catch { /* leave rotation/tilt unset on a malformed vector */ }
 

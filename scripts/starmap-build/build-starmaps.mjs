@@ -184,7 +184,7 @@ function manualPlanetNode(spec, sysDef, hostNode) {
     ...(spec.atmosphere ? { atmosphere: spec.atmosphere } : {}),
     ...(spec.hydrosphere ? { hydrosphere: spec.hydrosphere } : {}),
     ...(spec.rotationHours != null ? { rotation_period_hours: spec.rotationHours } : {}),
-    ...(spec.tilt != null ? { axial_tilt_deg: spec.tilt, obliquity_deg: spec.tilt } : {}),
+    ...(spec.tilt != null ? { axial_tilt_deg: spec.tilt } : {}),
     orbit: {
       ...(spec.frame ? { frame: spec.frame } : {}),
       hostId: hostNode.id, hostMu: G * hostNode.massKg, t0: EPOCH,

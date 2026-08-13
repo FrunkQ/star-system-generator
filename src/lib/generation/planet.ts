@@ -278,7 +278,6 @@ export function _generatePlanetaryBody(
             tilt = Math.min(89.9, sigma * Math.sqrt(-2 * Math.log(1 - tiltRng.nextFloat())));
         }
         planet.axial_tilt_deg = Math.round(tilt * 10) / 10;
-        planet.obliquity_deg = planet.axial_tilt_deg;
         // D2a's constraint: an INVENTED number must be distinguishable from a MEASURED one, or a
         // generated world sitting in the same starmap as Earth asserts its obliquity just as firmly.
         // Shared with SystemView's manual route — spinProvenance.ts holds which values qualify and
