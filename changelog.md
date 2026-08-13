@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.538-beta - 13th Aug 2026
+
+* Removing an automatic centre-of-gravity marker no longer strands whatever was attached to it. When two worlds are close enough to swing about a shared point the app makes one of these markers, and when the arrangement changes it takes it away again — but it only ever reattached the two worlds it was made for. Anything else hanging off it was left pointing at something that no longer existed, which cuts that world off from its star entirely: no temperature, no eclipses, nothing. A moon in the bundled Traveller example is in exactly that state, which is how this was found.
+* Three separate routes to the same damage are closed, including a malformed marker being deleted out from under the worlds it had declined to reattach. The example file itself is still broken and is left alone deliberately — repairing it means inventing figures nobody recorded — but it can no longer happen again.
+
+## v2.1.520-beta - 13th Aug 2026
+
 ## v2.1.537-beta - 13th Aug 2026
 
 * Housekeeping with a point, no product change: axial tilt is now a declared part of what a world IS. It never had been — which is precisely why a second, redundant name for it grew alongside and quietly took over the seasons calculation for months. The redundant name is gone and the real one is written down, so the next person is steered to it. Declaring it also cleared 41 existing type errors rather than creating any.
