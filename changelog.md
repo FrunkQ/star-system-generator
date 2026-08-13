@@ -10,8 +10,6 @@ All notable changes are listed here:
 * Two things had to be got right to make the join work, and both are the opposite of what you would guess. Catalogues record star positions at different dates, so the nearest stars — the ones that move fastest across the sky — disagree the most: Barnard's Star by 161 seconds of arc. And a star's distance is measured well enough to place it but not well enough to measure the gap to its companion, which for Sirius A and B invents a 6,856 AU separation for a pair genuinely about 20 apart.
 * The size and load-time warning shown before importing has been re-checked against the much larger star count, and its estimate corrected: it used to guess the total from the first system in the list, which was fair when every system looked alike and is not now that most are a single star and one of them is the whole Solar System.
 
-## v2.1.542-beta - 13th Aug 2026
-
 ## v2.1.546-beta - 13th Aug 2026
 
 * Brown dwarfs are selectable as a star type but the generator had no figures for them, so an L, T or Y dwarf it had to fill in fell back to a Sun-like 0.92 solar masses and 5,600 K. The three classes now have their own mass, size and temperature ranges, matching the ones the star editor already offered.
