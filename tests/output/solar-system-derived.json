@@ -1598,7 +1598,7 @@
       "temperatureK": 270.2814999478993,
       "temperatureProfile": {
         "meanK": 270,
-        "totalMinK": 58,
+        "totalMinK": 59,
         "totalMaxK": 482,
         "components": [
           {
@@ -1610,8 +1610,8 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 252,
-            "highK": 289
+            "lowK": 258,
+            "highK": 282
           },
           {
             "source": "diurnal",
@@ -1622,7 +1622,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 58,
+        "min": 59,
         "max": 482
       },
       "hydrosphere": {
@@ -2435,14 +2435,20 @@
       "temperatureK": 208.2433681861595,
       "temperatureProfile": {
         "meanK": 208,
-        "totalMinK": 153,
-        "totalMaxK": 264,
+        "totalMinK": 152,
+        "totalMaxK": 265,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 162,
             "highK": 254
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 197,
+            "highK": 220
           },
           {
             "source": "diurnal",
@@ -2460,8 +2466,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 153,
-        "max": 264
+        "min": 152,
+        "max": 265
       },
       "hydrosphere": {
         "layers": []
@@ -2838,7 +2844,7 @@
       "temperatureK": 201.62277584716608,
       "temperatureProfile": {
         "meanK": 202,
-        "totalMinK": 114,
+        "totalMinK": 113,
         "totalMaxK": 290,
         "components": [
           {
@@ -2846,6 +2852,12 @@
             "label": "Latitude (equator ↔ pole)",
             "lowK": 157,
             "highK": 246
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 190,
+            "highK": 213
           },
           {
             "source": "diurnal",
@@ -2856,7 +2868,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 114,
+        "min": 113,
         "max": 290
       },
       "hydrosphere": {
@@ -3647,8 +3659,8 @@
       "temperatureK": 119.43940248271821,
       "temperatureProfile": {
         "meanK": 119,
-        "totalMinK": 72,
-        "totalMaxK": 166,
+        "totalMinK": 71,
+        "totalMaxK": 168,
         "components": [
           {
             "source": "latitude",
@@ -3659,8 +3671,8 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 104,
-            "highK": 135
+            "lowK": 101,
+            "highK": 138
           },
           {
             "source": "diurnal",
@@ -3671,8 +3683,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 72,
-        "max": 166
+        "min": 71,
+        "max": 168
       },
       "surfaceRadiation": 131496772.63508841,
       "orbitalRadiation": 131496772.63508841,
@@ -3828,6 +3840,12 @@
             "label": "Latitude (equator ↔ pole)",
             "lowK": 81,
             "highK": 125
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 100,
+            "highK": 106
           },
           {
             "source": "diurnal",
@@ -4314,7 +4332,7 @@
       "temperatureK": 99.46841494675006,
       "temperatureProfile": {
         "meanK": 99,
-        "totalMinK": 25,
+        "totalMinK": 24,
         "totalMaxK": 674,
         "components": [
           {
@@ -4322,6 +4340,12 @@
             "label": "Latitude (equator ↔ pole)",
             "lowK": 78,
             "highK": 121
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 97,
+            "highK": 102
           },
           {
             "source": "diurnal",
@@ -4339,7 +4363,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 25,
+        "min": 24,
         "max": 674
       },
       "magnetism": {
@@ -4795,6 +4819,12 @@
             "highK": 117
           },
           {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 93,
+            "highK": 99
+          },
+          {
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 24,
@@ -5206,6 +5236,12 @@
             "label": "Latitude (equator ↔ pole)",
             "lowK": 75,
             "highK": 117
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 93,
+            "highK": 99
           },
           {
             "source": "diurnal",
@@ -5895,8 +5931,8 @@
       "temperatureK": 87.98846285615262,
       "temperatureProfile": {
         "meanK": 88,
-        "totalMinK": 53,
-        "totalMaxK": 123,
+        "totalMinK": 52,
+        "totalMaxK": 124,
         "components": [
           {
             "source": "latitude",
@@ -5907,8 +5943,8 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 77,
-            "highK": 99
+            "lowK": 74,
+            "highK": 102
           },
           {
             "source": "diurnal",
@@ -5919,8 +5955,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 53,
-        "max": 123
+        "min": 52,
+        "max": 124
       },
       "surfaceRadiation": 87244.37850118992,
       "orbitalRadiation": 87244.37850118992,
@@ -6543,6 +6579,12 @@
             "highK": 89
           },
           {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 71,
+            "highK": 76
+          },
+          {
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 45,
@@ -6948,13 +6990,19 @@
       "temperatureProfile": {
         "meanK": 72,
         "totalMinK": 28,
-        "totalMaxK": 115,
+        "totalMaxK": 116,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 56,
             "highK": 88
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 69,
+            "highK": 74
           },
           {
             "source": "diurnal",
@@ -6966,7 +7014,7 @@
       },
       "temperatureRangeK": {
         "min": 28,
-        "max": 115
+        "max": 116
       },
       "hydrosphere": {
         "layers": []
@@ -7374,7 +7422,7 @@
       "equilibriumTempMaxK": 82.73743133639664,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 18,
+        "totalMinK": 17,
         "totalMaxK": 143,
         "components": [
           {
@@ -7382,6 +7430,12 @@
             "label": "Latitude (equator ↔ pole)",
             "lowK": 63,
             "highK": 98
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 78,
+            "highK": 83
           },
           {
             "source": "diurnal",
@@ -7392,7 +7446,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 18,
+        "min": 17,
         "max": 143
       },
       "hydrosphere": {
@@ -7804,6 +7858,12 @@
             "label": "Latitude (equator ↔ pole)",
             "lowK": 63,
             "highK": 97
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 77,
+            "highK": 82
           },
           {
             "source": "diurnal",
@@ -8235,6 +8295,12 @@
             "highK": 94
           },
           {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 75,
+            "highK": 80
+          },
+          {
             "source": "diurnal",
             "label": "Day ↔ night",
             "lowK": 19,
@@ -8619,6 +8685,12 @@
             "label": "Latitude (equator ↔ pole)",
             "lowK": 58,
             "highK": 91
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 72,
+            "highK": 77
           },
           {
             "source": "diurnal",
@@ -9274,7 +9346,7 @@
       "temperatureK": 62.15850150823491,
       "temperatureProfile": {
         "meanK": 62,
-        "totalMinK": 38,
+        "totalMinK": 37,
         "totalMaxK": 87,
         "components": [
           {
@@ -9286,8 +9358,8 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 54,
-            "highK": 70
+            "lowK": 53,
+            "highK": 72
           },
           {
             "source": "diurnal",
@@ -9298,7 +9370,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 38,
+        "min": 37,
         "max": 87
       },
       "surfaceRadiation": 7843.43938603584,
@@ -11652,8 +11724,8 @@
       "temperatureK": 36.02632012004018,
       "temperatureProfile": {
         "meanK": 36,
-        "totalMinK": 6,
-        "totalMaxK": 66,
+        "totalMinK": 4,
+        "totalMaxK": 68,
         "components": [
           {
             "source": "latitude",
@@ -11664,8 +11736,8 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 27,
-            "highK": 45
+            "lowK": 21,
+            "highK": 51
           },
           {
             "source": "diurnal",
@@ -11676,8 +11748,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 6,
-        "max": 66
+        "min": 4,
+        "max": 68
       },
       "hydrosphere": {
         "layers": []
@@ -12068,7 +12140,7 @@
       "temperatureK": 40.81189372758757,
       "temperatureProfile": {
         "meanK": 41,
-        "totalMinK": 9,
+        "totalMinK": 8,
         "totalMaxK": 73,
         "components": [
           {
@@ -12076,6 +12148,12 @@
             "label": "Latitude (equator ↔ pole)",
             "lowK": 32,
             "highK": 50
+          },
+          {
+            "source": "seasonal",
+            "label": "Seasonal (tilt + orbit)",
+            "lowK": 35,
+            "highK": 47
           },
           {
             "source": "diurnal",
@@ -12086,7 +12164,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 9,
+        "min": 8,
         "max": 73
       },
       "hydrosphere": {

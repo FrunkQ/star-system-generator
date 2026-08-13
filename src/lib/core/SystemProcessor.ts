@@ -5,6 +5,24 @@ import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEqui
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket, radiationPlace } from '../physics/radiation';
 // The annual-dose hazard tag. Its key is serialised, so it lives beside the other tag constants.
 const RADIATION_HAZARD_TAG = 'hazard/radiation';
+
+/**
+ * How much does this body's distance to its STAR vary over its year, expressed as an eccentricity?
+ *
+ * NOT `orbit.elements.e`, which is the orbit about the body's immediate host — the barycentre for a
+ * barycentre member, the planet for a moon. Derived instead from the equilibrium-temperature range,
+ * which `calculateEquilibriumTemperatureRange` has already computed by walking the whole chain to
+ * the star: T scales as d^(-1/2), so d_max/d_min = (T_max/T_min)^2 and e = (d_max−d_min)/(d_max+d_min).
+ * A plain planet gets its own eccentricity back exactly; a barycentre member gets its barycentre's.
+ *
+ * Falls back to the stored element when the range is unavailable (no star, or nothing committed yet).
+ */
+export function effectiveOrbitEccentricity(body: any): number | undefined {
+  const tMin = body.equilibriumTempMinK, tMax = body.equilibriumTempMaxK;
+  if (!(tMin > 0) || !(tMax > 0) || tMax < tMin) return body.orbit?.elements.e;
+  const ratioSq = (tMax / tMin) ** 2;                       // = d_max / d_min
+  return (ratioSq - 1) / (ratioSq + 1);
+}
 const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
 const ASCENT_TAG = 'flight/ascent';
 import { classifyBody, explainClassification } from '../system/classification';
@@ -628,7 +646,21 @@ export class SystemProcessor implements ISystemProcessor {
             tidallyLocked: body.tidallyLocked,
             starTidallyLocked: body.starTidallyLocked,
             orbitalPeriodHours: (body.orbital_period_days ?? 0) * 24,
-            eccentricity: body.orbit?.elements.e,
+            // The eccentricity that drives SEASONS is the one that moves the body relative to its
+            // STAR, which is not the same as `orbit.elements.e` — that describes the orbit about the
+            // body's IMMEDIATE HOST. For a barycentre member that host is the barycentre, so Pluto
+            // was handed its 6-day mutual orbit about Charon instead of its 248-year one about the
+            // Sun, and Rocheworld's two lobes (own e = 0, on a barycentre at e = 0.25) got no
+            // eccentric term at all. A moon had the same fault more mildly: Luna was handed its
+            // orbit about Earth rather than Earth's about the Sun.
+            //
+            // The engine already knows the right answer and computes it a few lines above:
+            // `calculateEquilibriumTemperatureRange` walks the whole chain to the star
+            // (`distanceRangeBetweenNodes`) and gives the true peri/apo flux. Recover the effective
+            // eccentricity from it rather than adding a second walk — T scales as d^(-1/2), so
+            // d_max/d_min = (T_max/T_min)^2, and e = (d_max - d_min)/(d_max + d_min). For a plain
+            // planet this returns its own eccentricity exactly.
+            eccentricity: effectiveOrbitEccentricity(body),
             // ONE FIELD. `axial_tilt_deg` is the axial tilt everywhere else — 77 sites, including the
             // editor, the renderers and `satelliteFrame`'s moon-plane rule — while `obliquity_deg` was
             // a second name for the same quantity read ONLY here. The bundled data sets only the

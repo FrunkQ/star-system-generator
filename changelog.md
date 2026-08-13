@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.536-beta - 13th Aug 2026
+
+* Seasons now follow the orbit that actually moves a world nearer to and further from its star. The calculation had been using whatever the world orbits directly — which is right for a planet, and wrong for anything else. Pluto was being given its six-day dance around Charon instead of its 248-year journey around the Sun, so it lost the very thing it is known for: an atmosphere that freezes onto the ground as it moves away. Its seasonal swing widens accordingly.
+* Moons gain the seasons their planet gives them. Jupiter's moons follow Jupiter's year, Saturn's follow Saturn's; previously each was given its own short orbit around its planet instead, which is far too small to make a season, so they had none at all. Our own Moon moves the other way and narrows, because it now follows Earth's orbit rather than its own.
+* Nothing new was calculated to do this. The app already worked out how much each world's distance to its star varies, for its temperature range; the seasons now read that same answer instead of a second, different one.
+
+## v2.1.518-beta - 13th Aug 2026
+
 ## v2.1.535-beta - 13th Aug 2026
 
 * Worlds now get their seasons from their real axial tilt. Tilt was stored under two different names, and the seasonal calculation read the one the bundled maps never filled in — so every world in them, and every world imported from the real sky, had its seasons worked out from an assumed 25 degrees. Uranus is the world this most obviously wronged: it lies on its side at 98 degrees, which is the entire reason its seasons are what they are, and its temperature range widens accordingly. Mercury, which is barely tilted at all, loses the seasons it never had, and so do the tidally locked moons.
