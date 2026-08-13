@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.545-beta - 7th Aug 2026
+
+* Likely cause found for pinch-zoom failing on phones and tablets: the view recognises a deliberate zoom from a mouse wheel only, and a pinch is not a wheel. So the pinch moves the camera and the view quietly puts it back, which is why turning the map still works while zooming does not, and why a laptop is unaffected. Not yet fixed — the finding is handed to the session that owns that code.
+
 ## v2.1.544-beta - 7th Aug 2026
 
 * Correction on the frozen player view: it is not a crash. The recording shows the orbits still turning after it happens, so the picture is alive and only the controls have stopped answering. That rules out the graphics context being lost, which yesterday looked like the best explanation, and points instead at either the camera or the view being starved of frames.
