@@ -7,13 +7,9 @@ All notable changes are listed here:
 * Removing an automatic centre-of-gravity marker no longer strands whatever was attached to it. When two worlds are close enough to swing about a shared point the app makes one of these markers, and when the arrangement changes it takes it away again — but it only ever reattached the two worlds it was made for. Anything else hanging off it was left pointing at something that no longer existed, which cuts that world off from its star entirely: no temperature, no eclipses, nothing. A moon in the bundled Traveller example is in exactly that state, which is how this was found.
 * Three separate routes to the same damage are closed, including a malformed marker being deleted out from under the worlds it had declined to reattach. The example file itself is still broken and is left alone deliberately — repairing it means inventing figures nobody recorded — but it can no longer happen again.
 
-## v2.1.520-beta - 13th Aug 2026
-
 ## v2.1.537-beta - 13th Aug 2026
 
 * Housekeeping with a point, no product change: axial tilt is now a declared part of what a world IS. It never had been — which is precisely why a second, redundant name for it grew alongside and quietly took over the seasons calculation for months. The redundant name is gone and the real one is written down, so the next person is steered to it. Declaring it also cleared 41 existing type errors rather than creating any.
-
-## v2.1.519-beta - 13th Aug 2026
 
 ## v2.1.536-beta - 13th Aug 2026
 
@@ -21,30 +17,22 @@ All notable changes are listed here:
 * Moons gain the seasons their planet gives them. Jupiter's moons follow Jupiter's year, Saturn's follow Saturn's; previously each was given its own short orbit around its planet instead, which is far too small to make a season, so they had none at all. Our own Moon moves the other way and narrows, because it now follows Earth's orbit rather than its own.
 * Nothing new was calculated to do this. The app already worked out how much each world's distance to its star varies, for its temperature range; the seasons now read that same answer instead of a second, different one.
 
-## v2.1.518-beta - 13th Aug 2026
-
 ## v2.1.535-beta - 13th Aug 2026
 
 * Worlds now get their seasons from their real axial tilt. Tilt was stored under two different names, and the seasonal calculation read the one the bundled maps never filled in — so every world in them, and every world imported from the real sky, had its seasons worked out from an assumed 25 degrees. Uranus is the world this most obviously wronged: it lies on its side at 98 degrees, which is the entire reason its seasons are what they are, and its temperature range widens accordingly. Mercury, which is barely tilted at all, loses the seasons it never had, and so do the tidally locked moons.
 * Worlds already near 25 degrees — Earth, Mars, Saturn, Neptune — barely move, which is the check that this is doing what it should.
 * There is one name for axial tilt now instead of two. Anything saved under the old name is carried across when it loads, so nothing already made loses its tilt. One importer had been writing only the old name, so its worlds had seasons but no visible tilt; that is fixed by the same change.
 
-## v2.1.517-beta - 13th Aug 2026
-
 ## v2.1.534-beta - 13th Aug 2026
 
 * Pluto's orbit around the Pluto-Charon centre of gravity read "0.000 AU". It now reads 2,103 km. The panel was choosing its units from what KIND of body it was looking at — kilometres for a moon, astronomical units for anything else — so a planet orbiting something 2,000 km away fell into the wrong one and rounded away to nothing. It now chooses by how far the orbit actually is, which is what three other readouts in the app were already doing, each with its own idea of where to switch. They all share one now.
 * Reported by the owner from the running app.
-
-## v2.1.516-beta - 12th Aug 2026
 
 ## v2.1.533-beta - 12th Aug 2026
 
 * Imported planets heavier than about four Earths are now treated as gas giants rather than as ice-rich super-Earths, and each one gets its own composition rather than all of them sharing a single figure. Nineteen worlds in each bundled map change, and no imported world reads 55% ice any more. The envelope fractions are the ones the app already uses for a giant it has to guess at, so this is the existing rule applied more widely rather than a new one.
 * The reason the old figure was meaningless is worth stating: for three quarters of the catalogue's planets the radius is one the archive worked out from the mass, so the density that used to choose the composition was just the mass again in disguise. Mass now decides directly, and the variation between worlds is fixed by each planet's own identity, so re-importing the same region reproduces the same worlds.
 * Where a radius really was measured, the measurement still wins: 55 Cancri e and the two inner planets of HD 219134 are genuinely dense and stay rocky. Nothing can make a true giant rocky, however it is measured.
-
-## v2.1.515-beta - 12th Aug 2026
 
 ## v2.1.532-beta - 12th Aug 2026
 
