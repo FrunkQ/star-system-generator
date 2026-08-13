@@ -28,7 +28,7 @@ import type { Tag } from '../types';
 // be the ROOT of a real bug rather than untidiness: with the real field untyped and the vestigial
 // `obliquity_deg` declared and looking authoritative, the seasonal-temperature term read the declared
 // one while every data source wrote the undeclared one, and the seasons of every bundled world were
-// computed from a 25° default for months. `axial_tilt_deg` is declared now (v2.1.520-beta) and
+// computed from a 25° default for months. `axial_tilt_deg` is declared now (v2.1.537-beta) and
 // `obliquity_deg` is gone; declaring it REMOVED 41 pre-existing type errors rather than adding any.
 // The structural typing stays because it is honest about what this function needs.
 export function spinProvenanceTags(body: {
