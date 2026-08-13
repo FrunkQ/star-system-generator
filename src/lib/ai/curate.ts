@@ -5,6 +5,7 @@
 // the body's narrative-ish tags — so the seed text + selected tags can drive imaginative writing.
 import type { CelestialBody } from '../types';
 import { G, AU_KM } from '../constants';
+import { formatOrbitRadiusAu } from '../units';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -32,7 +33,8 @@ export function summarizeBodyForLLM(body: CelestialBody): Record<string, any> {
   if (body.class) out.class = body.class;
 
   const a = body.orbit?.elements?.a_AU;
-  if (typeof a === 'number' && a > 0) out.orbitDistance = a < 0.05 ? `${Math.round(a * AU_KM)} km` : `${a.toFixed(2)} AU`;
+  // Same magnitude switch as every other orbital-distance readout (units.ts, ORBIT_KM_BELOW_AU).
+  if (typeof a === 'number' && a > 0) out.orbitDistance = formatOrbitRadiusAu(a, 'metric', 2);
   const e = body.orbit?.elements?.e;
   if (typeof e === 'number' && e >= 0.2) out.eccentricOrbit = `high (e=${e.toFixed(2)}) — strong seasonal extremes`;
   if (body.orbital_period_days) out.yearLength = `${Math.round(body.orbital_period_days)} days`;

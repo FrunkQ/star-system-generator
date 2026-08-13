@@ -1,7 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import type { System } from './types';
 import {
-  formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, distanceUnitLabel, speedUnitLabel,
+  formatDistanceKm, formatDistanceAu, formatOrbitRadiusAu, formatSpeedKmS, formatSpeedAuto, distanceUnitLabel, speedUnitLabel,
   kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms,
   formatTempC, formatTempK, tempUnitLabel, cToDisplayTemp, displayTempToC,
   type MeasurementUnits, type TemperatureUnit
@@ -40,6 +40,7 @@ export const fmt = derived([measurementUnit, temperatureUnit], ([u, t]) => ({
   speedKmS: (kmps: number, decimals = 1) => formatSpeedKmS(kmps, u, decimals), // value in KM/S
   speedMs: (ms: number, decimals = 1) => formatSpeedKmS(ms / 1000, u, decimals), // value in M/S (e.g. Δv)
   speedAuto: (ms: number) => formatSpeedAuto(ms, u),                           // value in M/S, magnitude-aware
+  orbitAu: (au: number, decimals = 3) => formatOrbitRadiusAu(au, u, decimals), // value in AU, magnitude-aware: km when close in
   distUnit: distanceUnitLabel(u),                                             // bare "km" | "mi" label
   speedUnit: speedUnitLabel(u),                                              // bare "km/s" | "mi/s" label
   tempC: (celsius: number, decimals = 0) => formatTempC(celsius, t, decimals), // value in °C → °C/°F/K

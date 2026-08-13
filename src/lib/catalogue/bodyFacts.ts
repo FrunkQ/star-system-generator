@@ -3,7 +3,7 @@
 import type { CelestialBody, RulePack } from '$lib/types';
 import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
-import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
+import { formatDistanceKm, formatDistanceAu, formatOrbitRadiusAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
 import { radiationHazardBucket, lethalDoseTime, LETHAL_MARK } from '$lib/physics/radiation';
 import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
@@ -20,8 +20,10 @@ export function fmtNum(n: number | undefined | null, d = 0): string {
 export function orbitDist(b: CelestialBody, units: MeasurementUnits = 'metric'): string {
   const a = b.orbit?.elements?.a_AU;
   if (typeof a !== 'number' || a <= 0) return '';
-  // Close-in / local orbits render in km (or miles); wider star orbits keep AU.
-  return a < 0.05 ? formatDistanceAu(a, units) : `${a.toFixed(3)} AU`;
+  // Close-in / local orbits render in km (or miles); wider star orbits keep AU. The threshold and
+  // the switch live in `units.ts` — this file's copy WAS the original, and the info panel's
+  // role-based version disagreed with it (see ORBIT_KM_BELOW_AU).
+  return formatOrbitRadiusAu(a, units);
 }
 export function gravityG(b: CelestialBody): string {
   if (!b.massKg || !b.radiusKm) return '';

@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, MILE_PER_KM,
   kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms,
-  formatTempC, formatTempK, cToDisplayTemp, displayTempToC
+  formatTempC, formatTempK, cToDisplayTemp, displayTempToC,
+  formatOrbitRadiusAu, ORBIT_KM_BELOW_AU
 } from './units';
 import { AU_KM } from './constants';
 
@@ -63,5 +64,53 @@ describe('units — metric vs imperial display (SI stays internal)', () => {
   it('non-finite is dashed, never NaN', () => {
     expect(formatDistanceKm(NaN, 'metric')).toBe('—');
     expect(formatSpeedAuto(Infinity, 'imperial')).toBe('—');
+  });
+});
+
+// The unit follows the DISTANCE, not the body's ROLE.
+//
+// The bug this pins, reported by the owner 2026-08-12: the info panel chose km for a
+// `roleHint: 'moon'` and AU-to-3dp for everything else, so Pluto — a PLANET, orbiting the
+// Pluto–Charon barycentre 2,100 km out — rendered as "0.000 AU". Every barycentre member had it.
+// Three other readouts already switched on MAGNITUDE, each at its own threshold; this is now the
+// single answer they all call.
+describe('orbital radius — the unit follows the distance, not the role', () => {
+  it('never renders a real orbit as zero', () => {
+    const closeIn: [string, number][] = [
+      ['Pluto about the barycentre', 1.405886379192334e-5],
+      ['Charon about the barycentre', 1.1594113620807666e-4],
+      ['Rocheworld lobes', 2.25e-5],
+      ['Luna', 0.00257]
+    ];
+    for (const [name, au] of closeIn) {
+      const s = formatOrbitRadiusAu(au, 'metric');
+      expect(s, name).not.toMatch(/^0(\.0+)?\s/);
+      expect(s, name).toMatch(/km$/);
+    }
+  });
+
+  it('gives Pluto its real separation rather than 0.000 AU', () => {
+    expect(formatOrbitRadiusAu(1.405886379192334e-5, 'metric')).toBe('2,103 km');
+  });
+
+  it('keeps planetary orbits in AU', () => {
+    expect(formatOrbitRadiusAu(1, 'metric')).toBe('1.000 AU');
+    expect(formatOrbitRadiusAu(39.48, 'metric')).toBe('39.480 AU');
+    expect(formatOrbitRadiusAu(5.2, 'metric', 2)).toBe('5.20 AU');
+  });
+
+  it('switches at the documented threshold and nowhere else', () => {
+    expect(formatOrbitRadiusAu(ORBIT_KM_BELOW_AU * 0.999, 'metric')).toMatch(/km$/);
+    expect(formatOrbitRadiusAu(ORBIT_KM_BELOW_AU, 'metric')).toMatch(/AU$/);
+  });
+
+  it('honours the imperial switch below the threshold, and AU stays AU above it', () => {
+    expect(formatOrbitRadiusAu(0.00257, 'imperial')).toMatch(/mi$/);
+    expect(formatOrbitRadiusAu(1, 'imperial')).toBe('1.000 AU');
+  });
+
+  it('is defensive about rubbish', () => {
+    expect(formatOrbitRadiusAu(NaN, 'metric')).toBe('—');
+    expect(formatOrbitRadiusAu(Infinity, 'metric')).toBe('—');
   });
 });

@@ -240,17 +240,18 @@
         }
 
         if (body.orbit) {
-            if (body.roleHint === 'moon') {
-                orbitalDistanceDisplay = $fmt.km(body.orbit.elements.a_AU * AU_KM);
-                const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
-                const aph = body.orbit.elements.a_AU * (1 + body.orbit.elements.e);
-                orbitalDistanceTooltip = `Periapsis: ${$fmt.km(peri * AU_KM)}\nApoapsis: ${$fmt.km(aph * AU_KM)}`;
-            } else {
-                orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
-                const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
-                const aph = body.orbit.elements.a_AU * (1 + body.orbit.elements.e);
-                orbitalDistanceTooltip = `Perihelion: ${peri.toFixed(3)} AU\nAphelion: ${aph.toFixed(3)} AU`;
-            }
+            // The unit follows the DISTANCE, not the body's role. It used to follow the role — km for a
+            // `roleHint: 'moon'`, AU for everything else — which read "0.000 AU" for Pluto, a PLANET
+            // orbiting the Pluto–Charon barycentre 2,100 km out, and for every other barycentre member.
+            // The two words stay role-aware because they are ASTRONOMY, not formatting: a body about a
+            // star has a perihelion, a body about anything else a periapsis.
+            const a = body.orbit.elements.a_AU;
+            const peri = a * (1 - body.orbit.elements.e);
+            const aph = a * (1 + body.orbit.elements.e);
+            const [nearWord, farWord] = parentBody?.roleHint === 'star'
+                ? ['Perihelion', 'Aphelion'] : ['Periapsis', 'Apoapsis'];
+            orbitalDistanceDisplay = $fmt.orbitAu(a);
+            orbitalDistanceTooltip = `${nearWord}: ${$fmt.orbitAu(peri)}\n${farWord}: ${$fmt.orbitAu(aph)}`;
 
             // Calculate Orbital Period
             if (parentBody) {

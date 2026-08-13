@@ -33,6 +33,26 @@ export function formatDistanceAu(au: number, units: MeasurementUnits, decimals =
   return formatDistanceKm(au * AU_KM, units, decimals);
 }
 
+// AN ORBITAL RADIUS, in AU → the display string, with the unit chosen by MAGNITUDE.
+//
+// This is the one question "how far out does this orbit sit?" and it had four answers: the info
+// panel picked its unit by the body's ROLE (km for a `roleHint: 'moon'`, AU for everything else),
+// while `bodyFacts.orbitDist`, `ai/curate` and the visualiser each switched on size at their own
+// threshold. Role is the wrong axis and it shipped a visible bug: Pluto is a PLANET orbiting the
+// Pluto–Charon barycentre at 1.4e-5 AU, so it took the AU branch and read "0.000 AU". Every
+// barycentre member had the same problem, and so did Rocheworld's two lobes at 2.25e-5 AU.
+//
+// The threshold is not a new opinion — 0.05 AU is what `bodyFacts` and `curate` had both already
+// chosen independently, so this promotes the existing answer rather than adding a fifth. It keeps
+// every one of Sol's major moons in km (Iapetus, the widest, is 0.0238 AU) and every planetary
+// orbit in AU.
+export const ORBIT_KM_BELOW_AU = 0.05;
+
+export function formatOrbitRadiusAu(au: number, units: MeasurementUnits, decimals = 3): string {
+  if (!Number.isFinite(au)) return '—';
+  return Math.abs(au) < ORBIT_KM_BELOW_AU ? formatDistanceAu(au, units) : `${fmtNum(au, decimals)} AU`;
+}
+
 // Speed given in KM/S → display string. Imperial shows mi/s.
 export function formatSpeedKmS(kmps: number, units: MeasurementUnits, decimals = 1): string {
   if (!Number.isFinite(kmps)) return '—';

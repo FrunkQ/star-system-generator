@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.534-beta - 13th Aug 2026
+
+* Pluto's orbit around the Pluto-Charon centre of gravity read "0.000 AU". It now reads 2,103 km. The panel was choosing its units from what KIND of body it was looking at — kilometres for a moon, astronomical units for anything else — so a planet orbiting something 2,000 km away fell into the wrong one and rounded away to nothing. It now chooses by how far the orbit actually is, which is what three other readouts in the app were already doing, each with its own idea of where to switch. They all share one now.
+* Reported by the owner from the running app.
+
+## v2.1.516-beta - 12th Aug 2026
+
 ## v2.1.533-beta - 12th Aug 2026
 
 * Imported planets heavier than about four Earths are now treated as gas giants rather than as ice-rich super-Earths, and each one gets its own composition rather than all of them sharing a single figure. Nineteen worlds in each bundled map change, and no imported world reads 55% ice any more. The envelope fractions are the ones the app already uses for a giant it has to guess at, so this is the existing rule applied more widely rather than a new one.
