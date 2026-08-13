@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.548-beta - 7th Aug 2026
+
+* Decided for the cosmic web: it will be built the way cosmologists actually describe it — as a foam of bubbles, where the empty voids are the bubbles, galaxies gather on the films between them, and clusters sit where several films meet. One simple rule produces voids, sheets, filaments and clusters together, so none of them has to be drawn by hand.
+
 ## v2.1.547-beta - 13th Aug 2026
 
 * Importing from the real sky now brings back STARS, not just stars that happen to have planets. It is a starmap importer, and it had been selecting from a catalogue of exoplanets — so a star with none was never in the results at all. That is why an imported "local neighbourhood" had no Sol and no Alpha Centauri A or B, while Proxima turned up on its own. A 16.5 light year import goes from 21 systems to 56, Alpha Centauri arrives with all three of its stars, and Sol is there.
