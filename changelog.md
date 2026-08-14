@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.589-beta - 14th Aug 2026
+
+* The supergiant picture now reaches stars you create as well as stars you import. There are two separate lists of star artwork in the app - one used when importing, one when generating - and only the first had been updated, so a supergiant built by hand still showed a red dwarf.
+
 ## v2.1.588-beta - 14th Aug 2026
 
 * Found while checking whether generated stars would use the new classifications: they will not, and worse, a red giant the app invents and a red giant imported from the sky currently disagree about their radiation by a factor of a hundred. Both are being fixed together, and the change is to the data rather than the code — the generator already knows how to use the new classes, it simply is not offered them.
