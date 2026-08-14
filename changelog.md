@@ -2,7 +2,7 @@
 
 All notable changes are listed here:
 
-## v2.1.571-beta - 14th Aug 2026
+## v2.1.572-beta - 14th Aug 2026
 
 * Imported stars are called what people call them. The catalogue files Antares as "alf Sco", and that is what appeared on your map; now it says Antares. Where a star has no popular name the abbreviation is spelled out instead — "eps Ind" becomes "Epsilon Indi" — and survey designations like "2MASS J09205549+4539058" are left exactly as they are, because they have no friendly name and inventing one would be worse. Systems are named as systems: Alpha Centauri, containing Rigil Kentaurus, Toliman and Proxima Centauri.
 * Searching for a star now accepts the name it just showed you. Greek letters are translated before the search is sent, because the catalogue service rejects them outright — so "α Scorpii" works where it previously failed — and the box tells you what it searched for and what it found, rather than expecting you to know the catalogue's shorthand.
