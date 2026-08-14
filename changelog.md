@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.576-beta - 14th Aug 2026
+
+* Housekeeping: the three star-import items are marked done on the board.
+
 ## v2.1.575-beta - 14th Aug 2026
 
 * Notes for the next person working on stars: what changed, what was measured, and the several things found along the way that were deliberately left alone.
