@@ -599,6 +599,60 @@ human-habitability becomes the DEFAULT rather than the whole model.
 - **VTT integration** — last, by owner decision. [[G14]] (model binaries to remote players) rides with it.
 - **V4** — `docs/dev/v4-scope.md`. [[G17]] is shelved there and is NOT a separate design job.
 
+## SESSION STATE at handover, 2026-08-14 (outgoing coordinator) — READ THIS FIRST
+
+Everything else in this file is durable. This section is not: it is who exists, what they hold, and
+what to pick up. **It is the only thing a successor cannot reconstruct from the repo.**
+
+**LIVE SESSIONS.**
+- **"Ship Model Handoff"** — owns `holo/scene.ts`, camera, framing, construct rendering, transit
+  visuals, GM/player clock coherence. Holds RENDER-S11..S23. Fixed [[C10]] (pinch-zoom reverted on
+  every touch device) from a coordinator diagnosis. **Open: P4, the scale law, gated on the owner
+  eyeballing `/scale-reference`.**
+- **"Tags: provenance, control and surfacing"** — **OWNER-DRIVEN. Assign it nothing through this
+  board.** Shipped highlights to player views and the tag-pill unification. Open: pill-identity
+  markers, the three player-view tag surfaces, and the physics page's GM-overrides section.
+- **"SSE V2 performance and memory analysis"** — retired; [[P1]] closed, meters documented in
+  RENDER-S22.
+- **RETIRED TODAY: "Astronomy data 2"** (the D-batch, [[D18]], and `type-vocabulary-prev4.md`) and
+  **"Astro 3"** (spectral classification, star naming, fuzzy search, [[B44]], compact objects,
+  [[B40]], [[B43]], [[B46]]a, [[B47]]c). Both retired at 90%+ after writing their knowledge down
+  first — which is the pattern worth repeating: **spend a retiring session's last context on a spec,
+  not on code.** Astro 2's spec is what let Astro 3 do the MK work in an hour.
+- **VTT integration** — held to last, by the owner, deliberately. [[G14]] rides with it.
+
+**WHAT SHIPPED TODAY, v2.1.490 to v2.1.593** — the whole D-batch; the real-sky importer becoming a
+STARMAP importer ([[D18]]); spectral classification carried natively with luminosity classes,
+compact objects and readable star names; the Hayashi floor; stellar rotation and oblateness; the
+pinch-zoom fix; and a user-doc sweep that found three sections teaching features that no longer
+exist.
+
+**PICK UP FIRST, in order.** (1) **[[B45]]** — surface irradiance and the optimal plant pigment,
+V3, designed and not started; it also corrects [[G19]]'s `mid-spectrum`. (2) **[[B47]]**(a)(b) and
+**[[B46]]**(b) — the star model's remaining gaps, one session. (3) **[[G19]]**'s V3 half, the
+`life/*` tags — but the tags session is owner-driven, so ask rather than assign. (4) **[[A42]]**+
+**[[A47]]**, still gated on each other.
+
+**NEEDS THE OWNER, not a worker.** [[B47]](a) whether to refuse ageing a sub-0.8-solar star onto the
+giant branch; the supergiant generation weight (astronomically honest at ~1 in 82,000, so the
+generator will never make one — **the outgoing coordinator's recommendation is to hang it on the
+Rarity slider that already exists, keeping the honest default at mid-slider**); and [[D25]]'s
+starmap-carried definitions, which need confirming the mechanism exists before it is scoped as a
+data move.
+
+**FOUR MISTAKES THIS ROLE MADE TODAY, recorded because they are the ones it will make again.**
+(1) **A grep that returned nothing is not an absence** — three claims were wrong, and the one that
+cost most said stars have no rotation anywhere when two importers set it. **State the scope you
+searched, not the conclusion.** (2) **Two line numbers in one file are not a control-flow proof** —
+[[B43]]'s entry named the wrong gate and a worker session spent most of its time finding that out.
+(3) **Never load-and-re-dump a rule pack** — one key cost a 6,385-line diff; DATA-R14 now says so.
+(4) **Capture-first means observations, not everything** — an over-recorded process note and a
+harmless one-off were both pruned by the owner, correctly.
+
+**THE ONE PROCESS FIX WORTH DOING:** version and changelog collisions cost real time daily — three
+in one hour today, including two sessions renumbering into each other. The proposal, not yet
+adopted, is in the standing rules: **bump the version at PUSH time, not commit time.**
+
 ## Findings queue — TRIAGED AND NUMBERED 2026-08-13
 
 The queue is empty: every finding now carries an id or is marked `(closed)`. **16 of 29 were already

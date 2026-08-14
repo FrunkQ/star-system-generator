@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.594-beta - 14th Aug 2026
+
+* Housekeeping at a handover: the development notes now record which work is in flight and who holds it, so the next person picking this up starts from what is known rather than from the commit history.
+
 ## v2.1.593-beta - 14th Aug 2026
 
 * A generated red giant and an imported one are finally the same kind of star. The engine carried two definitions of a red giant whose brightness differed about ninetyfold, and which one you got depended only on where the star came from — so one campaign could hold both. There is now one, and the old one still resolves for any map that already used it.
