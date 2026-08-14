@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.569-beta - 13th Aug 2026
+
+* The Getting Started guide has been brought up to date, and three parts of it were teaching things that no longer exist — Points and Constructs of Interest, which are now simply tags, and the old Field Guide and Projector, which Player Views has replaced. It also now covers importing the real sky, 3D ship models, the new save bundles and their attributions, and a new section on what to do when something goes wrong, including how to send us a diagnostic file when the app will not load.
+
 ## v2.1.568-beta - 13th Aug 2026
 
 * The welcome screen now shows what is coming as well as what has arrived. Four headline features have been added — properly classified stars, worlds coloured by the life on them, your own map pinned behind the starmap, and scaling out to clusters and galaxies — and anything not yet finished is dimmed and tagged, so it is clear at a glance what you can use today. The panel is wider too; the list had grown tall enough to run off a desktop window.

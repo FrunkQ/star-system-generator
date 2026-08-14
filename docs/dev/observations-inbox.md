@@ -623,6 +623,28 @@ that claims to SHOW THE WORKING, so the worst to leave wrong), `docs/tags-guide.
 surfaces and deleted. Verified against the CODE rather than the changelog, and that caught three
 things the debt lines had wrong — see the note in [[D5]].
 
+**HUMAN-DOC SWEEP, 2026-08-13 (coordinator) — `GettingStarted.md`, 123 to 184 lines. AND THE
+HEADLINE IS NOT WHAT WAS MISSING BUT WHAT WAS WRONG: three sections described features that NO
+LONGER EXIST, which a new reader meets before anything else.** (a) **§6 taught Points of Interest
+and Constructs of Interest**, which the tagging rewrite removed outright — so a reader was sent
+looking for two things that are gone and never met overrides, secret tags, per-tag colour or the
+starmap roll-up. Rewritten around the unified model, matching `docs/tags-guide.md`. (b) **§10 led on
+the Field Guide and Projector Mode as THE player-facing surfaces**, when Player Views replaced both
+and [[A42]] deletes them — so V3's headline player feature was absent from the guide while two
+retiring ones were showcased. Rewritten with Player Views first and a short note that the old pair
+are being retired. (c) **§11 said saves are JSON**, from before `.sse.zip` bundles shipped at
+v2.1.429. **LESSON WORTH KEEPING: a stale doc is not merely incomplete — these three actively sent
+readers after features that do not exist, which is worse than silence, and none of them was on this
+debt list.** The list catches what SHIPPED; nothing catches what was REMOVED. **Written up and now
+clear:** real-sky import (both entry points), `.sse.zip` bundles, `ATTRIBUTIONS.md` and per-asset
+credit, 3D ship models end to end, and a NEW §12 "When something goes wrong" covering the load
+guard, Stop load, the Memory panel and the diagnostic bundle — none of which any user document
+mentioned, despite being exactly what a user needs when the app misbehaves. **STILL OUTSTANDING
+below and NOT done in this pass:** G9's sky controls, G10's real-distance grid and scale rings, G8's
+eclipse row, the analytics line (needs `AboutModal`/`README` checked, not `GettingStarted`), and the
+four PHYSICS surfaces — `physics/+page.svelte`, `physicsTrace.ts` and the two tag docs — which this
+sweep did not touch at all.
+
 - **G9 tweaks (v2.1.401)** — two new preset controls (Star boost, Name size) on the charted-star
   sky. Worth a sentence wherever it is written up: at high boost the brightness is deliberately
   oversaturated and no longer reads as apparent magnitude.

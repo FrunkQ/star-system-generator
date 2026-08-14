@@ -14,6 +14,12 @@ You start at the **Starmap** — a pan-and-zoom map tracking many star systems a
 
 * **Navigate**: drag to pan, scroll to zoom.
 * **Add systems**: right-click empty space to place a new system. In the **New System** dialogue you can also **import** a Universe Sandbox save (`.ubox`) or a SpaceEngine export (`.sc`) — pick the file, choose how many small bodies to include with the mass slider, and review the diff before loading.
+* **Import the real sky**: build a map from the astronomy catalogues instead. Start a new starmap and
+  choose **Import from the Real Sky**, or right-click empty space on an existing map and pick
+  **Import Real Stars Here…** to drop a real region into it. You get the actual stars of a region at
+  their true three-dimensional positions, carrying the planets we have really found — and, if you
+  want them, plausible generated worlds filled in around the rest. Anything the app invented is
+  tagged as generated, so you can always tell what is real. The bundled starmaps are built this way.
 * **Link systems**: right-click a star → *Link System*, then click a second star to draw a jump route.
 * **Find by tag…**: from the rail, hunt across every system for what you need — the nearest gas giant to refuel at, a world with a breathable atmosphere, or anything you've tagged.
 * **Find a system**: the **picker** — the puck at the top of the map — opens a searchable list of every system and ship. Tap it, pick, and it folds away again.
@@ -57,17 +63,27 @@ Click the **apple icon** on any body to open the Newton panel. It lays out, laye
 
 It's both a teaching tool and a debugging tool — if a world surprises you, the panel tells you why.
 
-## 6. Tags, Points & Constructs of Interest
+## 6. Tags
 
-Tags are now a first-class feature, and they're what give players reasons to *go* somewhere.
+Tags are the layer between the physics and everything that reads it — the panels, the map, your
+players, the autopilot. If the engine knows something about a world, it says so as a tag.
 
-* **Physics tags** are auto-derived and locked (e.g. *Magnetism · Intrinsic dynamo*, *Shape · Oblate*).
-* **Points of Interest (PoI)** are seeded by rules you configure in **Settings** — flavour and resources like fuel, science interest, mining, or plot hooks ("Why are we here?").
-* **Constructs of Interest (CoI)** tag a ship's capabilities and role — its FTL drive and range, its fuels, its disposition — which engine descriptions and the autopilot then read.
-* **Manual tags**: invent your own for any purpose and use them in PoI rules.
-* **Packs**: author your own PoI/CoI packs to flavour a whole starmap — prison colonies on ore-rich moons, a slim chance of alien ruins on any terrestrial.
+There is now **one** tagging system throughout. (Earlier versions had separate "Points of Interest"
+and "Constructs of Interest"; those are gone, and everything they did is a tag with a category.)
 
-Use **Find by tag…** from the rail to filter bodies or constructs across systems. For a full tour, open the **Tags Guide** from the Find-by-tag panel.
+* **Derived tags** come from the physics — *Magnetism · Intrinsic dynamo*, *Shape · Oblate* — and are
+  re-derived whenever the numbers change, so they cannot drift out of step with the world.
+* **Your own tags** sit alongside them. Invent any you like, on any object.
+* **Overrides**: disagree with the engine? Override a derived tag and your answer wins. The app
+  remembers that it was your call, not its own.
+* **Secret tags** are yours alone and never reach a player view.
+* **Colour and highlights**: give a tag its own colour and light up every body carrying it, right up
+  to a roll-up on the starmap showing which systems hold what.
+* **Rule packs** seed tags across a whole starmap — prison colonies on ore-rich moons, a slim chance
+  of alien ruins on any terrestrial — and you can author your own.
+
+Use **Find by tag…** from the rail to filter bodies or constructs across systems. For the full tour,
+open the **Tags Guide** from the Find-by-tag panel.
 
 ## 7. Constructs: ships & stations
 
@@ -81,7 +97,14 @@ Populate your system with infrastructure.
 
 * **Flight profile**: real Δv and thrust-to-weight from the fitted engines and fuel — it'll tell you whether the ship can actually land on the planet it's orbiting.
 * **Modules**: refit with cargo, weapons or sensors.
-* **Custom images**: give a construct (or a body) its own picture — note that images grow your save file considerably.
+* **Custom images**: give a construct (or a body) its own picture, with its credit, licence and
+  source recorded alongside it.
+* **3D models**: give a ship an actual hull. Upload a GLB, STL or OBJ in the construct editor and it
+  is converted, simplified if it is heavy, and shown as a turntable in the info block — then as a
+  real craft on the 3D map, with a drive plume scaled to how hard it is burning. Pick from seven
+  finishes, or use one of the public-domain NASA craft that ship with the app. STL and OBJ arrive
+  without colour and take the ship's own. Models travel with your saves and reach remote players
+  automatically.
 
 ### Autopilot
 Give NPC ships standing orders so they run their own lives — **Mine, Transport, Patrol, Explore** or **Escort**. Set a ship's *character* (punctual or tardy, planning ahead or not, speed vs efficiency), turn on auto-refuel and restock, and let smart routing find and process resources using your PoI/CoI tags. The **Ship's Log** records everything — journeys, cargo, refuels, and any interactions with other constructs — and is the single source of truth for the physics and time engines. See the in-app **Autopilot Guide** for the full behaviour.
@@ -102,13 +125,23 @@ Give NPC ships standing orders so they run their own lives — **Mine, Transport
 
 ## 10. At the table
 
-### The Field Guide (players' own devices)
-Serve your world live to players' phones and tablets. The **Field Guide** broadcasts a redacted catalogue in four skins — a retro monochrome terminal, a clean survey datapad, a starship console with an orbital map, and *The Guide* (colourful and friendly). Players see only what your visibility settings allow.
+### Player Views (phones, tablets, a shared screen)
+Design what your players see, and serve it live to their own devices or to a screen at the table.
 
-### Projector Mode (a shared screen)
-Open the System View hamburger menu (☰) → **Open Projector View**, drag it to your player-facing screen and go fullscreen. It follows your camera, time and focus, strips hidden objects and GM notes, and has an optional CRT effect for that *Alien*/*Mothership* feel.
+A player view is a **preset you build**: choose whether it shows the system in 3D, a flat orrery or
+the starmap; what it follows; how much of the panel furniture appears; and dress it in a look that
+suits your setting — a monochrome terminal, a survey datapad, a starship console, a CRT with scan
+lines. Everything is redacted against your visibility settings, and it updates live as you play, so
+moving the clock or focusing a world moves it on their screens too.
+
+Open **Player Views** from the menu, build a preset, and send the link — or open a second window and
+drag it to a player-facing screen for the shared-screen case.
 
 ![Greenscreen Projection View](static/screenshots/Greenscreen-ProjectionView.png)
+
+> The older **Field Guide** and **Projector Mode** did parts of this and are being retired — Player
+> Views does everything they did and rather more. If you have a workflow built on either, it still
+> works for now, but move it across when you can.
 
 ### Paper reports (low-tech tables)
 Hamburger menu → **Generate Report** → choose **GM** (full intel) or **Player** (redacted) and a theme, then print or save as PDF. The Player version auto-redacts hidden objects and descriptions — a safe "sensor scan" handout.
@@ -118,6 +151,34 @@ Hamburger menu → **Generate Report** → choose **GM** (full intel) or **Playe
 ## 11. Saving & sharing
 
 * **Autosave**: your work saves to your browser automatically (nothing leaves your machine).
-* **Download / Upload**: export your whole sector, or an individual system, as JSON — for backup or to share.
+* **Download / Upload**: export your whole sector, or an individual system, for backup or to share.
+  A plain map saves as JSON, exactly as it always did. A map carrying **assets** — ship models,
+  uploaded pictures — saves as a **`.sse.zip` bundle** instead: readable JSON with the assets beside
+  it as real files. You can open one with any zip tool and look inside. Both load; the app works out
+  which it has been given, so you never have to choose.
 * **Player-Safe export**: share a spoiler-free copy that hides GM notes and hidden objects.
 * **Credit your work**: save your name, contact and a version number into a system file (under the main star details) so you're credited when you share.
+* **Attributions**: a bundle carries an `ATTRIBUTIONS.md` listing every model and picture in it, with
+  its credit, licence and source — and it names anything whose provenance is missing, so a
+  share-alike image cannot travel without its credit by accident. Uploaded models and pictures each
+  have their own credit, licence and source fields.
+
+## 12. When something goes wrong
+
+It is a beta, so occasionally it will. These are the tools for it.
+
+* **A map that will not load.** If a load never finishes, the app notices next time and offers a way
+  out instead of trying again forever: reload it, start without it, or **download a copy** straight
+  from storage. That last one works even when the map cannot be drawn, so a campaign is recoverable
+  from a file that will not open.
+* **Stop load.** The loading screen names the system it is working on and lets you stop between
+  systems — so if it stalls, the name on screen is the culprit.
+* **Memory.** **Settings → System → Memory** shows how much your browser is using against its limit,
+  and warns you in good time to save if it climbs. (Chrome and Edge only — other browsers do not
+  publish the figure, and the panel says so rather than guessing.)
+* **Reporting a problem.** **Settings → System → Reporting a problem** builds a small zip you can
+  send us: what the app was doing, how far a load got, your device and browser, and the map itself.
+  It is built only when you ask, it is saved to your own machine, nothing is uploaded anywhere, and
+  the README inside tells you exactly what it contains and which files you may delete if you would
+  rather not share the campaign. **A frozen tab cannot report itself — this is how we see what
+  happened.**
