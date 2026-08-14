@@ -1450,6 +1450,16 @@ service: 434 of 434 resolve.
 LEAVE SURVEY DESIGNATIONS ALONE. `2MASS J09205549+4539058` has no friendly name; showing it as it is
 is honest, and mangling it would be inventing.
 
+COST, WHICH IS NOT VISIBLE IN THE QUERY. SIMBAD's TAP is fast on some shapes and pathological on
+others, and reading the ADQL will not tell you which. Measured against the live service:
+`id = '<term>'` 70-310 ms; `main_id like 'eps%'` + order by 200 ms; **`main_id like '* alf Cen%'` +
+order by EIGHTEEN SECONDS**; `select count(*)` over the same prefixes ~6 s; the `ident` alias join
+1.1 s for `eps%` and **120 s** for `61 Cyg%`; `top 100` 1.3 s but `top 200` **16 s**.
+THE RULE: a `LIKE` prefix CONTAINING A SPACE defeats the index. A count costs as much as the rows, so
+answer "are there more than N?" by asking for N+1 rows. `top 100` is a cliff, not a round number.
+And a prefix matching NOTHING can still scan: "zzznotastar" took 20 s, so any optional lookup needs a
+timeout rather than a promise that it will be quick.
+
 ### DATA-R9 Cross-matching star catalogues: DISTANCE discriminates, POSITION does not — and never subtract two parallaxes
 WHERE: `src/lib/import/realsky/convert.mjs` (`matchHostToStar`), `census.mjs`
 (`projectedSeparationAu`, `groupIntoSystems`)

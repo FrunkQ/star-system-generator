@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.581-beta - 14th Aug 2026
+
+* A note for future work: which kinds of catalogue search are fast and which are unusably slow, measured rather than guessed.
+
 ## v2.1.580-beta - 14th Aug 2026
 
 * A star search that misses now tries harder before giving up. Typing "Epsilon Eridani" or "61 Cygni" finds the star, where before only the catalogue's own shorthand did — the app translates and asks again.
