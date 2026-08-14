@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.556-beta - 13th Aug 2026
+
+* Housekeeping: three things a retiring contributor was carrying only in their head are now written down — that one of the Traveller example's worlds still ships detached from its star and needs a decision rather than a repair, that catalogue star names get unfriendly on wide imports, and that the release-numbering collisions between parallel work are costing real time and want fixing at the source.
+
 ## v2.1.555-beta - 13th Aug 2026
 
 * Housekeeping: the list of things noticed in passing has been sorted through. Most had already been dealt with by whoever found them; the dozen that had not are now named and pointed at the release that will already be working in that part of the code, rather than all being attempted at once.
