@@ -3497,6 +3497,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const light = new THREE.PointLight(isBH && feeding ? 0xcfe4ff : colorHex, isBH ? (feeding ? 2.4 : 0.12) : 2.2, 0, 0);
         contentGroup.add(light);
         starLights.push({ id: node.id, light });
+        // A FAST-ROTATING STAR IS FLATTENED, and this branch was the only one that did not say so
+        // (inbox B43). The planet branch below has applied `oblatePolarFactor` all along, and the 2D
+        // orrery is role-agnostic, so a star was the one body drawn as a perfect sphere however fast
+        // it spun. Vega turns near breakup and is genuinely about 20% oblate.
+        //
+        // Applied to the WHOLE star object rather than the sphere alone, so the corona, the flares
+        // and the wireframe overlay squash with the photosphere instead of standing proud of it.
+        const starPolF = oblatePolarFactor((node as any).oblateness);
+        if (starPolF < 0.999) mesh.scale.set(1, starPolF, 1);
       } else if (node.kind === 'construct') {
         // Constructs: the 2D orrery's icon glyph as a fixed-screen-size sprite (sized per frame by
         // the focus rule in updateConstructs — full when in the focus set, tiny+dim otherwise).

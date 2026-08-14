@@ -539,6 +539,33 @@
 
     <section id="spin">
       <h2>Spin axis, seasons and satellite planes <span class="phase">B10 · C3(c)</span></h2>
+      <p><strong>Stars turn too, and some of them are visibly squashed by it.</strong> Until recently no star in the
+        engine had a rotation at all, so every star was drawn as a perfect sphere however fast it should have been
+        spinning. <strong>Vega</strong> is the case that gives the lie away: it turns at about 236 km/s, close to the
+        speed at which it would start throwing material off its own equator, and it is genuinely about a fifth wider
+        across the equator than pole to pole. It is now drawn that way, in both the map view and the 3D view.</p>
+      <p><strong>Where a star's spin comes from depends on one dividing line — the Kraft break, at roughly 1.3 solar
+        masses, or spectral type F5.</strong> It is a real physical boundary rather than a modelling convenience, and
+        which side a star falls on decides whether its rotation is <em>calculated</em> or <em>drawn</em>.</p>
+      <ul>
+        <li><strong>Cooler and lighter than the break</strong> — the star has a churning, convective outer layer. That
+          generates a magnetic field, the field grips the star's own outflowing wind, and the wind carries away
+          angular momentum as it leaves. So the star <strong>slows down as it ages</strong>, and predictably enough
+          that its period can be calculated from its mass and the system's age: period rises with the square root of
+          age, and at any given age a redder star turns more slowly. The Sun takes 25 days at 4.6 billion years;
+          Barnard's Star, far lighter and much older, takes about 130.</li>
+        <li><strong>Hotter and heavier than the break</strong> — no convective layer, so no field, so nothing for the
+          wind to grip. These stars <strong>never slow down at all</strong> and keep roughly the spin they were born
+          with for their whole lives. That is why Vega is fast: not because it is young, but because nothing has ever
+          braked it. Birth spin cannot be recovered after the fact, so this half is drawn from the observed spread —
+          as a <em>fraction of the break-up speed</em> rather than a speed in km/s, because break-up depends on mass
+          and radius, and a fixed velocity would mean something quite different for one star than another.</li>
+      </ul>
+      <p>The flattening itself needs no extra assumption: it is the same relation that squashes Jupiter and Saturn,
+        applied to a star's own density and spin. A remnant &mdash; a white dwarf, neutron star or black hole &mdash;
+        is left out of this entirely, because its spin comes from the collapse that made it rather than from any
+        main-sequence history. <strong>A star with no rotation recorded is treated as not spinning, not as unknown</strong>,
+        so it stays round rather than being handed an invented spin.</p>
       <p>A world's <strong>axial tilt</strong> is what gives it seasons: the engine's temperature range carries a
         seasonal component driven by it, and below about 12° there is nothing worth calling a season. Until
         recently no generated world had a tilt at all — not zero, but absent — so every generated world reported a
@@ -990,6 +1017,19 @@
         starts far out and migrates inward; then the slow main-sequence brightening; eventually red giant → white dwarf),
         decays radiogenic heat (cooling → the tectonic regime), grinds belts down (young = wide, old = narrow), sets
         flare activity, and drives atmospheric escape.</p>
+      <p><strong>A red giant cannot cool without limit &mdash; the Hayashi limit says where it stops.</strong> A star
+        held up by its own pressure and stirred all the way through by convection has a <em>coldest possible surface
+        temperature</em>, somewhere around 3,000&ndash;4,000&nbsp;K depending weakly on its mass. Below that there is
+        no stable arrangement of the star at all. It is why the red giant branch runs almost vertically on a
+        Hertzsprung&ndash;Russell diagram: a giant swells to enormous size and brightens by a factor of thousands
+        while its surface temperature barely shifts, and why real giants of very different origins all end up looking
+        much the same colour.</p>
+      <p>The engine used to cool an ageing star by a <em>proportion</em> of the temperature it started with, which is
+        a reasonable approximation for a Sun-like star and nonsense for anything else &mdash; a small red dwarf was
+        driven down to 1,500&nbsp;K, which is not a star. It now cools toward a floor set by the star's own mass, so
+        every giant converges on a believable colour whatever it grew from. <em>One thing this deliberately does not
+        model:</em> a pulsating star late in its life can dip a little below its own limit, and the limit shifts with
+        chemical composition. Both are finer distinctions than the single smooth swelling used here.</p>
       <p><strong>Atmospheric escape</strong> (over the age, planets assumed to form a few Myr in): two age-integrated
         losses thin or strip an atmosphere <em>before</em> greenhouse &amp; radiation read it. <em>Thermal (Jeans)</em>
         — light gases (H₂/He) leave any non-giant; heavier gases need a high escape parameter

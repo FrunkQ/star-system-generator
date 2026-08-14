@@ -16,6 +16,7 @@
 import type { CelestialBody, RulePack, System } from '$lib/types';
 import { starFieldFromPack, starTiltFromPack } from '$lib/generation/star';
 import { SeededRNG } from '$lib/rng';
+import { stellarRotationHours } from '$lib/physics/stellarRotation';
 
 export function completeImportedStars(systems: { system: System }[], pack: RulePack): void {
   for (const entry of systems) {
@@ -31,6 +32,26 @@ export function completeImportedStars(systems: { system: System }[], pack: RuleP
       }
       if (star.axial_tilt_deg == null) {
         star.axial_tilt_deg = starTiltFromPack(pack, new SeededRNG(`${star.id}-tilt`));
+      }
+      // AND ITS ROTATION (inbox B43). This was deliberately absent, and `processed.spec.js` pinned
+      // the absence so a fresh import could not go toroidal — a real hazard when a missing period
+      // used to read as an unknown rather than as no spin. That pin has been kept and rewritten
+      // rather than deleted: it now asserts that every imported star HAS a period and that none of
+      // them deforms past `oblate`, which is the property it was actually protecting.
+      //
+      // Derived below the Kraft break from the system's age and the star's mass; drawn above it,
+      // where there is nothing to derive from. The roll is seeded from the star's id in the same
+      // recipe as the field and the tilt, so one person's Vega is everyone's.
+      if (star.rotation_period_hours == null) {
+        const p = stellarRotationHours({
+          massKg: star.massKg,
+          radiusKm: star.radiusKm,
+          ageGyr: (entry.system as any).age_Gyr,
+          roll: new SeededRNG(`${star.id}-spin`).nextFloat(),
+          isRemnant: /star\/(WD|NS|BH|BH_active|magnetar)/.test(cls),
+        isEvolved: /star\/([OBAFGKM]-(I|III)|red-giant)/.test(cls)
+        });
+        if (p != null) star.rotation_period_hours = Math.round(p * 100) / 100;
       }
     }
   }

@@ -18,7 +18,7 @@
 
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, EPOCH, G, LY_PER_PC, SOLAR_MASS_KG, SOLAR_RADIUS_KM, AU_KM, DEFAULT_MAP_CENTRE_PX } from './constants.mjs';
 import { hash01, radecToXyzLy, round, xyzToMapPx, inSphere } from './positions.mjs';
-import { starClasses, starParamsFromType, parseStellarType } from './stars.mjs';
+import { starClasses, starParamsFromType, parseStellarType, UNKNOWN_STAR_CLASS } from './stars.mjs';
 import { displayStarName, systemStarName } from './starNames.mjs';
 import { defaultMakeup, estimateRadiusRe, planetDescription } from './planets.mjs';
 import { normaliseStarRows, groupIntoSystems, projectedSeparationAu, angularSepRad, distanceLyFromParallax } from './census.mjs';
@@ -55,6 +55,18 @@ export { BUNDLED_ARCHIVE_HOSTS };
 export const hostSlug = (hostname) =>
   hostname.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+// The spectral letter a measured effective temperature implies. The same ladder as the generator's
+// `determineSpectralClass`, duplicated here rather than imported because this module must stay plain
+// dependency-free ESM for the build kit (DATA-R5).
+function letterForTemp(teff) {
+  const t = Number(teff);
+  if (!Number.isFinite(t) || t <= 0) return '';
+  if (t >= 30000) return 'O'; if (t >= 10000) return 'B'; if (t >= 7500) return 'A';
+  if (t >= 6000) return 'F'; if (t >= 5200) return 'G'; if (t >= 3700) return 'K';
+  if (t >= 2000) return 'M'; if (t >= 1300) return 'L'; if (t >= 700) return 'T';
+  return 'Y';
+}
+
 function starNodeFromRow(row, slug) {
   const missing = [];
   if (row.st_mass == null) missing.push('stellar mass');
@@ -63,7 +75,12 @@ function starNodeFromRow(row, slug) {
   if (missing.length) return { missing };
   // No `otype` here: the Exoplanet Archive has no such column, and every row in it is a confirmed
   // PLANET HOST, so the object is a star by construction.
-  const type = (row.st_spectype ?? '').trim() || 'M';
+  //
+  // The default used to be 'M', which invented a red dwarf for any host the archive gives no type
+  // for. It does not need inventing: this branch already has a MEASURED effective temperature (the
+  // row is skipped above without one), and temperature is what the spectral letter means. So a
+  // missing type is DERIVED from st_teff rather than guessed.
+  const type = (row.st_spectype ?? '').trim() || letterForTemp(row.st_teff);
   const { classes, image } = starClasses(type);
   const stellarType = parseStellarType(type);
   return {
@@ -193,8 +210,16 @@ function starNodeFromCensus(star, id, statTemplates) {
       image: { url: image },
       tags: [],
       description: `${cleanStarName(star.id)}: a real star imported from SIMBAD${typeText ? ` (spectral type ${typeText})` : ''}. `
-        + `No mass, radius or temperature has been measured for it, so those figures are TYPICAL FOR ITS `
-        + `${LUMINOSITY_WORD[params.luminosityClass] ?? 'CLASS'} rather than observed.`
+        + (classes[0] === UNKNOWN_STAR_CLASS
+          // DATA-R4: say what is not known. A star the catalogue gives no type for used to be
+          // presented as a red dwarf "typical for its class", which claims a classification nobody
+          // made. The figures still have to come from somewhere to place the star at all, so they
+          // come from the pack's own default band - said plainly, not dressed as a measurement.
+          ? `The catalogue gives it NO SPECTRAL TYPE, so its type is UNKNOWN and its mass, radius and `
+            + `temperature are placeholders from the rule pack's default band rather than anything `
+            + `measured or inferred.`
+          : `No mass, radius or temperature has been measured for it, so those figures are TYPICAL FOR ITS `
+            + `${LUMINOSITY_WORD[params.luminosityClass] ?? 'CLASS'} rather than observed.`)
     }
   };
 }

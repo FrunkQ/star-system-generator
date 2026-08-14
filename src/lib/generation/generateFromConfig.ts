@@ -15,6 +15,7 @@ import { randomFromRange, weightedChoice } from '../utils';
 import { calculateEquilibriumTemperature } from '../physics/temperature';
 import { makeSystemName, makeWorldName, namesWorlds, planetNameChance, type NamingStrategy } from './naming';
 import { ageStar, determineSpectralClass, type StarSeed, type StarPhase } from '../physics/stellar-evolution';
+import { stellarRotationHours } from '../physics/stellarRotation';
 import { G, AU_KM } from '../constants';
 
 // Physical "starting condition" knobs, each 0..1 (0.5 = neutral). Presets are just saved knob sets.
@@ -106,7 +107,7 @@ function categoryForClass(cls: string): CelestialBody['starCategory'] {
   return 'main_sequence_star';
 }
 
-function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: string | null): CelestialBody {
+function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: string | null, ageGyr?: number): CelestialBody {
   const star = bodyFactory.createBody({ name: '', roleHint: 'star', parentId, seed: id, massKg: seed.massKg, radiusKm: seed.radiusKm });
   star.id = id;
   const classes = classesForPhase(seed, (seed as any).phase);
@@ -125,6 +126,18 @@ function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: st
   // knobs produced stars with none at all (inbox B10) — applyKnobBias is the ONLY other site and it
   // runs only when knobs are supplied. Its own stream for the reason above.
   star.axial_tilt_deg = starTiltFromPack(pack, new SeededRNG(`${id}-tilt`));
+  // ...and the third thing this path never set: a ROTATION (inbox B43, B9b). Without one the shape
+  // code was handed nothing, so no generated star was ever drawn oblate however fast it should have
+  // been turning. Derived from mass and age below the Kraft break, drawn above it; own stream, for
+  // the reason above. Absent when there is nothing to derive from, which reads as no spin, not as
+  // an unknown (B39).
+  const spin = stellarRotationHours({
+    massKg: star.massKg, radiusKm: star.radiusKm, ageGyr,
+    roll: new SeededRNG(`${id}-spin`).nextFloat(),
+    isRemnant: /star\/(WD|NS|BH|BH_active|magnetar)/.test(classes[0]),
+        isEvolved: /star\/([OBAFGKM]-(I|III)|red-giant)/.test(classes[0])
+  });
+  if (spin != null) star.rotation_period_hours = Math.round(spin * 100) / 100;
   star.radiationOutput = Math.max(0.0001, seed.luminositySolar); // luminosity drives zones + flux
   const img = pack.classifier?.starImages?.[classes[0]] ?? pack.classifier?.starImages?.[`star/${classes[0].split('/')[1][0]}`];
   star.image = img ? { url: img } : undefined;
@@ -214,7 +227,7 @@ function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number |
   const massOf = (n: CelestialBody | Barycenter) => n.kind === 'barycenter' ? (n.effectiveMassKg || 0) : ((n as CelestialBody).massKg || 0);
 
   if (seeds.length === 1) {
-    const star = starSeedToBody(ageGyr ? ageStar(seeds[0], ageGyr * 1e9) : seeds[0], pack, `${baseName}-star-a`, null);
+    const star = starSeedToBody(ageGyr ? ageStar(seeds[0], ageGyr * 1e9) : seeds[0], pack, `${baseName}-star-a`, null, ageGyr);
     star.name = baseName;
     nodes.push(star);
     return { nodes, systemRoot: star, systemName: star.name, isBinary: false, hierarchical: false,
@@ -230,7 +243,7 @@ function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number |
   // which sets the node's OUTER stability bound (~0.37× the parent separation).
   const build = (node: StarPlanNode, parentIdForStar: string | null, parentSepAU: number): CelestialBody | Barycenter => {
     if (node.kind === 'star') {
-      const body = starSeedToBody(ageGyr ? ageStar(node.seed, ageGyr * 1e9) : node.seed, pack, `${baseName}-star-${node.index}`, parentIdForStar);
+      const body = starSeedToBody(ageGyr ? ageStar(node.seed, ageGyr * 1e9) : node.seed, pack, `${baseName}-star-${node.index}`, parentIdForStar, ageGyr);
       body.name = `${baseName} ${LETTERS[node.index] ?? node.index + 1}`;
       nodes.push(body);
       starHosts.push({ star: body, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });

@@ -162,7 +162,7 @@ describe('a star with no luminosity class behaves exactly as it did', () => {
 		['K1V', 'star/K'], // Alpha Centauri B
 		['A0mA1Va', 'star/A'], // Sirius A
 		['F5IV-V+DQZ', 'star/F'], // Procyon A
-		['', 'star/M'],
+		['', 'star/default'], // no type at all -> UNCLASSIFIED, on the pack's own default band
 		['L7.5 (brown dwarf)', 'star/L'],
 		['Y2', 'star/Y'],
 		['T9', 'star/T'],
@@ -294,11 +294,17 @@ describe('the classes carry the luminosity class', () => {
 
 // ── NON-STANDARD STARS: the catalogue says what the object IS, in a field already fetched ─────────
 describe('compact objects classify from otype, not from a spectral type they do not have', () => {
-	it('used to import as a RED DWARF, which is the fault', () => {
-		// Not `star/default` — worse. An empty spectral type fails the letter regex, and the letter
-		// defaults to M, so a pulsar took the M-dwarf band: 0.265 Msun and 750 Lsun.
-		expect(starClasses('').classes[0]).toBe('star/M');
-		expect(starParamsFromType('', st)!.massMsun).toBeCloseTo(0.265, 3);
+	it('an unknown type is UNCLASSIFIED, never a red dwarf', () => {
+		// The original fault was worse than `star/default`: an empty spectral type fails the letter
+		// regex and the letter DEFAULTED to M, so anything untyped took the M-dwarf band — 0.265 Msun,
+		// 750 Lsun, red-dwarf art and red-dwarf flare rates. 54 of 851 rows in a 41 ly census.
+		expect(starClasses('').classes).toEqual(['star/unknown']);
+		expect(starClasses('').image).toBeUndefined(); // a wrong picture is a claim too
+		expect(starParamsFromType('', st)!.massMsun).not.toBeCloseTo(0.265, 3);
+		// It lands on the pack's own default band, which is what the pack calls "a star we know
+		// nothing else about" — an honest placeholder rather than a confident wrong class.
+		const d = st['star/default'];
+		expect(starParamsFromType('', st)!.massMsun).toBe((d.mass_solar[0] + d.mass_solar[1]) / 2);
 	});
 
 	it.each([
@@ -340,7 +346,12 @@ describe('compact objects classify from otype, not from a spectral type they do 
 	});
 
 	it('leaves an unknown otype alone rather than guessing', () => {
+		// A type it recognises still wins…
 		expect(starClasses('M4V', { otype: 'Er*' }).classes[0]).toBe('star/M');
-		expect(starClasses('', { otype: 'gB' }).classes[0]).toBe('star/M');
+		// …and an otype it has no mapping for does NOT become a red dwarf by default. `PM*` (high
+		// proper motion) and `*` (star) are the common ones, and neither says anything about type.
+		for (const otype of ['gB', 'PM*', '*', 'LM*', '**']) {
+			expect(starClasses('', { otype }).classes, otype).toEqual(['star/unknown']);
+		}
 	});
 });

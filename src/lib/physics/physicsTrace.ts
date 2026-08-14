@@ -5,6 +5,7 @@
 // links to the matching /physics section. Educational + the primary debug surface.
 import type { CelestialBody, Barycenter, RulePack } from '$lib/types';
 import { deriveCloudDecks, effectiveComposition } from './cloudDecks';
+import { KRAFT_BREAK_MSUN } from './stellarRotation';
 import { atmosphereProfile } from './atmosphereProfile';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
 import { makeupFractions, bulkDensityFromMakeup } from './makeup';
@@ -187,6 +188,22 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       });
     }
     const spinNotes: string[] = [];
+    // A STAR'S SPIN IS DERIVED OR DRAWN, AND THE READER SHOULD BE ABLE TO TELL WHICH (inbox B43).
+    // This module claims to SHOW THE WORKING, so a star that has just acquired a rotation — and
+    // visibly flattened because of it — must not do so silently. The split is a real physical
+    // boundary, not a modelling convenience, and it is the best teaching example the star model has:
+    // it can be checked against stars the reader has heard of.
+    if (body.roleHint === 'star' && rotH != null) {
+      const mSolar = (body.massKg ?? 0) / 1.989e30;
+      const braked = mSolar < KRAFT_BREAK_MSUN;
+      spinIn.push({ label: 'Mass', value: n(mSolar, 2, ' M☉') });
+      spinIn.push({ label: 'Kraft break', value: `${KRAFT_BREAK_MSUN} M☉ — ${braked ? 'BELOW: braked' : 'ABOVE: never brakes'}` });
+      if (braked && ctx.ageGyr) spinIn.push({ label: 'System age', value: n(ctx.ageGyr, 2, ' Gyr') });
+      spinNotes.push(braked
+        ? `DERIVED, not drawn. Below about ${KRAFT_BREAK_MSUN} M☉ a star has a convective envelope, so it generates a magnetic field, so its magnetised wind carries angular momentum away — and it SPINS DOWN predictably. Period goes as the square root of age (Skumanich), with a mass term: at the same age, a redder star turns slower. The relation is anchored on the Sun, which is 25 days at 4.6 Gyr; Barnard's Star, far lighter and older, takes about 130 days.`
+        : `DRAWN, and that is the honest tool here. Above about ${KRAFT_BREAK_MSUN} M☉ a star has a radiative envelope, generates no field for its wind to couple to, and so never brakes at all — it keeps roughly the rotation it was born with for its whole life. THAT is why Vega spins fast enough to be visibly squashed: not that it is young, but that nothing ever slowed it. Birth spin cannot be recovered after the fact, so it is drawn from the observed spread as a FRACTION OF BREAKUP rather than a speed — breakup varies enormously with mass, so a fraction is the only figure that means the same thing across the range.`);
+      spinNotes.push('The flattening follows from the spin and the density with no further assumption: the same relation that squashes Jupiter and Saturn. A star at a large fraction of its breakup spin is a genuinely oblate spheroid, and both views draw it that way.');
+    }
     if (axisInferred || periodInferred) {
       spinNotes.push('MARKED AS INFERRED, and that mark is a promise. A generated world\'s spin is a plausible value from the formation model, not a measurement — so it is tagged, and a figure WITHOUT that tag is one somebody actually observed. Earth\'s 23.4° and Uranus\'s 97.8° are known; a generated neighbour sitting beside them in the same starmap must not read as though it were.');
     }

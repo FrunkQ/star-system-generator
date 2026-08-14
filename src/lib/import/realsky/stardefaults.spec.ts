@@ -61,3 +61,67 @@ describe('completeImportedStars', () => {
     }
   });
 });
+
+// B43: stars had no rotation at all, so no star was ever drawn oblate however fast it should have
+// been turning. `completeImportedStars` now supplies one — derived below the Kraft break, drawn
+// above it — and these assert the physics rather than the plumbing.
+describe('completeImportedStars: rotation', () => {
+	const packFor = () => loadStarterPack();
+	const sys = (star: any, ageGyr = 4.6) => ([{ system: { nodes: [star], age_Gyr: ageGyr } as any }]);
+	const mk = (over: any) => ({
+		id: 'star-x', kind: 'body', roleHint: 'star', name: 'X', classes: ['star/G'],
+		massKg: 1.989e30, radiusKm: 696340, ...over
+	});
+
+	it('gives a Sun-like star roughly the Sun\'s period, because that is the anchor', () => {
+		const star: any = mk({});
+		completeImportedStars(sys(star, 4.6) as any, packFor() as any);
+		// 25 days. The relation is anchored on the Sun by construction, so this is a check that the
+		// anchor is wired up, not a discovery.
+		expect(star.rotation_period_hours / 24).toBeCloseTo(25, 0);
+	});
+
+	it('spins an old M dwarf down hard, and a young star of the same mass much less', () => {
+		const old: any = mk({ id: 'm-old', massKg: 0.16 * 1.989e30, radiusKm: 0.19 * 696340 });
+		const young: any = mk({ id: 'm-young', massKg: 0.16 * 1.989e30, radiusKm: 0.19 * 696340 });
+		completeImportedStars(sys(old, 10) as any, packFor() as any);
+		completeImportedStars(sys(young, 0.5) as any, packFor() as any);
+		// Barnard's Star is ~130 days at ~10 Gyr; this lands in the same country.
+		expect(old.rotation_period_hours / 24).toBeGreaterThan(80);
+		expect(old.rotation_period_hours / 24).toBeLessThan(200);
+		// Skumanich: P goes as sqrt(age), so 20x younger is ~4.5x faster.
+		expect(young.rotation_period_hours).toBeLessThan(old.rotation_period_hours / 3);
+	});
+
+	it('does NOT brake a star above the Kraft break — that is why Vega is fast', () => {
+		// Vega: 2.14 Msun, ~2.36 Rsun, and OLD enough that gyrochronology would have stopped it dead.
+		const vega: any = mk({ id: 'vega', classes: ['star/A'], massKg: 2.135 * 1.989e30, radiusKm: 2.36 * 696340 });
+		completeImportedStars(sys(vega, 0.455) as any, packFor() as any);
+		// Hours, not days: a hot star keeps its birth spin for life.
+		expect(vega.rotation_period_hours).toBeLessThan(48);
+		expect(vega.rotation_period_hours).toBeGreaterThan(4);
+	});
+
+	it('leaves a remnant alone rather than inventing a spin for it', () => {
+		for (const cls of ['star/WD', 'star/NS', 'star/BH']) {
+			const r: any = mk({ id: `r-${cls}`, classes: [cls] });
+			completeImportedStars(sys(r) as any, packFor() as any);
+			expect(r.rotation_period_hours, cls).toBeUndefined();
+		}
+	});
+
+	it('never overwrites a period the catalogue already gave', () => {
+		// SpaceEngine and ubox imports DO carry a real spin; a fill-in must not clobber a measurement.
+		const star: any = mk({ rotation_period_hours: 12.5 });
+		completeImportedStars(sys(star) as any, packFor() as any);
+		expect(star.rotation_period_hours).toBe(12.5);
+	});
+
+	it('is deterministic — one person\'s Vega is everyone\'s', () => {
+		const a: any = mk({ id: 'vega', classes: ['star/A'], massKg: 2.135 * 1.989e30, radiusKm: 2.36 * 696340 });
+		const b: any = mk({ id: 'vega', classes: ['star/A'], massKg: 2.135 * 1.989e30, radiusKm: 2.36 * 696340 });
+		completeImportedStars(sys(a, 0.455) as any, packFor() as any);
+		completeImportedStars(sys(b, 0.455) as any, packFor() as any);
+		expect(a.rotation_period_hours).toBe(b.rotation_period_hours);
+	});
+});

@@ -65,7 +65,19 @@ export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?:
             phase = post < 0.35 ? 'subgiant' : 'giant';
             const peakL = star.luminositySolar * (mSolar > 8 ? 1e5 : 2000); // super/red giant
             L = star.luminositySolar + (peakL - star.luminositySolar) * e;
-            T = star.temperatureK * (1 - 0.55 * e); // cools toward ~2600–3500 K (reddens)
+            // THE HAYASHI LIMIT IS A FLOOR, AND THIS USED TO BE A RATIO (inbox B40). Cooling by a
+            // multiplier of the star's OWN main-sequence temperature makes the endpoint proportional
+            // to wherever it started — fine for a Sun-like progenitor, nonsense elsewhere. Measured
+            // before changing: a 0.2 Msun progenitor was driven to 1,500 K, a 0.5 Msun to 2,019 K.
+            // Neither is a star; 1,500 K is not even physics, it is the numerical guard below.
+            // Bounded at BOTH ends, and the upper bound matters as much as the floor: a giant is
+            // cooler than the star it grew from, so the floor must never push a temperature UP. They
+            // only conflict for a star whose main-sequence temperature is already below the Hayashi
+            // limit — a very low-mass M dwarf — and such a star cannot reach the giant branch inside
+            // the age of the universe at all. It holds its own temperature there, which is the least
+            // wrong answer available; whether the engine should refuse to age it this far is an
+            // authoring question, raised and deliberately not settled here.
+            T = Math.min(star.temperatureK, Math.max(hayashiLimitK(mSolar), star.temperatureK * (1 - 0.55 * e)));
         } else {
             // Remnant, by progenitor mass.
             isDead = true;
@@ -116,6 +128,33 @@ export function flareActivity(spectralClass: string | undefined, ageGyr: number)
   const b = base[sp] ?? 0.3;
   const ageFactor = Math.min(1, Math.pow(0.3 / Math.max(0.05, ageGyr), 0.7)); // young → ~1, old → small
   return Math.max(0, Math.min(1, b * ageFactor));
+}
+
+// THE HAYASHI LIMIT: the coolest a star can be and still hold itself up.
+//
+// A fully convective star in hydrostatic equilibrium has a MINIMUM effective temperature. Cooler
+// than this there is no stable configuration at all — convection cannot carry the flux out, so the
+// star is not on the diagram. It is why the red-giant branch is very nearly VERTICAL on an HR
+// diagram: a giant swells and brightens enormously while its surface temperature barely moves, and
+// real giants converge on 3,000-4,000 K whatever they started as.
+//
+// WEAKLY MASS-DEPENDENT, and rising with mass, which is why this is a function and not a constant —
+// the standing rule is that a figure should come from the body's own properties. Anchored on
+// observation at both ends rather than on the Sun: low-mass red-giant-branch tips sit near 3,000 K,
+// and red SUPERGIANTS (10-25 Msun) near 3,500-4,100 K. The exponent is small because the dependence
+// is weak; the clamp keeps a 0.1 Msun object and a 40 Msun one inside the observed band rather than
+// letting a power law run off either end.
+//
+// NOT TO BE CONFUSED WITH THE 1,500 K GUARD in ageStar's HR call, which is a NUMERICAL floor for the
+// radius/class maths and carries no physical claim. That guard is what a 0.2 Msun progenitor was
+// actually hitting, which is the tell: a physical model should never reach its own safety net.
+//
+// What this does NOT model: an AGB star can sit a little below its Hayashi track while pulsating
+// (Miras reach ~2,500 K), and the limit shifts with metallicity. Both are finer than this engine's
+// giant branch, which is a single smooth swell rather than a track.
+export function hayashiLimitK(massSolar: number): number {
+    const m = Math.max(0.05, massSolar);
+    return Math.min(4100, Math.max(3000, 3100 * Math.pow(m, 0.055)));
 }
 
 // The star's radius in AU (for engulfment + zone work).

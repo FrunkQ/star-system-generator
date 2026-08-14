@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.590-beta - 14th Aug 2026
+
+* Stars spin now, and the fast ones are visibly squashed. Vega turns near the speed at which it would start throwing material off its own equator, and is genuinely about a fifth wider across the equator than pole to pole — it was drawn as a perfect sphere, because stars carried no rotation at all. They do now, and both the map and the 3D view show the flattening.
+* Where a star's spin comes from depends on its mass, and the split is a real one. Lighter stars have a churning outer layer that makes a magnetic field, the field grips their own wind, and the wind carries away spin — so they slow down predictably with age, and their rotation is calculated from mass and age rather than invented. Heavier stars have no such layer, never slow at all, and keep the spin they were born with. That is why Vega is fast: not that it is young, but that nothing has ever braked it.
+* An ageing star no longer cools to an impossible temperature. Red giants were cooled by a fixed proportion of whatever they started at, which suited a Sun-like star and drove a small red dwarf down to 1,500 K — not a star at all. There is a real floor, and giants now stop at it, which is also why real giants of very different origins all end up much the same colour.
+* A star the catalogue gives no type for is now shown as unclassified, instead of quietly becoming a red dwarf. Six percent of the stars in a wide import had no spectral type and were being handed a red dwarf's mass, brightness, picture and flare rate. They now say plainly that the type is unknown and the figures are placeholders.
+* Both physics pages explain all of it, including why one star is squashed and another is not.
+>>>>>>> Stashed changes
+
+
 ## v2.1.589-beta - 14th Aug 2026
 
 * The supergiant picture now reaches stars you create as well as stars you import. There are two separate lists of star artwork in the app - one used when importing, one when generating - and only the first had been updated, so a supergiant built by hand still showed a red dwarf.

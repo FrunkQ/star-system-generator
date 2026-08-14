@@ -1,6 +1,10 @@
 // Real-sky import — star classification helpers shared by the build kit and
 // the in-app importer. Spectral-type string → SSE star classes + type image.
 
+// The class for a star the catalogue gives no usable spectral type for. Mirrors `planet/unknown`
+// (system/typeRanges.ts) — a real class that says "not known", rather than a plausible guess.
+export const UNKNOWN_STAR_CLASS = 'star/unknown';
+
 export const STAR_IMAGE = {
   O: '/images/star_types/O.webp', B: '/images/star_types/B.webp', A: '/images/star_types/A.webp',
   F: '/images/star_types/F.webp', G: '/images/star_types/G.webp', K: '/images/star_types/K.ebp.webp',
@@ -47,6 +51,8 @@ export function starParamsFromType(type, statTemplates, { otype } = {}) {
   if (!statTemplates) return null;
   const { classes } = starClasses(type ?? '', { otype });
   const letter = (classes[0] ?? 'star/M').split('/')[1][0];
+  // `star/unknown` has no letter band to fall back to, so it lands on the pack's `star/default` —
+  // which is what the pack itself calls "a star we know nothing else about".
   const lum = luminosityClassOf(type ?? '');
   // ORDER MATTERS AND IT IS NOT THE ORDER THE COMMENT USED TO CLAIM. `starClasses` returns the
   // LETTER first, so the old `classes.map(...).find(Boolean)` always matched `star/M` and never
@@ -228,7 +234,17 @@ export function starClasses(type, { otype } = {}) {
   // for a 0.11 M(sun), 2,800 K red dwarf. Four stars in a 74-row Local Neighbourhood census.
   if (/white dwarf/i.test(s) || /^D/.test(s)) return { classes: ['star/WD'], image: STAR_IMAGE.WD };
   const m = s.replace(/^(sd|d)(?=[OBAFGKMLTY])/, '').match(/^([OBAFGKMLTY])/i);
-  const letter = m ? m[1].toUpperCase() : 'M';
+  // AN UNKNOWN TYPE IS NOT AN M DWARF. The letter used to DEFAULT to 'M' when the regex failed, so a
+  // star the catalogue gives no type for — 54 of 851 rows in a 41 ly census, 6% — arrived as a
+  // 0.265 Msun red dwarf, with red-dwarf art, red-dwarf luminosity and red-dwarf flare rates. That
+  // is DATA-R4 broken quietly: the importer never invents, and a confident wrong answer is the worst
+  // kind of invention because nothing downstream can tell it from a measurement.
+  //
+  // `star/unknown` takes the pack's own `star/default` band (see starParamsFromType) and NO IMAGE,
+  // because a wrong picture is a claim too. The caller says in the description that the type is
+  // unknown rather than typical-for-class.
+  if (!m) return { classes: [UNKNOWN_STAR_CLASS], image: undefined };
+  const letter = m[1].toUpperCase();
   const full = s.replace(/\s*\(.*\)$/, '');
   // THE LUMINOSITY CLASS BECOMES A CLASS, not just a field (inbox B44). Until it did, the classes
   // read `star/M` and `star/M1.5Iab+B2Vn` — the letter and the raw string, with nothing between —

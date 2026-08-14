@@ -3,8 +3,16 @@
 // and produce sane derived values. Exists because structure-only tests missed
 // exactly this class of fault elsewhere (G11: bodies that parse fine but
 // deform absurdly once the physics reads a field nobody set). In particular:
-// imported bodies carry NO rotation_period_hours, and spinFraction treats
-// absence as zero spin — this pins that a fresh import cannot go toroidal.
+// a fresh import must never produce a toroidal body — the G11 fault, where a
+// field nobody set was read as an unknown rather than as zero.
+//
+// THE PREMISE CHANGED AT B43 AND THE PIN WAS REWRITTEN RATHER THAN DELETED.
+// It used to read "imported bodies carry NO rotation_period_hours", and the
+// no-toroid property followed from that absence. Imported STARS now carry a
+// DERIVED period (gyrochronology below the Kraft break, a seeded draw above
+// it), so the premise is gone but the property it protected is not — and it is
+// asserted directly now, on stars as well as planets, which is stronger than
+// asserting the absence it used to rest on.
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,6 +62,15 @@ describe('imported systems survive the real load path', () => {
         if (node.roleHint === 'star') {
           expect(node.temperatureK, `${entry.id}/${node.id} star temp`).toBeGreaterThan(0);
           expect((node.classes ?? []).length, `${entry.id}/${node.id} star classes`).toBeGreaterThan(0);
+          // B43: a star reaches the shape code now, so it gets the same no-toroid guarantee the
+          // planets have always had. (That stars ACQUIRE a spin is asserted in stardefaults.spec.ts,
+          // which is the spec that runs `completeImportedStars`; this one exercises the LOAD path.)
+          expect(node.oblateness ?? 0, `${entry.id}/${node.id} star oblateness=${node.oblateness}`).toBeLessThan(0.8);
+          const starShape = (node.tags ?? []).find((t) => t.key?.startsWith('shape/'));
+          if (starShape) {
+            expect(['shape/spherical', 'shape/oblate', 'shape/ellipsoid'],
+              `${entry.id}/${node.id} shape=${starShape.key}`).toContain(starShape.key);
+          }
         }
         if (node.roleHint === 'planet') {
           expect((node.classes ?? []).length, `${entry.id}/${node.id} classes`).toBeGreaterThan(0);

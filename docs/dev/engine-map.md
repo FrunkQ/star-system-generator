@@ -1423,6 +1423,36 @@ ALSO: `starParamsFromType` has a SECOND caller inside `convertRegion` that feeds
 across a fixed set of census rows before and after — it was unchanged here (55 / 159 / 716 systems at
 16.5 / 25 / 41 ly), but that was measured, not assumed.
 
+### PHYS-S1 A MULTIPLIER IS NOT A LIMIT, AND A GATE IS NOT A GUARD
+WHERE: `physics/stellar-evolution.ts` (`ageStar`'s giant branch, `hayashiLimitK`),
+`core/SystemProcessor.ts` (`applyRotationalShape` and the planet/moon gate above it).
+RULE: when the physics says "there is a floor", the code must contain a floor. A RATIO that happens
+to land near the right value for one calibration case is not the same statement, and it fails
+silently everywhere else.
+WHY: B40. The giant branch cooled a star to `T = T_ms * (1 - 0.55e)`, with a comment claiming it
+"cools toward ~2600-3500 K". True for a Sun-like progenitor and nonsense elsewhere, because the
+endpoint scales with the STARTING temperature. Measured across 0.2-8 Msun before changing anything:
+a 0.2 Msun progenitor reached **1,500 K**, a 0.5 Msun **2,019 K**. The Hayashi limit is the actual
+rule — a fully convective star in hydrostatic equilibrium has a MINIMUM effective temperature, which
+is why the red-giant branch is nearly vertical on an HR diagram and why real giants converge on
+3,000-4,000 K whatever they grew from.
+BLAST: **A PHYSICAL MODEL SHOULD NEVER REACH ITS OWN SAFETY NET, and that is the tell.** 1,500 K is
+not a temperature the giant branch computed; it is the `Math.max(1500, T)` numerical guard inside the
+HR call, which exists for the radius/class maths and carries no physical claim. When a measurement
+lands exactly on a guard, the model above it has failed, not succeeded. Do not read a clamp as a law.
+ALSO, the bound has to work at BOTH ends: a floor that can push a temperature UP is a new fault. A
+giant is cooler than the star it grew from, so the floor is bounded above by the progenitor's own
+temperature — they only conflict for a star that could never have become a giant at all.
+
+AND THE SECOND HALF, same file family, same shape: **A GATE INHERITED BY SOMETHING THAT SHOULD NOT
+BE BEHIND IT.** `rotationalDeform` sat below `processClassification`'s
+`if (roleHint !== 'planet' && roleHint !== 'moon') return`, so no star ever reached it and Vega — 20%
+oblate in reality — was drawn as a sphere. Rotational shape is not classification: it is geometry
+from spin and density, and a star has both. `applyRadiationHazardTags` was hoisted above the same
+gate for the same reason and its comment says so; that precedent is the pattern.
+NOTE B43's own diagnosis names `processEnvironment`'s `roleHint === 'star'` early return as the
+blocker. That return is real but it is NOT this one — trust the call graph over the report.
+
 ### DATA-R12 A DESTINATION THAT EXISTS IS NOT A DESTINATION ANYTHING REACHES
 WHERE: `src/lib/import/realsky/stars.mjs` (`starClasses`, `OTYPE_CLASS`),
 `static/rulepacks/starter-sf/stars.json`, and every consumer keyed on `classes[0]`.

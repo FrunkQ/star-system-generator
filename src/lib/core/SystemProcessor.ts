@@ -796,6 +796,31 @@ export class SystemProcessor implements ISystemProcessor {
         }
     }
 
+    // Rotational deformation (E4), for ANY body that has a spin and a density — which includes stars
+    // (inbox B43). A spinning body bulges at its equator; past the density-set breakup spin it would
+    // shed mass into a ring. DERIVED dynamically from bulk density and rotation period, so it tracks
+    // either changing. Stored (both renderers draw the oblate shape) and surfaced as progressive
+    // `shape/*` tags. Returns the spin fraction, which the classifier rules key on.
+    //
+    // Absence of a period reads as NO SPIN, not infinite spin (inbox B39) — `spinFraction` returns 0
+    // for a missing or zero period, so a body with no rotation data is spherical rather than toroidal.
+    private applyRotationalShape(body: CelestialBody): number {
+        // A BELT IS NOT A BODY THAT SPINS — it is a debris field on a billion separate orbits, and
+        // "the flattening of its bulk density" means nothing. The gate this was hoisted above says so
+        // in its own comment (B11's pile-sort), so the exclusion has to be carried across explicitly
+        // or the hoist quietly reintroduces what that gate was protecting. The derived-output
+        // baseline is what caught it: belts and rings picked up an `oblateness` field.
+        if (body.roleHint === 'belt' || body.roleHint === 'ring') return 0;
+        const radiusM = (body.radiusKm || 0) * 1000;
+        const volumeM3 = radiusM > 0 ? (4 / 3) * Math.PI * radiusM ** 3 : 0;
+        const density_gcc = volumeM3 > 0 ? ((body.massKg || 0) / volumeM3) / 1000 : 0;
+        const deform = rotationalDeform(body.rotation_period_hours ?? 0, density_gcc);
+        body.oblateness = deform.oblateness;
+        body.tags = stripForReprocess(body.tags, ['shape/']);
+        if (deform.shape !== 'spherical') emit(body.tags, { key: `shape/${deform.shape}` });
+        return deform.fraction;
+    }
+
     private processClassification(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG) {
         // The radiation hazard tags are NOT part of classification and must not inherit its gate —
         // a belt and a ring have real doses at real places. Everything below this line genuinely is
@@ -803,6 +828,16 @@ export class SystemProcessor implements ISystemProcessor {
         // rotational deformation all need a coherent solid body, and a diffuse debris field is not
         // one. See B11 for the pile-sort of what applies to a belt and what does not.
         this.applyRadiationHazardTags(body, pack);
+
+        // AND NEITHER IS ROTATIONAL SHAPE — the same hoist, for the same reason (inbox B43). A body's
+        // flattening is geometry from its SPIN and its DENSITY, and a star has both. It used to sit
+        // below the planet/moon gate, so no star ever reached it: Vega rotates near breakup and is
+        // genuinely ~20% oblate, and the engine drew it as a sphere.
+        //
+        // NOTE FOR ANYONE FOLLOWING B43's OWN DIAGNOSIS: it names `processEnvironment`'s
+        // `roleHint === 'star'` early return as the blocker. That return is real, but it is not this
+        // one — `rotationalDeform` is called inside processCLASSIFICATION, behind the gate below.
+        const spinFraction = this.applyRotationalShape(body);
 
         // Skip classification for Stars, Barycenters, etc.
         // Only Planets and Moons need dynamic classification based on physics.
@@ -1102,15 +1137,10 @@ export class SystemProcessor implements ISystemProcessor {
         // (Magnetism used to be derived HERE, a whole pass after the radiation model that reads it.
         //  It now lands in pass 2b — see processInterior. Inbox B13.)
 
-        // Rotational deformation (E4). A spinning body flattens; past the density-set breakup spin it
-        // would shed mass into a ring. DERIVED dynamically from the bulk density (composition) + rotation
-        // period, so it tracks either changing. Stored (renderers draw the oblate shape) + surfaced as
-        // progressive shape/* tags, and the ellipsoid/toroidal classes key on the spin fraction below.
-        const deform = rotationalDeform(body.rotation_period_hours ?? 0, density_gcc);
-        body.oblateness = deform.oblateness;
-        features['spinFraction'] = deform.fraction;
-        body.tags = stripForReprocess(body.tags, ['shape/']);
-        if (deform.shape !== 'spherical') emit(body.tags, { key: `shape/${deform.shape}` });
+        // Rotational deformation is computed ABOVE the planet/moon gate now (see applyRotationalShape),
+        // because a star flattens too. Its spin fraction is carried down for the classifier rules that
+        // key on it — the ellipsoid and toroidal classes below.
+        features['spinFraction'] = spinFraction;
 
         // Auroras (Phase G viz driver): atmosphere + magnetosphere + incident ionising flux → a polar
         // glow, graded faint→brilliant. Derived here (after magnetism + radiation + atmosphere are all

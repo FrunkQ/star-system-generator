@@ -468,6 +468,7 @@
       'star/L': 'L-type Brown Dwarf. A dark red or magenta sub-stellar object. Hotter than other brown dwarfs, with clouds of dust grains in its atmosphere.',
       'star/T': 'T-type Brown Dwarf. A cool, magenta or brown sub-stellar object. Dominated by strong Methane absorption bands, similar to Jupiter.',
       'star/Y': 'Y-type Brown Dwarf. The coolest known star-like objects. Barely warm enough to emit infrared light, appearing black to the human eye. Often has water clouds.',
+      'star/unknown': 'Unclassified star. The catalogue records this object as a star but gives it no spectral type, so its mass, radius and temperature here are placeholders rather than measurements. Treat every figure on this panel as provisional.',
       'star/brown-dwarf': 'Brown Dwarf. A sub-stellar object massive enough to fuse deuterium but not hydrogen. They glow dimly in the infrared and bridge the gap between gas giants and stars.',
       // Giants and supergiants (inbox D19). The letter gives the temperature and the colour; the
       // luminosity class gives the size, and it is the difference between a red dwarf and Antares.

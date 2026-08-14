@@ -40,6 +40,7 @@
       "particleRadiation": 0,
       "flareActivity": 0.05175165467708495,
       "calculatedGravity_ms2": 274.2814900104337,
+      "oblateness": 0,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
       "aerobrakeLandBudget_ms": -1
@@ -228,6 +229,7 @@
       "surfaceRadiation": 3483.575566426633,
       "orbitalRadiation": 3481.575566990648,
       "beltInnerEdgeRadii": 3.0769,
+      "oblateness": 0.000001272841752605334,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -243,7 +245,6 @@
         ]
       },
       "irradiationDose": 8.87,
-      "oblateness": 0.000001272841752605334,
       "auroraEmitters": [
         {
           "gas": "mixed gases",
@@ -667,6 +668,7 @@
       "surfaceRadiation": 2,
       "orbitalRadiation": 980.3911956508407,
       "beltInnerEdgeRadii": 1.403,
+      "oblateness": 7.637335768889923e-8,
       "geoActivity": {
         "regime": "episodic",
         "volcanism": "resurfacing",
@@ -682,7 +684,6 @@
         ]
       },
       "irradiationDose": 0.126,
-      "oblateness": 7.637335768889923e-8,
       "auroraEmitters": [
         {
           "gas": "carbon dioxide",
@@ -1144,6 +1145,7 @@
       "surfaceRadiation": 2.29897477998165,
       "orbitalRadiation": 657593.4514475134,
       "beltInnerEdgeRadii": 1.1981,
+      "oblateness": 0.004312523427243434,
       "geoActivity": {
         "regime": "plate-tectonics",
         "volcanism": "arc-effusive",
@@ -1159,7 +1161,6 @@
         ]
       },
       "irradiationDose": 0.022,
-      "oblateness": 0.004312523427243434,
       "auroraEmitters": [
         {
           "gas": "atomic oxygen",
@@ -1647,6 +1648,7 @@
       "surfaceRadiation": 512.3836279632528,
       "orbitalRadiation": 510.38362796325276,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.000009382947304466435,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -1662,7 +1664,6 @@
         ]
       },
       "irradiationDose": 1.444,
-      "oblateness": 0.000009382947304466435,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -2084,6 +2085,7 @@
       "surfaceRadiation": 213.69225217706742,
       "orbitalRadiation": 221.91153366168902,
       "beltInnerEdgeRadii": 1.4969,
+      "oblateness": 0.005745063944604033,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2099,7 +2101,6 @@
         ]
       },
       "irradiationDose": 0.52,
-      "oblateness": 0.005745063944604033,
       "auroraEmitters": [
         {
           "gas": "carbon dioxide",
@@ -2358,6 +2359,9 @@
           "value": "years"
         },
         {
+          "key": "shape/oblate"
+        },
+        {
           "key": "structure/icy-shell",
           "value": "water"
         },
@@ -2374,9 +2378,6 @@
         {
           "key": "surface/irradiation",
           "value": "high"
-        },
-        {
-          "key": "shape/oblate"
         },
         {
           "key": "habitability/none"
@@ -2491,6 +2492,7 @@
       "surfaceRadiation": 223.89323317583214,
       "orbitalRadiation": 221.89323317583214,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.12890205412926253,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2506,7 +2508,6 @@
         ]
       },
       "irradiationDose": 0.606,
-      "oblateness": 0.12890205412926253,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -2893,6 +2894,7 @@
       "surfaceRadiation": 223.86590122376526,
       "orbitalRadiation": 221.86590122376526,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.010188695280187085,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -2908,7 +2910,6 @@
         ]
       },
       "irradiationDose": 0.553,
-      "oblateness": 0.010188695280187085,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -3301,6 +3302,9 @@
           "key": "magnetic/dynamo"
         },
         {
+          "key": "shape/oblate"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "ammonium-hydrosulfide broken"
         },
@@ -3325,9 +3329,6 @@
         },
         {
           "key": "ring/light"
-        },
-        {
-          "key": "shape/oblate"
         },
         {
           "key": "aurora/strong",
@@ -3888,6 +3889,7 @@
       "surfaceRadiation": 13139475.018579457,
       "orbitalRadiation": 13139474.47706104,
       "beltInnerEdgeRadii": 1.6462,
+      "oblateness": 0.002138898884302571,
       "geoActivity": {
         "regime": "tidal-volcanic",
         "volcanism": "silicate-tidal",
@@ -3903,7 +3905,6 @@
         ]
       },
       "irradiationDose": 0,
-      "oblateness": 0.002138898884302571,
       "auroraEmitters": [
         {
           "gas": "mixed gases",
@@ -4385,6 +4386,7 @@
       "surfaceRadiation": 1403727.9703357401,
       "orbitalRadiation": 1491257.3275781923,
       "beltInnerEdgeRadii": 2.8887,
+      "oblateness": 0.00062430451352026,
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -4400,7 +4402,6 @@
         ]
       },
       "irradiationDose": 0.002,
-      "oblateness": 0.00062430451352026,
       "auroraEmitters": [
         {
           "gas": "atomic oxygen",
@@ -4852,6 +4853,7 @@
       "surfaceRadiation": 45053.66981633797,
       "orbitalRadiation": 45051.66981633797,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.00023941255374490794,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -4867,7 +4869,6 @@
         ]
       },
       "irradiationDose": 0.174,
-      "oblateness": 0.00023941255374490794,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -5274,6 +5275,7 @@
       "surfaceRadiation": 57.365607992904906,
       "orbitalRadiation": 55.365607992904906,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.00004658194156446283,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -5289,7 +5291,6 @@
         ]
       },
       "irradiationDose": 0.174,
-      "oblateness": 0.00004658194156446283,
       "volatiles": {
         "retained": [
           "carbon-dioxide",
@@ -5561,6 +5562,9 @@
           "key": "magnetic/dynamo"
         },
         {
+          "key": "shape/oblate"
+        },
+        {
           "key": "structure/cloud-deck",
           "value": "ammonium-hydrosulfide broken"
         },
@@ -5581,9 +5585,6 @@
         },
         {
           "key": "ring/heavy"
-        },
-        {
-          "key": "shape/oblate"
         },
         {
           "key": "aurora/moderate",
@@ -6186,6 +6187,7 @@
       "surfaceRadiation": 2.0001915532963097,
       "orbitalRadiation": 5.585376735085806,
       "beltInnerEdgeRadii": 2.2735,
+      "oblateness": 0.0000497411769757759,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -6201,7 +6203,6 @@
         ]
       },
       "irradiationDose": 0.165,
-      "oblateness": 0.0000497411769757759,
       "auroraEmitters": [
         {
           "gas": "nitrogen",
@@ -6615,6 +6616,7 @@
       "surfaceRadiation": 2027.1282516783147,
       "orbitalRadiation": 2151.0634969934586,
       "beltInnerEdgeRadii": 181.8549,
+      "oblateness": 0.007830957040493275,
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -6630,7 +6632,6 @@
         ]
       },
       "irradiationDose": 0.002,
-      "oblateness": 0.007830957040493275,
       "auroraEmitters": [
         {
           "gas": "hydrogen/helium",
@@ -7047,6 +7048,7 @@
       "surfaceRadiationMax": 456.9253046602057,
       "orbitalRadiation": 453.8811485697427,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.006740121027054645,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7062,7 +7064,6 @@
         ]
       },
       "irradiationDose": 0.16,
-      "oblateness": 0.006740121027054645,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -7480,6 +7481,7 @@
       "surfaceRadiationMax": 55.026173079886405,
       "orbitalRadiation": 51.287944874416766,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.0021345219919025886,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7495,7 +7497,6 @@
         ]
       },
       "irradiationDose": 0.164,
-      "oblateness": 0.0021345219919025886,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -7906,6 +7907,7 @@
       "surfaceRadiation": 9102.56955238772,
       "orbitalRadiation": 9100.56955238772,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.0231060686934541,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -7921,7 +7923,6 @@
         ]
       },
       "irradiationDose": 0.161,
-      "oblateness": 0.0231060686934541,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -8334,6 +8335,7 @@
       "surfaceRadiation": 8.336513113450005,
       "orbitalRadiation": 6.336513113450005,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.0009425286679432292,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -8349,7 +8351,6 @@
         ]
       },
       "irradiationDose": 0.162,
-      "oblateness": 0.0009425286679432292,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -8726,6 +8727,7 @@
       "surfaceRadiation": 7.567190044330053,
       "orbitalRadiation": 5.567190044330053,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.000003464842174340908,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -8741,7 +8743,6 @@
         ]
       },
       "irradiationDose": 0.161,
-      "oblateness": 0.000003464842174340908,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -9530,6 +9531,7 @@
       "surfaceRadiation": 3.3898450701728087,
       "orbitalRadiation": 1.389845070172809,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.00018957693430868684,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9545,7 +9547,6 @@
         ]
       },
       "irradiationDose": 0.156,
-      "oblateness": 0.00018957693430868684,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -9919,6 +9920,7 @@
       "surfaceRadiation": 3.389701558645933,
       "orbitalRadiation": 1.3897015586459334,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.0000803946362810514,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -9934,7 +9936,6 @@
         ]
       },
       "irradiationDose": 0.156,
-      "oblateness": 0.0000803946362810514,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -10312,6 +10313,7 @@
       "surfaceRadiation": 5.7967249840268344,
       "orbitalRadiation": 3.7967249840268344,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.0023796512224479416,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -10327,7 +10329,6 @@
         ]
       },
       "irradiationDose": 0.156,
-      "oblateness": 0.0023796512224479416,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -11201,6 +11202,7 @@
       "surfaceRadiation": 2.5657101568514213,
       "orbitalRadiation": 0.5657671658836884,
       "beltInnerEdgeRadii": 2.6844,
+      "oblateness": 0.0003327004885269573,
       "geoActivity": {
         "regime": "cryovolcanic",
         "volcanism": "cryo",
@@ -11216,7 +11218,6 @@
         ]
       },
       "irradiationDose": 0.002,
-      "oblateness": 0.0003327004885269573,
       "auroraEmitters": [
         {
           "gas": "nitrogen",
@@ -11773,6 +11774,7 @@
       "surfaceRadiation": 2.3397463386817847,
       "orbitalRadiation": 0.3397707265492454,
       "beltInnerEdgeRadii": 3.2021,
+      "oblateness": 0.0003197332568945029,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -11788,7 +11790,6 @@
         ]
       },
       "irradiationDose": 0.154,
-      "oblateness": 0.0003197332568945029,
       "auroraEmitters": [
         {
           "gas": "nitrogen",
@@ -12189,6 +12190,7 @@
       "surfaceRadiation": 2.339768915118413,
       "orbitalRadiation": 0.3397689151184129,
       "beltInnerEdgeRadii": 1,
+      "oblateness": 0.00034971537116461603,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -12204,7 +12206,6 @@
         ]
       },
       "irradiationDose": 0.154,
-      "oblateness": 0.00034971537116461603,
       "volatiles": {
         "retained": [],
         "lambda": {
