@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.557-beta - 13th Aug 2026
+
+* Housekeeping: trimmed yesterday's notes back. The release-numbering friction between parallel work is a note on the existing rule rather than a job of its own, and a one-off harmless deviation has been dropped as noise.
+
 ## v2.1.556-beta - 13th Aug 2026
 
 * Housekeeping: three things a retiring contributor was carrying only in their head are now written down — that one of the Traveller example's worlds still ships detached from its star and needs a decision rather than a repair, that catalogue star names get unfriendly on wide imports, and that the release-numbering collisions between parallel work are costing real time and want fixing at the source.
