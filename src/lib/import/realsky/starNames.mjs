@@ -135,6 +135,44 @@ export function needsAsciiRewrite(query) {
   return ascii !== String(query ?? '').trim() ? ascii : null;
 }
 
+// THE SAME TABLES, READ THE OTHER WAY: what a person typed -> the form the catalogue FILES it under.
+//
+// This is for the BROWSE path, not the resolve path, and the difference matters. SIMBAD's `=` on
+// `ident.id` is not a literal comparison — it runs through their own identifier normaliser, which is
+// why `Epsilon Eridani`, `epsilon eridani` and `alf Eri` all match — so an exact lookup needs no
+// help. But `LIKE` IS literal, and the stored form is `* eps Eri`, so `LIKE 'Epsilon Erid%'` matches
+// nothing at all. A prefix search therefore has to be given the catalogue's own spelling.
+//
+// "Epsilon" -> "eps"   "Epsilon Eridani" -> "eps Eri"   "alpha Cen" -> "alf Cen"   "Wolf" -> "Wolf"
+const WORD_TO_GREEK = Object.fromEntries(Object.entries(GREEK).map(([abbr, [word]]) => [word.toLowerCase(), abbr]));
+
+export function toCatalogueTerm(query) {
+  const s = toAsciiQuery(query);
+  if (!s) return '';
+  const [head, ...tail] = s.split(/\s+/);
+  const lower = head.toLowerCase();
+  const abbr = WORD_TO_GREEK[lower] ?? (GREEK[lower] ? lower : null);
+  // A FLAMSTEED NUMBER IS A DESIGNATION TOO. "61 Cygni" is as much a designation as "Alpha Scorpii",
+  // and folding only the Greek half left it as "61 Cygni" against a stored "*  61 Cyg" — a prefix
+  // search that could never match, so the most famous Flamsteed star in the sky found nothing.
+  const isFlamsteed = /^\d+$/.test(head);
+  if (!abbr && !isFlamsteed) return s; // a catalogue name like "Wolf" is already its own prefix
+  const stem = abbr ?? head;
+  const rest = tail.join(' ');
+  if (!rest) return stem;
+  const con = constellationAbbrev(rest);
+  return con ? `${stem} ${con}` : `${stem} ${rest}`;
+}
+
+// "Eri" / "Eridani" / "Eridan" -> "Eri". Already an abbreviation, or a genitive reached by prefix so
+// a half-typed constellation still lands.
+function constellationAbbrev(text) {
+  const lower = text.toLowerCase();
+  return Object.keys(CONSTELLATION).find((k) => k.toLowerCase() === lower)
+    ?? Object.entries(CONSTELLATION).find(([, genitive]) => genitive.toLowerCase().startsWith(lower))?.[0]
+    ?? null;
+}
+
 // THE NAME A STARMAP SHOULD SHOW, in the order the value falls off:
 //   1. A proper name where one exists          "alf Sco"  -> "Antares"
 //   2. Otherwise the expanded designation      "eps Ind"  -> "Epsilon Indi"
@@ -165,6 +203,18 @@ export function displayStarName(mainId, { style = 'word' } = {}) {
 // correct and useless — so the component letter comes off first and the bare designation is what
 // gets expanded. Reads the way an atlas does: system Alpha Centauri, stars Rigil Kentaurus, Toliman
 // and Proxima Centauri.
+// The DESIGNATION to show beside a proper name, or null when the name already is the designation.
+//
+// A candidate list that offers "Ran" to someone who typed "Epsilon Eri" has answered a question they
+// did not ask. Both together — "Ran (Epsilon Eridani)" — confirms they found the right star AND
+// teaches them the name the app will use from then on.
+export function designationFor(mainId) {
+  const stripped = stripCatalogueFurniture(mainId);
+  const expanded = expandDesignation(stripped);
+  if (!expanded) return null;
+  return expanded === displayStarName(mainId) ? null : expanded;
+}
+
 export function systemStarName(mainId, options) {
   const stripped = stripCatalogueFurniture(mainId);
   const parts = splitDesignation(stripped);

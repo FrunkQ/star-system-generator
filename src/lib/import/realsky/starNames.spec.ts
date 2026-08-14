@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	displayStarName, systemStarName, expandDesignation, splitDesignation,
-	toAsciiQuery, needsAsciiRewrite, stripCatalogueFurniture, GREEK, CONSTELLATION
+	toAsciiQuery, needsAsciiRewrite, stripCatalogueFurniture, toCatalogueTerm, designationFor, GREEK, CONSTELLATION
 } from './starNames.mjs';
 
 describe('the tables are complete by construction', () => {
@@ -156,5 +156,51 @@ describe('the two halves compose — what is shown can be sent', () => {
 		expect(stripCatalogueFurniture('*  61 Cyg A')).toBe('61 Cyg A');
 		expect(stripCatalogueFurniture('V* EZ Aqr')).toBe('EZ Aqr');
 		expect(stripCatalogueFurniture('')).toBe('');
+	});
+});
+
+// ── BROWSE: the term folding that makes a PREFIX search possible ──────────────────────────────────
+//
+// SIMBAD's `=` normalises, so an exact lookup needs no help. `LIKE` does not, and the stored form is
+// `* eps Eri` — so a prefix search has to be handed the catalogue's own spelling or it matches
+// nothing. This is the same two tables read the other way round.
+describe('toCatalogueTerm — what a person types -> what the catalogue files it under', () => {
+	it.each([
+		['Epsilon', 'eps'],
+		['epsilon', 'eps'],
+		['eps', 'eps'],
+		['Epsilon Eridani', 'eps Eri'],
+		['Epsilon Eri', 'eps Eri'],
+		['alpha Centauri', 'alf Cen'],
+		['Alpha Cen', 'alf Cen'],
+		['Gamma Draconis', 'gam Dra'],
+		['Omega Centauri', 'ome Cen']
+	])('%s -> %s', (typed, expected) => {
+		expect(toCatalogueTerm(typed)).toBe(expected);
+	});
+
+	it('folds a FLAMSTEED designation too, not only a Bayer one', () => {
+		// "61 Cygni" is as much a designation as "Alpha Scorpii". Folding only the Greek half left it
+		// as "61 Cygni" against a stored "*  61 Cyg", so the most famous Flamsteed star in the sky
+		// found nothing at all.
+		expect(toCatalogueTerm('61 Cygni')).toBe('61 Cyg');
+		expect(toCatalogueTerm('61 Cyg')).toBe('61 Cyg');
+		expect(toCatalogueTerm('40 Eridani')).toBe('40 Eri');
+	});
+
+	it('leaves a catalogue name alone — it is already its own prefix', () => {
+		for (const q of ['Wolf', 'Wolf 359', 'Ross 128', 'HD 95735', '2MASS J0920']) {
+			expect(toCatalogueTerm(q)).toBe(q);
+		}
+	});
+
+	it('normalises to ASCII on the way, because the browse query is sent too', () => {
+		expect(toCatalogueTerm('ε Eridani')).toBe('eps Eri');
+		expect(toCatalogueTerm('α Cen')).toBe('alf Cen');
+	});
+
+	it('accepts a half-typed constellation', () => {
+		expect(toCatalogueTerm('Epsilon Erid')).toBe('eps Eri');
+		expect(toCatalogueTerm('Alpha Scorp')).toBe('alf Sco');
 	});
 });

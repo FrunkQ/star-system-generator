@@ -6,7 +6,7 @@ import { LY_PER_PC } from './constants.mjs';
 import { inSphere, radecToXyzLy } from './positions.mjs';
 import {
   SOL_CENTRE, archiveCountAdql, archivePlanetsAdql, gaiaConeAdql,
-  regionBounds, runTap, simbadResolveAdql, tapUrl
+  regionBounds, runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT, tapUrl
 } from './query.mjs';
 
 describe('regionBounds', () => {
@@ -116,5 +116,48 @@ describe('tapUrl + runTap', () => {
   it('throws on HTTP failure with the service named', async () => {
     const fail = async () => ({ ok: false, status: 503, text: async () => 'busy' });
     await expect(runTap('gaia', 'q', { fetchImpl: fail })).rejects.toThrow(/gaia TAP: HTTP 503/);
+  });
+});
+
+// WHEN AN EXACT LOOKUP FAILS (D24 follow-on). The shapes here are constrained by MEASURED cost
+// against the live service, not by taste — see the timings in query.mjs — so these tests pin the
+// properties that keep them fast, because a change that loses one is invisible until someone waits
+// eighteen seconds for a search.
+describe('the suggestion queries', () => {
+  it('asks for one more row than it will show, so "more than 20" needs no second query', () => {
+    // A count over the same prefixes costs ~6 seconds, which is why this is not a count.
+    expect(simbadSearchAdql('eps')).toContain(`top ${SUGGEST_LIMIT + 1}`);
+    expect(simbadSearchAdql('eps', { limit: 5 })).toContain('top 6');
+  });
+
+  it('excludes planets and anything without a parallax, and orders nearest first', () => {
+    const q = simbadSearchAdql('eps');
+    // A planet cannot be a region centre, and no parallax means no distance to place it at.
+    expect(q).toContain("otype not in ('Pl', 'Pl?')");
+    expect(q).toContain('plx_value > 0');
+    expect(q).toContain('order by plx_value desc');
+  });
+
+  it("covers SIMBAD's own identifier prefixes", () => {
+    const q = simbadSearchAdql('Wolf');
+    for (const p of ["like 'Wolf%'", "like '* Wolf%'", "like 'V* Wolf%'", "like 'NAME Wolf%'"]) {
+      expect(q).toContain(p);
+    }
+  });
+
+  it('escapes a quote rather than breaking the query', () => {
+    expect(simbadSearchAdql("Barnard's")).toContain("Barnard''s");
+    expect(simbadComponentsAdql("* Barnard's star")).toContain("Barnard''s star");
+  });
+
+  it('reads components through h_link, aliasing every column', () => {
+    const q = simbadComponentsAdql('*  61 Cyg');
+    // h_link IS the parent/child relationship; `main_id like '<id> %'` is 3.2 s against 177 ms.
+    expect(q).toContain('from h_link h');
+    // SIMBAD's parser rejects a QUALIFIED name in order by, and an unqualified plx_value is
+    // ambiguous across this join — aliasing every column is the only shape that parses.
+    expect(q).toContain('c.plx_value as plx_value');
+    expect(q).toContain('order by plx_value desc');
+    expect(q).not.toContain('order by c.plx_value');
   });
 });

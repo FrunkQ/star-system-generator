@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.580-beta - 14th Aug 2026
+
+* A star search that misses now tries harder before giving up. Typing "Epsilon Eridani" or "61 Cygni" finds the star, where before only the catalogue's own shorthand did — the app translates and asks again.
+* Searching for a pair, like 61 Cygni, offers you its two stars to choose between. The pair itself has no distance of its own, so it could not be used as a map centre and the search simply failed.
+* A search too vague to answer now says so and suggests how to narrow it, rather than listing a hundred stars or reporting nothing found. "Epsilon" names a star in all 88 constellations, so it asks you to add one.
+
+
 ## v2.1.579-beta - 14th Aug 2026
 
 * The New Starmap screen said it wanted a .json file, from before saves with pictures or ship models started arriving as .sse.zip bundles. It now says both. The file picker already accepted them; only the wording was behind.

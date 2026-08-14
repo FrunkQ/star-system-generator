@@ -11,8 +11,8 @@
   import { REGION_PRESETS } from '$lib/import/realsky/presets.mjs';
   import { loadArchiveRows, loadStarRows } from '$lib/import/realsky/catalogue.mjs';
   import { convertRegion } from '$lib/import/realsky/convert.mjs';
-  import { runTap, simbadResolveAdql } from '$lib/import/realsky/query.mjs';
-  import { toAsciiQuery, displayStarName } from '$lib/import/realsky/starNames.mjs';
+  import { runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT } from '$lib/import/realsky/query.mjs';
+  import { toAsciiQuery, displayStarName, designationFor, toCatalogueTerm } from '$lib/import/realsky/starNames.mjs';
   import { buildSgrAStarSystem, SGR_A_MAP_META } from '$lib/import/realsky/sgrastar.mjs';
   import { parallaxMasToLy } from '$lib/import/realsky/positions.mjs';
   import { PIXELS_PER_LY, DEFAULT_MAP_CENTRE_PX } from '$lib/import/realsky/constants.mjs';
@@ -57,6 +57,12 @@
   // What the box did on the GM's behalf: the ASCII rewrite it had to make, or the name it actually
   // found. Teaching the designation rather than demanding it (D24).
   let resolveNote: string | null = null;
+  // Candidates from the BROWSE fallback, when no star is called exactly what was typed.
+  let candidates: any[] = [];
+  // Past SUGGEST_LIMIT matches the dialogue asks for a better search instead of listing them. A list
+  // of a hundred stars is impractical and not much use; twenty is about the point where scanning it
+  // stops being quicker than typing the constellation.
+  const SUGGEST_TIMEOUT_MS = 3000;
 
   // Conversion preview for the current rows + radius (instant, client-side).
   let preview: { systems: any[]; collisions: any[]; skipped: any[] } | null = null;
@@ -126,7 +132,7 @@
 
   function pickPreset(p: (typeof REGION_PRESETS)[number]) {
     presetKey = p.key;
-    resolveError = null; resolveNote = null;
+    resolveError = null; resolveNote = null; candidates = [];
     if (p.kind === 'cluster-demo') { preview = null; return; }
     centre = { ...(p.centre as any), label: (p as any).centreLabel ?? p.name };
     radiusLy = p.radiusLy as number;
@@ -139,7 +145,7 @@
 
   async function resolveStar() {
     if (!starQuery.trim()) return;
-    resolving = true; resolveError = null; resolveNote = null;
+    resolving = true; resolveError = null; resolveNote = null; candidates = [];
     const typed = starQuery.trim();
     // SIMBAD's TAP service REJECTS NON-ASCII outright — "α Scorpii" comes back as an HTTP 400,
     // "Impossible to normalise the identifier … unsupported character encoding". So a Greek letter
@@ -153,26 +159,102 @@
     if (rewrote) resolveNote = rewrote;
     try {
       if (!sent) throw new Error(`“${typed}” has no letters or numbers the catalogue can search for.`);
-      const hits = await runTap('simbad', simbadResolveAdql(sent));
-      if (!hits.length) throw new Error(notFoundMessage(sent));
-      const hit = hits[0];
-      if (!(hit.plx_value > 0)) {
-        throw new Error(`${displayStarName(hit.main_id)} has no measured distance in the catalogue, so it cannot be placed in 3D.`);
+      let hit = (await runTap('simbad', simbadResolveAdql(sent)))[0];
+      let via = '';
+
+      // SECOND CHANCE, AND IT IS THE ONE THAT DOES MOST OF THE WORK. The catalogue files stars under
+      // its own spelling, so "Epsilon Eridani" is "eps Eri" and "61 Cygni" is "61 Cyg". Folding and
+      // asking again costs one fast lookup (~300 ms) and answers with ONE star — far better than
+      // offering a list of everything beginning with "Epsilon".
+      const folded = toCatalogueTerm(sent);
+      if (!hit && folded && folded !== sent) {
+        hit = (await runTap('simbad', simbadResolveAdql(folded)))[0];
+        if (hit) via = `Found it under the catalogue's own name for it, “${folded}”.`;
       }
-      centre = { raDeg: hit.ra, decDeg: hit.dec, distLy: parallaxMasToLy(hit.plx_value), label: displayStarName(hit.main_id) };
-      // Name the object we actually found, since it may not be spelled the way the GM typed it.
-      const found = displayStarName(hit.main_id);
-      const foundNote = found.toLowerCase() === sent.toLowerCase() ? '' : `Found ${found}.`;
-      resolveNote = [rewrote, foundNote].filter(Boolean).join(' ') || null;
-      presetKey = 'custom';
-      await loadRowsFor(centre, radiusLy);
+
+      if (!hit) return await suggestFor(sent, rewrote);
+
+      // A HIT WITH NO PARALLAX IS A SYSTEM RECORD, NOT A STAR. "61 Cygni" resolves to the PAIR,
+      // which has no distance of its own; its two components do. Offering those is a two-row answer
+      // to a question that used to dead-end on an apology.
+      if (!(hit.plx_value > 0)) {
+        const name = displayStarName(hit.main_id);
+        const parts = await runTap('simbad', simbadComponentsAdql(hit.main_id));
+        if (!parts.length) throw new Error(`${name} has no measured distance in the catalogue, so it cannot be placed in 3D.`);
+        candidates = parts;
+        resolveNote = [rewrote, `${name} is a ${parts.length === 2 ? 'pair' : 'system'} with no distance of its own. Pick the star to centre on:`]
+          .filter(Boolean).join(' ');
+        return;
+      }
+      await useCandidate(hit, [rewrote, via].filter(Boolean).join(' '));
     } catch (e) {
       resolveError = readableTapError(e, sent);
       resolveNote = null;
+      candidates = [];
     } finally {
       resolving = false;
     }
   }
+
+  // Nothing resolved. Offer a SHORT list if there is one, and otherwise ask for more rather than
+  // dumping the catalogue.
+  //
+  // A multi-word term is never sent as a prefix search: a LIKE containing a space defeats SIMBAD's
+  // index and takes eighteen seconds (see query.mjs). It has already had its exact and folded
+  // lookups, so there is nothing cheap left to try.
+  async function suggestFor(sent: string, rewrote: string) {
+    const term = toCatalogueTerm(sent);
+    if (/\s/.test(term)) throw new Error(notFoundMessage(sent));
+    // THE SUGGESTION IS OPTIONAL, SO IT GETS A BUDGET. A prefix that matches nothing can still cost
+    // a full scan — "zzznotastar" measured at 20 SECONDS — and a typo is exactly the case where a
+    // GM is most likely to be waiting on this. Past three seconds the plain "no such star" answer is
+    // better than a slow clever one, and the abort costs nothing when the query is quick (70-300 ms
+    // for every term that actually matches something).
+    let rows: any[] = [];
+    try {
+      rows = await runTap('simbad', simbadSearchAdql(term), { signal: AbortSignal.timeout(SUGGEST_TIMEOUT_MS) });
+    } catch {
+      throw new Error(notFoundMessage(sent));
+    }
+    if (!rows.length) throw new Error(notFoundMessage(sent));
+    if (rows.length > SUGGEST_LIMIT) {
+      // The query asked for one more than it will show, so this is "at least 21", not "exactly 21".
+      // The example must be the DESIGNATION, not the proper name: the advice is "add the
+      // constellation", and answering "for example, Ran" demonstrates the opposite of that.
+      const example = designationFor(rows[0].main_id) ?? displayStarName(rows[0].main_id);
+      throw new Error(
+        `“${sent}” matches more than ${SUGGEST_LIMIT} stars — it names one in each constellation. ` +
+        `Add the constellation and search again, for example “${example}”.`
+      );
+    }
+    candidates = rows;
+    resolveNote = [rewrote, `No star is called exactly “${sent}”. ${rows.length === 1 ? 'The nearest match is' : `These ${rows.length} match`}, nearest first:`]
+      .filter(Boolean).join(' ');
+  }
+
+  async function useCandidate(hit: any, lead = '') {
+    candidates = [];
+    centre = { raDeg: hit.ra, decDeg: hit.dec, distLy: parallaxMasToLy(hit.plx_value), label: displayStarName(hit.main_id) };
+    // Name the object we actually found, since it may not be spelled the way the GM typed it.
+    const found = displayStarName(hit.main_id);
+    const foundNote = found.toLowerCase() === toAsciiQuery(starQuery).toLowerCase() ? '' : `Found ${found}.`;
+    resolveNote = [lead, lead.includes(found) ? '' : foundNote].filter(Boolean).join(' ') || null;
+    presetKey = 'custom';
+    await loadRowsFor(centre, radiusLy);
+  }
+
+  async function pickCandidate(hit: any) {
+    resolving = true; resolveError = null;
+    try {
+      await useCandidate(hit);
+    } catch (e) {
+      resolveError = readableTapError(e, String(hit.main_id));
+    } finally {
+      resolving = false;
+    }
+  }
+
+  const distanceLy = (plxMas: number) => parallaxMasToLy(plxMas);
 
   function notFoundMessage(sent: string) {
     // "Barnards Star" fails where "Barnard's Star" works, and a bare surname finds nothing — so the
@@ -318,6 +400,19 @@
     </div>
     {#if resolveError}<p class="error">{resolveError}</p>{/if}
       {#if resolveNote}<p class="resolve-note">{resolveNote}</p>{/if}
+      {#if candidates.length}
+        <ul class="candidates">
+          {#each candidates as c (c.main_id)}
+            <li>
+              <button type="button" on:click={() => pickCandidate(c)} disabled={resolving}>
+                <span class="cand-name">{displayStarName(c.main_id)}</span>
+                {#if designationFor(c.main_id)}<span class="cand-desig">{designationFor(c.main_id)}</span>{/if}
+                <span class="cand-facts">{c.sp_type ? c.sp_type + ' · ' : ''}{distanceLy(c.plx_value).toFixed(1)} ly</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
 
     {#if activePreset?.kind === 'cluster-demo'}
       <div class="cluster-demo">
@@ -482,6 +577,17 @@
   /* Not an error — what the box did on the GM's behalf, so the designation is taught rather than
      demanded ("Searching for α Scorpii as Alpha Scorpii", "Found Antares"). */
   .resolve-note { color: #99a5b3; margin: 0.3rem 0; font-size: 0.82rem; }
+  /* The browse fallback's candidate list. Nearest first, so the top of the list is the answer most
+     of the time; the designation sits beside the name so a GM who typed "Epsilon Eri" and is offered
+     "Ran" can see they are the same star. */
+  .candidates { list-style: none; margin: 0.35rem 0 0; padding: 0; max-height: 15rem; overflow-y: auto; border: 1px solid #2b3542; border-radius: 4px; }
+  .candidates li + li { border-top: 1px solid #232c37; }
+  .candidates button { display: flex; align-items: baseline; gap: 0.5rem; width: 100%; text-align: left; background: none; border: 0; padding: 0.4rem 0.6rem; color: inherit; cursor: pointer; font-size: 0.85rem; }
+  .candidates button:hover:not(:disabled) { background: #1d2530; }
+  .candidates button:disabled { opacity: 0.5; cursor: default; }
+  .cand-name { font-weight: 600; }
+  .cand-desig { color: #99a5b3; }
+  .cand-facts { margin-left: auto; color: #7f8b99; white-space: nowrap; }
   details { margin: 0.3rem 0; font-size: 0.82rem; color: #99a5b3; }
   details ul { margin: 0.3rem 0 0.3rem 1.2rem; padding: 0; }
   .fill-row { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0.7rem 0; font-size: 0.82rem; color: #b9c2cc; }

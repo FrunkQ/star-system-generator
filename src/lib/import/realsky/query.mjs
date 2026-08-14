@@ -105,6 +105,60 @@ export function simbadResolveAdql(name) {
   );
 }
 
+// WHEN AN EXACT LOOKUP FAILS. Deliberately NOT a catalogue browser: listing a hundred stars is
+// impractical and not much use to anyone (owner, 2026-08-14). The order of preference is
+//   1. resolve the FOLDED form exactly    — "Epsilon Eridani" -> "eps Eri", one star, no list
+//   2. offer a system's COMPONENTS        — "61 Cygni" -> 61 Cygni A and B, two rows
+//   3. offer a SHORT list, up to 20
+//   4. past 20, ask for more instead of listing
+// and only step 3 shows anything list-shaped at all.
+//
+// EVERY SHAPE HERE WAS TIMED AGAINST THE LIVE SERVICE, because the fast and slow ones are not
+// distinguishable by reading them:
+//   - `id = '<term>'` (the resolve path)                        70-310 ms   <- SIMBAD normalises here
+//   - `main_id like 'eps%'` + order by, top 15-21               ~200 ms
+//   - `main_id like '* alf Cen%'` + order by  (SPACE IN TERM)   **18 SECONDS**
+//   - `select count(*)` over the same prefixes                  ~6 s
+//   - the `ident` alias join, `like 'eps%'` / `like '61 Cyg%'`  1.1 s / **120 s**
+// A LIKE prefix containing a SPACE defeats SIMBAD's index, and a count costs as much as the rows.
+// So: a term with a space is never sent as a LIKE, and the "more than 20?" question is answered by
+// asking for 21 rows rather than by counting.
+export const SUGGEST_LIMIT = 20;
+
+// A short list of stars whose identifier starts with `term`, nearest first. SINGLE-TOKEN TERMS ONLY
+// — see the timings above. Asks for one more than it will show, so the caller can tell "20" from
+// "at least 21" without a second query.
+export function simbadSearchAdql(term, { limit = SUGGEST_LIMIT } = {}) {
+  const safe = String(term ?? '').replace(/'/g, "''");
+  const where = ['', '* ', 'V* ', 'NAME '].map((p) => `main_id like '${p}${safe}%'`).join(' or ');
+  return (
+    `select top ${limit + 1} main_id, ra, dec, plx_value, sp_type, otype from basic ` +
+    `where (${where}) and plx_value > 0 and otype not in ('Pl', 'Pl?') order by plx_value desc`
+  );
+}
+
+// THE STARS THAT MAKE UP A SYSTEM. `61 Cygni` resolves — to `*  61 Cyg`, the PAIR, which carries no
+// parallax of its own, so it cannot be a region centre and the search dead-ends on a hit. Its
+// components each have one. This is the useful answer to that, and it is two rows rather than a
+// list: SIMBAD's `h_link` hierarchy, which is what the relationship actually is.
+//
+// Via h_link and NOT `main_id like '<id> %'`, and the difference is measured: 177 ms against 3.2 s,
+// because that pattern has the same space in it as everything else slow here.
+// EVERY COLUMN IS ALIASED, and that is not style. SIMBAD's ADQL parser rejects a QUALIFIED name in
+// `order by` ("Encountered '.'"), but an UNqualified `plx_value` is ambiguous across this join
+// ("It may be (at least) c.plx_value or …") — so the only shape that parses is to alias the columns
+// in the select and order by the alias. Aliasing them all also keeps the row shape identical to
+// `simbadSearchAdql`'s, so the caller handles both lists the same way.
+export function simbadComponentsAdql(mainId, { limit = 8 } = {}) {
+  const safe = String(mainId ?? '').replace(/'/g, "''");
+  return (
+    `select top ${limit} c.main_id as main_id, c.ra as ra, c.dec as dec, ` +
+    `c.plx_value as plx_value, c.sp_type as sp_type, c.otype as otype ` +
+    `from h_link h join basic c on c.oid = h.child join basic p on p.oid = h.parent ` +
+    `where p.main_id = '${safe}' and c.plx_value > 0 and c.otype not in ('Pl', 'Pl?') order by plx_value desc`
+  );
+}
+
 // THE STELLAR CENSUS — the query that makes this a STARMAP importer (D18).
 //
 // The archive query above returns PLANET HOSTS, so a star with no confirmed planet was never in the
