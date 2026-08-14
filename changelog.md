@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.554-beta - 13th Aug 2026
+
+* Planning, no product change: a written specification for the fix to giants and supergiants importing as dwarfs — Antares currently arrives as a red dwarf, wrong on mass by fifty times and on brightness by six million. The specification is detailed enough to be implemented without working any of it out again.
+
 ## v2.1.553-beta - 13th Aug 2026
 
 * On the imported-giants problem: the app already knows what a red giant is — that definition is in the rule pack and always has been. The importer simply has no way to ask for it from a catalogue's own wording, so it asks for a dwarf every time. Smaller to put right than it first appeared.
