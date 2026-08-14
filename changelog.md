@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.591-beta - 14th Aug 2026
+
+* Recorded from the stellar-spin work: an imported star with no known age is currently given the Sun's, and now that a star's spin is worked out from its age, that borrowed number has started to matter. Also noted that a star too small ever to become a giant can still be aged into one, which the engine now handles gracefully rather than correctly.
+
 ## v2.1.590-beta - 14th Aug 2026
 
 * Stars spin now, and the fast ones are visibly squashed. Vega turns near the speed at which it would start throwing material off its own equator, and is genuinely about a fifth wider across the equator than pole to pole — it was drawn as a perfect sphere, because stars carried no rotation at all. They do now, and both the map and the 3D view show the flattening.
