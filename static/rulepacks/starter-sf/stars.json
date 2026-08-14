@@ -16,6 +16,22 @@
         "star/magnetar": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000000, 1000000000000000], "radiation_output": [100000, 1000000] },
         "star/BH": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [0, 0], "radiation_output": [0.01, 0.1] },
         "star/BH_active": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [100000, 100000000], "radiation_output": [10000, 100000] },
-        "star/red-giant": { "mass_solar": [0.8, 5], "radius_solar": [20, 100], "temp_k": [3000, 4500], "mag_gauss": [0.1, 10], "radiation_output": [10, 50] }
+        "star/red-giant": { "mass_solar": [0.8, 5], "radius_solar": [20, 100], "temp_k": [3000, 4500], "mag_gauss": [0.1, 10], "radiation_output": [10, 50] },
+
+        "star/O-I": { "mass_solar": [20, 60], "radius_solar": [15, 40], "temp_k": [30000, 45000], "mag_gauss": [0.1, 10], "radiation_output": [200000, 1500000] },
+        "star/B-I": { "mass_solar": [10, 30], "radius_solar": [30, 120], "temp_k": [10000, 25000], "mag_gauss": [0.1, 10], "radiation_output": [30000, 400000] },
+        "star/A-I": { "mass_solar": [10, 25], "radius_solar": [80, 250], "temp_k": [7500, 10000], "mag_gauss": [0.1, 10], "radiation_output": [30000, 250000] },
+        "star/F-I": { "mass_solar": [4, 12], "radius_solar": [30, 120], "temp_k": [6000, 7500], "mag_gauss": [0.1, 10], "radiation_output": [1000, 30000] },
+        "star/G-I": { "mass_solar": [5, 15], "radius_solar": [40, 150], "temp_k": [4800, 6000], "mag_gauss": [0.1, 10], "radiation_output": [1000, 50000] },
+        "star/K-I": { "mass_solar": [6, 20], "radius_solar": [100, 400], "temp_k": [3900, 4800], "mag_gauss": [0.1, 10], "radiation_output": [5000, 100000] },
+        "star/M-I": { "mass_solar": [8, 25], "radius_solar": [300, 1200], "temp_k": [3000, 4000], "mag_gauss": [0.1, 10], "radiation_output": [30000, 300000] },
+
+        "star/O-III": { "mass_solar": [16, 50], "radius_solar": [8, 20], "temp_k": [30000, 45000], "mag_gauss": [0.1, 10], "radiation_output": [50000, 500000] },
+        "star/B-III": { "mass_solar": [4, 15], "radius_solar": [4, 15], "temp_k": [10000, 25000], "mag_gauss": [0.1, 10], "radiation_output": [500, 20000] },
+        "star/A-III": { "mass_solar": [2, 5], "radius_solar": [3, 10], "temp_k": [7500, 10000], "mag_gauss": [0.1, 10], "radiation_output": [50, 500] },
+        "star/F-III": { "mass_solar": [1.5, 4], "radius_solar": [4, 12], "temp_k": [6000, 7500], "mag_gauss": [0.1, 10], "radiation_output": [20, 300] },
+        "star/G-III": { "mass_solar": [1.5, 3.5], "radius_solar": [8, 20], "temp_k": [4800, 5800], "mag_gauss": [0.1, 10], "radiation_output": [40, 200] },
+        "star/K-III": { "mass_solar": [1, 3], "radius_solar": [10, 60], "temp_k": [3900, 4800], "mag_gauss": [0.1, 10], "radiation_output": [50, 600] },
+        "star/M-III": { "mass_solar": [1, 4], "radius_solar": [40, 120], "temp_k": [3000, 3900], "mag_gauss": [0.1, 10], "radiation_output": [500, 5000] }
     }
 }

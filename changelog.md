@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.564-beta - 14th Aug 2026
+
+* Imported giants and supergiants are now giants and supergiants. A star catalogue writes Antares as "M1.5Iab" — an M-type star of luminosity class Iab, a red SUPERGIANT — but only the letter was being read, so it arrived as a red dwarf: a fiftieth of its real mass and a six-millionth of its real brightness. Betelgeuse, Rigel, Deneb, Polaris, Arcturus and Aldebaran all did the same, which is to say every bright star you might think to look up. The luminosity class is now read, and the rule pack has giant and supergiant figures for each spectral type to put it against.
+* Nearby red dwarfs were being imported as white dwarfs. The catalogue writes Wolf 359 as "dM6" — a lowercase d for dwarf — and the check for a white dwarf (types starting with a capital D) was ignoring the difference in case. Four stars within sixteen light years were affected, including Wolf 359, Ross 128 and Teegarden's Star.
+
 ## v2.1.563-beta - 13th Aug 2026
 
 * Worked out how generated stars should get a spin, so they can be flattened by it as planets are. Cool stars slow down over their lives at a rate that is well measured, so theirs can be calculated from their mass and age rather than invented. Hot stars never slow down at all — which is why Vega is still spinning fast enough to be visibly squashed — so those get drawn from the spread that is actually observed.
