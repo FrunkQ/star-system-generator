@@ -87,8 +87,60 @@
           "value": "star/WD"
         },
         {
-          "weight": 5,
-          "value": "star/red-giant"
+          "weight": 2.2,
+          "value": "star/K-III"
+        },
+        {
+          "weight": 1,
+          "value": "star/M-III"
+        },
+        {
+          "weight": 0.6,
+          "value": "star/G-III"
+        },
+        {
+          "weight": 0.15,
+          "value": "star/F-III"
+        },
+        {
+          "weight": 0.08,
+          "value": "star/A-III"
+        },
+        {
+          "weight": 0.02,
+          "value": "star/B-III"
+        },
+        {
+          "weight": 0.002,
+          "value": "star/O-III"
+        },
+        {
+          "weight": 0.004,
+          "value": "star/M-I"
+        },
+        {
+          "weight": 0.002,
+          "value": "star/K-I"
+        },
+        {
+          "weight": 0.002,
+          "value": "star/B-I"
+        },
+        {
+          "weight": 0.001,
+          "value": "star/A-I"
+        },
+        {
+          "weight": 0.001,
+          "value": "star/F-I"
+        },
+        {
+          "weight": 0.0006,
+          "value": "star/G-I"
+        },
+        {
+          "weight": 0.0002,
+          "value": "star/O-I"
         },
         {
           "weight": 4,

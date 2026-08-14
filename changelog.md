@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.593-beta - 14th Aug 2026
+
+* A generated red giant and an imported one are finally the same kind of star. The engine carried two definitions of a red giant whose brightness differed about ninetyfold, and which one you got depended only on where the star came from — so one campaign could hold both. There is now one, and the old one still resolves for any map that already used it.
+* Giants and supergiants can now turn up in a generated system at all, and at honest rarities. Previously the generator could only make one sort of red giant and none of the other kinds; now every spectral type has a giant and a supergiant it can reach. They are rare, as they are in reality — if you want a Betelgeuse deliberately, the star editor is the place.
+* Black holes flare again, and for the right reason. A quiescent black hole was being given an ordinary star's flare rate, which was wrong; the fix went too far and silenced feeding ones too. A black hole with matter falling into it is among the most violently variable things in the sky, so it now flares according to how hard it is being fed — and magnetars, which flare from their own colossal magnetic fields, flare hardest of all.
+* A star whose age nobody has measured no longer gets the Sun's. The importer fills in 4.6 billion years when the catalogue is silent, which was harmless until the new rotation model started calculating spin from age — at which point an unknown star was quietly being given the Sun's history. Its spin is now left unstated, and the physics panel says which of the reasons applies.
+
 ## v2.1.592-beta - 14th Aug 2026
 
 * Red giants and orange giants now have their own portraits rather than borrowing a red dwarf's — including the ones the app generates, which had been showing a dwarf all along. With thanks to Pablo Carlos Budassi and NASA's Goddard Space Flight Center, credited in the About box.

@@ -42,11 +42,18 @@ export function completeImportedStars(systems: { system: System }[], pack: RuleP
       // Derived below the Kraft break from the system's age and the star's mass; drawn above it,
       // where there is nothing to derive from. The roll is seeded from the star's id in the same
       // recipe as the field and the tilt, so one person's Vega is everyone's.
+      //
+      // AND THE AGE MUST BE A MEASURED ONE (inbox B47c). The importer falls back to 4.6 Gyr — the
+      // Sun's — for a system the catalogue gives no age for, which was harmless until gyrochronology
+      // started reading it. A star with an unknown age would otherwise get a confidently-derived
+      // spin-down borrowed from the Sun. Left UNDERIVED instead: the same shape as `star/unknown`
+      // and as the giants excluded above, and absence reads as no spin rather than as a guess.
       if (star.rotation_period_hours == null) {
+        const estimated = (entry.system as any).ageEstimated === true;
         const p = stellarRotationHours({
           massKg: star.massKg,
           radiusKm: star.radiusKm,
-          ageGyr: (entry.system as any).age_Gyr,
+          ageGyr: estimated ? undefined : (entry.system as any).age_Gyr,
           roll: new SeededRNG(`${star.id}-spin`).nextFloat(),
           isRemnant: /star\/(WD|NS|BH|BH_active|magnetar)/.test(cls),
         isEvolved: /star\/([OBAFGKM]-(I|III)|red-giant)/.test(cls)

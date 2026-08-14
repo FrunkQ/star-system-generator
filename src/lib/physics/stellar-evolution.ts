@@ -99,20 +99,52 @@ export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?:
     return { ...star, ...props, isDead, phase };
 }
 
-// Magnetic flare activity 0..1. Flares are driven by rotation + a convective dynamo, so they're
+// Magnetic flare activity 0..1. For a STAR this is a rotation-driven convective dynamo, so it is
 // strongest on LOW-mass dwarfs (deep convection — M dwarfs flare ferociously) and on YOUNG stars
 // (fast rotation), declining as the star spins down with age. This drives an episodic particle/UV dose
 // on close-in planets (shielded by a magnetosphere + atmosphere). NOT the steady luminosity.
-export function flareActivity(spectralClass: string | undefined, ageGyr: number): number {
+//
+// For a REMNANT the mechanism is different and the age term does not apply — see below. `accretionEddington`
+// is what a feeding compact object flares from, and it is optional because most bodies have none.
+// A fed compact object, as a function of its Eddington fraction. At full Eddington this exceeds the
+// most active M dwarf, which is the right ordering: an X-ray binary is among the most violently
+// variable things in the sky and a flare star, however furious, is still a star.
+function accretionFlare(eddington: number): number {
+  return Math.max(0, Math.min(1, 0.35 + 0.6 * Math.max(0, Math.min(1.3, eddington))));
+}
+
+export function flareActivity(spectralClass: string | undefined, ageGyr: number, accretionEddington?: number): number {
   const name = (spectralClass || 'G').replace('star/', '');
   const sp = name[0];
   const base: Record<string, number> = { M: 0.85, K: 0.55, G: 0.35, F: 0.22, A: 0.16, B: 0.12, O: 0.12 };
   // A REMNANT IS NAMED, NOT INITIALLED. This tested the first LETTER against /[WNB]/ minus the
   // spectral letters — and 'B' is both the initial of "BH" and a real spectral class, so the
-  // exclusion cancelled itself and `star/BH` fell through to the B-star row: a BLACK HOLE with a
-  // flare rate. Latent until now, because nothing routed an imported object to `star/BH`; B44's
-  // otype classification makes it reachable, so it is live and fixed here.
-  if (/^(WD|NS|BH|BH_active|magnetar)$/.test(name)) return 0;
+  // exclusion cancelled itself and `star/BH` fell through to the B-star row: a quiescent BLACK HOLE
+  // with a B-star's flare rate. Latent until B44's otype classification made `star/BH` reachable.
+  //
+  // BUT A REMNANT IS NOT AUTOMATICALLY QUIET, and treating them all as zero was an over-correction
+  // (owner, 2026-08-14). What changes is the MECHANISM, not the presence: a main-sequence star flares
+  // from a rotation-driven convective dynamo, and a remnant has none — so the age term above is
+  // meaningless for one. Two of them flare anyway, harder than any star does:
+  //
+  //   AN ACCRETING BLACK HOLE flares from its DISC, not its surface — magnetic reconnection in the
+  //   disc and its corona. Sgr A* does it several times a day, and an X-ray binary is one of the most
+  //   violently variable things in the sky. So the driver is the ACCRETION RATE, which the body
+  //   already carries as `accretionEddington`, and a hole fed harder flares harder.
+  //
+  //   A MAGNETAR flares from the decay of an extreme field — starquakes cracking the crust. Giant
+  //   flares from SGR 1806-20 are among the most energetic events recorded in the galaxy. Nothing
+  //   about age or accretion enters it; the field is the whole story, and it is enormous by
+  //   definition, so this is high and flat.
+  //
+  // A QUIESCENT hole, an isolated neutron star and an isolated white dwarf genuinely are quiet: no
+  // photosphere, no dynamo, nothing falling in. (An ACCRETING white dwarf is a nova, which is a far
+  // bigger event than a flare and is not modelled here at all.)
+  if (name === 'magnetar') return 0.9;
+  if (name === 'BH_active') return accretionFlare(accretionEddington ?? 0.5);
+  // A hole or a neutron star the GM has set feeding is accreting whatever its class string says, so
+  // the accretion decides rather than the label.
+  if (/^(WD|NS|BH)$/.test(name)) return (accretionEddington ?? 0) > 0 ? accretionFlare(accretionEddington!) : 0;
   // A GIANT IS NOT A SCALED-UP DWARF, and this rule only ever saw the letter (inbox B44). Until the
   // luminosity class became a CLASS, `star/M-I` read as "M" and a red SUPERGIANT drew 0.85 — the
   // highest flare rate in the table, the one M dwarfs earn by being fully convective, rapidly

@@ -95,7 +95,13 @@ function classesForPhase(seed: StarSeed, phase: StarPhase | undefined): string[]
   if (phase === 'white-dwarf') return ['star/WD'];
   if (phase === 'neutron-star') return ['star/NS'];
   if (phase === 'black-hole') return ['star/BH'];
-  if (phase === 'giant' || phase === 'subgiant') return ['star/red-giant'];
+  // An AGED giant takes the band for the letter it has actually cooled to, rather than the retired
+  // one-size `star/red-giant` (inbox B46a). `determineSpectralClass` is already the ladder used two
+  // lines down, so the evolved temperature decides the letter and the luminosity class says III.
+  if (phase === 'giant' || phase === 'subgiant') {
+    const sp = determineSpectralClass(seed.temperatureK);
+    return [`star/${sp}-III`, `star/${sp}`];
+  }
   const sp = determineSpectralClass(seed.temperatureK);
   return [`star/${sp}`];
 }

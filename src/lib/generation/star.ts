@@ -10,7 +10,15 @@ import { bodyFactory } from '../core/BodyFactory';
 // generator here and the wizard's explicit HR/preset seeds in generateFromConfig. They used to
 // look this up separately and only one of them read `mag_gauss`, which is why a wizard-built star
 // arrived with no magnetic field at all (inbox B9a).
+// `star/red-giant` is RETIRED in favour of `star/M-III` (inbox B46a). The two described the same
+// object and disagreed by about 100x on radiation output — 30 Lsun against 2,750 — and which one
+// answered depended only on whether the star was generated or imported. The band is gone from the
+// pack and the distribution no longer offers it, but a SAVED campaign may still hold the key on a
+// body, so it resolves here rather than falling through to `star/default` and becoming a G dwarf.
+const LEGACY_CLASS_ALIAS: Record<string, string> = { 'star/red-giant': 'star/M-III' };
+
 export function starStatTemplate(pack: RulePack, starClass: string): any | undefined {
+    starClass = LEGACY_CLASS_ALIAS[starClass] ?? starClass;
     const direct = pack.statTemplates?.[starClass];
     if (direct) return direct;
     if (starClass.startsWith('star/')) {
@@ -89,16 +97,25 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     }
 
     const spectralType = starClass.split('/')[1];
+    // A GIANT OR SUPERGIANT IS CATEGORISED BY ITS MASS, NOT BY ITS LETTER'S MAIN-SEQUENCE HABITS.
+    // `star/M-III` used to match none of these lists and came out `undefined`, while the retired
+    // `star/red-giant` was listed as `main_sequence_star`, which it is by definition not.
+    const evolved = /^([OBAFGKM])-(I|III)$/.exec(spectralType);
+    const letter = evolved ? evolved[1] : spectralType;
     let starCategory: 'massive_star' | 'main_sequence_star' | 'low_mass_star' | 'star_remnant' | undefined;
 
-    if (['O', 'B'].includes(spectralType)) {
-        starCategory = 'massive_star';
-    } else if (['A', 'F', 'G', 'K', 'red-giant'].includes(spectralType)) {
-        starCategory = 'main_sequence_star';
-    } else if (['M'].includes(spectralType)) {
-        starCategory = 'low_mass_star';
-    } else if (['WD', 'NS', 'magnetar', 'BH', 'BH_active'].includes(spectralType)) {
+    if (['WD', 'NS', 'magnetar', 'BH', 'BH_active'].includes(spectralType)) {
         starCategory = 'star_remnant';
+    } else if (evolved) {
+        // Every supergiant is massive by definition; a giant is a middleweight that has left the
+        // main sequence, so it is not `low_mass_star` even when it is an M.
+        starCategory = evolved[2] === 'I' ? 'massive_star' : 'main_sequence_star';
+    } else if (['O', 'B'].includes(letter)) {
+        starCategory = 'massive_star';
+    } else if (['A', 'F', 'G', 'K'].includes(letter)) {
+        starCategory = 'main_sequence_star';
+    } else if (letter === 'M') {
+        starCategory = 'low_mass_star';
     }
 
     const star = bodyFactory.createBody({
@@ -114,13 +131,25 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     star.axial_tilt_deg = starTiltFromPack(pack, new SeededRNG(`${id}-tilt`));
     star.starCategory = starCategory;
     
-    // Ensure base spectral class is present (e.g., star/G5V -> ['star/G', 'star/G5V'])
-    const baseSpectral = `star/${spectralType[0]}`;
-    if (starClass !== baseSpectral && !['star/red-giant', 'star/brown-dwarf', 'star/sub-brown-dwarf', 'star/magnetar'].includes(starClass)) {
-        star.classes = [baseSpectral, starClass];
-    } else {
-        star.classes = [starClass];
-    }
+    // THE BASE SPECTRAL CLASS, and this was fabricating nonsense (inbox B46a). It sliced
+    // `spectralType[0]` and excluded a HARDCODED list of classes with no spectral letter — a list
+    // that missed WD, NS, BH and BH_active. Measured over 2,000 generated stars: 1.8% carried
+    // `star/W`, 0.5% `star/N`, and a feeding black hole carried `star/B` — the same 'B' collision
+    // that gave black holes a B-star flare rate. None of those three classes exists.
+    //
+    // So the test is now "does this class actually START WITH A SPECTRAL LETTER", which is a
+    // property rather than a list, and a list is what went stale.
+    //
+    // ORDER IS MOST-SPECIFIC-FIRST, matching `starClasses` in the importer (B44). It used to put the
+    // letter first, so a generated `star/M-III` would have had `classes[0] === 'star/M'` and been
+    // described as a red DWARF — D19's fault reappearing on the generation path.
+    // The letter must be followed by something that CONTINUES a spectral type — a subclass digit,
+    // a `-I`/`-III` band, or nothing at all. A bare prefix test is not enough: `star/BH_active`
+    // starts with a valid spectral letter and is not a B star, which is the same collision a third
+    // time (it gave black holes a flare rate, and a fabricated `star/B` class here).
+    const letterMatch = /^star\/([OBAFGKMLTY])(?:\d|-(?:I|III)$|$)/.exec(starClass);
+    const baseSpectral = letterMatch ? `star/${letterMatch[1]}` : null;
+    star.classes = baseSpectral && starClass !== baseSpectral ? [starClass, baseSpectral] : [starClass];
 
     star.temperatureK = starTemperatureK;
     star.magneticField = starMagneticField;

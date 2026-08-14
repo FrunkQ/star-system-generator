@@ -357,13 +357,21 @@ export function convertRegion(
       }
     }
 
-    const ageGyr = hostsHere[0]?.hostRows?.[0]?.st_age ?? 4.6;
+    // THE 4.6 Gyr FALLBACK IS THE SUN'S AGE, AND IT IS NOW LOAD-BEARING (inbox B47c). It was
+    // cosmetic while nothing derived from age; gyrochronology derives a star's ROTATION from it, so
+    // an unknown-age star was silently being given the Sun's age and therefore the Sun's spin-down.
+    // The default stays — radiogenic heat, atmospheric escape and belt grinding all want a number
+    // and a system with no age at all would break them — but it is now MARKED, so a derivation that
+    // must not rest on a borrowed figure can refuse. Measured: SIMBAD's census carries no age column
+    // at all, and the archive has `st_age` for 114 of 180 rows inside 41 ly.
+    const measuredAge = hostsHere[0]?.hostRows?.[0]?.st_age;
+    const ageGyr = measuredAge ?? 4.6;
     systems.push({
       id: ownId,
       name,
       position: xyzToMapPx(xyz, centreXyz, mapCentrePx),
       system: {
-        id: `${slug}-system`, name, seed: `realsky-${slug}`,
+        id: `${slug}-system`, name, seed: `realsky-${slug}`, ageEstimated: measuredAge == null,
         epochT0: EPOCH, age_Gyr: ageGyr,
         nodes, rulePackId: '', rulePackVersion: '', tags: [],
         credits: { author: 'Star System Explorer', created: `real-sky import, ${generated}`, version: '1' }
@@ -483,7 +491,7 @@ export function convertArchiveRows(rows, { region, mapCentrePx = DEFAULT_MAP_CEN
       position: xyzToMapPx(xyz, centreXyz, mapCentrePx),
       system: {
         id: `${slug}-system`, name: hostname, seed: `realsky-${slug}`,
-        epochT0: EPOCH, age_Gyr: first.st_age ?? 4.6,
+        epochT0: EPOCH, age_Gyr: first.st_age ?? 4.6, ageEstimated: first.st_age == null,
         nodes, rulePackId: '', rulePackVersion: '', tags: [],
         credits: { author: 'Star System Explorer', created: `real-sky import, ${generated}`, version: '1' }
       }

@@ -134,7 +134,6 @@
       'star/G-I': { label: 'G-Type Supergiant' },
       'star/K-I': { label: 'K-Type Supergiant' },
       'star/M-I': { label: 'M-Type Supergiant (Betelgeuse)' },
-      'star/red-giant': { label: 'Red Giant', rot: [1000, 10000] },
       'star/L': { label: 'L-Type (Brown Dwarf)', rot: [5, 50] },
       'star/T': { label: 'T-Type (Methane Dwarf)', rot: [5, 50] },
       'star/Y': { label: 'Y-Type (Sub-Brown Dwarf)', rot: [5, 50] },
@@ -540,18 +539,18 @@
       const name = key.split('/')[1];
       if (!name) return undefined;
       const m = /^([OBAFGKMLTY])(?:-(I|III|V))?$/.exec(name);
-      if (!m) return { spectral: name };  // star/WD, star/NS, star/BH, star/red-giant, ...
+      if (!m) return { spectral: name };  // star/WD, star/NS, star/BH, ...
       return { spectral: m[1], ...(m[2] ? { luminosity: m[2], band: m[2] as 'I' | 'III' | 'V' } : {}) };
   }
 
   function updateImage(starClass: string) {
-      let lookupClass = starClass;
-      if (starClass === 'star/red-giant') lookupClass = 'star/M';
-      // A giant or supergiant band (`star/M-I`) has no image of its own — it is the same spectral
-      // letter, at the same colour temperature, so it borrows the letter's picture rather than
-      // leaving whatever the body had before.
-      else if (/^star\/[OBAFGKMLTY]-/.test(starClass)) lookupClass = `star/${starClass.split('/')[1][0]}`;
       const images = rulePack?.classifier?.starImages || rulePack?.starImages;
+      // MOST SPECIFIC FIRST, then the letter. `star/M-I`, `star/M-III` and `star/K-III` have their
+      // own portraits; every other giant and supergiant deliberately falls through to its letter,
+      // which is honest — a blue supergiant does look broadly like a hot blue star, and it was the
+      // red ones that lied by showing a dwarf.
+      const letter = /^star\/([OBAFGKMLTY])-/.exec(starClass)?.[1];
+      const lookupClass = images?.[starClass] ? starClass : (letter ? `star/${letter}` : starClass);
       if (images?.[lookupClass]) {
           if (!body.image) body.image = { url: '' };
           body.image.url = images[lookupClass];

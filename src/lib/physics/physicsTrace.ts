@@ -204,6 +204,18 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         : `DRAWN, and that is the honest tool here. Above about ${KRAFT_BREAK_MSUN} M☉ a star has a radiative envelope, generates no field for its wind to couple to, and so never brakes at all — it keeps roughly the rotation it was born with for its whole life. THAT is why Vega spins fast enough to be visibly squashed: not that it is young, but that nothing ever slowed it. Birth spin cannot be recovered after the fact, so it is drawn from the observed spread as a FRACTION OF BREAKUP rather than a speed — breakup varies enormously with mass, so a fraction is the only figure that means the same thing across the range.`);
       spinNotes.push('The flattening follows from the spin and the density with no further assumption: the same relation that squashes Jupiter and Saturn. A star at a large fraction of its breakup spin is a genuinely oblate spheroid, and both views draw it that way.');
     }
+    // AND WHEN THERE IS NO PERIOD, SAY WHY. Silence would read as "this star does not turn", which is
+    // never true — every one of these is "we could not work it out", and each has a different reason.
+    if (body.roleHint === 'star' && rotH == null) {
+      const cls = body.classes?.[0] ?? '';
+      spinNotes.push(
+        /star\/(WD|NS|BH|BH_active|magnetar)/.test(cls)
+          ? 'NOT DERIVED, and deliberately so: the spin of a remnant comes from the collapse that made it, not from a main-sequence history, and a millisecond pulsar would break every assumption the stellar relation rests on.'
+          : /star\/[OBAFGKM]-(I|III)/.test(cls)
+          ? 'NOT DERIVED: gyrochronology is a MAIN-SEQUENCE relation, and this star has left it. Swelling to tens of times its old radius spreads the angular momentum over a vastly larger body and slows the star enormously — Arcturus turns once in about 500 days. Working that out needs the radius it had BEFORE it swelled, which is not recorded, so the spin is left unstated rather than guessed at.'
+          : 'NOT DERIVED, because the age it would rest on is not known. The catalogue gives this system no measured age, and a rotation calculated from a borrowed figure would look exactly like one calculated from a real one. An unstated spin reads as no spin, so the star is drawn round.'
+      );
+    }
     if (axisInferred || periodInferred) {
       spinNotes.push('MARKED AS INFERRED, and that mark is a promise. A generated world\'s spin is a plausible value from the formation model, not a measurement — so it is tagged, and a figure WITHOUT that tag is one somebody actually observed. Earth\'s 23.4° and Uranus\'s 97.8° are known; a generated neighbour sitting beside them in the same starmap must not read as though it were.');
     }

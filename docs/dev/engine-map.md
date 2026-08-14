@@ -1423,6 +1423,37 @@ ALSO: `starParamsFromType` has a SECOND caller inside `convertRegion` that feeds
 across a fixed set of census rows before and after — it was unchanged here (55 / 159 / 716 systems at
 16.5 / 25 / 41 ly), but that was measured, not assumed.
 
+### DATA-R13 A LIST OF EXCEPTIONS GOES STALE; A TEST FOR THE PROPERTY DOES NOT
+WHERE: `generation/star.ts` (the base-spectral-class derivation and `starCategory`),
+`physics/stellar-evolution.ts` (`flareActivity`).
+RULE: when the question is "does this class have a spectral letter", ask THAT, rather than keeping a
+list of the classes that do not. A hardcoded exclusion list is correct only until someone adds a
+class, and nothing tells them the list exists.
+WHY: B46a. `star.ts` built a body's class array as `[star/<first letter>, <class>]` unless the class
+appeared in `['star/red-giant', 'star/brown-dwarf', 'star/sub-brown-dwarf', 'star/magnetar']` — a
+list that never mentioned WD, NS, BH or BH_active. Measured over 2,000 generated stars: **1.8%
+carried a class `star/W`, 0.5% `star/N`, and a feeding black hole carried `star/B`.** None of those
+three classes exists anywhere in the engine.
+BLAST: **`B` IS THE THIRD COLLISION OF THE SAME LETTER, AND IT IS WORTH RECOGNISING ON SIGHT.** 'B'
+begins "BH" and is also a real spectral class. It has now caused: a quiescent black hole drawing a
+B-star flare rate (`/[WNB]/` minus the spectral letters cancelled itself); a fabricated `star/B`
+class on every generated feeding hole; and a prefix test that matched `star/BH_active` as a B star
+while extracting a base letter. **A LETTER IS NOT A TYPE.** Test the whole name, or test a SHAPE —
+`/^star\/([OBAFGKMLTY])(?:\d|-(?:I|III)$|$)/` says "a spectral letter followed by something that
+continues a spectral type", which `star/BH_active` fails and `star/M-III` passes.
+ALSO: the same file categorised `star/red-giant` as `main_sequence_star`, which it is by definition
+not, and gave `star/M-III` no category at all because it matched no list. Categorise from the parsed
+shape, not from membership.
+
+### DATA-R14 EDIT A RULE PACK AS TEXT
+WHERE: `static/rulepacks/**/*.json`.
+RULE: load-and-re-dump rewrites the whole file to change one key. It reflows every line, so the diff
+is the entire pack and a reviewer cannot see what actually changed — and any formatting the pack
+relies on for readability is gone. Do a targeted string replacement and CHECK THE DIFF STAT: adding
+fourteen distribution entries should be about fifty lines, not six thousand.
+WHY: it happened here (coordinator, 2026-08-14 — 6,385 lines rewritten to add one key), and the
+pack is the file most likely to be edited by someone who is not looking at it closely.
+
 ### PHYS-S1 A MULTIPLIER IS NOT A LIMIT, AND A GATE IS NOT A GUARD
 WHERE: `physics/stellar-evolution.ts` (`ageStar`'s giant branch, `hayashiLimitK`),
 `core/SystemProcessor.ts` (`applyRotationalShape` and the planet/moon gate above it).

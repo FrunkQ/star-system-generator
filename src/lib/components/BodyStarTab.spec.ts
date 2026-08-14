@@ -59,7 +59,9 @@ describe('BodyStarTab — the spectral picker is driven by the rule pack', () =>
 });
 
 describe('BodyStarTab — picking a class applies the PACK band midpoint', () => {
-	// SIX OF THE EIGHT THAT DISAGREED. Each row names the ONE axis that moved and the midpoint the
+	// FIVE OF THE EIGHT THAT DISAGREED. `star/red-giant` was the sixth and is RETIRED at B46a in
+	// favour of `star/M-III` — the two described the same object and disagreed by ~100x on radiation
+	// output, which is the same divergence D22 is about, one layer further on. Each row names the ONE axis that moved and the midpoint the
 	// hard-coded copy used to apply, so the assertion is that a GM now gets the pack's answer AND
 	// that the two answers were genuinely different. star/BH and star/BH_active are the other two
 	// and are deliberately absent: `applyBHPresets` overrides the midpoint for those, so the table
@@ -67,7 +69,6 @@ describe('BodyStarTab — picking a class applies the PACK band midpoint', () =>
 	it.each([
 		['star/O', 'mass', 58], //          editor 16-100 Msun, pack 16-90
 		['star/M', 'temp', 2850], //        editor floor 2,000 K, pack 2,400 - the L band starts at 2,000
-		['star/red-giant', 'mass', 4.15], // editor 0.3-8 Msun; nothing under ~0.8 has left the main sequence yet
 		['star/WD', 'temp', 52000], //      editor 4,000-100,000 K centres a white dwarf on a very hot young one
 		['star/NS', 'mass', 2.2], //        editor to 3 Msun, above the observed maximum
 		['star/magnetar', 'mass', 2.2] //   as star/NS

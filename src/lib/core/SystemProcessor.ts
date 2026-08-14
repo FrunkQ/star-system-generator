@@ -101,7 +101,7 @@ export class SystemProcessor implements ISystemProcessor {
         for (const node of allNodes) {
             const s = node as CelestialBody;
             if (s.kind !== 'body' || s.roleHint !== 'star') continue;
-            s.flareActivity = flareActivity(s.classes?.[0], this.systemAgeGyr);
+            s.flareActivity = flareActivity(s.classes?.[0], this.systemAgeGyr, (s as any).accretionEddington);
             s.tags = stripForReprocess(s.tags, ['hazard/flaring', STELLAR_ACTIVITY_TAG]);
             if (s.flareActivity > 0.4) emit(s.tags, { key: 'hazard/flaring' });
             // MAGNETIC ACTIVITY, bucketed — the one judgement behind everything a star's surface
