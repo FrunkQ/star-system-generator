@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.585-beta - 14th Aug 2026
+
+* A supergiant is now described as a supergiant. The numbers were already right after the last change, but the text underneath still read "Red dwarfs. The most common, very long-lived, but dim and cool." — because a star's type was recorded only as its letter, so everything downstream still saw an ordinary M star. Giants and supergiants now carry their size class as part of their type, and the description, the editor and the rules that read it all follow.
+* Neutron stars, pulsars and black holes are no longer imported as red dwarfs. They have no spectral type at all, and an absent one was quietly being read as "M" — so a pulsar arrived weighing a quarter of the Sun and glowing like a dim red star. The catalogue says plainly what these objects are, in a field the importer already fetched and was throwing away; it is now read, and they arrive as neutron stars and black holes with the right pictures.
+* White dwarfs were already being imported correctly. Checked rather than assumed, and left alone.
+* Red giants and supergiants no longer flare like red dwarfs. Flares come from a fast-spinning, strongly magnetic star, which a hugely swollen one is not — and the flare dose reaching a planet was being calculated as though Betelgeuse behaved like Proxima Centauri. Black holes were flaring too, for a different and sillier reason.
+>>>>>>> Stashed changes
+
+
 ## v2.1.584-beta - 14th Aug 2026
 
 * A clarification to yesterday's principle: describing things in human terms is not the problem, it is the point. "It would look blue to you", "about Earth gravity", "roughly a fortnight" are what make a figure mean anything at a table. The rule is only that our senses must not sneak into the sums — and that where a description depends on human eyes, it says so.

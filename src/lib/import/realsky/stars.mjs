@@ -5,7 +5,11 @@ export const STAR_IMAGE = {
   O: '/images/star_types/O.webp', B: '/images/star_types/B.webp', A: '/images/star_types/A.webp',
   F: '/images/star_types/F.webp', G: '/images/star_types/G.webp', K: '/images/star_types/K.ebp.webp',
   M: '/images/star_types/M.webp', L: '/images/star_types/L.png', T: '/images/star_types/T.png',
-  Y: '/images/star_types/Y.jpg', WD: '/images/star_types/WD.webp'
+  Y: '/images/star_types/Y.jpg', WD: '/images/star_types/WD.webp',
+  // Reachable from a catalogue row for the first time (B44): a pulsar or a black hole used to be
+  // classified `star/M` and handed the red-dwarf picture with everything else.
+  NS: '/images/star_types/NS.webp', BH: '/images/star_types/BH.webp',
+  magnetar: '/images/star_types/magnetar.jpg'
 };
 
 // "G2V" → { classes: ['star/G', 'star/G2V'], image }. White dwarfs (any D
@@ -33,9 +37,9 @@ export const STAR_IMAGE = {
 // alone was treated as the class — so Antares (M1.5Iab, a red SUPERGIANT) resolved to `star/M`, the
 // red-DWARF band, and imported at 0.265 M(sun) against a real ~12-15. An M dwarf and an M supergiant
 // share a temperature and share nothing else, so the band key names both axes: `star/M-I`.
-export function starParamsFromType(type, statTemplates) {
+export function starParamsFromType(type, statTemplates, { otype } = {}) {
   if (!statTemplates) return null;
-  const { classes } = starClasses(type ?? '');
+  const { classes } = starClasses(type ?? '', { otype });
   const letter = (classes[0] ?? 'star/M').split('/')[1][0];
   const lum = luminosityClassOf(type ?? '');
   // ORDER MATTERS AND IT IS NOT THE ORDER THE COMMENT USED TO CLAIM. `starClasses` returns the
@@ -171,8 +175,47 @@ function primaryComponent(type) {
   return String(type ?? '').replace(/\s*\(.*\)$/, '').split('+')[0].trim();
 }
 
-export function starClasses(type) {
+// A COMPACT OBJECT HAS NO SPECTRAL TYPE, AND THE CATALOGUE SAYS SO IN A FIELD WE ALREADY FETCH.
+//
+// SIMBAD's `otype` was being used only as a FILTER (census.mjs drops planets with it, clusterGate
+// trips on containers) and never reached the classifier, which derives everything from `sp_type`.
+// A pulsar's `sp_type` is EMPTY, and an empty string does not fall to `star/default` — it falls to
+// `star/M`, because the letter regex fails and the letter defaults to M. So every neutron star,
+// pulsar and black hole in range imported as a 0.265 M(sun), 750 L(sun) RED DWARF.
+//
+// Confirmed reachable rather than theoretical: PSR B1929+10 sits at 152 ly with an empty spectral
+// type, RX J1856.6-3754 at 400 ly, and six compact objects lie within ~326 ly.
+//
+// The codes are SIMBAD's own, read from its `otypedef` table rather than guessed. CANDIDATES map
+// too: "candidate black hole" is not a certain black hole, but it is enormously closer to `star/BH`
+// than to `star/M`, and the alternative is to state something far more wrong.
+//
+// NOTE `star/magnetar` STAYS UNREACHABLE FROM A CATALOGUE STRING, and that is not an oversight:
+// SIMBAD has no magnetar object type — magnetars are filed as `Psr` — so nothing here can honestly
+// route to it. It remains reachable from the editor and the generator.
+const OTYPE_CLASS = {
+  'Psr': 'star/NS',   // a pulsar IS a neutron star, seen beaming
+  'N*': 'star/NS',
+  'N*?': 'star/NS',
+  'BH': 'star/BH',
+  'BH?': 'star/BH',
+  'WD*': 'star/WD',
+  'WD?': 'star/WD'
+};
+
+// An X-ray binary's `sp_type` describes the DONOR star, not the compact object — `* gam Cas` is
+// `B0.5IVpe` and `RX J2130.6+4710` is `DA+M3.5/4Ve`. Classifying those by spectral type is right:
+// the visible star is what the type describes. So XB*/LXB/HXB are deliberately absent above.
+
+export function starClasses(type, { otype } = {}) {
   const s = String(type ?? '');
+  // The catalogue's own statement about WHAT THE OBJECT IS beats anything inferred from a spectral
+  // string — but only when there is no spectral type to read, so an X-ray binary or a pulsar with a
+  // measured companion still classifies by the star we can actually see.
+  const byType = OTYPE_CLASS[String(otype ?? '').trim()];
+  if (byType && (!s.trim() || byType === 'star/WD')) {
+    return { classes: [byType], image: STAR_IMAGE[byType.split('/')[1]] ?? STAR_IMAGE.WD };
+  }
   // The D-type test is case-SENSITIVE on the letter, and that is the whole point. `/^D/i` also
   // matched SIMBAD's LOWERCASE dwarf prefix, so `dM6` (Wolf 359), `dM4` (Ross 128) and `dM3`
   // (AD Leo) were all classified `star/WD` and imported as white dwarfs — 1.0 M(sun) and 24,000 K
@@ -181,5 +224,23 @@ export function starClasses(type) {
   const m = s.replace(/^(sd|d)(?=[OBAFGKMLTY])/, '').match(/^([OBAFGKMLTY])/i);
   const letter = m ? m[1].toUpperCase() : 'M';
   const full = s.replace(/\s*\(.*\)$/, '');
-  return { classes: [`star/${letter}`, ...(full && full !== letter ? [`star/${full}`] : [])], image: STAR_IMAGE[letter] };
+  // THE LUMINOSITY CLASS BECOMES A CLASS, not just a field (inbox B44). Until it did, the classes
+  // read `star/M` and `star/M1.5Iab+B2Vn` — the letter and the raw string, with nothing between —
+  // so every consumer keyed on classes saw "an M star" and Antares was described as a red dwarf
+  // while its own numbers said supergiant.
+  //
+  // MOST SPECIFIC FIRST, so `classes[0]` is the real answer, with the LETTER still in the array for
+  // anything that only cares about colour. That ordering is the shape `starParamsFromType` already
+  // proved, reused rather than reinvented.
+  //
+  // THE KEY IS THE PACK'S BAND KEY, EXACTLY — `star/M-I`, not `star/M-supergiant`. One spelling for
+  // one thing: the same string is the pack's stat template, the editor's picker entry, the
+  // description key and now the class. A second spelling would be the duplication this whole line of
+  // work has been removing.
+  const band = luminosityClassOf(s);
+  const specific = band && band !== 'V' ? [`star/${letter}-${band}`] : [];
+  return {
+    classes: [...specific, `star/${letter}`, ...(full && full !== letter ? [`star/${full}`] : [])],
+    image: STAR_IMAGE[letter]
+  };
 }

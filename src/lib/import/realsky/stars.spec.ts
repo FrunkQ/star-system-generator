@@ -249,3 +249,98 @@ describe('the invariant: created AS it, classifies back AS it', () => {
 		expect(formatStellarType(undefined)).toBe('');
 	});
 });
+
+// ── B44: THE LUMINOSITY CLASS BECOMES A CLASS, NOT JUST A FIELD ───────────────────────────────────
+//
+// D19 put the luminosity class in the data model and taught the PARAMETERS to use it. Antares then
+// arrived with correct supergiant figures and was still described as "Red dwarfs… dim and cool",
+// because the classes read `star/M` and `star/M1.5Iab+B2Vn` — the letter and the raw string, with
+// nothing between them — so every consumer keyed on classes saw an M star.
+describe('the classes carry the luminosity class', () => {
+	it.each([
+		['M1.5Iab+B2Vn', 'star/M-I', 'star/M'], // Antares
+		['M1-M2Ia-Iab', 'star/M-I', 'star/M'], // Betelgeuse
+		['B8Ia', 'star/B-I', 'star/B'], // Rigel
+		['K1.5III', 'star/K-III', 'star/K'], // Arcturus
+		['F0II', 'star/F-I', 'star/F'] // Canopus — a bright giant, folded up
+	])('%s emits %s ahead of %s', (sp, specific, letter) => {
+		const { classes } = starClasses(sp);
+		// MOST SPECIFIC FIRST, so `classes[0]` is the real answer for the consumers that read only it…
+		expect(classes[0]).toBe(specific);
+		// …and the LETTER is still present for anything that only cares about colour.
+		expect(classes).toContain(letter);
+	});
+
+	it('emits nothing extra for a main-sequence star, or one that states no class', () => {
+		// The patch must stay a no-op for the ordinary case: most catalogue entries state no class.
+		expect(starClasses('G2V').classes).toEqual(['star/G', 'star/G2V']);
+		expect(starClasses('M5.5Ve').classes).toEqual(['star/M', 'star/M5.5Ve']);
+		expect(starClasses('M2').classes).toEqual(['star/M', 'star/M2']);
+		expect(starClasses('F5IV-V').classes[0]).toBe('star/F'); // a subgiant folds to the dwarf band
+	});
+
+	it('ONE VOCABULARY: every band class it emits is a key the pack actually defines', () => {
+		// The class string IS the pack's band key — `star/M-I`, not `star/M-supergiant`. A second
+		// spelling for one thing is the duplication this line of work exists to remove, and a class
+		// nothing can resolve is `star/red-giant`'s fault repeated.
+		for (const L of LETTERS) {
+			for (const [sp, key] of [[`${L}2Iab`, `star/${L}-I`], [`${L}2III`, `star/${L}-III`]]) {
+				expect(starClasses(sp).classes[0]).toBe(key);
+				expect(st[key], `${key} emitted as a class but missing from the pack`).toBeTruthy();
+			}
+		}
+	});
+});
+
+// ── NON-STANDARD STARS: the catalogue says what the object IS, in a field already fetched ─────────
+describe('compact objects classify from otype, not from a spectral type they do not have', () => {
+	it('used to import as a RED DWARF, which is the fault', () => {
+		// Not `star/default` — worse. An empty spectral type fails the letter regex, and the letter
+		// defaults to M, so a pulsar took the M-dwarf band: 0.265 Msun and 750 Lsun.
+		expect(starClasses('').classes[0]).toBe('star/M');
+		expect(starParamsFromType('', st)!.massMsun).toBeCloseTo(0.265, 3);
+	});
+
+	it.each([
+		['Psr', 'star/NS'], // a pulsar IS a neutron star
+		['N*', 'star/NS'],
+		['N*?', 'star/NS'],
+		['BH', 'star/BH'],
+		['BH?', 'star/BH'],
+		['WD*', 'star/WD'],
+		['WD?', 'star/WD']
+	])('otype %s with no spectral type classifies as %s', (otype, expected) => {
+		expect(starClasses('', { otype }).classes).toEqual([expected]);
+		const p = starParamsFromType('', st, { otype })!;
+		const band = st[expected];
+		expect(p.massMsun).toBe((band.mass_solar[0] + band.mass_solar[1]) / 2);
+	});
+
+	it('gives them the right picture too, which they could not reach before', () => {
+		expect(starClasses('', { otype: 'Psr' }).image).toMatch(/NS/);
+		expect(starClasses('', { otype: 'BH' }).image).toMatch(/BH/);
+		expect(starClasses('', { otype: 'WD*' }).image).toMatch(/WD/);
+	});
+
+	it('does NOT override a real spectral type — an X-ray binary is typed by its DONOR', () => {
+		// `* gam Cas` is HXB with sp_type B0.5IVpe; `RX J2130.6+4710` is XB* with DA+M3.5/4Ve. The
+		// spectral type describes the star we can see, and classifying by it is right.
+		expect(starClasses('B0.5IVpe', { otype: 'HXB' }).classes[0]).toBe('star/B');
+		expect(starClasses('G5', { otype: 'XB*' }).classes[0]).toBe('star/G');
+		// …and a pulsar that DOES carry a white-dwarf spectral string still reads as one.
+		expect(starClasses('DC', { otype: 'Psr' }).classes).toEqual(['star/WD']);
+	});
+
+	it('white dwarfs were already right, and still are', () => {
+		// Confirmed rather than assumed: SIMBAD gives them a D-type string and stars.mjs collapses it.
+		for (const sp of ['DA1.9', 'DA2.9', 'DQ', 'DZ7.5']) {
+			expect(starClasses(sp).classes).toEqual(['star/WD']);
+			expect(starClasses(sp, { otype: 'WD*' }).classes).toEqual(['star/WD']);
+		}
+	});
+
+	it('leaves an unknown otype alone rather than guessing', () => {
+		expect(starClasses('M4V', { otype: 'Er*' }).classes[0]).toBe('star/M');
+		expect(starClasses('', { otype: 'gB' }).classes[0]).toBe('star/M');
+	});
+});

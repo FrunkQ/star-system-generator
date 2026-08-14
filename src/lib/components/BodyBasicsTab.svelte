@@ -311,6 +311,10 @@
   // Live classification the physics has assigned (updated after each commit -> process()).
   function prettyClass(c: string | undefined): string {
       if (!c) return '—';
+      // A star's luminosity band reads as a roman numeral in the class (`star/M-I`, `star/K-III`),
+      // which the generic dash-to-space rule would render as "M I" and "K Iii". Say what it means.
+      const band = /^star\/([OBAFGKMLTY])-(I|III)$/.exec(c);
+      if (band) return `${band[1]}-Type ${band[2] === 'I' ? 'Supergiant' : 'Giant'}`;
       return c.replace(/^(planet|star|asteroid)\//, '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
   }
   $: liveType = prettyClass(body.classes?.[0]);

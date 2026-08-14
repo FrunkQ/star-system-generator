@@ -92,10 +92,27 @@ export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?:
 // (fast rotation), declining as the star spins down with age. This drives an episodic particle/UV dose
 // on close-in planets (shielded by a magnetosphere + atmosphere). NOT the steady luminosity.
 export function flareActivity(spectralClass: string | undefined, ageGyr: number): number {
-  const sp = (spectralClass || 'G').replace('star/', '')[0];
+  const name = (spectralClass || 'G').replace('star/', '');
+  const sp = name[0];
   const base: Record<string, number> = { M: 0.85, K: 0.55, G: 0.35, F: 0.22, A: 0.16, B: 0.12, O: 0.12 };
-  const remnant = /[WNB]/.test(sp) && !'BAFGKM'.includes(sp); // WD/NS/BH letters → no flares
-  if (remnant) return 0;
+  // A REMNANT IS NAMED, NOT INITIALLED. This tested the first LETTER against /[WNB]/ minus the
+  // spectral letters — and 'B' is both the initial of "BH" and a real spectral class, so the
+  // exclusion cancelled itself and `star/BH` fell through to the B-star row: a BLACK HOLE with a
+  // flare rate. Latent until now, because nothing routed an imported object to `star/BH`; B44's
+  // otype classification makes it reachable, so it is live and fixed here.
+  if (/^(WD|NS|BH|BH_active|magnetar)$/.test(name)) return 0;
+  // A GIANT IS NOT A SCALED-UP DWARF, and this rule only ever saw the letter (inbox B44). Until the
+  // luminosity class became a CLASS, `star/M-I` read as "M" and a red SUPERGIANT drew 0.85 — the
+  // highest flare rate in the table, the one M dwarfs earn by being fully convective, rapidly
+  // rotating and strongly magnetised. An evolved star is the opposite of all three: its angular
+  // momentum is spread over a radius hundreds of times larger, so it turns slowly and its surface
+  // field is weak and disorganised.
+  //
+  // THE PACK ALREADY SAYS SO and this simply reads it: `mag_gauss` is 100-1000 G for `star/M` and
+  // 0.1-10 G for every giant and supergiant band. A single low value rather than a per-letter table,
+  // because the REASON is the same across all of them — no strong surface dynamo — and inventing
+  // seven more numbers would imply a model nobody has built.
+  if (/-(I|III)$/.test(name) || name === 'red-giant') return 0.05;
   const b = base[sp] ?? 0.3;
   const ageFactor = Math.min(1, Math.pow(0.3 / Math.max(0.05, ageGyr), 0.7)); // young → ~1, old → small
   return Math.max(0, Math.min(1, b * ageFactor));

@@ -61,6 +61,8 @@ function starNodeFromRow(row, slug) {
   if (row.st_rad == null) missing.push('stellar radius');
   if (row.st_teff == null) missing.push('effective temperature');
   if (missing.length) return { missing };
+  // No `otype` here: the Exoplanet Archive has no such column, and every row in it is a confirmed
+  // PLANET HOST, so the object is a star by construction.
   const type = (row.st_spectype ?? '').trim() || 'M';
   const { classes, image } = starClasses(type);
   const stellarType = parseStellarType(type);
@@ -169,9 +171,13 @@ function matchHostToStar(hostRow, stars) {
 const LUMINOSITY_WORD = { I: 'TYPE AND LUMINOSITY CLASS (a SUPERGIANT)', III: 'TYPE AND LUMINOSITY CLASS (a GIANT)', V: 'CLASS' };
 
 function starNodeFromCensus(star, id, statTemplates) {
-  const params = starParamsFromType(star.sp ?? '', statTemplates);
+  // `otype` is the catalogue's own statement about WHAT THE OBJECT IS, and it was already being
+  // fetched and used only as a filter. A pulsar has no spectral type at all, so without this it
+  // classified `star/M` and imported as a red dwarf (B44).
+  const otype = star.otype;
+  const params = starParamsFromType(star.sp ?? '', statTemplates, { otype });
   if (!params) return { missing: ['no stellar parameters for this spectral type'] };
-  const { classes, image } = starClasses(star.sp ?? '');
+  const { classes, image } = starClasses(star.sp ?? '', { otype });
   const typeText = (star.sp ?? '').trim();
   // Parsed ONCE, here, at import. Every consumer downstream reads the structured form.
   const stellarType = parseStellarType(star.sp ?? '');
@@ -242,7 +248,7 @@ export function convertRegion(
   // is not in the catalogue any more than a primary's is.
   const stars = normalised.stars.map((s) => ({
     ...s,
-    massMsun: starParamsFromType(s.sp ?? '', statTemplates)?.massMsun ?? 0.4
+    massMsun: starParamsFromType(s.sp ?? '', statTemplates, { otype: s.otype })?.massMsun ?? 0.4
   }));
 
   // 2. Group by the engine's existing period tier (clusterGate), NOT by a bare distance.

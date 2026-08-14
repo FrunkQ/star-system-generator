@@ -1423,6 +1423,37 @@ ALSO: `starParamsFromType` has a SECOND caller inside `convertRegion` that feeds
 across a fixed set of census rows before and after — it was unchanged here (55 / 159 / 716 systems at
 16.5 / 25 / 41 ly), but that was measured, not assumed.
 
+### DATA-R12 A DESTINATION THAT EXISTS IS NOT A DESTINATION ANYTHING REACHES
+WHERE: `src/lib/import/realsky/stars.mjs` (`starClasses`, `OTYPE_CLASS`),
+`static/rulepacks/starter-sf/stars.json`, and every consumer keyed on `classes[0]`.
+RULE: before adding a band, a class or a template, ask WHAT ROUTES TO IT. The pack has defined
+`star/red-giant`, `star/NS`, `star/BH`, `star/BH_active` and `star/magnetar` for a long time, with
+real figures, and NOTHING COULD REACH ANY OF THEM from a catalogue row. The same shape three times:
+D19 (the giant band unreachable from an MK string), B44 (the luminosity class parsed into a FIELD but
+never emitted as a CLASS, so consumers still saw "an M star"), and the compact objects below.
+WHY: it fails silently and confidently. An unreachable destination does not error — the lookup falls
+through to something plausible, and the plausible answer is the whole problem. **A pulsar's spectral
+type is EMPTY, and an empty string does not fall to `star/default`: it falls to `star/M`**, because
+the letter regex fails and the letter defaults to M. Every neutron star, pulsar and black hole in
+range imported as a 0.265 Msun red dwarf with the red-dwarf picture. Reachable, not theoretical:
+PSR B1929+10 at 152 ly, RX J1856.6-3754 at 400 ly, six compact objects inside ~326 ly.
+BLAST: **THE CATALOGUE OFTEN ALREADY TELLS US AND WE DROP IT.** SIMBAD's `otype` was fetched and used
+ONLY as a filter (census.mjs drops planets, clusterGate trips on containers); it never reached the
+classifier. That is the same fault as D19's luminosity class and D24's identifier — the third time a
+field we already had was thrown away. When something classifies wrongly, check what the source said
+before adding a model.
+ALSO: `otype` must NOT override a real spectral type. An X-ray binary's `sp_type` describes the
+DONOR (`* gam Cas` is `B0.5IVpe`), and the visible star is what it should classify as. And SIMBAD has
+NO magnetar type — magnetars are filed as `Psr` — so `star/magnetar` stays unreachable from a
+catalogue string, deliberately, rather than being routed to on a guess.
+ONE SPELLING: the class emitted IS the pack's band key (`star/M-I`), not a parallel
+`star/M-supergiant`. One string is the stat template, the picker entry, the description key and the
+class. A second spelling for one thing is the duplication D22 existed to remove.
+WATCH FOR: a first-LETTER test standing in for a class. `flareActivity` excluded remnants with
+`/[WNB]/.test(sp) && !'BAFGKM'.includes(sp)` — and 'B' is both the initial of "BH" and a real
+spectral class, so the exclusion cancelled itself and a BLACK HOLE drew the B-star flare rate. It sat
+latent for as long as nothing routed to `star/BH`, and went live the moment something did.
+
 ### DATA-R11 A name the app SHOWS must be one it can FIND — and the catalogue service is ASCII-only
 WHERE: `src/lib/import/realsky/starNames.mjs`, `properNames.mjs`, `query.mjs:runTap`.
 RULE: any prettifying of a catalogue identifier must ship with its inverse. Build the map two-way
