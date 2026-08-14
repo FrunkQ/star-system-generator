@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.566-beta - 13th Aug 2026
+
+* Decided: proper star classification comes in this release rather than a later one. Most of it already exists and is simply wired up wrongly, and having it finished first means the bigger generation work to come can build on it instead of having to deliver it as well. Stars will carry their type, subtype and size class as real properties rather than as a piece of text to be re-read every time.
+
 ## v2.1.565-beta - 13th Aug 2026
 
 * Added to the stellar-spin work: the star will have to actually look flattened in both the flat and 3D views, and the physics pages will have to explain why it spins at all — that cool stars are slowed over their lives by their own magnetic wind while hot ones never slow, which is the difference between our Sun and Vega.
