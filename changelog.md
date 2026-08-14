@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.595-beta - 14th Aug 2026
+
+* Correction to a note left at handover: the rarity of supergiants in generated starmaps is right as it stands. A supergiant is not a kind of star you roll for, it is a heavy star grown old — so the way to get one is to age a system, or to build it in the editor, both of which already work. And a neighbourhood of nearby stars genuinely contains none; the famous ones are simply bright enough to be seen from very far away.
+
 ## v2.1.594-beta - 14th Aug 2026
 
 * Housekeeping at a handover: the development notes now record which work is in flight and who holds it, so the next person picking this up starts from what is known rather than from the commit history.

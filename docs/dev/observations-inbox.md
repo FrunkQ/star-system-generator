@@ -634,9 +634,20 @@ V3, designed and not started; it also corrects [[G19]]'s `mid-spectrum`. (2) **[
 **[[A47]]**, still gated on each other.
 
 **NEEDS THE OWNER, not a worker.** [[B47]](a) whether to refuse ageing a sub-0.8-solar star onto the
-giant branch; the supergiant generation weight (astronomically honest at ~1 in 82,000, so the
-generator will never make one — **the outgoing coordinator's recommendation is to hang it on the
-Rarity slider that already exists, keeping the honest default at mid-slider**); and [[D25]]'s
+giant branch; **the supergiant generation weight — ANSWERED BY THE OWNER, and the coordinator's
+recommendation was WRONG; ignore it.** I suggested hanging the frequency on the Rarity slider. That
+solves a problem that does not exist. **A supergiant is not a type you DRAW, it is a massive star
+late in its life** — so the honest model is to draw a mass and AGE it, which is exactly what Astro 3
+built ("the ageing path emits `star/<letter>-III` from the evolved temperature"). The deliberate
+route already works: set the age, or use the editor. **And the weight is right for a random starmap
+because that map is VOLUME-limited.** Supergiants are vanishingly rare per unit volume since they are
+short-lived; they feel common only because they are MAGNITUDE-limited famous — Betelgeuse, Rigel,
+Deneb and Antares are all naked-eye visible from 500+ light years. There are none within 100 ly, so a
+neighbourhood containing none is CORRECT rather than a shortfall. **One mild note left for whoever is
+next: if ageing is the mechanism that makes evolved stars, the `-I`/`-III` entries in the star_types
+distribution are a SECOND route to the same state, and a star can be born old.** Harmless at these
+weights and possibly wanted for a map that is not meant to be a fresh nursery — but it is two paths
+to one outcome, so worth a deliberate answer rather than an accident. And [[D25]]'s
 starmap-carried definitions, which need confirming the mechanism exists before it is scoped as a
 data move.
 
