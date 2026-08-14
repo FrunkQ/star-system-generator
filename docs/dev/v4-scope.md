@@ -77,6 +77,31 @@ than being rewritten:
 Whoever opens V4 should start by asking what a third tier would have to ADD to these, not what it
 would have to duplicate.
 
+### AGE TRAVELS WITH THE CLUSTER — coeval populations, and it is astronomically right
+
+Owner, 2026-08-14: the new generation system "will have a lot more age related stuff, and as it will
+support star clusters the ageing will travel with that — so we may get patches of similar star ages."
+
+**Keep this, because it is not a simplification — it is what really happens.** Stars in an open
+cluster form from one collapsing cloud within a few million years of each other, so a cluster is
+**COEVAL**: one age, shared. That single fact does a great deal of work for free.
+
+- **It makes age a property of a REGION, not only of a star** — which is the same move [[G20]] makes
+  for position, and it means the tier abstraction carries age up with it.
+- **It produces landscapes rather than noise.** A young cluster is full of hot blue stars, has no
+  red giants at all, and has had no time for life; an old one is full of red giants and white dwarfs
+  and its worlds have had billions of years. **A GM gets a REASON why one patch of the map feels
+  different from another**, instead of every system being an independent dice roll.
+- **It is also the cleanest possible test of the age machinery**: every star in a cluster should
+  evolve in step, so the turn-off point — the mass above which stars have already left the main
+  sequence — is a single number that dates the whole cluster. That is real astronomy (it is how
+  cluster ages are measured) and it falls straight out of a shared age plus [[B40]]'s and [[B43]]'s
+  mass-dependent evolution.
+
+**Consequence for the meantime, decided 2026-08-14: do NOT tidy the born-old question in V3.** A star
+can currently become evolved either by being drawn that way or by being aged, and the owner is content
+with both — because this rewrite readdresses age properly. Tweak, do not fix.
+
 ## What the timeline unlocks (owner's list)
 
 - Nebulae

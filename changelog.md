@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.596-beta - 14th Aug 2026
+
+* Banked for the new generation engine: age will belong to a whole star cluster rather than to each star separately, which is how it really works — stars in a cluster form together and grow old together. That gives a map patches with a character of their own: a young region of hot blue stars with no time for life yet, an old one full of red giants.
+
 ## v2.1.595-beta - 14th Aug 2026
 
 * Correction to a note left at handover: the rarity of supergiants in generated starmaps is right as it stands. A supergiant is not a kind of star you roll for, it is a heavy star grown old — so the way to get one is to age a system, or to build it in the editor, both of which already work. And a neighbourhood of nearby stars genuinely contains none; the famous ones are simply bright enough to be seen from very far away.

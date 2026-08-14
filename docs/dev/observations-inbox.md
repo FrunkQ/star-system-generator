@@ -643,11 +643,10 @@ route already works: set the age, or use the editor. **And the weight is right f
 because that map is VOLUME-limited.** Supergiants are vanishingly rare per unit volume since they are
 short-lived; they feel common only because they are MAGNITUDE-limited famous — Betelgeuse, Rigel,
 Deneb and Antares are all naked-eye visible from 500+ light years. There are none within 100 ly, so a
-neighbourhood containing none is CORRECT rather than a shortfall. **One mild note left for whoever is
-next: if ageing is the mechanism that makes evolved stars, the `-I`/`-III` entries in the star_types
-distribution are a SECOND route to the same state, and a star can be born old.** Harmless at these
-weights and possibly wanted for a map that is not meant to be a fresh nursery — but it is two paths
-to one outcome, so worth a deliberate answer rather than an accident. And [[D25]]'s
+neighbourhood containing none is CORRECT rather than a shortfall. **AND THE BORN-OLD QUESTION IS SETTLED TOO — owner, same exchange: "as long as they can appear
+randomly that is fine."** So the `-I`/`-III` entries STAY in the distribution. It is two routes to
+one state, but that is deliberate rather than accidental, and **V4's generation rewrite readdresses
+age properly — so tweak here, do not fix.** Do not spend a session unifying it. And [[D25]]'s
 starmap-carried definitions, which need confirming the mechanism exists before it is scoped as a
 data move.
 
