@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.568-beta - 13th Aug 2026
+
+* The welcome screen now shows what is coming as well as what has arrived. Four headline features have been added — properly classified stars, worlds coloured by the life on them, your own map pinned behind the starmap, and scaling out to clusters and galaxies — and anything not yet finished is dimmed and tagged, so it is clear at a glance what you can use today. The panel is wider too; the list had grown tall enough to run off a desktop window.
+
 ## v2.1.567-beta - 14th Aug 2026
 
 * The star editor and the rest of the engine now read one set of figures. The list of what each kind of star weighs and how big it is existed twice — once as editable data, once written into the editor itself — and the two disagreed for eight of sixteen kinds. Picking "white dwarf" in the editor gave you a 52,000 K star while a generated or imported one came out at 24,000 K. The editable copy wins, so the two can no longer drift apart.

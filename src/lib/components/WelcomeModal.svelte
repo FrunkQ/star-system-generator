@@ -15,18 +15,28 @@
   const GH = 'https://github.com/FrunkQ/star-system-generator/blob/beta';
 
   // Headline features — brief and scannable; full detail lives in the guides.
-  const features: { title: string; blurb: string }[] = [
+  //
+  // `pending` marks a line as NOT FULLY LANDED and dims it, with the label shown as a small tag.
+  // Beta testers should be able to tell at a glance what they can use today from what is still
+  // coming, so an unfinished feature is listed honestly rather than omitted or overclaimed. Clear
+  // the field the moment a feature is genuinely done — a stale "coming" is as misleading as a
+  // premature claim.
+  const features: { title: string; blurb: string; pending?: string }[] = [
     { title: 'A rewritten physics engine', blurb: 'What a world is made of decides everything else: density, temperature, atmosphere and cloud decks, oceans and ice, magnetism, geology, the radiation it throws out and the colour you actually see. The Newton panel shows the working.' },
     { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
+    { title: 'Stars properly classified', pending: 'in progress', blurb: 'Stars carry their real classification — spectral type, subtype and luminosity class — so a supergiant is a supergiant rather than a dwarf that happens to share its colour. Their spin follows from mass and age, and a fast enough star is visibly flattened by it.' },
     { title: 'Player views', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — redacted, updating as you play, and dressed with filters and transitions that lean hard into your setting's look." },
     { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system — orbits, tilts and moons where the physics puts them, each world lit by its own star.' },
     { title: 'Starmaps have depth', blurb: 'Systems carry a z-axis, so distances are true in three dimensions. If you prefer a flat map, everything still works exactly as it did in 2D.' },
     { title: 'Your own stars in the sky', blurb: 'Your starmap becomes the night sky behind the 3D view — every system at its true direction, brightness and colour — so the constellations your players see are made of places they can fly to.' },
     { title: '3D ships', blurb: 'Bring your own models: constructs can be shown as real 3D craft.' },
     { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
-    { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — real stars at true positions, confirmed planets only, or filled out with plausible worlds around them.' },
+    { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — the real stars near you at their true positions, with their confirmed planets, and plausible worlds filled in around the rest if you want them.' },
     { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
-    { title: 'Virtual tabletop integration', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and Foundry are in testing.' },
+    { title: 'Living worlds you can see', pending: 'coming', blurb: 'Where life has taken hold it will colour the world — microbes, fungi, plants and the lights of cities, layered as one paints over another, gathering along the shorelines. The colours come from the world’s own star, so plants under a red dwarf are not green.' },
+    { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
+    { title: 'Beyond the neighbourhood', pending: 'coming', blurb: 'The same map, scaled up: star clusters, whole galaxies, and the filaments of the cosmic web.' },
+    { title: 'Virtual tabletop integration', pending: 'in testing', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and Foundry are in testing.' },
     { title: 'Sharper generation', blurb: 'Procedural systems have been retuned to sit better inside the new physics.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     { title: 'Many improvements and fixes', blurb: 'Hundreds of smaller changes throughout — the changelog has every one, build by build.' }
@@ -50,9 +60,12 @@
       {#if features.length}
         <ul class="feat">
           {#each features as f}
-            <li>
+            <li class:pending={f.pending}>
               <span class="dot" aria-hidden="true"></span>
-              <span><strong>{f.title}.</strong> {f.blurb}</span>
+              <span>
+                <strong>{f.title}.</strong>{#if f.pending}<span class="tag">{f.pending}</span>{/if}
+                {f.blurb}
+              </span>
             </li>
           {/each}
         </ul>
@@ -88,7 +101,9 @@
 
 <style>
   .welcome-card {
-    width: min(640px, 94vw);
+    /* Widened from 640px: the V3 list has grown long enough that a narrow column ran off the
+       bottom of a desktop window. Wider trades height for width, which is the scarcer axis here. */
+    width: min(860px, 94vw);
     max-height: 90vh;
     display: flex;
     flex-direction: column;
@@ -119,6 +134,16 @@
   .feat li { display: flex; gap: 10px; align-items: baseline; font-size: 0.9rem; line-height: 1.45; color: var(--text-muted, #cfcfcf); }
   .feat strong { color: var(--text, #e8e8e8); }
   .dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--accent, #ff5a1f); transform: translateY(-1px); }
+  /* NOT LANDED YET: dimmed, with its own dot drained of accent, so the eye separates what you can
+     use today from what is on the way without having to read the tag. */
+  .feat li.pending { opacity: 0.55; }
+  .feat li.pending .dot { background: var(--text-faint, #8a8f9a); }
+  .tag {
+    display: inline-block; margin-left: 6px; padding: 1px 6px;
+    border: 1px solid var(--border); border-radius: 999px;
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-faint, #8a8f9a); vertical-align: 1px; white-space: nowrap;
+  }
   .guides-line { margin: 14px 0 0; font-size: 0.86rem; color: var(--text-muted, #cfcfcf); line-height: 1.5; }
   .guides-line a { color: var(--link, #6ca6ff); }
   .heads-up {
