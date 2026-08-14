@@ -21,6 +21,12 @@
   // coming, so an unfinished feature is listed honestly rather than omitted or overclaimed. Clear
   // the field the moment a feature is genuinely done — a stale "coming" is as misleading as a
   // premature claim.
+  //
+  // THIS LIST IS **THIS RELEASE ONLY**, shipped or in flight. It is NOT the roadmap. Anything
+  // belonging to a later release stays off it however exciting it is — a first-run panel that
+  // advertises what a tester cannot reach, however honestly labelled, reads as a promise. Two lines
+  // were removed on this rule (owner, 2026-08-13): visible biospheres, which ride with the new
+  // generation engine, and the scale-up to clusters and galaxies, which is the release after this.
   const features: { title: string; blurb: string; pending?: string }[] = [
     { title: 'A rewritten physics engine', blurb: 'What a world is made of decides everything else: density, temperature, atmosphere and cloud decks, oceans and ice, magnetism, geology, the radiation it throws out and the colour you actually see. The Newton panel shows the working.' },
     { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
@@ -33,9 +39,7 @@
     { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
     { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — the real stars near you at their true positions, with their confirmed planets, and plausible worlds filled in around the rest if you want them.' },
     { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
-    { title: 'Living worlds you can see', pending: 'coming', blurb: 'Where life has taken hold it will colour the world — microbes, fungi, plants and the lights of cities, layered as one paints over another, gathering along the shorelines. The colours come from the world’s own star, so plants under a red dwarf are not green.' },
     { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
-    { title: 'Beyond the neighbourhood', pending: 'coming', blurb: 'The same map, scaled up: star clusters, whole galaxies, and the filaments of the cosmic web.' },
     { title: 'Virtual tabletop integration', pending: 'in testing', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and Foundry are in testing.' },
     { title: 'Sharper generation', blurb: 'Procedural systems have been retuned to sit better inside the new physics.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },

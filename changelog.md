@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.571-beta - 13th Aug 2026
+
+* Two lines removed from the welcome screen that belonged to later releases rather than this one — visible biospheres and the scale-up to clusters and galaxies. The panel lists what has landed or is in flight now; the longer plans live on the roadmap, where they cannot read as promises.
+
 ## v2.1.570-beta - 14th Aug 2026
 
 * Stars now carry their classification properly, as three separate facts rather than a piece of text. A designation like "M1.5Iab" says three things — the type (M), how far through that type (1.5), and the size class (Iab, a supergiant) — and the app now keeps all three, reads them once when a star is imported, and can write the designation back out again. That last part is what makes it possible to check that a star still is what it was made as, which is the thing that was silently failing.
