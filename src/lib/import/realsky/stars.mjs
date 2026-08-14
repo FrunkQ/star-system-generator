@@ -81,22 +81,83 @@ const LUMINOSITY_BAND = {
 };
 
 export function luminosityClassOf(type) {
-  const primary = primaryComponent(type);
-  // A leading `d`/`sd` is SIMBAD's own shorthand for a dwarf (dM6 = Wolf 359) and is an explicit
-  // class V. It is stripped here so the scan below anchors on the temperature letter.
-  const body = primary.replace(/^(sd|d)(?=[OBAFGKMLTY])/, '');
-  // Anchored after the letter and its subclass, never a bare /[IV]+/ search: a loose scan finds the
-  // V in a peculiarity suffix and the I in anything at all. The subclass may itself be a RANGE, and
-  // SIMBAD repeats the letter inside it — Betelgeuse is `M1-M2Ia-Iab`, which has a range in both
-  // positions and is the string that breaks a naive pattern.
+  return parseStellarType(type)?.band;
+}
+
+// THE FORWARD MAP: a catalogue designation -> the three facts it states.
+//
+// `M1.5Iab+B2Vn` -> { spectral: 'M', subclass: 1.5, luminosity: 'Iab', band: 'I', companion: 'B2Vn' }
+//
+// This is the ONLY place an MK string is read. Everything downstream takes the structured form, so
+// no second site learns to parse these badly — which is the whole reason the classification is
+// carried natively rather than re-derived (owner, 2026-08-14).
+//
+// Returns undefined only for a string that states no spectral letter at all. A remnant (`DA2.9`,
+// `star/NS`) is a classification too and comes back with `spectral` set and no luminosity class,
+// because a white dwarf's MK class VII is vestigial and nothing here needs it.
+export function parseStellarType(type) {
+  const raw = String(type ?? '').trim();
+  if (!raw) return undefined;
+  if (/white dwarf/i.test(raw) || /^D/.test(raw)) {
+    // The letters after the D (DA, DZ, DQZ) name which absorption lines dominate — a real fact, and
+    // kept so the designation can be rebuilt. It is NOT a luminosity class: a white dwarf's MK
+    // class VII is vestigial and nothing here needs it.
+    const m = /^D([A-Z]*)\s*(\d+(?:\.\d+)?)?/.exec(raw);
+    return {
+      spectral: 'WD',
+      ...(m?.[1] ? { variant: m[1] } : {}),
+      ...(m?.[2] != null ? { subclass: Number(m[2]) } : {})
+    };
+  }
+  const [primary, ...rest] = String(raw).replace(/\s*\(.*\)$/, '').split('+');
+  const companion = rest.join('+').trim();
+  // A leading `d`/`sd` is SIMBAD's own shorthand for a dwarf (dM6 = Wolf 359, dM4 = Ross 128) and is
+  // an explicit class V. Case-sensitive: an uppercase D is a white dwarf and was caught above.
+  const dwarfPrefix = /^(sd|d)(?=[OBAFGKMLTY])/.exec(primary.trim());
+  const body = dwarfPrefix ? primary.trim().slice(dwarfPrefix[0].length) : primary.trim();
+
+  // Anchored on the letter, never a bare /[IV]+/ search: a loose scan finds the V in a peculiarity
+  // suffix and the I in anything at all. The subclass may itself be a RANGE and SIMBAD repeats the
+  // letter inside it — Betelgeuse is `M1-M2Ia-Iab`, a range in BOTH positions, which is the string
+  // that breaks a naive pattern.
   const m = body.match(
-    /^[OBAFGKMLTY]\s*\d*(?:\.\d+)?(?:\s*-\s*[OBAFGKMLTY]?\s*\d*(?:\.\d+)?)?\s*([IV]+[ab]{0,2}(?:\s*-\s*[IV]*[ab]{0,2})?)/
+    /^([OBAFGKMLTY])\s*(\d+(?:\.\d+)?)?(?:\s*-\s*[OBAFGKMLTY]?\s*\d+(?:\.\d+)?)?\s*([IV]+[ab]{0,2}(?:\s*-\s*[IV]*[ab]{0,2})?)?/
   );
-  if (!m) return /^(sd|d)(?=[OBAFGKMLTY])/.test(primary) ? 'V' : undefined;
+  if (!m || !m[1]) return undefined;
   // A range takes the FIRST, more luminous reading: `IV-V` -> `IV`, `Ia-Iab` -> `Ia`. A star bright
   // enough to have been catalogued with a range is more likely the brighter one.
-  const token = m[1].replace(/\s+/g, '').split('-')[0];
-  return LUMINOSITY_BAND[token];
+  const written = m[3] ? m[3].replace(/\s+/g, '').split('-')[0] : (dwarfPrefix ? 'V' : undefined);
+  return {
+    spectral: m[1].toUpperCase(),
+    ...(m[2] != null ? { subclass: Number(m[2]) } : {}),
+    ...(written && LUMINOSITY_BAND[written] ? { luminosity: written, band: LUMINOSITY_BAND[written] } : {}),
+    ...(companion ? { companion } : {})
+  };
+}
+
+// THE INVERSE MAP: the three facts -> the designation that states them.
+//
+// `{ spectral: 'M', subclass: 1.5, luminosity: 'Iab' }` -> `M1.5Iab`.
+//
+// This is the direction `docs/dev/type-vocabulary-prev4.md` exists to protect. Without it there is
+// no way to ask "does this body still classify as what it was created as", and D19 is exactly what
+// happens when nobody can ask: Antares went in as a supergiant and came back a dwarf, with no test
+// in a position to notice.
+//
+// WHAT IT DOES AND DOES NOT CLAIM, because the difference matters and an overclaim here would be
+// the same kind of fault this work is fixing:
+//   - EXACT for every type in the vocabulary: `parseStellarType(formatStellarType(T))` deep-equals T.
+//   - IDEMPOTENT for a catalogue string: `parse(format(parse(s)))` deep-equals `parse(s)`.
+//   - NOT byte-identical to an arbitrary catalogue string, and it should not be. Peculiarity
+//     suffixes (`e` emission, `n` broad lines, `p` peculiar, `:` uncertain, `Fe-1`) and range
+//     notation (`M1-M2`) are ASTRONOMERS' annotations, not classification: `M5.5Ve` formats back as
+//     `M5.5V`, which states the same type. Reproducing the annotation would mean storing the string,
+//     which is precisely what carrying the classification natively exists to stop.
+export function formatStellarType(t) {
+  if (!t?.spectral) return '';
+  const companion = t.companion ? `+${t.companion}` : '';
+  if (t.spectral === 'WD') return `D${t.variant ?? ''}${t.subclass ?? ''}${companion}`;
+  return `${t.spectral}${t.subclass ?? ''}${t.luminosity ?? ''}${companion}`;
 }
 
 // The first component of a spectral type, with any trailing parenthetical removed.

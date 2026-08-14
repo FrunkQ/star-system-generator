@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody } from '$lib/types';
+  import type { CelestialBody, StellarType } from '$lib/types';
   import { fmt } from '$lib/stores';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
@@ -390,6 +390,12 @@
           const prefixes = Object.keys(SPECTRAL_DATA);
           const others = body.classes.filter((c: string) => !prefixes.includes(c));
           body.classes = [newClass, ...others];
+          // Keep the structured classification in step, or the body says one thing in its class and
+          // another in its type. The SUBCLASS is dropped because it is relative to the letter — the
+          // 5.5 of M5.5V means nothing once the star is a K — while the luminosity class is kept,
+          // since the GM moved the temperature, not the size class.
+          const { luminosity, band } = body.stellarType ?? {};
+          body.stellarType = { spectral: newClass.split('/')[1], ...(luminosity ? { luminosity, band } : {}) };
           currentClass = newClass;
           updateImage(newClass);
       }
@@ -526,6 +532,18 @@
       applyAccretion(seed);
   }
 
+  // A pack band key -> the structured classification it states. `star/M-I` is an M supergiant;
+  // `star/K` is a K star with no luminosity class stated, which is exactly what a bare letter band
+  // means and must stay distinguishable from one stated as V. Remnants carry their own key as the
+  // spectral value, because 'WD' and 'BH' are classifications with no letter behind them.
+  function stellarTypeForBand(key: string): StellarType | undefined {
+      const name = key.split('/')[1];
+      if (!name) return undefined;
+      const m = /^([OBAFGKMLTY])(?:-(I|III|V))?$/.exec(name);
+      if (!m) return { spectral: name };  // star/WD, star/NS, star/BH, star/red-giant, ...
+      return { spectral: m[1], ...(m[2] ? { luminosity: m[2], band: m[2] as 'I' | 'III' | 'V' } : {}) };
+  }
+
   function updateImage(starClass: string) {
       let lookupClass = starClass;
       if (starClass === 'star/red-giant') lookupClass = 'star/M';
@@ -547,6 +565,11 @@
       const prefixes = Object.keys(SPECTRAL_DATA);
       const others = body.classes.filter((c: string) => !prefixes.includes(c));
       body.classes = [val, ...others];
+      // PICKING IS THE FORWARD DIRECTION and it must leave the same structured classification an
+      // IMPORT would (owner, 2026-08-14). Without this, a GM-built supergiant is a supergiant only
+      // by its class string, and the inverse — parameters back to a designation — has nothing to
+      // read. A pick states no subclass, so none is recorded: absent is not the same as zero.
+      body.stellarType = stellarTypeForBand(val);
       updateImage(val);
 
       const data = SPECTRAL_DATA[val];

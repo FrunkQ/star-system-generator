@@ -10,7 +10,6 @@
   import { get } from 'svelte/store';
   import { onMount } from 'svelte';
   import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
-  import { luminosityClassOf } from '$lib/import/realsky/stars.mjs';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
   import { phaseAtP } from '$lib/physics/liquids';
@@ -492,21 +491,20 @@
       'star/BH_active': 'Active Black Hole. A black hole actively feeding on surrounding matter, which forms a super-heated accretion disk, emitting extreme levels of radiation.'
   }
 
-  // An IMPORTED star keeps two classes: the band it resolved to (`star/M`) and the catalogue's own
-  // spectral string (`star/M1.5Iab+B2Vn`). The band is only a letter, so on its own it described
-  // Antares — a red supergiant — as a red dwarf, which is the half of D19 a reader actually sees.
-  // The MK string behind it still states the luminosity class, so read it from there and prefer the
-  // matching description. One parser, shared with the importer; no second copy of the rules.
-  function starTypeDescription(classes: string[] = []): string | undefined {
-      const primary = classes?.[0] ?? '';
-      const letter = /^star\/([OBAFGKM])/.exec(primary)?.[1];
-      if (letter) {
-          for (const c of classes) {
-              const lum = luminosityClassOf(c.replace(/^star\//, ''));
-              if (lum && lum !== 'V' && STAR_TYPE_DESC[`star/${letter}-${lum}`]) return STAR_TYPE_DESC[`star/${letter}-${lum}`];
-          }
+  // A star's class array carries only the BAND it resolved to (`star/M`), which is a letter — so on
+  // its own it described Antares, a red supergiant, as a red dwarf. That is the half of D19 a reader
+  // actually sees. The luminosity class now lives on the body as structured data, parsed once at
+  // import, so this READS it rather than re-parsing a designation (owner, 2026-08-14: never a string
+  // re-parsed at each use). `classes[0]` still wins when it already names a band directly, which is
+  // what a GM picking "M-Type Supergiant" in the editor produces.
+  function starTypeDescription(body: CelestialBody): string | undefined {
+      const primary = body.classes?.[0] ?? '';
+      if (STAR_TYPE_DESC[primary]) return STAR_TYPE_DESC[primary];
+      const t = body.stellarType;
+      if (t?.band && t.band !== 'V' && STAR_TYPE_DESC[`star/${t.spectral}-${t.band}`]) {
+          return STAR_TYPE_DESC[`star/${t.spectral}-${t.band}`];
       }
-      return STAR_TYPE_DESC[primary];
+      return undefined;
   }
 </script>
 
@@ -600,9 +598,9 @@
             <span class="value">{body.classes.join(', ')}</span>
         </div>
         {#if !isBeltOrRing}
-            {#if starTypeDescription(body.classes)}
+            {#if starTypeDescription(body as CelestialBody)}
                 <div class="detail-item description">
-                    <span class="value">{starTypeDescription(body.classes)}</span>
+                    <span class="value">{starTypeDescription(body as CelestialBody)}</span>
                 </div>
             {/if}
         {/if}

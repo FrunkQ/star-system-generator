@@ -247,10 +247,50 @@ export interface SensorInstance {
   description?: string;
 }
 
+/** A star's MK classification, carried NATIVELY rather than as a string re-read at each use.
+ *
+ *  `M1.5Iab` is three separate facts and they do different work: the LETTER gives the temperature
+ *  and the colour, the SUBCLASS refines the temperature within the letter, and the LUMINOSITY CLASS
+ *  gives the size — which is the axis that separates a red dwarf from a red supergiant at the same
+ *  temperature, and is the HR diagram's own vertical. Reading only the letter is what made Antares
+ *  import at a fiftieth of its mass (inbox D19).
+ *
+ *  PARSED ONCE, AT IMPORT OR AT PICK. The point of the structured form is that no consumer re-parses
+ *  an MK string — that is how a fourth site learns to parse them badly — and that the INVERSE
+ *  direction exists: `formatStellarType` turns this back into the designation it came from, which is
+ *  the invariant `docs/dev/type-vocabulary-prev4.md` exists to protect ("a body created AS T must
+ *  classify back AS T").
+ */
+export interface StellarType {
+  /** Spectral letter, or a remnant/sub-stellar key: O B A F G K M L T Y, WD, NS, BH, magnetar. */
+  spectral: string;
+  /** The numeric subclass — 1.5 in M1.5Iab. Absent when the catalogue does not state one. */
+  subclass?: number;
+  /** White dwarfs only: the letters after the D naming which absorption lines dominate — the `A` of
+   *  `DA2.9`, the `QZ` of `DQZ`. A composition fact, not a luminosity class. */
+  variant?: string;
+  /** The MK luminosity class AS WRITTEN: 'Ia', 'Iab', 'Ib', 'II', 'III', 'IV', 'V', 'VI'. Absent
+   *  when the catalogue does not state one, which is the common case and must stay distinguishable
+   *  from "stated as V". */
+  luminosity?: string;
+  /** The luminosity class NORMALISED to the three bands the rule pack carries: 'I' (supergiant),
+   *  'III' (giant), 'V' (main sequence). `II` folds up to I and `IV`/`VI` fold to V. This is the
+   *  half of the class the pack key `star/<LETTER>-<BAND>` is built from; `luminosity` above is the
+   *  half a reader should be shown. */
+  band?: 'I' | 'III' | 'V';
+  /** A companion encoded in the same catalogue string — the `+B2Vn` of `M1.5Iab+B2Vn`. RECORDED,
+   *  NOT ACTED ON: a binary imported as one star needs node creation, not a parameter lookup, and
+   *  that is deliberately a separate job. Kept so the designation can be rebuilt exactly and so the
+   *  information is not silently thrown away a second time. */
+  companion?: string;
+}
+
 export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
   roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
   classes?: string[];
+  /** A star's MK classification as structured data. See `StellarType`. */
+  stellarType?: StellarType;
   auroraEmitters?: AuroraEmitter[];  // resolved at process time from atmosphere × gas AuroraBand data
   orbit?: Orbit;
 

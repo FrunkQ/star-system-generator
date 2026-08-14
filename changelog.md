@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.570-beta - 14th Aug 2026
+
+* Stars now carry their classification properly, as three separate facts rather than a piece of text. A designation like "M1.5Iab" says three things — the type (M), how far through that type (1.5), and the size class (Iab, a supergiant) — and the app now keeps all three, reads them once when a star is imported, and can write the designation back out again. That last part is what makes it possible to check that a star still is what it was made as, which is the thing that was silently failing.
+* The size class is the one that was being thrown away, and it is not a detail: it is what separates a red dwarf from a red supergiant at exactly the same colour, and it is the vertical axis of the HR diagram. Having it in the data properly is most of what the later star and generation work needs.
+* Building a star in the editor now records the same three facts an import would, so a hand-made supergiant and an imported one are the same kind of thing.
+
 ## v2.1.569-beta - 13th Aug 2026
 
 * The Getting Started guide has been brought up to date, and three parts of it were teaching things that no longer exist — Points and Constructs of Interest, which are now simply tags, and the old Field Guide and Projector, which Player Views has replaced. It also now covers importing the real sky, 3D ship models, the new save bundles and their attributions, and a new section on what to do when something goes wrong, including how to send us a diagnostic file when the app will not load.

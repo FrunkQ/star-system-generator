@@ -18,7 +18,7 @@
 
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, EPOCH, G, LY_PER_PC, SOLAR_MASS_KG, SOLAR_RADIUS_KM, AU_KM, DEFAULT_MAP_CENTRE_PX } from './constants.mjs';
 import { hash01, radecToXyzLy, round, xyzToMapPx, inSphere } from './positions.mjs';
-import { starClasses, starParamsFromType } from './stars.mjs';
+import { starClasses, starParamsFromType, parseStellarType } from './stars.mjs';
 import { defaultMakeup, estimateRadiusRe, planetDescription } from './planets.mjs';
 import { normaliseStarRows, groupIntoSystems, projectedSeparationAu, angularSepRad, distanceLyFromParallax } from './census.mjs';
 
@@ -62,10 +62,12 @@ function starNodeFromRow(row, slug) {
   if (missing.length) return { missing };
   const type = (row.st_spectype ?? '').trim() || 'M';
   const { classes, image } = starClasses(type);
+  const stellarType = parseStellarType(type);
   return {
     node: {
       id: `${slug}-star`, parentId: null, name: row.hostname, kind: 'body', roleHint: 'star',
       classes,
+      ...(stellarType ? { stellarType } : {}),
       massKg: row.st_mass * SOLAR_MASS_KG,
       radiusKm: Math.round(row.st_rad * SOLAR_RADIUS_KM),
       temperatureK: Math.round(row.st_teff),
@@ -170,10 +172,13 @@ function starNodeFromCensus(star, id, statTemplates) {
   if (!params) return { missing: ['no stellar parameters for this spectral type'] };
   const { classes, image } = starClasses(star.sp ?? '');
   const typeText = (star.sp ?? '').trim();
+  // Parsed ONCE, here, at import. Every consumer downstream reads the structured form.
+  const stellarType = parseStellarType(star.sp ?? '');
   return {
     node: {
       id, parentId: null, name: cleanStarName(star.id), kind: 'body', roleHint: 'star',
       classes,
+      ...(stellarType ? { stellarType } : {}),
       massKg: params.massMsun * SOLAR_MASS_KG,
       radiusKm: Math.round(params.radiusRsun * SOLAR_RADIUS_KM),
       temperatureK: params.temperatureK,

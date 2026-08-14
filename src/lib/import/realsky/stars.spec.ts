@@ -10,7 +10,7 @@
 // Every spectral string below is one SIMBAD actually returns — the census inside 16.5 ly was dumped
 // to get them, so `dM6`, `M1-M2Ia-Iab`, `F5IV-V+DQZ`, `M1VIp` and `K6VeFe-1` are real, not invented.
 import { describe, it, expect } from 'vitest';
-import { starParamsFromType, starClasses, luminosityClassOf } from './stars.mjs';
+import { starParamsFromType, starClasses, luminosityClassOf, parseStellarType, formatStellarType } from './stars.mjs';
 import { loadStarterPack } from './testPack';
 
 const st = (loadStarterPack() as any).statTemplates;
@@ -174,5 +174,78 @@ describe('a star with no luminosity class behaves exactly as it did', () => {
 		expect(p.radiusRsun).toBe((band.radius_solar[0] + band.radius_solar[1]) / 2);
 		expect(p.temperatureK).toBe(Math.round((band.temp_k[0] + band.temp_k[1]) / 2));
 		expect(p.typicalForClass).toBe(true);
+	});
+});
+
+// ── THE FORWARD/INVERSE PAIR ──────────────────────────────────────────────────────────────────────
+//
+// `docs/dev/type-vocabulary-prev4.md`: "For every type T in the vocabulary, a body created AS T must
+// classify back AS T." Picking is forward, classifying is inverse, and a vocabulary is sound when
+// they compose to identity. Until this pair existed there was no way to ASK the question of a star —
+// which is why D19 could stand: Antares went in as a supergiant and came back a dwarf with nothing
+// in a position to notice.
+const LUM_BAND: Record<string, string> = { Ia: 'I', Iab: 'I', Ib: 'I', II: 'I', III: 'III', IV: 'V', V: 'V', VI: 'V' };
+const VOCABULARY = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'T', 'Y'].flatMap((spectral) =>
+	[undefined, 'Ia', 'Iab', 'Ib', 'II', 'III', 'IV', 'V', 'VI'].flatMap((luminosity) =>
+		[undefined, 0, 1.5, 5, 9.5].map((subclass) => ({
+			spectral,
+			...(subclass != null ? { subclass } : {}),
+			...(luminosity ? { luminosity, band: LUM_BAND[luminosity] } : {})
+		}))
+	)
+);
+
+describe('the invariant: created AS it, classifies back AS it', () => {
+	it(`round-trips every one of the ${VOCABULARY.length} types in the vocabulary`, () => {
+		const broken = VOCABULARY.filter((t) => {
+			const back = parseStellarType(formatStellarType(t));
+			return JSON.stringify(back) !== JSON.stringify(t);
+		});
+		expect(broken, `${broken.length} types do not survive the round trip`).toEqual([]);
+	});
+
+	it('is idempotent on a real catalogue string — parse(format(parse(s))) == parse(s)', () => {
+		// Every one of these is a string SIMBAD actually returned for the field inside 16.5 ly, plus
+		// the bright-star anchors. The claim is NOT that the string comes back byte-identical:
+		// peculiarity suffixes and range notation are annotation, not classification.
+		const REAL = [
+			'M5.5Ve', 'G2V', 'K1V', 'M4V', 'L7.5+T0.5', 'Y2', 'dM6', 'M2+V', 'A0mA1Va', 'M5.5V+M6V',
+			'DA1.9', 'M3.5Ve', 'M5.0V', 'K2V', 'M2V', 'dM4', 'K7V', 'K5V', 'F5IV-V+DQZ', 'M3V',
+			'M6.5Ve', 'G8V', 'T1V+T6V', 'M4.0Ve', 'M1VIp', 'M8.5V', 'M8.5Ve:', 'T6', 'DZ7.5', 'DQ',
+			'K6VeFe-1', 'M1.0V', 'M6.0V', 'Y0pec', 'dM3', 'M1.5V', 'DA2.9', 'K0V', 'M4.5V', 'T9',
+			'M1.5Iab+B2Vn', 'M1-M2Ia-Iab', 'B8Ia', 'A2Ia', 'F7Ib', 'K1.5III', 'K5III', 'K0III',
+			'G8III', 'M3.5III', 'F0II', 'B0Ib-II', 'K0III-IV'
+		];
+		for (const s of REAL) {
+			const once = parseStellarType(s);
+			const twice = parseStellarType(formatStellarType(once));
+			expect(twice, `${s} is not stable under the round trip`).toEqual(once);
+		}
+	});
+
+	it('reads all three facts out of the reported case, and keeps the companion without acting on it', () => {
+		expect(parseStellarType('M1.5Iab+B2Vn')).toEqual({
+			spectral: 'M', subclass: 1.5, luminosity: 'Iab', band: 'I', companion: 'B2Vn'
+		});
+		expect(formatStellarType(parseStellarType('M1.5Iab+B2Vn'))).toBe('M1.5Iab+B2Vn');
+	});
+
+	it('distinguishes "stated as V" from "states nothing", which is the whole point of the field', () => {
+		expect(parseStellarType('G2V')).toEqual({ spectral: 'G', subclass: 2, luminosity: 'V', band: 'V' });
+		expect(parseStellarType('G2')).toEqual({ spectral: 'G', subclass: 2 });
+		expect(parseStellarType('G2').luminosity).toBeUndefined();
+	});
+
+	it('classifies a white dwarf by its own notation, and rebuilds it', () => {
+		expect(parseStellarType('DQZ')).toEqual({ spectral: 'WD', variant: 'QZ' });
+		expect(parseStellarType('DA2.9')).toEqual({ spectral: 'WD', variant: 'A', subclass: 2.9 });
+		expect(formatStellarType(parseStellarType('DZ7.5'))).toBe('DZ7.5');
+	});
+
+	it('says nothing rather than guessing when the string states no type', () => {
+		expect(parseStellarType('')).toBeUndefined();
+		expect(parseStellarType(null)).toBeUndefined();
+		expect(parseStellarType('err')).toBeUndefined(); // 40 Eridani b, typed 'err' by SIMBAD
+		expect(formatStellarType(undefined)).toBe('');
 	});
 });

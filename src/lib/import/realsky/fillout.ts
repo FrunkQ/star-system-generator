@@ -26,7 +26,7 @@ import type { RulePack, System, CelestialBody, Barycenter, Tag } from '$lib/type
 import type { StarSeed } from '$lib/physics/stellar-evolution';
 import { generateSystemFromConfig } from '$lib/generation/generateFromConfig';
 import { EPOCH } from './constants.mjs';
-import { luminosityClassOf } from './stars.mjs';
+import { formatStellarType } from './stars.mjs';
 
 export const GENERATED_TAG = 'origin/generated';
 const MUTUAL_HILL_EXCLUSION = 3.5;
@@ -75,12 +75,17 @@ export function fillOutSystem(system: System, rulePack: RulePack): FillOutResult
     luminositySolar: star.radiationOutput ?? 0.05,
     massKg: star.massKg,
     radiusKm: star.radiusKm,
-    spectralClass: (star.classes ?? []).map((c) => c.split('/')[1]).find((c) => c && c.length > 1) ?? 'M',
+    // The full designation, rebuilt from the structured classification rather than fished out of
+    // the class array by string length. Falls back to the old read for a body that predates the
+    // field (a saved starmap), then to 'M'.
+    spectralClass: (star.stellarType ? formatStellarType(star.stellarType) : '')
+      || (star.classes ?? []).map((c) => c.split('/')[1]).find((c) => c && c.length > 1) || 'M',
     category: '',
-    // Was hard-coded 'V', which made every filled-out star a dwarf by declaration (D19). The
-    // catalogue's own MK string is on the node, so read it; 'V' stays the fallback when it says
-    // nothing, which is the common case and the right guess.
-    luminosityClass: (star.classes ?? []).map((c) => luminosityClassOf(c.replace(/^star\//, ''))).find(Boolean) ?? 'V',
+    // Was hard-coded 'V', which made every filled-out star a dwarf by declaration (D19). The star
+    // carries its classification as structured data now, parsed once at import, so this READS it.
+    // 'V' stays the fallback when the catalogue stated no class, which is the common case and the
+    // right guess: the galaxy is mostly dwarfs.
+    luminosityClass: star.stellarType?.luminosity ?? 'V',
     isRemnant: (star.classes ?? []).some((c) => /WD|NS|BH/.test(c)),
     pos: { x: 0, y: 0, z: 0 },
     vel: { x: 0, y: 0, z: 0 }
