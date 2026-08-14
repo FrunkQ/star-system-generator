@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.558-beta - 13th Aug 2026
+
+* Planned with the importer work: imported stars will be given readable names. "alf Sco" is the catalogue's shorthand, not a name — it should read Antares, or Alpha Scorpii. Most of that needs no lookup at all, just spelling out abbreviations the catalogue compresses; survey-numbered stars with no real name will be left alone.
+
 ## v2.1.557-beta - 13th Aug 2026
 
 * Housekeeping: trimmed yesterday's notes back. The release-numbering friction between parallel work is a note on the existing rule rather than a job of its own, and a one-off harmless deviation has been dropped as noise.
