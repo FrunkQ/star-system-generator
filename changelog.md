@@ -8,6 +8,10 @@ All notable changes are listed here:
 * Searching for a star now accepts the name it just showed you. Greek letters are translated before the search is sent, because the catalogue service rejects them outright — so "α Scorpii" works where it previously failed — and the box tells you what it searched for and what it found, rather than expecting you to know the catalogue's shorthand.
 * Failed searches say something useful. A search that found nothing, or that the service refused, used to print either a bare "Failed to fetch" or several hundred characters of raw XML. Both are now a sentence.
 
+## v2.1.574-beta - 13th Aug 2026
+
+* Biospheres split across two releases. The part that describes life — the kinds of it, how much of a world it covers, and what colours it should take — becomes ordinary tags now, alongside the wider tagging work, so you can author and search for it straight away. Actually drawing it on the planet comes later, with the new generation engine.
+
 ## v2.1.571-beta - 13th Aug 2026
 
 * Two lines removed from the welcome screen that belonged to later releases rather than this one — visible biospheres and the scale-up to clusters and galaxies. The panel lists what has landed or is in flight now; the longer plans live on the roadmap, where they cannot read as promises.
