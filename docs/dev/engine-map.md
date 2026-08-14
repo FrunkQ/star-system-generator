@@ -1423,6 +1423,25 @@ ALSO: `starParamsFromType` has a SECOND caller inside `convertRegion` that feeds
 across a fixed set of census rows before and after — it was unchanged here (55 / 159 / 716 systems at
 16.5 / 25 / 41 ly), but that was measured, not assumed.
 
+### DATA-R15 TWO GENERATORS SHARING AN ID NAMESPACE WILL COLLIDE, AND IT FAILS SILENTLY
+WHERE: `src/lib/import/realsky/convert.mjs` — the star id and the planet id.
+RULE: if two different KINDS of node are given ids by two different rules, the rules must be unable
+to produce the same string. Not unlikely to — UNABLE to.
+WHY: companion stars were numbered by POSITION (`<slug>-b`, `<slug>-c`) and planets by their
+catalogue LETTER (`<slug>-b`). **Proxima Cen b and Alpha Cen B are the same id**, so the most
+recognisable system in the catalogue imported wrong.
+BLAST: **NOTHING ERRORS.** A duplicate id throws nowhere. The processor's lookups are keyed by id, so
+one of the two simply wins and the other's relationships resolve to the wrong node: measured, the
+planet came out of `process()` re-parented onto the PRIMARY, 10,400 AU from the star it orbits, while
+the companion was shunted into an auto-barycentre. The map looks plausible and is wrong. This is the
+failure mode to fear from an id scheme — not a crash, a quietly rearranged system.
+FIX SHAPE: make the collision impossible by construction (`<slug>-star-b` cannot be a planet letter),
+then add a uniqueness assertion over a REAL import rather than a fixture — the fault only appears
+when a multi-star group also has planets, which no hand-built fixture had. Keep a defensive
+uniquifier that REPORTS: silently renaming would hide the next one.
+ALSO: the primary keeps `<slug>-star`, so every `parentId` and `orbit.hostId` built from it is
+unchanged — renaming the primary would have been a far larger change for no gain.
+
 ### DATA-R13 A LIST OF EXCEPTIONS GOES STALE; A TEST FOR THE PROPERTY DOES NOT
 WHERE: `generation/star.ts` (the base-spectral-class derivation and `starCategory`),
 `physics/stellar-evolution.ts` (`flareActivity`).

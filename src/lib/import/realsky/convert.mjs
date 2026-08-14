@@ -315,7 +315,18 @@ export function convertRegion(
     const starNodeById = new Map();
     group.forEach((s, i) => {
       const isPrimary = i === 0;
-      const starId = `${slug}-${isPrimary ? 'star' : String.fromCharCode(97 + i)}`;
+      // COMPANION STARS AND PLANETS USED TO SHARE AN ID NAMESPACE, AND ALPHA CENTAURI IS THE CASE.
+      // Stars were numbered by POSITION (`<slug>-b`, `<slug>-c`) and planets by their catalogue
+      // LETTER (`<slug>-b`), so Proxima Cen **b** collided with Alpha Cen **B**. Two nodes, one id.
+      //
+      // The damage is silent and it is not cosmetic: the processor's lookups are keyed by id, so the
+      // planet's parent resolved to the wrong node and PROXIMA CEN b WAS RE-HOMED ONTO THE PRIMARY —
+      // a planet 10,400 AU from where it belongs, orbiting the wrong star, while Toliman was shunted
+      // into an auto-barycentre. Nothing errored.
+      //
+      // `-star-b` cannot collide with a planet letter by construction, and the PRIMARY keeps
+      // `<slug>-star` so the `parentId` and `hostId` links below are unchanged.
+      const starId = `${slug}-${isPrimary ? 'star' : `star-${String.fromCharCode(97 + i)}`}`;
       // A matched archive row carries MEASURED parameters and always beats the class estimate.
       const archiveHost = hostsHere.find((h) => h.star === s);
       const built = archiveHost
@@ -332,7 +343,19 @@ export function convertRegion(
           hostId: `${slug}-star`, hostMu: G * hostMassKg, t0: EPOCH,
           elements: {
             a_AU: Math.max(0.01, round(aAU, 3)),
-            e: 0,
+            // A BINARY IS NOT A CIRCLE, and this was the only element pinned rather than drawn — its
+            // four neighbours below are all hashed already, so zero stood out as an assumption
+            // dressed as a value. Real binaries are eccentric: the observed distribution for a wide
+            // pair is close to THERMAL, f(e) = 2e, whose inverse CDF is sqrt(u) and whose median is
+            // about 0.7. The bundled Local Neighbourhood carries measured values for the one system
+            // where we can check — Alpha Centauri AB is e = 0.524 and Proxima e = 0.5 — and a
+            // circular orbit is nowhere near either.
+            //
+            // DRAWN, NOT DERIVED, and that is the honest tool here: a catalogue gives two positions
+            // and a parallax, from which the true eccentricity simply cannot be recovered. Clamped
+            // away from both extremes because the tails are the least useful and the most disruptive
+            // — a near-radial plunge makes a system unreadable for no gain in truth.
+            e: round(0.05 + Math.sqrt(hash01(starId + '|e')) * 0.8, 3),
             i_deg: round(hash01(starId + '|i') * mutualIncMax, 2),
             omega_deg: round(hash01(starId + '|w') * 360, 1),
             Omega_deg: round(hash01(starId + '|W') * 360, 1),
@@ -355,6 +378,26 @@ export function convertRegion(
         if (p.skip) skipped.push({ hostname: h.hostname, reason: p.skip });
         else nodes.push(p.node);
       }
+    }
+
+    // A BELT AND BRACES ON THE ABOVE, because the failure mode is silent corruption rather than an
+    // error. Two nodes sharing an id do not throw anywhere — the processor simply resolves the wrong
+    // one and re-parents a body, which is how a planet ended up orbiting the wrong star with nothing
+    // reported. The naming scheme now makes it impossible; this makes it impossible to REINTRODUCE
+    // by changing the scheme, and says so out loud rather than quietly renaming.
+    const seenIds = new Set();
+    for (const n of nodes) {
+      if (!seenIds.has(n.id)) { seenIds.add(n.id); continue; }
+      let n2 = 2;
+      while (seenIds.has(`${n.id}-${n2}`)) n2++;
+      skipped.push({
+        hostname: n.name,
+        reason: `duplicate node id "${n.id}" — renamed to "${n.id}-${n2}". This is a converter bug, not a data problem; please report it.`
+      });
+      const old = n.id;
+      n.id = `${n.id}-${n2}`;
+      seenIds.add(n.id);
+      for (const child of nodes) if (child.parentId === old && child !== n) child.parentId = n.id;
     }
 
     // THE 4.6 Gyr FALLBACK IS THE SUN'S AGE, AND IT IS NOW LOAD-BEARING (inbox B47c). It was

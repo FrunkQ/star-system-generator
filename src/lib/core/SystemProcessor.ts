@@ -328,7 +328,24 @@ export class SystemProcessor implements ISystemProcessor {
                     } else if (t1 > t0) {
                         reference = m1.orbit;
                     } else {
-                        reference = mass0 >= mass1 ? m0.orbit : m1.orbit;
+                        // MASS IS THE WRONG TIE-BREAK WHEN ONE ORBIT IS A PLACEHOLDER. The pair's
+                        // shape — e, inclination, node, periapsis — is copied from the reference onto
+                        // BOTH members, so choosing a member that never had an orbit of its own
+                        // overwrites the one that did with a ring of zeroes.
+                        //
+                        // That is exactly what happened to Alpha Centauri: the importer gives the
+                        // COMPANION the orbit and the primary none, the primary is heavier, so it won
+                        // the tie-break and its synthesised e = 0 flattened Toliman's derived 0.574
+                        // into a perfect circle. The real pair is e = 0.524.
+                        //
+                        // A zero here is an ABSENCE, not a measurement — the same distinction that
+                        // runs through B39 (no rotation is not zero rotation) and B44. So an orbit
+                        // that states a shape beats one that states nothing, and mass only decides
+                        // when both do or neither does.
+                        const shaped0 = (m0.orbit.elements.e || 0) > 0;
+                        const shaped1 = (m1.orbit.elements.e || 0) > 0;
+                        if (shaped0 !== shaped1) reference = shaped0 ? m0.orbit : m1.orbit;
+                        else reference = mass0 >= mass1 ? m0.orbit : m1.orbit;
                     }
 
                     const refM0 = this.normalizeAngle(reference.elements.M0_rad || 0);

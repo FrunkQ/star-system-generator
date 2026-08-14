@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.597-beta - 14th Aug 2026
+
+* Companion stars are no longer imported on perfect circles. Every other element of their orbit was already varied, but eccentricity was pinned at zero — so a wide binary, which in reality is almost always noticeably elliptical, went round in a circle. Alpha Centauri A and B actually swing between about 11 and 36 astronomical units apart; the bundled hand-built version of the system has always known that, and the importer now does too.
+* And a paired orbit no longer loses its shape when the pair is resolved into a barycentre. The two stars have to share one orbit shape between them, and the engine was copying it from whichever star was heavier — which, for an imported system, is the one that never had an orbit of its own. Its blank was overwriting the real one.
+* Alpha Centauri imports properly again. Proxima and its planets were being pulled out of place: Proxima Cen b appeared in a tight orbit around the main star instead of around Proxima, ten thousand astronomical units away, and Toliman went missing. The cause was two different things being given the same internal name — companion stars were numbered b, c, d and so were planets, so Proxima Cen *b* and Alpha Cen *B* collided. Nothing reported an error; the app simply picked the wrong one. Fixed, and a check now runs over every imported system to make sure no two objects can share a name again.
+>>>>>>> Stashed changes
+
+
 ## v2.1.596-beta - 14th Aug 2026
 
 * Banked for the new generation engine: age will belong to a whole star cluster rather than to each star separately, which is how it really works — stars in a cluster form together and grow old together. That gives a map patches with a character of their own: a young region of hot blue stars with no time for life yet, an old one full of red giants.
