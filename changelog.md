@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.586-beta - 14th Aug 2026
+
+* Red supergiants now look like red supergiants. Antares and Betelgeuse were correctly identified as supergiants in the last build but still showed the picture of a red dwarf, because the label had become specific and the artwork had not. They now carry an artist's reconstruction of WOH G64 — one of the largest stars known — credited to ESO / L. Calçada in the About box.
+
 ## v2.1.585-beta - 14th Aug 2026
 
 * A supergiant is now described as a supergiant. The numbers were already right after the last change, but the text underneath still read "Red dwarfs. The most common, very long-lived, but dim and cool." — because a star's type was recorded only as its letter, so everything downstream still saw an ordinary M star. Giants and supergiants now carry their size class as part of their type, and the description, the editor and the rules that read it all follow.

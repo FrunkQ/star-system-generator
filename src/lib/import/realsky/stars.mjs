@@ -9,7 +9,13 @@ export const STAR_IMAGE = {
   // Reachable from a catalogue row for the first time (B44): a pulsar or a black hole used to be
   // classified `star/M` and handed the red-dwarf picture with everything else.
   NS: '/images/star_types/NS.webp', BH: '/images/star_types/BH.webp',
-  magnetar: '/images/star_types/magnetar.jpg'
+  magnetar: '/images/star_types/magnetar.jpg',
+  // Keyed by the FULL band key, not a letter, so the lookup below can try the specific class first.
+  // Antares and Betelgeuse classified as `star/M-I` from v2.1.585 and still drew the red-dwarf
+  // picture, because a destination that exists is not a destination anything reaches (DATA-R12) —
+  // here the class was specific and the image lookup was not. Art: the red supergiant WOH G64,
+  // ESO / L. Calcada, credited in AboutModal.
+  'M-I': '/images/star_types/M-I.jpg'
 };
 
 // "G2V" → { classes: ['star/G', 'star/G2V'], image }. White dwarfs (any D
@@ -239,8 +245,13 @@ export function starClasses(type, { otype } = {}) {
   // work has been removing.
   const band = luminosityClassOf(s);
   const specific = band && band !== 'V' ? [`star/${letter}-${band}`] : [];
+  const classes = [...specific, `star/${letter}`, ...(full && full !== letter ? [`star/${full}`] : [])];
   return {
-    classes: [...specific, `star/${letter}`, ...(full && full !== letter ? [`star/${full}`] : [])],
-    image: STAR_IMAGE[letter]
+    classes,
+    // MOST SPECIFIC IMAGE FIRST, THEN THE LETTER — the same fallback chain the classes and the pack
+    // bands already use. Without this the class was specific and the picture was not, so a supergiant
+    // drew the red-dwarf art (DATA-R12 again). Only bands with art of their own need an entry; every
+    // other class falls through to its letter exactly as before, so nothing else moves.
+    image: classes.map((c) => STAR_IMAGE[c.slice(5)]).find(Boolean) ?? STAR_IMAGE[letter]
   };
 }
