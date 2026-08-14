@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.567-beta - 14th Aug 2026
+
+* The star editor and the rest of the engine now read one set of figures. The list of what each kind of star weighs and how big it is existed twice — once as editable data, once written into the editor itself — and the two disagreed for eight of sixteen kinds. Picking "white dwarf" in the editor gave you a 52,000 K star while a generated or imported one came out at 24,000 K. The editable copy wins, so the two can no longer drift apart.
+* You can now make a giant or a supergiant in the star editor. Previously the list offered only main-sequence stars and one "Red Giant", so a red supergiant like Betelgeuse could not be built at all. Two entries were also mislabelled — the ordinary O and B stars were captioned "Blue Supergiant" and "Blue Giant", which is the same confusion that made imported supergiants arrive as dwarfs.
+* Nudging a star's temperature no longer quietly demotes it. A giant or supergiant used to be reclassified from its temperature alone the moment you touched the slider, turning it back into an ordinary star of the same colour.
+
 ## v2.1.566-beta - 13th Aug 2026
 
 * Decided: proper star classification comes in this release rather than a later one. Most of it already exists and is simply wired up wrongly, and having it finished first means the bigger generation work to come can build on it instead of having to deliver it as well. Stars will carry their type, subtype and size class as real properties rather than as a piece of text to be re-read every time.

@@ -26,6 +26,7 @@ import type { RulePack, System, CelestialBody, Barycenter, Tag } from '$lib/type
 import type { StarSeed } from '$lib/physics/stellar-evolution';
 import { generateSystemFromConfig } from '$lib/generation/generateFromConfig';
 import { EPOCH } from './constants.mjs';
+import { luminosityClassOf } from './stars.mjs';
 
 export const GENERATED_TAG = 'origin/generated';
 const MUTUAL_HILL_EXCLUSION = 3.5;
@@ -76,7 +77,10 @@ export function fillOutSystem(system: System, rulePack: RulePack): FillOutResult
     radiusKm: star.radiusKm,
     spectralClass: (star.classes ?? []).map((c) => c.split('/')[1]).find((c) => c && c.length > 1) ?? 'M',
     category: '',
-    luminosityClass: 'V',
+    // Was hard-coded 'V', which made every filled-out star a dwarf by declaration (D19). The
+    // catalogue's own MK string is on the node, so read it; 'V' stays the fallback when it says
+    // nothing, which is the common case and the right guess.
+    luminosityClass: (star.classes ?? []).map((c) => luminosityClassOf(c.replace(/^star\//, ''))).find(Boolean) ?? 'V',
     isRemnant: (star.classes ?? []).some((c) => /WD|NS|BH/.test(c)),
     pos: { x: 0, y: 0, z: 0 },
     vel: { x: 0, y: 0, z: 0 }

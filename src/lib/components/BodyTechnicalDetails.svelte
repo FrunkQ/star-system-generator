@@ -10,6 +10,7 @@
   import { get } from 'svelte/store';
   import { onMount } from 'svelte';
   import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
+  import { luminosityClassOf } from '$lib/import/realsky/stars.mjs';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
   import { phaseAtP } from '$lib/physics/liquids';
@@ -469,10 +470,43 @@
       'star/T': 'T-type Brown Dwarf. A cool, magenta or brown sub-stellar object. Dominated by strong Methane absorption bands, similar to Jupiter.',
       'star/Y': 'Y-type Brown Dwarf. The coolest known star-like objects. Barely warm enough to emit infrared light, appearing black to the human eye. Often has water clouds.',
       'star/brown-dwarf': 'Brown Dwarf. A sub-stellar object massive enough to fuse deuterium but not hydrogen. They glow dimly in the infrared and bridge the gap between gas giants and stars.',
+      // Giants and supergiants (inbox D19). The letter gives the temperature and the colour; the
+      // luminosity class gives the size, and it is the difference between a red dwarf and Antares.
+      'star/O-I': 'O-Type Supergiant. Enormously massive, blue-white and desperately short-lived. Extreme radiation and a fierce stellar wind.',
+      'star/B-I': 'B-Type Supergiant. Blue-white and tens of thousands of times the Sun\'s brightness, like Rigel. Very high radiation.',
+      'star/A-I': 'A-Type Supergiant. White, hugely luminous and rare, like Deneb — among the most distant stars still visible to the naked eye.',
+      'star/F-I': 'F-Type Supergiant. Yellow-white and swollen. Many are Cepheid variables, pulsing on a clock so regular it is used to measure distance; Polaris is one.',
+      'star/G-I': 'G-Type Supergiant. A yellow supergiant, the Sun\'s colour at a hundred times its width. A brief stage between the blue and red supergiants.',
+      'star/K-I': 'K-Type Supergiant. Orange, cool and vast, well on the way to the red supergiants.',
+      'star/M-I': 'M-Type Supergiant. A red supergiant: cool, colossal and among the largest stars there are. Betelgeuse and Antares would swallow the inner planets of this system. Destined to end as a supernova.',
+      'star/O-III': 'O-Type Giant. A blue giant, massive and blazing. Vanishingly rare, and burning out fast.',
+      'star/B-III': 'B-Type Giant. Blue-white and luminous, having already left the main sequence.',
+      'star/A-III': 'A-Type Giant. White, bright, and expanded well beyond its main-sequence size.',
+      'star/F-III': 'F-Type Giant. Yellow-white and swollen, a star of a little over the Sun\'s mass in late middle age.',
+      'star/G-III': 'G-Type Giant. A yellow giant, like Capella — the Sun\'s colour, roughly a dozen times its width.',
+      'star/K-III': 'K-Type Giant. An orange giant, the commonest kind of giant and the brightest stars in many skies. Arcturus and Aldebaran are both this.',
+      'star/M-III': 'M-Type Giant. A red giant: cool, deep orange-red and very large. Often variable, shedding mass from a loosely held outer envelope.',
       'star/WD': 'White Dwarf. The dense, hot remnant of a dead star. High radiation.',
       'star/NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant. Extreme radiation.',
       'star/BH': 'Quiescent Black Hole. A region of spacetime where gravity is so strong nothing can escape. Low radiation unless matter is actively falling in.',
       'star/BH_active': 'Active Black Hole. A black hole actively feeding on surrounding matter, which forms a super-heated accretion disk, emitting extreme levels of radiation.'
+  }
+
+  // An IMPORTED star keeps two classes: the band it resolved to (`star/M`) and the catalogue's own
+  // spectral string (`star/M1.5Iab+B2Vn`). The band is only a letter, so on its own it described
+  // Antares — a red supergiant — as a red dwarf, which is the half of D19 a reader actually sees.
+  // The MK string behind it still states the luminosity class, so read it from there and prefer the
+  // matching description. One parser, shared with the importer; no second copy of the rules.
+  function starTypeDescription(classes: string[] = []): string | undefined {
+      const primary = classes?.[0] ?? '';
+      const letter = /^star\/([OBAFGKM])/.exec(primary)?.[1];
+      if (letter) {
+          for (const c of classes) {
+              const lum = luminosityClassOf(c.replace(/^star\//, ''));
+              if (lum && lum !== 'V' && STAR_TYPE_DESC[`star/${letter}-${lum}`]) return STAR_TYPE_DESC[`star/${letter}-${lum}`];
+          }
+      }
+      return STAR_TYPE_DESC[primary];
   }
 </script>
 
@@ -566,9 +600,9 @@
             <span class="value">{body.classes.join(', ')}</span>
         </div>
         {#if !isBeltOrRing}
-            {#if STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0]?.split('/')[1]?.[0]]}
+            {#if starTypeDescription(body.classes)}
                 <div class="detail-item description">
-                    <span class="value">{STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
+                    <span class="value">{starTypeDescription(body.classes)}</span>
                 </div>
             {/if}
         {/if}

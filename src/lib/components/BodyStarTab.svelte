@@ -82,29 +82,93 @@
       { name: 'O', start: 30000, end: 50000, color: '#9bb0ff' }
   ];
 
-  const SPECTRAL_DATA: Record<string, { label: string, ranges: { mass: [number, number], radius: [number, number], temp: [number, number], rad: [number, number], mag: [number, number], rot: [number, number] } }> = {
-      'star/O': { label: 'O-Type (Blue Supergiant)', ranges: { mass: [16, 100], radius: [6.6, 20], temp: [30000, 50000], rad: [10000, 100000], mag: [10, 1000], rot: [10, 100] } },
-      'star/B': { label: 'B-Type (Blue Giant)', ranges: { mass: [2.1, 16], radius: [1.8, 6.6], temp: [10000, 30000], rad: [100, 10000], mag: [1, 20], rot: [10, 150] } },
-      'star/A': { label: 'A-Type (White)', ranges: { mass: [1.4, 2.1], radius: [1.4, 1.8], temp: [7500, 10000], rad: [10, 100], mag: [1, 10], rot: [10, 200] } },
-      'star/F': { label: 'F-Type (Yellow-White)', ranges: { mass: [1.04, 1.4], radius: [1.15, 1.4], temp: [6000, 7500], rad: [2, 10], mag: [1, 50], rot: [20, 300] } },
-      'star/G': { label: 'G-Type (Yellow Dwarf)', ranges: { mass: [0.8, 1.04], radius: [0.96, 1.15], temp: [5200, 6000], rad: [0.6, 2], mag: [0.1, 10], rot: [24, 1000] } },
-      'star/K': { label: 'K-Type (Orange Dwarf)', ranges: { mass: [0.45, 0.8], radius: [0.7, 0.96], temp: [3700, 5200], rad: [0.1, 0.6], mag: [0.1, 10], rot: [50, 1500] } },
-      'star/M': { label: 'M-Type (Red Dwarf)', ranges: { mass: [0.08, 0.45], radius: [0.1, 0.7], temp: [2000, 3700], rad: [0.01, 0.1], mag: [0.1, 50], rot: [100, 2000] } },
-      'star/L': { label: 'L-Type (Brown Dwarf)', ranges: { mass: [0.06, 0.08], radius: [0.08, 0.15], temp: [1300, 2000], rad: [0.001, 0.01], mag: [0.1, 100], rot: [5, 50] } },
-      'star/T': { label: 'T-Type (Methane Dwarf)', ranges: { mass: [0.03, 0.06], radius: [0.08, 0.15], temp: [700, 1300], rad: [0.0001, 0.001], mag: [0.1, 100], rot: [5, 50] } },
-      'star/Y': { label: 'Y-Type (Sub-Brown Dwarf)', ranges: { mass: [0.01, 0.03], radius: [0.08, 0.15], temp: [300, 700], rad: [0.00001, 0.0001], mag: [0.1, 100], rot: [5, 50] } },
-      'star/red-giant': { label: 'Red Giant', ranges: { mass: [0.3, 8], radius: [20, 100], temp: [3000, 5000], rad: [100, 5000], mag: [0.1, 100], rot: [1000, 10000] } },
-      'star/WD': { label: 'White Dwarf (WD)', ranges: { mass: [0.1, 1.4], radius: [0.008, 0.02], temp: [4000, 100000], rad: [0.01, 1], mag: [1e5, 1e9], rot: [0.1, 10] } },
-      'star/NS': { label: 'Neutron Star (NS)', ranges: { mass: [1.4, 3], radius: [0.00001, 0.00002], temp: [100000, 1000000], rad: [100, 100000], mag: [1e8, 1e12], rot: [0.001, 1] } },
-      'star/magnetar': { label: 'Magnetar', ranges: { mass: [1.4, 3], radius: [0.00001, 0.00002], temp: [100000, 1000000], rad: [10000, 1000000], mag: [1e13, 1e15], rot: [0.001, 1] } },
-      // BH radius band = Schwarzschild radii for the 3–300 M☉ mass band (8.9 km → 886 km). Mass cap
-      // 300 M☉ comfortably covers reality: heaviest known stellar-merger remnant ≈ 142 M☉ (GW190521);
-      // beyond that you're into galactic-core intermediate/supermassive territory, not a system anchor.
-      'star/BH': { label: 'Black Hole (BH)', ranges: { mass: [3, 300], radius: [1.27e-5, 1.27e-3], temp: [0, 100], rad: [0, 0.001], mag: [0, 0], rot: [0.001, 1] } },
-      'star/BH_active': { label: 'Active Black Hole (Accretion)', ranges: { mass: [3, 300], radius: [1.27e-5, 1.27e-3], temp: [10000, 1000000], rad: [1000, 1000000], mag: [1e3, 1e9], rot: [0.001, 1] } }
+  // ONE TABLE, NOT TWO (inbox D22). The per-class parameter ranges used to be hard-coded here as
+  // well as living in the rule pack's `statTemplates`, and the two copies DISAGREED for 8 of 16
+  // classes — so a GM editing a white dwarf saw 0.1-1.4 Msun / 4,000-100,000 K while a GENERATED or
+  // IMPORTED white dwarf drew from 0.6-1.4 / 8,000-40,000. Both copies are consumed by taking the
+  // MIDPOINT, so that is not a cosmetic difference: it is two different answers to one question
+  // (52,000 K against 24,000 K for the same pick).
+  //
+  // The PACK is authoritative, on three grounds:
+  //   1. It has three consumers (the generator's `starStatTemplate` and `starFieldFromPack`, and the
+  //      real-sky importer's `starParamsFromType`); this had one. A pack is also retunable per
+  //      starmap, which a record compiled into a component can never be.
+  //   2. The engine's own rule puts numbers in DATA, not code (DATA-R4). `import/realsky/stars.mjs`
+  //      states the intent outright: "NOTHING IS INVENTED HERE. The bands are statTemplates from the
+  //      RULE PACK - the same data the generator draws its own stars from."
+  //   3. Where they differ, the pack's bands are TYPICAL and this copy's were PERMISSIVE — and since
+  //      a band is consumed by its midpoint, a permissive band yields an ATYPICAL member. 4,000 to
+  //      100,000 K centres a white dwarf on 52,000 K, which is a very young and very hot one; the
+  //      neutron-star and magnetar bands ran to 3 Msun, above the observed maximum; and the red-giant
+  //      floor of 0.3 Msun is unreachable, because nothing that light has had time to leave the main
+  //      sequence in the age of the universe.
+  //
+  // WHAT STAYS HERE IS PRESENTATION AND NOTHING ELSE: the label a GM reads, and the rotation band,
+  // which has no pack counterpart because the engine has no stellar rotation model yet (inbox B9b,
+  // B43). The new giant and supergiant bands deliberately have no `rot` — the range bar simply
+  // doesn't draw, which is honest, rather than inventing a figure to fill it.
+  //
+  // The two labels that changed are the ones D19 was about: `star/O` was captioned "Blue Supergiant"
+  // and `star/B` "Blue Giant" while both are MAIN-SEQUENCE bands. That is the letter being read as
+  // though it implied a luminosity class — the exact confusion — and it cannot stand next to a real
+  // `star/O-I` in the same list.
+  const STAR_PRESENTATION: Record<string, { label: string, rot?: [number, number] }> = {
+      'star/O': { label: 'O-Type (Blue)', rot: [10, 100] },
+      'star/B': { label: 'B-Type (Blue-White)', rot: [10, 150] },
+      'star/A': { label: 'A-Type (White)', rot: [10, 200] },
+      'star/F': { label: 'F-Type (Yellow-White)', rot: [20, 300] },
+      'star/G': { label: 'G-Type (Yellow Dwarf)', rot: [24, 1000] },
+      'star/K': { label: 'K-Type (Orange Dwarf)', rot: [50, 1500] },
+      'star/M': { label: 'M-Type (Red Dwarf)', rot: [100, 2000] },
+      'star/O-III': { label: 'O-Type Giant' },
+      'star/B-III': { label: 'B-Type Giant' },
+      'star/A-III': { label: 'A-Type Giant' },
+      'star/F-III': { label: 'F-Type Giant' },
+      'star/G-III': { label: 'G-Type Giant (Capella)' },
+      'star/K-III': { label: 'K-Type Giant (Arcturus)' },
+      'star/M-III': { label: 'M-Type Giant (red)' },
+      'star/O-I': { label: 'O-Type Supergiant' },
+      'star/B-I': { label: 'B-Type Supergiant (Rigel)' },
+      'star/A-I': { label: 'A-Type Supergiant (Deneb)' },
+      'star/F-I': { label: 'F-Type Supergiant (Polaris)' },
+      'star/G-I': { label: 'G-Type Supergiant' },
+      'star/K-I': { label: 'K-Type Supergiant' },
+      'star/M-I': { label: 'M-Type Supergiant (Betelgeuse)' },
+      'star/red-giant': { label: 'Red Giant', rot: [1000, 10000] },
+      'star/L': { label: 'L-Type (Brown Dwarf)', rot: [5, 50] },
+      'star/T': { label: 'T-Type (Methane Dwarf)', rot: [5, 50] },
+      'star/Y': { label: 'Y-Type (Sub-Brown Dwarf)', rot: [5, 50] },
+      'star/WD': { label: 'White Dwarf (WD)', rot: [0.1, 10] },
+      'star/NS': { label: 'Neutron Star (NS)', rot: [0.001, 1] },
+      'star/magnetar': { label: 'Magnetar', rot: [0.001, 1] },
+      'star/BH': { label: 'Black Hole (BH)', rot: [0.001, 1] },
+      'star/BH_active': { label: 'Active Black Hole (Accretion)', rot: [0.001, 1] }
   };
 
-  const spectralTypes = Object.keys(SPECTRAL_DATA);
+  type SpectralEntry = { label: string, ranges: { mass: [number, number], radius: [number, number], temp: [number, number], rad: [number, number], mag: [number, number], rot?: [number, number] } };
+
+  // Pack band -> the shape this tab draws with. A pack whose bands are named differently still
+  // appears: anything `star/*` the presentation map has not captioned falls back to its own key.
+  const SPECTRAL_DATA: Record<string, SpectralEntry> = $derived.by(() => {
+      const templates = (rulePack?.statTemplates ?? {}) as Record<string, any>;
+      const keys = Object.keys(STAR_PRESENTATION).filter((k) => templates[k])
+          .concat(Object.keys(templates).filter((k) => k.startsWith('star/') && k !== 'star/default' && !STAR_PRESENTATION[k]));
+      const out: Record<string, SpectralEntry> = {};
+      for (const key of keys) {
+          const t = templates[key];
+          out[key] = {
+              label: STAR_PRESENTATION[key]?.label ?? key.split('/')[1],
+              ranges: {
+                  mass: t.mass_solar, radius: t.radius_solar, temp: t.temp_k,
+                  rad: t.radiation_output ?? [0, 0], mag: t.mag_gauss ?? [0, 0],
+                  rot: STAR_PRESENTATION[key]?.rot
+              }
+          };
+      }
+      return out;
+  });
+
+  const spectralTypes = $derived(Object.keys(SPECTRAL_DATA));
 
   // --- Helper Functions (Moved up for scope) ---
   function getStarColorFromTemp(k: number) {
@@ -139,8 +203,10 @@
 
   function getRangePct(prop: 'mass' | 'radius' | 'temp' | 'rad' | 'mag' | 'rot', type: 'start' | 'width') {
       const data = SPECTRAL_DATA[currentClass] || SPECTRAL_DATA['star/G'];
-      const range = data.ranges[prop];
-      if (!range) return 0;
+      const range = data?.ranges[prop];
+      // A band the pack states as zero is a real statement, not a gap — a quiescent black hole has
+      // no temperature and no field — and log(0) would poison the bar's geometry. Draw nothing.
+      if (!range || !(range[0] > 0) || !(range[1] > 0)) return 0;
 
       let minL = 0, maxL = 0, startL = 0, endL = 0;
       if (prop === 'mass') { minL = massLogMin; maxL = massLogMax; startL = Math.log(Math.max(massMin, range[0])); endL = Math.log(Math.min(massMax, range[1])); }
@@ -298,8 +364,15 @@
   }
 
   function updateClassFromTemp(k: number) {
+      // Temperature re-derives the class ONLY for a star that is on the main sequence, because that
+      // is the only place where temperature alone determines the band. Anything that states more
+      // than a letter — a giant, a supergiant, a red giant, a remnant — keeps what it was given: an
+      // M supergiant and an M dwarf sit at the same temperature and differ in everything else, so
+      // re-deriving would silently demote a supergiant the moment a GM nudged the slider (D19,
+      // reappearing inside the editor). Previously a fixed list of six; now anything that is not a
+      // bare letter band, so a pack's own extra classes are covered too.
       const currentClassInBody = body.classes?.[0] || '';
-      if (['star/red-giant', 'star/WD', 'star/NS', 'star/magnetar', 'star/BH', 'star/BH_active'].includes(currentClassInBody)) return;
+      if (currentClassInBody && !/^star\/[OBAFGKMLTY]$/.test(currentClassInBody)) return;
 
       let newClass = 'star/Y';
       if (k >= 30000) newClass = 'star/O';
@@ -456,6 +529,10 @@
   function updateImage(starClass: string) {
       let lookupClass = starClass;
       if (starClass === 'star/red-giant') lookupClass = 'star/M';
+      // A giant or supergiant band (`star/M-I`) has no image of its own — it is the same spectral
+      // letter, at the same colour temperature, so it borrows the letter's picture rather than
+      // leaving whatever the body had before.
+      else if (/^star\/[OBAFGKMLTY]-/.test(starClass)) lookupClass = `star/${starClass.split('/')[1][0]}`;
       const images = rulePack?.classifier?.starImages || rulePack?.starImages;
       if (images?.[lookupClass]) {
           if (!body.image) body.image = { url: '' };

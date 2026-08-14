@@ -160,6 +160,11 @@ function matchHostToStar(hostRow, stars) {
 // star with no planets, since a general star catalogue gives a spectral type and astrometry only.
 // The figures are TYPICAL FOR THE CLASS, from the rule pack's own bands (see `starParamsFromType`),
 // and the description says so: DATA-R4 forbids inventing silently, not estimating openly.
+// What "its class" means once the luminosity class is read (D19). A supergiant's figures are typical
+// for SUPERGIANTS OF ITS TYPE, not for M stars in general — an M dwarf and an M supergiant share a
+// temperature and nothing else — and the description should say which statement it is making.
+const LUMINOSITY_WORD = { I: 'TYPE AND LUMINOSITY CLASS (a SUPERGIANT)', III: 'TYPE AND LUMINOSITY CLASS (a GIANT)', V: 'CLASS' };
+
 function starNodeFromCensus(star, id, statTemplates) {
   const params = starParamsFromType(star.sp ?? '', statTemplates);
   if (!params) return { missing: ['no stellar parameters for this spectral type'] };
@@ -176,7 +181,8 @@ function starNodeFromCensus(star, id, statTemplates) {
       image: { url: image },
       tags: [],
       description: `${cleanStarName(star.id)}: a real star imported from SIMBAD${typeText ? ` (spectral type ${typeText})` : ''}. `
-        + `No mass, radius or temperature has been measured for it, so those figures are TYPICAL FOR ITS CLASS rather than observed.`
+        + `No mass, radius or temperature has been measured for it, so those figures are TYPICAL FOR ITS `
+        + `${LUMINOSITY_WORD[params.luminosityClass] ?? 'CLASS'} rather than observed.`
     }
   };
 }
