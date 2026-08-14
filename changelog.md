@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.552-beta - 13th Aug 2026
+
+* Found, not yet fixed: stars imported from the sky catalogue arrive as ordinary dwarfs even when they are giants or supergiants, because only the first letter of their classification is being read. Antares — the fifteenth brightest star in the sky, and a red supergiant — comes in as a dim red dwarf. It affects the famous stars most, since bright stars are rarely ordinary ones.
+
 ## v2.1.551-beta - 13th Aug 2026
 
 * **Fixed: on phones and tablets, pinch-to-zoom did nothing on the 3D system view.** Rotating and tilting always worked, which is why it read as "I can't zoom in or zoom out any more", and why reloading the page appeared to fix it -- nothing was ever broken. The view kept a rule that only the mouse wheel is allowed to change how close you are, so a pinch moved the camera and the view politely put it back a frame later. Every kind of zoom gesture now counts, and the rule is written down and tested in one place so the next kind of input cannot be left out the same way. Desktop behaviour is unchanged.
