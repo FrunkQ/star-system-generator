@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.553-beta - 13th Aug 2026
+
+* On the imported-giants problem: the app already knows what a red giant is — that definition is in the rule pack and always has been. The importer simply has no way to ask for it from a catalogue's own wording, so it asks for a dwarf every time. Smaller to put right than it first appeared.
+
 ## v2.1.552-beta - 13th Aug 2026
 
 * Found, not yet fixed: stars imported from the sky catalogue arrive as ordinary dwarfs even when they are giants or supergiants, because only the first letter of their classification is being read. Antares — the fifteenth brightest star in the sky, and a red supergiant — comes in as a dim red dwarf. It affects the famous stars most, since bright stars are rarely ordinary ones.
