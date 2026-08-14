@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.582-beta - 14th Aug 2026
+
+* Planned for this release: work out what light actually reaches the ground, after the air and haze have taken their share — and from that, what colour a plant there would sensibly be. The physics pages will draw the spectrum, the colour of the light at the surface, and the pigment that best suits it. Most of what this needs is already in the engine; the gases each already carry how they block and colour light.
+
 ## v2.1.581-beta - 14th Aug 2026
 
 * A note for future work: which kinds of catalogue search are fast and which are unusably slow, measured rather than guessed.
