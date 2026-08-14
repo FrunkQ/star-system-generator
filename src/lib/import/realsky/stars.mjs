@@ -19,7 +19,14 @@ export const STAR_IMAGE = {
   // picture, because a destination that exists is not a destination anything reaches (DATA-R12) —
   // here the class was specific and the image lookup was not. Art: the red supergiant WOH G64,
   // ESO / L. Calcada, credited in AboutModal.
-  'M-I': '/images/star_types/M-I.jpg'
+  'M-I': '/images/star_types/M-I.jpg',
+  // Giants, the commonest evolved star a GM will meet. Art credited in AboutModal: Arcturus by
+  // Pablo Carlos Budassi (CC BY-SA 4.0 — SHARE-ALIKE, stricter than the ESO images' CC BY, so it
+  // must not be edited or composited without regard for the licence), and a NASA Goddard red giant
+  // (public domain). Every other -I/-III class still falls through to its letter, which is honest:
+  // a blue supergiant looks broadly like a hot blue star. The red pair were the ones that lied.
+  'K-III': '/images/star_types/K-III.webp',
+  'M-III': '/images/star_types/M-III.jpg'
 };
 
 // "G2V" → { classes: ['star/G', 'star/G2V'], image }. White dwarfs (any D
