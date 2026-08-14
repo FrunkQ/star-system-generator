@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.565-beta - 13th Aug 2026
+
+* Added to the stellar-spin work: the star will have to actually look flattened in both the flat and 3D views, and the physics pages will have to explain why it spins at all — that cool stars are slowed over their lives by their own magnetic wind while hot ones never slow, which is the difference between our Sun and Vega.
+
 ## v2.1.564-beta - 14th Aug 2026
 
 * Imported giants and supergiants are now giants and supergiants. A star catalogue writes Antares as "M1.5Iab" — an M-type star of luminosity class Iab, a red SUPERGIANT — but only the letter was being read, so it arrived as a red dwarf: a fiftieth of its real mass and a six-millionth of its real brightness. Betelgeuse, Rigel, Deneb, Polaris, Arcturus and Aldebaran all did the same, which is to say every bright star you might think to look up. The luminosity class is now read, and the rule pack has giant and supergiant figures for each spectral type to put it against.
