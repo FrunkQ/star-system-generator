@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.598-beta - 14th Aug 2026
+
+* Triple star systems can now form the nested arrangement they usually have in reality — a close pair, with a third star circling the pair as a whole from much further out. The engine could build the close pair, but once it had, anything orbiting that pair stopped being considered, so the outer arrangement never formed however heavy the third star was.
+
 ## v2.1.597-beta - 14th Aug 2026
 
 * Companion stars are no longer imported on perfect circles. Every other element of their orbit was already varied, but eccentricity was pinned at zero — so a wide binary, which in reality is almost always noticeably elliptical, went round in a circle. Alpha Centauri A and B actually swing between about 11 and 36 astronomical units apart; the bundled hand-built version of the system has always known that, and the importer now does too.

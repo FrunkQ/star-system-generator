@@ -303,3 +303,62 @@ describe('reconcileBarycenters — stellar promotion re-homes enclosing children
   });
 });
 
+
+// A HIERARCHICAL TRIPLE — a tight pair with a distant third — is the commonest shape a real triple
+// star takes, and the outer barycentre could never form. `promoteMassiveCompanion` required the
+// candidate's parent to be a BODY, so once the inner pair had been promoted, anything orbiting that
+// pair stopped being a candidate however massive it was. The inner stars then never wobbled in
+// response to the third star at all.
+describe('a distant third star can promote against an inner PAIR, not only against a star', () => {
+	const S = 1.989e30;
+	const star = (id: string, m: number, parent: string | null, a: number | null): any => ({
+		id, kind: 'body', roleHint: 'star', name: id, parentId: parent, massKg: m * S, radiusKm: 7e5, tags: [],
+		...(a != null ? { orbit: { hostId: parent, hostMu: 1e20, t0: 0, elements: { a_AU: a, e: 0.5, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } : {})
+	});
+	const triple = (thirdMass: number) => {
+		const sys: any = { id: 's', name: 'T', seed: 'x', nodes: [
+			star('A', 1.079, null, null), star('B', 0.909, 'A', 23.3), star('C', thirdMass, 'A', 10420)
+		] };
+		reconcileBarycenters(sys);
+		return sys;
+	};
+	const baries = (sys: any) => sys.nodes.filter((n: any) => n.kind === 'barycenter');
+
+	it('builds the NESTED structure when the third star is massive enough', () => {
+		const sys = triple(0.6);
+		const bs = baries(sys);
+		expect(bs.length, 'expected an inner and an outer barycentre').toBe(2);
+		const inner = bs.find((b: any) => b.memberIds.includes('A') && b.memberIds.includes('B'))!;
+		const outer = bs.find((b: any) => b !== inner)!;
+		// A and B on the inner pair; the inner pair and C on the outer one; the outer one is the root.
+		expect(sys.nodes.find((n: any) => n.id === 'A').parentId).toBe(inner.id);
+		expect(sys.nodes.find((n: any) => n.id === 'B').parentId).toBe(inner.id);
+		expect(outer.memberIds.sort()).toEqual([inner.id, 'C'].sort());
+		expect(inner.parentId).toBe(outer.id);
+		expect(outer.parentId).toBeFalsy();
+		// The outer barycentre carries the WHOLE system's mass.
+		expect(outer.effectiveMassKg / S).toBeCloseTo(1.079 + 0.909 + 0.6, 3);
+	});
+
+	it('still leaves a LIGHT third star as a plain child of the pair', () => {
+		// Alpha Centauri itself: Proxima is about 6% of AB, under the 8% promotion bar. It orbits the
+		// pair's centre of mass as a child, which is right — the threshold exists so that every small
+		// companion does not manufacture a barycentre node.
+		const sys = triple(0.122);
+		const bs = baries(sys);
+		expect(bs.length).toBe(1);
+		expect(bs[0].memberIds.sort()).toEqual(['A', 'B']);
+		// …and it is parented to the pair, NOT to one of its members.
+		expect(sys.nodes.find((n: any) => n.id === 'C').parentId).toBe(bs[0].id);
+	});
+
+	it('never promotes a barycentre against one of its own members', () => {
+		// That would be pairing the pair with half of itself. Stability check: repeated reconciles
+		// must not keep adding nodes.
+		const sys = triple(0.6);
+		const before = sys.nodes.length;
+		reconcileBarycenters(sys);
+		reconcileBarycenters(sys);
+		expect(sys.nodes.length, 'reconciling again changed the node count').toBe(before);
+	});
+});
