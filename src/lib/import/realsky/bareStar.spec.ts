@@ -106,11 +106,14 @@ describe('the inverted import brings back what the old one could not', () => {
 	});
 
 	it('includes Alpha Centauri A and B, which have no confirmed planets', () => {
-		const ac = out.systems.find((s: any) => /alf Cen/i.test(s.name));
+		// The names are the ones a person uses, not the catalogue's shorthand (D24): the system is
+		// "Alpha Centauri" rather than "alf Cen", and its two stars carry the proper names SIMBAD
+		// itself gives them. Every one of these resolves back through the Resolve box.
+		const ac = out.systems.find((s: any) => /Alpha Centauri/i.test(s.name));
 		expect(ac).toBeDefined();
 		const names = ac.system.nodes.filter((n: any) => n.roleHint === 'star').map((n: any) => n.name);
-		expect(names.join(' ')).toMatch(/alf Cen A/);
-		expect(names.join(' ')).toMatch(/alf Cen B/);
+		expect(names.join(' ')).toMatch(/Rigil Kentaurus/);
+		expect(names.join(' ')).toMatch(/Toliman/);
 		// …and Proxima's planets come with it, joined on by position across a 60 arcsec proper-motion
 		// offset that a tight tolerance would have dropped.
 		expect(ac.system.nodes.filter((n: any) => n.roleHint === 'planet').length).toBeGreaterThan(0);

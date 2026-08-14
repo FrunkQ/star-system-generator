@@ -30,11 +30,11 @@ function importedStars(radiusLy = 1000) {
 describe('the classification survives import', () => {
 	it('lands on the node as structured data, parsed once', () => {
 		const byName = Object.fromEntries(importedStars().map((n: any) => [n.name, n]));
-		expect(byName['alf Sco'].stellarType).toEqual({
+		expect(byName['Antares'].stellarType).toEqual({
 			spectral: 'M', subclass: 1.5, luminosity: 'Iab', band: 'I', companion: 'B2Vn'
 		});
-		expect(byName['alf Ori'].stellarType).toEqual({ spectral: 'M', subclass: 1, luminosity: 'Ia', band: 'I' });
-		expect(byName['alf Boo'].stellarType).toEqual({ spectral: 'K', subclass: 1.5, luminosity: 'III', band: 'III' });
+		expect(byName['Betelgeuse'].stellarType).toEqual({ spectral: 'M', subclass: 1, luminosity: 'Ia', band: 'I' });
+		expect(byName['Arcturus'].stellarType).toEqual({ spectral: 'K', subclass: 1.5, luminosity: 'III', band: 'III' });
 		// SIMBAD's lowercase dwarf prefix: an explicit class V, and NOT a white dwarf.
 		expect(byName['Wolf 359'].stellarType).toEqual({ spectral: 'M', subclass: 6, luminosity: 'V', band: 'V' });
 		expect(byName['Proxima Centauri'].stellarType).toEqual({ spectral: 'M', subclass: 5.5, luminosity: 'V', band: 'V' });
@@ -43,9 +43,9 @@ describe('the classification survives import', () => {
 	it('and the parameters follow from it — the supergiants are supergiants', () => {
 		const byName = Object.fromEntries(importedStars().map((n: any) => [n.name, n]));
 		const SOLAR_MASS_KG = 1.989e30;
-		expect(byName['alf Sco'].massKg / SOLAR_MASS_KG).toBeGreaterThan(8);
-		expect(byName['alf Ori'].massKg / SOLAR_MASS_KG).toBeGreaterThan(8);
-		expect(byName['alf Boo'].massKg / SOLAR_MASS_KG).toBeGreaterThan(1);
+		expect(byName['Antares'].massKg / SOLAR_MASS_KG).toBeGreaterThan(8);
+		expect(byName['Betelgeuse'].massKg / SOLAR_MASS_KG).toBeGreaterThan(8);
+		expect(byName['Arcturus'].massKg / SOLAR_MASS_KG).toBeGreaterThan(1);
 		// ...and the dwarfs are still dwarfs. Wolf 359 used to import as a 1.0 Msun WHITE dwarf.
 		expect(byName['Wolf 359'].massKg / SOLAR_MASS_KG).toBeLessThan(0.5);
 		expect(byName['Wolf 359'].classes[0]).toBe('star/M');

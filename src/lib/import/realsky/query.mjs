@@ -164,11 +164,14 @@ export function tapUrl(service, adql, { format = 'json' } = {}) {
 // Run a TAP query. fetchImpl is injectable for tests and for a future proxy
 // fallback; signal supports the UI's debounced live counts (abort the stale
 // count when the slider moves again).
+// NO CUSTOM HEADERS, AND `User-Agent` IN PARTICULAR. A browser ignores an attempt to set it, so it
+// never did anything — but where a browser DOES allow it, it stops being a simple request and the
+// browser sends a CORS preflight first. SIMBAD answers `OPTIONS` with an HTTP 400 and no
+// `Access-Control-Allow-Headers`, so the preflight fails and every query dies as a bare
+// "Failed to fetch" with nothing useful reaching the app. Measured against the live service, and it
+// is the only mechanism found that produces exactly the message D24 reports.
 export async function runTap(service, adql, { fetchImpl = fetch, signal, format = 'json' } = {}) {
-  const res = await fetchImpl(tapUrl(service, adql, { format }), {
-    signal,
-    headers: { 'User-Agent': 'star-system-explorer real-sky import' }
-  });
+  const res = await fetchImpl(tapUrl(service, adql, { format }), { signal });
   if (!res.ok) throw new Error(`${service} TAP: HTTP ${res.status} ${await res.text()}`);
   const body = await res.json();
   // The archive returns a plain array of row objects; SIMBAD and Gaia return

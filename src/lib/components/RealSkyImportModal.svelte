@@ -12,6 +12,7 @@
   import { loadArchiveRows, loadStarRows } from '$lib/import/realsky/catalogue.mjs';
   import { convertRegion } from '$lib/import/realsky/convert.mjs';
   import { runTap, simbadResolveAdql } from '$lib/import/realsky/query.mjs';
+  import { toAsciiQuery, displayStarName } from '$lib/import/realsky/starNames.mjs';
   import { buildSgrAStarSystem, SGR_A_MAP_META } from '$lib/import/realsky/sgrastar.mjs';
   import { parallaxMasToLy } from '$lib/import/realsky/positions.mjs';
   import { PIXELS_PER_LY, DEFAULT_MAP_CENTRE_PX } from '$lib/import/realsky/constants.mjs';
@@ -53,6 +54,9 @@
   let starQuery = '';
   let resolving = false;
   let resolveError: string | null = null;
+  // What the box did on the GM's behalf: the ASCII rewrite it had to make, or the name it actually
+  // found. Teaching the designation rather than demanding it (D24).
+  let resolveNote: string | null = null;
 
   // Conversion preview for the current rows + radius (instant, client-side).
   let preview: { systems: any[]; collisions: any[]; skipped: any[] } | null = null;
@@ -122,7 +126,7 @@
 
   function pickPreset(p: (typeof REGION_PRESETS)[number]) {
     presetKey = p.key;
-    resolveError = null;
+    resolveError = null; resolveNote = null;
     if (p.kind === 'cluster-demo') { preview = null; return; }
     centre = { ...(p.centre as any), label: (p as any).centreLabel ?? p.name };
     radiusLy = p.radiusLy as number;
@@ -135,20 +139,69 @@
 
   async function resolveStar() {
     if (!starQuery.trim()) return;
-    resolving = true; resolveError = null;
+    resolving = true; resolveError = null; resolveNote = null;
+    const typed = starQuery.trim();
+    // SIMBAD's TAP service REJECTS NON-ASCII outright — "α Scorpii" comes back as an HTTP 400,
+    // "Impossible to normalise the identifier … unsupported character encoding". So a Greek letter
+    // is turned into its name before the query goes anywhere near the service, and we SAY SO rather
+    // than silently searching for something the GM did not type (D24).
+    const sent = toAsciiQuery(typed);
+    // The rewrite note SURVIVES the result rather than being replaced by it: the point is to teach
+    // the designation, and a GM who never sees why "α Scorpii" became "Alpha Scorpii" has not been
+    // taught anything.
+    const rewrote = sent !== typed ? `Searching for ${typed} as “${sent}” — the catalogue only accepts plain letters.` : '';
+    if (rewrote) resolveNote = rewrote;
     try {
-      const hits = await runTap('simbad', simbadResolveAdql(starQuery.trim()));
-      if (!hits.length) throw new Error(`SIMBAD does not know "${starQuery.trim()}"`);
+      if (!sent) throw new Error(`“${typed}” has no letters or numbers the catalogue can search for.`);
+      const hits = await runTap('simbad', simbadResolveAdql(sent));
+      if (!hits.length) throw new Error(notFoundMessage(sent));
       const hit = hits[0];
-      if (!(hit.plx_value > 0)) throw new Error(`${hit.main_id} has no parallax — cannot place it in 3D`);
-      centre = { raDeg: hit.ra, decDeg: hit.dec, distLy: parallaxMasToLy(hit.plx_value), label: String(hit.main_id) };
+      if (!(hit.plx_value > 0)) {
+        throw new Error(`${displayStarName(hit.main_id)} has no measured distance in the catalogue, so it cannot be placed in 3D.`);
+      }
+      centre = { raDeg: hit.ra, decDeg: hit.dec, distLy: parallaxMasToLy(hit.plx_value), label: displayStarName(hit.main_id) };
+      // Name the object we actually found, since it may not be spelled the way the GM typed it.
+      const found = displayStarName(hit.main_id);
+      const foundNote = found.toLowerCase() === sent.toLowerCase() ? '' : `Found ${found}.`;
+      resolveNote = [rewrote, foundNote].filter(Boolean).join(' ') || null;
       presetKey = 'custom';
       await loadRowsFor(centre, radiusLy);
     } catch (e) {
-      resolveError = (e as Error).message;
+      resolveError = readableTapError(e, sent);
+      resolveNote = null;
     } finally {
       resolving = false;
     }
+  }
+
+  function notFoundMessage(sent: string) {
+    // "Barnards Star" fails where "Barnard's Star" works, and a bare surname finds nothing — so the
+    // dead end names what usually causes it rather than just reporting the absence.
+    const hint = /^[A-Za-z]+$/.test(sent)
+      ? ' Try the full name, or a designation like “alf Cen” or “HD 95735”.'
+      : ' Check the spelling, including any apostrophe — the catalogue matches names exactly.';
+    return `The catalogue has no star called “${sent}”.${hint}`;
+  }
+
+  // TWO ERROR PATHS, NEITHER OF THEM PRESENTABLE (D24). A failed lookup used to print either the
+  // browser's bare "Failed to fetch" or several hundred characters of VOTABLE XML — the service's
+  // own error document, namespace declarations and all — straight at the GM. Both become a sentence.
+  function readableTapError(e: unknown, sent: string): string {
+    const raw = e instanceof Error ? e.message : String(e);
+    if (!/TAP: HTTP/.test(raw)) {
+      // Not the service answering — the request never completed. Anything else (including our own
+      // thrown messages above) is already a sentence and passes through.
+      return /fetch|network|load failed/i.test(raw)
+        ? 'Could not reach the star catalogue. Check the connection and try again — the service is occasionally down for maintenance.'
+        : raw;
+    }
+    const status = /HTTP (\d+)/.exec(raw)?.[1] ?? '';
+    // The service does explain itself, inside the XML. Lift the sentence and drop the envelope.
+    const cause = /CAUSE:\s*([^<"\n]+)/.exec(raw)?.[1]?.trim()
+      ?? /Incorrect ADQL query:\s*([^<"\n]+)/.exec(raw)?.[1]?.trim();
+    if (status === '400') return `The catalogue could not read “${sent}” as a name${cause ? ` (${cause})` : ''}.`;
+    if (status.startsWith('5')) return 'The star catalogue is having trouble at its end. Try again in a moment.';
+    return `The star catalogue refused the request${status ? ` (error ${status})` : ''}. Try a different name.`;
   }
 
   // Size guardrails (§5b) live in costModel.mjs so they can be tested against
@@ -264,6 +317,7 @@
       </button>
     </div>
     {#if resolveError}<p class="error">{resolveError}</p>{/if}
+      {#if resolveNote}<p class="resolve-note">{resolveNote}</p>{/if}
 
     {#if activePreset?.kind === 'cluster-demo'}
       <div class="cluster-demo">
@@ -425,6 +479,9 @@
   .chip:hover { border-color: #ff5a1f; color: #fff; }
   .actions button.primary.caution { background: #a8431a; border-color: #a8431a; }
   .error { color: #ff6b6b; margin: 0.3rem 0; }
+  /* Not an error — what the box did on the GM's behalf, so the designation is taught rather than
+     demanded ("Searching for α Scorpii as Alpha Scorpii", "Found Antares"). */
+  .resolve-note { color: #99a5b3; margin: 0.3rem 0; font-size: 0.82rem; }
   details { margin: 0.3rem 0; font-size: 0.82rem; color: #99a5b3; }
   details ul { margin: 0.3rem 0 0.3rem 1.2rem; padding: 0; }
   .fill-row { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0.7rem 0; font-size: 0.82rem; color: #b9c2cc; }

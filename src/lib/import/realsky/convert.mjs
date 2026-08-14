@@ -19,6 +19,7 @@
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, EPOCH, G, LY_PER_PC, SOLAR_MASS_KG, SOLAR_RADIUS_KM, AU_KM, DEFAULT_MAP_CENTRE_PX } from './constants.mjs';
 import { hash01, radecToXyzLy, round, xyzToMapPx, inSphere } from './positions.mjs';
 import { starClasses, starParamsFromType, parseStellarType } from './stars.mjs';
+import { displayStarName, systemStarName } from './starNames.mjs';
 import { defaultMakeup, estimateRadiusRe, planetDescription } from './planets.mjs';
 import { normaliseStarRows, groupIntoSystems, projectedSeparationAu, angularSepRad, distanceLyFromParallax } from './census.mjs';
 
@@ -192,14 +193,19 @@ function starNodeFromCensus(star, id, statTemplates) {
   };
 }
 
-// SIMBAD identifiers carry catalogue furniture — "* alf Cen A", "NAME Proxima Centauri",
-// "V* EZ Aqr" — and collapse whitespace oddly ("*  61 Cyg A"). Strip the prefix and tidy the spaces
-// so a map node reads as a name rather than as a database key.
+// The name a starmap node carries (inbox D24). SIMBAD identifiers are written for astronomers in
+// shorthand — "* alf Sco" is Antares — and stripping the catalogue furniture only got as far as
+// "alf Sco", which is still a database key rather than a name. `displayStarName` goes the rest of
+// the way: a proper name where the catalogue has one, otherwise the expanded designation
+// ("eps Ind" -> "Epsilon Indi"), otherwise the identifier untouched, because a survey designation
+// like "2MASS J09205549+4539058" has no friendly name and mangling it would be inventing.
+//
+// The WORD style, not the symbol: "Epsilon Indi" rather than "ε Indi". A starmap name is copied,
+// typed and searched for, and SIMBAD's TAP service rejects non-ASCII outright — so the plain form is
+// the one that survives a round trip through the user. Every name this produces was checked against
+// the live service and resolves back to the object it came from.
 export function cleanStarName(mainId) {
-  return String(mainId ?? '')
-    .replace(/^(NAME|\*+|V\*|\*)\s*/i, '')
-    .replace(/\s+/g, ' ')
-    .trim() || String(mainId ?? '').trim();
+  return displayStarName(mainId);
 }
 
 /**
@@ -249,7 +255,8 @@ export function convertRegion(
     const xyz = radecToXyzLy(primary.ra, primary.dec, distLy);
     if (!inSphere(xyz, centreXyz, region.radiusLy)) continue;
 
-    const name = cleanStarName(primary.id);
+    // The SYSTEM's name, not the primary's: Alpha Centauri, whose primary star is Rigil Kentaurus.
+    const name = systemStarName(primary.id);
     let slug = hostSlug(name);
     if (usedSlugs.has(slug)) slug = `${slug}-${hash01(primary.id).toFixed(4).slice(2)}`;
     usedSlugs.add(slug);
