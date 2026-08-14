@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.555-beta - 13th Aug 2026
+
+* Housekeeping: the list of things noticed in passing has been sorted through. Most had already been dealt with by whoever found them; the dozen that had not are now named and pointed at the release that will already be working in that part of the code, rather than all being attempted at once.
+
 ## v2.1.554-beta - 13th Aug 2026
 
 * Planning, no product change: a written specification for the fix to giants and supergiants importing as dwarfs — Antares currently arrives as a red dwarf, wrong on mass by fifty times and on brightness by six million. The specification is detailed enough to be implemented without working any of it out again.
