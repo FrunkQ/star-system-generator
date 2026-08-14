@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.587-beta - 14th Aug 2026
+
+* Two gaps recorded in the new star tables. An older "red giant" entry survived alongside the new one and the two disagree about how much radiation such a star puts out — by a factor of about a hundred — so that needs settling. And stars are still described only by their letter and size class: within the O class alone the hottest is four times the mass of the coolest, so there is more detail to come.
+
 ## v2.1.586-beta - 14th Aug 2026
 
 * Red supergiants now look like red supergiants. Antares and Betelgeuse were correctly identified as supergiants in the last build but still showed the picture of a red dwarf, because the label had become specific and the artwork had not. They now carry an artist's reconstruction of WOH G64 — one of the largest stars known — credited to ESO / L. Calçada in the About box.
