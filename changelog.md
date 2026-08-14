@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.560-beta - 13th Aug 2026
+
+* Two more findings on star search, both to be fixed with the naming work: the catalogue service refuses Greek letters, so "α Scorpii" fails where "alf Sco" succeeds — meaning the app must translate a pretty name back into a plain one before searching, not just show it. And when a search does fail, the raw error from the service is being shown verbatim instead of a sentence.
+
 ## v2.1.559-beta - 13th Aug 2026
 
 * Planned with the same work: you will be able to search for a star by the name you actually know. Typing "Antares" currently finds nothing, because the catalogue files it as "alf Sco" — so the app will translate for you, and tell you what it searched for, rather than expecting you to know the catalogue's shorthand first.
