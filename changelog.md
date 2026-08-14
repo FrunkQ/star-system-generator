@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.583-beta - 14th Aug 2026
+
+* A working principle written down for everyone building this: never quietly assume Earth, our Sun, or human senses. Three times this week a sensible-looking default turned out to be a fact about people rather than about physics — a brightness formula weighted for human eyes, a temperature range that only suits water, and habitability meaning habitable-by-us. The app is meant to teach real science, so those are exactly the errors a curious reader will find first.
+
 ## v2.1.582-beta - 14th Aug 2026
 
 * Planned for this release: work out what light actually reaches the ground, after the air and haze have taken their share — and from that, what colour a plant there would sensibly be. The physics pages will draw the spectrum, the colour of the light at the surface, and the pigment that best suits it. Most of what this needs is already in the engine; the gases each already carry how they block and colour light.

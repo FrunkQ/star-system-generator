@@ -836,6 +836,25 @@ noticed.
   Sol comes out perfect at the cost of the general law. [[B12]] is the model — an anchor TABLE proved a
   constant did not matter anywhere, so it was left alone rather than fitted. **Check against every
   anchor; fit to none of them.**
+- **NEVER ASSUME AN EARTH, SOL OR HUMAN BASELINE. ALIEN EYES ARE THE POINT.** Owner, 2026-08-14.
+  This is the companion to the anchor rule above and a DIFFERENT failure: that one is about not
+  FITTING to Sol, this is about not silently ASSUMING it. **It has bitten three times in one day, and
+  every time it arrived disguised as a standard formula or a sensible default:**
+  (1) a pigment model measured available light with **Rec. 709 luma**, which weights green at 0.7152
+  because HUMAN eyes are green-sensitive — a fact about our retinas smuggled into a claim about alien
+  biology ([[B45]]);
+  (2) a "bio-compatible temperature" band was nearly hardcoded, when three of the four biochemistries
+  the type already declares are not water-based — the honest answer is the SOLVENT'S OWN liquid
+  range ([[G19]]);
+  (3) habitability scores human-habitability and was about to stand for habitability as such — it
+  becomes the DEFAULT you can swap, not the model ([[G19]]).
+  **The tell is a constant or a weighting that came from a standard, a textbook or a familiar
+  intuition rather than from this body's own data.** Visible light is OUR band; room temperature is
+  OUR comfort; a day, a year and a season are OUR planet's. **Ask what the number would be for a
+  world with a different star, a different solvent and a different chemistry — and if the answer is
+  "the same", say why.** This matters more here than in most projects, because the product's stated
+  purpose is to teach real physics: an anthropocentric constant inside a page that CLAIMS TO SHOW THE
+  WORKING is the one kind of error a curious user is guaranteed to find.
 - **Physics and data drive tags; tags drive the image.** Do not add rendering code to make something look a
   particular way. If a look needs a new lever, the lever is rule-pack DATA.
 - **NEVER STOP, SHORTEN OR SKIP WORK BECAUSE YOU THINK YOU ARE RUNNING OUT OF CONTEXT. YOUR ESTIMATE
