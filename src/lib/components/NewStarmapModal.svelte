@@ -92,7 +92,7 @@
             </button>
             <button class="option" on:click={() => dispatch('upload')}>
               <strong>Upload a starmap file</strong>
-              <small>Load a .json starmap saved from this app.</small>
+              <small>Load a starmap saved from this app — a .json file, or a .sse.zip bundle if it carries pictures or ship models.</small>
             </button>
         </section>
 

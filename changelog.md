@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.579-beta - 14th Aug 2026
+
+* The New Starmap screen said it wanted a .json file, from before saves with pictures or ship models started arriving as .sse.zip bundles. It now says both. The file picker already accepted them; only the wording was behind.
+
 ## v2.1.578-beta - 14th Aug 2026
 
 * On the fictional-substance problem: the answer is simply to move it. Invented gases and liquids belong with the map that uses them, in the same way invented engines and fuels do, rather than in the list every campaign starts with — so a real star's world can never be handed something out of a novel.
