@@ -1396,6 +1396,60 @@ hand-maintained `baseArchetypes` Set that lists ~17 of the rulepack's 64 `kind: 
 a second answer to "which classes are mutually exclusive", dormant only because the starter pack
 ships fingerprints. It is the shape that produced those fossils.
 
+### DATA-R10 A star's class is (LETTER, LUMINOSITY CLASS). The letter alone determines nothing but colour
+WHERE: `src/lib/import/realsky/stars.mjs` (`parseStellarType`, `starClasses`, `starParamsFromType`),
+`static/rulepacks/starter-sf/stars.json` (`statTemplates`), `CelestialBody.stellarType`.
+RULE: an M dwarf and an M supergiant share a temperature and share NOTHING ELSE. Mass, radius and
+luminosity come from the letter AND the luminosity class together, which is why the pack key names
+both — `star/M-I`, not `star/M`. Parse the class ONCE, at import, into the structured `stellarType`;
+never re-read the MK string at a use site.
+WHY: D19. Antares (`M1.5Iab+B2Vn`) imported at 0.265 Msun against a real ~12-15, 1.24e-2 Lsun against
+~75,000, and 0.4 Rsun against ~680 — mass out ~50x, luminosity ~6 million, radius ~1,800. It lands on
+exactly the stars a user will check, because bright stars are overwhelmingly NOT main sequence.
+BLAST: **THREE TRAPS, ALL OF WHICH BITE SILENTLY.**
+(a) **ORDER.** `starClasses` returns `[star/<letter>, star/<full MK string>]` — LETTER FIRST. So
+`classes.map(...).find(Boolean)` matches the letter on element 0 and never reaches anything behind
+it. A luminosity lookup inserted AFTER that find does nothing at all and looks like it works. It has
+to go first.
+(b) **THE COMPANION MUST BE SPLIT OFF BEFORE THE CLASS SCAN.** `M1.5Iab+B2Vn` read left to right
+gives `V` from the companion and turns the supergiant back into a dwarf — the original bug, exactly.
+And `+` is not always a companion: SIMBAD's `M2+V` for Lalande 21185 means "M2 or later, V".
+(c) **CASE.** The white-dwarf test was `/^D/i`, and SIMBAD writes a LOWERCASE `d` prefix for an
+ordinary dwarf. `dM6` (Wolf 359), `dM4` (Ross 128), `dM3` (AD Leo) were all classified `star/WD` —
+four stars inside 16.5 ly imported as white dwarfs. An uppercase D is a white dwarf; a lowercase d is
+a class-V marker. Never fold case on a spectral type.
+ALSO: `starParamsFromType` has a SECOND caller inside `convertRegion` that feeds star mass to
+`groupIntoSystems`, so changing a mass band can MERGE two map systems. Re-measure the system count
+across a fixed set of census rows before and after — it was unchanged here (55 / 159 / 716 systems at
+16.5 / 25 / 41 ly), but that was measured, not assumed.
+
+### DATA-R11 A name the app SHOWS must be one it can FIND — and the catalogue service is ASCII-only
+WHERE: `src/lib/import/realsky/starNames.mjs`, `properNames.mjs`, `query.mjs:runTap`.
+RULE: any prettifying of a catalogue identifier must ship with its inverse. Build the map two-way
+from the start; a display-only prettifier CREATES a bug, because a user copies the name the app just
+showed them, pastes it into the search box, and gets an error.
+WHY: SIMBAD's TAP service REJECTS NON-ASCII OUTRIGHT — `α Scorpii` returns HTTP 400, "Impossible to
+normalise the identifier ... unsupported character encoding". So a Greek symbol is fine to DISPLAY
+and must NEVER be SENT. Everything going to the service passes `toAsciiQuery` first.
+BLAST: **NEVER SET A CUSTOM REQUEST HEADER ON A TAP CALL.** `runTap` used to set `User-Agent`, which
+a browser must not let script set. Where a browser DOES allow it, the request stops being simple and
+gets a CORS PREFLIGHT — and SIMBAD answers `OPTIONS` with HTTP 400 and no
+`Access-Control-Allow-Headers`, so the whole query dies as a bare "Failed to fetch" with nothing
+useful reaching the app. Chromium drops the header silently, which is why imports still worked and
+the fault stayed invisible.
+ALSO, TWO THINGS MEASUREMENT SETTLED THAT GUESSING WOULD NOT:
+(a) **SIMBAD ALREADY RESOLVES THE FRIENDLY FORMS.** `Antares`, `alpha Scorpii`, `Alpha Sco`,
+`alf Scorpii`, `61 Cygni`, `Lalande 21185` and `Gliese 411` all return the right object. Its `ident`
+match is neither case- nor prefix-sensitive. So rewriting a query INTO the catalogue's designation
+buys nothing — do not build it. The query side needs ASCII and nothing else.
+(b) **A PARENT'S PROPER NAME PLUS A COMPONENT LETTER IS NOT A NAME.** "Keid B" and "Achird B" resolve
+to nothing, though "Keid" and "omi02 Eri B" both do; and "Omicron 2 Eridani" fails where
+"Omicron2 Eridani" works. Use a proper name only where the catalogue has one for THAT EXACT object,
+and expand the designation otherwise. Verified by sending every displayed name back to the live
+service: 434 of 434 resolve.
+LEAVE SURVEY DESIGNATIONS ALONE. `2MASS J09205549+4539058` has no friendly name; showing it as it is
+is honest, and mangling it would be inventing.
+
 ### DATA-R9 Cross-matching star catalogues: DISTANCE discriminates, POSITION does not — and never subtract two parallaxes
 WHERE: `src/lib/import/realsky/convert.mjs` (`matchHostToStar`), `census.mjs`
 (`projectedSeparationAu`, `groupIntoSystems`)

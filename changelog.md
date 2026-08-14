@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.575-beta - 14th Aug 2026
+
+* Notes for the next person working on stars: what changed, what was measured, and the several things found along the way that were deliberately left alone.
+
 ## v2.1.572-beta - 14th Aug 2026
 
 * Imported stars are called what people call them. The catalogue files Antares as "alf Sco", and that is what appeared on your map; now it says Antares. Where a star has no popular name the abbreviation is spelled out instead — "eps Ind" becomes "Epsilon Indi" — and survey designations like "2MASS J09205549+4539058" are left exactly as they are, because they have no friendly name and inventing one would be worse. Systems are named as systems: Alpha Centauri, containing Rigil Kentaurus, Toliman and Proxima Centauri.
