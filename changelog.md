@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.563-beta - 13th Aug 2026
+
+* Worked out how generated stars should get a spin, so they can be flattened by it as planets are. Cool stars slow down over their lives at a rate that is well measured, so theirs can be calculated from their mass and age rather than invented. Hot stars never slow down at all — which is why Vega is still spinning fast enough to be visibly squashed — so those get drawn from the spread that is actually observed.
+
 ## v2.1.562-beta - 13th Aug 2026
 
 * Correction to the note above: some imports do bring a star's real spin with them, so the figure is often already there and only the shape fails to follow. That makes the first half of the fix considerably smaller than it looked — letting stars reach the flattening the engine already applies to planets.
