@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.584-beta - 14th Aug 2026
+
+* A clarification to yesterday's principle: describing things in human terms is not the problem, it is the point. "It would look blue to you", "about Earth gravity", "roughly a fortnight" are what make a figure mean anything at a table. The rule is only that our senses must not sneak into the sums — and that where a description depends on human eyes, it says so.
+
 ## v2.1.583-beta - 14th Aug 2026
 
 * A working principle written down for everyone building this: never quietly assume Earth, our Sun, or human senses. Three times this week a sensible-looking default turned out to be a fact about people rather than about physics — a brightness formula weighted for human eyes, a temperature range that only suits water, and habitability meaning habitable-by-us. The app is meant to teach real science, so those are exactly the errors a curious reader will find first.

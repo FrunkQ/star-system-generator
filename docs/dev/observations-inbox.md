@@ -848,8 +848,17 @@ noticed.
   range ([[G19]]);
   (3) habitability scores human-habitability and was about to stand for habitability as such — it
   becomes the DEFAULT you can swap, not the model ([[G19]]).
-  **The tell is a constant or a weighting that came from a standard, a textbook or a familiar
-  intuition rather than from this body's own data.** Visible light is OUR band; room temperature is
+  **BUT THE RULE IS ABOUT DERIVATION, NOT PRESENTATION, AND THAT DISTINCTION IS LOAD-BEARING —
+  owner, same day: "it IS a useful understandable baseline, so 'looks blue to humans' is valid."**
+  A human frame is exactly what makes a figure mean anything to a GM: *looks blue to human eyes*,
+  *about Earth gravity*, *roughly a fortnight*, *you could breathe it*. **Keep all of that.** The
+  line is simply which side of the calculation it sits on: **anthropocentric framing is welcome on
+  the OUTPUT and forbidden in the DERIVATION.** Weighting available photons by human eye response is
+  the derivation; saying the resulting light "would look blue to you" is the output, and it is the
+  more useful sentence of the two. **The practical form is the existing honesty rule applied to
+  eyes: SAY WHOSE.** "Looks blue to a human" is true and helpful; "is blue" is a claim the physics
+  has not made. **The tell is a constant or a weighting that came from a standard, a textbook or a
+  familiar intuition rather than from this body's own data.** Visible light is OUR band; room temperature is
   OUR comfort; a day, a year and a season are OUR planet's. **Ask what the number would be for a
   world with a different star, a different solvent and a different chemistry — and if the answer is
   "the same", say why.** This matters more here than in most projects, because the product's stated
