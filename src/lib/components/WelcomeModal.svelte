@@ -30,7 +30,7 @@
   const features: { title: string; blurb: string; pending?: string }[] = [
     { title: 'A rewritten physics engine', blurb: 'What a world is made of decides everything else: density, temperature, atmosphere and cloud decks, oceans and ice, magnetism, geology, the radiation it throws out and the colour you actually see. The Newton panel shows the working.' },
     { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
-    { title: 'Stars properly classified', pending: 'in progress', blurb: 'Stars carry their real classification — spectral type, subtype and luminosity class — so a supergiant is a supergiant rather than a dwarf that happens to share its colour. Their spin follows from mass and age, and a fast enough star is visibly flattened by it.' },
+    { title: 'Stars properly classified', blurb: 'Stars carry their real classification — spectral type, subtype and luminosity class — so a supergiant is a supergiant rather than a dwarf that happens to share its colour. Antares arrives as the 16-solar-mass giant it is, and you can search for it by that name.' },
     { title: 'Player views', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — redacted, updating as you play, and dressed with filters and transitions that lean hard into your setting's look." },
     { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system — orbits, tilts and moons where the physics puts them, each world lit by its own star.' },
     { title: 'Starmaps have depth', blurb: 'Systems carry a z-axis, so distances are true in three dimensions. If you prefer a flat map, everything still works exactly as it did in 2D.' },
@@ -39,6 +39,7 @@
     { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
     { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — the real stars near you at their true positions, with their confirmed planets, and plausible worlds filled in around the rest if you want them.' },
     { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
+    { title: 'Life is a tag too', pending: 'coming', blurb: 'What lives on a world — microbes, fungi, plants, animals, or something that builds cities — is described the same way everything else is, with how much of the world it covers and what colour it should read as. Searchable, editable, and yours to invent from. Showing it on the planet itself follows later.' },
     { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
     { title: 'Virtual tabletop integration', pending: 'in testing', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and Foundry are in testing.' },
     { title: 'Sharper generation', blurb: 'Procedural systems have been retuned to sit better inside the new physics.' },

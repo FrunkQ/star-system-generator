@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.577-beta - 14th Aug 2026
+
+* The welcome screen catches up: properly classified stars have landed and are no longer marked as in progress, and life-as-a-tag is listed as on its way.
+* Two things found and recorded, not yet fixed. Antares now has a supergiant's numbers but is still described as a red dwarf, because the text under a star is still chosen by its letter alone. And a world imported from the real sky was given Astrophage in its air — a substance from a novel, which belongs only in the science-fiction map.
+
 ## v2.1.576-beta - 14th Aug 2026
 
 * Housekeeping: the three star-import items are marked done on the board.
