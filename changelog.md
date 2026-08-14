@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.562-beta - 13th Aug 2026
+
+* Correction to the note above: some imports do bring a star's real spin with them, so the figure is often already there and only the shape fails to follow. That makes the first half of the fix considerably smaller than it looked — letting stars reach the flattening the engine already applies to planets.
+
 ## v2.1.561-beta - 13th Aug 2026
 
 * Noted: planets are squashed by their own spin, but stars never are, so Vega — which spins fast enough to be visibly flattened, and is a fifth wider across its equator than pole to pole — is drawn as a perfect sphere. It turns out stars carry no rotation at all in the engine, which is a known gap finally showing itself somewhere you can see it.
