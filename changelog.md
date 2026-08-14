@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.561-beta - 13th Aug 2026
+
+* Noted: planets are squashed by their own spin, but stars never are, so Vega — which spins fast enough to be visibly flattened, and is a fifth wider across its equator than pole to pole — is drawn as a perfect sphere. It turns out stars carry no rotation at all in the engine, which is a known gap finally showing itself somewhere you can see it.
+
 ## v2.1.560-beta - 13th Aug 2026
 
 * Two more findings on star search, both to be fixed with the naming work: the catalogue service refuses Greek letters, so "α Scorpii" fails where "alf Sco" succeeds — meaning the app must translate a pretty name back into a plain one before searching, not just show it. And when a search does fail, the raw error from the service is being shown verbatim instead of a sentence.
