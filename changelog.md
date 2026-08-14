@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.578-beta - 14th Aug 2026
+
+* On the fictional-substance problem: the answer is simply to move it. Invented gases and liquids belong with the map that uses them, in the same way invented engines and fuels do, rather than in the list every campaign starts with — so a real star's world can never be handed something out of a novel.
+
 ## v2.1.577-beta - 14th Aug 2026
 
 * The welcome screen catches up: properly classified stars have landed and are no longer marked as in progress, and life-as-a-tag is listed as on its way.
