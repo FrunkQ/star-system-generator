@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.588-beta - 14th Aug 2026
+
+* Found while checking whether generated stars would use the new classifications: they will not, and worse, a red giant the app invents and a red giant imported from the sky currently disagree about their radiation by a factor of a hundred. Both are being fixed together, and the change is to the data rather than the code — the generator already knows how to use the new classes, it simply is not offered them.
+
 ## v2.1.587-beta - 14th Aug 2026
 
 * Two gaps recorded in the new star tables. An older "red giant" entry survived alongside the new one and the two disagree about how much radiation such a star puts out — by a factor of about a hundred — so that needs settling. And stars are still described only by their letter and size class: within the O class alone the hottest is four times the mass of the coolest, so there is more detail to come.
