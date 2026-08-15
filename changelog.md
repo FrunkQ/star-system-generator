@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.600-beta - 15th Aug 2026
+
+* Internal: settled the missing-liquids question — nothing was lost, the console message was a deliberate optional check working as designed.
+
 ## v2.1.599-beta - 15th Aug 2026
 
 * Internal: recorded a request to let a star carry a custom picture, the way a planet and a construct already can.

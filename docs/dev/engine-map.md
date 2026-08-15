@@ -1464,6 +1464,24 @@ ALSO: the same file categorised `star/red-giant` as `main_sequence_star`, which 
 not, and gave `star/M-III` no category at all because it matched no list. Categorise from the parsed
 shape, not from membership.
 
+### DATA-R16 A PACK'S `liquids.json` IS AN OPTIONAL OVERRIDE, AND ITS 404 IS THE DESIGN WORKING
+WHERE: `src/lib/rulepack-loader.ts:73-79`, `src/lib/constants.ts:36-41`, `src/lib/data/liquids.json`.
+RULE: the solvent definitions are a BUILT-IN engine default, `import`ed at build time from
+`src/lib/data/liquids.json`. They are never fetched and cannot go missing. The loader's separate
+`fetch` for a pack-level `liquids.json` is a speculative probe for an OVERRIDE that most packs do
+not ship; it is already inside a `try/catch` and a miss is normal. **Do not "fix" the 404, and do
+not make the pack ship a no-op override** — `mainPack.liquids = {}` SETS an override rather than
+leaving the default, which is worse than the noise.
+WHY: D20 was raised as a FIX-NOW bug reading "the file does not exist and 5+ loaders ask for it".
+Every part of that was wrong: the file exists, the loaders are test harnesses and all of them are
+`existsSync`-guarded, and the one real fetch is deliberately optional with a comment saying so.
+The console line is the browser logging a failed request — `try/catch` cannot suppress it, so it
+will keep reappearing in diagnostic bundles and keep looking like breakage to whoever reads one.
+BLAST: any future "clean up the console" pass. The honest fix, if it is ever worth doing, is to
+have a pack DECLARE its files in the manifest so nothing speculative is fetched at all — which is
+a schema change, not a loader tweak. Same shape as PHY-9: **an absence deliberately tolerated is
+not a fault, but it must SAY it is deliberate somewhere a reader of the symptom will look.**
+
 ### DATA-R14 EDIT A RULE PACK AS TEXT
 WHERE: `static/rulepacks/**/*.json`.
 RULE: load-and-re-dump rewrites the whole file to change one key. It reflows every line, so the diff
