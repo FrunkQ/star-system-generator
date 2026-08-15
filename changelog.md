@@ -2,7 +2,7 @@
 
 All notable changes are listed here:
 
-## 2.1.612-beta - 15th Aug 2026
+## v2.1.612-beta - 15th Aug 2026
 
 * Internal: recorded how a planet’s colour and its plant life could both be derived from the sunlight that actually reaches the ground.
 
