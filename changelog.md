@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.625-beta - 15th Aug 2026
+
+* Star systems: neutron stars and magnetars are no longer classified as white dwarfs. The classifier was weighing a remnant's own mass against the mass of the star it came from, two different things, so nothing that actually weighs 1.4 to 2.2 suns could ever come back as a neutron star.
+* Internal: added a reference table of ten real stars with published classifications, so claims about the classifier are measurements rather than arguments. It currently gets five of ten luminosity classes right, and every miss calls a main-sequence star something grander.
+
 ## v2.1.624-beta - 15th Aug 2026
 
 * Star systems: a star the catalogue gives no type for no longer gets a magnetic field invented for it. It used to borrow a default band and report about one gauss, which reads as a measurement of a weak field rather than as the absence it is.

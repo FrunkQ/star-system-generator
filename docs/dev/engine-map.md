@@ -1442,6 +1442,25 @@ uniquifier that REPORTS: silently renaming would hide the next one.
 ALSO: the primary keeps `<slug>-star`, so every `parentId` and `orbit.hostId` built from it is
 unchanged — renaming the primary would have been a far larger change for no gain.
 
+### PHY-10 A REMNANT'S MASS AND ITS PROGENITOR'S ARE TWO FRAMES, AND ONE PARAMETER CARRIED BOTH
+WHERE: `physics/stellar-evolution.ts` — `classifyStar`'s remnant branch and `deriveStarFromHR`;
+pinned by `starClassification.reference.spec.ts`.
+RULE: `massKg` is the object's OWN mass, always. A remnant's IDENTITY is a fact about the star it
+came from, so it is decided by `progenitorMassKg` when that survived generation — thresholds ~8
+solar (supernova to a neutron star) and ~25 (collapse to a black hole). With no progenitor recorded,
+fall back to the REMNANT limits: Chandrasekhar ~1.4 and Tolman-Oppenheimer-Volkoff ~2.2-3, which are
+real physics and agree with the pack's own bands (WD 0.6..1.4, NS 1.4..2.2, BH 3..100).
+WHY: the remnant branch tested the object's `massKg` against PROGENITOR thresholds. It was correct
+for its only caller — `deriveStarFromHR` passes the progenitor mass as `massKg` — and wrong for the
+reading every other caller would make. **Measured: hand it the pack's own `star/NS` band midpoint of
+1.80 solar and it returns WHITE DWARF, because a real neutron star (1.4-2.2) can never satisfy
+`> 8`.** `star/BH` passed only because its band midpoint happens to be 51.5.
+BLAST: **this is the frame error the owner named — *"the HR surface alone can't do stellar remnants
+as that requires star type + TIME"*.** Present state (T, L, R, M) is a POSITION; (initial mass, age)
+is a TRACK; a remnant's identity lives on the track and cannot be read off the position. **Anything
+that generates a remnant must carry the progenitor mass forward, or the round-trip fails for every
+one of them.** The signatures already took the inputs; only the branch read the wrong one.
+
 ### PHY-9 An ageing profile is keyed on MASS, never on the star's TYPE
 WHERE: the [[B48]] star-classification workstream; `docs/dev/type-vocabulary-prev4.md` section 9.4.
 The pattern it protects is PHY-1's corollary — a derived CLASS is never a physics input.

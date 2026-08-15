@@ -209,18 +209,49 @@ const SOLAR_LUM_WATT = 3.828e26;
 export function classifyStar(params: {
     tempK: number,
     lumSolar: number,
+    /** The object's OWN mass. For a remnant that is the remnant's mass, not the star it came from. */
     massKg: number,
     ageGyr: number,
-    isRemnant?: boolean
+    isRemnant?: boolean,
+    /**
+     * The mass of the star this remnant came from, when it is known. Remnant identity is a fact
+     * about the PROGENITOR, so this is the better discriminator whenever it survives — see below.
+     */
+    progenitorMassKg?: number
 }): { category: string, lumClass: string } {
-    const { tempK, lumSolar, massKg, ageGyr, isRemnant } = params;
+    const { tempK, lumSolar, massKg, ageGyr, isRemnant, progenitorMassKg } = params;
     const mSolar = massKg / SOLAR_MASS_KG;
     const logL = Math.log10(lumSolar);
     const logT = Math.log10(tempK);
 
     if (isRemnant) {
-        if (mSolar > 25.0) return { category: 'Black Hole', lumClass: 'X' };
-        if (mSolar > 8.0) return { category: 'Neutron Star', lumClass: 'X' };
+        // TWO FRAMES LIVE HERE AND THE PARAMETER USED TO CARRY BOTH, WHICH IS THE WHOLE BUG.
+        // A remnant's identity is a fact about its PROGENITOR — a white dwarf's position on the HR
+        // diagram says hot and dim, and cannot say what made it (B55, owner: "that requires star
+        // type + TIME"). So the thresholds below are PROGENITOR masses: above ~25 solar the core
+        // collapses past the neutron-star limit, above ~8 it supernovas to a neutron star.
+        //
+        // But `massKg` means the object's OWN mass everywhere else in this function, and
+        // `deriveStarFromHR` was the only caller setting `isRemnant` — it passes the PROGENITOR
+        // mass, so the thresholds were right for it and wrong for the reading anyone else would
+        // make. Measured: pass the pack's own `star/NS` band midpoint of 1.80 solar and it comes
+        // back a WHITE DWARF, because a real neutron star can never satisfy `> 8`.
+        //
+        // The progenitor is now its OWN parameter, so neither frame can be mistaken for the other.
+        const progSolar = progenitorMassKg == null ? null : progenitorMassKg / SOLAR_MASS_KG;
+        if (progSolar != null) {
+            if (progSolar > 25.0) return { category: 'Black Hole', lumClass: 'X' };
+            if (progSolar > 8.0) return { category: 'Neutron Star', lumClass: 'X' };
+            if (tempK < 1000) return { category: 'Black Dwarf', lumClass: 'VII' };
+            return { category: 'White Dwarf', lumClass: 'VII' };
+        }
+        // NO PROGENITOR RECORDED — fall back to the remnant's own mass against the REMNANT limits,
+        // which are real physics rather than fitted cuts: Chandrasekhar (~1.4 solar) is the most a
+        // white dwarf's electron degeneracy can hold, and the Tolman-Oppenheimer-Volkoff limit
+        // (~2.2-3) is the most a neutron star's can. The pack's own bands agree — WD 0.6..1.4,
+        // NS 1.4..2.2, BH 3..100 — so this is the pack's shape read back, not a second opinion.
+        if (mSolar > 2.5) return { category: 'Black Hole', lumClass: 'X' };
+        if (mSolar > 1.4) return { category: 'Neutron Star', lumClass: 'X' };
         if (tempK < 1000) return { category: 'Black Dwarf', lumClass: 'VII' };
         return { category: 'White Dwarf', lumClass: 'VII' };
     }
@@ -254,12 +285,16 @@ export function classifyStar(params: {
 export function deriveStarFromHR(temperatureK: number, luminositySolar: number, isRemnant: boolean = false, progenitorMassKg?: number): StarSeed {
     const progenitorSolar = (progenitorMassKg ?? (Math.pow(luminositySolar, 0.28) * SOLAR_MASS_KG)) / SOLAR_MASS_KG;
     
-    const { category, lumClass } = classifyStar({ 
-        tempK: temperatureK, 
-        lumSolar: luminositySolar, 
-        massKg: progenitorSolar * SOLAR_MASS_KG, 
+    const { category, lumClass } = classifyStar({
+        tempK: temperatureK,
+        lumSolar: luminositySolar,
+        massKg: progenitorSolar * SOLAR_MASS_KG,
         ageGyr: 0,
-        isRemnant
+        isRemnant,
+        // This caller has always passed the PROGENITOR mass as `massKg` and its thresholds were
+        // written for that. Naming it explicitly keeps the behaviour byte-identical while removing
+        // the ambiguity that made the same call wrong for everyone else.
+        progenitorMassKg: progenitorSolar * SOLAR_MASS_KG
     });
     
     let finalMassSolar = Math.pow(luminositySolar, 0.28);
