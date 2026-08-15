@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.602-beta - 15th Aug 2026
+
+* Internal: recorded which working sessions are live and what each is best placed to pick up.
+
 ## v2.1.601-beta - 15th Aug 2026
 
 * Stars can be given a custom picture, the way planets and constructs already could. It is on the star's Details tab, under the spectral picker; Remove hands the picture back to the spectral-class portrait.

@@ -609,6 +609,41 @@ human-habitability becomes the DEFAULT rather than the whole model.
 - **VTT integration** — last, by owner decision. [[G14]] (model binaries to remote players) rides with it.
 - **V4** — `docs/dev/v4-scope.md`. [[G17]] is shelved there and is NOT a separate design job.
 
+## SESSION ROSTER — 2026-08-15, context figures REPORTED BY THE OWNER
+
+**These supersede the 2026-08-14 LIVE SESSIONS list below for WHO EXISTS. Everything else in that
+block — the four mistakes, the process fix — still stands.** The percentages are the owner's and are
+authoritative: **agents cannot self-measure their own context and have been wrong every time it was
+checked**, so never overwrite these with a session's own estimate.
+
+| session | context used | last shipped | routed to it now |
+|---|---|---|---|
+| **SSE2 — positions, eclipses & suite hygiene** | **30% — the most room on the board** | v2.1.455 ([[C9]]) | **[[B36]]** — the "has a solid surface" duplication, five sites. They offered exactly this shape themselves, and **unifying it MOVES BODIES via the habitability gate**, so it wants suite-aware hands and a session with room to read the fixture churn. Then **[[C8]]** once [[C11]]'s authoring call is made |
+| **Tags: provenance, control and surfacing** | 41% | v2.1.492/493 | **NOTHING. OWNER-DRIVEN — assign it nothing through this board.** A recommendation to move its player-view surfaces elsewhere was already overruled once |
+| **Ship Model Handoff** | 60% | v2.1.551 ([[C10]]) | **[[C13]]** — a pinch was also treated as a TAP on release, found while fixing C10 and probably fixed with it. **It is a CONFIRM, not a fix**, and it is their own change, so it is the cheapest possible use of a 60% session. **[[P4]]**, the scale law, stays gated on the owner eyeballing `/scale-reference` |
+| **Scene, grids and sky — the 3D render surfaces** | **65% — oldest** | — | **[[A50]]** (two lines) and **[[A45]]**, both already on its own remaining list. **Then RETIRE it.** At 65% and oldest it should close its two small items and **spend its last context writing down what it knows, not on more code** — that is the pattern that made Astro 2's spec let Astro 3 do the MK work in an hour |
+
+**A50 RE-VERIFIED 2026-08-15 before routing, because a stale item is worse than no item:**
+`starmapScene.ts:1014` returns `setGridSkirt` and `setGridFalloff`, the `StarmapController` interface
+at `:71-95` declares neither, and `Starmap3DView.svelte:107-108` calls both. Still live, still two
+lines. **[[A45]] I did NOT re-verify to the same standard** — I grepped `src` for the literal token
+`subsector-hex` and it appears nowhere, while the subsector CONCEPT does live in
+`components/Grid.svelte`. That is consistent with the entry but it is not proof, and the grid session
+owns that code. Let them confirm it rather than taking my word.
+
+**THE THING TO WATCH WITH ALL FOUR, AND IT IS NOT THE CONTEXT FIGURE.** Beta is at v2.1.601. These
+sessions last shipped at **455, 492/493 and 551** — between fifty and a hundred and fifty versions
+ago. **A session holding 70% free context is still holding a picture of a tree that has moved under
+it.** Cheap items are safe; anything touching physics, classification or the star model should
+`git pull --rebase` and re-read its own files before trusting what it remembers. The D-batch, the
+spectral-classification work and the whole star model all landed inside that gap.
+
+**[[G21]] HAS NO OBVIOUS HOME AND THAT IS THE OPEN ROUTING QUESTION.** It is the three-copy
+star-image lookup, filed by the [[G20]] session, located by file and line, ~10 lines plus a spec.
+**The session that just finished G20 holds this exact code**, so if it is still alive it is much the
+cheapest home. None of the four above owns `generation/` — Ship Model owns rendering, not generation.
+**Ask the owner before spawning anything fresh for ten lines.**
+
 ## SESSION STATE at handover, 2026-08-14 (outgoing coordinator) — READ THIS FIRST
 
 Everything else in this file is durable. This section is not: it is who exists, what they hold, and
