@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.633-beta - 16th Aug 2026
+
+* Star systems: found why planets never generate close to small, dim stars - the spacing rule uses the Solar System’s own distances for every star.
+
 ## v2.1.632-beta - 16th Aug 2026
 
 * Star editor: brightness and magnetic activity are now two separate controls, because they are two different things. A star can flare violently with almost no change in brightness, so making one dangerous no longer means pretending it got brighter. Take a red giant up in activity and it flares.
