@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.607-beta - 15th Aug 2026
+
+* Internal: extended the existing type-vocabulary design rather than starting a new one, and corrected it — it recorded two ad-hoc star classifiers where there are three.
+* Internal: found that the stellar classifier is wrong for every hot main-sequence star — Vega comes back a giant, and O and B dwarfs come back supergiants. It is recorded with the measurements rather than patched, because the obvious fix was tried and trades five wrong dwarfs for two wrong supergiants.
+* Internal: audited every path that creates or reads a star. Four creation paths that disagree, a `starCategory` field written by two of them and read by nothing, no star classification pass at all, and two parallel pack maps for one concept (30 stat bands against 19 pictures) with no mechanism keeping them in step.
+
 ## v2.1.606-beta - 15th Aug 2026
 
 * Star systems: an imported star with no known class no longer quietly inherits a red dwarf's magnetic field.
