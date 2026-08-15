@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.617-beta - 15th Aug 2026
+
+* Star editor: recorded that moving a star’s sliders should update its type, reusing the pin-or-derive behaviour planets already have.
+
 ## v2.1.616-beta - 15th Aug 2026
 
 * Star types: decided that a star should be identified by its full designation worked out from its own physical properties, and that magnetars become a kind of neutron star rather than a separate thing to spawn.
