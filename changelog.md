@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.605-beta - 15th Aug 2026
+
+* Internal: scoped the star classification rewrite and listed the related fixes it should absorb.
+
 ## v2.1.604-beta - 15th Aug 2026
 
 * Internal: the "which portrait does this star class get?" lookup existed three times and disagreed everywhere except the exact match. One shared resolver now, with all three copies deleted. Nothing a GM sees changes.
