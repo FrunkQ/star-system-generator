@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.621-beta - 15th Aug 2026
+
+* Star generation: found that any setting spanning a wide range is picked from the top of that range far too often, which would have made almost every neutron star a magnetar.
+
 ## v2.1.620-beta - 15th Aug 2026
 
 * Star editor: recorded that picking a star type and adjusting its sliders are two directions of one map, and that they currently disagree for hot stars.
