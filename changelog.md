@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.628-beta - 15th Aug 2026
+
+* Star systems: magnetars are no longer generated as their own kind of object. They are neutron stars with a very strong magnetic field, which is what they are in reality, so a neutron star is generated and its field decides what it is called. About one neutron star in seven comes out a magnetar, which is roughly what the old separate spawn rate produced.
+* Star systems: neutron star fields now span the real range, so recycled millisecond pulsars at the faint end actually occur. Previously the range was advertised but under one in a hundred landed there.
+* Rule packs: the field strength that makes a neutron star a magnetar is now stated in the pack rather than fixed in code.
+
 ## v2.1.627-beta - 15th Aug 2026
 
 * Star systems: a star's brightness is now worked out from its size and temperature instead of being stored as a separate figure that could disagree with them. It did disagree: only the Sun-like band was self-consistent, and red dwarfs were being generated up to sixty thousand times too bright.

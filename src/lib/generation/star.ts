@@ -37,6 +37,21 @@ export function starStatTemplate(pack: RulePack, starClass: string): any | undef
 // model: the pack carries every class from star/BH (0) through star/magnetar (1e11-1e15 G), and a
 // real stellar rotation/dynamo model is a separate, larger piece of work (inbox B9b). Returns
 // undefined when the class has no band, so "unknown" stays distinguishable from "no field".
+/**
+ * A neutron star whose drawn field is above the pack's magnetar threshold IS a magnetar.
+ *
+ * The threshold is rule-pack DATA (`stellarClassification.magnetar_field_gauss`), not a constant
+ * here, because the boundary is a product choice inside a real continuum: magnetars sit at about
+ * 1e14-1e15 gauss and ordinary pulsars near 1e12, with high-B pulsars occupying the decade between.
+ * Exported so the editor and any future classifier read the same rule rather than spelling it again.
+ */
+export function magnetarLabelFor(pack: RulePack, starClass: string, fieldGauss: number | undefined): string {
+    if (starClass !== 'star/NS' || fieldGauss == null) return starClass;
+    const threshold = (pack as any)?.stellarClassification?.magnetar_field_gauss;
+    if (!(threshold > 0)) return starClass; // a pack that states no threshold makes no magnetars
+    return fieldGauss >= threshold ? 'star/magnetar' : starClass;
+}
+
 export function starFieldFromPack(pack: RulePack, starClass: string, rng: SeededRNG) {
     const tpl = starStatTemplate(pack, starClass);
     const band = tpl?.mag_gauss;
@@ -70,7 +85,7 @@ export function starTiltFromPack(pack: RulePack, rng: SeededRNG): number {
 // Generates a star object, but not its name, which is determined by the system context.
 export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: SeededRNG, starTypeOverride?: string): CelestialBody {
     const starTypeTable = pack.distributions['star_types'];
-    const starClass = starTypeOverride ?? (starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V');
+    let starClass = starTypeOverride ?? (starTypeTable ? weightedChoice<string>(rng, starTypeTable) : 'star/G2V');
 
     const starTemplate = starStatTemplate(pack, starClass);
 
@@ -104,6 +119,19 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     const radiationOutput = starTemplate?.radiation_output
         ? drawFromBand(rng, [starTemplate.radiation_output[0], starTemplate.radiation_output[1]], starTemplate.radiation_output_scale)
         : (thermalLumSolar || 1);
+
+    // B55/B56 - A MAGNETAR IS NOT SPAWNED. Owner: "they are spawned as neutron stars with a physical
+    // property that the classification engine defines them as magnetars - ie it is a sub-category of
+    // neutron star, as they are in reality." So generation draws `star/NS`, the FIELD is drawn from
+    // the band, and the label is read back off it. One spawn type, parameters, derived label - the
+    // flexible-systems mantra applied to remnants, with no special casing and no rarity knob: the
+    // magnetar RATE falls out of the field distribution rather than a spawn weight.
+    //
+    // THIS RUNS HERE ONLY BECAUSE NO STAR CLASSIFIER EXISTS YET (B48). It is the classifier reading
+    // physical state, and it MOVES into that pass when it lands - it does not become a second
+    // opinion. Nothing downstream may read the label back to decide the field; the arrow is
+    // field -> label, and PHY-9 is the entry that explains why.
+    starClass = magnetarLabelFor(pack, starClass, starMagneticField?.strengthGauss);
 
     // G21 - one lookup, shared with the editor and generateFromConfig. This copy truncated on
     // `spectral[0]` for any name longer than a character, so it was one pack edit away from sending

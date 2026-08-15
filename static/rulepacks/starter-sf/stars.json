@@ -12,8 +12,8 @@
         "star/L": { "mass_solar": [0.06, 0.08], "radius_solar": [0.08, 0.15], "temp_k": [1300, 2000], "mag_gauss": [0.1, 100] },
         "star/T": { "mass_solar": [0.03, 0.06], "radius_solar": [0.08, 0.15], "temp_k": [700, 1300], "mag_gauss": [0.1, 100] },
         "star/Y": { "mass_solar": [0.01, 0.03], "radius_solar": [0.08, 0.15], "temp_k": [300, 700], "mag_gauss": [0.1, 100] },
-        "star/NS": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000, 100000000000], "radiation_output": [1000, 10000] },
-        "star/magnetar": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000000, 1000000000000000], "radiation_output": [100000, 1000000] },
+        "star/NS": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000, 1000000000000000], "radiation_output": [1000, 10000] },
+        "star/magnetar": { "mass_solar": [1.4, 2.2], "radius_solar": [0.000014, 0.000028], "temp_k": [100000, 1000000], "mag_gauss": [100000000000000, 1000000000000000], "radiation_output": [100000, 1000000] },
         "star/BH": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [0, 0], "radiation_output": [0.01, 0.1] },
         "star/BH_active": { "mass_solar": [3, 100], "radius_solar": [0.0000126, 0.000423], "temp_k": [0, 0], "mag_gauss": [100000, 100000000], "radiation_output": [10000, 100000] },
         "star/O-I": { "mass_solar": [20, 60], "radius_solar": [15, 40], "temp_k": [30000, 45000], "mag_gauss": [0.1, 10] },
@@ -31,5 +31,9 @@
         "star/G-III": { "mass_solar": [1.5, 3.5], "radius_solar": [8, 20], "temp_k": [4800, 5800], "mag_gauss": [0.1, 10] },
         "star/K-III": { "mass_solar": [1, 3], "radius_solar": [10, 60], "temp_k": [3900, 4800], "mag_gauss": [0.1, 10] },
         "star/M-III": { "mass_solar": [1, 4], "radius_solar": [40, 120], "temp_k": [3000, 3900], "mag_gauss": [0.1, 10] }
+    },
+    "stellarClassification": {
+        "_note": "A magnetar is not a separate kind of object: it is a neutron star with a very strong field, so it is not SPAWNED. Generation draws star/NS and the field decides the label. The boundary is a PRODUCT CHOICE inside a real continuum - magnetars sit at 1e14-1e15 gauss and ordinary pulsars near 1e12, with high-B pulsars occupying the decade between - so it lives here as data rather than as a constant in code.",
+        "magnetar_field_gauss": 100000000000000
     }
 }
