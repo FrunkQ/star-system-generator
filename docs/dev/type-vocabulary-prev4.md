@@ -122,12 +122,39 @@ record; type becomes another thing physics decides.
 
 ## 6. Order of work
 
-1. **Extend the round-trip test to stars** — it will fail, because there is nothing to classify
-   against. That failure is the specification for step 2.
-2. **Author `star/*` fingerprints** in the pack, with match bands taken from the temperature ladder
-   that already works (it is the de facto classifier and it agrees with the editor).
+**RECONCILED 2026-08-15. This section predates sections 9 to 12 and its step 2 said "AUTHOR `star/*`
+fingerprints", which everything since contradicts** — [[B50]] established that the bands are regions
+on a surface that already exists, and [[B55]] brought in the full MK designation space, which is only
+affordable BECAUSE the designation is computed from position rather than authored as a cell.
+**If you find yourself hand-filling a table, stop: you have rebuilt the thing [[B46]](b) warned
+against.** The steps below are the reconciled order; the numbered list is the same shape, and steps 1
+and 6 are still the ones that stop it re-diverging.
+
+1. **The ten reference stars (9.1) as a FIXTURE, and extend the round-trip test to stars** — it will
+   fail, because there is nothing to classify against. That failure is the specification for step 2,
+   and the fixture is what stops any replacement being argued rather than measured.
+2. **DERIVE the `star/*` match regions from the HR relation, do not author them.** The single source
+   is the main-sequence law plus the branch offsets (section 10); a designation is a POSITION on it.
+   **The law must be exported ONCE** — it is currently spelled five times, including one inverted
+   inline at `GenerationWizard.svelte:95`. Replacing `msExpectedLogL` is free: it is a first pass,
+   never revised, fitted to nothing ([[B51]]).
+   **Remnants are the exception and need their own axes** — field and spin, plus progenitor mass and
+   age, because their identity is a TRACK rather than a position (9.5(i)).
 3. **Fold `SPECTRAL_DATA` into the pack** as generation bands, constrained to sit inside the match
-   bands from step 2. The editor reads the pack.
+   regions from step 2. The editor reads the pack — this CONTINUES [[D22]]'s unification (the pack
+   wins, `BodyStarTab` reads it) rather than reversing it.
+   **A BAND CARRIES ONLY WHAT CANNOT BE COMPUTED ([[B57]]).** Radius, temperature and mass are
+   ANCHORS; **luminosity is DERIVED** (`L = 4(pi)R^2(sigma)T^4`, exact) and must stop being stored;
+   colour is derived from temperature; field and spin are DRAWN, because they genuinely are not
+   computable from anything else. This SHRINKS each entry to three anchored numbers, which is what
+   makes the owner's *"add more star types in there"* cheap — and a derived quantity cannot drift,
+   because it is not stored. **`radiation_output` is the proof it drifts when stored: `star/G` agrees
+   with its own R and T exactly and nothing else does, out to 60,000x on `star/M`.**
+   **Bands declare their own SCALE ([[B56]]).** `randomFromRange` is linear, 23 shipped bands span
+   100x or more, and a linear draw's median sits at about hi/2 however many decades it covers.
+   **The magnetar merge and the log draw are ONE change**: merging NS and magnetar into 1e8..1e15
+   with a linear draw makes ~90% of neutron stars magnetars. The fix is a `scale` on the band, not
+   "make everything log" — mass 1.4..2.2 is honestly linear.
 4. **Point `starClasses()` and `updateClassFromTemp` at the vocabulary** so the two ad-hoc ladders
    become one lookup.
 5. **Delete the legacy `baseArchetypes` path** — a hardcoded 17-entry list against the pack's 65,
@@ -136,6 +163,31 @@ record; type becomes another thing physics decides.
 6. **Lock it**: the round-trip test runs over the whole vocabulary, planets and stars.
 
 Steps 1 and 6 are the ones that stop it re-diverging. Everything between is mechanical.
+
+### 6b. What the vocabulary must ACCEPT, which is not what it may PRODUCE
+
+Owner, 2026-08-15: *"Hand authoring is hand authoring. We let the GM do what they want and then try
+and make sense of it. If they have a 100 year old black hole then fine. Our job is to show the
+problems (in tags) and allow it."*
+
+> **REFUSE TO PRODUCE. NEVER REFUSE TO ACCEPT.**
+
+**This looks like it contradicts [[B47]](a) and does not, and the distinction must be written down or
+someone will "fix" one of them.** B47(a) says the engine must refuse to AGE a sub-0.8-solar star onto
+the giant branch — that governs what the engine PRODUCES on its own. This governs what it ACCEPTS
+from a GM. A GM may hand-author a hundred-year-old black hole and gets a tag saying no progenitor
+could produce it in that time; the engine will simply never generate one.
+
+**Two consequences that are implementation constraints rather than philosophy:**
+
+- **The round-trip test is asserted over the GENERATOR'S OUTPUT ONLY.** `classify(generate(X)) == X`.
+  A hand-authored impossibility must not fail the suite — if it does, the test enforces a rule the
+  product has just rejected.
+- **Implausibility tags say WHICH LAW, never "invalid".** The pattern is already set by
+  `ageEstimated`, where `physicsTrace` names which of three reasons applies. Per [[TAG-6]] this
+  namespace needs exactly ONE owning pass, named in the spec — and it is [[B52]]'s tag face doing
+  real work, because "implausible, and here is which law it breaks" is re-derivable every pass and is
+  therefore a tag rather than stored truth.
 
 ## 7. Non-goals
 
@@ -295,13 +347,43 @@ physics and the only shape that keeps the arrow one-way.
 
 Surfaced for the owner with a recommendation each, per the coordinator's routing.
 
-**(i) Do `BH`/`NS`/`magnetar` want match bands, or stay PINNED?** RECOMMEND PINNED, and it is not
-just the cheaper option: a remnant's identity is its HISTORY, not its present spectrum. Two objects
-of the same mass and temperature can be a neutron star and a white dwarf depending on what they came
-from, so no envelope over present-day physics can separate them — the classification is genuinely an
-authored fact. Pinning also preserves the existing early-return behaviour, so it changes nothing
-today. **The one thing pinning must not do is exempt them from the round-trip test:** assert that a
-pinned class survives a classify pass unchanged, which is a real and cheap assertion.
+**(i) Do `BH`/`NS`/`magnetar` want match bands, or stay PINNED?** ~~RECOMMEND PINNED~~ —
+**OVERRULED BY THE OWNER 2026-08-15 ([[B55]]). REMNANTS GET MATCH BANDS. Do not act on the struck
+recommendation below; it is kept only so a successor can see what was wrong with it.**
+
+My objection was that nothing separates a magnetar from a neutron star except an authored field
+strength, so the classification is an authored fact. **The owner's answer dissolves the objection
+rather than overriding it: the field is not authored, it is DRAWN as a physical property, and the
+classifier reads it.** *"Magnetars would just be fast spinning neutron stars... they are spawned as
+neutron stars with a physical property that the classification engine defines them as magnetars — ie
+it is a sub-category of neutron star, as they are in reality."* One spawn type, parameters, derived
+label. That is the flexible-systems mantra applied to remnants, and it is better than pinning.
+
+**Where I was half-right, and it is the half that matters for the axes:** (mass, luminosity, colour,
+radius) is genuinely NOT sufficient for a remnant — a magnetar and a neutron star are identical on
+all four. **The match space needs FIELD and SPIN axes for remnants**, which the HR surface does not
+carry. And the owner sharpened the larger half himself: *"the HR surface alone can't do stellar
+remnants as that requires star type + TIME"*. So:
+
+> **Present state (T, L, R, M) is a POSITION. (Initial mass, age) is a TRACK. Field and spin are
+> properties on neither.**
+
+Main-sequence and giant designations are readable from position alone — a 1 solar-mass star is `G2V`
+at 4 Gyr and a K giant at 12 Gyr, and those ARE different places on the map. **Remnant identity is
+not, and neither is `magnetar`.**
+
+**AND THIS IS THE ROOT OF THE REMNANT BUG IN 9.1b, not merely adjacent to it:** testing `mSolar > 8`
+for a neutron star is a PROGENITOR threshold applied to the REMNANT'S OWN mass — the two frames
+conflated, which is exactly the confusion the owner's sentence names. The signatures already carry
+what is needed: `deriveStarFromHR(..., progenitorMassKg)` already takes the progenitor mass and
+`classifyStar({..., ageGyr, isRemnant})` already takes age and remnant-ness. The inputs are present;
+the remnant branch simply read the wrong one.
+
+> **HARD REQUIREMENT: progenitor mass must SURVIVE generation and be readable at classify time, or
+> the round-trip fails for every remnant.**
+
+**The one thing I got right and which survives the overrule:** remnants must not be exempt from the
+round-trip test.
 
 **(ii) Does `star/red-giant` belong in the vocabulary?** NO, and this is now largely answered rather
 than open. [[B46]](a) already deleted it from the pack and made the ageing path emit

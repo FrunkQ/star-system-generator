@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.623-beta - 15th Aug 2026
+
+* Internal: reconciled the star-vocabulary order of work with the four owner decisions and the two pack-data faults found since it was written. It still said to hand-author a table of star types; it now derives them from the HR relation, stores only what cannot be computed, and records that hand-authored impossibilities are accepted and tagged rather than refused.
+
 ## v2.1.622-beta - 15th Aug 2026
 
 * Star data: found that every star type except Sun-like ones states a brightness that contradicts its own size and temperature, by up to sixty thousand times.
