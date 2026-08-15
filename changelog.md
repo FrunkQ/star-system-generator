@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.624-beta - 15th Aug 2026
+
+* Star systems: a star the catalogue gives no type for no longer gets a magnetic field invented for it. It used to borrow a default band and report about one gauss, which reads as a measurement of a weak field rather than as the absence it is.
+
 ## v2.1.623-beta - 15th Aug 2026
 
 * Internal: reconciled the star-vocabulary order of work with the four owner decisions and the two pack-data faults found since it was written. It still said to hand-author a table of star types; it now derives them from the HR relation, stores only what cannot be computed, and records that hand-authored impossibilities are accepted and tagged rather than refused.

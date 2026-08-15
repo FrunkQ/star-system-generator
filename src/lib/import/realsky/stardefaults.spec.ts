@@ -19,13 +19,55 @@ const stars = (systems: any[]) =>
   systems.flatMap((s) => s.system.nodes.filter((n: any) => n.roleHint === 'star')) as CelestialBody[];
 
 describe('completeImportedStars', () => {
-  it('every imported star gains a magnetic field and a spin tilt', () => {
+  it('every imported star of KNOWN class gains a magnetic field, and every star a spin tilt', () => {
     const { systems } = convertArchiveRows(cache, { region: { centre: SOL_CENTRE, radiusLy: 30 }, generated: 'test' });
     completeImportedStars(systems, rulePack);
     for (const s of stars(systems)) {
-      expect(s.magneticField?.strengthGauss, `${s.id} field`).toBeGreaterThan(0);
+      // B49: a star the catalogue gave no type for must not BORROW a field. It used to fall through
+      // `star/default` and draw 0.5-2 G, which reads as a measurement of a weak field rather than as
+      // the absence it is — the same fault B47(c) fixed for rotation when the age was borrowed.
+      if (s.classes?.[0] === 'star/unknown') {
+        expect(s.magneticField, `${s.id} must not borrow a field`).toBeUndefined();
+      } else {
+        expect(s.magneticField?.strengthGauss, `${s.id} field`).toBeGreaterThan(0);
+      }
+      // The tilt is drawn from a pack baseline and never from the class, so it is unaffected.
       expect(s.axial_tilt_deg, `${s.id} tilt`).toBeGreaterThanOrEqual(0);
     }
+  });
+
+  it('refuses a field for an unknown class rather than lending it the default band', () => {
+    const mk = (classes: string[] | undefined) => ({
+      system: { nodes: [{ id: `u-${classes?.[0] ?? 'none'}`, kind: 'body', roleHint: 'star', name: 'X',
+        classes, massKg: 1.989e30, radiusKm: 696340 }], age_Gyr: 4.6 } as any
+    });
+    const unknown = mk(['star/unknown']);
+    const none = mk(undefined);
+    const known = mk(['star/G']);
+    completeImportedStars([unknown, none, known] as any, rulePack);
+    expect((unknown.system.nodes[0] as any).magneticField).toBeUndefined();
+    expect((none.system.nodes[0] as any).magneticField).toBeUndefined();
+    // ...and the ordinary case is untouched: a G star still draws its own band.
+    expect((known.system.nodes[0] as any).magneticField?.strengthGauss).toBeGreaterThan(0);
+  });
+
+  // mk-lum 6.4 claimed this line took the LETTER, so a supergiant drew a dwarf's field. D19 made
+  // `classes[0]` the MOST SPECIFIC class, which fixed it — this pins that, because the entry outlived
+  // the fault and a successor would otherwise "fix" it again.
+  it('gives a supergiant its OWN field band, not its letter\'s', () => {
+    const mk = (id: string, classes: string[]) => ({
+      system: { nodes: [{ id, kind: 'body', roleHint: 'star', name: id, classes,
+        massKg: 1.989e30, radiusKm: 696340 }], age_Gyr: 4.6 } as any
+    });
+    const sup = mk('sup', ['star/M-I', 'star/M']);
+    const dwarf = mk('dwarf', ['star/M']);
+    completeImportedStars([sup, dwarf] as any, rulePack);
+    const supG = (sup.system.nodes[0] as any).magneticField.strengthGauss;
+    const dwarfG = (dwarf.system.nodes[0] as any).magneticField.strengthGauss;
+    // star/M-I is 0.1-10 G; star/M is 100-1000. A supergiant is a puffed-out, weakly-magnetised
+    // thing and must not inherit a red dwarf's kilogauss field.
+    expect(supG).toBeLessThan(50);
+    expect(dwarfG).toBeGreaterThan(50);
   });
 
   it('is deterministic per star id across independent runs', () => {

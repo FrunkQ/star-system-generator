@@ -15,6 +15,7 @@
 
 import type { CelestialBody, RulePack, System } from '$lib/types';
 import { starFieldFromPack, starTiltFromPack } from '$lib/generation/star';
+import { UNKNOWN_STAR_CLASS } from './stars.mjs';
 import { SeededRNG } from '$lib/rng';
 import { stellarRotationHours } from '$lib/physics/stellarRotation';
 
@@ -24,8 +25,19 @@ export function completeImportedStars(systems: { system: System }[], pack: RuleP
       if (node.kind !== 'body') continue;
       const star = node as CelestialBody;
       if (star.roleHint !== 'star') continue;
-      const cls = star.classes?.[0] ?? 'star/M';
-      if (!star.magneticField) {
+      // B49 — AN UNKNOWN CLASS MUST NOT BORROW A FIELD, and the `?? 'star/M'` that used to sit here
+      // was the tell. It never fired (every import path sets `classes`), but it recorded the wrong
+      // instinct, and the instinct was live one layer down: `star/unknown` has no band, so it fell
+      // through `starStatTemplate` to `star/default` and drew 0.5-2 G — a GUESS wearing the clothes
+      // of a measurement, for a star whose type the catalogue declined to state.
+      //
+      // This is the same refusal the rotation block below already makes for an unknown AGE (B47c),
+      // and for the same reason: absence must read as "not known", never as "weak". B44 established
+      // the rule in the classification path and measured the population it applies to; this is the
+      // copy that was never chased.
+      const cls = star.classes?.[0];
+      const classKnown = !!cls && cls !== UNKNOWN_STAR_CLASS;
+      if (!star.magneticField && classKnown) {
         // Same seed recipe as generateFromConfig.starSeedToBody — its own
         // stream per star so nothing else's draws shift.
         star.magneticField = starFieldFromPack(pack, cls, new SeededRNG(`${star.id}-mag`));
@@ -55,8 +67,8 @@ export function completeImportedStars(systems: { system: System }[], pack: RuleP
           radiusKm: star.radiusKm,
           ageGyr: estimated ? undefined : (entry.system as any).age_Gyr,
           roll: new SeededRNG(`${star.id}-spin`).nextFloat(),
-          isRemnant: /star\/(WD|NS|BH|BH_active|magnetar)/.test(cls),
-        isEvolved: /star\/([OBAFGKM]-(I|III)|red-giant)/.test(cls)
+          isRemnant: /star\/(WD|NS|BH|BH_active|magnetar)/.test(cls ?? ''),
+        isEvolved: /star\/([OBAFGKM]-(I|III)|red-giant)/.test(cls ?? '')
         });
         if (p != null) star.rotation_period_hours = Math.round(p * 100) / 100;
       }
