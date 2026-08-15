@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## 2.1.612-beta - 15th Aug 2026
+
+* Internal: recorded how a planet’s colour and its plant life could both be derived from the sunlight that actually reaches the ground.
+
 ## v2.1.611-beta - 15th Aug 2026
 
 * Internal: recorded a plant-pigment reference chart and what it does and does not settle about alien vegetation colour.
