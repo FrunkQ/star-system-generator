@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.613-beta - 15th Aug 2026
+
+* Internal: recorded a background effort to explain the physics pages with generated diagrams rather than prose.
+
 ## v2.1.612-beta - 15th Aug 2026
 
 * Internal: recorded how a planet’s colour and its plant life could both be derived from the sunlight that actually reaches the ground.
