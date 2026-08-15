@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.618-beta - 15th Aug 2026
+
+* Star types: settled that a GM may build any star they like, and the engine points out what is impossible about it rather than refusing.
+
 ## v2.1.617-beta - 15th Aug 2026
 
 * Star editor: recorded that moving a star’s sliders should update its type, reusing the pin-or-derive behaviour planets already have.
