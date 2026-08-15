@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.603-beta - 15th Aug 2026
+
+* Internal: two more working sessions joined the roster; corrected a stale note that said one had been retired.
+
 ## v2.1.602-beta - 15th Aug 2026
 
 * Internal: recorded which working sessions are live and what each is best placed to pick up.
