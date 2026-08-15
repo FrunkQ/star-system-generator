@@ -231,6 +231,10 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   },
 
   // --- Hazard ---
+  'star/implausible': {
+    label: 'Physically implausible',
+    description: 'A star whose own numbers contradict a law of stellar physics — it is below a fusion limit, far outside the mass band of the class it claims, brighter than its size and temperature allow, past the Eddington limit, or too heavy to hold itself up. The engine will never GENERATE such a star, but a GM may author one and keep it: the tag names which law it breaks so the choice is informed rather than silently wrong. The value is the law: no-fusion, brown-dwarf-mass, mass-outside-class, luminosity-mismatch, above-tov, above-eddington.'
+  },
   'hazard/flaring': {
     label: 'Flare hazard',
     description: 'The host star flares — episodic flares and coronal mass ejections spike radiation and can erode an unshielded atmosphere (common on active M-dwarfs).'

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.631-beta - 15th Aug 2026
+
+* Star editor: a star whose numbers contradict physics is now KEPT and explained rather than silently wrong. Drag a B-type star's mass down to 0.01 suns and you get it, tagged "Physically implausible: no-fusion" — because at that mass it cannot fuse anything at all. The tag names which law is broken, never just "invalid".
+* Six laws are checked: below deuterium burning, below hydrogen burning, far outside the mass range of the class it claims, a brightness that disagrees with its own size and temperature, past the Eddington limit, and a neutron star too heavy to hold itself up.
+* The engine still refuses to GENERATE such a star. This is only about what it accepts from you.
+
 ## v2.1.630-beta - 15th Aug 2026
 
 * Star editor: the spectral type list now names the luminosity class — "G V — Main-sequence dwarf (yellow)", "K III — Giant star (orange)", "M I — Luminous supergiant (red)" — so it is clear which entry is which. The old labels carried it implicitly and told nobody.

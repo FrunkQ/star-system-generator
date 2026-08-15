@@ -42,6 +42,7 @@ import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } f
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
+import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlausibility';
 import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
 import { brownDwarfThermal } from '../physics/substellar';
 
@@ -108,6 +109,15 @@ export class SystemProcessor implements ISystemProcessor {
             // shows: spot count and darkness, facular brightening, and how often it flares. Both
             // renderers read this tag rather than re-deriving from the raw number.
             emit(s.tags, { key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
+
+            // WHY THIS STAR IS NOT A VALID STAR (owner, 2026-08-15). REFUSE TO PRODUCE, NEVER REFUSE
+            // TO ACCEPT: the engine will not GENERATE an impossible star, but a GM may author one and
+            // gets it, with a tag naming WHICH LAW it breaks rather than the word "invalid". This pass
+            // OWNS the namespace and clears it first (TAG-6), so a fixed star loses its complaint.
+            s.tags = stripForReprocess(s.tags, [STAR_IMPLAUSIBLE_TAG]);
+            for (const bad of starImplausibilities(s, rulePack)) {
+                emit(s.tags, { key: STAR_IMPLAUSIBLE_TAG, value: bad.law });
+            }
         }
 
         // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
