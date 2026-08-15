@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.614-beta - 15th Aug 2026
+
+* Internal: recorded why plant colour cannot simply follow the brightest part of the sunlight - Earth is the counter-example.
+
 ## v2.1.613-beta - 15th Aug 2026
 
 * Internal: recorded a background effort to explain the physics pages with generated diagrams rather than prose.
