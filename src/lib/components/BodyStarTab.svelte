@@ -7,13 +7,22 @@
   import CustomImageBlock from './CustomImageBlock.svelte';
   import { resolveStarImage } from '$lib/system/starImage';
   import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
+  import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
 
   let { body, rulePack } = $props();
 
   const dispatch = createEventDispatcher();
 
   // Plain-English explanation of the current designation, rebuilt whenever the class changes.
-  const classExplanation = $derived(explainStarClass(rulePack, body?.classes?.[0] ?? 'star/G'));
+  // The star's own activity bucket, so a flare star is DESCRIBED as one. Read off the tag the
+  // processor derives (class AND age) rather than re-deriving it here — an old M dwarf is not a
+  // flare star, and only the processor knows the system's age.
+  const activityBucket = $derived(
+      (body?.tags ?? []).find((t: any) => t.key === STELLAR_ACTIVITY_TAG)?.value as string | undefined
+  );
+  const classExplanation = $derived(
+      explainStarClass(rulePack, body?.classes?.[0] ?? 'star/G', activityBucket)
+  );
 
   // --- State ---
   let massSuns = $state(0);
@@ -253,6 +262,34 @@
   // Bolometric luminosity from Stefan-Boltzmann: L/L☉ = (R/R☉)²·(T/T☉)⁴.
   let luminosity = $derived((radiusSuns ** 2) * ((tempK / 5778) ** 4));
 
+  // The four classes whose output is NOT their own surface: an accretion disc or a magnetosphere.
+  // Same list `syncRadiationFromSB` returns early on — one spelling, checked in one place.
+  // The GM's activity lever. Shows the DERIVED value until pinned, so moving it is a deliberate act
+  // rather than an accident of the slider starting somewhere arbitrary.
+  let activityValue = $state(0);
+  // Pinned-ness tracked LOCALLY. `body` is a plain node, so mutating `body.overrides` does not
+  // invalidate a `{#if body.overrides?...}` in the template — the panel kept saying "derived" after
+  // the GM had pinned it.
+  let activityPinned = $state(false);
+  let activityLabel = $derived(
+      activityValue >= 0.55 ? 'flare star' : activityValue >= 0.25 ? 'active' : activityValue >= 0.08 ? 'moderate' : 'quiet'
+  );
+  function handleActivityInput() {
+      body.overrides = { ...(body.overrides ?? {}), flareActivity: activityValue };
+      activityPinned = true;
+      dispatch('update');
+  }
+  function resetActivity() {
+      const o = { ...(body.overrides ?? {}) };
+      delete o.flareActivity;
+      body.overrides = o;
+      activityPinned = false;
+      activityValue = (body as any).flareActivity ?? 0;
+      dispatch('update');
+  }
+
+  let isNonThermal = $derived(['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass));
+
   // For a THERMAL emitter (any real star — incl. white dwarfs / red giants, but NOT accretion- or
   // non-thermal remnants), the radiated output IS that bolometric luminosity. So when the user edits
   // temperature or radius we recompute radiationOutput from Stefan-Boltzmann instead of leaving it
@@ -308,6 +345,11 @@
       }
       // Black-hole accretion slider — seed from the stored Eddington fraction (active class ⇒ a default).
       accF = (body as any).accretionEddington ?? ((body.classes?.[0] === 'star/BH_active') ? 0.5 : 0);
+      // Seed the activity lever from what the star ACTUALLY has — the GM's pin if there is one, else
+      // the value the processor derived. Starting it at zero would make the slider lie about a quiet
+      // star and make its first nudge look like a huge change.
+      activityValue = body.overrides?.flareActivity ?? (body as any).flareActivity ?? 0;
+      activityPinned = body.overrides?.flareActivity != null;
       accSliderPos = posFromF(accF);
   });
 
@@ -615,6 +657,14 @@
       // Picking a black hole from the dropdown applies the per-state presets too (event horizon
       // from mass, no-hair zero field for quiescent / disc values for feeding).
       if (val === 'star/BH' || val === 'star/BH_active') applyBHPresets(val);
+      // RE-ROLL THE LUMINOSITY FOR THE NEW CLASS (owner, 2026-08-15: it "SHOULD reroll on selection
+      // of a star class to show accurate data on a new selection"). Picking a band applies its mass,
+      // radius and temperature and used to leave `radiationOutput` at the PREVIOUS class's value —
+      // so a Sun switched to B kept 1 Lsun beside a 4.2 Rsun / 20,000 K body, which the physics
+      // plausibility pass then correctly reported as `luminosity-mismatch`. `syncRadiationFromSB`
+      // already computes it and returns early for the non-thermal remnants; it simply was not called
+      // from here.
+      syncRadiationFromSB();
       dispatch('update');
   }
 
@@ -738,27 +788,48 @@
         </div>
     </div>
 
-    <!-- RADIATION -->
+    <!-- LUMINOSITY (derived) and MAGNETIC ACTIVITY (the ionising half) — two numbers, deliberately.
+         Owner, 2026-08-15: "stars flare with little brightness change and a LOT of ionising
+         radiation. Generally they move together but not always." Exactly so: a solar flare moves
+         bolometric output by about a hundredth of a percent while X-ray output jumps by three orders
+         of magnitude. Luminosity is fixed by radius and temperature; ionising output is the dynamo's.
+         Entangling them meant sliding "radiation" up on a red giant only produced a
+         luminosity-mismatch complaint and never made it flare. -->
     <div class="form-group">
         <div class="label-row">
-            <label>Ionising Radiation Level ({radiation.toFixed(2)})</label>
-            <input type="number" step="any" bind:value={radiation} on:change={handleRadiationInput} />
+            <label>Luminosity</label>
+            {#if isNonThermal}
+                <input type="number" step="any" bind:value={radiation} on:change={handleRadiationInput} />
+            {:else}
+                <span class="derived-readout" title="Computed from radius and temperature — edit those to change it.">{radiation.toPrecision(3)} L&#9737;</span>
+            {/if}
         </div>
-        <div class="slider-container">
-            <svg class="slider-svg" width="100%" height="30">
-                {#each radZones as zone}
-                    {@const x = getLogPos(zone.start)}
-                    <line x1="{x}%" y1="5" x2="{x}%" y2="18" stroke="var(--text-faint)" stroke-width="1" />
-                    <text x="{x + 1}%" y="28" class="rad-label">{zone.name}</text>
-                {/each}
-                <rect x="{getRangePct('rad', 'start')}%" y="0" width="{getRangePct('rad', 'width')}%" height="8" fill="#22aa44" />
-            </svg>
-            <input type="range" min="0" max="1" step="0.001" bind:value={radSliderPos} on:input={updateRadiation} class="full-width-slider overlay" />
+        <div class="sub-label">
+            {#if isNonThermal}
+                Accretion- or magnetosphere-driven, so it is yours to set: nothing about this object's size and temperature predicts it.
+            {:else}
+                Derived from radius and temperature. Change either to change this.
+            {/if}
         </div>
-        <div class="sub-label">Est. Luminosity: {luminosity.toExponential(2)} L☉</div>
     </div>
 
-    <hr/>
+    <div class="form-group">
+        <div class="label-row">
+            <label>Magnetic activity ({activityLabel})</label>
+            <input type="number" step="0.01" min="0" max="1" bind:value={activityValue} on:input={handleActivityInput} />
+        </div>
+        <div class="slider-container">
+            <input type="range" min="0" max="1" step="0.01" bind:value={activityValue}
+                   on:input={handleActivityInput} class="full-width-slider" />
+        </div>
+        <div class="sub-label">
+            {#if activityPinned}
+                Set by you. <button type="button" class="link-btn inline" on:click={resetActivity}>Use the physics</button>
+            {:else}
+                Derived from class and age — a young M dwarf flares hard, an old one is quiet.
+            {/if}
+        </div>
+    </div>
 
     <!-- ROTATION -->
     <div class="form-group">
@@ -842,6 +913,7 @@
   .full-width-slider { width: 100%; margin: 0; cursor: pointer; }
   hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
   .sub-label { font-size: 0.75em; color: var(--text-faint); text-align: right; }
+  .derived-readout { width: 100px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.95em; }
   .class-explain { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
   
   .color-preview {

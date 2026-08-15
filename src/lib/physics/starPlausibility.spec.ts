@@ -2,7 +2,8 @@
 // and explained, never rejected — and that a plausible star stays silent, which matters more, because
 // a tag that fires on ordinary stars is noise a GM learns to ignore.
 import { describe, it, expect } from 'vitest';
-import { starImplausibilities, HYDROGEN_BURNING_LIMIT_SOLAR, DEUTERIUM_BURNING_LIMIT_SOLAR } from './starPlausibility';
+import { starImplausibilities, STAR_IMPLAUSIBLE_TAG, HYDROGEN_BURNING_LIMIT_SOLAR, DEUTERIUM_BURNING_LIMIT_SOLAR } from './starPlausibility';
+import { isLegacyTag, tagSource, describeTag } from '$lib/tags/tagPresentation';
 import { loadStarterPack } from '$lib/import/realsky/testPack';
 
 const pack = loadStarterPack() as any;
@@ -117,5 +118,26 @@ describe('it reads present state only, so V4 dynamic ageing cannot break it', ()
 
 	it('says nothing about a non-star', () => {
 		expect(starImplausibilities(star({ roleHint: 'planet' }), pack)).toEqual([]);
+	});
+});
+
+// THE TAG KEY IS LOad-BEARING, and the first version got it wrong in two ways at once. Both were
+// silent: the tag worked in-session because the processor re-emits it every pass.
+describe('the tag key survives a load and reads as derived', () => {
+	it('is NOT stripped as a legacy V1 tag', () => {
+		// `isLegacyTag` strips anything under `star/`, because a V1 classification stored AS a tag used
+		// that prefix. A `star/implausible` key would have vanished on load.
+		expect(isLegacyTag(STAR_IMPLAUSIBLE_TAG)).toBe(false);
+		expect(isLegacyTag('star/implausible')).toBe(true); // the shape that was wrong, pinned
+	});
+
+	it('reports as PHYSICS-derived rather than as free text the player typed', () => {
+		// An unregistered namespace falls through to "manual", which offers a GM a delete button for a
+		// tag the engine puts straight back.
+		expect(tagSource(STAR_IMPLAUSIBLE_TAG)).toBe('physics');
+	});
+
+	it('is red, because it is a complaint', () => {
+		expect(describeTag(STAR_IMPLAUSIBLE_TAG).color.toLowerCase()).toBe('#d04a44');
 	});
 });

@@ -57,6 +57,11 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   weather:      { group: 'Weather',      color: '#7fb6cc' },
   surface:      { group: 'Surface',      color: '#a98a63' },
   hazard:       { group: 'Hazard',       color: '#cc5555' },
+  // RED, and deliberately so: this namespace only ever carries "your numbers break a law of physics".
+  // It must NOT be `star/` — `isLegacyTag` strips that prefix as a V1 classification-stored-as-a-tag,
+  // and an unregistered namespace makes `tagSource` call a derived tag "manual" (user free-text, and
+  // removable by hand when the engine re-emits it every pass).
+  physics:      { group: 'Physics check', color: '#d04a44' },
   flight:       { group: 'Flight',       color: '#5a9fd4' },
   habitability: { group: 'Habitability', color: '#5bbf6a' },
   biodiversity: { group: 'Biosphere',    color: '#4fa86a' },
@@ -231,7 +236,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   },
 
   // --- Hazard ---
-  'star/implausible': {
+  'physics/implausible': {
     label: 'Physically implausible',
     description: 'A star whose own numbers contradict a law of stellar physics — it is below a fusion limit, far outside the mass band of the class it claims, brighter than its size and temperature allow, past the Eddington limit, or too heavy to hold itself up. The engine will never GENERATE such a star, but a GM may author one and keep it: the tag names which law it breaks so the choice is informed rather than silently wrong. The value is the law: no-fusion, brown-dwarf-mass, mass-outside-class, luminosity-mismatch, above-tov, above-eddington.'
   },

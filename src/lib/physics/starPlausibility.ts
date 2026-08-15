@@ -20,7 +20,10 @@ import { SOLAR_TEMPERATURE_K } from './stellar-evolution';
  * ONE namespace, owned by SystemProcessor's stellar pass (TAG-6). The VALUE names the law, so a
  * reader is told which rule is broken rather than that something is.
  */
-export const STAR_IMPLAUSIBLE_TAG = 'star/implausible';
+// NOT `star/...`: `isLegacyTag` strips that prefix, because a V1 classification stored as a tag used
+// it — so a `star/` key would be silently removed on load. `physics/` is a registered namespace with
+// its own red styling, which also makes `tagSource` report it as DERIVED rather than user free-text.
+export const STAR_IMPLAUSIBLE_TAG = 'physics/implausible';
 
 /** The physical limits below. Real constants, not tuning knobs — each has a name and a reason. */
 export const HYDROGEN_BURNING_LIMIT_SOLAR = 0.08;   // below this, no sustained hydrogen fusion

@@ -327,6 +327,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
     albedo?: number;              // Bond albedo 0..1 (else derived from makeup + cloud decks)
     gasThermalInflation?: number; // gas-giant radius inflation factor (else derived from insolation)
     radiogenicHeatK?: number;     // GM radiogenic-heat override (+K): adds surface heat AND geological vigor
+    // MAGNETIC ACTIVITY 0..1 — the ionising half of a star's output, and DELIBERATELY NOT ITS
+    // BRIGHTNESS. Luminosity is fixed by radius and temperature (exact); ionising output is driven by
+    // the magnetic dynamo, and the two decouple exactly where it matters: a flare moves a star's
+    // bolometric output by a hundredth of a percent while its X-ray output jumps a thousandfold.
+    // Derived from class and age by default; this pins it so a GM can make a quiet giant flare
+    // without pretending it got brighter.
+    flareActivity?: number;
   };
   calculatedGravity_ms2?: number;
   distanceToHost_km?: number;

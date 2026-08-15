@@ -107,7 +107,18 @@ export function sizeInWords(radiusSolar: number | undefined): string | undefined
  * Returns undefined only for a key with no letter AND no known kind — an unknown designation is
  * better left unexplained than guessed at.
  */
-export function explainStarClass(pack: RulePack | any, classKey: string): StarClassExplanation | undefined {
+export function explainStarClass(
+	pack: RulePack | any,
+	classKey: string,
+	/**
+	 * The star's activity bucket, when it is known. A FLARE STAR is worth saying out loud — owner,
+	 * 2026-08-15: "this should also change M-type to Flaring M-Type". It is not a different CLASS
+	 * (the designation is unchanged) but it is the single most consequential thing about living near
+	 * one, and it is derived: the same `stellar/activity` bucket the renderers read, which comes from
+	 * class AND age, so an old M dwarf correctly stops being described as flaring.
+	 */
+	activity?: string
+): StarClassExplanation | undefined {
 	const { letter, band, bare } = parts(classKey);
 	// A bare letter with no stated luminosity class means MAIN SEQUENCE (mk-lum 1.1), but only when
 	// there IS a letter: an unparseable key must be declined rather than defaulted, or `star/unknown`
@@ -123,10 +134,46 @@ export function explainStarClass(pack: RulePack | any, classKey: string): StarCl
 	const radiusSolar = radiusBand ? (radiusBand[0] + radiusBand[1]) / 2 : undefined;
 	const size = sizeInWords(radiusSolar);
 
-	const clauses = [kind.toLowerCase(), colour && `${colour} to human eyes`, size].filter(Boolean);
-	// Sentence case on the first clause, matching the owner's examples.
-	clauses[0] = kind;
-	return { designation, kind, colour, size, text: `${designation} (${clauses.join(', ')})` };
+	const flaring = activity === 'flare-star';
+	const headline = flaring ? `Flaring ${kind.toLowerCase()}` : kind;
+	const clauses = [headline, colour && `${colour} to human eyes`, size].filter(Boolean) as string[];
+	return { designation, kind: headline, colour, size, text: `${designation} (${clauses.join(', ')})` };
+}
+
+// A FAMOUS STAR PER DESIGNATION, so a reader has something to hang the label on — owner, 2026-08-15:
+// "re-include the star examples - eg The Sun and other well known stars along the type as examples.
+// just a famous few."
+//
+// PRESENTATION DATA, and the one thing here that genuinely CANNOT be computed: a star's fame is a
+// fact about people, not about physics. Deliberately SPARSE — an exemplar nobody recognises is worse
+// than none, so bands with no household name (K supergiants, O giants) simply have none rather than
+// being filled in for symmetry. Each is accurate to the band it sits against.
+const EXEMPLAR: Record<string, string> = {
+	'star/G': 'the Sun',
+	'star/A': 'Sirius A',
+	'star/B': 'Regulus',
+	'star/K': 'Alpha Centauri B',
+	'star/M': 'Proxima Centauri',
+	'star/F': 'Procyon A',
+	'star/O': 'Zeta Ophiuchi',
+	'star/M-I': 'Betelgeuse',
+	'star/B-I': 'Rigel',
+	'star/A-I': 'Deneb',
+	'star/F-I': 'Polaris',
+	'star/O-I': 'Alnitak',
+	'star/K-III': 'Arcturus',
+	'star/G-III': 'Capella',
+	'star/M-III': 'Mira',
+	'star/WD': 'Sirius B',
+	'star/NS': 'the Crab Pulsar',
+	'star/magnetar': 'SGR 1806-20',
+	'star/BH': 'Cygnus X-1',
+	'star/L': 'Luhman 16'
+};
+
+/** A famous star of this designation, where one is genuinely famous. */
+export function exemplarFor(classKey: string): string | undefined {
+	return EXEMPLAR[classKey];
 }
 
 // THE MK LUMINOSITY CLASS, as a reader sees it in the dropdown. A bare letter band IS main sequence
@@ -155,5 +202,6 @@ export function pickerLabel(pack: RulePack | any, classKey: string): string | un
 	const lum = luminosityClassOfKey(classKey);
 	const letter = parts(classKey).letter;
 	const head = letter ? `${letter}${lum ? ' ' + lum : ''}` : ex.designation;
-	return `${head} — ${ex.kind}${ex.colour ? ` (${ex.colour})` : ''}`;
+	const eg = exemplarFor(classKey);
+	return `${head} — ${ex.kind}${ex.colour ? ` (${ex.colour})` : ''}${eg ? ` · ${eg}` : ''}`;
 }

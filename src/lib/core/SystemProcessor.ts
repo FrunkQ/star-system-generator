@@ -102,7 +102,12 @@ export class SystemProcessor implements ISystemProcessor {
         for (const node of allNodes) {
             const s = node as CelestialBody;
             if (s.kind !== 'body' || s.roleHint !== 'star') continue;
-            s.flareActivity = flareActivity(s.classes?.[0], this.systemAgeGyr, (s as any).accretionEddington);
+            // IONISING OUTPUT IS NOT BRIGHTNESS. Derived from class and age, but a GM may pin it:
+            // stars flare with almost no change in luminosity and a great deal of ionising
+            // radiation, so the lever for "make this one dangerous" must not be the lever for "make
+            // this one brighter". F-OVR: a present key means the GM pinned it.
+            s.flareActivity = s.overrides?.flareActivity
+                ?? flareActivity(s.classes?.[0], this.systemAgeGyr, (s as any).accretionEddington);
             s.tags = stripForReprocess(s.tags, ['hazard/flaring', STELLAR_ACTIVITY_TAG]);
             if (s.flareActivity > 0.4) emit(s.tags, { key: 'hazard/flaring' });
             // MAGNETIC ACTIVITY, bucketed — the one judgement behind everything a star's surface

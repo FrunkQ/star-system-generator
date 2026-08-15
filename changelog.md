@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.632-beta - 16th Aug 2026
+
+* Star editor: brightness and magnetic activity are now two separate controls, because they are two different things. A star can flare violently with almost no change in brightness, so making one dangerous no longer means pretending it got brighter. Take a red giant up in activity and it flares.
+* Star editor: brightness is now shown as Luminosity and is worked out from radius and temperature — change either to change it. It was labelled "Ionising Radiation Level", which it never was.
+* Star editor: the spectral list names famous examples again — the Sun, Sirius A, Arcturus, Betelgeuse, Rigel — and a flaring star is described as one.
+* Star editor: picking a spectral type now re-derives the star's brightness for that type instead of keeping the previous one.
+* Star systems: the "physically implausible" tags are red, are recognised as engine-derived rather than something you typed, and no longer risk being stripped when a campaign is loaded.
+
 ## v2.1.631-beta - 15th Aug 2026
 
 * Star editor: a star whose numbers contradict physics is now KEPT and explained rather than silently wrong. Drag a B-type star's mass down to 0.01 suns and you get it, tagged "Physically implausible: no-fusion" — because at that mass it cannot fuse anything at all. The tag names which law is broken, never just "invalid".
