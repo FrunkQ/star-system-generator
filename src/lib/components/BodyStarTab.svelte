@@ -5,6 +5,7 @@
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
   import CustomImageBlock from './CustomImageBlock.svelte';
+  import { resolveStarImage } from '$lib/system/starImage';
 
   let { body, rulePack } = $props();
 
@@ -552,16 +553,15 @@
       // importer) all write at CREATION, so they cannot stomp an image that does not exist yet.
       // SystemProcessor already exempts stars from type images and already honours `custom`.
       if ((body.image as any)?.custom) return;
-      const images = rulePack?.classifier?.starImages || rulePack?.starImages;
-      // MOST SPECIFIC FIRST, then the letter. `star/M-I`, `star/M-III` and `star/K-III` have their
-      // own portraits; every other giant and supergiant deliberately falls through to its letter,
-      // which is honest — a blue supergiant does look broadly like a hot blue star, and it was the
-      // red ones that lied by showing a dwarf.
-      const letter = /^star\/([OBAFGKMLTY])-/.exec(starClass)?.[1];
-      const lookupClass = images?.[starClass] ? starClass : (letter ? `star/${letter}` : starClass);
-      if (images?.[lookupClass]) {
+      // G21 - the lookup itself lives in `system/starImage.ts` and is shared with both generators.
+      // This copy only fell back to the letter for a HYPHENATED band, so a subtype like `star/G5V`
+      // matched nothing and the editor set no portrait at all, while the generator resolved the same
+      // key to `star/G`: two doors, two answers. Leaving an existing image alone on a miss is this
+      // caller's own rule and stays here - the generators clear it instead.
+      const url = resolveStarImage(rulePack, starClass);
+      if (url) {
           if (!body.image) body.image = { url: '' };
-          body.image.url = images[lookupClass];
+          body.image.url = url;
       }
   }
 

@@ -8,6 +8,7 @@ import { bodyFactory } from '../core/BodyFactory';
 import { systemProcessor } from '../core/SystemProcessor';
 import { _generatePlanetaryBody } from './planet';
 import { starFieldFromPack, starTiltFromPack } from './star';
+import { resolveStarImage } from '../system/starImage';
 import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
 import { drawTypeForSlot, rarityOf, rarityTier } from './typeDraw';
 import { calculateOrbitalSlots } from './placement-strategy';
@@ -145,7 +146,10 @@ function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: st
   });
   if (spin != null) star.rotation_period_hours = Math.round(spin * 100) / 100;
   star.radiationOutput = Math.max(0.0001, seed.luminositySolar); // luminosity drives zones + flux
-  const img = pack.classifier?.starImages?.[classes[0]] ?? pack.classifier?.starImages?.[`star/${classes[0].split('/')[1][0]}`];
+  // G21 - one lookup, shared with the editor and generation/star.ts. This copy indexed
+  // `split('/')[1][0]` with no optional chaining and no length guard, so ANY class with no slash in
+  // it threw a TypeError and took the whole generator down with it.
+  const img = resolveStarImage(pack, classes[0]);
   star.image = img ? { url: img } : undefined;
   const tags: Tag[] = [];
   if (seed.luminositySolar > 100 && (seed as any).phase === 'main-sequence') tags.push({ key: 'hazard/flaring' });

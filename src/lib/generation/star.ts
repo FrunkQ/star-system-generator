@@ -4,6 +4,7 @@ import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange } from '../utils';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
+import { resolveStarImage, spectralLetterOf } from '../system/starImage';
 
 // The stat template for a star class, falling back from the full spectral class to its letter
 // (star/G5V -> star/G). Exported because BOTH star-creation paths need it: the legacy random
@@ -81,15 +82,10 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
 
     const radiationOutput = starTemplate?.radiation_output ? randomFromRange(rng, starTemplate.radiation_output[0], starTemplate.radiation_output[1]) : 1;
 
-    let starImage = pack.classifier?.starImages?.[starClass];
-    if (!starImage && starClass.startsWith('star/')) {
-        // Generalized fix: Truncate star/G5V -> star/G for image lookup
-        const spectral = starClass.split('/')[1];
-        if (spectral && spectral.length > 1) {
-             const baseClass = `star/${spectral[0]}`;
-             starImage = pack.classifier?.starImages?.[baseClass];
-        }
-    }
+    // G21 - one lookup, shared with the editor and generateFromConfig. This copy truncated on
+    // `spectral[0]` for any name longer than a character, so it was one pack edit away from sending
+    // `star/BH` to `star/B` - a black hole drawn as a hot blue star.
+    const starImage = resolveStarImage(pack, starClass);
 
     const tags: Tag[] = [];
     if (radiationOutput > 100) {
@@ -147,8 +143,11 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     // a `-I`/`-III` band, or nothing at all. A bare prefix test is not enough: `star/BH_active`
     // starts with a valid spectral letter and is not a B star, which is the same collision a third
     // time (it gave black holes a flare rate, and a fabricated `star/B` class here).
-    const letterMatch = /^star\/([OBAFGKMLTY])(?:\d|-(?:I|III)$|$)/.exec(starClass);
-    const baseSpectral = letterMatch ? `star/${letterMatch[1]}` : null;
+    // G21 - the SHAPE test is now `spectralLetterOf`, the same one the image lookup asks. It is the
+    // regex that used to be spelled out here, moved rather than rewritten: one spelling, two
+    // questions, so a fix to either cannot leave the other behind.
+    const baseLetter = spectralLetterOf(starClass);
+    const baseSpectral = baseLetter ? `star/${baseLetter}` : null;
     star.classes = baseSpectral && starClass !== baseSpectral ? [starClass, baseSpectral] : [starClass];
 
     star.temperatureK = starTemperatureK;

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.604-beta - 15th Aug 2026
+
+* Internal: the "which portrait does this star class get?" lookup existed three times and disagreed everywhere except the exact match. One shared resolver now, with all three copies deleted. Nothing a GM sees changes.
+* Rule packs: a star class resolves to its exact portrait first, then to its spectral letter. A pack that drops a remnant's own key (star/BH, star/WD) now gets no portrait for it rather than borrowing a main-sequence one.
+
 ## v2.1.603-beta - 15th Aug 2026
 
 * Internal: two more working sessions joined the roster; corrected a stale note that said one had been retired.

@@ -1442,6 +1442,25 @@ uniquifier that REPORTS: silently renaming would hide the next one.
 ALSO: the primary keeps `<slug>-star`, so every `parentId` and `orbit.hostId` built from it is
 unchanged — renaming the primary would have been a far larger change for no gain.
 
+### DATA-R17 ONE spelling of "what is this star class", and 'B' is why it must be a SHAPE
+WHERE: `src/lib/system/starImage.ts` — `spectralLetterOf`, `resolveStarImage`; pinned by
+`starImage.spec.ts`. Callers: `BodyStarTab.updateImage`, `generation/star.ts` (both the portrait and
+the base-class derivation), `generation/generateFromConfig.ts`.
+RULE: a star class key resolves EXACT FIRST, then its spectral letter, then nothing. Returning
+undefined is a real answer — a remnant with no portrait of its own gets NO picture rather than a
+misleading one. The letter is extracted by the DATA-R13 shape test and never by taking `[0]`.
+WHY: the lookup existed three times and disagreed everywhere except the exact hit, so the drift sat
+in the fallback that no test walks (UI-C3's lesson, different table). The editor missed subtype keys
+entirely (`star/G5V` matched nothing, so it set no portrait while the generator resolved `star/G`);
+`generateFromConfig` indexed `split('/')[1][0]` unguarded and THREW on any class with no slash.
+**AND THE OBVIOUS FIX IS THE TRAP: 'B' begins "BH" and is also a real spectral class**, so
+"first character in OBAFGKMLTY" maps `star/BH` onto `star/B` and pictures a black hole as a hot blue
+star. DATA-R13 counts three shipped bugs from that one letter; this would have been the fourth.
+BLAST: **no fixture moved when this landed, and that is the point to carry forward** — every remnant
+has its own pack key, so the exact hit always won and the fault was one pack edit away rather than
+live. A latent fallback fault produces no diff, which is exactly why nobody found it by looking at
+output. Deleting a pack key is the move that would have exposed it.
+
 ### DATA-R13 A LIST OF EXCEPTIONS GOES STALE; A TEST FOR THE PROPERTY DOES NOT
 WHERE: `generation/star.ts` (the base-spectral-class derivation and `starCategory`),
 `physics/stellar-evolution.ts` (`flareActivity`).
