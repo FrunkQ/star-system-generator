@@ -102,3 +102,56 @@ describe('BodyStarTab — picking a class applies the PACK band midpoint', () =>
 		expect(body.radiusKm / SOLAR_RADIUS_KM).toBeGreaterThan(300);
 	});
 });
+
+// G20: a star can now be given a custom picture like a planet or a construct. The class portrait is
+// re-applied from a sync $effect that runs on EVERY pass ("keep the preview image in step with the
+// spectral class"), which is the one writer of `starImages` that repeats - the three others write at
+// creation. Without the guard a GM's upload is gone before they let go of the mouse, and it would fail
+// SILENTLY: the upload appears to work and the picture reverts on the next render.
+describe('BodyStarTab — a custom star picture survives the class sync (G20)', () => {
+	const CUSTOM = 'data:image/jpeg;base64,QUJD';
+
+	it('leaves a custom image alone when the spectral class changes', async () => {
+		const body: any = makeStar(['star/G']);
+		body.image = { url: CUSTOM, custom: true, credit: 'A. Painter', license: 'CC-BY' };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		const select = container.querySelector('select')!;
+		select.value = 'star/M-I';
+		select.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(body.classes[0]).toBe('star/M-I'); // the pick really did land
+		expect(body.image.url).toBe(CUSTOM);
+		expect(body.image.credit).toBe('A. Painter'); // provenance rides along, unclobbered
+	});
+
+	it('still tracks the class when the image is NOT custom', async () => {
+		// The guard must not freeze the ordinary case - a star with a derived portrait keeps following
+		// its class, which is what the $effect exists for.
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		expect(body.image?.url).toMatch(/star_types/);
+		const select = container.querySelector('select')!;
+		select.value = 'star/WD';
+		select.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(body.image.url).toMatch(/WD/);
+	});
+
+	it('brings the class portrait back the moment Remove is pressed', async () => {
+		// NOT on the next render — that was the first version of this and it was wrong in the app. The
+		// sync $effect only re-runs when something re-renders, and with the clock paused nothing does:
+		// the GM pressed Remove and got a blank where the portrait should be. Press the real button and
+		// assert the picture is back before anything else happens. Same contract the planet has
+		// ("Remove (use type image)").
+		const body: any = makeStar(['star/M-I']);
+		body.image = { url: CUSTOM, custom: true };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		expect(body.image.url).toBe(CUSTOM);
+
+		const remove = Array.from(container.querySelectorAll('button'))
+			.find((b) => b.textContent?.trim() === 'Remove (use class image)')!;
+		expect(remove, 'the star tab must offer the shared block').toBeTruthy();
+		remove.click();
+
+		expect(body.image?.url).toMatch(/M-I/);
+		expect(body.image?.custom).toBeFalsy();
+	});
+});

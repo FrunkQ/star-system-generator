@@ -3,7 +3,7 @@
   import type { CelestialBody } from '$lib/types';
   import { THERMAL_LIMITS, DEFAULT_AEROBRAKE_LIMIT_KM_S } from '$lib/constants';
   import { fmt } from '$lib/stores';
-  import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
+  import CustomImageBlock from './CustomImageBlock.svelte';
 
   export let construct: CelestialBody;
   // Optional: lets the model dialog preview the ship's real exhaust colour while placing drives.
@@ -28,25 +28,10 @@
     dispatch('update');
   }
 
-  // F2 — optional custom image for a construct (default is the icon glyph).
-  let imgInput: HTMLInputElement;
-  async function onImageUpload(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    try {
-      const url = await fileToDownscaledDataUrl(file, 512);
-      // Keep any provenance already recorded when replacing the picture - the GM credited the
-      // artist once and should not have to do it again for a re-crop.
-      const prev = construct.image ?? {};
-      construct.image = { ...prev, url, custom: true };
-      construct = construct;
-      dispatch('update');
-    } catch { alert('Could not read that image file.'); }
-    finally { input.value = ''; }
-  }
-  function removeCustomImage() {
-    construct.image = undefined;
+  // F2 — optional custom image for a construct (default is the icon glyph). The control is
+  // CustomImageBlock (G20), shared with the planet and star tabs; this handler is only the
+  // reassignment that tells legacy reactivity the node changed.
+  function handleImageChange() {
     construct = construct;
     dispatch('update');
   }
@@ -172,39 +157,18 @@
           <span class="descriptor">2D map, and the fallback everywhere</span>
         </div>
 
-        <span class="app-label">Picture</span>
+        <!-- The picture cell is three rows tall once a photo is set, so its label rides to the top
+             rather than centring beside the provenance inputs. -->
+        <span class="app-label top">Picture</span>
         <div class="app-ctl">
-          {#if construct.image?.custom}
-            <img class="custom-thumb" src={construct.image.url} alt="Custom construct artwork" />
-          {/if}
-          <button type="button" class="img-btn" on:click={() => imgInput?.click()}>
-            {construct.image?.custom ? 'Replace…' : 'Add…'}
-          </button>
-          {#if construct.image?.custom}
-            <button type="button" class="img-btn remove" on:click={removeCustomImage}>Remove</button>
-          {/if}
-          <input type="file" accept="image/*" bind:this={imgInput} on:change={onImageUpload} hidden />
+          <CustomImageBlock
+            target={construct}
+            onUpdate={handleImageChange}
+            addLabel="Add…"
+            replaceLabel="Replace…"
+            removeLabel="Remove"
+            alt="Custom construct artwork" />
         </div>
-
-        {#if construct.image?.custom}
-          <span class="app-label">Picture credit</span>
-          <div class="app-ctl">
-            <input class="attr" type="text" placeholder="Artist or source" bind:value={construct.image.credit} on:change={handleUpdate} />
-            <select class="attr-lic" bind:value={construct.image.license} on:change={handleUpdate}>
-              <option value={undefined}>Licence…</option>
-              <option value="Own work">Own work</option>
-              <option value="Public domain">Public domain</option>
-              <option value="CC0">CC0</option>
-              <option value="CC-BY">CC-BY</option>
-              <option value="Other">Other</option>
-            </select>
-            <input class="attr" type="text" placeholder="Source URL" bind:value={construct.image.sourceUrl} on:change={handleUpdate} />
-          </div>
-          {#if construct.image.license === 'CC-BY' && !construct.image.credit}
-            <span class="app-label"></span>
-            <div class="app-ctl"><span class="warn-note">CC-BY requires naming the author.</span></div>
-          {/if}
-        {/if}
 
         <span class="app-label">3D model</span>
         <div class="app-ctl">
@@ -346,10 +310,6 @@
     text-align: center;
   }
 
-  .custom-thumb {
-    width: 48px; height: 48px; object-fit: cover; border-radius: 4px;
-    border: 1px solid var(--border); background: var(--bg-control);
-  }
   .img-btn {
     width: auto; padding: 6px 10px; font-size: 0.9em; cursor: pointer;
     background: var(--bg-control); color: var(--text);
@@ -364,12 +324,9 @@
   .app-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
   .dim-label { display: block; font-size: 0.9em; margin-bottom: 3px; }
   .app-label { font-size: 0.85em; color: var(--text-muted, #9aa4b4); white-space: nowrap; }
+  .app-label.top { align-self: start; padding-top: 8px; }
   .app-ctl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
   .app-ctl .descriptor { font-size: 0.8em; }
-  /* Provenance row: three small controls that must not shove the block wider than the panel. */
-  .app-ctl .attr { flex: 1 1 8rem; min-width: 0; font-size: 0.85em; padding: 2px 6px; }
-  .app-ctl .attr-lic { font-size: 0.85em; padding: 2px 4px; }
-  .warn-note { font-size: 0.8em; color: var(--warning, #e0b352); }
   .model-finish { font-size: 0.85em; padding: 3px 6px; }
 
   .checkbox-group { display: flex; flex-direction: column; gap: 10px; }

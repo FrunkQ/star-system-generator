@@ -1655,9 +1655,37 @@ WHERE: `catalogue/document/guideDocument.ts` (imagery branch), `ConstructPortrai
 RULE: a construct with a 3D model shows the model; without one, its uploaded photo; without that,
 its authored `icon_type` glyph. Same order in the GM pane and the player document. `imagery: 'none'`
 still means none.
+**A PHOTO IS NOT A CONSTRUCT FEATURE — the subject can be a planet, a star or a construct, and the
+display side never asks which** (G20). `catalogue/document/bodyImage.ts` reads `image.url` off any
+node and gates on SAME-ORIGIN only; the photo branch in `guideDocument` gates on the imagery mode and
+a loaded image, never on `roleHint`. So the model>photo>glyph ordering above is the CONSTRUCT arm of
+one chain, not the whole of it — a star's uploaded picture reaches the info panel, the document and
+the catalogue with no rendering work at all, which is why G20 was a UI job plus a guard and nothing
+more. Pinned by `bodyImage.spec.ts` and the star case in `guideDocument.spec.ts`.
 WHY: the order was photo-first and was corrected by owner steer ("if a construct is told to be 3D,
 display it first"). A28/A30 are the history: the wrong picture is worse than no picture.
 BLAST: any new construct-showing surface. Do not re-derive the chain locally — read these two.
+
+### UI-C4 ONE upload block, three subjects — and `custom` is what holds three DIFFERENT writers off
+WHERE: `components/CustomImageBlock.svelte`; mounted by `BodyBasicsTab`, `BodyStarTab` and
+`ConstructBasicsTab`; pinned by `CustomImageBlock.spec.ts` and the G20 block in `BodyStarTab.spec.ts`.
+RULE: `ImageRef.custom` is ONE flag read by three unrelated passes, and adding a fourth picture
+subject means finding that subject's deriving writer and teaching it the flag:
+  planet    `SystemProcessor.ts` type image — `roleHint !== 'star' && !image.custom`
+  star      `BodyStarTab.updateImage()` class portrait, called from the sync `$effect`
+  construct nothing derives one; the photo simply outranks the icon glyph (UI-C2)
+Removing clears the WHOLE `ImageRef`, never just the flag — a stale url left behind is still drawn by
+every generic `image.url` reader. **And the deriving writer must be re-run by the REMOVE itself**
+(`BodyStarTab.onPictureChange`), not left to the next render: the guard makes that call a no-op while
+a custom picture is set, so it is idempotent on upload and is the whole of the fallback on remove.
+WHY: **the star's writer runs from an `$effect` that re-fires on every pass by design, so an
+unguarded custom star image is overwritten before the GM lets go of the mouse** — a feature that
+appears to work and silently does not ([[RENDER-S19]]'s failure mode in a different costume). The
+three-writers-one-flag shape is the trap: a reviewer checks the processor, finds `custom` honoured,
+and concludes the flag is respected everywhere. It is not; each writer honours it separately.
+BLAST: a fourth subject; any new writer of `body.image`. **Leaving the fallback to a render passed a
+unit test and was wrong in the app** — with the clock paused nothing re-renders, so Remove left a
+blank where the portrait should be. Test the BUTTON, not the next class change.
 
 ### UI-C3 One shape TABLE, two emitters — and a duplicated table drifts at its FALLBACK first
 WHERE: `constructs/constructIcon.ts` — `constructIconShape` (resolver), `traceConstructIcon` (canvas

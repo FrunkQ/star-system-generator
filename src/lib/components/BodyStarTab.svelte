@@ -4,6 +4,7 @@
   import { fmt } from '$lib/stores';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
+  import CustomImageBlock from './CustomImageBlock.svelte';
 
   let { body, rulePack } = $props();
 
@@ -544,6 +545,13 @@
   }
 
   function updateImage(starClass: string) {
+      // G20 - A GM-UPLOADED PICTURE OUTRANKS THE CLASS PORTRAIT, AND THIS IS THE ONE WRITER THAT
+      // REPEATS. Called from the sync $effect above, which re-runs on EVERY pass by design; without
+      // this line a custom star image would be overwritten before the GM let go of the mouse. The
+      // other three writers of `starImages` (generation/star.ts, generateFromConfig.ts, the realsky
+      // importer) all write at CREATION, so they cannot stomp an image that does not exist yet.
+      // SystemProcessor already exempts stars from type images and already honours `custom`.
+      if ((body.image as any)?.custom) return;
       const images = rulePack?.classifier?.starImages || rulePack?.starImages;
       // MOST SPECIFIC FIRST, then the letter. `star/M-I`, `star/M-III` and `star/K-III` have their
       // own portraits; every other giant and supergiant deliberately falls through to its letter,
@@ -555,6 +563,17 @@
           if (!body.image) body.image = { url: '' };
           body.image.url = images[lookupClass];
       }
+  }
+
+  // G20 - REMOVE MUST HAND THE PICTURE BACK IMMEDIATELY, not at the next render. The guard above makes
+  // `updateImage` a no-op while a custom picture is set, so calling it here is idempotent on upload and
+  // is exactly what repopulates the class portrait on remove. Leaving it to the sync $effect looked
+  // right in a unit test and was WRONG in the app: the effect re-runs on a render, and with the clock
+  // paused nothing re-renders - the GM pressed Remove and got a blank where the portrait should be.
+  function onPictureChange() {
+      const currentClassStr = body.classes?.[0];
+      if (currentClassStr) updateImage(currentClassStr);
+      dispatch('update');
   }
 
   function updateSpectralType(e: Event) {
@@ -631,6 +650,22 @@
                 Push the magnetic field past 10¹³ G to turn this neutron star into a {currentClass === 'star/magnetar' ? '(purple) magnetar — drop it below to revert' : 'purple magnetar'}.
             </p>
         {/if}
+    </div>
+
+    <!-- PICTURE (G20). Sits directly under the spectral picker because the class is what supplies the
+         default portrait, so "replace it" reads next to the thing being replaced - the same place the
+         planet's block sits, under Type / Image. Removing the upload lets updateImage() resume and the
+         class portrait comes back. -->
+    <div class="form-group">
+        <label>Picture</label>
+        <CustomImageBlock
+            target={body}
+            onUpdate={onPictureChange}
+            addLabel="Upload custom image…"
+            replaceLabel="Replace image…"
+            removeLabel="Remove (use class image)"
+            alt="Custom image for {body.name}" />
+        <span class="sub-label">Overrides the spectral-class portrait until you remove it.</span>
     </div>
 
     <hr/>

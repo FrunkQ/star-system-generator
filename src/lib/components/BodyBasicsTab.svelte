@@ -6,7 +6,7 @@
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
   import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
   import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
-  import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
+  import CustomImageBlock from './CustomImageBlock.svelte';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
     trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored,
@@ -576,30 +576,10 @@
   function toggleAutoClassify(e: Event) { body.autoClassify = (e.currentTarget as HTMLInputElement).checked; dispatch('update'); }
 
   // F2 — custom body image. Upload a picture that replaces the derived type image; the processor leaves
-  // a custom image alone (image.custom). Removing it hands the image back to the type.
-  let imgInput: HTMLInputElement;
-  async function onImageUpload(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    try {
-      const url = await fileToDownscaledDataUrl(file, 512);
-      // Keep any provenance already recorded when the picture is replaced - the artist was
-      // credited once and a re-crop should not quietly anonymise them.
-      const prev = body.image ?? {};
-      body.image = { ...prev, url, custom: true };
-      body = body;
-      dispatch('update');
-    } catch { alert('Could not read that image file.'); }
-    finally { input.value = ''; }
-  }
-  // Provenance edits are ordinary body edits - dispatch so they save with everything else.
-  function handleImageAttrChange() {
-    body = body;
-    dispatch('update');
-  }
-  function removeCustomImage() {
-    body.image = undefined; // processor re-derives the type image next pass
+  // a custom image alone (image.custom). Removing it hands the image back to the type. The control
+  // itself is CustomImageBlock (G20) — one block shared with the star and construct tabs; this handler
+  // is only the reassignment that tells legacy reactivity the node changed.
+  function handleImageChange() {
     body = body;
     dispatch('update');
   }
@@ -944,32 +924,13 @@
             Auto-classify (physics decides the type)
         </label>
         <span class="sub-label">Sets the body's type and image. Picking one switches auto-classify off.</span>
-        <div class="custom-image">
-            {#if body.image?.custom}<img class="custom-thumb" src={body.image.url} alt="Custom image for {body.name}" />{/if}
-            <button type="button" class="link-btn" on:click={() => imgInput?.click()}>{body.image?.custom ? 'Replace image…' : 'Upload custom image…'}</button>
-            {#if body.image?.custom}<button type="button" class="link-btn" on:click={removeCustomImage}>Remove (use type image)</button>{/if}
-            <input type="file" accept="image/*" bind:this={imgInput} on:change={onImageUpload} style="display:none" />
-        </div>
-        {#if body.image?.custom}
-            <!-- Provenance for an UPLOADED picture. It travels with the save (ATTRIBUTIONS.md in
-                 a save bundle), because a campaign gets handed to players and posted publicly -
-                 and CC-BY is an obligation, not a preference. -->
-            <div class="custom-image img-attr">
-                <input class="attr" type="text" placeholder="Artist or source" bind:value={body.image.credit} on:change={handleImageAttrChange} />
-                <select class="attr-lic" bind:value={body.image.license} on:change={handleImageAttrChange}>
-                    <option value={undefined}>Licence…</option>
-                    <option value="Own work">Own work</option>
-                    <option value="Public domain">Public domain</option>
-                    <option value="CC0">CC0</option>
-                    <option value="CC-BY">CC-BY</option>
-                    <option value="Other">Other</option>
-                </select>
-                <input class="attr" type="text" placeholder="Source URL" bind:value={body.image.sourceUrl} on:change={handleImageAttrChange} />
-            </div>
-            {#if body.image.license === 'CC-BY' && !body.image.credit}
-                <span class="sub-label warn-note">CC-BY requires naming the author.</span>
-            {/if}
-        {/if}
+        <CustomImageBlock
+            target={body}
+            onUpdate={handleImageChange}
+            addLabel="Upload custom image…"
+            replaceLabel="Replace image…"
+            removeLabel="Remove (use type image)"
+            alt="Custom image for {body.name}" />
     </div>
 </div>
 
@@ -1161,12 +1122,6 @@
   .mk-num { width: 52px; padding: 2px 4px; font-size: 0.85em; }
   .mk-pct { font-size: 0.8em; color: var(--text-faint); }
   .compress-note { margin: 2px 0 0; font-size: 0.72em; color: var(--text-faint); line-height: 1.4; }
-  .custom-image { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-  .custom-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
-  /* Three small controls that must not push the panel wider than its column. */
-  .img-attr .attr { flex: 1 1 8rem; min-width: 0; font-size: 0.85em; padding: 2px 6px; }
-  .img-attr .attr-lic { font-size: 0.85em; padding: 2px 4px; }
-  .warn-note { color: var(--warning, #e0b352); }
   .sc-derived-val { min-width: 90px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
   .sc-derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
   .sc-ovr-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }

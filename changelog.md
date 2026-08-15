@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.601-beta - 15th Aug 2026
+
+* Stars can be given a custom picture, the way planets and constructs already could. It is on the star's Details tab, under the spectral picker; Remove hands the picture back to the spectral-class portrait.
+* A custom star picture now survives changing the spectral class — previously the class portrait was re-applied on every pass, so an upload would have been overwritten immediately.
+* Internal: the upload control existed twice, once for planets and once for constructs. It is now ONE shared block serving all three, with both copies deleted.
+
 ## v2.1.600-beta - 15th Aug 2026
 
 * Internal: settled the missing-liquids question — nothing was lost, the console message was a deliberate optional check working as designed.

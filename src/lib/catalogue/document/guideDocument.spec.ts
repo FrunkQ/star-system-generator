@@ -54,6 +54,22 @@ describe('buildGuideDocument', () => {
     expect(photoWithImg.some((b) => b.kind === 'image')).toBe(true);
   });
 
+  // G20: a STAR can now carry a GM-uploaded picture, and the open question was whether that picture
+  // reaches the reader-facing surfaces at all — UI-C2's chain is written for constructs, and nothing
+  // said a star was allowed a photo. It is: the photo branch keys on the imagery mode and a loaded
+  // image, never on roleHint, so a star's picture is drawn on exactly the same terms as a planet's.
+  // That is why the star tab needed no rendering work, only the upload control and the class-sync guard.
+  it('draws a STAR photo on the same terms as a planet, and its disc when told to', () => {
+    const photo = buildGuideDocument(system, 'star', { imagery: 'photo', image: {} as any, imageAspect: 1.5 });
+    expect(photo.some((b) => b.kind === 'image')).toBe(true);
+    expect(photo.some((b) => b.kind === 'constructGlyph')).toBe(false);
+
+    // And the non-photo modes are unchanged for a star — it still gets the body-graphic gap.
+    const disc = buildGuideDocument(system, 'star', { imagery: 'disc' });
+    expect(disc.some((b) => b.kind === 'bodyDisc')).toBe(true);
+    expect(buildGuideDocument(system, 'star', { imagery: 'none' }).some((b) => b.kind === 'image')).toBe(false);
+  });
+
   // A30: a construct is illustrated with its OWN authored glyph, never a world's disc (A28), and never
   // a blank where a picture belongs. A GM photo still outranks it.
   it('draws a construct as its icon glyph, not a body disc', () => {
