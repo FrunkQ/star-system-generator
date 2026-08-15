@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.627-beta - 15th Aug 2026
+
+* Star systems: a star's brightness is now worked out from its size and temperature instead of being stored as a separate figure that could disagree with them. It did disagree: only the Sun-like band was self-consistent, and red dwarfs were being generated up to sixty thousand times too bright.
+* Star systems: because red dwarfs are now correctly faint, their planets sit where a faint star's planets should, and their systems are smaller.
+* Star systems: white dwarfs come out around a twentieth of the Sun's brightness, which is what Sirius B actually is, rather than the five to fifty suns the old figure claimed.
+
 ## v2.1.626-beta - 15th Aug 2026
 
 * Star generation: figures that span several orders of magnitude — a neutron star's magnetic field, for one — are now drawn evenly across that range instead of piling up at the top. A neutron star's field could span a thousandfold and in practice almost never left the top tenth of it.

@@ -90,12 +90,35 @@ describe('starClasses — the D-type test is case-sensitive', () => {
 
 describe('the invariant: a supergiant must not come back a dwarf', () => {
 	// (1) SEPARATION — the assertion that failed for every letter before this patch.
-	it.each(LETTERS)('%s: a supergiant is a different band from a dwarf, and >=10x as luminous', (L) => {
+	it.each(LETTERS)('%s: a supergiant is a different band from a dwarf, and more luminous', (L) => {
 		const giant = starParamsFromType(`${L}2I`, st)!;
 		const dwarf = starParamsFromType(`${L}2V`, st)!;
 		expect(giant.massMsun).not.toBe(dwarf.massMsun);
 		expect(giant.radiusRsun).toBeGreaterThan(dwarf.radiusRsun);
-		expect(giant.luminosity! / dwarf.luminosity!).toBeGreaterThanOrEqual(10);
+		// This used to demand >=10x for EVERY letter. That threshold was safe only while luminosity
+		// was an independently invented band; now it is computed from the band's own radius and
+		// temperature (B57) and O fails it at 5.0x — correctly. See the test below.
+		expect(giant.luminosity!).toBeGreaterThan(dwarf.luminosity!);
+	});
+
+	// (1b) AND THE SIZE OF THE SEPARATION IS ITSELF PHYSICS, so it is asserted rather than left to
+	// a blanket threshold. Computed from the pack's own bands: M 6.1e6x, K 8.3e4x, G 7.0e3x,
+	// A 1.1e4x, B 187x, O 5.0x. The gap COLLAPSES toward the hot end, and that is real — a hot
+	// main-sequence star is already enormous, so evolving off the main sequence adds little, while a
+	// feeble M dwarf becomes a vast red supergiant. Reality agrees: a real O5V is about 4e5 Lsun and
+	// an O9I about 5e5, barely a factor apart, which is why O luminosity classes are separated by
+	// line profiles rather than by brightness.
+	it('separates cool letters enormously and hot letters barely, which is the real behaviour', () => {
+		const ratio = (L: string) =>
+			starParamsFromType(`${L}2I`, st)!.luminosity! / starParamsFromType(`${L}2V`, st)!.luminosity!;
+		for (const L of ['M', 'K', 'G', 'F', 'A']) expect(ratio(L), L).toBeGreaterThan(1000);
+		expect(ratio('B')).toBeGreaterThan(50);
+		expect(ratio('O')).toBeGreaterThan(1);
+		expect(ratio('O')).toBeLessThan(20);
+		// Monotone from cool to hot, which is the property a future band edit must not break.
+		expect(ratio('M')).toBeGreaterThan(ratio('K'));
+		expect(ratio('K')).toBeGreaterThan(ratio('B'));
+		expect(ratio('B')).toBeGreaterThan(ratio('O'));
 	});
 
 	// (2) THE NAMED WORKED EXAMPLE. Pinned by name because it is the reported case.

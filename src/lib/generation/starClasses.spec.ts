@@ -19,7 +19,11 @@ describe('the red-giant divergence is gone', () => {
 	it('a GENERATED red giant and an IMPORTED one now agree exactly', () => {
 		const generated = starStatTemplate(pack, 'star/M-III');
 		const imported = starParamsFromType('M3III', st)!;
-		expect(imported.luminosity).toBe(mid(generated.radiation_output));
+		// B57: neither side stores luminosity any more - both COMPUTE it from the same radius and
+		// temperature, so "agree exactly" is now true by construction rather than by two bands
+		// happening to match. That is the point of the change: a derived quantity cannot drift.
+		const expectedL = Math.pow(mid(generated.radius_solar), 2) * Math.pow(mid(generated.temp_k) / 5778, 4);
+		expect(imported.luminosity).toBeCloseTo(expectedL, 6);
 		expect(imported.massMsun).toBe(mid(generated.mass_solar));
 		expect(imported.radiusRsun).toBe(mid(generated.radius_solar));
 	});

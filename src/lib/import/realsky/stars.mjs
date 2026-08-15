@@ -77,7 +77,13 @@ export function starParamsFromType(type, statTemplates, { otype } = {}) {
     massMsun: mid(band.mass_solar),
     radiusRsun: mid(band.radius_solar),
     temperatureK: Math.round(mid(band.temp_k)),
-    luminosity: band.radiation_output ? mid(band.radiation_output) : undefined,
+    // B57: L = 4(pi)R^2(sigma)T^4 is exact, so luminosity is COMPUTED from the band's own radius and
+    // temperature rather than read from a second figure that could disagree with them - and did, by
+    // up to 60,000x. A band that still STATES a radiation_output is declaring that its luminosity is
+    // not thermal (a black hole's accretion disc, a neutron star's spin-down), and that figure wins.
+    luminosity: band.radiation_output
+      ? mid(band.radiation_output)
+      : luminositySolarFrom(mid(band.radius_solar), mid(band.temp_k)),
     ...(lum ? { luminosityClass: lum } : {}),
     typicalForClass: true
   };
@@ -102,6 +108,14 @@ const LUMINOSITY_BAND = {
   III: 'III',
   IV: 'V', V: 'V', VI: 'V', VII: 'V'
 };
+
+// L/Lsun = (R/Rsun)^2 * (T/Tsun)^4 - Stefan-Boltzmann with the solar constants cancelled out. The
+// ONE spelling of it on the import side; the generator computes the same quantity the same way.
+const SOLAR_TEMPERATURE_K = 5778;
+export function luminositySolarFrom(radiusRsun, temperatureK) {
+  if (!(radiusRsun > 0) || !(temperatureK > 0)) return undefined;
+  return Math.pow(radiusRsun, 2) * Math.pow(temperatureK / SOLAR_TEMPERATURE_K, 4);
+}
 
 export function luminosityClassOf(type) {
   return parseStellarType(type)?.band;

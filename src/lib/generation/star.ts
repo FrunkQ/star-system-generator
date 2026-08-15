@@ -3,6 +3,7 @@ import type { CelestialBody, RulePack, ID, Tag } from '../types';
 import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange, drawFromBand } from '../utils';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
+import { SOLAR_TEMPERATURE_K } from '../physics/stellar-evolution';
 import { bodyFactory } from '../core/BodyFactory';
 import { resolveStarImage, spectralLetterOf } from '../system/starImage';
 
@@ -85,12 +86,24 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
         starMagneticField = starFieldFromPack(pack, starClass, rng);
     }
 
-    // B56 - same rule: star/M's radiation_output spans 0.8..1500. (B57 records that this figure
-    // should not be a band at all, because luminosity is DERIVABLE from radius and temperature -
-    // that is a larger change and is step 5 of the vocabulary work.)
+    // B57 - LUMINOSITY IS NOT A FREE PARAMETER. L = 4(pi)R^2(sigma)T^4 is exact, so a star's
+    // luminosity is DETERMINED by the radius and temperature drawn two lines above. Storing it as an
+    // independent band let it drift: measured across the shipped main sequence, `star/G` agreed with
+    // its own R and T to within 1% and NOTHING ELSE DID - out to 60,000x on `star/M`, 900x on
+    // `star/O` and 470x on `star/WD`, whose computed 0.058 Lsun is Sirius B almost exactly. Someone
+    // calibrated on the Sun and never checked the general law.
+    //
+    // THE PRESENCE OF A BAND IS NOW THE DECLARATION THAT L CANNOT BE COMPUTED, which is B57's rule
+    // ("a band carries only what cannot be computed") expressed as data rather than as a list of
+    // class names in code. Only four bands keep one, and each is genuinely NON-THERMAL: a black hole
+    // emits from its accretion disc and a neutron star or magnetar from spin-down and its
+    // magnetosphere, neither of which is R^2 T^4 of the object itself. Everything else computes.
+    const thermalLumSolar = (starRadiusKm > 0 && starTemperatureK > 0)
+        ? Math.pow(starRadiusKm / SOLAR_RADIUS_KM, 2) * Math.pow(starTemperatureK / SOLAR_TEMPERATURE_K, 4)
+        : 0;
     const radiationOutput = starTemplate?.radiation_output
         ? drawFromBand(rng, [starTemplate.radiation_output[0], starTemplate.radiation_output[1]], starTemplate.radiation_output_scale)
-        : 1;
+        : (thermalLumSolar || 1);
 
     // G21 - one lookup, shared with the editor and generateFromConfig. This copy truncated on
     // `spectral[0]` for any name longer than a character, so it was one pack edit away from sending

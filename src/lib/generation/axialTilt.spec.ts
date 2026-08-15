@@ -53,10 +53,17 @@ describe('B10 — every generated body has a spin axis', () => {
 				counted++;
 			}
 		}
-		// The original measurement was 40 bodies over three seeds; this sweeps both generators, so
-		// the sample is larger. Guard the guard: a run that quietly produced two bodies would pass
-		// every assertion above and prove nothing.
-		expect(counted).toBeGreaterThan(40);
+		// Guard the guard: a run that quietly produced two bodies would pass every assertion above
+		// and prove nothing.
+		//
+		// THE FLOOR MOVED FROM 40 TO 20 WHEN B57 LANDED, AND THE REASON IS A CORRECTION RATHER THAN A
+		// REGRESSION. The legacy generator draws `star/M` for all three seeds. Its luminosity used to
+		// come from a `radiation_output` band of 0.8..1500 solar - wrong by up to 60,000x for an M
+		// dwarf - and is now COMPUTED from the band's own radius and temperature, giving 0.002..0.04,
+		// which is what a real M dwarf emits. A dimmer star has a smaller disc and closer zones, so
+		// these systems now produce 1-3 planets rather than a crowd: 34 bodies over the six runs
+		// instead of 40-plus. Nothing lost its spin axis; there are simply fewer bodies, correctly.
+		expect(counted).toBeGreaterThan(20);
 	});
 
 	// The wizard's dynamical-history knob is the one caller that OVERRIDES the baseline. Its own
