@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.606-beta - 15th Aug 2026
+
+* Star systems: an imported star with no known class no longer quietly inherits a red dwarf's magnetic field.
+
 ## v2.1.605-beta - 15th Aug 2026
 
 * Internal: scoped the star classification rewrite and listed the related fixes it should absorb.
