@@ -1,11 +1,10 @@
 # Changelog
 
 All notable changes are listed here:
-## 2.1.610-beta - 15th Aug 2026* Internal: recorded a plant-pigment reference chart and what it does and does not settle about alien vegetation colour.
-## 2.1.609-beta - 15th Aug 2026* Internal: answered three open questions about the star data from the project history, and recorded that flare-style descriptive data should be tags.
 
-## v2.1.610-beta - 15th Aug 2026
+## v2.1.611-beta - 15th Aug 2026
 
+* Internal: recorded a plant-pigment reference chart and what it does and does not settle about alien vegetation colour.
 
 ## v2.1.610-beta - 15th Aug 2026
 
