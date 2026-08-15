@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.608-beta - 15th Aug 2026
+
+* Internal: noted that the existing HR diagram already answers the luminosity-class question the classification rewrite was about to rebuild.
+
 ## v2.1.607-beta - 15th Aug 2026
 
 * Internal: extended the existing type-vocabulary design rather than starting a new one, and corrected it — it recorded two ad-hoc star classifiers where there are three.
