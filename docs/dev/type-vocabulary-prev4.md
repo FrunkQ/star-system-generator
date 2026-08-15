@@ -205,6 +205,42 @@ type is not over-engineering here, it is the minimum that works.
 supergiants and looks like progress. The reference table above should land as a fixture FIRST
 (section 6 step 1), so any replacement is measured rather than argued.
 
+### 9.1b The deciders DIVERGE — [[B50]]'s measurement, run 2026-08-15
+
+The table above measures `classifyStar` against published truth. [[B50]] asks a different and sharper
+question: **do `classifyStar` and the PACK BANDS agree with each other?** Measured by taking every
+`statTemplates` star band, computing its midpoint (the value the editor actually applies when a GM
+picks that class), deriving L from the band's own radius and temperature, and asking `classifyStar`
+what it is. **They diverge on 9 of 29 keys — 7 of 24 non-remnant bands plus 2 remnants.** Not latent.
+
+| Pack key | claims | `classifyStar` says | |
+|---|---|---|---|
+| `star/O` | V | **I** Blue Supergiant | the pack's own O MAIN-SEQUENCE band |
+| `star/B` | V | **II** Bright Giant | likewise |
+| `star/O-I` | I | **0** Hypergiant | overshoot |
+| `star/B-I` | I | **0** Hypergiant | overshoot |
+| `star/O-III` | III | **0** Hypergiant | a GIANT called a hypergiant |
+| `star/B-III` | III | **II** Bright Giant | |
+| `star/G-I` | I | **II** Bright Giant | |
+| `star/NS` | X | **VII** White Dwarf | see below |
+| `star/magnetar` | X | **VII** White Dwarf | see below |
+
+The seventeen that agree are the cool and middle main sequence (`A F G K M L T Y`), the cool giants
+and supergiants (`A/F/G/K/M-III`, `A/F/K/M-I`), `WD` and `BH`. **Every disagreement is at the hot end
+or in a remnant** — the same systematic shape as 9.1, arriving from a completely different direction,
+which is what makes it evidence rather than coincidence.
+
+**AND A SEPARATE BUG FALLS OUT, worth its own line because it is not the ordering fault.**
+`classifyStar`'s remnant branch tests `mSolar > 8.0 => Neutron Star` and `> 25 => Black Hole`. Those
+are **PROGENITOR** masses applied to the **REMNANT's own** mass. A real neutron star is 1.4-2.2 solar
+masses, so it can never satisfy `> 8` — every neutron star and magnetar falls through to White Dwarf.
+The pack's `star/NS` band midpoint is 1.80, and it classifies as `VII White Dwarf`. `star/BH` only
+passes because its band midpoint happens to be 51.5. **This is the same class of error as [[B49]] and
+mk-lum 6.4: a quantity used in the wrong frame, silently.**
+
+**So B50's answer is DIVERGENT, not latent** — and that settles its own instruction: this is a bug to
+fix as part of the rewrite, not an engine-map note to defer.
+
 ### 9.2 Four creation paths, and two of them invent a category
 
 Section 2 covers the inverse; the forward has the same problem. `generation/star.ts:119` draws a pack
@@ -315,6 +351,92 @@ precisely where it is weakest. **The lesson for this workstream: every claim in 
 re-run before it is built on, not read.** The measurements in 9.1-9.3 were taken on 2026-08-15 and
 carry the same expiry.
 
-Related: [[B48]], [[B49]], [[D11]], [[D18]], [[D19]], [[D22]], [[G21]], DATA-R8, [[DATA-R10]], [[DATA-R13]],
+## 10. The match bands are REGIONS ON THE HR SURFACE, not a table — [[B50]]
+
+Owner, correcting the coordinator: *"is that not the calibrated HR diagram we already have — clicking
+on there should provide luminosity class"*. He is right, and it **strikes the 700-cell grid from
+[[B46]](b) as the wrong mental model.** The anchor surface is not something to build: `classifyStar`
+is the forward map, `deriveStarFromHR` is the inverse, and `HRDiagram.svelte:70` already calls the
+inverse on click. [[GEN-1]] preserves that path deliberately, so none of it is dead code to tidy.
+
+**A designation does not need a cell in a table; it needs a POSITION on a surface that exists.**
+Letter plus subclass gives a temperature along a smooth ladder; the luminosity class selects which
+branch. **Two one-dimensional interpolations, not a two-dimensional grid** — and the branches are
+already drawn. That also disposes of "do not hand-author ~700 cells": there is nothing to author.
+
+**The consequence for section 4's three faces:** the HR relation becomes THE single source, and the
+pack's bands are expressed as **regions on it** rather than as a second independent table. Section 4
+says what the record's faces are; this says what the MATCH BANDS are MADE OF. And it explains 9.1b —
+the pack and the classifier diverge precisely because they are two independent tables today.
+
+**The relation is already spelled five times**, which is the same detector firing as everywhere else
+in this document: `classifyStar` (HR position), the pack bands (mass/radius/temperature),
+`SPECTRAL_DATA` in `BodyStarTab.svelte` (the editor), `determineSpectralClass` (temperature to
+letter), and `GenerationWizard.svelte:95`, which inverts the main-sequence law INLINE with the
+comment *"invert the main-sequence L(T) used by classifyStar"* — a fifth spelling, hand-reconciled at
+a call site. **Whatever replaces `msExpectedLogL` must be exported once and consumed by all five.**
+
+**And replacing it is free** ([[B51]]): `git log -S "msExpectedLogL"` over all branches returns
+exactly two commits — `569e09f FEAT: HR-diagram Creation` and a documentation commit. `6.5*logT-24.5`
+is a first pass, never revised, fitted to nothing. There is no calibration to preserve and no
+regression to fear; the reference stars in 9.1 are the acceptance test.
+
+## 11. The fourth face — non-physical star data becomes TAGS ([[B52]])
+
+Owner: *"use tags to describe flaring behaviour and other star data that is not physical and can be
+rederived from stellar properties — emission jets, etc."*
+
+**This generalises a pattern that already works end to end; it does not design a new one.** Read the
+worked example before writing anything: `SystemProcessor.ts:98` derives `flareActivity` for EVERY
+star, `stellarActivityBucket()` buckets it, it rides as `STELLAR_ACTIVITY_TAG`, and
+`galleryExamples.ts:231` records that *"spot groups, faculae and flares all read from that tag"*.
+Physics drives tags drives visuals, running on a star today, for exactly one attribute.
+
+**THE TEST, and without it tags become a second store:**
+
+> **Re-derivable from stellar properties on every pass => TAG, never stored as truth.
+> An INPUT => DATA.**
+
+Flaring, emission jets, spot coverage and activity cycles are the first candidates. **[[B9]](b)'s
+magnetism is the boundary case worth naming rather than assuming:** today it is pack data keyed on
+the LETTER (`stardefaults.ts:27`, and see [[B49]]), and "derived or authored" is the same question in
+a different hat. Decide it explicitly; do not let it fall out of whichever code gets written first.
+
+**What this kills, concretely:** flare behaviour matched off the CLASS STRING — the `/[WNB]/`
+collision in [[DATA-R13]] where a quiescent black hole drew a B-star flare rate. **That is the third
+fault from the same letter**, after `star/BH`'s image lookup ([[G21]]) and the fabricated `star/B`
+class. Deriving from properties rather than from the class string removes the whole family.
+
+**HARD CONSTRAINTS.** Tag STORAGE is the tagging workstream's live territory and section 7 already
+lists it as an explicit non-goal — use the existing machinery, do not invent a parallel one. And
+[[TAG-6]]: **a namespace is cleared by the pass that owns it, ONCE**, so a derived `star/*` namespace
+needs exactly one owning pass, NAMED in the spec. `SystemProcessor`'s stellar pass is the obvious
+candidate since it already owns `STELLAR_ACTIVITY_TAG`.
+
+## 12. Answers from the repo, not from memory ([[B51]])
+
+**`starCategory`: DELETE, do not promote.** It was not aspirational — `587abd3` introduced it driving
+`VISUAL_SCALING[body.starCategory]`, a real renderer consumer, and `ed82a6e "replaced render system"`
+deleted that reader; the type declaration went with `43e2f4d`. Then `d5237d7 Phase A` RE-INTRODUCED
+it as `categoryForClass(classes[0])`. **A fossil that was re-fossilised.** Deletion is a READ-PATH
+removal plus tolerating the field on load, because it is serialised into saved systems. **And note
+what the reintroduction derives from: `classes[0]`, the LETTER** — the class-from-class direction
+section 9.4 forbids, so it is evidence for the arrow rather than a counter-example to it.
+
+**`star/G`: a live contradiction between two shipped artefacts, and the fork DISSOLVES.**
+`mk-luminosity-patch-spec.md` section 1.1 says *"`star/M` continues to mean 'M, main sequence'"*.
+`stellarTypeForBand`'s comment says a bare letter means luminosity UNSTATED and *"must stay
+distinguishable from one stated as V"*. Both shipped; both are right, about different things:
+
+> The **KEY** `star/G` is a PARAMETER BAND and means G main sequence.
+> The parsed **`stellarType.luminosity`** is PROVENANCE and records what the SOURCE stated —
+> **absent is not 'V'.**
+
+That is [[DATA-R4]] (the importer never invents and never overwrites) applied to the luminosity axis,
+and it satisfies both comments without either giving way. **Still the owner's call, because it decides
+what a figure CLAIMS — but the choice is whether to accept this reconciliation, not which artefact to
+sacrifice.**
+
+Related: [[B48]], [[B49]], [[B50]], [[B51]], [[B52]], [[D11]], [[D18]], [[D19]], [[D22]], [[G21]], DATA-R8, [[DATA-R4]], [[DATA-R10]], [[DATA-R13]], [[GEN-1]], [[TAG-6]],
 [[DATA-R17]], `docs/dev/v4-scope.md`, `docs/dev/mk-luminosity-patch-spec.md`,
 `docs/dev/architecture-physics-tags-visuals.md`, `docs/dev/generation-duplication-map.md`.

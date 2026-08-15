@@ -1,7 +1,15 @@
 # Changelog
 
 All notable changes are listed here:
-## 2.1.609-beta - 15th Aug 2026* Internal: answered three open questions about the star data from the project history, and recorded that flare-style descriptive data should be tags.
+
+## v2.1.610-beta - 15th Aug 2026
+
+* Internal: measured the star classifier against the rule pack's own star bands. They disagree on 9 of 29 — every hot-end band, plus neutron stars and magnetars, which the classifier calls white dwarfs because it tests a remnant's mass against the mass of the star it came from.
+* Internal: recorded that the calibrated HR diagram already is the classification surface, so a star designation needs a position on it rather than a new table.
+
+## v2.1.609-beta - 15th Aug 2026
+
+* Internal: answered three open questions about the star data from the project history, and recorded that flare-style descriptive data should be tags.
 
 ## v2.1.608-beta - 15th Aug 2026
 

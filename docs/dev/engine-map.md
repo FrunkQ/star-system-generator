@@ -1442,6 +1442,24 @@ uniquifier that REPORTS: silently renaming would hide the next one.
 ALSO: the primary keeps `<slug>-star`, so every `parentId` and `orbit.hostId` built from it is
 unchanged — renaming the primary would have been a far larger change for no gain.
 
+### PHY-9 An ageing profile is keyed on MASS, never on the star's TYPE
+WHERE: the [[B48]] star-classification workstream; `docs/dev/type-vocabulary-prev4.md` section 9.4.
+The pattern it protects is PHY-1's corollary — a derived CLASS is never a physics input.
+RULE: **ageing PRODUCES state (T, L, mass, radius); classification READS state; nothing reads the
+class back out.** An ageing profile is selected by the star's MASS, never by `body.classes`, and
+classification may not consult anything ageing wrote downstream of it.
+WHY: **THE REQUIREMENT'S OWN WORDING POINTS THE WRONG WAY, WHICH IS THE ONLY REASON THIS ENTRY
+EXISTS.** The owner's form is *"each star has an ageing profile"*, which reads naturally as
+profile-keyed-by-TYPE — and that closes the loop. The physics says otherwise and resolves it: a star
+does not evolve as it does BECAUSE it is a G dwarf; it is a G dwarf because of the mass that also
+sets how it evolves. Mass is upstream of both, so keying on it is both correct and one-way.
+The same class-from-class direction is already the fault in three shipped places — `starCategory =
+categoryForClass(classes[0])` ([[B51]]), `stardefaults.ts:27` reading `classes[0] ?? 'star/M'`
+([[B49]]) and mk-lum 6.4 — so it is a habit, not a slip.
+BLAST: rolling ageing into classification puts the two in one room. If the loop closes,
+`src/lib/system/idempotence.test.ts` is the only thing that will tell you, and it will tell you late.
+Settle the direction before writing code, not after.
+
 ### DATA-R17 ONE spelling of "what is this star class", and 'B' is why it must be a SHAPE
 WHERE: `src/lib/system/starImage.ts` — `spectralLetterOf`, `resolveStarImage`; pinned by
 `starImage.spec.ts`. Callers: `BodyStarTab.updateImage`, `generation/star.ts` (both the portrait and
