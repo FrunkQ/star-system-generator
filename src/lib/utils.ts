@@ -20,6 +20,51 @@ export function randomFromRange(rng: SeededRNG, min: number, max: number): numbe
   return rng.nextFloat() * (max - min) + min;
 }
 
+/**
+ * A rule-pack band: `[lo, hi]`.
+ *
+ * NOT every range is a band. Angles, eccentricities and multipliers go through `randomFromRange`
+ * directly and must stay linear — `M0_rad: randomFromRange(rng, 0, 2 * Math.PI)` is an angle, and
+ * "infer a log scale from the ratio" would be nonsense for it. A BAND is a per-type figure the pack
+ * states about a body, and that is the only thing this file's scale rule applies to.
+ */
+export type PackBand = [number, number];
+
+/**
+ * Two decades. Below this a linear draw is honest — mass 1.4..2.2, a radius within a factor of two.
+ * Above it, a linear draw puts its median at about hi/2 REGARDLESS of how many decades it spans, so
+ * the bottom of the range effectively never occurs and the band advertises what it will not produce.
+ */
+export const BAND_LOG_RATIO = 100;
+
+/**
+ * Does this band span enough decades that a linear draw would misrepresent it?
+ * Explicit `scale` always wins; inference is the default so a NEW band cannot silently reintroduce
+ * the fault (inbox B56 — 23 shipped bands span 100x or more and every one was drawn linearly).
+ */
+export function bandIsLog(band: PackBand, scale?: 'log' | 'linear'): boolean {
+  if (scale) return scale === 'log';
+  const [lo, hi] = band;
+  if (!(lo > 0) || !(hi > 0)) return false; // a log draw needs a positive floor
+  return hi / lo >= BAND_LOG_RATIO;
+}
+
+/**
+ * Draw a value from a pack band, log-uniform when the band spans decades.
+ *
+ * THE MEASURED CASE THAT MOTIVATES IT: `star/NS`'s field band is 1e8..1e11 gauss. Drawn linearly,
+ * P(below 1e9) is about 0.9% — so ~99% of neutron stars come out at 1e10..1e11 and a recycled
+ * millisecond pulsar essentially never generates. Log-uniform gives each decade equal weight, which
+ * is what a band spanning decades means when someone writes it down.
+ *
+ * This is also the ONE spelling of the log draw: `planet.ts` hand-rolled it twice.
+ */
+export function drawFromBand(rng: SeededRNG, band: PackBand, scale?: 'log' | 'linear'): number {
+  const [lo, hi] = band;
+  if (!bandIsLog(band, scale)) return randomFromRange(rng, lo, hi);
+  return Math.exp(randomFromRange(rng, Math.log(lo), Math.log(hi)));
+}
+
 export function toRoman(num: number): string {
     const roman = {
         M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1

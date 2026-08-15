@@ -2,7 +2,7 @@
 import type { CelestialBody, Barycenter, RulePack, Orbit } from '../types';
 import { SeededRNG } from '../rng';
 import { inferAxialTilt } from '../physics/axialTilt';
-import { weightedChoice, randomFromRange, toRoman } from '../utils';
+import { weightedChoice, randomFromRange, drawFromBand, toRoman } from '../utils';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
@@ -176,21 +176,15 @@ export function _generatePlanetaryBody(
                 // Weighted distribution for Gas Giants: 99% Standard, 1% Brown Dwarf
                 if (rng.nextFloat() < 0.99) {
                     // Logarithmic distribution for standard giants (10 - 4000 Earths)
-                    // This favors Jupiter-sized (300) over Super-Jupiters (3000)
-                    const minMass = 10;
-                    const maxMass = 4000;
-                    const logMin = Math.log(minMass);
-                    const logMax = Math.log(maxMass);
-                    const scale = randomFromRange(rng, logMin, logMax);
-                    planet.massKg = Math.exp(scale) * EARTH_MASS_KG;
+                    // This favors Jupiter-sized (300) over Super-Jupiters (3000).
+                    // B56: this is `drawFromBand`'s log branch, which was hand-rolled here twice
+                    // before it had a name. Same maths, one spelling.
+                    planet.massKg = drawFromBand(rng, [10, 4000], 'log') * EARTH_MASS_KG;
                 } else {
-                    // Logarithmic distribution for Brown Dwarfs (4000 - 26000 Earths)
-                    const minMass = 4000;
-                    const maxMass = 26000;
-                    const logMin = Math.log(minMass);
-                    const logMax = Math.log(maxMass);
-                    const scale = randomFromRange(rng, logMin, logMax);
-                    planet.massKg = Math.exp(scale) * EARTH_MASS_KG;
+                    // Logarithmic distribution for Brown Dwarfs (4000 - 26000 Earths).
+                    // Explicit 'log' because 6.5x is under the inference threshold - the scale here
+                    // is an authored choice about the distribution, not a consequence of the span.
+                    planet.massKg = drawFromBand(rng, [4000, 26000], 'log') * EARTH_MASS_KG;
                 }
             } else {
                 planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;

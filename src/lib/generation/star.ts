@@ -1,7 +1,7 @@
 // src/lib/generation/star.ts
 import type { CelestialBody, RulePack, ID, Tag } from '../types';
 import { SeededRNG } from '../rng';
-import { weightedChoice, randomFromRange } from '../utils';
+import { weightedChoice, randomFromRange, drawFromBand } from '../utils';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
 import { resolveStarImage, spectralLetterOf } from '../system/starImage';
@@ -37,9 +37,14 @@ export function starStatTemplate(pack: RulePack, starClass: string): any | undef
 // real stellar rotation/dynamo model is a separate, larger piece of work (inbox B9b). Returns
 // undefined when the class has no band, so "unknown" stays distinguishable from "no field".
 export function starFieldFromPack(pack: RulePack, starClass: string, rng: SeededRNG) {
-    const band = starStatTemplate(pack, starClass)?.mag_gauss;
+    const tpl = starStatTemplate(pack, starClass);
+    const band = tpl?.mag_gauss;
     if (!band) return undefined;
-    return { strengthGauss: randomFromRange(rng, band[0], band[1]) };
+    // B56 - LOG-UNIFORM ACROSS A BAND THAT SPANS DECADES. Every field band here is multi-decade
+    // (star/NS is 1e8..1e11, star/magnetar 1e11..1e15), and a linear draw put ~99% of neutron stars
+    // in the top decade: the band advertised a range it would not produce. The band declares its own
+    // scale, inferred by ratio unless the pack states one.
+    return { strengthGauss: drawFromBand(rng, [band[0], band[1]], tpl?.mag_gauss_scale) };
 }
 
 // The star's spin axis, in degrees from the system plane. Exported for the same reason as
@@ -80,7 +85,12 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
         starMagneticField = starFieldFromPack(pack, starClass, rng);
     }
 
-    const radiationOutput = starTemplate?.radiation_output ? randomFromRange(rng, starTemplate.radiation_output[0], starTemplate.radiation_output[1]) : 1;
+    // B56 - same rule: star/M's radiation_output spans 0.8..1500. (B57 records that this figure
+    // should not be a band at all, because luminosity is DERIVABLE from radius and temperature -
+    // that is a larger change and is step 5 of the vocabulary work.)
+    const radiationOutput = starTemplate?.radiation_output
+        ? drawFromBand(rng, [starTemplate.radiation_output[0], starTemplate.radiation_output[1]], starTemplate.radiation_output_scale)
+        : 1;
 
     // G21 - one lookup, shared with the editor and generateFromConfig. This copy truncated on
     // `spectral[0]` for any name longer than a character, so it was one pack edit away from sending

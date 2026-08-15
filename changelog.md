@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.626-beta - 15th Aug 2026
+
+* Star generation: figures that span several orders of magnitude — a neutron star's magnetic field, for one — are now drawn evenly across that range instead of piling up at the top. A neutron star's field could span a thousandfold and in practice almost never left the top tenth of it.
+* Internal: this is what the magnetar rework needs. Merging magnetars into the neutron-star band would have made nine in ten neutron stars magnetars under the old draw.
+
 ## v2.1.625-beta - 15th Aug 2026
 
 * Star systems: neutron stars and magnetars are no longer classified as white dwarfs. The classifier was weighing a remnant's own mass against the mass of the star it came from, two different things, so nothing that actually weighs 1.4 to 2.2 suns could ever come back as a neutron star.
