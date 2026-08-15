@@ -151,8 +151,10 @@ function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: st
   // it threw a TypeError and took the whole generator down with it.
   const img = resolveStarImage(pack, classes[0]);
   star.image = img ? { url: img } : undefined;
+  // No `hazard/flaring` here either - same reason as `generation/star.ts`: it was gated on
+  // LUMINOSITY, and `SystemProcessor` strips and re-derives this tag from flare ACTIVITY (class and
+  // age) on every pass. TAG-6: one owning pass per namespace, and this is not it.
   const tags: Tag[] = [];
-  if (seed.luminositySolar > 100 && (seed as any).phase === 'main-sequence') tags.push({ key: 'hazard/flaring' });
   star.tags = tags;
   return star;
 }

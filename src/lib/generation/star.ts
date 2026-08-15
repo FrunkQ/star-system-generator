@@ -141,10 +141,17 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     // `star/BH` to `star/B` - a black hole drawn as a hot blue star.
     const starImage = resolveStarImage(pack, starClass);
 
+    // NO `hazard/flaring` IS EMITTED HERE, DELIBERATELY. It used to be, gated on `radiationOutput >
+    // 100` - LUMINOSITY, which is the wrong driver: a luminous O star is not especially flare-prone
+    // and an M dwarf, which is, is feeble. It only ever appeared to work because the old `star/M`
+    // band claimed up to 1500 Lsun (B57), so two wrongs cancelled.
+    //
+    // AND IT WAS ALREADY DEAD: `SystemProcessor` STRIPS this tag and re-derives it from
+    // `flareActivity(class, systemAge, accretion)` on every pass, which is the model that gets it
+    // right - M 0.85 and K 0.55 against G 0.35, times an age factor that runs a young M dwarf to
+    // 0.850 (flaring) and an old one to 0.073 (quiet). That age term is the quiescent-versus-active
+    // distinction, and it belongs to the pass that owns the namespace (TAG-6), not to generation.
     const tags: Tag[] = [];
-    if (radiationOutput > 100) {
-        tags.push({ key: 'hazard/flaring' });
-    }
 
     const spectralType = starClass.split('/')[1];
     // A GIANT OR SUPERGIANT IS CATEGORISED BY ITS MASS, NOT BY ITS LETTER'S MAIN-SEQUENCE HABITS.

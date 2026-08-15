@@ -1,7 +1,7 @@
 // The owner's own examples, asserted as written, plus the property that makes them maintainable:
 // the size clause is DERIVED from the pack band, so it cannot drift from the physics.
 import { describe, it, expect } from 'vitest';
-import { explainStarClass, sizeInWords } from './starClassExplain';
+import { explainStarClass, sizeInWords, pickerLabel, luminosityClassOfKey } from './starClassExplain';
 import { loadStarterPack } from '$lib/import/realsky/testPack';
 
 const pack = loadStarterPack() as any;
@@ -93,5 +93,37 @@ describe('the size clause is DERIVED, which is the point of it', () => {
 	it('says nothing rather than something wrong when there is no radius', () => {
 		expect(sizeInWords(undefined)).toBeUndefined();
 		expect(sizeInWords(0)).toBeUndefined();
+	});
+});
+
+// Owner, 2026-08-15: the list "needs to have the I V II Ia luminosity after to inform the user what
+// type is which". A bare letter band IS main sequence, so it shows V rather than staying silent —
+// which is the whole point, since "G-Type (Yellow Dwarf)" never told anyone it meant G V.
+describe('pickerLabel — the dropdown says which luminosity class it is', () => {
+	it('puts the luminosity class after the letter', () => {
+		expect(pickerLabel(pack, 'star/G')).toBe('G V — Main-sequence dwarf (yellow)');
+		expect(pickerLabel(pack, 'star/K-III')).toBe('K III — Giant star (orange)');
+		expect(pickerLabel(pack, 'star/M-I')).toBe('M I — Luminous supergiant (red)');
+		expect(pickerLabel(pack, 'star/O')).toBe('O V — Main-sequence dwarf (blue)');
+	});
+
+	it('shows V for a bare letter, because a bare letter IS main sequence', () => {
+		// mk-lum 1.1. The old label "G-Type (Yellow Dwarf)" carried this implicitly and told nobody.
+		expect(luminosityClassOfKey('star/G')).toBe('V');
+		expect(luminosityClassOfKey('star/M-III')).toBe('III');
+		expect(luminosityClassOfKey('star/A-I')).toBe('I');
+	});
+
+	it('gives no luminosity class to an object that has none', () => {
+		for (const k of ['star/WD', 'star/NS', 'star/BH', 'star/magnetar', 'star/L']) {
+			expect(luminosityClassOfKey(k), k).toBeUndefined();
+		}
+		// ...and those label by name instead, with no dangling dash-V.
+		expect(pickerLabel(pack, 'star/WD')).toBe('WD — White dwarf');
+		expect(pickerLabel(pack, 'star/BH')).toBe('BH — Black hole');
+	});
+
+	it('falls back rather than throwing for a key it cannot read', () => {
+		expect(pickerLabel(pack, 'star/unknown')).toBeUndefined();
 	});
 });

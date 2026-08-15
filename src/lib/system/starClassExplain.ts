@@ -128,3 +128,32 @@ export function explainStarClass(pack: RulePack | any, classKey: string): StarCl
 	clauses[0] = kind;
 	return { designation, kind, colour, size, text: `${designation} (${clauses.join(', ')})` };
 }
+
+// THE MK LUMINOSITY CLASS, as a reader sees it in the dropdown. A bare letter band IS main sequence
+// (mk-lum 1.1), so it shows `V` rather than nothing — owner, 2026-08-15: the list "needs to have the
+// I V II Ia luminosity after to inform the user what type is which".
+export function luminosityClassOfKey(classKey: string): string | undefined {
+	const { letter, band, bare } = parts(classKey);
+	if (bare) return undefined; // WD / NS / BH / brown dwarfs have no luminosity class
+	if (!letter) return undefined;
+	return band ?? 'V';
+}
+
+/**
+ * A dropdown label: designation, luminosity class, and what it means in plain words.
+ *
+ *   `G V — Main-sequence dwarf (yellow)`
+ *   `K III — Giant star (orange)`
+ *   `M I — Luminous supergiant (red)`
+ *   `WD — White dwarf`
+ *
+ * Built from the same explanation the line beneath the picker shows, so the two cannot disagree.
+ */
+export function pickerLabel(pack: RulePack | any, classKey: string): string | undefined {
+	const ex = explainStarClass(pack, classKey);
+	if (!ex) return undefined;
+	const lum = luminosityClassOfKey(classKey);
+	const letter = parts(classKey).letter;
+	const head = letter ? `${letter}${lum ? ' ' + lum : ''}` : ex.designation;
+	return `${head} — ${ex.kind}${ex.colour ? ` (${ex.colour})` : ''}`;
+}

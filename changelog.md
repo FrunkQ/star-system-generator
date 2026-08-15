@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.630-beta - 15th Aug 2026
+
+* Star editor: the spectral type list now names the luminosity class — "G V — Main-sequence dwarf (yellow)", "K III — Giant star (orange)", "M I — Luminous supergiant (red)" — so it is clear which entry is which. The old labels carried it implicitly and told nobody.
+* Internal: removed two generation-time flare tags that were decided by a star's brightness. Flaring is decided by class and age, which is why a young red dwarf flares and an old one does not, and the main processing pass already worked that out and overwrote both.
+
 ## v2.1.629-beta - 15th Aug 2026
 
 * Star editor: the spectral picker now explains what a designation means in plain words underneath it — "Main-sequence dwarf, yellow to human eyes, about the size of the Sun" — and every entry in the dropdown carries the same explanation as a tooltip.

@@ -6,7 +6,7 @@
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
   import CustomImageBlock from './CustomImageBlock.svelte';
   import { resolveStarImage } from '$lib/system/starImage';
-  import { explainStarClass } from '$lib/system/starClassExplain';
+  import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
 
   let { body, rulePack } = $props();
 
@@ -628,7 +628,7 @@
             <select value={body.classes?.[0] || 'star/G'} on:change={updateSpectralType}
                     title={classExplanation?.text ?? ''}>
                 {#each spectralTypes as type}
-                    <option value={type} title={explainStarClass(rulePack, type)?.text ?? ''}>{SPECTRAL_DATA[type].label}</option>
+                    <option value={type} title={explainStarClass(rulePack, type)?.text ?? ''}>{pickerLabel(rulePack, type) ?? SPECTRAL_DATA[type].label}</option>
                 {/each}
             </select>
             <div class="color-preview" style="{starStyle}"></div>
