@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.599-beta - 15th Aug 2026
+
+* Internal: recorded a request to let a star carry a custom picture, the way a planet and a construct already can.
+
 ## v2.1.598-beta - 14th Aug 2026
 
 * Triple star systems can now form the nested arrangement they usually have in reality — a close pair, with a third star circling the pair as a whole from much further out. The engine could build the close pair, but once it had, anything orbiting that pair stopped being considered, so the outer arrangement never formed however heavy the third star was.
