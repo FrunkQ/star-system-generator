@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.619-beta - 15th Aug 2026
+
+* Star editor: recorded that editing a neutron star should be able to turn it into a magnetar, and flagged that real magnetars spin slowly rather than quickly.
+
 ## v2.1.618-beta - 15th Aug 2026
 
 * Star types: settled that a GM may build any star they like, and the engine points out what is impossible about it rather than refusing.
