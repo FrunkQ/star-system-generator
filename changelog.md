@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.620-beta - 15th Aug 2026
+
+* Star editor: recorded that picking a star type and adjusting its sliders are two directions of one map, and that they currently disagree for hot stars.
+
 ## v2.1.619-beta - 15th Aug 2026
 
 * Star editor: recorded that editing a neutron star should be able to turn it into a magnetar, and flagged that real magnetars spin slowly rather than quickly.
