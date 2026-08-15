@@ -189,6 +189,34 @@ could produce it in that time; the engine will simply never generate one.
   real work, because "implausible, and here is which law it breaks" is re-derivable every pass and is
   therefore a tag rather than stored truth.
 
+### 6c. DYNAMIC AGEING IS A V4 FEATURE — build the seam, do not build the machinery
+
+Owner, 2026-08-15: *"dynamically aging a system with system events will be a V4 feature — system
+evolution is a key feature... no need to do much just now other than reflect the current truth. But
+KNOWING the V4 feature is coming will avoid you coding yourself into a dead end."*
+
+**THE CURRENT TRUTH, VERIFIED 2026-08-15 rather than assumed:** `ageStar` is called from
+`generateFromConfig`, `accrete-adapter`, and the wizard/timeline PREVIEWS only. **The campaign clock
+does not age stars.** Ageing is a generation-time event, so the four routes into a star's type are
+today only three — dropdown, sliders, import.
+
+**WHAT THAT SETTLES NOW.** The "does a pin survive ageing" question does not arise yet, and should
+not be answered speculatively. It becomes live the moment V4 lands, and the options are recorded in
+[[B55]] so it is decided rather than rediscovered: a pin blocking an AUTOMATIC process is a different
+thing from a pin blocking a slider the GM is holding.
+
+**THE SEAM, AND WHY THE ARROW IS THE WHOLE OF IT.** Section 9.4's rule — ageing PRODUCES state,
+classification READS state, nothing reads the class back out — is exactly what makes dynamic ageing a
+drop-in later. If classification is a pure function of (present state, progenitor mass, age), then
+moving the clock changes its inputs and the designation follows for free: **V4 needs no change to the
+classifier at all.** Every shortcut that reads the class to decide a physical value closes that door,
+which is why `starCategory = categoryForClass(classes[0])` ([[B51]]) and `stardefaults.ts:27`
+([[B49]]) are worth removing even though neither is visibly broken today.
+
+**SO THE ONE RULE FOR THIS WORKSTREAM IS:** classification must never take "when" as an implicit
+constant. Age is a parameter, and it is already in `classifyStar`'s signature. Keep it there, pass it
+honestly, and do not cache a designation anywhere the clock could later contradict.
+
 ## 7. Non-goals
 
 - **Not** a change to how tags are STORED. That is the tagging workstream's live territory.

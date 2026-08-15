@@ -16,6 +16,7 @@
     ['temp-range', 'Temperature range & tidal heat'],
     ['radiation', 'Surface radiation'],
     ['radiation-split', 'Spectral photon/particle split'],
+    ['star-designations', 'Reading a star designation'],
     ['belts', 'Trapped belts & the giants'],
     ['fluids', 'Fluid layers'],
     ['clouds', 'Clouds & weather'],
@@ -330,6 +331,43 @@
         so the vocabulary changes rather than quoting a figure nobody lives to test: <em>chronic</em> above the
         20&nbsp;mSv/yr occupational limit, <em>background</em> at or below it (Earth sits here, at 2.3&nbsp;mSv/yr
         against a real background of about 2.4).</p>
+    </section>
+
+    <!-- Owner, 2026-08-15: explain a designation in simple terms. The SIZE clauses here are the same
+         ones the editor shows, from `starClassExplain`, which derives them from the pack's own radius
+         band - so this page cannot drift from the physics or from the panel. -->
+    <section id="star-designations">
+      <h2>Reading a star designation <span class="phase">04.5</span></h2>
+      <p>A star's designation is two facts joined together, and it is worth reading them separately.
+        The <strong>letter and number</strong> say how hot it is, running O B A F G K M from hottest to
+        coolest with the number subdividing each letter. The <strong>roman numeral</strong> says how big
+        it has grown, which is a statement about where the star is in its life rather than how hot it
+        burns. Two stars can share a letter and have almost nothing else in common:</p>
+      <table class="mini">
+        <thead><tr><th>Designation</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><code>G2V</code></td><td>Main-sequence dwarf, yellow to human eyes, about the size of the Sun &mdash; our own star</td></tr>
+          <tr><td><code>G2III</code></td><td>Giant star, yellow to human eyes, roughly ten times wider than the Sun</td></tr>
+          <tr><td><code>G2Ia</code></td><td>Luminous supergiant, yellow to human eyes, hundreds of times wider than the Sun</td></tr>
+          <tr><td><code>M5V</code></td><td>Main-sequence dwarf, red to human eyes, several times narrower than the Sun</td></tr>
+          <tr><td><code>M2Ia</code></td><td>Luminous supergiant, red to human eyes, hundreds of times wider &mdash; Betelgeuse</td></tr>
+        </tbody>
+      </table>
+      <p><strong>The same letter, three different objects.</strong> A <code>G2V</code> and a
+        <code>G2Ia</code> have the same surface temperature and therefore the same colour, but the
+        supergiant is hundreds of times wider and tens of thousands of times brighter. That is why the
+        engine treats the letter alone as saying almost nothing: it fixes the colour and very little
+        else.</p>
+      <p>Some objects sit outside the sequence entirely, because they are not burning hydrogen in a
+        core at all. A <strong>white dwarf</strong> is a dead core about the size of the Earth; a
+        <strong>neutron star</strong> is a ball the size of a city; a <strong>magnetar</strong> is a
+        neutron star with an extraordinarily strong magnetic field, above 10<sup>14</sup> gauss against
+        an ordinary pulsar's 10<sup>12</sup>. The engine does not generate magnetars as a separate kind
+        of thing &mdash; it generates neutron stars, draws a field, and reads the label back off it,
+        which is what they are in reality.</p>
+      <p class="note">Brightness is never stored: it is computed from radius and temperature by
+        <code>L = 4&pi;R&sup2;&sigma;T&#8308;</code>, which is exact. A figure that is derived cannot
+        drift away from the numbers it came from.</p>
     </section>
 
     <section id="radiation-split">

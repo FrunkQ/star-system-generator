@@ -6,10 +6,14 @@
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
   import CustomImageBlock from './CustomImageBlock.svelte';
   import { resolveStarImage } from '$lib/system/starImage';
+  import { explainStarClass } from '$lib/system/starClassExplain';
 
   let { body, rulePack } = $props();
 
   const dispatch = createEventDispatcher();
+
+  // Plain-English explanation of the current designation, rebuilt whenever the class changes.
+  const classExplanation = $derived(explainStarClass(rulePack, body?.classes?.[0] ?? 'star/G'));
 
   // --- State ---
   let massSuns = $state(0);
@@ -621,13 +625,21 @@
     <div class="form-group">
         <label>Spectral Type</label>
         <div style="display: flex; gap: 10px;">
-            <select value={body.classes?.[0] || 'star/G'} on:change={updateSpectralType}>
+            <select value={body.classes?.[0] || 'star/G'} on:change={updateSpectralType}
+                    title={classExplanation?.text ?? ''}>
                 {#each spectralTypes as type}
-                    <option value={type}>{SPECTRAL_DATA[type].label}</option>
+                    <option value={type} title={explainStarClass(rulePack, type)?.text ?? ''}>{SPECTRAL_DATA[type].label}</option>
                 {/each}
             </select>
             <div class="color-preview" style="{starStyle}"></div>
         </div>
+        <!-- Owner, 2026-08-15: explain the designation in simple terms. Derived from the pack's own
+             radius band rather than authored prose, so it cannot drift from the physics. -->
+        {#if classExplanation}
+            <div class="class-explain">
+                <strong>{classExplanation.kind}</strong>{#if classExplanation.colour}, {classExplanation.colour} to human eyes{/if}{#if classExplanation.size}, {classExplanation.size}{/if}
+            </div>
+        {/if}
         {#if currentClass === 'star/BH' || currentClass === 'star/BH_active'}
             <div class="bh-accretion" style="margin-top:10px;">
                 <label style="font-size:0.85em; display:flex; justify-content:space-between;">
@@ -830,6 +842,7 @@
   .full-width-slider { width: 100%; margin: 0; cursor: pointer; }
   hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
   .sub-label { font-size: 0.75em; color: var(--text-faint); text-align: right; }
+  .class-explain { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
   
   .color-preview {
       width: 30px; height: 30px;

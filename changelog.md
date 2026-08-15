@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.629-beta - 15th Aug 2026
+
+* Star editor: the spectral picker now explains what a designation means in plain words underneath it — "Main-sequence dwarf, yellow to human eyes, about the size of the Sun" — and every entry in the dropdown carries the same explanation as a tooltip.
+* Physics page: a new "Reading a star designation" section, showing how G2V, G2III and G2Ia can share a colour and be three completely different objects.
+* Internal: the size wording is worked out from the rule pack's own radius figures, so it cannot drift away from the physics or disagree between the two places it appears.
+
 ## v2.1.628-beta - 15th Aug 2026
 
 * Star systems: magnetars are no longer generated as their own kind of object. They are neutron stars with a very strong magnetic field, which is what they are in reality, so a neutron star is generated and its field decides what it is called. About one neutron star in seven comes out a magnetar, which is roughly what the old separate spawn rate produced.

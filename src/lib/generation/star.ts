@@ -20,6 +20,9 @@ import { resolveStarImage, spectralLetterOf } from '../system/starImage';
 const LEGACY_CLASS_ALIAS: Record<string, string> = { 'star/red-giant': 'star/M-III' };
 
 export function starStatTemplate(pack: RulePack, starClass: string): any | undefined {
+    // Pack-safe, like `resolveStarImage`: the editor renders before a pack has loaded, and a lookup
+    // that throws there takes the whole panel with it.
+    if (!pack || !starClass) return undefined;
     starClass = LEGACY_CLASS_ALIAS[starClass] ?? starClass;
     const direct = pack.statTemplates?.[starClass];
     if (direct) return direct;
