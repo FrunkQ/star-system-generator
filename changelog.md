@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.615-beta - 15th Aug 2026
+
+* Internal: reviewed the star-classification design and flagged that its plan of work predates its own measurements.
+
 ## v2.1.614-beta - 15th Aug 2026
 
 * Internal: recorded why plant colour cannot simply follow the brightest part of the sunlight - Earth is the counter-example.
