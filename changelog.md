@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.622-beta - 15th Aug 2026
+
+* Star data: found that every star type except Sun-like ones states a brightness that contradicts its own size and temperature, by up to sixty thousand times.
+
 ## v2.1.621-beta - 15th Aug 2026
 
 * Star generation: found that any setting spanning a wide range is picked from the top of that range far too often, which would have made almost every neutron star a magnetar.
