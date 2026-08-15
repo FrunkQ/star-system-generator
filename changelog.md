@@ -1,6 +1,7 @@
 # Changelog
 
 All notable changes are listed here:
+## 2.1.609-beta - 15th Aug 2026* Internal: answered three open questions about the star data from the project history, and recorded that flare-style descriptive data should be tags.
 
 ## v2.1.608-beta - 15th Aug 2026
 
