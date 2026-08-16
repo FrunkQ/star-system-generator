@@ -27,7 +27,10 @@ const DERIVED_FIELDS = [
   'equilibriumTempK', 'equilibriumTempMinK', 'equilibriumTempMaxK', 'greenhouseTempK', 'temperatureK',
   'temperatureRangeK', 'temperatureProfile', 'tidalHeatK', 'radiogenicHeatK', 'internalHeatK',
   'surfaceRadiation', 'surfaceRadiationMin', 'surfaceRadiationMax', 'radiationShieldingMag',
-  'radiationShieldingAtmo', 'stellarRadiation', 'stellarRadiationMin', 'stellarRadiationMax',
+  'radiationShieldingAtmo', 'totalIncidentFlux', 'totalIncidentFluxMin', 'totalIncidentFluxMax', 'starlightFlux',
+  // Legacy names for the same three fields, kept so a saved file or bundled map written before B34
+  // sheds them instead of carrying a stale figure under a name nothing reads any more.
+  'stellarRadiation', 'stellarRadiationMin', 'stellarRadiationMax',
   'photonRadiation', 'particleRadiation', 'habitabilityScore', 'habitabilityBreakdown', 'orbitalBoundaries',
   'loDeltaVBudget_ms', 'propulsiveLandBudget_ms', 'aerobrakeLandBudget_ms',
   'apparentColorHex', 'apparentColor', 'magnetism', 'geoActivity', 'albedoBreakdown', 'classification',

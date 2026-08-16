@@ -433,11 +433,11 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
 
     const hostFieldPresent = !!hostBody && hostField >= 0.01 && rHost > 0;
     const inputs: TraceField[] = [
-      // NOT starlight, despite the field name. `stellarRadiation` is set from components.total in
-      // calculateSurfaceRadiation, and since B17 that total carries the trapped-belt term — Io reads
-      // 26,279 where the sunlight on it is 0.037. Labelling it 'incident starlight' would be the A33
-      // fault exactly: a quantity that is right for its purpose, published under a name that lies.
-      { label: 'Total incident flux (Earth = 1)', value: n(body.stellarRadiation, 3) + (hostFieldPresent ? ' — starlight AND the trapped belt' : '') }
+      // TWO figures because they are two questions, and on a moon inside a giant's magnetosphere
+      // they differ by a factor of 700,000 (Io: 26,279 against 0.037). The field carrying the total
+      // was called `stellarRadiation` until B34 renamed it for what it measures.
+      { label: 'Starlight (Earth = 1)', value: n(body.starlightFlux, 3) },
+      { label: 'Total incident flux (Earth = 1)', value: n(body.totalIncidentFlux, 3) + (hostFieldPresent ? ' — starlight AND the trapped belt' : '') }
     ];
     // The host's trapped belt — the dominant term for a close-in moon of a strong-field giant, and
     // the one this trace used to omit entirely.
@@ -510,7 +510,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       inputs: [
         { label: 'Atmosphere', value: `${n(body.atmosphere?.pressure_bar, 3, 'bar')} · ${em.gas}` },
         { label: 'Magnetosphere', value: body.magnetism ? (body.magnetism.intrinsic ? 'intrinsic' : body.magnetism.source) : 'none' },
-        { label: 'Incident flux (Earth=1)', value: n(body.stellarRadiation, 2) }
+        { label: 'Ionising flux, all sources (Earth=1)', value: n(body.totalIncidentFlux, 2) }
       ],
       outputs: [
         { label: 'Strength → tier', value: `${auroraTag.value ?? '—'} → ${describeTag(auroraTag.key).label}` },

@@ -89,7 +89,7 @@ describe('save → load round-trip is lossless and lean', () => {
 
     // --- Derived data MUST be gone from the saved file ---
     const a = get(savedSys, 'a') as any;
-    for (const f of ['temperatureK', 'apparentColor', 'classification', 'magnetism', 'stellarRadiation',
+    for (const f of ['temperatureK', 'apparentColor', 'classification', 'magnetism', 'totalIncidentFlux',
       'surfaceRadiation', 'habitabilityBreakdown', 'orbitalBoundaries', 'internalHeatK']) {
       expect(a[f], `derived field ${f} should be stripped`).toBeUndefined();
     }

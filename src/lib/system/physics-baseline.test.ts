@@ -67,6 +67,9 @@ function stripDerivedData(system: System): System {
         'tidalHeatK',
         'radiogenicHeatK',
         'surfaceRadiation',
+        // Renamed at B34; the authored example still carries the old keys, and leaving them in the
+        // fixture republishes a fossil nothing writes any more (DATA-R8).
+        'stellarRadiation', 'stellarRadiationMin', 'stellarRadiationMax',
         'habitabilityScore',
         'orbitalBoundaries',
         'loDeltaVBudget_ms',

@@ -108,7 +108,7 @@
   let displayedSurfaceRadiation: number | null = null;
   let minSurfaceRadiation: number | null = null;
   let maxSurfaceRadiation: number | null = null;
-  let stellarRadiationTooltip: string | null = null;
+  let radiationTooltip: string | null = null;
   let calculatedPeriodDays: number | null = null;
   let luminosity: number | null = null;
   let orbitalStabilityLabel: string | null = null;
@@ -221,8 +221,11 @@
                 const particlePct = totalFlux > 0 ? (body.particleRadiation! / totalFlux * 100).toFixed(0) : 0;
                 
                 shieldingInfo = `\n\n🛡️ Shielding Breakdown:\n`;
-                shieldingInfo += `• Incoming Star Flux: ${body.stellarRadiation?.toFixed(2)} Sol-Flux\n`;
-                shieldingInfo += `• Unshielded Potential: ${(body.stellarRadiation! * RADIATION_UNSHIELDED_DOSE_MSV_YR).toFixed(0)} mSv/y\n`;
+                // "Star flux" was a lie on any moon inside a giant's magnetosphere: this figure is
+                // the TOTAL arriving, and since B17 that is mostly trapped particles (inbox B34).
+                shieldingInfo += `• Starlight: ${(body.starlightFlux ?? 0).toFixed(2)} Sol-Flux\n`;
+                shieldingInfo += `• Total Incoming Flux: ${(body.totalIncidentFlux ?? 0).toFixed(2)} Sol-Flux\n`;
+                shieldingInfo += `• Unshielded Potential: ${((body.totalIncidentFlux ?? 0) * RADIATION_UNSHIELDED_DOSE_MSV_YR).toFixed(0)} mSv/y\n`;
                 if (body.atmosphere) shieldingInfo += `• Atmosphere: ${((body.radiationShieldingAtmo || 0) * 100).toFixed(1)}% Photon Block\n`;
                 if (body.magneticField) shieldingInfo += `• Magnetosphere: ${((body.radiationShieldingMag || 0) * 100).toFixed(1)}% Particle Block\n`;
                 
@@ -285,7 +288,7 @@
 
             const desc = getStellarRadiationDescription(body.radiationOutput || 0);
             radiationLevel = `${desc.text} (${body.radiationOutput?.toFixed(2)})`;
-            stellarRadiationTooltip = desc.tooltip;
+            radiationTooltip = desc.tooltip;
             
             if (body.radiusKm && body.temperatureK) {
                 const r_sol = body.radiusKm / SOLAR_RADIUS_KM;
@@ -699,7 +702,7 @@
       {/if}
 
       {#if body.roleHint === 'star' && radiationLevel}
-          <div class="detail-item" title={stellarRadiationTooltip}>
+          <div class="detail-item" title={radiationTooltip}>
               <span class="label">Radiation Level</span>
               <span class="value">{radiationLevel}</span>
           </div>

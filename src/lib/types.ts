@@ -596,7 +596,17 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
 
   // Surface Stats
   surfaceRadiation?: number;
-  stellarRadiation?: number; // Raw incoming flux
+  // TOTAL incident flux at the reference level (Earth = 1): starlight, stellar wind AND the trapped
+  // particles of any belt this body sits inside. It stopped being "stellar" at B17, when the belt
+  // term landed in it — Io reads 26,279 here against 0.037 of actual sunlight, because Jupiter's
+  // magnetosphere is its environment. Named for what it measures (B34); `starlightFlux` below is the
+  // one that is only the star.
+  totalIncidentFlux?: number;
+  totalIncidentFluxMin?: number;
+  totalIncidentFluxMax?: number;
+  // The star's own output at this distance, Earth = 1 — photons and wind, no belt. This is what a
+  // rule about IRRADIATION means: how hard the star itself is shining on this world.
+  starlightFlux?: number;
   photonRadiation?: number;
   particleRadiation?: number;
   radiationShieldingAtmo?: number; // 0-1 effectiveness

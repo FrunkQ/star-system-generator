@@ -99,7 +99,7 @@ describe('the trace shows the working for what the engine now derives', () => {
   it('names where each radiation figure is quoted (B27)', () => {
     const earth = {
       ...earthLike(), surfaceRadiation: 2.3, orbitalRadiation: 652965, photonRadiation: 1, particleRadiation: 1,
-      stellarRadiation: 1, beltInnerEdgeRadii: 1.1982
+      totalIncidentFlux: 1, starlightFlux: 1, beltInnerEdgeRadii: 1.1982
     } as unknown as CelestialBody;
     const rad = buildPhysicsTrace(earth, {}).layers.find((l) => l.id === 'radiation');
     expect(rad, 'no radiation layer').toBeTruthy();

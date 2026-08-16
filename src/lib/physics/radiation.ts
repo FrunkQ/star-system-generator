@@ -410,9 +410,14 @@ export function calculateSurfaceRadiation(
         min: calculateStellarRadiationComponents(body, allNodes, 'far', rulePack).total,
         max: calculateStellarRadiationComponents(body, allNodes, 'near', rulePack).total
     };
-    body.stellarRadiation = totalStellarRadiation;
-    (body as any).stellarRadiationMin = totalStellarRadiationRange.min;
-    (body as any).stellarRadiationMax = totalStellarRadiationRange.max;
+    // TWO figures, and they are not the same question (inbox B34). The total is everything arriving
+    // at the reference level and is what a hazard reading needs; the starlight is the star alone and
+    // is what a claim about IRRADIATION means. They agreed to four significant figures until B17 put
+    // the trapped belt into the total, at which point Io's two answers separated by 700,000x.
+    body.totalIncidentFlux = totalStellarRadiation;
+    (body as any).totalIncidentFluxMin = totalStellarRadiationRange.min;
+    (body as any).totalIncidentFluxMax = totalStellarRadiationRange.max;
+    body.starlightFlux = calculateTotalStellarRadiation(body, allNodes);
 
     // Photon/particle components come from each star's spectral-class split (04.4). The raw
     // fractions also drive the min/max range below so it stays consistent.

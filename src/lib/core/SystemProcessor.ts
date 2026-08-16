@@ -949,7 +949,13 @@ export class SystemProcessor implements ISystemProcessor {
             orbitsStar: orbitsStar ? 1 : 0,
             age_Gyr: this.systemAgeGyr,
             stellarType,
-            stellarIrradiation: body.stellarRadiation || 0, // incident flux, ~1 at Earth
+            // STARLIGHT, not the total incident flux (inbox B34). Every rule written against this
+            // feature means "how hard is the star shining on it" — the pack's chthonian rule reads
+            // `stellarIrradiation > 1000` for a world stripped to its core. Since B17 the total also
+            // carries the trapped-belt particles of whatever magnetosphere the body sits in, so Io
+            // was being offered to that rule at 26,279 Earth-flux, against 0.037 of actual sunlight.
+            stellarIrradiation: body.starlightFlux || 0, // the star alone, ~1 at Earth
+            totalIncidentFlux: body.totalIncidentFlux || 0, // + trapped belt, for rules that want it
             radiation_flux: body.surfaceRadiation || 0,
             tidalHeating: body.tidalHeatK || 0,
             Teq_K: body.equilibriumTempK || 0,
