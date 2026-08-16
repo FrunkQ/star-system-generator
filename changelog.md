@@ -2,16 +2,21 @@
 
 All notable changes are listed here:
 
-## v2.1.670-beta - 16th Aug 2026
+## v2.1.673-beta - 16th Aug 2026
+
+- Housekeeping: renumbered this session's entries to the versions they actually shipped as, after a parallel session took 666 and 667.
+- FIXED: on a world reading "a night under a full moon", two colours could still be reported as "as distinguishable as at home". How much light there is and what the light is made of are separate questions, and only the second was being asked. Colour discrimination now fades with the light, on the same curve the picture itself dims by, so the figures and the image cannot disagree.
+
+## v2.1.672-beta - 16th Aug 2026
 
 - Regenerated the derived fixture so it records each palette stop's authored material colour alongside its appearance.
 
-## v2.1.669-beta - 16th Aug 2026
+## v2.1.671-beta - 16th Aug 2026
 
 - Docs: a new physics section, "Standing on it", covering the three things that follow from the surface spectrum — how bright a world's midday is, why a bounded eye is the honest one, and how far you can see. It states what the model does NOT do as plainly as what it does: no aerosols, so every visibility figure is a ceiling.
 - Engine map: PHY-17 (adaptation is bounded per cone), PHY-18 (visibility is the surface spectrum's optical depth turned on its side — derive it once), RENDER-B4 (a reflectance is re-lit and light is not).
 
-## v2.1.668-beta - 16th Aug 2026
+## v2.1.670-beta - 16th Aug 2026
 
 - The Horizon view is now the **Surface view**, and it is a view of THAT WORLD rather than a stock Earth. Its ground is the world's own rock, its sky is the colour its own air scatters, its sea appears only if it has one, and its life is drawn in the pigments its morphologies actually settled on — every layer of them, since a world's mats and its canopy often choose differently.
 - The ground is shaped by the tags the engine already committed to. An ancient surface nothing has resurfaced keeps every crater it took; plate tectonics gives it sharp folded peaks; tidal volcanism gives it cones and lava that glows; ice worlds bank ice against the far ground; a dust-storm world gets dunes. Nothing here is a new judgement about the world — it is the old ones spent rather than repeated.
@@ -21,7 +26,7 @@ All notable changes are listed here:
 - An airless world gets what it should: hard black sky, stars at noon, and its genuine surface colour under a bare star.
 - The sky and the star are painted directly rather than re-lit, and lava and lit windows with them. Only reflectances go through the re-lighting, which is the difference between "the same surfaces under a different sun" and lighting everything twice. The palette now carries each stop's authored material colour alongside its appearance so the scene can tell them apart.
 
-## v2.1.667-beta - 16th Aug 2026
+## v2.1.669-beta - 16th Aug 2026
 
 - NEW: how far you can see, in metres. Occluded sight lines are where the plot is — "the air is thick" is scenery, but "you can see forty metres and your torch reaches twelve" decides whether the thing in the murk gets a surprise round. Every world now works out its visual range, its horizon, and how far a hand torch, headlights and a floodlight actually reach.
 - It is the same optical depth the surface spectrum already computes, turned on its side: a sky is dim overhead and a horizon is lost for one reason. Nothing about visibility is derived twice. Earth comes out at its clean-air limit of 343 km — the textbook figure, and the reason distant mountains go blue instead of vanishing — while Venus is 4 km of murk from sheer weight of air, its clouds being ninety bar over your head rather than around your knees.
@@ -30,7 +35,7 @@ All notable changes are listed here:
 - The wipe between home and there is now a handle you drag ON the picture, rather than a slider underneath it. That is the gesture everyone already knows, and it gives the row of controls back to the things that cannot be done by dragging.
 - The body panel's view switch is icons rather than words — five labels ate most of the top of the box. Titles and labels are unchanged for anyone who needs the words.
 
-## v2.1.666-beta - 16th Aug 2026
+## v2.1.668-beta - 16th Aug 2026
 
 - FIXED: standing on Venus, everything looked pink. The eye-adaptation model was unbounded — it assumed your eyes can discount any light however little of it there is. Venus's sky leaves the blue cones half a percent of the light they get at home, and the maths answered that by amplifying them 134 times, which does not recover the colour, it recovers the noise. A white card came back pink and a blue wire came back violet. Adaptation is now limited per channel by how much light that channel actually has, the way a low-pressure sodium street lamp leaves the world orange-grey rather than colour-corrected. Venus now reads as Venera photographed it: a deep orange world where blues go dark rust.
 - NEW: a "midday brightness" switch on the colour and horizon views, alongside "once your eyes adjust". The two are different questions — what colour the light is, and how much of it there is — and only the second one tells you the world is dark.

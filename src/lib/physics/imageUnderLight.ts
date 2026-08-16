@@ -304,6 +304,16 @@ export function confusability(
 		// Rough perceptual weighting — greens count for more to the human eye than blues do.
 		return Math.sqrt(2 * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + 3 * (b1 - b2) ** 2);
 	};
+	// AND HOW MUCH LIGHT THERE IS AT ALL, which the spectral shape does not carry.
+	//
+	// The per-cone bound above is about what the light is MADE of; this is about how much of it there
+	// is. They are independent, and leaving the second one out produced a claim nobody would believe:
+	// a world reading "a night under a full moon" still reported two colours as "as distinguishable
+	// as at home". Below roughly a thousandth of a daylight scene the cones stop carrying colour and
+	// the rods, which have none, take over — so colour discrimination fades with them and is gone by
+	// starlight. `coneFraction` is the same curve the image itself dims by, so the picture and the
+	// figures cannot disagree.
 	const home = dist(daylight);
-	return home > 0 ? Math.min(1, dist(op) / home) : 1;
+	const cones = coneFraction(brightnessVs(op, daylight));
+	return home > 0 ? Math.min(1, cones * dist(op) / home) : 1;
 }

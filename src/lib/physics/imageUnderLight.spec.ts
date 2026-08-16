@@ -124,6 +124,17 @@ describe('how confusable two colours become', () => {
     expect(blueGreen).toBeLessThan(0.95);
   });
 
+  it('fades as the light fails, because rods carry no colour', () => {
+    // A world reading "a night under a full moon" reported two colours as "as distinguishable as at
+    // home", which is a claim nobody would believe. The spectral SHAPE said they were separable and
+    // nothing was asking how much light there was.
+    const dim = lightOperator(light(5778).map((v) => v * 1e-5));
+    const bright = confusability(rgb('#2a5fb0'), rgb('#2f8f3a'), SUN, SUN);
+    const faint = confusability(rgb('#2a5fb0'), rgb('#2f8f3a'), dim, SUN);
+    expect(bright).toBeGreaterThan(0.9);
+    expect(faint).toBeLessThan(0.35);
+  });
+
   it('never claims a pair is MORE distinguishable than at home', () => {
     for (const o of [DWARF, HOT]) {
       for (const [a, b] of [['#c4262b', '#d4762f'], ['#2a5fb0', '#2f8f3a'], ['#e0c72a', '#e8e8e8']]) {
