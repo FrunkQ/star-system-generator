@@ -2,7 +2,7 @@
 
 All notable changes are listed here:
 
-## v2.1.681-beta - 16th Aug 2026
+## v2.1.682-beta - 16th Aug 2026
 
 - FIXED: space weathering modelled a rate where the physics is an accumulation. The irradiation dose says how hard a surface is being hit; maturity is what has built up, which is dose times TIME. Taking the rate alone said a freshly resurfaced world was as weathered as one that had sat there for four billion years — backwards from the reason fresh crater rays are bright. Io and Europa are now unweathered, as young surfaces should be, while Luna and Mercury still saturate.
 - FIXED: every belt and ring in the catalogue came back a third space-weathered, from fallback defaults applied to bodies that carry neither of the tags it reads. A world we know nothing about is unmeasured, not half-weathered — and a belt is a population, not a surface, so it is out of scope entirely.
