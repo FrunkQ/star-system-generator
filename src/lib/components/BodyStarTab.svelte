@@ -8,6 +8,7 @@
   import { resolveStarImage } from '$lib/system/starImage';
   import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
+  import { ionisingOutputSolar, ionisingBands, activityForFraction, IONISING_FRACTION_QUIET } from '$lib/physics/ionisingOutput';
 
   let { body, rulePack } = $props();
 
@@ -271,6 +272,39 @@
   // invalidate a `{#if body.overrides?...}` in the template — the panel kept saying "derived" after
   // the GM had pinned it.
   let activityPinned = $state(false);
+  // LOCKED means "ionising output follows brightness": the fraction stays where class and age put it,
+  // so raising the star's size or heat raises its X-ray output proportionally. Unlocking hands the
+  // fraction to the GM. Locked is the default because the derived answer is right for most stars and
+  // the point of the lock is DELIBERATE variance.
+  let ionisingLocked = $state(true);
+  function toggleIonisingLock() {
+      ionisingLocked = !ionisingLocked;
+      if (ionisingLocked) resetActivity();
+  }
+
+  // The star's ionising output in multiples of the quiet Sun's — a frame a GM can reason in.
+  let ionisingSolar = $derived(ionisingOutputSolar(radiation || 0, activityValue));
+  function fmtIonising(x: number): string {
+      if (!(x > 0)) return '0';
+      if (x < 10) return x.toPrecision(2);
+      if (x < 1e4) return Math.round(x).toLocaleString();
+      return x.toExponential(1);
+  }
+
+  // The two bands drawn under the slider, mapped to its 0..1 activity axis. Positions come from the
+  // ACTIVITY that produces each output, so the bands sit where the handle would have to be.
+  let ionisingRanges = $derived.by(() => {
+      const bands = ionisingBands(radiation || 0, derivedActivity);
+      if (!bands) return null;
+      const pos = (out: number) => activityForFraction((out * IONISING_FRACTION_QUIET) / (radiation || 1)) * 100;
+      const tx = pos(bands.typical[0]), tw = Math.max(1.5, pos(bands.typical[1]) - tx);
+      const fx = pos(bands.flaring[0]), fw = Math.max(1.5, pos(bands.flaring[1]) - fx);
+      return { typicalX: tx, typicalW: tw, flaringX: fx, flaringW: fw };
+  });
+
+  // What the PHYSICS says for this star, independent of any pin — the anchor both bands are drawn
+  // around. Read off the body, which the processor has already filled in.
+  let derivedActivity = $derived((body as any)?.flareActivity ?? undefined);
   let activityLabel = $derived(
       activityValue >= 0.55 ? 'flare star' : activityValue >= 0.25 ? 'active' : activityValue >= 0.08 ? 'moderate' : 'quiet'
   );
@@ -788,45 +822,68 @@
         </div>
     </div>
 
-    <!-- LUMINOSITY (derived) and MAGNETIC ACTIVITY (the ionising half) — two numbers, deliberately.
-         Owner, 2026-08-15: "stars flare with little brightness change and a LOT of ionising
-         radiation. Generally they move together but not always." Exactly so: a solar flare moves
-         bolometric output by about a hundredth of a percent while X-ray output jumps by three orders
-         of magnitude. Luminosity is fixed by radius and temperature; ionising output is the dynamo's.
-         Entangling them meant sliding "radiation" up on a red giant only produced a
-         luminosity-mismatch complaint and never made it flare. -->
+    <!-- LUMINOSITY and IONISING OUTPUT, joined by a LOCK. Owner, 2026-08-15: "we could have a nice
+         UI element here that could move the ionising radiation and luminosity together - perhaps a
+         lock icon between them. unlock to slide ionising radiation separately... show BOTH ranges for
+         standard and flaring versions of the star. Guide the user to the relationship and allow
+         deliberate variance."
+         THE RELATIONSHIP IS L_X = L_bol x (L_X/L_bol). Locked, the fraction holds and ionising output
+         tracks brightness - that is "generally they move together". Unlocked, the fraction is yours
+         across its four observed decades - that is "but not always". -->
     <div class="form-group">
         <div class="label-row">
             <label>Luminosity</label>
             {#if isNonThermal}
                 <input type="number" step="any" bind:value={radiation} on:change={handleRadiationInput} />
             {:else}
-                <span class="derived-readout" title="Computed from radius and temperature — edit those to change it.">{radiation.toPrecision(3)} L&#9737;</span>
+                <span class="derived-readout" title="Computed from radius and temperature - edit those to change it.">{radiation.toPrecision(3)} L&#9737;</span>
             {/if}
         </div>
         <div class="sub-label">
             {#if isNonThermal}
-                Accretion- or magnetosphere-driven, so it is yours to set: nothing about this object's size and temperature predicts it.
+                Accretion- or magnetosphere-driven, so it is yours to set.
             {:else}
-                Derived from radius and temperature. Change either to change this.
+                Derived from radius and temperature.
             {/if}
         </div>
     </div>
 
+    <div class="link-row">
+        <button type="button" class="lock-btn" class:locked={ionisingLocked}
+                title={ionisingLocked
+                    ? 'Locked: ionising output follows brightness. Click to set it separately.'
+                    : 'Unlocked: ionising output is yours. Click to make it follow brightness again.'}
+                on:click={toggleIonisingLock}>{ionisingLocked ? "🔒" : "🔓"}</button>
+        <span class="link-note">
+            {ionisingLocked ? 'ionising output follows brightness' : 'ionising output set separately'}
+        </span>
+    </div>
+
     <div class="form-group">
         <div class="label-row">
-            <label>Magnetic activity ({activityLabel})</label>
-            <input type="number" step="0.01" min="0" max="1" bind:value={activityValue} on:input={handleActivityInput} />
+            <label>Ionising output ({activityLabel})</label>
+            <span class="derived-readout">{fmtIonising(ionisingSolar)} &times; Sun</span>
         </div>
         <div class="slider-container">
+            <svg class="slider-svg" width="100%" height="30">
+                {#if ionisingRanges}
+                    <!-- BOTH ranges, so the relationship is visible rather than described: where this
+                         star normally sits, and where the flaring version of the same star sits. -->
+                    <rect x="{ionisingRanges.typicalX}%" y="0" width="{ionisingRanges.typicalW}%" height="8" fill="#4a7fb5" />
+                    <rect x="{ionisingRanges.flaringX}%" y="0" width="{ionisingRanges.flaringW}%" height="8" fill="#cc7744" />
+                    <text x="{ionisingRanges.typicalX}%" y="26" class="rad-label">typical</text>
+                    <text x="{ionisingRanges.flaringX}%" y="26" class="rad-label">flaring</text>
+                {/if}
+            </svg>
             <input type="range" min="0" max="1" step="0.01" bind:value={activityValue}
-                   on:input={handleActivityInput} class="full-width-slider" />
+                   on:input={handleActivityInput} disabled={ionisingLocked}
+                   class="full-width-slider overlay" />
         </div>
         <div class="sub-label">
-            {#if activityPinned}
-                Set by you. <button type="button" class="link-btn inline" on:click={resetActivity}>Use the physics</button>
+            {#if ionisingLocked}
+                Derived from class and age &mdash; a young M dwarf flares hard, an old one is quiet. Unlock to vary it.
             {:else}
-                Derived from class and age — a young M dwarf flares hard, an old one is quiet.
+                Set by you. <button type="button" class="link-btn inline" on:click={resetActivity}>Use the physics</button>
             {/if}
         </div>
     </div>
@@ -913,6 +970,11 @@
   .full-width-slider { width: 100%; margin: 0; cursor: pointer; }
   hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
   .sub-label { font-size: 0.75em; color: var(--text-faint); text-align: right; }
+.link-row { display: flex; align-items: center; gap: 8px; margin: -6px 0 2px; }
+  .lock-btn { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px;
+      font-size: 0.95em; cursor: pointer; line-height: 1.4; }
+  .lock-btn.locked { border-color: var(--accent, #ff5a1f); }
+  .link-note { font-size: 0.72em; color: var(--text-faint); }
   .derived-readout { width: 100px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.95em; }
   .class-explain { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
   

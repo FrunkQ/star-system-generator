@@ -6,6 +6,7 @@ import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { SOLAR_TEMPERATURE_K } from '../physics/stellar-evolution';
 import { bodyFactory } from '../core/BodyFactory';
 import { resolveStarImage, spectralLetterOf } from '../system/starImage';
+import { activityScatterFromRoll } from '../physics/ionisingOutput';
 
 // The stat template for a star class, falling back from the full spectral class to its letter
 // (star/G5V -> star/G). Exported because BOTH star-creation paths need it: the legacy random
@@ -215,6 +216,11 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     star.magneticField = starMagneticField;
     star.radiationOutput = radiationOutput;
     star.image = starImage ? { url: starImage } : undefined;
+    // B-ACT: this star's own draw on the activity scatter, so a generated POPULATION spans the real
+    // range rather than every G dwarf of one age being identical. An INPUT, not a derivation - there
+    // is nothing to compute it from, it is the equivalent of birth rotation. Its own seeded stream so
+    // adding it shifts nothing else.
+    (star as any).activityScatter = activityScatterFromRoll(new SeededRNG(`${id}-activity`).nextFloat());
     star.tags = tags;
 
     return star;

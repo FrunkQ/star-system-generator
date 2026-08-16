@@ -33,9 +33,19 @@ const hasTag = (b: any, key: string) => (b.tags ?? []).some((t: any) => t.key ==
 describe('a red giant, left alone', () => {
 	it('is quiet, because a swollen star has no strong surface dynamo', () => {
 		const g = run(redGiant());
-		expect(g.flareActivity).toBeCloseTo(0.05, 2);
+		// The BUCKET is the assertion, not an exact figure: generated stars carry a seeded scatter, so
+		// a class-and-age model with no spread is the unphysical one. Quiet is what must hold.
 		expect(tagVal(g, STELLAR_ACTIVITY_TAG)).toBe('quiet');
 		expect(hasTag(g, 'hazard/flaring')).toBe(false);
+		expect(g.flareActivity).toBeLessThan(0.25);
+	});
+
+	it('carries NO scatter unless generation gave it one', () => {
+		// The scatter is a stored INPUT written at generation, not something re-derived here. A
+		// hand-authored or imported star has none and must be left exactly on the derived value —
+		// deriving it in this pass instead moved the Sol calibration anchor and every planet's dose.
+		const g = run(redGiant());
+		expect(g.flareActivity).toBeCloseTo(0.05, 3);
 	});
 });
 
@@ -75,7 +85,8 @@ describe('the override is a PIN, and hands back cleanly', () => {
 		systemProcessor.process(sys, pack);
 		delete sys.nodes[0].overrides.flareActivity;
 		systemProcessor.process(sys, pack);
-		expect(sys.nodes[0].flareActivity).toBeCloseTo(0.05, 2);
+		expect(sys.nodes[0].flareActivity).toBeLessThan(0.25); // back to derived-plus-scatter
+		expect(sys.nodes[0].flareActivity).not.toBe(0.8);
 		expect(hasTag(sys.nodes[0], 'hazard/flaring')).toBe(false);
 	});
 

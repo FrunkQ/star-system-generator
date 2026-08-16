@@ -43,6 +43,7 @@ import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosp
 import { flareActivity } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
 import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlausibility';
+import { applyActivityScatter } from '../physics/ionisingOutput';
 import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
 import { brownDwarfThermal } from '../physics/substellar';
 
@@ -106,8 +107,13 @@ export class SystemProcessor implements ISystemProcessor {
             // stars flare with almost no change in luminosity and a great deal of ionising
             // radiation, so the lever for "make this one dangerous" must not be the lever for "make
             // this one brighter". F-OVR: a present key means the GM pinned it.
+            // ...and a SEEDED SPREAD around it, because stars of one class and age genuinely scatter
+            // by about half a decade in X-ray output - rotation at birth varies and the dynamo follows
+            // rotation. A model with no scatter is the unphysical one. Seeded from the star's id, so
+            // it is stable across re-processing and identical for everyone.
+            const baseActivity = flareActivity(s.classes?.[0], this.systemAgeGyr, (s as any).accretionEddington);
             s.flareActivity = s.overrides?.flareActivity
-                ?? flareActivity(s.classes?.[0], this.systemAgeGyr, (s as any).accretionEddington);
+                ?? applyActivityScatter(baseActivity, (s as any).activityScatter);
             s.tags = stripForReprocess(s.tags, ['hazard/flaring', STELLAR_ACTIVITY_TAG]);
             if (s.flareActivity > 0.4) emit(s.tags, { key: 'hazard/flaring' });
             // MAGNETIC ACTIVITY, bucketed — the one judgement behind everything a star's surface

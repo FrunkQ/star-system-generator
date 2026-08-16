@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.634-beta - 16th Aug 2026
+
+* Star editor: brightness and ionising output now sit either side of a lock. Locked, ionising output follows brightness — raise the star's size or heat and it rises with them. Unlock it to set a star's ionising output deliberately, without pretending it got brighter.
+* Star editor: the ionising slider shows two bands — where a star of this kind normally sits, and where the flaring version of the same star sits — so the relationship is visible rather than described.
+* Star editor: ionising output is shown in multiples of the Sun's, and is capped at the observed saturation ceiling, which real stars do not exceed.
+* Star generation: generated stars now carry an individual spread in magnetic activity, so a population spans the real range instead of every star of one type and age being identical. Existing and imported stars are untouched.
+
 ## v2.1.633-beta - 16th Aug 2026
 
 * Star systems: found why planets never generate close to small, dim stars - the spacing rule uses the Solar System’s own distances for every star.
@@ -172,7 +179,6 @@ All notable changes are listed here:
 * Companion stars are no longer imported on perfect circles. Every other element of their orbit was already varied, but eccentricity was pinned at zero — so a wide binary, which in reality is almost always noticeably elliptical, went round in a circle. Alpha Centauri A and B actually swing between about 11 and 36 astronomical units apart; the bundled hand-built version of the system has always known that, and the importer now does too.
 * And a paired orbit no longer loses its shape when the pair is resolved into a barycentre. The two stars have to share one orbit shape between them, and the engine was copying it from whichever star was heavier — which, for an imported system, is the one that never had an orbit of its own. Its blank was overwriting the real one.
 * Alpha Centauri imports properly again. Proxima and its planets were being pulled out of place: Proxima Cen b appeared in a tight orbit around the main star instead of around Proxima, ten thousand astronomical units away, and Toliman went missing. The cause was two different things being given the same internal name — companion stars were numbered b, c, d and so were planets, so Proxima Cen *b* and Alpha Cen *B* collided. Nothing reported an error; the app simply picked the wrong one. Fixed, and a check now runs over every imported system to make sure no two objects can share a name again.
->>>>>>> Stashed changes
 
 
 ## v2.1.596-beta - 14th Aug 2026
@@ -209,7 +215,6 @@ All notable changes are listed here:
 * An ageing star no longer cools to an impossible temperature. Red giants were cooled by a fixed proportion of whatever they started at, which suited a Sun-like star and drove a small red dwarf down to 1,500 K — not a star at all. There is a real floor, and giants now stop at it, which is also why real giants of very different origins all end up much the same colour.
 * A star the catalogue gives no type for is now shown as unclassified, instead of quietly becoming a red dwarf. Six percent of the stars in a wide import had no spectral type and were being handed a red dwarf's mass, brightness, picture and flare rate. They now say plainly that the type is unknown and the figures are placeholders.
 * Both physics pages explain all of it, including why one star is squashed and another is not.
->>>>>>> Stashed changes
 
 
 ## v2.1.589-beta - 14th Aug 2026
@@ -234,7 +239,6 @@ All notable changes are listed here:
 * Neutron stars, pulsars and black holes are no longer imported as red dwarfs. They have no spectral type at all, and an absent one was quietly being read as "M" — so a pulsar arrived weighing a quarter of the Sun and glowing like a dim red star. The catalogue says plainly what these objects are, in a field the importer already fetched and was throwing away; it is now read, and they arrive as neutron stars and black holes with the right pictures.
 * White dwarfs were already being imported correctly. Checked rather than assumed, and left alone.
 * Red giants and supergiants no longer flare like red dwarfs. Flares come from a fast-spinning, strongly magnetic star, which a hugely swollen one is not — and the flare dose reaching a planet was being calculated as though Betelgeuse behaved like Proxima Centauri. Black holes were flaring too, for a different and sillier reason.
->>>>>>> Stashed changes
 
 
 ## v2.1.584-beta - 14th Aug 2026
