@@ -277,7 +277,7 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#9a7d41",
+        "hex": "#9a7b42",
         "palette": [
           {
             "hex": "#816651",
@@ -286,7 +286,7 @@
             "label": "metal surface"
           },
           {
-            "hex": "#FFD700",
+            "hex": "#ffd005",
             "role": "atmosphere",
             "weight": 0.200000000003,
             "label": "Na haze"
@@ -294,7 +294,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#9a7d41",
+      "apparentColorHex": "#9a7b42",
       "classification": {
         "base": "planet/hot-eyeball",
         "baseScore": 1.56,
@@ -752,7 +752,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#ecaa9a",
+        "hex": "#f8e4bb",
         "palette": [
           {
             "hex": "#e10027",
@@ -761,7 +761,7 @@
             "label": "oxidised rock surface"
           },
           {
-            "hex": "#f0e7c3",
+            "hex": "#f8e4bb",
             "role": "cloud",
             "weight": 0.7360000000000001,
             "label": "sulfuric-acid clouds"
@@ -769,7 +769,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#ecaa9a",
+      "apparentColorHex": "#f8e4bb",
       "classification": {
         "base": "planet/silicate",
         "baseScore": 1.23,
@@ -1409,7 +1409,7 @@
         "bandWidthDeg": 39.5
       },
       "apparentColor": {
-        "hex": "#93a3ab",
+        "hex": "#97a2a8",
         "palette": [
           {
             "hex": "#98724e",
@@ -1430,7 +1430,7 @@
             "label": "water ocean"
           },
           {
-            "hex": "#c3d5e9",
+            "hex": "#cfd2df",
             "role": "cloud",
             "weight": 0.30600000000000005,
             "label": "water clouds"
@@ -1438,7 +1438,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#93a3ab",
+      "apparentColorHex": "#97a2a8",
       "classification": {
         "base": "planet/earth-analogue",
         "baseScore": 2.17,
@@ -2381,7 +2381,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#9f6546",
+        "hex": "#a06546",
         "palette": [
           {
             "hex": "#9e6140",
@@ -2390,7 +2390,7 @@
             "label": "oxidised rock surface"
           },
           {
-            "hex": "#c3d5e9",
+            "hex": "#cfd2df",
             "role": "cloud",
             "weight": 0.036000000000000004,
             "label": "water clouds"
@@ -2398,7 +2398,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#9f6546",
+      "apparentColorHex": "#a06546",
       "classification": {
         "base": "planet/sub-earth",
         "baseScore": 1.3,
@@ -3782,7 +3782,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#c6b8a3",
+        "hex": "#c9b6a0",
         "palette": [
           {
             "hex": "#d7c09d",
@@ -3791,13 +3791,13 @@
             "label": "gas surface"
           },
           {
-            "hex": "#c6b8a3",
+            "hex": "#c8b6a0",
             "role": "cloud",
             "weight": 0.9,
             "label": "ammonia cloud deck"
           },
           {
-            "hex": "#b8845a",
+            "hex": "#bb8156",
             "role": "cloud",
             "weight": 0.6998268649926069,
             "label": "ammonium-hydrosulfide band"
@@ -3805,7 +3805,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#c6b8a3",
+      "apparentColorHex": "#c9b6a0",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -4245,7 +4245,7 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#af9171",
+        "hex": "#af8e6d",
         "palette": [
           {
             "hex": "#9b7555",
@@ -4254,7 +4254,7 @@
             "label": "rock surface"
           },
           {
-            "hex": "#FFFFE0",
+            "hex": "#fff2ce",
             "role": "atmosphere",
             "weight": 0.200000003,
             "label": "SO2 haze"
@@ -4262,7 +4262,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#af9171",
+      "apparentColorHex": "#af8e6d",
       "classification": {
         "base": "planet/sulfur",
         "baseScore": 1.68,
@@ -6115,7 +6115,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#bdad99",
+        "hex": "#beab97",
         "palette": [
           {
             "hex": "#ddbf8e",
@@ -6124,7 +6124,7 @@
             "label": "gas surface"
           },
           {
-            "hex": "#bbac99",
+            "hex": "#bdaa97",
             "role": "cloud",
             "weight": 0.9,
             "label": "ammonia cloud deck"
@@ -6132,7 +6132,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#bdad99",
+      "apparentColorHex": "#beab97",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -6637,7 +6637,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#f1d58b",
+        "hex": "#f3d489",
         "palette": [
           {
             "hex": "#ffd671",
@@ -6646,7 +6646,7 @@
             "label": "ice surface"
           },
           {
-            "hex": "#c3d1df",
+            "hex": "#ceced6",
             "role": "cloud",
             "weight": 0.238,
             "label": "methane clouds"
@@ -6654,7 +6654,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#f1d58b",
+      "apparentColorHex": "#f3d489",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.16,
@@ -9674,7 +9674,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#60b1d1",
+        "hex": "#62b1d0",
         "palette": [
           {
             "hex": "#d9c08f",
@@ -9683,7 +9683,7 @@
             "label": "gas surface"
           },
           {
-            "hex": "#5bb0d4",
+            "hex": "#5db0d3",
             "role": "cloud",
             "weight": 0.9,
             "label": "methane haze"
@@ -9691,7 +9691,7 @@
         ],
         "banding": 3
       },
-      "apparentColorHex": "#60b1d1",
+      "apparentColorHex": "#62b1d0",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -11321,7 +11321,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#5f8ace",
+        "hex": "#6289cc",
         "palette": [
           {
             "hex": "#d9c094",
@@ -11330,7 +11330,7 @@
             "label": "gas surface"
           },
           {
-            "hex": "#5a87d1",
+            "hex": "#5d87cf",
             "role": "cloud",
             "weight": 0.9,
             "label": "methane haze"
@@ -11338,7 +11338,7 @@
         ],
         "banding": 3
       },
-      "apparentColorHex": "#5f8ace",
+      "apparentColorHex": "#6289cc",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -11845,7 +11845,7 @@
             "label": "water ice sheet"
           },
           {
-            "hex": "#c3d1df",
+            "hex": "#ceced6",
             "role": "cloud",
             "weight": 0.027999999999999997,
             "label": "methane clouds"

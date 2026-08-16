@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.663-beta - 16th Aug 2026
+
+- FIXED: Venus had gone pink. Its ground was being lit by the light that reaches the ground, correctly, while its clouds kept their Earth-daylight colour — and cream cloud over deep-red rock is pink. Cloud tops and haze are lit by the light ABOVE the weather now, because the cloud is most of what did the filtering; lighting it with the surface spectrum was lighting it with light that only exists underneath it.
+- And you can no longer see through a sky that nothing gets through. How much of a world's ground is visible from orbit now follows from how much light reaches it — a 92-bar overcast that passes two per cent of the light shows you its clouds and nothing else, which is why nobody has ever photographed Venus's surface from space. Thin skies are unaffected.
+
 ## v2.1.662-beta - 16th Aug 2026
 
 - FIXED: the body panel's 2D view showed a plain coloured circle instead of the real render. It was asking for the lightweight by-type disc rather than the full one the render gallery draws — texture, surface features and terminator.

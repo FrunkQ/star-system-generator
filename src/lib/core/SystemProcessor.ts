@@ -1342,7 +1342,13 @@ export class SystemProcessor implements ISystemProcessor {
         // two consumers, which is the whole point of computing a surface spectrum at all.
         const apparent = deriveApparentColorParts(body, pack, {
             starTempK: hostStarTempK,
-            surfaceLight: spectrumCurves?.surface
+            surfaceLight: spectrumCurves?.surface,
+            // Cloud tops and haze are lit by the light ABOVE the weather, not by what got through it.
+            topLight: spectrumCurves?.topOfAtmosphere,
+            // …and how much of the ground is visible at all follows from how much light gets down.
+            transmission: body.surfaceSpectrum && body.surfaceSpectrum.totalTopWm2 > 0
+                ? body.surfaceSpectrum.totalSurfaceWm2 / body.surfaceSpectrum.totalTopWm2
+                : undefined
         });
         body.apparentColor = apparent;
         body.apparentColorHex = apparent.hex;

@@ -120,7 +120,7 @@ function bandCount(body: CelestialBody, gasFrac: number, iceGiant = false): numb
 export function deriveApparentColorParts(
   body: CelestialBody,
   rulePack?: RulePack,
-  opts?: { starTempK?: number; surfaceLight?: Spectrum }
+  opts?: { starTempK?: number; surfaceLight?: Spectrum; topLight?: Spectrum; transmission?: number }
 ): ApparentColor {
   const mk = makeupFractions(body);
   const palette: ApparentColorStop[] = [];
@@ -133,10 +133,22 @@ export function deriveApparentColorParts(
   // fixture — fall back to the star's unfiltered spectrum rather than to a different code path: a
   // world with no atmosphere is simply one whose transmission is 1 everywhere, so there is ONE
   // model and the fallback is a case of it rather than a rival to it.
-  const light: Spectrum = opts?.surfaceLight
-    ?? blackbodySpectrum(opts?.starTempK ?? 5778, 1000 * gridShare(opts?.starTempK ?? 5778));
-  /** What a material of this authored colour looks like under that light. */
+  const starSpectrum = blackbodySpectrum(opts?.starTempK ?? 5778, 1000 * gridShare(opts?.starTempK ?? 5778));
+  const light: Spectrum = opts?.surfaceLight ?? starSpectrum;
+  // A CLOUD IS NOT LIT BY THE SURFACE SPECTRUM, and this is not a nicety — on Venus it is the whole
+  // picture. The light that reaches the ground has already been through the entire atmosphere; the
+  // light falling on the cloud TOPS has not, because the cloud is most of what did the filtering.
+  // Lighting a deck with the surface spectrum means lighting it with light that only exists BELOW
+  // it, and the deck ends up carrying the colour of its own shadow.
+  //
+  // Venus is where that showed: a cream sulphuric deck kept its daylight colour while the rock under
+  // it turned deep red, and mixing the two made the planet PINK. Cloud tops take the unfiltered
+  // starlight; the ground takes what got through.
+  const topLight: Spectrum = opts?.topLight ?? starSpectrum;
+  /** What a material of this authored colour looks like on the GROUND. */
   const under = (hex: string) => materialUnderLight(hex, light);
+  /** …and what it looks like ABOVE the weather, where a cloud top or a haze layer sits. */
+  const underTop = (hex: string) => materialUnderLight(hex, topLight);
 
   // 1. Surface base ("land") from makeup fractions.
   let col = mixWeighted([
@@ -224,8 +236,9 @@ export function deriveApparentColorParts(
     if (hex) {
       const thickness = Math.min(1, (atm.pressure_bar ?? 0) / 2);
       const opacity = mk.gas > 0.5 ? Math.max(0.6, thickness) : 0.2 + 0.6 * thickness;
-      col = mix(col, hexToRgb(hex), opacity);
-      push(hex, 'atmosphere', opacity, `${g} haze`);
+      const lit = underTop(hex);
+      col = mix(col, hexToRgb(lit), opacity);
+      push(lit, 'atmosphere', opacity, `${g} haze`);
     }
   }
 
@@ -244,8 +257,14 @@ export function deriveApparentColorParts(
       .sort((a, b) => b.veil - a.veil)[0];
     if (top && top.veil > 0.02) {
       // Droplets, not bulk liquid — condensateTint owns that rule (see cloudDecks).
-      const condensate = hexToRgb(condensateTint(top.def?.colorHex ?? '#c8d2dc', top.def?.cloudTintDistance));
-      col = mix(col, condensate, Math.min(0.85, top.veil));
+      const condensate = hexToRgb(underTop(condensateTint(top.def?.colorHex ?? '#c8d2dc', top.def?.cloudTintDistance)));
+      // The cap used to be 0.85, which left a sixth of the ground showing through ANY deck however
+      // thick. That is the same fault the giants already had fixed a few lines below (their comment
+      // records that 0.85 "dragged every giant darker than it should"), and on Venus it is glaring:
+      // a 92-bar sulphuric overcast that you can see the rock through. Nobody has ever seen Venus's
+      // surface from orbit. The veil itself still decides — a thin water deck stays thin — this only
+      // stops an arbitrary ceiling overriding it.
+      col = mix(col, condensate, Math.min(0.985, top.veil));
       push(rgbToHex(condensate), 'cloud', top.veil, `${top.d.species} clouds`);
     }
   }
@@ -285,7 +304,7 @@ export function deriveApparentColorParts(
         // substance's own colour — but it is also a brightly sunlit high-albedo cloud top, not a
         // dark pool of the stuff. The liquid colours are ocean colours; used raw they made every
         // giant too dark, and fully paled they washed Jupiter's tan away entirely.
-        stops.push([mix(hexToRgb(hex), [255, 255, 255], 0.32), Math.max(0.04, d.coverage * Math.pow(0.35, i))]);
+        stops.push([mix(hexToRgb(underTop(hex)), [255, 255, 255], 0.32), Math.max(0.04, d.coverage * Math.pow(0.35, i))]);
       });
       if (stops.length) cloud = mixWeighted(stops);
     }
@@ -334,8 +353,34 @@ export function deriveApparentColorParts(
       // if a world has no coloured condensate, it has no chromophore.
       for (const d of giantDecks.slice(0, -1)) {
         const hex = liquidDef(d.species, rulePack)?.colorHex;
-        if (hex) push(hex, 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), `${d.species} band`);
+        if (hex) push(underTop(hex), 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), `${d.species} band`);
       }
+    }
+  }
+
+  // 3d. HOW MUCH OF THE GROUND YOU CAN SEE AT ALL.
+  //
+  // The cloud and haze steps above each veil by their own share, and between them they still let a
+  // quarter of Venus's rock show — which is how a 92-bar sulphuric overcast came out PINK: crimson
+  // ground bleeding through cream cloud. But we already derive the number that settles it. If the
+  // sky passes 2% of the light on the way down, it is no more transparent on the way back up, so
+  // essentially nothing you see from orbit is the ground.
+  //
+  // So the whole surface stack fades toward what is ABOVE it as transmission falls. It needs no new
+  // quantity, no per-liquid tuning and no cap: a thin sky changes nothing, and an opaque one hides
+  // its world without anybody having to say that Venus is a special case.
+  // ONLY FOR A GENUINELY OPAQUE SKY, and the threshold is doing real work rather than being timid.
+  // The transmission figure INCLUDES the cloud deck, and the deck has already veiled the ground a
+  // few lines above — so applying it everywhere counts the same cloud twice and Earth loses its blue
+  // to a second helping of its own weather. Below about a tenth getting down, no plausible share of
+  // that is the deck alone, and the double-count is swamped by the fact that you can see nothing.
+  const transmission = opts?.transmission;
+  if (transmission !== undefined && transmission < 0.12 && !rendersAsGiant(body)) {
+    const veilTop = palette.filter((p) => p.role === 'cloud' || p.role === 'atmosphere').slice(-1)[0];
+    if (veilTop) {
+      // Down and back up: what returns from the ground has crossed the sky twice.
+      const seen = Math.max(0, Math.min(1, transmission * transmission));
+      col = mix(hexToRgb(veilTop.hex), col, seen);
     }
   }
 
