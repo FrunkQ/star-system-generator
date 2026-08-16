@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.661-beta - 16th Aug 2026
+
+- The "from inside" view now has just two controls, because two things decide a colour: the star's colour, and the sky. Luminosity and distance are gone from it — they change how BRIGHT a world is, which matters enormously to a pigment deciding whether it can afford to be choosy and hardly at all to what a wire looks like.
+- It also starts somewhere that shows something. Defaulting to a Sun-like star behind Earth's air was defaulting to home, where by construction nothing moves — which is why it looked as though the tool did nothing.
+- More skies to pick from, including a sulphurous one. The sky is usually the bigger of the two effects: a star shifts everything together and your eyes largely follow it, but an atmosphere takes specific bands away and nothing gives them back.
+- The star slider names the colour it is on — ember red through to blue-white — and the sky says what fraction of the light actually reaches the ground, which is the honest companion to any claim about colour.
+
 ## v2.1.660-beta - 16th Aug 2026
 
 - NEW: "what it looks like from inside". A familiar colour chart and a row of wires, with a world's own daylight applied to one half and a slider to wipe between home and there. It is the honest answer to a question that comes up at a table more often than it should — can they tell which wire is the red one?

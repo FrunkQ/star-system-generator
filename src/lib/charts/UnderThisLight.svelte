@@ -12,23 +12,67 @@
   import { onMount } from 'svelte';
   import type { RulePack, CelestialBody } from '$lib/types';
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
-  import { blackbodySpectrum, gridShare } from '$lib/physics/spectrum';
+  import { blackbodySpectrum, gridShare, spectrumToHex } from '$lib/physics/spectrum';
   import { lightOperator, relightImage, colourUnderOperator, confusability } from '$lib/physics/imageUnderLight';
 
-  let { body = null, light = null, pack = null, height = 260 }:
-    { body?: CelestialBody | null; light?: number[] | null; pack?: RulePack | null; height?: number } = $props();
+  let { body = null, light = null, pack = null, height = 260, standalone = false }:
+    { body?: CelestialBody | null; light?: number[] | null; pack?: RulePack | null;
+      height?: number; standalone?: boolean } = $props();
 
   let split = $state(50);          // where the wipe sits, as a percentage
   let adapt = $state(true);        // after your eyes settle, vs the moment you step out
   let scene = $state('chart');
 
-  // The world's light: handed in, or rebuilt from the body's stored spectrum summary.
+  // ── Standalone controls ───────────────────────────────────────────────────────────────────────
+  // Deliberately just TWO, and they are the two that change a colour. Luminosity and distance move
+  // how BRIGHT a world is, which matters enormously to a pigment deciding whether it can afford to
+  // be choosy and hardly at all to what a wire looks like. A star's colour and its sky are what do
+  // the work here, so they are the whole control set.
+  //
+  // It also starts somewhere that SHOWS something. Defaulting to a G star behind Earth's air is
+  // defaulting to home, where by construction nothing moves.
+  let demoTempK = $state(3200);
+  let demoSky = $state('thick');
+
+  const SKIES: Record<string, { label: string; atm: any }> = {
+    none:  { label: 'No atmosphere', atm: undefined },
+    earth: { label: 'Earth-like air, 1 bar', atm: { pressure_bar: 1, molarMassKg: 0.02896, composition: { N2: 0.78, O2: 0.21, Ar: 0.009, CO2: 0.0004, H2O: 0.004 } } },
+    thick: { label: 'Thick carbon dioxide, 10 bar', atm: { pressure_bar: 10, molarMassKg: 0.044, composition: { CO2: 0.95, N2: 0.05 } } },
+    titan: { label: 'Methane haze, 1.5 bar', atm: { pressure_bar: 1.5, molarMassKg: 0.028, composition: { N2: 0.94, CH4: 0.056 } } },
+    venus: { label: 'Venus-like, 92 bar', atm: { pressure_bar: 92, molarMassKg: 0.044, composition: { CO2: 0.965, N2: 0.035 } } },
+    sulphur: { label: 'Sulphurous, 5 bar', atm: { pressure_bar: 5, molarMassKg: 0.064, composition: { SO2: 0.6, CO2: 0.35, N2: 0.05 } } }
+  };
+
+  const demoBody = $derived({
+    id: 'under-light-demo', kind: 'body', name: 'demo', roleHint: 'planet',
+    makeup: { rock: 0.7, metal: 0.3 }, calculatedGravity_ms2: 9.81,
+    atmosphere: SKIES[demoSky].atm
+  } as unknown as CelestialBody);
+
+  // The world's light: its own controls when standalone, else handed in, else rebuilt from the
+  // body's stored spectrum summary.
   const surfaceLight = $derived.by(() => {
+    if (standalone) {
+      const r = deriveSurfaceSpectrum(demoBody, { starTempK: demoTempK, luminositySolar: 1, distanceAU: 1 }, pack);
+      return r?.curves.surface ?? null;
+    }
     if (light) return light;
     const s0 = body?.surfaceSpectrum;
     if (!s0) return null;
     const r = deriveSurfaceSpectrum(body!, { starTempK: s0.starTempK, luminositySolar: 1, distanceAU: s0.distanceAU }, pack);
     return r?.curves.surface ?? null;
+  });
+
+  // What that star looks like on its own, for the slider's swatch — the colour being chosen.
+  const starHex = $derived(spectrumToHex(blackbodySpectrum(demoTempK, 1000 * gridShare(demoTempK))));
+  const starWord = $derived(
+    demoTempK < 3000 ? 'ember red' : demoTempK < 4000 ? 'deep orange' : demoTempK < 5000 ? 'amber'
+    : demoTempK < 6200 ? 'sunlight' : demoTempK < 8000 ? 'cold white' : 'blue-white');
+  // How much of the light gets down at all — the honest companion to any colour claim.
+  const reaching = $derived.by(() => {
+    if (!standalone) return null;
+    const r = deriveSurfaceSpectrum(demoBody, { starTempK: demoTempK, luminositySolar: 1, distanceAU: 1 }, pack);
+    return r ? Math.round(100 * r.summary.totalSurfaceWm2 / r.summary.totalTopWm2) : null;
   });
 
   const op = $derived(surfaceLight ? lightOperator(surfaceLight) : null);
@@ -145,6 +189,22 @@
   {#if !op}
     <p class="none">This world has no star to be lit by, so there is nothing to compare.</p>
   {:else}
+    {#if standalone}
+      <div class="controls demo">
+        <label class="star">
+          <span><span class="star-chip" style="background:{starHex}"></span>
+            Star colour — <b>{starWord}</b>, {Math.round(demoTempK)} K</span>
+          <input type="range" min="2400" max="11000" step="50" bind:value={demoTempK} />
+        </label>
+        <label class="sky">
+          <span>Sky{#if reaching !== null}&nbsp;&mdash; <b>{reaching}%</b> of the light gets down{/if}</span>
+          <select bind:value={demoSky}>
+            {#each Object.entries(SKIES) as [k, v]}<option value={k}>{v.label}</option>{/each}
+          </select>
+        </label>
+      </div>
+    {/if}
+
     <div class="controls">
       <label class="scene">
         <select bind:value={scene}>
@@ -200,6 +260,13 @@
 
 <style>
   .under-light { margin: 12px 0; }
+  .controls.demo { border-bottom: 1px solid var(--border, #2a2d36); padding-bottom: 8px; margin-bottom: 8px; }
+  .controls .star, .controls .sky { display: flex; flex-direction: column; gap: 2px; flex: 1 1 240px; min-width: 200px; }
+  .controls .star input { width: 100%; }
+  .star-chip {
+    display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.35); vertical-align: -1px; margin-right: 4px;
+  }
   .controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-size: 0.8em; margin-bottom: 6px; }
   .controls select {
     padding: 3px 6px; background: var(--bg-control, #1b1e26); color: var(--text, #eee);

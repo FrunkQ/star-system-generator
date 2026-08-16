@@ -10,7 +10,6 @@
   import { wienPeakNm } from '$lib/physics/spectrum';
   import SpectrumChart from './SpectrumChart.svelte';
   import ColourSwatch from './ColourSwatch.svelte';
-  import UnderThisLight from './UnderThisLight.svelte';
 
   let { pack = null }: { pack?: RulePack | null } = $props();
 
@@ -145,15 +144,6 @@
         {/each}
       </tbody>
     </table>
-    <h4>And what it looks like from inside</h4>
-    <p class="note">
-      The same light at eye level. Left of the line is a familiar reference as it looks at home; right of it
-      is the same surfaces under <strong>the star and sky set above</strong>. Move those controls and this
-      moves with them — it is the answer to a question that comes up at a table more often than it should:
-      <em>can they tell which wire is the red one?</em>
-    </p>
-    <UnderThisLight light={curves.surface} {pack} height={230} />
-
     <p class="note small">
       Saturating flux {model.saturationFlux.toExponential(1)} photons&#183;m&#8315;&#178;&#183;s&#8315;&#185;; reaction centre
       {model.reactionCentreNm} nm; damage threshold {model.damageThresholdNm} nm; viable at

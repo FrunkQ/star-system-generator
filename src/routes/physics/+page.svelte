@@ -6,6 +6,7 @@
   import { GRID_MIN_NM, GRID_MAX_NM, GRID_STEP_NM } from '$lib/physics/spectrum';
   import SurfaceLightExplorer from '$lib/charts/SurfaceLightExplorer.svelte';
   import MorphologyStackExplorer from '$lib/charts/MorphologyStackExplorer.svelte';
+  import UnderThisLight from '$lib/charts/UnderThisLight.svelte';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { onMount } from 'svelte';
   import type { RulePack } from '$lib/types';
@@ -895,6 +896,20 @@
       <p>Everything below is computed live by the same two functions the engine calls on every body in every
         system. Move a slider and you are re-running the physics, not a mock-up of it.</p>
       <SurfaceLightExplorer {pack} />
+
+      <h3>What it looks like from inside</h3>
+      <p>All of the above is a curve. This is the same thing at eye level: a familiar reference with a
+        world's daylight on one half of it, and a slider to wipe between home and there. It is the answer
+        to a question that comes up at a table more often than it should — <em>can they tell which wire is
+        the red one?</em></p>
+      <p>Two controls, because two things decide a colour. The star's own colour is one. The <strong>sky is
+        the other, and it is usually the bigger of the two</strong>: a star shifts everything together and
+        your eyes largely follow it, whereas an atmosphere takes specific bands away and nothing gives them
+        back. A thick carbon-dioxide sky drags red toward orange; a Venus-like one, passing two per cent of
+        what arrives, leaves so little to work with that reds come back pink. How BRIGHT a world is barely
+        matters here — it matters enormously to a pigment deciding whether it can afford to be choosy,
+        which is what the explorer above is for.</p>
+      <UnderThisLight standalone {pack} height={230} />
 
       <h3>Where this model stops</h3>
       <ul>
