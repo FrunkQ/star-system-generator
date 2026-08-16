@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.666-beta - 16th Aug 2026
+
+- FIXED: standing on Venus, everything looked pink. The eye-adaptation model was unbounded — it assumed your eyes can discount any light however little of it there is. Venus's sky leaves the blue cones half a percent of the light they get at home, and the maths answered that by amplifying them 134 times, which does not recover the colour, it recovers the noise. A white card came back pink and a blue wire came back violet. Adaptation is now limited per channel by how much light that channel actually has, the way a low-pressure sodium street lamp leaves the world orange-grey rather than colour-corrected. Venus now reads as Venera photographed it: a deep orange world where blues go dark rust.
+- NEW: a "midday brightness" switch on the colour and horizon views, alongside "once your eyes adjust". The two are different questions — what colour the light is, and how much of it there is — and only the second one tells you the world is dark.
+- NEW: every world now states its midday light level against an Earth noon, in words as well as a figure. Venus is 1.6% of an Earth noon, which is heavy overcast, and it is dark for a reason worth knowing: a fifth of the star's energy reaches the ground there, but it arrives peaking at 920 nm, so almost none of the VISIBLE light does.
+- Colour drains toward grey below about a thousandth of an Earth noon, because rods carry no colour — a moonlit world is grey however long you look at it. Above that, dim is not the same as grey and it is no longer drawn as though it were.
+- The colour and horizon views inside the body panel drop the explanation and link to the physics page instead. That panel is a tool, not a lesson.
+
 ## v2.1.665-beta - 16th Aug 2026
 
 - FIXED, properly this time: Venus was still pink on the drawn disc. The previous fix corrected the single flattened swatch a world is summarised by, but the 2D and 3D renderers do not use that — they paint the ground from the palette and veil it with the cloud, and nothing told them the sky was opaque. How visible a world's ground is now travels with the palette, so the renderers know too. Venus is a featureless pale ball, as it is.

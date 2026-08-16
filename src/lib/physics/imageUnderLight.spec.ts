@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { lightOperator, relightImage, colourUnderOperator, confusability } from './imageUnderLight';
+import {
+  lightOperator, relightImage, colourUnderOperator, confusability, homeDaylight, brightnessVs
+} from './imageUnderLight';
 import { blackbodySpectrum, gridShare, GRID_NM } from './spectrum';
 
 const light = (t: number) => blackbodySpectrum(t, 1000 * gridShare(t));
@@ -43,6 +45,65 @@ describe('re-lighting a familiar colour', () => {
     // …but NOT none of it. Adaptation is never complete — a tungsten-lit room still looks warm after
     // an hour — and modelling it as complete is what made the first version of this useless.
     expect(cast(true)).toBeGreaterThan(0);
+  });
+});
+
+describe('a light that has almost nothing left in one channel', () => {
+  // VENUS. 92 bar of CO2 leaves the S cones about half a percent of the short-wavelength light they
+  // get at home, and unbounded von Kries answered that by asking for a 134-fold gain — which does not
+  // recover the colour, it recovers the noise. A white card came back pink and a blue wire came back
+  // violet, so the whole world went pink. A starved channel must be left dark, not amplified.
+  const starved = lightOperator(GRID_NM.map((nm) => Math.exp(-Math.pow((700 - nm) / 130, 2)) * 40));
+
+  it('does not amplify a starved channel into a cast of its own', () => {
+    const [r, g, b] = ch(colourUnderOperator(rgb('#ffffff'), starved, true));
+    // Warm, because the light is: red the strongest. What must NOT happen is blue climbing back past
+    // green, which is the signature of the amplification and is what "pink" looked like numerically.
+    expect(r).toBeGreaterThan(g);
+    expect(b).toBeLessThanOrEqual(g);
+  });
+
+  it('takes a blue surface toward dark neutral rather than toward violet', () => {
+    const home = ch('#2a5fb0');
+    const [r, , b] = ch(colourUnderOperator(rgb('#2a5fb0'), starved, true));
+    // At home this swatch is emphatically blue: b beats r by 134. Under a light with nothing at the
+    // short end that difference has nowhere to come from, so it must collapse — the old maths
+    // manufactured it back and produced a violet wire.
+    expect(home[2] - home[0]).toBeGreaterThan(100);
+    expect(Math.abs(b - r)).toBeLessThan(20);
+    // …and it must land DARK, because a blue surface reflects very little of a red light. Darkness is
+    // the only thing left to tell it by, which is exactly why blue and black stop being separable.
+    const luma = (c: number[]) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    const white = ch(colourUnderOperator(rgb('#ffffff'), starved, true));
+    expect(luma([r, ch(colourUnderOperator(rgb('#2a5fb0'), starved, true))[1], b]))
+      .toBeLessThan(luma(white) * 0.6);
+  });
+
+  it('still discounts an ordinary cast, so nothing else regresses', () => {
+    // The rolloff is only allowed to bite when a channel is genuinely starved. Under a 3000 K dwarf
+    // every cone still has plenty of light, so adaptation must work as it always did.
+    const [r, , b] = ch(colourUnderOperator(rgb('#e8e8e8'), DWARF, true));
+    expect(r - b).toBeLessThan(ch(colourUnderOperator(rgb('#e8e8e8'), DWARF, false))[0]
+                             - ch(colourUnderOperator(rgb('#e8e8e8'), DWARF, false))[2]);
+  });
+});
+
+describe('how bright it is, as opposed to what colour', () => {
+  it('reads Earth as 1, because home is measured the same way as everywhere else', () => {
+    expect(brightnessVs(homeDaylight(), homeDaylight())).toBeCloseTo(1, 6);
+  });
+
+  it('dims the image when asked for the real light level, and drains colour only in the dark', () => {
+    const at = (level: number) => {
+      const px = new Uint8ClampedArray([47, 143, 58, 255]);
+      relightImage(px, SUN, true, level);
+      return [px[0], px[1], px[2]];
+    };
+    const full = at(1), dusk = at(0.02), night = at(1e-6);
+    expect(dusk[1]).toBeLessThan(full[1]);                       // dimmer
+    expect(Math.abs(dusk[1] - dusk[0])).toBeGreaterThan(10);     // …but still green
+    // Rods carry no colour, which is why a moonlit field is grey however long you look at it.
+    expect(Math.abs(night[1] - night[0])).toBeLessThan(4);
   });
 });
 

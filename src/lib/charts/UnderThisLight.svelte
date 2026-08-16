@@ -13,17 +13,26 @@
   import type { RulePack, CelestialBody } from '$lib/types';
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
   import { blackbodySpectrum, gridShare, spectrumToHex } from '$lib/physics/spectrum';
-  import { lightOperator, relightImage, colourUnderOperator, confusability } from '$lib/physics/imageUnderLight';
+  import {
+    lightOperator, relightImage, colourUnderOperator, confusability,
+    homeDaylight, brightnessVs, brightnessWords
+  } from '$lib/physics/imageUnderLight';
 
-  let { body = null, light = null, pack = null, height = 260, standalone = false, fixedScene = null }:
+  let { body = null, light = null, pack = null, height = 260, standalone = false,
+        fixedScene = null, compact = null }:
     { body?: CelestialBody | null; light?: number[] | null; pack?: RulePack | null;
       height?: number; standalone?: boolean;
       /** Pin the scene and hide its picker — for a host that already offers the choice itself. */
-      fixedScene?: 'chart' | 'landscape' } = $props();
+      fixedScene?: 'chart' | 'landscape' | null;
+      /** Drop the explanation and link to it instead. Defaults on wherever the scene is pinned,
+       *  because that host is the body panel, where the GM wants the tool and not the lesson. */
+      compact?: boolean | null } = $props();
 
   let split = $state(50);          // where the wipe sits, as a percentage
   let adapt = $state(true);        // after your eyes settle, vs the moment you step out
+  let trueLevel = $state(false);   // shown at the real light level, rather than normalised
   let scene = $state('chart');
+  const terse = $derived(compact ?? fixedScene !== null);
   // A host that offers the scene as its own control owns it; the picker below then just repeats it.
   const activeScene = $derived(fixedScene ?? scene);
 
@@ -80,9 +89,20 @@
   });
 
   const op = $derived(surfaceLight ? lightOperator(surfaceLight) : null);
-  // Daylight is the reference the confusability figures are quoted against — "half as easy to tell
-  // apart as at home" says something; an abstract number does not.
-  const daylightOp = lightOperator(blackbodySpectrum(5778, 1000 * gridShare(5778)));
+  // Home is the reference every ratio is quoted against — "half as easy to tell apart as at home"
+  // says something; an abstract number does not. It is Earth's own ground-level daylight.
+  const daylightOp = homeDaylight();
+
+  // HOW MUCH LIGHT, as opposed to what colour it is — the two are independent and the second one is
+  // what the eye adapts away. Venus is the case that makes the distinction earn its keep: a fifth of
+  // the star's ENERGY reaches the ground, but it comes down peaking at 920 nm, so barely a
+  // sixtieth of the visible light does.
+  const level = $derived(op ? brightnessVs(op, daylightOp) : 1);
+  const levelPct = $derived(
+    level >= 0.1 ? `${Math.round(level * 100)}%`
+    : level >= 0.001 ? `${(level * 100).toPrecision(2)}%`
+    : level > 0 ? `1 part in ${Math.round(1 / level).toLocaleString()}`
+    : 'none');
 
   // ── The scenes ────────────────────────────────────────────────────────────────────────────────
   // Drawn rather than sourced, deliberately: a photograph would need a licence and an attribution
@@ -137,7 +157,7 @@
     const x0 = Math.round((split / 100) * W);
     if (x0 < W) {
       const img = ctx.getImageData(x0, 0, W - x0, H);
-      relightImage(img.data, op, adapt);
+      relightImage(img.data, op, adapt, trueLevel ? level : 1);
       ctx.putImageData(img, x0, 0);
     }
     // The seam, so the eye knows where the comparison is.
@@ -185,7 +205,7 @@
     });
   }
 
-  $effect(() => { split; adapt; activeScene; op; demoTempK; demoSky; draw(); });
+  $effect(() => { split; adapt; trueLevel; level; activeScene; op; demoTempK; demoSky; draw(); });
   onMount(draw);
 </script>
 
@@ -226,21 +246,30 @@
         <input type="checkbox" bind:checked={adapt} />
         <span>once your eyes adjust</span>
       </label>
+      <label class="adapt">
+        <input type="checkbox" bind:checked={trueLevel} />
+        <span title="Shown at the real light level rather than scaled up to fill the screen">midday brightness</span>
+      </label>
     </div>
+
+    <p class="level" class:dim={level < 0.05}>
+      Midday here is <b>{levelPct}</b> of an Earth noon &mdash; {brightnessWords(level)}.
+    </p>
 
     <canvas bind:this={canvas} width={W} height={height}
             aria-label="A familiar colour reference, with this world's own daylight applied to the right of the slider."></canvas>
 
-    <p class="note">
-      Left of the line is home. Right of it is the same surfaces under this world's own daylight.
-      {#if adapt}
-        Your eyes have adjusted, so an overall cast has been taken out — what is left is what this
-        light genuinely <em>cannot</em> carry.
-      {:else}
-        This is the moment you step outside, before your eyes settle: the star's cast and its
-        brightness are both still in it.
-      {/if}
-    </p>
+    {#if !terse}
+      <p class="note">
+        Left of the line is home. Right of it is the same surfaces under this world's own daylight.
+        {#if adapt}
+          Your eyes have adjusted, so an overall cast has been taken out — what is left is what this
+          light genuinely <em>cannot</em> carry.
+        {:else}
+          This is the moment you step outside, before your eyes settle, with the star's cast still in it.
+        {/if}
+      </p>
+    {/if}
 
     <div class="confusions">
       {#each confusions as c}
@@ -252,15 +281,22 @@
         </span>
       {/each}
     </div>
-    <p class="note small">
-      Measured after adaptation, which is the fair test: a cast is something a person adjusts to within
-      the hour, but two colours this light cannot separate stay inseparable however long they stand there.
-    </p>
-    <p class="note small">
-      A caveat worth saying at the table: the reference is treated as a set of SURFACES, so this is
-      "the same things under a different sun" rather than a simulation of a scene. It also says nothing
-      about how bright it is — that is on the spectrum plot.
-    </p>
+    {#if terse}
+      <!-- FUNCTION, NOT LESSON. In the body panel a GM wants the numbers and the picture; the working
+           belongs on the physics page, one click away, rather than three paragraphs down the panel. -->
+      <p class="note small">
+        <a href="/physics#surface-light" target="_blank" rel="noopener noreferrer">how this is worked out</a>
+      </p>
+    {:else}
+      <p class="note small">
+        Measured after adaptation, which is the fair test: a cast is something a person adjusts to within
+        the hour, but two colours this light cannot separate stay inseparable however long they stand there.
+      </p>
+      <p class="note small">
+        A caveat worth saying at the table: the reference is treated as a set of SURFACES, so this is
+        "the same things under a different sun" rather than a simulation of a scene.
+      </p>
+    {/if}
   {/if}
 </div>
 
@@ -291,6 +327,10 @@
     border: 1px solid var(--border, #2a2d36); background: #000;
   }
   .note { font-size: 0.8em; color: var(--text-muted, #cfcfcf); margin: 6px 0 0; }
+  .note.small a { color: var(--text-faint, #8a8f9a); }
+  .note.small a:hover { color: var(--accent, #ff5a1f); }
+  .level { font-size: 0.78em; color: var(--text-muted, #cfcfcf); margin: 6px 0 0; }
+  .level.dim b { color: #e0a32a; }
   .note.small { font-size: 0.74em; color: var(--text-faint, #8a8f9a); }
   .none { font-size: 0.85em; color: var(--text-faint, #8a8f9a); }
   .confusions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 0.78em; color: var(--text-muted, #cfcfcf); }
