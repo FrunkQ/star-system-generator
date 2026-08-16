@@ -1026,31 +1026,7 @@
         },
         {
           "key": "biodiversity/pigment",
-          "value": "bacteriorhodopsin"
-        },
-        {
-          "key": "biodiversity/pigment-viable",
-          "value": "carotenes"
-        },
-        {
-          "key": "biodiversity/pigment-viable",
-          "value": "pheophytin"
-        },
-        {
-          "key": "biodiversity/pigment-viable",
           "value": "chlorophyll"
-        },
-        {
-          "key": "biodiversity/pigment-viable",
-          "value": "phycoerythrin"
-        },
-        {
-          "key": "biodiversity/pigment-viable",
-          "value": "melanin"
-        },
-        {
-          "key": "biodiversity/pigment-viable",
-          "value": "phycocyanin"
         },
         {
           "key": "biodiversity/land-cover",
@@ -1297,8 +1273,8 @@
         ]
       },
       "vegetation": {
-        "pigment": "bacteriorhodopsin",
-        "pigmentLabel": "Bacteriorhodopsin",
+        "pigment": "chlorophyll",
+        "pigmentLabel": "Chlorophyll",
         "ranked": [
           {
             "key": "carotenes",
@@ -1396,24 +1372,30 @@
           {
             "morphology": "microbial",
             "label": "Microbial",
+            "pigment": "chlorophyll",
+            "pigmentLabel": "Chlorophyll",
             "coverage": 0.5599999999999999,
             "opacity": 0.55,
-            "colorHex": "#563b8f",
+            "colorHex": "#729c51",
             "light": 0,
             "waterReach": 0.25
           },
           {
             "morphology": "flora",
             "label": "Flora",
+            "pigment": "chlorophyll",
+            "pigmentLabel": "Chlorophyll",
             "coverage": 0.4,
             "opacity": 0.9,
-            "colorHex": "#6219bb",
+            "colorHex": "#99db3f",
             "light": 0,
             "waterReach": 0.12
           },
           {
             "morphology": "fauna",
             "label": "Fauna",
+            "pigment": null,
+            "pigmentLabel": null,
             "coverage": 0.16000000000000003,
             "opacity": 0,
             "colorHex": null,
@@ -1427,7 +1409,7 @@
         "bandWidthDeg": 39.5
       },
       "apparentColor": {
-        "hex": "#758cb5",
+        "hex": "#799bac",
         "palette": [
           {
             "hex": "#927458",
@@ -1436,10 +1418,10 @@
             "label": "rock surface"
           },
           {
-            "hex": "#5a2f9f",
+            "hex": "#80b34b",
             "role": "vegetation",
             "weight": 0.5571200000000001,
-            "label": "Bacteriorhodopsin vegetation"
+            "label": "Chlorophyll vegetation"
           },
           {
             "hex": "#4579aa",
@@ -1456,7 +1438,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#758cb5",
+      "apparentColorHex": "#799bac",
       "classification": {
         "base": "planet/earth-analogue",
         "baseScore": 2.17,

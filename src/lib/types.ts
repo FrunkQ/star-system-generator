@@ -161,6 +161,16 @@ export interface Magnetism {
 export interface BiosphereLayer {
   morphology: string;   // a key into the rule pack's morphology definitions — NOT a closed union
   coverage: number;     // 0..1 of the land, painted OVER the layers before it
+  /** An AUTHORED colour for this layer, replacing whatever the model would have chosen.
+   *
+   *  It exists because a biosphere that does not photosynthesise has no pigment and therefore takes
+   *  no colour from its star — the derivation correctly has nothing to say, and somebody has to. A
+   *  chemosynthetic mat is whatever its chemistry makes it, and that is a GM's call.
+   *
+   *  Offered on EVERY layer rather than only the ones that need it, because "microbial gets a colour
+   *  picker" would be a rule about microbial. It is an INPUT — nothing re-derives it — which is why
+   *  it is stored here with the rest of the authored biosphere rather than arriving as a tag. */
+  colorHex?: string;
 }
 
 export interface Biosphere {
@@ -301,6 +311,11 @@ export interface PigmentRank {
 export interface VegetationLayerSpec {
   morphology: string;
   label: string;
+  /** The pigment THIS morphology settled on. Each pigment-driven layer draws its own from the same
+   *  scored viable set, so a world's mats and its plants need not have made the same choice — which
+   *  is what shipping a ranked set rather than a single winner was for. */
+  pigment: string | null;
+  pigmentLabel: string | null;
   coverage: number;      // 0..1 of the land
   opacity: number;
   colorHex: string | null;   // null = this morphology contributes no colour (empty tints, no pigment drive)

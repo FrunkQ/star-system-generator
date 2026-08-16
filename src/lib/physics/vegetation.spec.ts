@@ -248,3 +248,58 @@ describe('landFraction — the number that keeps a renderer off the ocean', () =
     expect(deriveVegetation(dry, spectrumFor(dry), { roll: roll('a') }, pack)!.landFraction).toBe(1);
   });
 });
+
+describe('each morphology draws its own pigment', () => {
+  it('does not force the mats and the plants into the same choice', () => {
+    // Shipping a RANKED SET rather than a single winner was supposed to make this nearly free, and
+    // this is the test that it did: two lineages, two draws, from the same scored set.
+    const seen = new Set<string>();
+    for (let i = 0; i < 24; i++) {
+      const b = world({ id: `w${i}`, biosphere: bio({ morphologies: [
+        { morphology: 'microbial', coverage: 0.8 }, { morphology: 'flora', coverage: 0.6 }] }) });
+      const veg = deriveVegetation(b, spectrumFor(b), { roll: roll(`w${i}`) }, pack)!;
+      const mic = veg.layers.find((l) => l.morphology === 'microbial')!;
+      const flo = veg.layers.find((l) => l.morphology === 'flora')!;
+      expect(mic.pigment).toBeTruthy();
+      expect(flo.pigment).toBeTruthy();
+      if (mic.pigment !== flo.pigment) seen.add(`${i}`);
+    }
+    expect(seen.size).toBeGreaterThan(0);
+  });
+
+  it('pins the layer the picker NAMES and leaves the others their own draws', () => {
+    const b = world({ biosphere: bio({ morphologies: [
+      { morphology: 'microbial', coverage: 0.4 }, { morphology: 'flora', coverage: 0.9 }] }) });
+    const free = deriveVegetation(b, spectrumFor(b), { roll: roll(b.id) }, pack)!;
+    const pinned = deriveVegetation(b, spectrumFor(b), { roll: roll(b.id), pinnedPigment: 'melanin' }, pack)!;
+    // Flora is the most extensive pigment-driven layer, so it is what the pin lands on…
+    expect(pinned.layers.find((l) => l.morphology === 'flora')!.pigment).toBe('melanin');
+    expect(pinned.pigment).toBe('melanin');
+    // …and the mats keep whatever they drew, rather than being quietly repainted with it.
+    const micFree = free.layers.find((l) => l.morphology === 'microbial')!.pigment;
+    expect(pinned.layers.find((l) => l.morphology === 'microbial')!.pigment).toBe(micFree);
+  });
+});
+
+describe('an authored colour', () => {
+  it('wins outright, and is offered on any layer rather than a named one', () => {
+    const b = world({ biosphere: bio({ morphologies: [
+      { morphology: 'microbial', coverage: 0.7, colorHex: '#ff00aa' },
+      { morphology: 'flora', coverage: 0.5 }] }) });
+    const veg = deriveVegetation(b, spectrumFor(b), { roll: roll(b.id) }, pack)!;
+    expect(veg.layers.find((l) => l.morphology === 'microbial')!.colorHex).toBe('#ff00aa');
+    // The model still has its own answer for everything else.
+    expect(veg.layers.find((l) => l.morphology === 'flora')!.colorHex).not.toBe('#ff00aa');
+  });
+
+  it('gives a CHEMOSYNTHETIC world a colour the model could not have chosen', () => {
+    // The case it exists for: no photosynthesis means no pigment, so the derivation correctly has
+    // nothing to say about what a mat looks like and somebody has to.
+    const b = world({ biosphere: bio({ energy_source: 'chemosynthesis', morphologies: [
+      { morphology: 'flora', coverage: 0.6, colorHex: '#20d0c0' }] }) });
+    const veg = deriveVegetation(b, spectrumFor(b), { roll: roll(b.id) }, pack)!;
+    expect(veg.pigment).toBeNull();
+    expect(veg.layers[0].colorHex).toBe('#20d0c0');
+    expect(veg.visibleCover).toBeGreaterThan(0);
+  });
+});

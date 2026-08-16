@@ -118,8 +118,9 @@ BLAST: if you find a second clear of one namespace, hoist rather than add a thir
 WHERE: `SystemProcessor.processClassification` — the block that clears `biodiversity/` and calls
 `deriveSurfaceSpectrum` + `deriveVegetation`.
 RULE: one owning pass, one clear (TAG-6). It must run AFTER the cloud decks (they are the filter) and
-BEFORE `deriveApparentColorParts` (it consumes the tint). `biodiversity/pigment-viable` is emitted
-once per pigment on purpose, like `volatiles/ices`.
+BEFORE `deriveApparentColorParts` (it consumes the tint). Only the pigment a world SETTLED ON is
+tagged; the rest of the viable set stays on `body.vegetation.ranked` for the picker, because six
+tags per living world saying "this would also have worked" is clutter a dropdown already covers.
 WHY: `biodiversity/pigment` is a WEIGHTED DRAW over the scored set, not a calculation, and it is
 seeded `hash01(id + '|veg|pigment')` per DATA-G1. Using the shared per-run rng would re-roll every
 saved seed the moment anyone inserted a draw above it. The contingency is the model, not a

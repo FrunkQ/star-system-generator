@@ -144,6 +144,7 @@ export interface PolarVortexSpec {
  *  C2's missing thread rather than a second one alongside it. */
 export interface VegetationLayerDraw {
 	morphology: string;
+	pigmentLabel: string | null;   // the pigment THIS morphology settled on — each draws its own
 	coverage: number;   // 0..1 OF THE LAND (not of the disc, and not a share of the other layers)
 	opacity: number;
 	colorHex: string;
@@ -514,9 +515,20 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 			}
 			return 0;   // frozen everywhere — a snowball
 		};
-		// One hemisphere is in summer while the other is in winter, by the seasonal half-swing.
+		// THE TWO CAPS ARE DIFFERENT QUANTITIES, and conflating them is what made a summer hemisphere
+		// lose its cap entirely.
+		//
+		// The latitude profile is an ANNUAL MEAN. Adding the summer swing on top of it and testing
+		// that against the melting point asks "is the warmest moment above freezing?", and for Earth
+		// the answer at the pole is yes — so the model deleted the Arctic. What a summer hemisphere
+		// actually shows is its PERMANENT cap: the ground that stays frozen through the year, which is
+		// where the annual mean is below melting, with no swing added at all. What a winter hemisphere
+		// shows is the SEASONAL extent, which reaches much further: where the mean MINUS the swing
+		// drops below melting.
+		//
+		// Two honest quantities, one per hemisphere, and the asymmetry between them is the season.
 		const swing = seasonal ? (seasonal.highK - seasonal.lowK) / 2 : 0;
-		return { north: edge(+swing), south: edge(-swing) };
+		return { north: edge(0), south: edge(-swing) };
 	})();
 
 	// LIFE ON THE LAND. Nothing is derived here — `body.vegetation` already carries resolved colours
@@ -527,7 +539,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const vegLayers: VegetationLayerDraw[] = (vegSource?.layers ?? [])
 		.filter((l: any) => l.colorHex && l.coverage > 0.005 && l.opacity > 0)
 		.map((l: any) => ({
-			morphology: l.morphology, coverage: l.coverage, opacity: l.opacity,
+			morphology: l.morphology, pigmentLabel: l.pigmentLabel ?? null, coverage: l.coverage, opacity: l.opacity,
 			colorHex: l.colorHex, light: l.light ?? 0, waterReach: l.waterReach ?? 0.1
 		}));
 	const vegetation: VegetationSpec | null = vegLayers.length

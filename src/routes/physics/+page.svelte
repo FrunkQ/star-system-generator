@@ -980,11 +980,17 @@
         the poles; on a hotter one it empties the equator instead; on a methane world it lands somewhere else
         entirely and nothing in the code knew that was coming.</p>
       <MorphologyStackExplorer {pack} />
-      <p>What the engine records on a world: <code>biodiversity/pigment</code> (the drawn dominant),
-        <code>biodiversity/pigment-viable</code> once per other viable pigment, and
-        <code>biodiversity/land-cover</code> as the percentage of the land showing any life colour. The
-        resolved layer colours ride on the body itself, so every renderer draws the same thing without
-        needing the rule pack.</p>
+      <p><strong>Each morphology draws its own pigment</strong> from that same viable set, on its own seeded
+        stream — a world's microbial mats and its plants are separate lineages that made the choice
+        separately, and forcing them to agree would throw away the whole point of scoring a set. What the
+        engine records on a world is <code>biodiversity/pigment</code> (the one its most extensive
+        pigment-driven layer settled on) and <code>biodiversity/land-cover</code>. The rest of the viable set
+        is derived and kept, but not tagged — the Bio tab's picker lists it, and six tags per living world
+        saying "this would also have worked" is clutter.</p>
+      <p>A biosphere that does <em>not</em> photosynthesise has no pigment at all, so there is no star colour
+        to take and the model correctly has nothing to say about what it looks like. There, and anywhere else
+        you want it, a colour can simply be set by hand on the Bio tab; an authored colour wins outright
+        rather than being blended with a guess.</p>
       <p class="fudge-note"><strong>What is not here yet.</strong> Competing populations, which morphology takes
         <em>which</em> pigment, biospheres ageing, and a world's colour changing as its life evolves. Coverage
         per layer plus an order is already the shape those need, so the time-scrubbing falls out of what is

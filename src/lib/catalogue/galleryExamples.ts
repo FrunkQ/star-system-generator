@@ -14,6 +14,10 @@ export interface GalleryRow {
 	title: string;
 	blurb?: string;
 	bodies: CelestialBody[];
+	/** Light this row for its NIGHT SIDE: a raking key and no fill, so the terminator is real and
+	 *  anything that GLOWS can be seen glowing. The rest of the gallery is deliberately front-lit so
+	 *  surface detail reads, which is the opposite of what a row about city lights needs. */
+	nightSide?: boolean;
 }
 
 const mk = (over: Partial<CelestialBody> & { name: string }) => {
@@ -351,7 +355,7 @@ export const GALLERY_ROWS: GalleryRow[] = [
 	  blurb: 'The same world under the same star, with each of the viable pigments pinned in turn. Nothing is hand-tinted: each colour is what that pigment fails to absorb out of the light reaching this ground.' },
 	{ title: 'The hierarchy is a painter\u2019s algorithm', bodies: GALLERY_STACK,
 	  blurb: 'Plant life covers fungal, fungal colours microbial — layers painted in order. Fauna is present on the last one and paints nothing, because animals do not tint a world seen from orbit.' },
-	{ title: 'Technological life — lights, not paint (see the night side)', bodies: GALLERY_TECHNO,
+	{ title: 'Technological life — lights, not paint (see the night side)', bodies: GALLERY_TECHNO, nightSide: true,
 	  blurb: 'A settlement spreads exactly as plant cover does, from the coasts inland. It reads as what it EMITS: a grey-brown urban haze by day and a network of light by night. At full coverage the world is one city.' },
 	{ title: 'Oceans of different liquids', bodies: oceanWorlds },
 	{ title: 'Rotational shape — flattening to break-up', bodies: shapes },

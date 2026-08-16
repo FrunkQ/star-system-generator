@@ -52,8 +52,9 @@ it has stopped being true.
 `biodiversity/pigment` names the pigment most of a world's photosynthetic life uses, and it is
 **drawn** rather than calculated. The engine works out what light actually reaches that world's
 ground — its star, filtered by its sky — scores every pigment in the rule pack against it, and
-usually finds several that would work. `biodiversity/pigment-viable` lists the others. Which one
-dominates is then a weighted draw among them, seeded on the world itself.
+usually finds several that would work. Which one each morphology settles on is then a weighted draw
+among them, seeded on the world itself — and you can pick a different one from that world's own
+viable list on its Bio tab, which is a free choice rather than a correction.
 
 That is not the engine giving up. Without an evolutionary history to consult, a real biosphere's
 outcome genuinely is contingent: nature tries many things and the second best can dominate. So two

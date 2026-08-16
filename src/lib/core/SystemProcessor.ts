@@ -1316,15 +1316,14 @@ export class SystemProcessor implements ISystemProcessor {
         if (body.vegetation) {
             const veg = body.vegetation;
             // PHY-2 — WHAT each tag measures, WHERE, IN WHAT UNITS:
-            //   biodiversity/pigment        the DRAWN dominant pigment (a key, not a colour)
-            //   biodiversity/pigment-viable one per pigment scoring within the viability fraction;
-            //                               emitted repeatedly on purpose, like volatiles/ices
+            //   biodiversity/pigment        the pigment the world SETTLED ON (a key, not a colour) —
+            //                               the most extensive pigment-driven layer's
             //   biodiversity/land-cover     percent OF THE LAND showing any life colour — the UNION
             //                               of the painted layers, never the sum of the sliders
+            // Only the pigment this world SETTLED ON. The rest of the viable set is still derived and
+            // still rides on body.vegetation.ranked — the Bio tab's picker lists it — but it is not
+            // worth six tags of clutter on every living world to say what a dropdown already says.
             if (veg.pigment) emit(body.tags, { key: 'biodiversity/pigment', value: veg.pigment });
-            for (const r of veg.ranked) {
-                if (r.viable && r.key !== veg.pigment) body.tags.push({ key: 'biodiversity/pigment-viable', value: r.key });
-            }
             if (veg.visibleCover > 0.005) {
                 emit(body.tags, { key: 'biodiversity/land-cover', value: `${Math.round(veg.visibleCover * 100)}%` });
             }

@@ -190,6 +190,97 @@ function srgbGamma(u: number): number {
   return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
 }
 
+/**
+ * SPECTRAL UPSAMPLING — turn an authored hex into a plausible smooth REFLECTANCE curve.
+ *
+ * This is what lets the whole engine stop multiplying RGBs together. A material's colour in the rule
+ * pack is a measurement someone made under ordinary daylight; treating it as a reflectance SPECTRUM
+ * and filtering real light through it is strictly better than multiplying two three-component
+ * numbers, because it gets the interaction with an alien star and a filtering atmosphere right
+ * instead of approximating it in the wrong space (inbox B54).
+ *
+ * The method is the standard one (Smits, 1999): start with the WHITE component — the smallest
+ * channel, which every channel shares — then add the excess of each primary as a smooth, broad,
+ * non-negative lobe. Smooth and broad matters: real materials do not have spiky reflectance, and a
+ * spiky basis would produce colours that shift wildly under a slightly different illuminant.
+ *
+ * SAY WHAT IT IS NOT. This is an upsample, not a measurement. Infinitely many spectra look like any
+ * given colour under daylight ("metamers"), and this returns one plausible member of that set. It is
+ * flat past the red end, because an authored colour says nothing at all about the infrared — a
+ * neutral assumption rather than a right answer. Authoring real reflectance curves per material
+ * would beat it, and the pack's shape already allows that.
+ */
+const BASIS = [
+  { c: 640, w: 95 },   // long
+  { c: 545, w: 70 },   // middle
+  { c: 458, w: 62 }    // short
+];
+export function reflectanceFromHex(hex: string): Spectrum {
+  const h = hex.replace('#', '');
+  const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const v = parseInt(n, 16);
+  // sRGB -> linear: the authored value is a display colour, and reflectance is a linear quantity.
+  const toLin = (u: number) => (u <= 0.04045 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4));
+  const rgb = [toLin(((v >> 16) & 255) / 255), toLin(((v >> 8) & 255) / 255), toLin((v & 255) / 255)];
+  const white = Math.min(rgb[0], rgb[1], rgb[2]);
+  const excess = rgb.map((x) => Math.max(0, x - white));
+
+  const build = (w: number[]) => GRID_NM.map((nm) => {
+    // Flat past the red end: an authored colour carries no infrared information, so do not invent any.
+    const lam = Math.min(nm, 700);
+    let r = white;
+    for (let i = 0; i < BASIS.length; i++) {
+      const t = (lam - BASIS[i].c) / BASIS[i].w;
+      r += w[i] * Math.exp(-0.5 * t * t);
+    }
+    return Math.max(0, Math.min(1, r));
+  });
+
+  // CORRECT THE WEIGHTS, twice. The three lobes overlap heavily in the eye's own response — the
+  // short one in particular lands where the green and blue cone responses both sit — so using the
+  // channel excesses raw comes back a different hue than it went in. Two multiplicative passes
+  // measuring what the curve ACTUALLY produces and scaling toward the target fixes it, and it is
+  // cheap because the whole thing is a hundred-odd samples.
+  let w = excess.slice();
+  for (let pass = 0; pass < 2; pass++) {
+    const got = linearRgbOf(build(w));
+    for (let i = 0; i < 3; i++) {
+      if (excess[i] <= 1e-6) { w[i] = 0; continue; }
+      const target = rgb[i], have = got[i];
+      if (have > 1e-6) w[i] = Math.max(0, Math.min(4, w[i] * Math.pow(target / have, 0.9)));
+    }
+  }
+  return build(w);
+}
+
+/** Linear-sRGB of a reflectance curve under EQUAL-ENERGY light — the reference the upsample corrects
+ *  against, chosen because it has no colour of its own to bias the fit. */
+function linearRgbOf(refl: Spectrum): [number, number, number] {
+  const [x, y, z] = spectrumToXyz(refl);
+  const [wx, wy, wz] = spectrumToXyz(GRID_NM.map(() => 1));
+  const rx = wx > 0 ? (x / wx) * D65[0] : 0;
+  const ry = wy > 0 ? (y / wy) * D65[1] : 0;
+  const rz = wz > 0 ? (z / wz) * D65[2] : 0;
+  return [
+    3.2404542 * rx - 1.5371385 * ry - 0.4985314 * rz,
+    -0.9692660 * rx + 1.8760108 * ry + 0.0415560 * rz,
+    0.0556434 * rx - 0.2040259 * ry + 1.0572252 * rz
+  ];
+}
+
+/**
+ * What a material of this authored colour LOOKS LIKE under a given light, as human eyes would see it.
+ *
+ * The one call that replaces "multiply the star's RGB by the material's RGB" everywhere. It filters
+ * the actual arriving spectrum through the material's reflectance and converts once, at the end — so
+ * a sea under a red dwarf comes out murky amber because of what its water absorbs and what its sky
+ * left, rather than because two hex values were multiplied together.
+ */
+export function materialUnderLight(hex: string, light: Spectrum): string {
+  const refl = reflectanceFromHex(hex);
+  return reflectedHexUnderIlluminant(light.map((v, i) => v * refl[i]), light);
+}
+
 /** The D65 white point in XYZ (Y normalised to 1) — the white the sRGB matrix below is built for. */
 const D65: [number, number, number] = [0.95047, 1.0, 1.08883];
 

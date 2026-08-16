@@ -51,7 +51,7 @@ export function biosphereLayers(bio: Biosphere | undefined, pack?: RulePack | nu
   if (!bio?.morphologies?.length) return [];
   const allBare = bio.morphologies.every((m) => typeof m === 'string');
   const out = bio.morphologies.map((m) => {
-    if (typeof m !== 'string') return { morphology: m.morphology, coverage: m.coverage };
+    if (typeof m !== 'string') return { morphology: m.morphology, coverage: m.coverage, colorHex: m.colorHex };
     const def = morphologyDef(m, pack);
     // A legacy entry has no coverage of its own. Scale the definition's default by the biosphere's
     // single global coverage, which is what that field meant before this feature existed — so an
@@ -156,12 +156,13 @@ export function deriveVegetation(
 
   const photosynthetic = bio.energy_source === 'photosynthesis' && !!spectrum;
   const ranked = photosynthetic ? scorePigments(spectrum!.surface, pack) : [];
-  const pinned = inputs.pinnedPigment ? ranked.find((r) => r.key === inputs.pinnedPigment) : undefined;
-  const dominant = pinned ?? (ranked.length ? drawDominant(ranked, inputs.roll('pigment')) : undefined);
-  // The UNDER-STAR colour, not the adapted one: this feeds a renderer, and the rest of the apparent
-  // colour model already filters raw starlight. Using the white-balanced swatch here would leave a
-  // world's vegetation colour-corrected while its oceans and rocks were not.
-  const pigmentHex = dominant?.reflectedUnderStarHex ?? null;
+
+  // EACH MORPHOLOGY DRAWS ITS OWN, from the same scored viable set, on its own seeded stream. A
+  // world's microbial mats and its plants are different lineages that made the choice separately,
+  // and the model's own claim is that several pigments work — so making them all take the same one
+  // was throwing that away. This is what shipping a RANKED SET rather than a single winner bought.
+  const drawFor = (key: string) =>
+    ranked.length ? drawDominant(ranked, inputs.roll(`pigment|${key}`)) : undefined;
 
   const layers: VegetationLayerSpec[] = [];
   for (const entry of entries) {
@@ -172,14 +173,22 @@ export function deriveVegetation(
     // Clamping here was invisible: the slider moved, the number moved, and the world did not.
     const coverage = Math.max(0, entry.coverage);
 
+    // This morphology's own pigment. A pin replaces the draw for the layer the Bio tab NAMES — the
+    // most extensive pigment-driven one — and leaves the others to their own draws, so pinning
+    // "these plants are green" does not quietly repaint the microbial mats as well.
+    const ownPigment = def.pigmentDriven > 0 ? drawFor(def.key) : undefined;
+    const pigmentHex = ownPigment?.reflectedUnderStarHex ?? null;
+
     // ONE uniform arithmetic for every morphology. A tint list and a pigment drive are two ranges;
     // an empty range contributes zero weight, and a layer with no weight at all has no colour. That
     // is how fauna ends up invisible without anything in this file knowing what fauna is.
     const tintWeight = def.tints.length ? Math.max(0, 1 - def.pigmentDriven) : 0;
     const pigWeight = pigmentHex ? Math.max(0, def.pigmentDriven) : 0;
     const total = tintWeight + pigWeight;
-    let colorHex: string | null = null;
-    if (total > 0) {
+    // AN AUTHORED COLOUR WINS OUTRIGHT. Somebody has said what this looks like; the model does not
+    // then get a vote, and it must not blend its answer with theirs.
+    let colorHex: string | null = entry.colorHex ?? null;
+    if (!colorHex && total > 0) {
       const tintHex = def.tints.length
         ? def.tints[Math.floor(inputs.roll(`tint|${def.key}`) * def.tints.length) % def.tints.length]
         : '#000000';
@@ -199,6 +208,8 @@ export function deriveVegetation(
     layers.push({
       morphology: def.key,
       label: def.label,
+      pigment: ownPigment?.key ?? null,
+      pigmentLabel: ownPigment?.label ?? null,
       coverage,
       opacity: Math.max(0, Math.min(1, def.opacity)),
       colorHex,
@@ -214,6 +225,33 @@ export function deriveVegetation(
 
   // How much of the LAND ends up showing any life colour. The UNION under painter-order layering,
   // not the sum — the sliders are independent and may total well past 100%.
+  // THE WORLD-LEVEL ANSWER is the most extensive pigment-driven layer's — what the Bio tab calls the
+  // dominant pigment and what gets tagged. A pin replaces exactly that one.
+  const pigmentLayers = layers.filter((l) => l.pigment);
+  const leader = pigmentLayers.slice().sort((a, b) => b.coverage - a.coverage)[0];
+  const pinned = inputs.pinnedPigment ? ranked.find((r) => r.key === inputs.pinnedPigment) : undefined;
+  if (pinned && leader) {
+    leader.pigment = pinned.key;
+    leader.pigmentLabel = pinned.label;
+    // Repaint that layer with the pinned pigment's colour, by the same arithmetic it was built with.
+    const def = morphologyDef(leader.morphology, pack)!;
+    const tintWeight = def.tints.length ? Math.max(0, 1 - def.pigmentDriven) : 0;
+    const pigWeight = Math.max(0, def.pigmentDriven);
+    const total = tintWeight + pigWeight;
+    if (total > 0) {
+      const tintHex = def.tints.length
+        ? def.tints[Math.floor(inputs.roll(`tint|${def.key}`) * def.tints.length) % def.tints.length]
+        : '#000000';
+      const a = hexToRgb(tintHex), b = hexToRgb(pinned.reflectedUnderStarHex);
+      leader.colorHex = rgbToHex([
+        (a[0] * tintWeight + b[0] * pigWeight) / total,
+        (a[1] * tintWeight + b[1] * pigWeight) / total,
+        (a[2] * tintWeight + b[2] * pigWeight) / total
+      ]);
+    }
+  }
+  const dominant = leader ? { key: leader.pigment!, label: leader.pigmentLabel! } : undefined;
+
   let clear = 1;
   for (const l of layers) if (l.colorHex) clear *= 1 - l.coverage * l.opacity;
   const band = habitableLatitudeBand(body, bio, pack);

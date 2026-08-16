@@ -155,7 +155,11 @@ function paintSurfaceField(
         if (capEdge < 89) {
           const wob = (edgeWobble(seed, hit.lon, hit.lat) - 0.5) * ice.ragged;
           const highland = e > sea ? Math.min(1, (e - sea) / Math.max(0.02, 1 - sea)) : 0;
-          const edge = capEdge + wob - highland * ice.highlandReach;
+          // Sea ice runs further from the pole than land ice does, and that is not decoration: open
+          // water freezes at its own surface and the sheet spreads across it, while a coast has to
+          // wait for snow to lie. Earth's Arctic is sea ice reaching well below its shores.
+          const seaSpread = e > sea ? 0 : ice.seaSpread;
+          const edge = capEdge + wob - highland * ice.highlandReach - seaSpread;
           const t = Math.min(1, Math.max(0, (Math.abs(latDeg) - edge) / ice.feather));
           if (t > 0) {
             const onLand = e > sea;
@@ -279,7 +283,7 @@ interface SurfaceBand {
 }
 
 /** Everything the ice pass needs. `ragged` and `feather` are in DEGREES of latitude. */
-interface IcePaint { north: number; south: number; ragged: number; feather: number; highlandReach: number; }
+interface IcePaint { north: number; south: number; ragged: number; feather: number; highlandReach: number; seaSpread: number; }
 
 function surfacePaint(body: CelestialBody, landHex: string, seaHex: string, seaCover: number) {
   // Read the APPEARANCE MODEL, not the body. It has already dropped the layers that paint nothing,
@@ -294,7 +298,7 @@ function surfacePaint(body: CelestialBody, landHex: string, seaHex: string, seaC
              morphology: l.morphology, waterReach: l.waterReach };
   }).filter((b) => b.high > b.low);
   const ice: IcePaint | null = a.polarIce && Math.min(a.polarIceLatDeg.north, a.polarIceLatDeg.south) < 89
-    ? { north: a.polarIceLatDeg.north, south: a.polarIceLatDeg.south, ragged: 14, feather: 7, highlandReach: 16 }
+    ? { north: a.polarIceLatDeg.north, south: a.polarIceLatDeg.south, ragged: 10, feather: 4, highlandReach: 16, seaSpread: 7 }
     : null;
   // Bands that EMIT — a technological morphology's night lights. Same band as its daylight colour,
   // because a city is lit exactly where it is built.

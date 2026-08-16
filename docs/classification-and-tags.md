@@ -210,7 +210,7 @@ same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Trit
 | `weather/*` | lightning, dust storms, monsoon, precipitation | processor (classification) |
 | `aurora/*` · `shape/*` · `ring/*` · `resonance/*` | polar glow, rotational deformation, ring tiers, period ratios | processor |
 | `habitability/*` | habitability tier | processor (habitability) |
-| `biodiversity/*` | which pigment a world's life uses, which others would work, and how much of the LAND shows life | processor (classification, the surface-light pass) |
+| `biodiversity/*` | which pigment a world's life settled on, how much of the LAND shows life, and how far a settlement has spread | processor (classification, the surface-light pass) |
 | `stability/*` | n‑body instability risk | processor (stability) |
 | `barycenter/auto` | auto‑generated barycentre marker | barycentre reconcile |
 
@@ -222,9 +222,9 @@ same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Trit
 > it derives the spectrum reaching a world's ground, scores the pigments against it, draws a
 > dominant, and resolves each morphology's colour. `biodiversity/land-cover` is the percentage of the
 > **land** showing any life colour — the UNION of the painted layers, never the sum of the coverage
-> sliders, which are independent and may total past 100%. `biodiversity/pigment-viable` is emitted
-> once per pigment, like `volatiles/ices`, because several genuinely work and the honest output is a
-> ranked set rather than a winner.
+> sliders, which are independent and may total past 100%. The rest of the viable set is derived and
+> kept on the body — the Bio tab's picker lists it — but deliberately NOT tagged: several pigments
+> always work, and six tags per living world saying so is clutter a dropdown already covers.
 
 > **WHICH PIGMENT WINS IS DRAWN, AND THE DRAW IS THE MODEL.** Without an evolutionary history a real
 > biosphere's outcome is contingent, so the dominant is a weighted pick over everything scoring above

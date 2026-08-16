@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.656-beta - 16th Aug 2026
+
+- FIXED: the Biosphere data block printed `[object Object]` for its morphologies. It was reading the raw field, which now carries a morphology AND its land cover rather than a bare name.
+- Each morphology now draws ITS OWN pigment. A world's microbial mats and its plants are separate lineages that made the choice separately, so forcing them to agree threw away the point of scoring a whole viable set. Picking one on the Bio tab pins the layer that picker names and leaves the others their own answer.
+- Any layer's colour can now be set by hand, with a picker on the swatch. It matters most for a biosphere that does not photosynthesise: with no pigment there is no star colour to take, the model correctly has nothing to say, and somebody has to. An authored colour wins outright rather than being blended with a guess.
+- FIXED: a summer hemisphere lost its ice cap entirely. The latitude profile is an annual MEAN, and adding the summer swing on top of it then asked "is the warmest moment above freezing?" — for Earth's pole the answer is yes, so the model deleted the Arctic. A summer hemisphere now shows its PERMANENT cap and a winter one its seasonal extent, which are two different and both honest quantities.
+- Ice caps read better: a firmer edge, and sea ice reaching further from the pole than land ice, because open water freezes at its own surface while a coast waits for snow to lie.
+- The 3D gallery lights its night-side row from the side, so a city's glow has a terminator to be seen across.
+- `biodiversity/pigment-viable` is gone. Several pigments always work and saying so six times per living world was clutter; the Bio tab's picker lists them.
+
 ## v2.1.654-beta - 16th Aug 2026
 
 - Pigments are now managed like liquids and gases: Settings -> Planets -> Biospheres edits their absorption bands, how broadly they absorb, and the weights that decide between them. Add your own and it joins the scoring immediately — there is no list of pigments anywhere in the code.

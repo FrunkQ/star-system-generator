@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   GRID_NM, blackbodySpectrum, gridShare, integrate, photonFlux, peakNm, wienPeakNm,
-  spectrumToHex, planckRadiance
+  spectrumToHex, planckRadiance, reflectanceFromHex, materialUnderLight
 } from './spectrum';
 
 describe('spectrum — the grid and Planck', () => {
@@ -77,5 +77,51 @@ describe('spectrum — colour matching is the LAST step, and it is human', () =>
       const star = blackbodySpectrum(t, 1000);
       expect(spectrumToHex(star, star)).toBe('#ffffff');
     }
+  });
+});
+
+describe('spectral upsampling — an authored colour becomes a reflectance curve', () => {
+  it('round-trips a colour back to roughly itself under daylight', () => {
+    // The test that the upsample is usable: filter a Sun-like spectrum through the reconstructed
+    // reflectance and the result should look like the colour we started from. It will not be exact —
+    // infinitely many spectra look alike under one illuminant — but it must not be a different hue.
+    const sun = blackbodySpectrum(5778, 1000);
+    for (const hex of ['#2b6cb0', '#9c7a5a', '#4f8f2a', '#c9a227', '#d8ecff', '#2b2b30']) {
+      const back = materialUnderLight(hex, sun);
+      const a = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      const b = [1, 3, 5].map((i) => parseInt(back.slice(i, i + 2), 16));
+      // Compare the CHANNEL ORDER, but only across gaps wide enough to be a hue rather than noise:
+      // on a near-neutral grey the channels sit within a point or two of each other and their
+      // ordering says nothing at all.
+      for (let i = 0; i < 3; i++) {
+        for (let j = i + 1; j < 3; j++) {
+          if (Math.abs(a[i] - a[j]) < 12) continue;
+          expect(Math.sign(b[i] - b[j]), `${hex} -> ${back} (channels ${i} vs ${j})`)
+            .toBe(Math.sign(a[i] - a[j]));
+        }
+      }
+      // …and a near-neutral colour must come back near-neutral rather than acquiring a cast.
+      if (Math.max(...a) - Math.min(...a) < 12) expect(Math.max(...b) - Math.min(...b)).toBeLessThan(24);
+    }
+  });
+
+  it('stays inside 0..1 — a reflectance cannot return more light than it was given', () => {
+    for (const hex of ['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff']) {
+      const r = reflectanceFromHex(hex);
+      expect(Math.min(...r)).toBeGreaterThanOrEqual(0);
+      expect(Math.max(...r)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('makes the STAR change what a material looks like — the whole point', () => {
+    const sun = blackbodySpectrum(5778, 1000);
+    const dwarf = blackbodySpectrum(3000, 1000);
+    const blueUnderSun = materialUnderLight('#2b6cb0', sun);
+    const blueUnderDwarf = materialUnderLight('#2b6cb0', dwarf);
+    expect(blueUnderSun).not.toBe(blueUnderDwarf);
+    // A blue sea under a red dwarf loses its blue: there is barely any short-wavelength light to
+    // reflect, which is exactly what multiplying two hex values fails to capture.
+    const blueOf = (h: string) => parseInt(h.slice(5, 7), 16) - parseInt(h.slice(1, 3), 16);
+    expect(blueOf(blueUnderDwarf)).toBeLessThan(blueOf(blueUnderSun));
   });
 });

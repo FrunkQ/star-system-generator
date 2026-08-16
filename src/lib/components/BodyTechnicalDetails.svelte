@@ -4,6 +4,7 @@
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { calculateDeltaVBudgets } from '$lib/physics/orbits';
+  import { biosphereLayers, morphologyDef } from '$lib/physics/vegetation';
   import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
   import { calculateSurfaceTemperature, composeBodySurfaceTemperature } from '$lib/physics/temperature';
   import { systemStore, fmt } from '$lib/stores';
@@ -852,7 +853,10 @@
                   {#if body.biosphere.complexity}<span><strong>Complexity:</strong> {body.biosphere.complexity}</span>{/if}
                   {#if body.biosphere.biochemistry}<span><strong>Biochemistry:</strong> {body.biosphere.biochemistry}</span>{/if}
                   {#if body.biosphere.energy_source}<span><strong>Energy Source:</strong> {body.biosphere.energy_source}</span>{/if}
-                  {#if body.biosphere.morphologies?.length}<span><strong>Morphologies:</strong> {body.biosphere.morphologies.join(', ')}</span>{/if}
+                  <!-- Read through biosphereLayers, never the raw field. `morphologies` carries RECORDS
+                       now (a morphology plus its own land cover) and only carries bare strings on a
+                       campaign saved before that; joining it directly printed "[object Object]". -->
+                  {#if biosphereLayers(body.biosphere, rulePack).length}<span><strong>Morphologies:</strong> {biosphereLayers(body.biosphere, rulePack).map((l) => `${morphologyDef(l.morphology, rulePack)?.label ?? l.morphology} ${Math.round(l.coverage * 100)}%`).join(', ')}</span>{/if}
                   {#if body.biosphere.coverage != null}<span><strong>Coverage:</strong> {(body.biosphere.coverage * 100).toFixed(0)}%</span>{/if}
               </div>
           </div>

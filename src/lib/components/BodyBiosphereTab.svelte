@@ -127,6 +127,17 @@
       writeLayers(cur.map((l) => (l.morphology === key ? { ...l, coverage: value } : l)));
   }
 
+  // An AUTHORED colour for a layer. Offered on every row rather than only the ones that need it —
+  // "microbial gets a colour picker" would be a rule about microbial. It matters most where the
+  // biosphere does not photosynthesise: with no pigment there is no star colour to take, so the
+  // model has nothing to say and somebody has to.
+  function setLayerColour(key: string, hex: string | null) {
+      const cur = biosphereLayers(body.biosphere, rulePack);
+      writeLayers(cur.map((l) => (l.morphology === key
+          ? (hex ? { ...l, colorHex: hex } : { morphology: l.morphology, coverage: l.coverage })
+          : l)));
+  }
+
   // THE ORDER IS THE HIERARCHY, so moving a row is a real edit and not a display preference.
   function move(index: number, delta: number) {
       const cur = biosphereLayers(body.biosphere, rulePack);
@@ -274,8 +285,18 @@
                                 <button type="button" title="Move deeper (drawn earlier)" disabled={i === 0} on:click={() => move(i, -1)}>▲</button>
                                 <button type="button" title="Move on top (drawn later)" disabled={i === layers.length - 1} on:click={() => move(i, 1)}>▼</button>
                             </div>
-                            {#if drawn?.colorHex}
-                                <span class="chip" style="background:{drawn.colorHex}" title="{drawn.colorHex} — as human eyes would see it under this star"></span>
+                            {#if drawn?.colorHex || l.colorHex}
+                                <label class="chip-pick" title={l.colorHex
+                                    ? `${l.colorHex} — set by hand. Clear it to hand the choice back to the model.`
+                                    : `${drawn?.colorHex}${drawn?.pigmentLabel ? ` — ${drawn.pigmentLabel}` : ''}, as human eyes would see it under this star. Click to set it yourself.`}>
+                                    <span class="chip" class:pinned={!!l.colorHex} style="background:{l.colorHex ?? drawn?.colorHex}"></span>
+                                    <input type="color" value={l.colorHex ?? drawn?.colorHex ?? '#7a8a5a'}
+                                           on:change={(e) => setLayerColour(l.morphology, e.currentTarget.value)} />
+                                </label>
+                                {#if l.colorHex}
+                                    <button type="button" class="unpin" title="Back to the model's own answer"
+                                            on:click={() => setLayerColour(l.morphology, null)}>↺</button>
+                                {/if}
                             {:else}
                                 <span class="chip none" title="This morphology contributes no colour seen from orbit"></span>
                             {/if}
@@ -584,6 +605,17 @@
       border: 1px solid var(--border, #2a2d36);
   }
   .chip.none { background: repeating-linear-gradient(45deg, #3a3d46 0 3px, transparent 3px 6px); }
+  .chip.pinned { box-shadow: 0 0 0 1px var(--link, #6cb6ff); }
+  /* The swatch IS the picker: a native colour input sized to the chip and laid over it. */
+  .chip-pick { position: relative; display: inline-flex; width: 14px; height: 14px; flex: none; cursor: pointer; }
+  .chip-pick input[type="color"] {
+      position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; padding: 0; border: none; cursor: pointer;
+  }
+  .unpin {
+      border: none; background: transparent; color: var(--text-faint, #8a8f9a);
+      cursor: pointer; font-size: 0.85em; line-height: 1; padding: 0;
+  }
+  .unpin:hover { color: var(--link, #6cb6ff); }
   .chip.inline { display: inline-block; vertical-align: -2px; margin-right: 4px; }
 
   .derived { display: flex; flex-direction: column; gap: 4px; }
