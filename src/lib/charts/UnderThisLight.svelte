@@ -107,7 +107,11 @@
   // out to where its air gives up. `homeScene` is the same set of surfaces under Earth's sky, which
   // is what the left of the wipe means.
   const world = $derived(surfaceSceneFor(body ?? (standalone ? demoBody : null), pack, surfaceLight));
-  const homeWorld = $derived(world ? { ...world, skyLowHex: '#bcd6ea', skyHighHex: '#5b8fc9', airless: false } : null);
+    // HOME IS EARTH'S SKY, so it takes Earth's weather and Earth's sun — not this world's. Spreading
+  // the whole scene meant Venus's 74% cloud cover came with it, and the sun went missing from the
+  // "at home" half too, which is the half that is supposed to look familiar.
+  const homeWorld = $derived(world ? { ...world, skyLowHex: '#bcd6ea', skyHighHex: '#5b8fc9',
+    airless: false, cloudCover: 0.25, starHex: '#fff6e0', starSize: 1 } : null);
   // Earth's own extinction, so the near markers on the home side fade the way they really do.
   const HOME_EXTINCTION = 1.155e-5;
   let matCanvas: HTMLCanvasElement | null = null;

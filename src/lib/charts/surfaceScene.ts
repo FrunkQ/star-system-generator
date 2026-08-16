@@ -23,7 +23,7 @@
 // composite rather than mixed into the material layer. Far enough out the marker is pure sky and it
 // is simply gone, which is the honest picture of what "the air gives out at 4 km" means.
 import type { CelestialBody, RulePack } from '$lib/types';
-import { GRID_NM, spectrumToHex, wavelengthHex, type Spectrum } from '$lib/physics/spectrum';
+import { GRID_NM, spectrumToHex, wavelengthHex, gridShare, type Spectrum } from '$lib/physics/spectrum';
 import { deriveVisibility, distanceWords, type Visibility } from '$lib/physics/visibility';
 
 /**
@@ -56,6 +56,8 @@ export interface SurfaceScene {
 	skyLowHex: string;
 	skyHighHex: string;
 	starHex: string;
+	/** Angular radius of the star relative to the Sun seen from Earth. 1 = ours. */
+	starSize: number;
 	airless: boolean;
 	/** 0..1 of the sky that is deck. Hides the star and greys the airlight. */
 	cloudCover: number;
@@ -64,6 +66,23 @@ export interface SurfaceScene {
 	sight: Visibility;
 	/** The ladder of distances the markers stand at, nearest first. */
 	marks: number[];
+}
+
+/**
+ * How big the star looks, against the Sun from Earth.
+ *
+ * Flux at the body is F = R²σT⁴/d², so the angular radius R/d works out as sqrt(F/σ)/T² — the star's
+ * own radius cancels, which is what makes this derivable from a summary that never recorded it.
+ * Mercury's sun is two and a half times ours across; Jupiter's is a fifth.
+ */
+function angularSize(body: CelestialBody): number {
+	const s = body.surfaceSpectrum;
+	if (!s?.starTempK || !(s.totalTopWm2 > 0)) return 1;
+	const share = gridShare(s.starTempK);
+	if (!(share > 0)) return 1;
+	const bolometric = s.totalTopWm2 / share;           // the grid holds only part of the curve
+	const ours = Math.sqrt(1361) / (5778 * 5778);
+	return Math.sqrt(bolometric) / (s.starTempK * s.starTempK) / ours;
 }
 
 /** Deterministic per world: the same planet is the same place every time you look at it. */
@@ -137,6 +156,28 @@ function material(body: CelestialBody, role: string): string | null {
  * in it. That is not a special case in the drawing — it is what this returns when there is no
  * atmosphere to scatter.
  */
+/**
+ * HOW BRIGHT the sky is, 0..1 — which is a different question from what colour it is, and leaving it
+ * out was why Mercury and Mars had Earth's blue overhead.
+ *
+ * `spectrumToHex` is display-referred: it normalises, so it answers "what HUE is the scattered light"
+ * and cheerfully returns a fully saturated blue for an atmosphere that scatters a millionth of a
+ * percent. Mercury holds about 1e-11 bar and was being given the same sky as Earth.
+ *
+ * The brightness is the share of the beam that gets scattered rather than passing straight through,
+ * which saturates: once a sky is optically thick it cannot get any more sky-like. Cloud counts for
+ * far more than clear air per unit depth, because a droplet deck is a near-perfect diffuser.
+ *
+ *   Mercury  tau ~1e-12          -> 0.000   black, stars at noon
+ *   Mars     tau  0.0025         -> 0.003   all but black, a faint glow — the butterscotch everyone
+ *                                           pictures is DUST, which this model does not scatter yet
+ *   Earth    tau  0.10 + cloud   -> 0.73    a proper blue sky
+ *   Venus    tau  16   + cloud   -> 1.00    a solid luminous lid
+ */
+function skyStrength(gasTau: number, dustTau: number, cloudCover: number): number {
+	return 1 - Math.exp(-(gasTau + dustTau + 4 * cloudCover));
+}
+
 function airlightHex(surface: Spectrum | null, airless: boolean, cloudCover: number): string {
 	if (airless || !surface) return '#05070c';
 	// CLEAR AIR: the light down here weighted by how hard the air scatters each wavelength.
@@ -198,17 +239,40 @@ export function surfaceSceneFor(
 	const cloudCover = (body.apparentColor?.palette ?? [])
 		.filter((p) => p.role === 'cloud')
 		.reduce((m, p) => Math.max(m, p.weight), 0);
-	const sky = airlightHex(surfaceLight, airless, cloudCover);
+	// A sky you cannot see is not a sky. Whether stars come out at noon is this, not a pressure test:
+	// Mercury's trace exosphere is technically an atmosphere and scatters nothing.
+	const strength = airless ? 0 : skyStrength(sight.gasTau, sight.dustTau, cloudCover);
+	const noSky = strength < 0.005;
+	// SUSPENDED DUST IS THE GROUND, AIRBORNE — so it lends the sky the ground's own colour rather than
+	// a scattering law's. That is the whole of why Mars's sky is butterscotch and not the very dark
+	// blue its six millibars of carbon dioxide would give on their own: you are looking at lit
+	// iron-oxide fines, not at air. Nothing new is authored for it; it is the surface material.
+	const dustShare = sight.dustTau / Math.max(1e-9, sight.dustTau + sight.gasTau);
+	const scattered = airlightHex(surfaceLight, noSky, cloudCover);
+	const sky = dimHex(
+		noSky ? scattered : rgbToHex(mix(hexToRgb(scattered), hexToRgb(ground), dustShare)),
+		strength);
 	return {
 		groundHex: ground,
 		rockHex: shade(ground, -0.28),
 		waterHex: water,
 		plants,
 		settled,
-		skyLowHex: airless ? '#05070c' : shade(sky, 0.34),
-		skyHighHex: sky,
-		starHex: '#fff6e0',
-		airless,
+		// The horizon is brighter than the zenith because you are looking through more air — but only
+		// where there is air enough for that to mean anything.
+		skyLowHex: noSky ? '#05070c' : shade(sky, 0.34 * strength),
+		skyHighHex: noSky ? '#05070c' : sky,
+		// THE STAR'S OWN COLOUR AND SIZE, both derived rather than assumed.
+		//
+		// Colour is the direct beam as it ARRIVES — which is the surface spectrum, since that is
+		// exactly the starlight after the sky has had its cut. So a red dwarf's disc is red, and the
+		// Sun seen from Venus's ground would be a deep ember if you could see it.
+		//
+		// Size needs no new data either. Flux F = R^2*sigma*T^4/d^2, so the angular radius R/d is
+		// sqrt(F/sigma)/T^2 — the star's radius cancels out. Both terms are already on the summary.
+		starHex: surfaceLight ? spectrumToHex(surfaceLight) : '#fff6e0',
+		starSize: angularSize(body),
+		airless: noSky,
 		cloudCover,
 		motifs: motifsFrom(body),
 		seed: seedOf(body.id ?? body.name ?? 'world'),
@@ -245,22 +309,35 @@ export function drawSky(
 	// AND UNDER A THICK ENOUGH DECK IT IS NOT THERE AT ALL. Nobody standing on Venus has ever seen the
 	// Sun: 92 bar of overcast turns it into a uniformly bright sky with no disc in it. Drawing one
 	// anyway was the giveaway that the star and the weather were not talking to each other.
-	const sx = W * 0.79, sy = hy * 0.3, r = Math.max(4, H * 0.035);
-	const showStar = Math.max(0, 1 - s.cloudCover * 1.35);
-	if (!s.airless && showStar > 0.02) {
-		const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 5);
-		halo.addColorStop(0, high);
-		halo.addColorStop(1, 'rgba(0,0,0,0)');
-		ctx.globalAlpha = 0.85 * showStar;
-		ctx.fillStyle = halo;
-		ctx.beginPath(); ctx.arc(sx, sy, r * 5, 0, 7); ctx.fill();
-		ctx.globalAlpha = 1;
-	}
-	if (showStar > 0.02) {
-		ctx.globalAlpha = showStar;
-		// The star's own disc is far brighter than the sky it sits in, so it survives dimming that the
-		// sky does not — which is exactly why you can still find a low sun in deep twilight.
-		ctx.fillStyle = dimHex(s.starHex, Math.min(1, brightness * 12 + 0.06));
+	//
+	// THE STAR IS NEVER SIMPLY ABSENT. Cloud does not delete a sun, it SPREADS it: under a thick deck
+	// you cannot find a disc but you can always tell which way it is, because that part of the sky is
+	// brighter. The first version hid it outright past a coverage threshold, which lost Venus its sun
+	// on both sides of the wipe and lost the viewer the one cue that says where the light comes from.
+	// So cover turns a disc into a glare patch — wider, softer, never gone.
+	//
+	// Size is the real angular size, scaled up to be visible: the Sun from Earth is half a degree
+	// across and would be a single pixel at this scale. The RATIOS are true, which is the part that
+	// carries a table — a red dwarf's sun fills the sky and Jupiter's is a bright star.
+	const sx = W * 0.79, sy = hy * 0.32;
+	const r = Math.max(2.5, H * 0.030 * Math.sqrt(Math.max(0.01, s.starSize)));
+	const spread = 1 + 7 * s.cloudCover * s.cloudCover;
+	// The disc's own brightness far exceeds the sky's, so it survives dimming the sky does not —
+	// which is why you can still find a low sun in deep twilight.
+	const lit = dimHex(s.starHex, Math.min(1, brightness * 12 + 0.06));
+	const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 5 * spread);
+	glow.addColorStop(0, lit);
+	glow.addColorStop(0.25, high);
+	glow.addColorStop(1, 'rgba(0,0,0,0)');
+	ctx.globalAlpha = s.airless ? 0 : 0.5 + 0.4 * (1 - s.cloudCover);
+	ctx.fillStyle = glow;
+	ctx.beginPath(); ctx.arc(sx, sy, r * 5 * spread, 0, 7); ctx.fill();
+	ctx.globalAlpha = 1;
+	// A hard disc only where the air is clear enough to have one.
+	const disc = Math.max(0, 1 - s.cloudCover * 1.4);
+	if (disc > 0.02) {
+		ctx.globalAlpha = disc;
+		ctx.fillStyle = lit;
 		ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill();
 		ctx.globalAlpha = 1;
 	}

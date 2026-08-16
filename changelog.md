@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.680-beta - 16th Aug 2026
+
+- FIXED: Mercury and Mars had Earth's blue overhead. The Surface view worked out what COLOUR the scattered light is but never how MUCH of it there is, and the colour step normalises — so an exosphere of a hundred-billionth of a bar returned a fully saturated blue sky. A sky's brightness is the share of the beam it scatters, so Mercury, Luna, Io and Europa are now black with stars at noon, and whether stars come out is that rather than a pressure test.
+- Mars gets a butterscotch sky, and from the right cause: suspended dust is the ground, airborne, so it lends the sky the ground's own colour rather than a scattering law's. Six millibars of carbon dioxide on its own would give a very dark blue, and the salmon everyone pictures is the dust. Nothing new is authored for it — it is the surface material.
+- FIXED: the Sun went missing on Venus, including on the "at home" side of the wipe, which is the side meant to look familiar. Cloud does not delete a sun, it spreads it: under a thick deck you cannot find a disc but you can always tell which way it is. Thick weather now turns the disc into a glare patch rather than removing it.
+- The star is drawn at its real angular size and its real colour. Size needs no new data — flux is R²σT⁴/d², so the angular radius works out as √(F/σ)/T² and the star's own radius cancels. Mercury's sun is two and a half times ours across, Jupiter's a fifth, Neptune's a thirtieth. Its colour is the direct beam as it arrives, so it reddens with the sky it is seen through.
+- Suspended-dust load is anchored on the only world anyone can check it against: Mars's background dust opacity sits near 0.3-0.7 in the visible even when nothing is happening.
+
 ## v2.1.676-beta - 16th Aug 2026
 
 - FIXED: Luna's colour chip was brown while its 2D and 3D views were correctly grey. Space weathering — the nanophase iron a vacuum-exposed surface accumulates, which mutes its mineral colour — was only ever applied by the texture renderers, downstream of the value everything else reads. It is a property of the SURFACE, not of one picture of it, so it now happens once on the apparent colour and everything agrees. Luna goes from #9f7856 to #867d78, Mercury greys, Mars keeps its red because that is rust and not weathering, and the icy moons are exempt because an icy crust anneals rather than accumulating iron.

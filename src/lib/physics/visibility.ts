@@ -66,6 +66,9 @@ export interface Visibility {
 	fogged: boolean;
 	/** Visual range while a dust storm is actually up, or null on a world that has none. */
 	stormM: number | null;
+	/** Optical depth of suspended dust, and of the gas — the sky reads both to know its own colour. */
+	dustTau: number;
+	gasTau: number;
 	/** One-word band, for the tag and for a quick read. */
 	band: VisibilityBand;
 }
@@ -157,11 +160,13 @@ export function deriveVisibility(body: CelestialBody, pack?: RulePack | null): V
 	// as a value rather than as a bare flag. Suspended dust is a genuine aerosol sitting in the lower
 	// atmosphere, so it goes in as an optical depth over the same scale height as the gas.
 	//
-	// The loads below are the one authored judgement in this file: Mars sits near 0.5 in ordinary
-	// conditions and past 5 in a planet-encircling storm, and these bracket that. They belong in the
-	// pack rather than here — the standing rule is that band edges are data — and they are grouped
-	// and named so that move is a lift rather than a hunt.
-	const DUST_TAU: Record<string, number> = { seasonal: 0.15, frequent: 0.45, 'planet-wide': 1.1 };
+	// The loads below are the one authored judgement in this file, and Mars is the only world anyone
+	// can calibrate against: its BACKGROUND dust opacity sits around 0.3-0.7 in the visible even when
+	// nothing is happening, and passes 5 in a planet-encircling storm. Mars takes the 'seasonal' rung,
+	// so that rung is anchored there and the others bracket it. They belong in the pack rather than
+	// here — the standing rule is that band edges are data — and they are grouped and named so that
+	// move is a lift rather than a hunt.
+	const DUST_TAU: Record<string, number> = { seasonal: 0.35, frequent: 0.7, 'planet-wide': 1.4 };
 	const STORM_MULTIPLIER = 5;
 	const dust = body.tags?.find((t) => t.key === 'weather/dust-storms')?.value;
 	const dustTau = dust ? (DUST_TAU[dust] ?? 0.3) : 0;
@@ -178,6 +183,7 @@ export function deriveVisibility(body: CelestialBody, pack?: RulePack | null): V
 	const stormM = stormBeta > 0 ? Math.min(CONTRAST_THRESHOLD / stormBeta, hor) : null;
 	return {
 		extinctionPerM: beta, rangeM, horizonM: hor, seeM, lampM, fogged, stormM,
+		dustTau, gasTau: rayleighTau550(body, pack),
 		band: bandFor(beta, rangeM)
 	};
 }
