@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.696-beta - 16th Aug 2026
+
+- A giant reads as "K III" in the star editor rather than "K-III". The hyphen is how the key is spelled in the data; it is not how anyone says it.
+
+
 ## v2.1.695-beta - 16th Aug 2026
 
 - FIXED: habitability was scored against the temperature a world RADIATES at rather than the one on its ground, and for an airless world those are not the same number. The Moon averages -59 C and was being scored as though it sat at -3; Mercury averages 37 C and was scored at 167. Landing budgets read the same wrong figure under a field called surface temperature.

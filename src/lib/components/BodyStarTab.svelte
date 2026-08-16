@@ -36,7 +36,9 @@
   const designationNow = $derived.by(() => {
       const held = body?.classes?.[0] ?? '';
       const p = starClassParts(held);
-      return p.letter && !p.bare ? held.replace(/^star\//, '') : '';
+      // `star/K-III` is the pack's KEY spelling; the MK form a reader knows is "K III". The hyphen is
+      // there to keep one spelling in the data, not to be read out.
+      return p.letter && !p.bare ? held.replace(/^star\//, '').replace('-', ' ') : '';
   });
 
   // --- State ---

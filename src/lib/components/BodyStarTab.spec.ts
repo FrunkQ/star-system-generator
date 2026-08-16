@@ -262,6 +262,12 @@ describe('BodyStarTab — the star says its designation is a readout', () => {
 		expect(line.textContent).toMatch(/follows/i);
 	});
 
+	it('reads a giant in the MK form, not the pack key spelling', () => {
+		const body: any = { ...makeStar(['star/K-III']), id: 'kg' };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		expect(container.querySelector('.designation-line')!.textContent).toContain('K III');
+	});
+
 	it('says nothing for a remnant, which has no designation to read', () => {
 		const body: any = { ...makeStar(['star/WD']), id: 'wd' };
 		const { container } = render(BodyStarTab, { props: { body, rulePack } });
