@@ -879,6 +879,13 @@
         <em>not</em> "the visible band" — visible is <strong>our</strong> band. Below about 280 nm a photon
         carries enough energy to break the bonds it would otherwise power; above about 1400 nm it carries too
         little to drive a biological charge separation at all. Both ends are set by molecular physics.</p>
+      <p><strong>Reading the plots.</strong> The coloured ribbon under a spectrum's axis is what each wavelength
+        looks like to a human eye, and it <em>fades to black at both ends</em> — that is not decoration, it is
+        the honest edge of your own vision. Most of the axis carries light you cannot see: a world can be
+        drenched in near-infrared and look dim. Where a pigment's absorption is drawn over a spectrum, it is
+        plotted as the POWER it takes out of the arriving light, on the same axis and in the same units, rather
+        than as a 0&ndash;1 fraction — a fraction drawn against an irradiance axis fills the frame and reads as
+        "it absorbs nearly everything" no matter what the light is doing.</p>
       <p><strong>"Peak" is ambiguous and we mean one of them.</strong> A blackbody's peak per unit
         <em>wavelength</em> and per unit <em>frequency</em> sit at different wavelengths, about 1.76× apart.
         Everything here is the per-wavelength peak — 2.898 × 10<sup>6</sup> nm·K / T, so about 500 nm for the
@@ -954,6 +961,25 @@
         <em>Settings &rarr; Planets &rarr; Biospheres</em>: its absorption bands, how broadly it absorbs, and the
         weights that decide between them. Add one of your own and it joins the scoring immediately — there is no
         list of pigments anywhere in the code.</p>
+      <p><strong>What your campaign stores is the difference, not the list.</strong> Retint one morphology and
+        that is what gets saved — one field of one entry — while everything you did not touch keeps following
+        the shipped pack. It matters for more than file size: a campaign that stored its own copy of all five
+        would silently stop receiving every later improvement to the defaults, and nobody would be told.</p>
+
+      <h3>The same light colours the ground and the sea</h3>
+      <p>The surface spectrum is not only the pigment model's input. A world's <strong>bare ground</strong> and
+        its <strong>oceans</strong> are coloured by it too: each material's authored colour is treated as a
+        reflectance <em>spectrum</em>, the arriving light is filtered through it, and the result is converted to
+        something you can see once, at the end. That is why the same Earth reddens under a red dwarf — not
+        because two colour values were multiplied, but because of what its star emitted and what its sky let
+        through.</p>
+      <p>Said plainly: turning an authored colour back into a spectrum is an <em>upsample</em>, not a
+        measurement. Endless different spectra look identical under daylight, and this picks one plausible
+        member of that family, flat past the red end because a colour swatch carries no infrared information.
+        Authoring real reflectance curves would beat it, and the pack's shape already allows for that.</p>
+      <p class="fudge-note"><strong>Not yet through the same path:</strong> the atmospheric haze tint, the cloud
+        decks, the giant cloud chemistry and the incandescent glow of a very hot world are still combined as
+        plain colours rather than spectra. They are next.</p>
 
       <h3>The colour is what is left over — and it says whose</h3>
       <p>Vegetation colour is not looked up. It is the surface spectrum minus what the pigment absorbs, minus

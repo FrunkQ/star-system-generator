@@ -312,6 +312,17 @@ other test runs `process()` ONCE and therefore pins pass-1 values a GM never see
 BLAST: corollaries — a derived CLASS is never a physics input (the classifier runs late); when a
 quantity depends on another body, iterate PARENT BEFORE CHILD, not in file order.
 
+### PHY-16 Normalise a colour-matching result against the BAND, never against its own peak channel
+WHERE: `physics/spectrum.wavelengthHex` (the chart ribbon) and, by the same argument, anything else
+that turns a narrow spectral feature into a colour.
+RULE: divide by a shared scale across the whole grid, not by that sample's own maximum channel.
+WHY: out in the tails the tristimulus values are vanishingly small AND numerically meaningless — the
+ragged remains of a Gaussian fit to the colour-matching functions. Dividing them by their own maximum
+scaled that noise to FULL SATURATION, so the ribbon came out bright cyan at 300 nm and mint green at
+780 nm. Colour where the eye has none, and it looked deliberate. Owner spotted it on the chart.
+BLAST: any new plot that colours by wavelength. Also keep the near-black floor: without it the
+out-of-gamut repair in `xyzToHex` (which lifts negative channels) turns a rounding error into a hue.
+
 ### PHY-14 The human eye enters at the END or it poisons the derivation
 WHERE: `physics/spectrum.ts` (everything below the PRESENTATION BRANCH divider), `physics/pigments.ts`,
 `rendering/apparentColor.ts`.
@@ -1831,6 +1842,23 @@ too (seeded complementary rotation) unless a GM pins `ModelRef.accentHex`.
 WHY: an owner decision — one colour to set, variation for free. A second required slider was
 considered and rejected; if per-faction control is ever wanted, the lever is pack DATA.
 BLAST: adding another colour field to a construct. Ask whether it can be derived first.
+
+### UI-C5 A rule-pack override is a DELTA, and an editor must open on the EFFECTIVE list
+WHERE: `lib/rulepackDelta.ts` (`makeListDelta` / `applyListDelta`); `EditBiospheresModal`; the
+override merge in `routes/+page.svelte`.
+RULE: store the keys and fields the GM changed, plus the key order when it moved. An editor opens on
+`applyListDelta(base, stored)` — the pack's list with the campaign's delta laid over it — and saves a
+fresh delta against the base. Never open on the stored override directly.
+WHY: three costs, and the second is the one that bites. (1) Size — seven pigments with their bands is
+a few kB in every save and export, against ~450 bytes for a real edit. (2) A whole-list copy FREEZES
+the shipped defaults at the moment of the edit: every later improvement to the pack silently stops
+reaching that campaign and nobody is told. (3) A diff of two campaigns cannot show what the GM did.
+BLAST: **opening on the stored override is the trap** — a delta has no `.length`, so the old
+`overrides.x?.length ? overrides.x : base` idiom silently falls back to the base and the next save
+wipes everything the GM had not re-typed. `applyListDelta` still accepts a whole list, because
+campaigns saved before this carry one. A key absent from `order` is a DELETION; a field stored as
+`undefined` is a field the GM removed. **`liquids` and `gasPhysics` still store whole lists** — same
+fault, not yet converted, and they are the next users of this module.
 
 ### UI-C2 The picture chain is model > photo > glyph, on every surface
 WHERE: `catalogue/document/guideDocument.ts` (imagery branch), `ConstructPortrait.svelte`

@@ -229,6 +229,27 @@ Earth's pole the answer is yes — so the model deleted the Arctic. A summer hem
 PERMANENT cap (mean below melting); a winter one shows its seasonal extent (mean minus swing). Both
 honest, and the asymmetry between them is the season.
 
+## What a campaign actually stores
+
+Three different things, in three right places, and the distinction is [[B52]]'s test each time —
+*could this be re-derived on every pass?*
+
+| what | where | why there |
+|---|---|---|
+| edited morphologies / pigments / weights | `starmap.rulePackOverrides`, as a DELTA | a GM's edit to the pack, shared by every world in the campaign |
+| a layer's authored colour | `BiosphereLayer.colorHex` on the body | an INPUT about that world; nothing re-derives it |
+| a pinned pigment | a manual `biodiversity/pigment` tag on the body | the derivation READS it, so there is no second store |
+| the ranked set, the spectrum, the layer colours | `body.vegetation` / `body.surfaceSpectrum` | derived; rewritten every pass |
+
+**The overrides are deltas, and that is not only about size** (~450 bytes against ~4.5 kB for a real
+edit). A whole-list copy freezes the shipped defaults at the moment of the edit: every later
+improvement to the pack silently stops reaching that campaign. See [[UI-C5]] for the trap that comes
+with it — an editor must open on the EFFECTIVE list, or its next save wipes what the GM did not
+re-type.
+
+`liquids` and `gasPhysics` still store whole lists. Same fault, not converted here, and they are the
+next users of `rulepackDelta`.
+
 ## The chart vocabulary ([[G23]])
 
 `src/lib/charts/` is a vocabulary, not a set of plots: `plotScale.ts` (one scale implementation),

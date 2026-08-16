@@ -347,12 +347,35 @@ export function reflectedHexUnderIlluminant(reflected: Spectrum, illuminant: Spe
  * honest answer: a chart's ribbon should go dark in the infrared, because you cannot see it.
  */
 export function wavelengthHex(nm: number): string {
-  const spike = GRID_NM.map((g) => Math.exp(-0.5 * Math.pow((g - nm) / 6, 2)));
-  const [x, y, z] = spectrumToXyz(spike);
-  const m = Math.max(x, y, z);
-  if (!(m > 1e-6)) return '#000000';
-  return xyzToHex(x / m, y / m, z / m);
+  const [x, y, z] = spikeXyz(nm);
+  // NORMALISE AGAINST THE WHOLE BAND, not against this wavelength's own maximum channel.
+  //
+  // Per-wavelength normalisation was the bug: out in the tails the tristimulus values are vanishingly
+  // small AND numerically meaningless — the ragged remains of a Gaussian fit — and dividing them by
+  // their own maximum scaled that noise up to full saturation. The ribbon came out bright cyan at
+  // 300 nm and mint green at 780 nm, which is not a subtle error: it is colour where the eye has
+  // none. Against a shared maximum, brightness follows the eye's actual response, so the ribbon
+  // simply fades to black at both ends — which is what "you cannot see it" looks like.
+  if (!(SPIKE_PEAK > 0)) return '#000000';
+  // Below a fraction of a percent of peak response there is nothing to show; call it black rather
+  // than letting the gamut repair below turn a rounding error into a hue.
+  if (Math.max(x, y, z) / SPIKE_PEAK < 0.004) return '#000000';
+  return xyzToHex(x / SPIKE_PEAK, y / SPIKE_PEAK, z / SPIKE_PEAK);
 }
+
+/** Tristimulus of a narrow spike at a wavelength — the ribbon's per-sample colour, before scaling. */
+function spikeXyz(nm: number): [number, number, number] {
+  return spectrumToXyz(GRID_NM.map((g) => Math.exp(-0.5 * Math.pow((g - nm) / 6, 2))));
+}
+/** The strongest response any single wavelength provokes — the ribbon's shared brightness scale. */
+const SPIKE_PEAK = (() => {
+  let peak = 0;
+  for (const nm of GRID_NM) {
+    const [x, y, z] = spikeXyz(nm);
+    peak = Math.max(peak, x, y, z);
+  }
+  return peak;
+})();
 
 function xyzToHex(rx: number, ry: number, rz: number): string {
   // XYZ (D65) → linear sRGB

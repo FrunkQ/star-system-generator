@@ -11,6 +11,7 @@
   import type { Starmap, RulePack, MorphologyDef, PigmentDef, PigmentModelConfig } from '$lib/types';
   import { allMorphologies } from '$lib/physics/vegetation';
   import { allPigments, pigmentModel, absorptance, scorePigments } from '$lib/physics/pigments';
+  import { makeListDelta, applyListDelta } from '$lib/rulepackDelta';
   import { blackbodySpectrum, gridShare, GRID_NM } from '$lib/physics/spectrum';
   import SpectrumChart from '$lib/charts/SpectrumChart.svelte';
 
@@ -26,14 +27,15 @@
 
   onMount(() => {
     baseList.forEach((m) => { baseByKey[m.key] = m; });
-    const source = starmap.rulePackOverrides?.morphologies?.length
-      ? starmap.rulePackOverrides.morphologies
-      : baseList;
-    morphs = JSON.parse(JSON.stringify(source));
+    // Open on the EFFECTIVE lists — the pack's, with this campaign's delta already laid over them.
+    // Reading the stored override directly would show a delta as if it were the whole list, and
+    // saving from that would then wipe everything the GM had not re-typed.
+    morphs = JSON.parse(JSON.stringify(
+      applyListDelta(baseList, starmap.rulePackOverrides?.morphologies, (m) => m.key)));
     morphs.sort((a, b) => a.order - b.order);
     pigments = JSON.parse(JSON.stringify(
-      starmap.rulePackOverrides?.pigments?.length ? starmap.rulePackOverrides.pigments : basePigments));
-    model = { ...(starmap.rulePackOverrides?.pigmentModel ?? baseModel) };
+      applyListDelta(basePigments, starmap.rulePackOverrides?.pigments, (p) => p.key)));
+    model = { ...baseModel, ...(starmap.rulePackOverrides?.pigmentModel ?? {}) };
   });
 
   // Pigments are managed here the same way liquids and gases are: start from a clone of the base
@@ -87,10 +89,19 @@
   }
 
   function handleSave() {
-    const overrides: any = {};
-    if (JSON.stringify(baseList) !== JSON.stringify(morphs)) overrides.morphologies = morphs;
-    if (JSON.stringify(basePigments) !== JSON.stringify(pigments)) overrides.pigments = pigments;
-    if (JSON.stringify(baseModel) !== JSON.stringify(model)) overrides.pigmentModel = model;
+    // Save the DIFFERENCE, not the list. Everything untouched keeps tracking the pack, so a later
+    // improvement to the shipped defaults still reaches this campaign — which a whole-list copy
+    // would have quietly blocked. `undefined` means "no override at all", which is what a GM who
+    // changed nothing should end up storing.
+    const overrides: any = {
+      morphologies: makeListDelta(baseList, morphs, (m) => m.key),
+      pigments: makeListDelta(basePigments, pigments, (p) => p.key)
+    };
+    const modelDelta: any = {};
+    for (const k of Object.keys(model) as (keyof typeof model)[]) {
+      if (model[k] !== baseModel[k]) modelDelta[k] = model[k];
+    }
+    overrides.pigmentModel = Object.keys(modelDelta).length ? modelDelta : undefined;
     dispatch('save', overrides);
     dispatch('close');
   }

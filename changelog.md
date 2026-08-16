@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.658-beta - 16th Aug 2026
+
+- FIXED: the colour ribbon under a spectrum plot showed bright cyan in the ultraviolet and mint green in the infrared — colour where the eye has none. Each wavelength was being scaled to full brightness on its own, which amplified numerical noise in the tails. It now fades to black at both ends, which is the honest edge of your own vision.
+- Rule-pack edits are saved as the DIFFERENCE, not as a copy of the list. Retint one morphology and that is what your campaign stores — about 450 bytes rather than 4.5 kB. It matters for more than size: a whole copy would freeze the shipped defaults at the moment of the edit, and every later improvement to them would silently stop reaching that campaign.
+- An editor you have already used opens on what you actually have — the pack's list with your changes laid over it — so saving again never wipes what you did not re-type.
+- An override that says nothing is now removed rather than stored empty.
+- /physics explains how to read the plots, what the ribbon means, and that the ground and the seas are coloured by the same spectrum as the life. The Newton panel says the same beside its own diagrams.
+- Both surfaces are honest about what is NOT through the spectral path yet: the atmospheric haze, the cloud decks, a giant's chemistry and the glow of a very hot world.
+
 ## v2.1.657-beta - 16th Aug 2026
 
 - A world's LAND and its SEAS are now coloured by the light that actually reaches them. Their authored colours become reflectance curves and the real arriving spectrum is filtered through them, so a world under a red dwarf reddens because of what its star and its sky left rather than because two colour values were multiplied together. The reference gallery's "same Earth under different stars" row finally shows a real progression.

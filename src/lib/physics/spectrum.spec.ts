@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   GRID_NM, blackbodySpectrum, gridShare, integrate, photonFlux, peakNm, wienPeakNm,
-  spectrumToHex, planckRadiance, reflectanceFromHex, materialUnderLight
+  spectrumToHex, planckRadiance, reflectanceFromHex, materialUnderLight, wavelengthHex
 } from './spectrum';
 
 describe('spectrum — the grid and Planck', () => {
@@ -123,5 +123,35 @@ describe('spectral upsampling — an authored colour becomes a reflectance curve
     // reflect, which is exactly what multiplying two hex values fails to capture.
     const blueOf = (h: string) => parseInt(h.slice(5, 7), 16) - parseInt(h.slice(1, 3), 16);
     expect(blueOf(blueUnderDwarf)).toBeLessThan(blueOf(blueUnderSun));
+  });
+});
+
+describe('the wavelength ribbon fades to black where the eye has nothing', () => {
+  it('is black in the ultraviolet and the infrared, and vivid in between', () => {
+    // The bug this pins: each wavelength used to be normalised against its OWN maximum channel, so
+    // the numerically meaningless tails of the colour-matching fit were scaled up to full
+    // saturation. The ribbon came out bright cyan at 300 nm and mint green at 780 nm — colour where
+    // there is no vision at all.
+    const lum = (hex: string) => [1, 3, 5].reduce((m, i) => Math.max(m, parseInt(hex.slice(i, i + 2), 16)), 0);
+    for (const nm of [280, 300, 340, 370]) expect(lum(wavelengthHex(nm)), `${nm} nm`).toBe(0);
+    for (const nm of [720, 800, 950, 1200, 1400]) expect(lum(wavelengthHex(nm)), `${nm} nm`).toBe(0);
+    for (const nm of [480, 540, 590, 620]) expect(lum(wavelengthHex(nm)), `${nm} nm`).toBeGreaterThan(180);
+  });
+
+  it('runs blue through green to red across the visible band', () => {
+    const ch = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const [, , b470] = ch(wavelengthHex(470));
+    const [r470] = ch(wavelengthHex(470));
+    expect(b470).toBeGreaterThan(r470);
+    const [r540, g540] = ch(wavelengthHex(540));
+    expect(g540).toBeGreaterThan(r540);
+    const [r620, g620] = ch(wavelengthHex(620));
+    expect(r620).toBeGreaterThan(g620);
+  });
+
+  it('dims toward the edges rather than stopping dead', () => {
+    const lum = (hex: string) => [1, 3, 5].reduce((m, i) => Math.max(m, parseInt(hex.slice(i, i + 2), 16)), 0);
+    expect(lum(wavelengthHex(400))).toBeLessThan(lum(wavelengthHex(450)));
+    expect(lum(wavelengthHex(680))).toBeLessThan(lum(wavelengthHex(620)));
   });
 });

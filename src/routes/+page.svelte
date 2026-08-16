@@ -50,6 +50,9 @@
   import EditAtmospheresModal from '$lib/components/EditAtmospheresModal.svelte';
   import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditBiospheresModal from '$lib/components/EditBiospheresModal.svelte';
+  import { applyListDelta } from '$lib/rulepackDelta';
+  import { allMorphologies } from '$lib/physics/vegetation';
+  import { allPigments, pigmentModel } from '$lib/physics/pigments';
   import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
   import EditTemporalModal from '$lib/components/EditTemporalModal.svelte';
   import AboutModal from '$lib/components/AboutModal.svelte';
@@ -151,7 +154,15 @@
     if (settingsReturnSection) showSettingsModal = true;
   }
   function applyStarmapOverrides(overrides: any) {
-    starmapStore.update((s) => s ? { ...s, rulePackOverrides: { ...s.rulePackOverrides, ...overrides } } : s);
+    starmapStore.update((s) => {
+      if (!s) return s;
+      const next: any = { ...s.rulePackOverrides, ...overrides };
+      // An editor that hands back `undefined` for a section is saying "no override at all" — the GM
+      // changed nothing, or changed it back. REMOVE the key rather than storing an empty one, or a
+      // campaign accumulates a set of overrides that say nothing and read as if they said something.
+      for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+      return { ...s, rulePackOverrides: next };
+    });
   }
 
   // Begin an interstellar journey from the transit planner: stamp it with the current game clock so
@@ -620,15 +631,17 @@
               pack.liquids = overrides.liquids;  // whole-list replace; allLiquids(pack) prefers pack.liquids
           }
 
-          if (overrides.morphologies && overrides.morphologies.length) {
-              pack.morphologies = overrides.morphologies;  // whole-list replace, same shape as liquids
+          // DELTAS laid over the pack's own lists, so anything the GM never touched keeps tracking
+          // the shipped defaults. applyListDelta also accepts a whole list, which is what campaigns
+          // saved before this carry.
+          if (overrides.morphologies) {
+              pack.morphologies = applyListDelta(allMorphologies(pack), overrides.morphologies, (m) => m.key);
           }
-
-          if (overrides.pigments && overrides.pigments.length) {
-              pack.pigments = overrides.pigments;          // whole-list replace, same shape as liquids
+          if (overrides.pigments) {
+              pack.pigments = applyListDelta(allPigments(pack), overrides.pigments, (p) => p.key);
           }
           if (overrides.pigmentModel) {
-              pack.pigmentModel = overrides.pigmentModel;
+              pack.pigmentModel = { ...pigmentModel(pack), ...overrides.pigmentModel };
           }
       }
       return pack;

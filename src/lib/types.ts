@@ -5,6 +5,7 @@ import type { VolatileRetention } from './physics/volatileRetention';
 import type { ClassExplanation } from './system/classification';
 import type { TravellerWorldData } from './traveller/types';
 import type { ScheduledJourneyLog } from './transit/types';
+import type { PackListDelta } from './rulepackDelta';
 
 export type ID = string;
 
@@ -995,9 +996,14 @@ export interface RulePackOverrides {
   gasPhysics?: Record<string, GasPhysics>;
   atmosphereCompositions?: any[];
   liquids?: LiquidDef[];
-  morphologies?: MorphologyDef[];
-  pigments?: PigmentDef[];
-  pigmentModel?: PigmentModelConfig;
+  // DELTAS, not copies — only the keys and fields a GM actually changed. See lib/rulepackDelta.ts
+  // for why: a whole-list override freezes the shipped defaults at the moment of the edit, and
+  // every later improvement to the pack silently stops reaching that campaign. Both fields still
+  // accept a whole list, because campaigns saved before this carry one.
+  morphologies?: PackListDelta<MorphologyDef> | MorphologyDef[];
+  pigments?: PackListDelta<PigmentDef> | PigmentDef[];
+  /** A handful of scalars — stored whole, but only the ones that differ from the pack. */
+  pigmentModel?: Partial<PigmentModelConfig>;
 }
 
 export interface TemporalHierarchyUnit {

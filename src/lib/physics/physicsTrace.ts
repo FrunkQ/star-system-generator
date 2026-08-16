@@ -593,6 +593,8 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       ],
       notes: [
         'The star\'s Planck curve, scaled by the same luminosity the radiation model reads over the same inverse square, then filtered: Rayleigh scattering from the atmosphere\'s own column density (which is why the blue end goes first), each gas\'s authored absorption bands, and a GREY cut from any cloud deck. The peak quoted is the peak per unit WAVELENGTH — the peak per unit frequency of the same curve sits about 1.76 times further out, and the two are different numbers.',
+        'In the plot below, the gap between the two lines IS the atmosphere, and the notches in the lower one are the bands this world\'s gases ate. The coloured ribbon under the axis fades to black at both ends because that is where your eye stops — most of the axis is light you cannot see, so a world can be drenched in near-infrared and still look dim.',
+        'This same spectrum colours the ground and the sea, not just the life: each material\'s colour is treated as a reflectance spectrum and this light is filtered through it. The atmospheric haze, the cloud decks and a giant\'s chemistry are still combined as plain colours rather than spectra — that work is not finished.',
         `The LEVEL is named rather than assumed: this reading is at the ${s.level}. A world with no solid surface has a 1-bar level, not a surface, and nothing here turns one into the other.`
       ]
     });
