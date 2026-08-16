@@ -265,33 +265,18 @@
 
   // The four classes whose output is NOT their own surface: an accretion disc or a magnetosphere.
   // Same list `syncRadiationFromSB` returns early on — one spelling, checked in one place.
-  // The GM's activity lever. Shows the DERIVED value until pinned, so moving it is a deliberate act
-  // rather than an accident of the slider starting somewhere arbitrary.
-  let activityValue = $state(0);
-  // Pinned-ness tracked LOCALLY. `body` is a plain node, so mutating `body.overrides` does not
-  // invalidate a `{#if body.overrides?...}` in the template — the panel kept saying "derived" after
-  // the GM had pinned it.
-  let activityPinned = $state(false);
-  // LOCKED means "ionising output follows brightness": the fraction stays where class and age put it,
-  // so raising the star's size or heat raises its X-ray output proportionally. Unlocking hands the
-  // fraction to the GM. Locked is the default because the derived answer is right for most stars and
-  // the point of the lock is DELIBERATE variance.
-  let ionisingLocked = $state(true);
-  function toggleIonisingLock() {
-      ionisingLocked = !ionisingLocked;
-      if (ionisingLocked) resetActivity();
-  }
 
-  // The star's ionising output in multiples of the quiet Sun's — a frame a GM can reason in.
-  // IONISING OUTPUT FOLLOWS THE FIELD (owner, 2026-08-16). X-ray output tracks total magnetic flux -
-  // field strength times area - so the magnetic-field slider below IS the lever, and this is a
-  // readout of it rather than a second control saying the same thing a different way.
+  let isNonThermal = $derived(['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass));
+
+  // IONISING OUTPUT, AND THE GAUGE THAT SHOWS IT. All derived — there is no control here, only the
+  // magnetic-field slider below, which is what actually moves any of it.
   let ionisingSolar = $derived(ionisingFromField({
       fieldGauss: magGauss, radiusSolar: radiusSuns, massSolar: massSuns,
       tempK, luminositySolar: radiation || 0
   }));
-  // Only true for a star that is BOTH cool and puffed out, which is why the note it drives is rare.
   let pastCoronalLine = $derived(!isNonThermal && !hasHotCorona(massSuns, radiusSuns, tempK));
+
+  /** Solar multiples, readable at any magnitude: a Sun-like 1.6, a wound-up giant 4.9e+5. */
   function fmtIonising(x: number): string {
       if (!(x > 0)) return '0';
       if (x < 10) return x.toPrecision(2);
@@ -299,38 +284,20 @@
       return x.toExponential(1);
   }
 
-  // The two bands drawn under the slider, mapped to its 0..1 activity axis. Positions come from the
-  // ACTIVITY that produces each output, so the bands sit where the handle would have to be.
+  // WHERE THE MARKER SITS, and the two bands behind it. Both follow the star's own state, so the
+  // gauge tracks the field slider without being one: there is nothing here a GM can grab.
+  let derivedActivity = $derived((body as any)?.flareActivity ?? undefined);
+  let ionisingPos = $derived(
+      100 * activityForFraction(((ionisingSolar || 0) * IONISING_FRACTION_QUIET) / (radiation || 1))
+  );
   let ionisingRanges = $derived.by(() => {
       const bands = ionisingBands(radiation || 0, derivedActivity);
       if (!bands) return null;
-      const pos = (out: number) => activityForFraction((out * IONISING_FRACTION_QUIET) / (radiation || 1)) * 100;
+      const pos = (out: number) => 100 * activityForFraction((out * IONISING_FRACTION_QUIET) / (radiation || 1));
       const tx = pos(bands.typical[0]), tw = Math.max(1.5, pos(bands.typical[1]) - tx);
       const fx = pos(bands.flaring[0]), fw = Math.max(1.5, pos(bands.flaring[1]) - fx);
       return { typicalX: tx, typicalW: tw, flaringX: fx, flaringW: fw };
   });
-
-  // What the PHYSICS says for this star, independent of any pin — the anchor both bands are drawn
-  // around. Read off the body, which the processor has already filled in.
-  let derivedActivity = $derived((body as any)?.flareActivity ?? undefined);
-  let activityLabel = $derived(
-      activityValue >= 0.55 ? 'flare star' : activityValue >= 0.25 ? 'active' : activityValue >= 0.08 ? 'moderate' : 'quiet'
-  );
-  function handleActivityInput() {
-      body.overrides = { ...(body.overrides ?? {}), flareActivity: activityValue };
-      activityPinned = true;
-      dispatch('update');
-  }
-  function resetActivity() {
-      const o = { ...(body.overrides ?? {}) };
-      delete o.flareActivity;
-      body.overrides = o;
-      activityPinned = false;
-      activityValue = (body as any).flareActivity ?? 0;
-      dispatch('update');
-  }
-
-  let isNonThermal = $derived(['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass));
 
   // For a THERMAL emitter (any real star — incl. white dwarfs / red giants, but NOT accretion- or
   // non-thermal remnants), the radiated output IS that bolometric luminosity. So when the user edits
@@ -390,8 +357,6 @@
       // Seed the activity lever from what the star ACTUALLY has — the GM's pin if there is one, else
       // the value the processor derived. Starting it at zero would make the slider lie about a quiet
       // star and make its first nudge look like a huge change.
-      activityValue = body.overrides?.flareActivity ?? (body as any).flareActivity ?? 0;
-      activityPinned = body.overrides?.flareActivity != null;
       accSliderPos = posFromF(accF);
   });
 
@@ -840,21 +805,24 @@
         </div>
     </div>
 
-    <!-- LUMINOSITY and IONISING OUTPUT, joined by a LOCK. Owner, 2026-08-15: "we could have a nice
-         UI element here that could move the ionising radiation and luminosity together - perhaps a
-         lock icon between them. unlock to slide ionising radiation separately... show BOTH ranges for
-         standard and flaring versions of the star. Guide the user to the relationship and allow
-         deliberate variance."
-         THE RELATIONSHIP IS L_X = L_bol x (L_X/L_bol). Locked, the fraction holds and ionising output
-         tracks brightness - that is "generally they move together". Unlocked, the fraction is yours
-         across its four observed decades - that is "but not always". -->
-    <div class="form-group">
+    <!-- ONE BLOCK, THREE ROWS, READ TOP-DOWN AS CAUSE AND EFFECT (owner, 2026-08-16): "the mag field
+         should be UP under the Ionising output - and tied into a threesome in the UI to infer their
+         relationship. I guess we don't need an actual lock and slider on Ionising Output as Magnetic
+         field directly drives it now?"
+         Correct, and the lock and the ionising slider are GONE. They were a second control for a
+         quantity the field already determines - two ways to say one thing, which is the duplication
+         this codebase keeps paying for. What is left is honest: two DERIVED readouts and the one
+         INPUT that moves them.
+             Luminosity      <- radius and temperature
+             Ionising output <- magnetic flux (field x area), capped at saturation
+             Magnetic field  <- the slider; the only thing here a GM sets -->
+    <div class="form-group triad">
         <div class="label-row">
             <label>Luminosity</label>
             {#if isNonThermal}
                 <input type="number" step="any" bind:value={radiation} on:change={handleRadiationInput} />
             {:else}
-                <span class="derived-readout" title="Computed from radius and temperature - edit those to change it.">{radiation.toPrecision(3)} L&#9737;</span>
+                <span class="derived-readout" title="Computed from radius and temperature — edit those to change it.">{radiation.toPrecision(3)} L&#9737;</span>
             {/if}
         </div>
         <div class="sub-label">
@@ -864,49 +832,52 @@
                 Derived from radius and temperature.
             {/if}
         </div>
-    </div>
 
-    <div class="link-row">
-        <button type="button" class="lock-btn" class:locked={ionisingLocked}
-                title={ionisingLocked
-                    ? 'Locked: ionising output follows brightness. Click to set it separately.'
-                    : 'Unlocked: ionising output is yours. Click to make it follow brightness again.'}
-                on:click={toggleIonisingLock}>{ionisingLocked ? "🔒" : "🔓"}</button>
-        <span class="link-note">
-            {ionisingLocked ? 'ionising output follows brightness' : 'ionising output set separately'}
-        </span>
-    </div>
-
-    <div class="form-group">
-        <div class="label-row">
-            <label>Ionising output ({activityLabel})</label>
-            <span class="derived-readout">{fmtIonising(ionisingSolar)} &times; Sun</span>
+        <div class="label-row triad-row">
+            <label>Ionising output</label>
+            <span class="derived-readout">{fmtIonising(ionisingSolar)}&times; Sun</span>
         </div>
-        <div class="slider-container">
+        <!-- A GAUGE, NEVER A CONTROL (owner, 2026-08-16): "seeing the slider move from typical to
+             flaring is great - keep the visual - just never interactive." So the bands and the marker
+             stay and the input does not: drag the FIELD below and the marker walks from the typical
+             band into the flaring one, which is the relationship made visible rather than described. -->
+        <div class="slider-container gauge">
             <svg class="slider-svg" width="100%" height="30">
                 {#if ionisingRanges}
-                    <!-- BOTH ranges, so the relationship is visible rather than described: where this
-                         star normally sits, and where the flaring version of the same star sits. -->
-                    <rect x="{ionisingRanges.typicalX}%" y="0" width="{ionisingRanges.typicalW}%" height="8" fill="#4a7fb5" />
-                    <rect x="{ionisingRanges.flaringX}%" y="0" width="{ionisingRanges.flaringW}%" height="8" fill="#cc7744" />
+                    <rect x="{ionisingRanges.typicalX}%" y="0" width="{ionisingRanges.typicalW}%" height="8" fill="#22aa44" />
+                    <rect x="{ionisingRanges.flaringX}%" y="0" width="{ionisingRanges.flaringW}%" height="8" fill="#e0a24a" />
                     <text x="{ionisingRanges.typicalX}%" y="26" class="rad-label">typical</text>
                     <text x="{ionisingRanges.flaringX}%" y="26" class="rad-label">flaring</text>
                 {/if}
+                <line x1="{ionisingPos}%" y1="-2" x2="{ionisingPos}%" y2="12" stroke="var(--text)" stroke-width="2" />
             </svg>
-            <input type="range" min="0" max="1" step="0.01" bind:value={activityValue}
-                   on:input={handleActivityInput} disabled={ionisingLocked}
-                   class="full-width-slider overlay" />
         </div>
         <div class="sub-label">
-            <!-- CONTEXTUAL, not encyclopaedic (owner, 2026-08-16): the corona note appears only on the
-                 stars it actually applies to. A GM editing a G dwarf never sees it. -->
             {#if pastCoronalLine}
                 Cool and swollen &mdash; past the coronal dividing line, so it holds no hot corona and
                 irradiates far less than its size suggests.
-            {:else if ionisingLocked}
-                Derived from class and age &mdash; a young M dwarf flares hard, an old one is quiet. Unlock to vary it.
             {:else}
-                Set by you. <button type="button" class="link-btn inline" on:click={resetActivity}>Use the physics</button>
+                Derived from the magnetic field below &mdash; field strength across the star's surface.
+            {/if}
+        </div>
+
+        <div class="label-row triad-row">
+            <label>Magnetic field (Gauss)</label>
+            <input type="number" step="any" bind:value={magGauss} disabled={currentClass === 'star/BH'} on:input={handleMagInput} />
+        </div>
+        <div class="slider-container">
+            <svg class="slider-svg" width="100%" height="30">
+                <rect x="{getRangePct('mag', 'start')}%" y="0" width="{getRangePct('mag', 'width')}%" height="8" fill="#22aa44" />
+            </svg>
+            <input type="range" min="0" max="1" step="0.001" bind:value={magSliderPos} disabled={currentClass === 'star/BH'} on:input={updateMagSlider} class="full-width-slider overlay" />
+        </div>
+        <div class="sub-label">
+            {#if currentClass === 'star/BH'}
+                0 G &mdash; an isolated black hole keeps no magnetic field (no-hair theorem); feed it to anchor a disc field
+            {:else if magGauss > 10000}
+                {magGauss.toExponential(2)} G &mdash; drives the ionising output above
+            {:else}
+                {Math.round(magGauss).toLocaleString()} G &mdash; drives the ionising output above
             {/if}
         </div>
     </div>
@@ -955,38 +926,6 @@
         </div>
     </div>
 
-    <!-- MAGNETIC FIELD (quiescent BHs have none — no-hair theorem; feeding BHs carry a disc field) -->
-    <div class="form-group">
-        <div class="label-row">
-            <label>Magnetic Field (Gauss)</label>
-            <input type="number" step="any" bind:value={magGauss} disabled={currentClass === 'star/BH'} on:input={handleMagInput} />
-        </div>
-        <div class="slider-container">
-            <svg class="slider-svg" width="100%" height="30">
-                <rect x="{getRangePct('mag', 'start')}%" y="0" width="{getRangePct('mag', 'width')}%" height="8" fill="#22aa44" />
-            </svg>
-            <input type="range" min="0" max="1" step="0.001" bind:value={magSliderPos} disabled={currentClass === 'star/BH'} on:input={updateMagSlider} class="full-width-slider overlay" />
-        </div>
-        <!-- THE FIELD IS THE IONISING LEVER, so its consequence is stated here rather than on a
-             separate control. Owner: "the magnetic field would drive the ionising radiation up and
-             cause flaring... we could get rid of the separate ionising output but tie it to magnetic
-             field." -->
-        {#if !isNonThermal && magGauss > 0}
-            <div class="sub-label field-consequence">
-                Ionising output: <strong>{fmtIonising(ionisingSolar)}&times; the Sun's</strong>
-                {#if pastCoronalLine}&mdash; suppressed, no hot corona{/if}
-            </div>
-        {/if}
-        <div class="sub-label">
-            {#if currentClass === 'star/BH'}
-                0 G — an isolated black hole keeps no magnetic field (no-hair theorem); feed it to anchor a disc field
-            {:else if magGauss > 10000}
-                {magGauss.toExponential(2)} G
-            {:else}
-                {Math.round(magGauss).toLocaleString()} G
-            {/if}
-        </div>
-    </div>
 
 </div>
 
@@ -1003,12 +942,11 @@
   .full-width-slider { width: 100%; margin: 0; cursor: pointer; }
   hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
   .sub-label { font-size: 0.75em; color: var(--text-faint); text-align: right; }
-.link-row { display: flex; align-items: center; gap: 8px; margin: -6px 0 2px; }
-  .lock-btn { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px;
-      font-size: 0.95em; cursor: pointer; line-height: 1.4; }
-  .lock-btn.locked { border-color: var(--accent, #ff5a1f); }
-  .link-note { font-size: 0.72em; color: var(--text-faint); }
-  .field-consequence { text-align: right; color: var(--text-muted); }
+  /* One bordered group, so the three read as related rather than as three separate settings. */
+  .triad { border-left: 2px solid var(--border); padding-left: 8px; }
+  .triad-row { margin-top: 6px; }
+  /* Read-only: no pointer affordance, because there is nothing to grab. */
+  .gauge { pointer-events: none; }
   .derived-readout { width: 100px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.95em; }
   .class-explain { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
   

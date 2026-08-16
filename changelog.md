@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.644-beta - 16th Aug 2026
+
+* Star editor: brightness, ionising output and magnetic field now sit together as one group, reading top to bottom as cause and effect. The field is the only one you set; the other two follow from it.
+* Star editor: the ionising output keeps its typical/flaring gauge but is no longer a control — drag the magnetic field and watch the marker walk out of the green typical band into the orange flaring one. Two controls for one quantity became one.
+* Star editor: raising a star's magnetic field well above what is normal for its type now makes it flare, since flaring is the magnetic dynamo and the field is what that dynamo produces.
+
 ## v2.1.643-beta - 16th Aug 2026
 
 * Generation wizard: a star clicked on the HR diagram now reads as a full designation — G3V rather than G-type — with the subclass worked out from its temperature.

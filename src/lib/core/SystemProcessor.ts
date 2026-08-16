@@ -43,7 +43,8 @@ import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosp
 import { flareActivity } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
 import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlausibility';
-import { applyActivityScatter } from '../physics/ionisingOutput';
+import { applyActivityScatter, activityFromFieldExcess } from '../physics/ionisingOutput';
+import { starStatTemplate } from '../generation/star';
 import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
 import { brownDwarfThermal } from '../physics/substellar';
 
@@ -112,8 +113,18 @@ export class SystemProcessor implements ISystemProcessor {
             // rotation. A model with no scatter is the unphysical one. Seeded from the star's id, so
             // it is stable across re-processing and identical for everyone.
             const baseActivity = flareActivity(s.classes?.[0], this.systemAgeGyr, (s as any).accretionEddington);
+            // THE FIELD IS ALSO THE FLARING LEVER, now that the separate activity slider is gone.
+            // Flaring IS the dynamo and the field is the dynamo's output, so a star wound well above
+            // its class's typical field is more active — and one sitting inside its own band is
+            // exactly as active as class and age say, which is why this changes nothing for an
+            // ordinary star. Only a GM deliberately raising the field moves it.
+            const typicalGauss = (starStatTemplate(rulePack, s.classes?.[0] ?? '')?.mag_gauss ?? []) as number[];
+            const fieldDriven = activityFromFieldExcess(
+                s.magneticField?.strengthGauss,
+                typicalGauss.length === 2 ? (typicalGauss[0] + typicalGauss[1]) / 2 : undefined
+            );
             s.flareActivity = s.overrides?.flareActivity
-                ?? applyActivityScatter(baseActivity, (s as any).activityScatter);
+                ?? Math.max(applyActivityScatter(baseActivity, (s as any).activityScatter), fieldDriven);
             s.tags = stripForReprocess(s.tags, ['hazard/flaring', STELLAR_ACTIVITY_TAG]);
             if (s.flareActivity > 0.4) emit(s.tags, { key: 'hazard/flaring' });
             // MAGNETIC ACTIVITY, bucketed — the one judgement behind everything a star's surface

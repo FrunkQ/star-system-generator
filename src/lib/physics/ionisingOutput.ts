@@ -206,3 +206,20 @@ export function ionisingFromField(star: {
 	}
 	return out;
 }
+
+/**
+ * How much DYNAMO a star's field implies, relative to what is typical for its class.
+ *
+ * With the ionising slider gone, the FIELD is the only lever a GM has here — so it must also be what
+ * makes a star flare, or "take a red giant up and it flares" stops working. Physically that is the
+ * right direction anyway: flaring is the dynamo, and the field IS the dynamo's output.
+ *
+ * ZERO AT OR BELOW THE CLASS NORM, rising to full over two decades above it. A star sitting in its
+ * own band is exactly as active as its class and age say, which is why this changes nothing for any
+ * ordinary star — only a GM deliberately winding the field up moves it.
+ */
+export function activityFromFieldExcess(fieldGauss: number | undefined, typicalGauss: number | undefined): number {
+	if (!(fieldGauss! > 0) || !(typicalGauss! > 0)) return 0;
+	const excess = Math.log10(fieldGauss! / typicalGauss!) / 2; // two decades above the norm = 1
+	return Math.max(0, Math.min(1, excess));
+}
