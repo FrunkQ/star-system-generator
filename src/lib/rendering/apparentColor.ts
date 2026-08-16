@@ -13,6 +13,8 @@ import { phaseAtP, liquidDef } from '$lib/physics/liquids';
 import { decksFromTags, condensateTint, oxidationStrength } from '$lib/physics/cloudDecks';
 import { vegetationTint } from '$lib/physics/vegetation';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
+import { blackbodySpectrum, gridShare, materialUnderLight, reflectanceFromHex,
+  reflectedHexUnderIlluminant, type Spectrum } from '$lib/physics/spectrum';
 
 type RGB = [number, number, number];
 
@@ -53,23 +55,27 @@ export function starColorFromTempK(tempK?: number): RGB {
   return hexToRgb('#ff8a4a');
 }
 
-// #8 — a liquid's APPARENT colour is starlight filtered by its intrinsic absorption (colorHex),
-// plus a specular share of raw starlight set by the refractive index (Fresnel R = ((n−1)/(n+1))²,
-// amplified for glancing geometry). Water under a red dwarf is murky amber-grey, not postcard blue;
-// molten iron is mostly a starlight mirror. One data point (n) covers every liquid.
-export function liquidApparentColor(liquidName: string, star: RGB): RGB {
-  const def = LIQUIDS.find((l) => l.name === liquidName);
-  const intrinsic = hexToRgb(def?.colorHex ?? '#8aa0b8');
-  // Diffuse: per-channel filter of the starlight through the liquid's absorption tint.
-  const diffuse: RGB = [
-    (star[0] / 255) * intrinsic[0],
-    (star[1] / 255) * intrinsic[1],
-    (star[2] / 255) * intrinsic[2]
-  ];
+// #8 — a liquid's APPARENT colour is the light that reaches it, filtered by its own absorption, plus
+// a specular share of that same light reflected straight back off the surface. The specular share
+// comes from the refractive index (Fresnel R = ((n−1)/(n+1))², amplified for glancing geometry), so
+// water under a red dwarf is murky amber-grey rather than postcard blue and molten iron is mostly a
+// mirror. One data point (n) covers every liquid.
+//
+// IT IS DONE SPECTRALLY NOW, and that is the point. The old version multiplied the star's RGB by the
+// liquid's RGB — three human primaries filtering three human primaries, which gets the answer
+// approximately right for a Sun-like star and increasingly wrong for anything else, and could not
+// see an atmosphere at all. Filtering the ACTUAL arriving spectrum through a reflectance curve and
+// converting once at the end is both better physics and less code, and it means a sea under a hazy
+// sky is coloured by what got through the haze (inbox B54).
+export function liquidApparentColor(liquidName: string, light: Spectrum, pack?: RulePack | null): RGB {
+  const def = liquidDef(liquidName, pack) ?? LIQUIDS.find((l) => l.name === liquidName);
+  const refl = reflectanceFromHex(def?.colorHex ?? '#8aa0b8');
   const n = def?.refractiveIndex ?? 1.33;
   const fresnel = Math.pow((n - 1) / (n + 1), 2);          // ~0.02 for water … ~0.24 molten iron
   const spec = Math.min(0.65, fresnel * 6);                 // glancing-angle boost, capped
-  return mix(diffuse, star, spec);
+  // Diffuse (filtered) plus specular (unfiltered) — both in spectral space, converted once.
+  const out = light.map((v, i) => v * (refl[i] * (1 - spec) + spec));
+  return hexToRgb(reflectedHexUnderIlluminant(out, light));
 }
 
 // (The old CLOUD_VEIL table is gone: how heavily a deck veils the surface is the LIQUID's own
@@ -111,13 +117,26 @@ function bandCount(body: CelestialBody, gasFrac: number, iceGiant = false): numb
 
 // Full derivation: flattened hex + un-mixed palette + banding. opts.starTempK lets the host star's
 // light drive liquid colour (#8); omitted → Sun-like.
-export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePack, opts?: { starTempK?: number }): ApparentColor {
+export function deriveApparentColorParts(
+  body: CelestialBody,
+  rulePack?: RulePack,
+  opts?: { starTempK?: number; surfaceLight?: Spectrum }
+): ApparentColor {
   const mk = makeupFractions(body);
   const palette: ApparentColorStop[] = [];
   const push = (hex: string, role: ApparentColorStop['role'], weight: number, label?: string) => {
     if (weight > 0.02) palette.push({ hex, role, weight: Math.min(1, weight), label });
   };
   const star = starColorFromTempK(opts?.starTempK);
+  // THE LIGHT THIS WORLD IS ACTUALLY LIT BY. Handed in by the processor, which has already filtered
+  // the star through this world's own sky. When it is absent — a standalone caller, a gallery
+  // fixture — fall back to the star's unfiltered spectrum rather than to a different code path: a
+  // world with no atmosphere is simply one whose transmission is 1 everywhere, so there is ONE
+  // model and the fallback is a case of it rather than a rival to it.
+  const light: Spectrum = opts?.surfaceLight
+    ?? blackbodySpectrum(opts?.starTempK ?? 5778, 1000 * gridShare(opts?.starTempK ?? 5778));
+  /** What a material of this authored colour looks like under that light. */
+  const under = (hex: string) => materialUnderLight(hex, light);
 
   // 1. Surface base ("land") from makeup fractions.
   let col = mixWeighted([
@@ -138,12 +157,13 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
   // is grey. Bulk makeup alone made every rocky world the same brown; rust is surface chemistry, so
   // it arrives as a tag (see deriveOxidation) and tints the surface here.
   const rust = oxidationStrength(body.tags);
-  if (rust > 0) {
-    col = mix(col, [168, 74, 38], rust);   // hematite red-ochre
-    push(rgbToHex(col), 'surface', 1, `oxidised ${surfDom} surface`);
-  } else {
-    push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
-  }
+  if (rust > 0) col = mix(col, [168, 74, 38], rust);   // hematite red-ochre
+  // THE GROUND IS LIT BY THE SAME LIGHT AS EVERYTHING ELSE. The makeup mix above is the material's
+  // own colour — what it would look like under daylight — so it goes through the spectral path too,
+  // and a rocky world under a red dwarf reddens because of what its sky and star left rather than
+  // because two hex values were multiplied.
+  col = hexToRgb(under(rgbToHex(col)));
+  push(rgbToHex(col), 'surface', 1, rust > 0 ? `oxidised ${surfDom} surface` : `${surfDom} surface`);
 
   // 1b. LIFE ON THE LAND. It goes here, between the bare ground and the ocean, because that is
   //     physically where it is: vegetation covers LAND, and the sea then covers its own fraction of
@@ -177,7 +197,7 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
   const hydro = surfaceLayer?.coverage ?? body.hydrosphere?.coverage ?? 0;
   const liquidFamily = LIQUIDS.find((l) => l.name === surfaceLiquid)?.family;
   if (isLiquidSurface && surfaceLiquid && hydro > 0.05 && liquidFamily !== 'molten') {
-    const lc = liquidApparentColor(surfaceLiquid, star);
+    const lc = liquidApparentColor(surfaceLiquid, light, rulePack);
     const cover = Math.min(0.85, hydro);
     col = mix(col, lc, cover);
     push(rgbToHex(lc), 'ocean', hydro, `${surfaceLiquid} ocean`);
@@ -188,8 +208,8 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     // toward frost (water → near-white; methane/nitrogen ices keep a faint cast).
     const cover = body.hydrosphere?.coverage ?? 0;
     if (cover > 0.05) {
-      const intrinsic = hexToRgb(LIQUIDS.find((l) => l.name === rawComp)?.colorHex ?? '#8aa0b8');
-      const frost = mix(intrinsic, [236, 243, 250], 0.78);
+      const intrinsic = hexToRgb(liquidDef(rawComp, rulePack)?.colorHex ?? '#8aa0b8');
+      const frost = hexToRgb(under(rgbToHex(mix(intrinsic, [236, 243, 250], 0.78))));
       col = mix(col, frost, Math.min(0.9, cover));
       push(rgbToHex(frost), 'surface', cover, `${rawComp} ice sheet`);
     }

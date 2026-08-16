@@ -1338,7 +1338,12 @@ export class SystemProcessor implements ISystemProcessor {
             }
         }
 
-        const apparent = deriveApparentColorParts(body, pack, { starTempK: hostStarTempK });
+        // The apparent colour is lit by the SAME spectrum the pigment model read — one derivation,
+        // two consumers, which is the whole point of computing a surface spectrum at all.
+        const apparent = deriveApparentColorParts(body, pack, {
+            starTempK: hostStarTempK,
+            surfaceLight: spectrumCurves?.surface
+        });
         body.apparentColor = apparent;
         body.apparentColorHex = apparent.hex;
 

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.657-beta - 16th Aug 2026
+
+- A world's LAND and its SEAS are now coloured by the light that actually reaches them. Their authored colours become reflectance curves and the real arriving spectrum is filtered through them, so a world under a red dwarf reddens because of what its star and its sky left rather than because two colour values were multiplied together. The reference gallery's "same Earth under different stars" row finally shows a real progression.
+- The Newton panel DRAWS the spectrum now instead of describing it: the star's light and the light at the ground on one plot, with the gap between them being the sky and the notches being the bands its gases ate. Underneath, what its own pigment takes out of that light, and a swatch for every pigment that would have worked.
+- Every morphology's colour is shown there too, with the pigment each one settled on.
+
 ## v2.1.656-beta - 16th Aug 2026
 
 - FIXED: the Biosphere data block printed `[object Object]` for its morphologies. It was reading the raw field, which now carries a morphology AND its land cover rather than a bare name.

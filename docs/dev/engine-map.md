@@ -567,6 +567,22 @@ SEGMENTS, never its samples". A1 is now RENDER-B1._
 
 #### Backfilled from closed inbox items — added 2026-08-07 by the engine-map backfill session
 
+### RENDER-B3 There is ONE elevation field per world, and everything else is a threshold of it
+WHERE: `rendering/landmass.ts`; consumed by `planetTexture.paintSurfaceField` (both projections) and
+`physics/vegetation` via `vegetationBand`.
+RULE: land, sea, coast, vegetation, shallow water and ice are all thresholds of the same field. Never
+scatter a second set of shapes to represent any of them.
+WHY: they used to be three independent scatters of circles. The coastline rolled one, the vegetation
+rolled another and put plants in the SEA, and the 2D disc and the 3D globe rolled their own so a
+world had two different geographies depending which way you looked at it. Three answers to "where is
+the land".
+BLAST: the field is defined on the SPHERE, not per projection — that is what makes the disc and the
+globe agree, and a 2D-only field would silently undo it. It is thresholded by AREA (cos-latitude
+weighted), not by height, because a world's hydrosphere coverage is derived and must come out as
+asked. `landFieldFor` is the entry point; calling `buildLandField` from a draw path pays ~80 ms
+twice. A morphology's `waterReach` says how far past dry land it holds — the sea AND the ice caps,
+one number, because they are the same claim.
+
 ### RENDER-B1 GL texture storage is IMMUTABLE — a resized canvas silently never lands
 WHERE: `holo/scene.ts:setHud` (the `else` branch that recreates the texture), the label path at
 `scene.ts:933-943`, and the same pair in `starmap/starmapScene.ts:setHud`.

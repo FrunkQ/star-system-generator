@@ -180,6 +180,55 @@ quietly substitute the Sun in the same situation** ([[B60]] on the board), which
 equilibrium temperature in that fixture has been computed as though every star were the Sun. It is
 invisible there because the only star is.
 
+## What the owner changed after the first cut (2026-08-16)
+
+Recorded because several of these moved a boundary he had set himself, and the next reader needs to
+know they were decisions rather than drift.
+
+**Each morphology draws its OWN pigment.** [[B54]] scoped "which morphology takes which pigment" as
+V4. He asked for it the same day, and it cost five lines — which is exactly the argument the ranked
+set was shipped on, so this is collecting on it rather than reopening anything. A pin lands on the
+layer the Bio tab NAMES (the most extensive pigment-driven one) and leaves the others their draws.
+
+**An authored colour per layer.** A biosphere that does not photosynthesise has no pigment, so the
+derivation correctly has nothing to say about what it looks like and somebody has to. Offered on
+every layer rather than on microbial, because "microbial gets a colour picker" would be a rule about
+microbial. It is an INPUT — nothing re-derives it — so by [[B52]]'s own test it is DATA and lives on
+`BiosphereLayer`, not in a tag.
+
+**`biodiversity/pigment-viable` was removed.** Several pigments always work; saying so six times per
+living world was clutter the Bio tab's picker already covers. The ranked set is still derived and
+still on the body.
+
+**Land and liquid colours now go through the spectrum.** `reflectanceFromHex` upsamples an authored
+hex into a smooth reflectance curve and `materialUnderLight` filters the real arriving light through
+it. That is the first real slice of [[B54]]'s retirement: the ground and the sea are no longer two
+RGBs multiplied together, so a world under a red dwarf reddens because of what its sky and star left.
+**The atmosphere tint, the cloud decks and the giant chemistry are still RGB** — that is the rest of
+the retirement and it is still owed.
+
+## Continents, and why they are one field
+
+`rendering/landmass.ts`. Domain-warped fractal noise on the SPHERE, thresholded by AREA so a world's
+derived land fraction comes out as asked. Everything else is a threshold of that one field: the
+coastline is sea level, vegetation is a band just inside it, shallow water is a band just outside,
+ice is a latitude cut across it.
+
+It replaced three independent scatters of circles — the coastline rolled one, the vegetation rolled
+another and put plants in the sea, and the 2D disc and the 3D globe rolled their own so one world had
+two geographies. The field is spherical precisely so the disc and the globe are two projections of
+ONE geography.
+
+**How far past dry land a morphology can hold is `waterReach`, and it governs the ice caps too** —
+whatever roofs an ocean is not stopped by a glacier. That one number is what makes "only technology
+takes the seas and the caps" true without a rule about technology anywhere.
+
+**Two ice-cap quantities, not one.** The latitude profile is an annual MEAN. Adding the summer swing
+on top and testing against the melting point asks "is the warmest moment above freezing?", and at
+Earth's pole the answer is yes — so the model deleted the Arctic. A summer hemisphere shows its
+PERMANENT cap (mean below melting); a winter one shows its seasonal extent (mean minus swing). Both
+honest, and the asymmetry between them is the season.
+
 ## The chart vocabulary ([[G23]])
 
 `src/lib/charts/` is a vocabulary, not a set of plots: `plotScale.ts` (one scale implementation),
