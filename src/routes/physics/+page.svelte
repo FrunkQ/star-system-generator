@@ -969,12 +969,17 @@
 
       <h3>What this does not model</h3>
       <ul>
-        <li><strong>Aerosols.</strong> Dust, smoke, spray and photochemical haze are the usual reason real
-          visibility is short, and none of them are here. Earth therefore reads as its clean-air limit rather
-          than the twenty or thirty kilometres a damp day gives you, and Titan reads far clearer than its
-          orange smog really is. Every figure is a <em>ceiling</em>.</li>
-        <li>Fog depth. A deck whose base sits at the surface is spread over a scale height, where real fog is
-          a boundary-layer thing tens of metres deep.</li>
+        <li><strong>Photochemical haze</strong> — Titan's tholins, Venus's upper sulphuric aerosol. Not
+          modelled at all, because nothing in the rule pack describes it: a haze is not a condensate deck,
+          and no gas carries a haze yield. Titan therefore reads far clearer than its orange smog really is.
+          This is a genuine <em>data</em> gap rather than a modelling shortcut.</li>
+        <li><strong>Water and smoke aerosol</strong> — so Earth reads as its clean-air limit rather than the
+          twenty or thirty kilometres a damp day gives you. Its figure is a <em>ceiling</em>.</li>
+        <li><strong>Dust is modelled, but crudely.</strong> The dust-storm tag carries a <em>frequency</em>
+          and this reads a suspended <em>load</em> off it, which are not the same quantity; and it is mixed
+          evenly over a scale height where real dust sits low down, so a storm reads clearer than it is.</li>
+        <li><strong>Fog.</strong> Not possible yet at all: telling fog from cloud needs the deck's base
+          pressure, and that is computed and then dropped before any consumer sees it.</li>
         <li>Beam shape — a lamp is its on-axis intensity, so these are reaches down the beam, not radii.</li>
         <li>The sky's own glow, which in daylight is what a dark object is lost <em>against</em>. On a world
           with almost no scattering the contrast holds further out than this says.</li>

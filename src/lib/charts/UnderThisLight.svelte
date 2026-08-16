@@ -13,7 +13,7 @@
   import type { RulePack, CelestialBody } from '$lib/types';
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
   import { deriveVisibility, distanceWords, LAMPS } from '$lib/physics/visibility';
-  import { surfaceSceneFor, drawSky, drawMaterials, drawMarkers, drawEmissive, drawSpectrumEdges } from './surfaceScene';
+  import { surfaceSceneFor, drawSky, drawMaterials, drawMarkers, drawEmissive, drawSpectrumEdges, dimHex } from './surfaceScene';
   import { blackbodySpectrum, gridShare, spectrumToHex } from '$lib/physics/spectrum';
   import {
     lightOperator, relightImage, colourUnderOperator, confusability,
@@ -187,11 +187,11 @@
     const home = homeWorld ?? world;
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, x0, H); ctx.clip();
-    drawSky(ctx, W, H, home);
+    drawSky(ctx, W, H, home, 1);
     ctx.restore();
     ctx.save();
     ctx.beginPath(); ctx.rect(x0, 0, W - x0, H); ctx.clip();
-    drawSky(ctx, W, H, world);
+    drawSky(ctx, W, H, world, trueLevel ? level : 1);
     ctx.restore();
 
     const mat = matCanvas ?? (matCanvas = document.createElement('canvas'));
@@ -211,7 +211,7 @@
     // Airlight last, and per side: at home this world's surfaces sit in Earth's air, over there in
     // its own. On a hazy world that is the shot — the far markers are simply gone.
     drawMarkers(ctx, W, H, world, HOME_EXTINCTION, home.skyLowHex, 0, x0);
-    drawMarkers(ctx, W, H, world, world.sight.extinctionPerM, world.skyLowHex, x0, W);
+    drawMarkers(ctx, W, H, world, world.sight.extinctionPerM, dimHex(world.skyLowHex, trueLevel ? level : 1), x0, W);
     // Lava and lit windows make their OWN light, so they are not re-lit and not veiled by haze
     // between you and them at these distances. A settlement therefore reads the same on both sides
     // of the wipe while everything around it changes, which is exactly what a lamp does.
@@ -349,15 +349,17 @@
       <div class="sight">
         <span class="pair">
           {#if sight.rangeM < sight.horizonM}
-            The air gives out at <b>{distanceWords(sight.rangeM)}</b>
+            You can see <b>{distanceWords(sight.rangeM)}</b> &mdash; the air, not the horizon
           {:else}
-            You see to the horizon, <b>{distanceWords(sight.horizonM)}</b>
+            You can see <b>{distanceWords(sight.horizonM)}</b> &mdash; the horizon, the air is clear
           {/if}
         </span>
         {#each LAMPS as l}
           <span class="pair">{l.label} <b>{distanceWords(sight.lampM[l.key])}</b></span>
         {/each}
-        {#if sight.fogged}<span class="pair fog">fog on the ground</span>{/if}
+        {#if sight.stormM !== null}
+          <span class="pair fog">in a dust storm <b>{distanceWords(sight.stormM)}</b></span>
+        {/if}
       </div>
     {/if}
 

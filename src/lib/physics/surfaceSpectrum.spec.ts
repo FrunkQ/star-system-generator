@@ -61,7 +61,24 @@ describe('the sky takes its cut', () => {
     const thin = derive(earthLike({ atmosphere: { pressure_bar: 0.006, molarMassKg: 0.044, composition: { CO2: 0.95, N2: 0.05 } } } as any), { starTempK: 5778, luminositySolar: 1, distanceAU: 1.52 }, pack)!;
     const thick = derive(earthLike({ atmosphere: { pressure_bar: 92, molarMassKg: 0.044, composition: { CO2: 0.96, N2: 0.035 } } } as any), { starTempK: 5778, luminositySolar: 1, distanceAU: 0.72 }, pack)!;
     expect(at(thin.transmission, 450)).toBeGreaterThan(0.9);
-    expect(at(thick.transmission, 450)).toBeLessThan(0.01);
+    // Blue is nearly gone under ninety bar — but NOT gone to nothing, and the difference matters.
+    // Scattering redirects a photon rather than destroying it, so a thick sky keeps delivering light
+    // by another path long after the direct beam has died. exp(-tau) said one part in ten million
+    // reached Venus's ground; Venera measured something like a dull overcast day.
+    expect(at(thick.transmission, 450)).toBeLessThan(0.08);
+    expect(at(thick.transmission, 450)).toBeGreaterThan(0.005);
+    // …and it is still emphatically redder down there: the whole point survives.
+    expect(at(thick.transmission, 700)).toBeGreaterThan(at(thick.transmission, 450) * 3);
+  });
+
+  it('does not let a scattering sky go black, however thick it gets', () => {
+    // The two-stream form, T = 1/(1 + 3*tau/4), agrees with exp(-tau) when tau is small and stays
+    // physical when it is not. Both ends are checked here because the fix has to leave thin
+    // atmospheres exactly where they were — Earth must not move so Venus can.
+    const earth = derive(earthLike(), { starTempK: 5778, luminositySolar: 1, distanceAU: 1 }, pack)!;
+    expect(at(earth.transmission, 550)).toBeGreaterThan(0.85);
+    const crushing = derive(earthLike({ atmosphere: { pressure_bar: 400, molarMassKg: 0.044, composition: { CO2: 1 } } } as any), { starTempK: 5778, luminositySolar: 1, distanceAU: 1 }, pack)!;
+    expect(at(crushing.transmission, 700)).toBeGreaterThan(0.002);
   });
 
   it('names the LEVEL, and calls a gas giant 1 bar rather than a surface', () => {

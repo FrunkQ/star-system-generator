@@ -17,8 +17,6 @@
 import type { CelestialBody, RulePack } from '$lib/types';
 import { UNIVERSAL_GAS_CONSTANT, EARTH_GRAVITY, EARTH_RADIUS_KM } from '$lib/constants';
 import { rayleighTau550 } from './surfaceSpectrum';
-import { decksFromTags } from './cloudDecks';
-import { liquidDef } from './liquids';
 
 /**
  * KOSCHMIEDER. A black object against the horizon sky is lost when its contrast falls to 2%, and
@@ -63,8 +61,11 @@ export interface Visibility {
 	seeM: number;
 	/** How far each lamp picks a target out of the dark, by lamp key. */
 	lampM: Record<string, number>;
-	/** A condensate deck sitting ON the ground rather than overhead — fog, not cloud. */
+	/** A condensate deck sitting ON the ground rather than overhead — fog, not cloud. Always false
+	 *  today: the deck's base pressure does not survive onto the tag (inbox B62). */
 	fogged: boolean;
+	/** Visual range while a dust storm is actually up, or null on a world that has none. */
+	stormM: number | null;
 	/** One-word band, for the tag and for a quick read. */
 	band: VisibilityBand;
 }
@@ -134,31 +135,51 @@ export function deriveVisibility(body: CelestialBody, pack?: RulePack | null): V
 	// extinction a person standing in it walks through, per metre.
 	let beta = h > 0 ? rayleighTau550(body, pack) / h : 0;
 
-	// FOG IS NOT CLOUD, and the difference is whether the deck's base is above your head. A deck
-	// condenses at `baseBar`; if that pressure is at or below the surface pressure the deck starts at
-	// the ground and you are standing inside it. Venus's decks sit at about 1.5 bar under a 92 bar
-	// surface — far overhead — which is why Venus is murky from sheer air rather than from fog.
-	const surfaceBar = body.atmosphere?.pressure_bar ?? 0;
-	let fogged = false;
-	if (surfaceBar > 0) {
-		for (const d of decksFromTags(body.tags, pack)) {
-			if (!(d.baseBar && d.baseBar >= surfaceBar * 0.995)) continue;
-			const tau = d.opticalDepth ?? -Math.log(1 - Math.min(0.98, (liquidDef(d.species, pack)?.cloudOpacity ?? 0.5) * d.coverage));
-			if (!(tau > 0)) continue;
-			fogged = true;
-			// SPREAD OVER A SCALE HEIGHT, which overstates the range: real fog is a boundary-layer
-			// thing tens of metres deep, and nothing in the deck data says how deep. Recorded as a
-			// known limit rather than papered over with an invented depth.
-			beta += tau / h;
-		}
-	}
+	// FOG IS NOT CLOUD, and the difference is whether the deck's base is above your head. A deck that
+	// condenses at 1.5 bar under a 92 bar surface — Venus — is ninety bar over your head and does
+	// nothing to a horizontal sight line. One that condenses AT the surface is fog and does
+	// everything.
+	//
+	// THAT DISTINCTION CANNOT BE MADE FROM WHAT REACHES A CONSUMER, and this is the second feature to
+	// hit it (inbox B62). `deriveCloudDecks` computes the deck's base pressure and its optical depth
+	// and then throws both away: `decksFromTags` reconstructs only species, a five-way coverage
+	// bucket, and a condensation temperature. So a deck cannot say where it starts or how thick it is.
+	//
+	// The tempting substitute is wrong and is written down so nobody tries it again: comparing the
+	// surface temperature against `condenseK` looks like a dew-point test, but `condenseK` is
+	// `boilK`, a ONE-BAR boiling point. Earth's 288 K against water's 373 K would report a world in
+	// permanent fog. The real test is the dew point at the species' own partial pressure, which is
+	// precisely what `baseBar` encoded. Fog waits for the tag format, and until then no world is
+	// reported as fogged rather than being reported wrongly.
+	const fogged = false;
+
+	// DUST, which unlike fog IS derivable today, because `weather/dust-storms` carries its frequency
+	// as a value rather than as a bare flag. Suspended dust is a genuine aerosol sitting in the lower
+	// atmosphere, so it goes in as an optical depth over the same scale height as the gas.
+	//
+	// The loads below are the one authored judgement in this file: Mars sits near 0.5 in ordinary
+	// conditions and past 5 in a planet-encircling storm, and these bracket that. They belong in the
+	// pack rather than here — the standing rule is that band edges are data — and they are grouped
+	// and named so that move is a lift rather than a hunt.
+	const DUST_TAU: Record<string, number> = { seasonal: 0.15, frequent: 0.45, 'planet-wide': 1.1 };
+	const STORM_MULTIPLIER = 5;
+	const dust = body.tags?.find((t) => t.key === 'weather/dust-storms')?.value;
+	const dustTau = dust ? (DUST_TAU[dust] ?? 0.3) : 0;
+	if (dustTau > 0 && h > 0) beta += dustTau / h;
 
 	const rangeM = beta > 0 ? CONTRAST_THRESHOLD / beta : Infinity;
 	const hor = horizonM(body);
 	const seeM = Math.min(rangeM, hor);
 	const lampM: Record<string, number> = {};
 	for (const l of LAMPS) lampM[l.key] = Math.min(lampReachM(l.candela, beta), hor);
-	return { extinctionPerM: beta, rangeM, horizonM: hor, seeM, lampM, fogged, band: bandFor(beta, rangeM) };
+	// What it is like when the storm is actually up, which is the number a table wants — a world that
+	// has dust storms is not having one most of the time.
+	const stormBeta = dustTau > 0 && h > 0 ? beta + (dustTau * (STORM_MULTIPLIER - 1)) / h : 0;
+	const stormM = stormBeta > 0 ? Math.min(CONTRAST_THRESHOLD / stormBeta, hor) : null;
+	return {
+		extinctionPerM: beta, rangeM, horizonM: hor, seeM, lampM, fogged, stormM,
+		band: bandFor(beta, rangeM)
+	};
 }
 
 /** Metres into something sayable at a table. */
@@ -173,11 +194,16 @@ export function distanceWords(m: number): string {
 }
 
 // WHAT THIS DOES NOT MODEL, said plainly because /physics claims to show its working:
-//   - AEROSOLS. Dust, smoke, spray and photochemical haze are the usual reason real visibility is
-//     short, and none of them are here. Earth therefore reads as its clean-air Rayleigh limit of a
-//     few hundred kilometres rather than the twenty or thirty a damp day gives you, and Titan reads
-//     far clearer than its orange smog really is. Every figure is a CEILING.
-//   - Fog depth, as above.
+//   - PHOTOCHEMICAL HAZE. Titan's tholins and Venus's upper sulphuric aerosol are not modelled at
+//     all, because nothing in the pack describes them: a haze is not a condensate deck and no gas
+//     carries a haze yield. Titan therefore reads far clearer than its orange smog really is. This
+//     is the one genuine DATA gap rather than a modelling shortcut.
+//   - Water and smoke aerosol. Earth reads as its clean-air Rayleigh limit of a few hundred
+//     kilometres rather than the twenty or thirty a damp day gives you. Its figure is a CEILING.
+//   - DUST is modelled, but crudely: `weather/dust-storms` carries a FREQUENCY and this file reads a
+//     suspended LOAD off it, which are not the same quantity. It is also mixed uniformly over a
+//     scale height, where real dust is concentrated low down — so a storm reads clearer than it is.
+//   - Fog, which needs the deck's base pressure and cannot be done at all until it survives.
 //   - Beam shape. A lamp is treated as its on-axis intensity, so these are reaches down the beam,
 //     not radii of a lit bubble.
 //   - The sky's own glow, which in daylight is what a dark object is lost AGAINST. Koschmieder

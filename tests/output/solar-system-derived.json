@@ -269,8 +269,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 0.3829394838534645,
         "totalTopWm2": 7782.967704151766,
-        "totalSurfaceWm2": 7782.967683473767,
-        "photonFlux": 2.7672565778202793e+22,
+        "totalSurfaceWm2": 7782.96768379078,
+        "photonFlux": 2.767256577887386e+22,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -733,11 +733,11 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 0.7233237068588907,
         "totalTopWm2": 2181.4241908285253,
-        "totalSurfaceWm2": 8.853054704977735,
-        "photonFlux": 38803021750769566000,
+        "totalSurfaceWm2": 80.59802848314638,
+        "photonFlux": 298868762506475700000,
         "peakTopNm": 500,
-        "peakSurfaceNm": 920,
-        "surfaceLightHex": "#ff002a",
+        "peakSurfaceNm": 880,
+        "surfaceLightHex": "#ffbd7c",
         "attenuators": [
           {
             "label": "CO2 absorption",
@@ -745,7 +745,7 @@
           },
           {
             "label": "Rayleigh scattering",
-            "strength": 0.9999998354103118
+            "strength": 0.9213518524833709
           },
           {
             "label": "sulfuric-acid cloud deck",
@@ -761,9 +761,9 @@
         "hex": "#f8e4bb",
         "palette": [
           {
-            "hex": "#e10027",
+            "hex": "#b26123",
             "role": "surface",
-            "weight": 0.000016470472028208668,
+            "weight": 0.0013651129525738784,
             "label": "oxidised rock surface",
             "rawHex": "#986c4e"
           },
@@ -1256,11 +1256,11 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 0.9999301983634474,
         "totalTopWm2": 1141.4743437161387,
-        "totalSurfaceWm2": 683.1636665178521,
-        "photonFlux": 2.4316667859528256e+21,
+        "totalSurfaceWm2": 710.6884373993857,
+        "photonFlux": 2.4908149838117596e+21,
         "peakTopNm": 500,
-        "peakSurfaceNm": 550,
-        "surfaceLightHex": "#ffecd8",
+        "peakSurfaceNm": 530,
+        "surfaceLightHex": "#ffedde",
         "attenuators": [
           {
             "label": "H2O absorption",
@@ -1276,7 +1276,7 @@
           },
           {
             "label": "Rayleigh scattering",
-            "strength": 0.09160366786196483
+            "strength": 0.06721280225281667
           }
         ]
       },
@@ -1287,93 +1287,93 @@
           {
             "key": "carotenes",
             "label": "Carotenes",
-            "captured": 0.1395207007771165,
-            "sufficiency": 0.6772550340602788,
-            "protection": 0.3910859555098109,
-            "steadiness": 0.541985592992838,
-            "score": 0.46072592800499035,
+            "captured": 0.1426602062337931,
+            "sufficiency": 0.6940908951927489,
+            "protection": 0.37849099569357353,
+            "steadiness": 0.5260171747532774,
+            "score": 0.44984488130827843,
             "viable": true,
-            "drawWeight": 0.30832658662781287,
-            "reflectedHex": "#f7d000",
-            "reflectedUnderStarHex": "#fdd000"
+            "drawWeight": 0.3068983071539463,
+            "reflectedHex": "#f6d000",
+            "reflectedUnderStarHex": "#fbcf00"
           },
           {
             "key": "pheophytin",
             "label": "Pheophytin",
-            "captured": 0.20886280549538552,
-            "sufficiency": 0.8160238513136763,
-            "protection": 0.31900766278653264,
-            "steadiness": 0.48000685832708595,
-            "score": 0.44282111783016387,
+            "captured": 0.21170426534402365,
+            "sufficiency": 0.8275625161828937,
+            "protection": 0.30853433547778986,
+            "steadiness": 0.4695505576257385,
+            "score": 0.4324856918462348,
             "viable": true,
-            "drawWeight": 0.2430664384863667,
+            "drawWeight": 0.24235292103434578,
             "reflectedHex": "#d0aea4",
-            "reflectedUnderStarHex": "#daac94"
+            "reflectedUnderStarHex": "#d9ac97"
           },
           {
             "key": "chlorophyll",
             "label": "Chlorophyll",
-            "captured": 0.22531805398405547,
-            "sufficiency": 0.8389963259108433,
-            "protection": 0.30827110181050643,
-            "steadiness": 0.4436593434334584,
-            "score": 0.4159880769437047,
+            "captured": 0.2274395495234044,
+            "sufficiency": 0.8486811571391616,
+            "protection": 0.2991996605134346,
+            "steadiness": 0.4339326868629205,
+            "score": 0.40644543665479227,
             "viable": true,
-            "drawWeight": 0.1670476430878521,
-            "reflectedHex": "#90dc50",
-            "reflectedUnderStarHex": "#99db3f"
+            "drawWeight": 0.16696725438942575,
+            "reflectedHex": "#8fdd4f",
+            "reflectedUnderStarHex": "#98dc41"
           },
           {
             "key": "phycoerythrin",
             "label": "Phycoerythrin",
-            "captured": 0.19317790355941558,
-            "sufficiency": 0.7910821791922183,
-            "protection": 0.33644266070174017,
-            "steadiness": 0.42093120951633445,
-            "score": 0.39121690672580534,
+            "captured": 0.1941518327748257,
+            "sufficiency": 0.8005092974239126,
+            "protection": 0.3289870864521639,
+            "steadiness": 0.4085047161842629,
+            "score": 0.38157393455263167,
             "viable": true,
-            "drawWeight": 0.1155741594067964,
-            "reflectedHex": "#dd00cb",
-            "reflectedUnderStarHex": "#e800bd"
+            "drawWeight": 0.11431151898177784,
+            "reflectedHex": "#de00cc",
+            "reflectedUnderStarHex": "#e700c1"
           },
           {
             "key": "bacteriorhodopsin",
             "label": "Bacteriorhodopsin",
-            "captured": 0.23689772207852552,
-            "sufficiency": 0.8534205594952339,
-            "protection": 0.30187325804418774,
-            "steadiness": 0.3823529788602756,
-            "score": 0.36892448996942195,
+            "captured": 0.2370435574078556,
+            "sufficiency": 0.8602786898368455,
+            "protection": 0.29563447969445755,
+            "steadiness": 0.3728189728049704,
+            "score": 0.36063614653415493,
             "viable": true,
-            "drawWeight": 0.08127930238741406,
-            "reflectedHex": "#4723cd",
-            "reflectedUnderStarHex": "#6219bb"
+            "drawWeight": 0.08147667876346422,
+            "reflectedHex": "#4b21cd",
+            "reflectedUnderStarHex": "#6217bf"
           },
           {
             "key": "melanin",
             "label": "Melanin",
-            "captured": 0.8300503713630513,
-            "sufficiency": 0.9988030991992172,
-            "protection": 0.11341948501020561,
-            "steadiness": 0.5060507920122131,
-            "score": 0.340470606612537,
+            "captured": 0.8321143073900225,
+            "sufficiency": 0.9990010534493874,
+            "protection": 0.10928544023443222,
+            "steadiness": 0.5053475911627389,
+            "score": 0.333804459977505,
             "viable": true,
-            "drawWeight": 0.050214923016333415,
+            "drawWeight": 0.051235455828915415,
             "reflectedHex": "#000000",
             "reflectedUnderStarHex": "#000000"
           },
           {
             "key": "phycocyanin",
             "label": "Phycocyanin",
-            "captured": 0.18712907866934023,
-            "sufficiency": 0.780583870540769,
-            "protection": 0.36700528306890634,
-            "steadiness": 0.31383454301708136,
-            "score": 0.31980973343733043,
+            "captured": 0.18618022215407257,
+            "sufficiency": 0.7868590560534016,
+            "protection": 0.36153705387053287,
+            "steadiness": 0.3082550062517095,
+            "score": 0.3158314773153476,
             "viable": true,
-            "drawWeight": 0.034490946987424546,
-            "reflectedHex": "#00dffc",
-            "reflectedUnderStarHex": "#00d3e1"
+            "drawWeight": 0.0367578638481248,
+            "reflectedHex": "#00defb",
+            "reflectedUnderStarHex": "#00d3e4"
           }
         ],
         "layers": [
@@ -1384,7 +1384,7 @@
             "pigmentLabel": "Chlorophyll",
             "coverage": 0.5599999999999999,
             "opacity": 0.55,
-            "colorHex": "#729c51",
+            "colorHex": "#719d52",
             "light": 0,
             "waterReach": 0.25
           },
@@ -1395,7 +1395,7 @@
             "pigmentLabel": "Chlorophyll",
             "coverage": 0.4,
             "opacity": 0.9,
-            "colorHex": "#99db3f",
+            "colorHex": "#98dc41",
             "light": 0,
             "waterReach": 0.12
           },
@@ -1417,28 +1417,28 @@
         "bandWidthDeg": 39.5
       },
       "apparentColor": {
-        "hex": "#97a2a8",
+        "hex": "#96a2aa",
         "palette": [
           {
-            "hex": "#98724e",
+            "hex": "#987250",
             "role": "surface",
             "weight": 1,
             "label": "rock surface",
             "rawHex": "#927458"
           },
           {
-            "hex": "#80b34b",
+            "hex": "#7fb44c",
             "role": "vegetation",
             "weight": 0.5571200000000001,
             "label": "Chlorophyll vegetation",
-            "rawHex": "#80b34b"
+            "rawHex": "#7fb44c"
           },
           {
-            "hex": "#7989ab",
+            "hex": "#7889ae",
             "role": "ocean",
             "weight": 0.71,
             "label": "water ocean",
-            "rawHex": "#7989ab"
+            "rawHex": "#7889ae"
           },
           {
             "hex": "#cfd2df",
@@ -1450,7 +1450,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#97a2a8",
+      "apparentColorHex": "#96a2aa",
       "classification": {
         "base": "planet/earth-analogue",
         "baseScore": 2.17,
@@ -2377,8 +2377,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 1.5203460952974899,
         "totalTopWm2": 493.7653356139176,
-        "totalSurfaceWm2": 464.8798301957543,
-        "photonFlux": 1.6204095758114197e+21,
+        "totalSurfaceWm2": 465.3108560785047,
+        "photonFlux": 1.621320483082475e+21,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -3774,11 +3774,11 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 5.201286002943443,
         "totalTopWm2": 42.1875255850465,
-        "totalSurfaceWm2": 15.565826049283793,
-        "photonFlux": 57277071044148650000,
+        "totalSurfaceWm2": 16.11589915524612,
+        "photonFlux": 58461246014008510000,
         "peakTopNm": 500,
-        "peakSurfaceNm": 540,
-        "surfaceLightHex": "#ffedda",
+        "peakSurfaceNm": 530,
+        "surfaceLightHex": "#ffeedf",
         "attenuators": [
           {
             "label": "ammonia cloud deck",
@@ -3794,7 +3794,7 @@
           },
           {
             "label": "Rayleigh scattering",
-            "strength": 0.0852903851138812
+            "strength": 0.06267118141157646
           }
         ]
       },
@@ -3802,7 +3802,7 @@
         "hex": "#c9b6a0",
         "palette": [
           {
-            "hex": "#d7c09d",
+            "hex": "#d6c0a1",
             "role": "surface",
             "weight": 1,
             "label": "gas surface",
@@ -4257,8 +4257,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 5.204107409322697,
         "totalTopWm2": 42.14179405842745,
-        "totalSurfaceWm2": 42.14179106952829,
-        "photonFlux": 149836357363636930000,
+        "totalSurfaceWm2": 42.141791148449165,
+        "photonFlux": 149836357530700350000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -4776,8 +4776,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 5.20576769918245,
         "totalTopWm2": 42.11491754763761,
-        "totalSurfaceWm2": 42.11491754722943,
-        "photonFlux": 149740802382833420000,
+        "totalSurfaceWm2": 42.11491754732376,
+        "photonFlux": 149740802383033100000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -6122,11 +6122,11 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 9.574943314411572,
         "totalTopWm2": 12.448960828870732,
-        "totalSurfaceWm2": 6.8082181161157385,
-        "photonFlux": 25735339472891130000,
+        "totalSurfaceWm2": 7.432082038413154,
+        "photonFlux": 27154120073787924000,
         "peakTopNm": 500,
-        "peakSurfaceNm": 580,
-        "surfaceLightHex": "#ffe6c0",
+        "peakSurfaceNm": 570,
+        "surfaceLightHex": "#ffead1",
         "attenuators": [
           {
             "label": "CH4 absorption",
@@ -6138,7 +6138,7 @@
           },
           {
             "label": "Rayleigh scattering",
-            "strength": 0.21595980993751485
+            "strength": 0.15431347541641716
           }
         ]
       },
@@ -6146,7 +6146,7 @@
         "hex": "#beab97",
         "palette": [
           {
-            "hex": "#ddbf8e",
+            "hex": "#d9bf98",
             "role": "surface",
             "weight": 1,
             "label": "gas surface",
@@ -6646,11 +6646,11 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 9.583103193804634,
         "totalTopWm2": 12.427769619919049,
-        "totalSurfaceWm2": 2.81861265561286,
-        "photonFlux": 10471365658307873000,
+        "totalSurfaceWm2": 3.9787784833752182,
+        "photonFlux": 13510109464368065000,
         "peakTopNm": 500,
-        "peakSurfaceNm": 780,
-        "surfaceLightHex": "#ffc95c",
+        "peakSurfaceNm": 660,
+        "surfaceLightHex": "#ffe7b5",
         "attenuators": [
           {
             "label": "CH4 absorption",
@@ -6658,7 +6658,7 @@
           },
           {
             "label": "Rayleigh scattering",
-            "strength": 0.6641624859851853
+            "strength": 0.45004962087131173
           },
           {
             "label": "methane cloud deck",
@@ -6667,10 +6667,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#f3d489",
+        "hex": "#e8e3cb",
         "palette": [
           {
-            "hex": "#ffd671",
+            "hex": "#f0eac7",
             "role": "surface",
             "weight": 1,
             "label": "ice surface",
@@ -6686,7 +6686,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#f3d489",
+      "apparentColorHex": "#e8e3cb",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.16,
@@ -7099,8 +7099,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 9.576534376104851,
         "totalTopWm2": 12.444824589490514,
-        "totalSurfaceWm2": 12.444785152375651,
-        "photonFlux": 44247693011012740000,
+        "totalSurfaceWm2": 12.444785217557374,
+        "photonFlux": 44247693148992420000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -9688,19 +9688,15 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 19.208056009890708,
         "totalTopWm2": 3.0934186292785513,
-        "totalSurfaceWm2": 1.4438013108484742,
-        "photonFlux": 5011159159250238000,
+        "totalSurfaceWm2": 1.6014293231713497,
+        "photonFlux": 5367025789562543000,
         "peakTopNm": 500,
-        "peakSurfaceNm": 580,
-        "surfaceLightHex": "#ffecc5",
+        "peakSurfaceNm": 570,
+        "surfaceLightHex": "#fff1d6",
         "attenuators": [
           {
             "label": "CH4 absorption",
             "strength": 0.9612708238211928
-          },
-          {
-            "label": "Rayleigh scattering",
-            "strength": 0.2188436397918201
           },
           {
             "label": "methane cloud deck",
@@ -9709,14 +9705,18 @@
           {
             "label": "H2S absorption",
             "strength": 0.17177638742474355
+          },
+          {
+            "label": "Rayleigh scattering",
+            "strength": 0.15628543250478766
           }
         ]
       },
       "apparentColor": {
-        "hex": "#62b1d0",
+        "hex": "#62b1d1",
         "palette": [
           {
-            "hex": "#d9c08f",
+            "hex": "#d5c199",
             "role": "surface",
             "weight": 1,
             "label": "gas surface",
@@ -9732,7 +9732,7 @@
         ],
         "banding": 3
       },
-      "apparentColorHex": "#62b1d0",
+      "apparentColorHex": "#62b1d1",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -11340,11 +11340,11 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 30.109038767496358,
         "totalTopWm2": 1.2589594490941822,
-        "totalSurfaceWm2": 0.6866611533292972,
-        "photonFlux": 2445361755534547000,
+        "totalSurfaceWm2": 0.7404360453387749,
+        "photonFlux": 2564753545083933700,
         "peakTopNm": 500,
-        "peakSurfaceNm": 570,
-        "surfaceLightHex": "#ffeccc",
+        "peakSurfaceNm": 560,
+        "surfaceLightHex": "#ffefd8",
         "attenuators": [
           {
             "label": "CH4 absorption",
@@ -11356,7 +11356,7 @@
           },
           {
             "label": "Rayleigh scattering",
-            "strength": 0.16910174659733457
+            "strength": 0.12198749898748906
           },
           {
             "label": "H2S absorption",
@@ -11365,10 +11365,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#6289cc",
+        "hex": "#6289cd",
         "palette": [
           {
-            "hex": "#d9c094",
+            "hex": "#d6c09c",
             "role": "surface",
             "weight": 1,
             "label": "gas surface",
@@ -11384,7 +11384,7 @@
         ],
         "banding": 3
       },
-      "apparentColorHex": "#6289cc",
+      "apparentColorHex": "#6289cd",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -11863,8 +11863,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 30.111408843157594,
         "totalTopWm2": 1.2587612709394902,
-        "totalSurfaceWm2": 1.2277135206189747,
-        "photonFlux": 4365215677059995000,
+        "totalSurfaceWm2": 1.2277214198467472,
+        "photonFlux": 4365232398433680000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -12455,8 +12455,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 38.85432969980108,
         "totalTopWm2": 0.7560085050925683,
-        "totalSurfaceWm2": 0.7559892289592631,
-        "photonFlux": 2687963835138403000,
+        "totalSurfaceWm2": 0.7559936598989204,
+        "photonFlux": 2687973214715567600,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",

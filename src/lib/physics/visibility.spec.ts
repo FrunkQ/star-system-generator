@@ -13,6 +13,9 @@ const EARTH = world({
 const VENUS = world({
   radiusKm: 6052, calculatedGravity_ms2: 8.87, temperatureK: 737,
   atmosphere: { pressure_bar: 92, molarMassKg: 0.044, composition: { CO2: 0.965, N2: 0.035 } } as any });
+const MARS = world({
+  radiusKm: 3390, calculatedGravity_ms2: 3.71, temperatureK: 210,
+  atmosphere: { pressure_bar: 0.006, molarMassKg: 0.044, composition: { CO2: 0.95, N2: 0.03, Ar: 0.02 } } as any });
 const MOON = world({ radiusKm: 1737, calculatedGravity_ms2: 1.62, temperatureK: 250 });
 
 describe('scale height', () => {
@@ -58,6 +61,19 @@ describe('how far you can see', () => {
     expect(v.rangeM / 1000).toBeLessThan(20);
     expect(v.fogged).toBe(false);      // its decks are 90 bar over your head, not around your knees
     expect(v.band).toBe('murky');
+  });
+
+  it('lets dust close a thin sky that its gas alone would leave wide open', () => {
+    // Mars has almost no air to scatter, so gas alone says "see forever". Suspended dust is the whole
+    // story there, and `weather/dust-storms` carries its frequency rather than a bare flag.
+    const clean = { ...MARS, tags: [] } as CelestialBody;
+    const dusty = { ...MARS, tags: [{ key: 'weather/dust-storms', value: 'planet-wide' }] } as CelestialBody;
+    expect(deriveVisibility(clean).rangeM).toBeGreaterThan(deriveVisibility(dusty).rangeM * 10);
+    expect(deriveVisibility(clean).stormM).toBeNull();
+    // …and a world that HAS storms is not having one most of the time, so the storm case is its own
+    // number rather than the everyday one.
+    const v = deriveVisibility(dusty);
+    expect(v.stormM!).toBeLessThan(v.rangeM);
   });
 
   it('leaves an airless world limited only by its own curve', () => {

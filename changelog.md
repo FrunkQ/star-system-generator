@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.674-beta - 16th Aug 2026
+
+- FIXED, and it is the big one: **scattered light is not absorbed light**. The sky model treated every photon turned out of the direct beam as destroyed, which costs almost nothing at Earth's optical depth of 0.1 and is catastrophic at Venus's 16 — it said one part in ten million reached the ground, and reported Venus's midday as "a night under a full moon". A photon that scatters is still in the atmosphere and mostly still arrives. Scattering now gets its own two-stream transmittance, so Venus's midday reads 13% of an Earth noon, which is about what Venera measured standing on it, while Earth, Mars and Luna do not move at all.
+- FIXED: the Surface view gave every world with an atmosphere a blue sky, because it only ever computed clear-air scattering and nothing was allowed to overrule it. An overcast sky is the lit underside of a cloud, not the air above it — so Jupiter, at 90% ammonia cover, was being shown the sky of the clear hydrogen over the deck. Sky colour is now mixed between the two by how much of it is cloud.
+- FIXED: "midday brightness" dimmed the ground and left the sky in broad daylight. The sky is scattered sunlight and dims with it. It still comes out brighter than the ground, for the right reason — the ground only returns a fraction of what lands on it, while the sky is the source.
+- FIXED: the star was drawn as a disc on worlds where you could not possibly see it. Nobody standing on Venus has ever seen the Sun; 92 bar of overcast is a uniformly bright sky with no disc in it. The star now fades out behind its own weather.
+- Dust storms now close the sky they should. Mars's gas alone says you can see 41,000 km; with dust it is 38 km, and 3.4 km while a storm is up.
+- Clearer wording on the visibility line: it now says which limit you are actually up against — the air, or the horizon.
+- Fog is honestly reported as not modelled rather than half-modelled. Telling fog from cloud needs the deck's base pressure, which is computed and then dropped before any consumer sees it.
+
 ## v2.1.673-beta - 16th Aug 2026
 
 - Housekeeping: renumbered this session's entries to the versions they actually shipped as, after a parallel session took 666 and 667.

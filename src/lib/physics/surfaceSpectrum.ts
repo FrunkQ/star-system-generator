@@ -131,6 +131,9 @@ export function deriveSurfaceSpectrum(
   // Optical depth per bin, accumulated from every attenuator. Transmission = exp(−τ) at the end, so
   // the attenuators compose multiplicatively without any of them knowing about the others.
   const tau = GRID_NM.map(() => 0);
+  // Absorption and SCATTERING are not the same fate and cannot share an accumulator: one destroys a
+  // photon, the other only redirects it. See the Rayleigh block below for what that costs.
+  const tauScatter = GRID_NM.map(() => 0);
 
   const comp = body.atmosphere?.composition ?? {};
   const column = columnDensity(body);
@@ -138,9 +141,20 @@ export function deriveSurfaceSpectrum(
 
   if (columnRatio > 0) {
     // RAYLEIGH — the λ⁻⁴ that makes a sky blue and takes the blue end away from the ground.
+    //
+    // SCATTERED IS NOT ABSORBED, and at ninety bar that stops being a quibble. A photon turned out of
+    // the direct beam is still in the atmosphere; it bounces and a large share of it still arrives.
+    // Treating scattering as extinction costs almost nothing at Earth's tau of 0.1 — which is why it
+    // stood for so long — and is catastrophic at Venus's tau of 16, where exp(-16) says one part in
+    // ten million reaches the ground and the real answer is a few percent. It read as "a night under
+    // a full moon" on a world where you can see your hands.
+    //
+    // So the scattering term is kept SEPARATE and given its two-stream diffuse transmittance for a
+    // conservative scatterer, T = 1/(1 + 3*tau/4). It agrees with exp(-tau) for small tau, so nothing
+    // thin moves, and it stays physical for large tau instead of going to zero.
     const tau550 = rayleighTau550(body, pack);
-    for (let i = 0; i < GRID_NM.length; i++) tau[i] += tau550 * Math.pow(550 / GRID_NM[i], 4);
-    if (tau550 > 0.005) attenuators.push({ label: 'Rayleigh scattering', strength: 1 - Math.exp(-tau550) });
+    for (let i = 0; i < GRID_NM.length; i++) tauScatter[i] += tau550 * Math.pow(550 / GRID_NM[i], 4);
+    if (tau550 > 0.005) attenuators.push({ label: 'Rayleigh scattering', strength: 1 - 1 / (1 + 0.75 * tau550) });
 
     // PER-GAS ABSORPTION BANDS. A gas with no authored bands takes only its Rayleigh share, which
     // is the honest answer for N2, O2 and Ar. NOTE what is deliberately NOT read here: the per-gas
@@ -177,7 +191,8 @@ export function deriveSurfaceSpectrum(
     attenuators.push({ label: `${d.species} cloud deck`, strength: veil });
   }
 
-  const transmission = tau.map((t) => Math.exp(-t));
+  // Absorbed light is gone; scattered light mostly still gets here by another path.
+  const transmission = tau.map((t, i) => Math.exp(-t) / (1 + 0.75 * tauScatter[i]));
   const surface = top.map((v, i) => v * transmission[i]);
   attenuators.sort((a, b) => b.strength - a.strength);
 

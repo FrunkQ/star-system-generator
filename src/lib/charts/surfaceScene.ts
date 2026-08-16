@@ -57,6 +57,8 @@ export interface SurfaceScene {
 	skyHighHex: string;
 	starHex: string;
 	airless: boolean;
+	/** 0..1 of the sky that is deck. Hides the star and greys the airlight. */
+	cloudCover: number;
 	motifs: Motifs;
 	seed: number;
 	sight: Visibility;
@@ -106,6 +108,14 @@ const hexToRgb = (hex: string): [number, number, number] => {
 const rgbToHex = (c: number[]) =>
 	'#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
 const mix = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t);
+/** Dim in LINEAR light and re-encode, which is what `relightImage` does to the material layer. Doing
+ *  it on the sRGB numbers instead would dim the sky on a different curve from the ground. */
+export function dimHex(hex: string, k: number): string {
+	if (k >= 1) return hex;
+	const lin = (u: number) => (u <= 0.04045 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4));
+	const enc = (v: number) => (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055);
+	return rgbToHex(hexToRgb(hex).map((c) => 255 * enc(Math.max(0, lin(c / 255) * k))));
+}
 const shade = (hex: string, t: number) => rgbToHex(mix(hexToRgb(hex), t < 0 ? [0, 0, 0] : [255, 255, 255], Math.abs(t)));
 
 /** A palette stop's MATERIAL colour, falling back to its appearance when nothing recorded the raw. */
@@ -127,10 +137,22 @@ function material(body: CelestialBody, role: string): string | null {
  * in it. That is not a special case in the drawing — it is what this returns when there is no
  * atmosphere to scatter.
  */
-function airlightHex(surface: Spectrum | null, airless: boolean): string {
+function airlightHex(surface: Spectrum | null, airless: boolean, cloudCover: number): string {
 	if (airless || !surface) return '#05070c';
-	const scattered = surface.map((v, i) => v * Math.pow(550 / GRID_NM[i], 4));
-	return spectrumToHex(scattered);
+	// CLEAR AIR: the light down here weighted by how hard the air scatters each wavelength.
+	const clear = surface.map((v, i) => v * Math.pow(550 / GRID_NM[i], 4));
+	// OVERCAST: you are not looking at the air, you are looking at the LIT UNDERSIDE OF A CLOUD, and
+	// what that glows with is the light coming through it — which is the surface spectrum itself,
+	// since a deck's extinction is already in it. No λ⁻⁴, because a droplet far larger than the
+	// wavelength scatters every colour alike; that is why an overcast day is grey and not blue.
+	//
+	// Leaving this out was why every world with air had a blue sky: λ⁻⁴ hands the short end a factor
+	// of several hundred across the grid, so it wins wherever there is any blue left at all — and
+	// nothing was allowed to overrule it. Jupiter has 90% ammonia cover at its 1 bar level and was
+	// being shown the sky of the clear hydrogen above the cloud.
+	const overcast = surface;
+	const t = Math.max(0, Math.min(1, cloudCover));
+	return rgbToHex(mix(hexToRgb(spectrumToHex(clear)), hexToRgb(spectrumToHex(overcast)), t));
 }
 
 /**
@@ -172,7 +194,11 @@ export function surfaceSceneFor(
 		.map((l) => ({ hex: l.colorHex as string, coverage: Math.min(1, l.coverage) }));
 	// Anything that glows at night is somebody's doing. It gets a lit window.
 	const settled = layers.reduce((m, l) => (l.light > 0 ? Math.max(m, l.coverage) : m), 0);
-	const sky = airlightHex(surfaceLight, airless);
+	// How much of the sky is deck. Decks overlap, so the thickest wins rather than the sum.
+	const cloudCover = (body.apparentColor?.palette ?? [])
+		.filter((p) => p.role === 'cloud')
+		.reduce((m, p) => Math.max(m, p.weight), 0);
+	const sky = airlightHex(surfaceLight, airless, cloudCover);
 	return {
 		groundHex: ground,
 		rockHex: shade(ground, -0.28),
@@ -183,6 +209,7 @@ export function surfaceSceneFor(
 		skyHighHex: sky,
 		starHex: '#fff6e0',
 		airless,
+		cloudCover,
 		motifs: motifsFrom(body),
 		seed: seedOf(body.id ?? body.name ?? 'world'),
 		sight,
@@ -198,27 +225,45 @@ export function surfaceSceneFor(
 const HORIZON_Y = 0.52;
 
 /** The sky, the star, and nothing else — never re-lit. */
-export function drawSky(ctx: CanvasRenderingContext2D, W: number, H: number, s: SurfaceScene) {
+export function drawSky(
+	ctx: CanvasRenderingContext2D, W: number, H: number, s: SurfaceScene, brightness = 1
+) {
 	const hy = H * HORIZON_Y;
+	// THE SKY DIMS TOO. It is scattered sunlight, not a backdrop — asked for the real light level, the
+	// ground went black under a sky that stayed broad daylight. It comes out brighter than the ground
+	// anyway, and for the right reason: the ground only returns a fraction of what lands on it, while
+	// the sky IS the source. That contrast is a result here, not a fudge.
+	const high = dimHex(s.skyHighHex, brightness), low = dimHex(s.skyLowHex, brightness);
 	const g = ctx.createLinearGradient(0, 0, 0, hy);
-	g.addColorStop(0, s.skyHighHex);
-	g.addColorStop(1, s.skyLowHex);
+	g.addColorStop(0, high);
+	g.addColorStop(1, low);
 	ctx.fillStyle = g;
 	ctx.fillRect(0, 0, W, hy);
 	// The star. On an airless world it is a hard disc against black; through air it wears a glow,
 	// because the same scattering that colours the sky also smears the source.
+	//
+	// AND UNDER A THICK ENOUGH DECK IT IS NOT THERE AT ALL. Nobody standing on Venus has ever seen the
+	// Sun: 92 bar of overcast turns it into a uniformly bright sky with no disc in it. Drawing one
+	// anyway was the giveaway that the star and the weather were not talking to each other.
 	const sx = W * 0.79, sy = hy * 0.3, r = Math.max(4, H * 0.035);
-	if (!s.airless) {
+	const showStar = Math.max(0, 1 - s.cloudCover * 1.35);
+	if (!s.airless && showStar > 0.02) {
 		const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 5);
-		halo.addColorStop(0, s.skyHighHex);
+		halo.addColorStop(0, high);
 		halo.addColorStop(1, 'rgba(0,0,0,0)');
-		ctx.globalAlpha = 0.85;
+		ctx.globalAlpha = 0.85 * showStar;
 		ctx.fillStyle = halo;
 		ctx.beginPath(); ctx.arc(sx, sy, r * 5, 0, 7); ctx.fill();
 		ctx.globalAlpha = 1;
 	}
-	ctx.fillStyle = s.starHex;
-	ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill();
+	if (showStar > 0.02) {
+		ctx.globalAlpha = showStar;
+		// The star's own disc is far brighter than the sky it sits in, so it survives dimming that the
+		// sky does not — which is exactly why you can still find a low sun in deep twilight.
+		ctx.fillStyle = dimHex(s.starHex, Math.min(1, brightness * 12 + 0.06));
+		ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill();
+		ctx.globalAlpha = 1;
+	}
 	if (s.airless) {
 		// No air to scatter, so no twilight and no washed-out stars: the sky stays black to the horizon.
 		ctx.fillStyle = 'rgba(255,255,255,0.75)';
