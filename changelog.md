@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.636-beta - 16th Aug 2026
+
+* Internal: answered where planet spacing and moon generation stand, and proposed replacing the Solar-System-shaped spacing rule with one that scales to any star.
+
 ## v2.1.635-beta - 16th Aug 2026
 
 * Star editor: dragging the effective temperature now moves the spectral type dropdown with it. It was re-deriving the class correctly all along — the control just never showed it.
