@@ -264,6 +264,18 @@
           "sulfur-dioxide": 78.6
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 0.3829394838534645,
+        "totalTopWm2": 7782.967704151766,
+        "totalSurfaceWm2": 7782.967683473767,
+        "photonFlux": 2.7672565778202793e+22,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#977e44",
         "palette": [
@@ -710,6 +722,35 @@
           "sulfur-dioxide": 898.2
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 0.7233237068588907,
+        "totalTopWm2": 2181.4241908285253,
+        "totalSurfaceWm2": 8.853054704977735,
+        "photonFlux": 38803021750769566000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 920,
+        "surfaceLightHex": "#ff002a",
+        "attenuators": [
+          {
+            "label": "CO2 absorption",
+            "strength": 1
+          },
+          {
+            "label": "Rayleigh scattering",
+            "strength": 0.9999998354103118
+          },
+          {
+            "label": "sulfuric-acid cloud deck",
+            "strength": 0.6476800000000001
+          },
+          {
+            "label": "H2O absorption",
+            "strength": 0.5367490860473327
+          }
+        ]
+      },
       "apparentColor": {
         "hex": "#d9c7a4",
         "palette": [
@@ -984,6 +1025,38 @@
           "value": "0.37"
         },
         {
+          "key": "biodiversity/pigment",
+          "value": "bacteriorhodopsin"
+        },
+        {
+          "key": "biodiversity/pigment-viable",
+          "value": "carotenes"
+        },
+        {
+          "key": "biodiversity/pigment-viable",
+          "value": "pheophytin"
+        },
+        {
+          "key": "biodiversity/pigment-viable",
+          "value": "chlorophyll"
+        },
+        {
+          "key": "biodiversity/pigment-viable",
+          "value": "phycoerythrin"
+        },
+        {
+          "key": "biodiversity/pigment-viable",
+          "value": "melanin"
+        },
+        {
+          "key": "biodiversity/pigment-viable",
+          "value": "phycocyanin"
+        },
+        {
+          "key": "biodiversity/land-cover",
+          "value": "56%"
+        },
+        {
           "key": "habitability/earth-like"
         },
         {
@@ -1194,14 +1267,176 @@
           "sulfur-dioxide": 945.8
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 0.9999301983634474,
+        "totalTopWm2": 1141.4743437161387,
+        "totalSurfaceWm2": 683.1636665178521,
+        "photonFlux": 2.4316667859528256e+21,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 550,
+        "surfaceLightHex": "#ffecd8",
+        "attenuators": [
+          {
+            "label": "H2O absorption",
+            "strength": 0.8987976798927777
+          },
+          {
+            "label": "water cloud deck",
+            "strength": 0.26928
+          },
+          {
+            "label": "O2 absorption",
+            "strength": 0.09418596655135636
+          },
+          {
+            "label": "Rayleigh scattering",
+            "strength": 0.09160366786196483
+          }
+        ]
+      },
+      "vegetation": {
+        "pigment": "bacteriorhodopsin",
+        "pigmentLabel": "Bacteriorhodopsin",
+        "ranked": [
+          {
+            "key": "carotenes",
+            "label": "Carotenes",
+            "captured": 0.1395207007771165,
+            "sufficiency": 0.6772550340602788,
+            "protection": 0.3910859555098109,
+            "steadiness": 0.541985592992838,
+            "score": 0.46072592800499035,
+            "viable": true,
+            "drawWeight": 0.30832658662781287,
+            "reflectedHex": "#f7d000",
+            "reflectedUnderStarHex": "#fdd000"
+          },
+          {
+            "key": "pheophytin",
+            "label": "Pheophytin",
+            "captured": 0.20886280549538552,
+            "sufficiency": 0.8160238513136763,
+            "protection": 0.31900766278653264,
+            "steadiness": 0.48000685832708595,
+            "score": 0.44282111783016387,
+            "viable": true,
+            "drawWeight": 0.2430664384863667,
+            "reflectedHex": "#d0aea4",
+            "reflectedUnderStarHex": "#daac94"
+          },
+          {
+            "key": "chlorophyll",
+            "label": "Chlorophyll",
+            "captured": 0.22531805398405547,
+            "sufficiency": 0.8389963259108433,
+            "protection": 0.30827110181050643,
+            "steadiness": 0.4436593434334584,
+            "score": 0.4159880769437047,
+            "viable": true,
+            "drawWeight": 0.1670476430878521,
+            "reflectedHex": "#90dc50",
+            "reflectedUnderStarHex": "#99db3f"
+          },
+          {
+            "key": "phycoerythrin",
+            "label": "Phycoerythrin",
+            "captured": 0.19317790355941558,
+            "sufficiency": 0.7910821791922183,
+            "protection": 0.33644266070174017,
+            "steadiness": 0.42093120951633445,
+            "score": 0.39121690672580534,
+            "viable": true,
+            "drawWeight": 0.1155741594067964,
+            "reflectedHex": "#dd00cb",
+            "reflectedUnderStarHex": "#e800bd"
+          },
+          {
+            "key": "bacteriorhodopsin",
+            "label": "Bacteriorhodopsin",
+            "captured": 0.23689772207852552,
+            "sufficiency": 0.8534205594952339,
+            "protection": 0.30187325804418774,
+            "steadiness": 0.3823529788602756,
+            "score": 0.36892448996942195,
+            "viable": true,
+            "drawWeight": 0.08127930238741406,
+            "reflectedHex": "#4723cd",
+            "reflectedUnderStarHex": "#6219bb"
+          },
+          {
+            "key": "melanin",
+            "label": "Melanin",
+            "captured": 0.8300503713630513,
+            "sufficiency": 0.9988030991992172,
+            "protection": 0.11341948501020561,
+            "steadiness": 0.5060507920122131,
+            "score": 0.340470606612537,
+            "viable": true,
+            "drawWeight": 0.050214923016333415,
+            "reflectedHex": "#000000",
+            "reflectedUnderStarHex": "#000000"
+          },
+          {
+            "key": "phycocyanin",
+            "label": "Phycocyanin",
+            "captured": 0.18712907866934023,
+            "sufficiency": 0.780583870540769,
+            "protection": 0.36700528306890634,
+            "steadiness": 0.31383454301708136,
+            "score": 0.31980973343733043,
+            "viable": true,
+            "drawWeight": 0.034490946987424546,
+            "reflectedHex": "#00dffc",
+            "reflectedUnderStarHex": "#00d3e1"
+          }
+        ],
+        "layers": [
+          {
+            "morphology": "microbial",
+            "label": "Microbial",
+            "coverage": 0.5599999999999999,
+            "opacity": 0.55,
+            "colorHex": "#563b8f",
+            "light": 0
+          },
+          {
+            "morphology": "flora",
+            "label": "Flora",
+            "coverage": 0.4,
+            "opacity": 0.9,
+            "colorHex": "#6219bb",
+            "light": 0
+          },
+          {
+            "morphology": "fauna",
+            "label": "Fauna",
+            "coverage": 0.16000000000000003,
+            "opacity": 0,
+            "colorHex": null,
+            "light": 0
+          }
+        ],
+        "visibleCover": 0.5571200000000001,
+        "landFraction": 0.29000000000000004,
+        "bandCentreDeg": 39.5,
+        "bandWidthDeg": 39.5
+      },
       "apparentColor": {
-        "hex": "#7b94ad",
+        "hex": "#758cb5",
         "palette": [
           {
             "hex": "#927458",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
+          },
+          {
+            "hex": "#5a2f9f",
+            "role": "vegetation",
+            "weight": 0.5571200000000001,
+            "label": "Bacteriorhodopsin vegetation"
           },
           {
             "hex": "#4579aa",
@@ -1218,7 +1453,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#7b94ad",
+      "apparentColorHex": "#758cb5",
       "classification": {
         "base": "planet/earth-analogue",
         "baseScore": 2.17,
@@ -1674,6 +1909,18 @@
           "sulfur-dioxide": 40.2
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 1.0024991964073156,
+        "totalTopWm2": 1135.631569908939,
+        "totalSurfaceWm2": 1135.631569908939,
+        "photonFlux": 4.037770756600194e+21,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#9c7a5a",
         "palette": [
@@ -2127,6 +2374,27 @@
           "sulfur-dioxide": 230.8
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 1.5203460952974899,
+        "totalTopWm2": 493.7653356139176,
+        "totalSurfaceWm2": 464.8798301957543,
+        "photonFlux": 1.6204095758114197e+21,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": [
+          {
+            "label": "CO2 absorption",
+            "strength": 0.6990514004714177
+          },
+          {
+            "label": "water cloud deck",
+            "strength": 0.03168000000000001
+          }
+        ]
+      },
       "apparentColor": {
         "hex": "#9e684a",
         "palette": [
@@ -2517,6 +2785,18 @@
           "water": 0,
           "sulfur-dioxide": 0
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 1.520408788733806,
+        "totalTopWm2": 493.7246160289915,
+        "totalSurfaceWm2": 493.7246160289915,
+        "photonFlux": 1.7554520931250403e+21,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -2919,6 +3199,18 @@
           "water": 0,
           "sulfur-dioxide": 0
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 1.5205024364285595,
+        "totalTopWm2": 493.6638009363162,
+        "totalSurfaceWm2": 493.6638009363162,
+        "photonFlux": 1.7552358633113654e+21,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -3475,6 +3767,35 @@
           "altitude": 1
         }
       ],
+      "surfaceSpectrum": {
+        "level": "1 bar",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 5.201286002943443,
+        "totalTopWm2": 42.1875255850465,
+        "totalSurfaceWm2": 15.565826049283793,
+        "photonFlux": 57277071044148650000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 540,
+        "surfaceLightHex": "#ffedda",
+        "attenuators": [
+          {
+            "label": "ammonia cloud deck",
+            "strength": 0.4452800000000001
+          },
+          {
+            "label": "ammonium-hydrosulfide cloud deck",
+            "strength": 0.24024
+          },
+          {
+            "label": "CH4 absorption",
+            "strength": 0.15601796852857297
+          },
+          {
+            "label": "Rayleigh scattering",
+            "strength": 0.0852903851138812
+          }
+        ]
+      },
       "apparentColor": {
         "hex": "#c6b8a3",
         "palette": [
@@ -3925,6 +4246,18 @@
           "water": 35.8,
           "sulfur-dioxide": 127.3
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 5.204107409322697,
+        "totalTopWm2": 42.14179405842745,
+        "totalSurfaceWm2": 42.14179106952829,
+        "photonFlux": 149836357363636930000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#ac9274",
@@ -4431,6 +4764,18 @@
           "sulfur-dioxide": 82.4
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 5.20576769918245,
+        "totalTopWm2": 42.11491754763761,
+        "totalSurfaceWm2": 42.11491754722943,
+        "photonFlux": 149740802382833420000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#becddc",
         "palette": [
@@ -4882,6 +5227,18 @@
           "sulfur-dioxide": 150.6
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 5.208440055498797,
+        "totalTopWm2": 42.07171183074454,
+        "totalSurfaceWm2": 42.07171183074454,
+        "photonFlux": 149587183212872760000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#c4d8ec",
         "palette": [
@@ -5303,6 +5660,18 @@
           "water": 33.5,
           "sulfur-dioxide": 119
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 5.213871250255215,
+        "totalTopWm2": 41.98410681030631,
+        "totalSurfaceWm2": 41.98410681030631,
+        "photonFlux": 149275701039402320000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#c4d8ec",
@@ -5735,6 +6104,31 @@
           "altitude": 1
         }
       ],
+      "surfaceSpectrum": {
+        "level": "1 bar",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 9.574943314411572,
+        "totalTopWm2": 12.448960828870732,
+        "totalSurfaceWm2": 6.8082181161157385,
+        "photonFlux": 25735339472891130000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 580,
+        "surfaceLightHex": "#ffe6c0",
+        "attenuators": [
+          {
+            "label": "CH4 absorption",
+            "strength": 0.47252607068278996
+          },
+          {
+            "label": "ammonium-hydrosulfide cloud deck",
+            "strength": 0.24024
+          },
+          {
+            "label": "Rayleigh scattering",
+            "strength": 0.21595980993751485
+          }
+        ]
+      },
       "apparentColor": {
         "hex": "#bcad9a",
         "palette": [
@@ -6232,6 +6626,31 @@
           "sulfur-dioxide": 161.1
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 9.583103193804634,
+        "totalTopWm2": 12.427769619919049,
+        "totalSurfaceWm2": 2.81861265561286,
+        "photonFlux": 10471365658307873000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 780,
+        "surfaceLightHex": "#ffc95c",
+        "attenuators": [
+          {
+            "label": "CH4 absorption",
+            "strength": 0.9986349122934635
+          },
+          {
+            "label": "Rayleigh scattering",
+            "strength": 0.6641624859851853
+          },
+          {
+            "label": "methane cloud deck",
+            "strength": 0.20944
+          }
+        ]
+      },
       "apparentColor": {
         "hex": "#d3e6f7",
         "palette": [
@@ -6658,6 +7077,18 @@
           "sulfur-dioxide": 1.6
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 9.576534376104851,
+        "totalTopWm2": 12.444824589490514,
+        "totalSurfaceWm2": 12.444785152375651,
+        "photonFlux": 44247693011012740000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#c4d8ec",
         "palette": [
@@ -7073,6 +7504,18 @@
           "water": 1.2,
           "sulfur-dioxide": 4.2
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 9.576914292255282,
+        "totalTopWm2": 12.443837236794867,
+        "totalSurfaceWm2": 12.443837236794867,
+        "photonFlux": 44244421717381325000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -7507,6 +7950,18 @@
           "sulfur-dioxide": 6.2
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 9.577467913749903,
+        "totalTopWm2": 12.442398656844734,
+        "totalSurfaceWm2": 12.442398656844734,
+        "photonFlux": 44239306804932940000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#d8ecff",
         "palette": [
@@ -7932,6 +8387,18 @@
           "water": 0.2,
           "sulfur-dioxide": 0.6
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 9.576183619282626,
+        "totalTopWm2": 12.445736265214858,
+        "totalSurfaceWm2": 12.445736265214858,
+        "photonFlux": 44251173767626610000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -8361,6 +8828,18 @@
           "sulfur-dioxide": 10
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 9.578466033030276,
+        "totalTopWm2": 12.439805684046602,
+        "totalSurfaceWm2": 12.439805684046602,
+        "photonFlux": 44230087415463350000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#d8ecff",
         "palette": [
@@ -8752,6 +9231,18 @@
           "water": 2.4,
           "sulfur-dioxide": 8.5
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 9.598743291728457,
+        "totalTopWm2": 12.38730324335394,
+        "totalSurfaceWm2": 12.38730324335394,
+        "photonFlux": 44043413475343890000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -9168,6 +9659,35 @@
           "altitude": 0
         }
       ],
+      "surfaceSpectrum": {
+        "level": "1 bar",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 19.208056009890708,
+        "totalTopWm2": 3.0934186292785513,
+        "totalSurfaceWm2": 1.4438013108484742,
+        "photonFlux": 5011159159250238000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 580,
+        "surfaceLightHex": "#ffecc5",
+        "attenuators": [
+          {
+            "label": "CH4 absorption",
+            "strength": 0.9612708238211928
+          },
+          {
+            "label": "Rayleigh scattering",
+            "strength": 0.2188436397918201
+          },
+          {
+            "label": "methane cloud deck",
+            "strength": 0.20944
+          },
+          {
+            "label": "H2S absorption",
+            "strength": 0.17177638742474355
+          }
+        ]
+      },
       "apparentColor": {
         "hex": "#60b1d3",
         "palette": [
@@ -9557,6 +10077,18 @@
           "sulfur-dioxide": 19.2
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 19.210967504102314,
+        "totalTopWm2": 3.0924810619281202,
+        "totalSurfaceWm2": 3.0924810619281202,
+        "photonFlux": 10995405488942623000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#d8ecff",
         "palette": [
@@ -9945,6 +10477,18 @@
           "water": 4.9,
           "sulfur-dioxide": 17.6
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 19.211957985167544,
+        "totalTopWm2": 3.092162201666143,
+        "totalSurfaceWm2": 3.092162201666143,
+        "photonFlux": 10994271772096980000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -10338,6 +10882,18 @@
           "water": 2.8,
           "sulfur-dioxide": 10
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 19.209326659109724,
+        "totalTopWm2": 3.0930093989048095,
+        "totalSurfaceWm2": 3.0930093989048095,
+        "photonFlux": 10997284006281026000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#d8ecff",
@@ -10750,6 +11306,35 @@
           "altitude": 1
         }
       ],
+      "surfaceSpectrum": {
+        "level": "1 bar",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 30.109038767496358,
+        "totalTopWm2": 1.2589594490941822,
+        "totalSurfaceWm2": 0.6866611533292972,
+        "photonFlux": 2445361755534547000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 570,
+        "surfaceLightHex": "#ffeccc",
+        "attenuators": [
+          {
+            "label": "CH4 absorption",
+            "strength": 0.8199514489312328
+          },
+          {
+            "label": "methane cloud deck",
+            "strength": 0.20944
+          },
+          {
+            "label": "Rayleigh scattering",
+            "strength": 0.16910174659733457
+          },
+          {
+            "label": "H2S absorption",
+            "strength": 0.10801081399364931
+          }
+        ]
+      },
       "apparentColor": {
         "hex": "#5f8acf",
         "palette": [
@@ -11241,6 +11826,23 @@
           "water": 28.6,
           "sulfur-dioxide": 101.8
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 30.111408843157594,
+        "totalTopWm2": 1.2587612709394902,
+        "totalSurfaceWm2": 1.2277135206189747,
+        "photonFlux": 4365215677059995000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": [
+          {
+            "label": "methane cloud deck",
+            "strength": 0.02464
+          }
+        ]
       },
       "apparentColor": {
         "hex": "#c3d6ea",
@@ -11814,6 +12416,18 @@
           "sulfur-dioxide": 78.2
         }
       },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 38.85432969980108,
+        "totalTopWm2": 0.7560085050925683,
+        "totalSurfaceWm2": 0.7559892289592631,
+        "photonFlux": 2687963835138403000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
+      },
       "apparentColor": {
         "hex": "#d8ecff",
         "palette": [
@@ -12215,6 +12829,18 @@
           "water": 4.6,
           "sulfur-dioxide": 16.4
         }
+      },
+      "surfaceSpectrum": {
+        "level": "surface",
+        "starTempK": 5780.657086335943,
+        "distanceAU": 38.85443327289717,
+        "totalTopWm2": 0.7560044745595986,
+        "totalSurfaceWm2": 0.7560044745595986,
+        "photonFlux": 2687995684621916000,
+        "peakTopNm": 500,
+        "peakSurfaceNm": 500,
+        "surfaceLightHex": "#fff1ea",
+        "attenuators": []
       },
       "apparentColor": {
         "hex": "#d8ecff",

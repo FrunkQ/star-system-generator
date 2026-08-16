@@ -2,6 +2,19 @@
 
 All notable changes are listed here:
 
+## v2.1.652-beta - 16th Aug 2026
+
+- Biospheres. A world's life now has a look, and it is derived rather than dialled in.
+- Every world with a star gets a SURFACE SPECTRUM: the star's own light, filtered by Rayleigh scattering, each gas's absorption bands and any cloud deck, so what reaches the ground is not what left the star.
+- Photosynthetic life is scored against that light. Several pigments usually work, so the engine keeps the ranked set and DRAWS the dominant, seeded on the body — a similar world next door can legitimately grow a different colour, and the same world always gives the same answer.
+- Vegetation colour is what a pigment fails to absorb, projected through the human eye at the very last step. Never the other way round.
+- Settings -> Planets -> Biospheres: one editable record per morphology — its default land cover, its own tints, how far its colour follows the pigment, its opacity and its night-side lights. The ORDER is the hierarchy. Adding a sixth kind is a row, not code.
+- The Bio tab gains a coverage slider per morphology, reorderable, plus what the engine derived: the dominant pigment, what else was viable, how much of the land shows life and the latitudes it clusters at.
+- Where life sits is derived from where that biosphere's OWN solvent stays liquid, so the poles empty out on an Earth-like world and the equator does on a hot one, with no rule about either.
+- New tags: `biodiversity/pigment`, `biodiversity/pigment-viable` and `biodiversity/land-cover`.
+- /physics gains two sections with live diagrams — build a star and a sky and watch which pigments its light favours, and stack the morphologies to see the painter's order.
+- Gas data gains Rayleigh cross-sections and absorption bands, both editable.
+
 ## v2.1.646-beta - 16th Aug 2026
 
 * The welcome panel now lists the star overhaul: type read from where a star sits rather than how bright it looks, brightness derived so it cannot drift, magnetism driving the radiation that strips atmospheres, and implausible stars kept and labelled rather than refused.

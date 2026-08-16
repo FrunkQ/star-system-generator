@@ -210,12 +210,27 @@ same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Trit
 | `weather/*` | lightning, dust storms, monsoon, precipitation | processor (classification) |
 | `aurora/*` · `shape/*` · `ring/*` · `resonance/*` | polar glow, rotational deformation, ring tiers, period ratios | processor |
 | `habitability/*` | habitability tier | processor (habitability) |
+| `biodiversity/*` | which pigment a world's life uses, which others would work, and how much of the LAND shows life | processor (classification, the surface-light pass) |
 | `stability/*` | n‑body instability risk | processor (stability) |
 | `barycenter/auto` | auto‑generated barycentre marker | barycentre reconcile |
 
 > **The live registry is `src/lib/tags/tagPresentation.ts`**, which carries every tag's label and a
 > plain‑English description of the physics behind it. This table is the map of *who writes what*;
 > it is not the list, and it will go stale if treated as one.
+
+> **`biodiversity/*` IS ONE PASS'S NAMESPACE AND IT CLEARS ONCE.** The surface-light pass owns it:
+> it derives the spectrum reaching a world's ground, scores the pigments against it, draws a
+> dominant, and resolves each morphology's colour. `biodiversity/land-cover` is the percentage of the
+> **land** showing any life colour — the UNION of the painted layers, never the sum of the coverage
+> sliders, which are independent and may total past 100%. `biodiversity/pigment-viable` is emitted
+> once per pigment, like `volatiles/ices`, because several genuinely work and the honest output is a
+> ranked set rather than a winner.
+
+> **WHICH PIGMENT WINS IS DRAWN, AND THE DRAW IS THE MODEL.** Without an evolutionary history a real
+> biosphere's outcome is contingent, so the dominant is a weighted pick over everything scoring above
+> the viability floor, seeded on the body id. The same world always gives the same answer; a similar
+> world around a similar star may legitimately give a different one. It is not a placeholder for a
+> model that has not been written.
 
 > **TWO TAGS THAT READ ALIKE AND ARE NOT** (inbox B28): `hazard/radiation` is the **annual dose**,
 > published as the time to a lethal one — Io reads *hours*. `surface/irradiation` is **cumulative

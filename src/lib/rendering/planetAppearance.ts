@@ -138,6 +138,25 @@ export interface FrostSpec {
 export interface PolarVortexSpec {
 	sides: number;     // a polar jet-stream polygon (Saturn's hexagon=6; Jupiter's poles run 5–9)
 }
+/** One painted layer of a world's life — read straight off the DERIVED `body.vegetation`, whose
+ *  colours were already resolved from pack data in physics/vegetation.ts. A renderer never needs the
+ *  rule pack for this, which is the same move `auroraEmitters` makes and the deliberate answer to
+ *  C2's missing thread rather than a second one alongside it. */
+export interface VegetationLayerDraw {
+	morphology: string;
+	coverage: number;   // 0..1 OF THE LAND (not of the disc, and not a share of the other layers)
+	opacity: number;
+	colorHex: string;
+	light: number;      // 0..1 night-side emission; zero for everything whose light range is empty
+}
+export interface VegetationSpec {
+	layers: VegetationLayerDraw[];  // painter order, deepest first — draw in array order
+	visibleCover: number;           // 0..1 of the land showing any life colour (the union)
+	landFraction: number;           // 0..1 of the globe that IS land — multiply patch cover by this
+	bandCentreDeg: number;          // life clusters at |lat| in [centre - width, centre + width]…
+	bandWidthDeg: number;           // …DERIVED from where the solvent is liquid, not from a rule
+	pigmentLabel: string | null;
+}
 
 /** Everything about a body's appearance that follows from its data + tags, renderer-agnostic. */
 export interface AppearanceModel {
@@ -175,6 +194,7 @@ export interface AppearanceModel {
 	clouds: CloudSpec | null;   // back-compat single-deck view (top deck); giants' legacy deck
 	cloudDecks: CloudDeckSpec[]; // the FULL stack, deepest→top — multi-layer renderers use this
 	selfLumGlow: SelfLumSpec | null;
+	vegetation: VegetationSpec | null;  // life on the land, painter-ordered
 }
 
 // One rendered cloud layer, resolved from a cloud-deck tag + its liquid's look-data.
@@ -464,6 +484,28 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 				colorHex2: underDeck ? underDeck.colorHex : shade(topDeck.colorHex, 0.18), giant: false }
 			: null;
 
+	// LIFE ON THE LAND. Nothing is derived here — `body.vegetation` already carries resolved colours
+	// (physics/vegetation.ts), so this is a straight read plus the surface gate. A giant has no land
+	// to paint, so it takes none of this whatever its tags say (PHY-4's rule in a renderer's clothes:
+	// having a 1-bar level is not having a surface).
+	const vegSource = (!isStar && !isBelt && !rendersAsGiant(body)) ? (body as any).vegetation : undefined;
+	const vegLayers: VegetationLayerDraw[] = (vegSource?.layers ?? [])
+		.filter((l: any) => l.colorHex && l.coverage > 0.005 && l.opacity > 0)
+		.map((l: any) => ({
+			morphology: l.morphology, coverage: l.coverage, opacity: l.opacity,
+			colorHex: l.colorHex, light: l.light ?? 0
+		}));
+	const vegetation: VegetationSpec | null = vegLayers.length
+		? {
+				layers: vegLayers,
+				visibleCover: vegSource.visibleCover ?? 0,
+				landFraction: vegSource.landFraction ?? 1,
+				bandCentreDeg: vegSource.bandCentreDeg ?? 45,
+				bandWidthDeg: vegSource.bandWidthDeg ?? 45,
+				pigmentLabel: vegSource.pigmentLabel ?? null
+			}
+		: null;
+
 	// Self-luminous brown dwarf (thermal/self-luminous, value = effective temperature).
 	const selfLumTag = (body.tags ?? []).find((t) => t.key === 'thermal/self-luminous');
 	const selfLumGlow: SelfLumSpec | null = (selfLumTag && !isStar && !isBelt)
@@ -500,6 +542,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		atmGlow,
 		clouds,
 		cloudDecks: deckList,
-		selfLumGlow
+		selfLumGlow,
+		vegetation
 	};
 }

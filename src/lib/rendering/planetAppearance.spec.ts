@@ -188,3 +188,49 @@ describe('shade', () => {
 		expect(shade('#ffffff', -1)).toBe('#000000');
 	});
 });
+
+describe('vegetation — READ, never derived', () => {
+	// The appearance model consumes `body.vegetation`, which physics/vegetation.ts already resolved
+	// from pack data. Nothing here needs the rule pack, which is the deliberate answer to C2's
+	// missing thread rather than a second one alongside it.
+	const veg = (over: any = {}) => ({
+		pigment: 'chlorophyll', pigmentLabel: 'Chlorophyll', ranked: [],
+		layers: [
+			{ morphology: 'microbial', label: 'Microbial', coverage: 0.7, opacity: 0.55, colorHex: '#5d6b4a', light: 0 },
+			{ morphology: 'flora', label: 'Flora', coverage: 0.5, opacity: 0.9, colorHex: '#4f8f2a', light: 0 },
+			{ morphology: 'fauna', label: 'Fauna', coverage: 0.9, opacity: 0, colorHex: null, light: 0 }
+		],
+		visibleCover: 0.8, landFraction: 0.3, bandCentreDeg: 30, bandWidthDeg: 25, ...over
+	});
+
+	it('carries the painter-ordered layers through and drops the ones that paint nothing', () => {
+		const a = deriveAppearance(mk({ vegetation: veg() } as any));
+		expect(a.vegetation).not.toBeNull();
+		// fauna has a colourless layer and zero opacity — it is dropped, and nothing in the renderer
+		// knows what fauna is.
+		expect(a.vegetation!.layers.map((l) => l.morphology)).toEqual(['microbial', 'flora']);
+		expect(a.vegetation!.visibleCover).toBe(0.8);
+		expect(a.vegetation!.bandCentreDeg).toBe(30);
+		// Carried through, because coverage is OF THE LAND and a renderer scattering patches over a
+		// whole disc must scale by this or it paints the ocean.
+		expect(a.vegetation!.landFraction).toBe(0.3);
+	});
+
+	it('gives a GIANT no vegetation whatever it carries — a 1-bar level is not a surface', () => {
+		const giant = deriveAppearance(mk({ makeup: { gas: 0.9, ice: 0.1 }, vegetation: veg() } as any));
+		expect(giant.vegetation).toBeNull();
+	});
+
+	it('is null on a star, a belt, and a world with no life', () => {
+		expect(deriveAppearance(mk({ roleHint: 'star', vegetation: veg() } as any)).vegetation).toBeNull();
+		expect(deriveAppearance(mk({ roleHint: 'belt', vegetation: veg() } as any)).vegetation).toBeNull();
+		expect(deriveAppearance(mk({})).vegetation).toBeNull();
+	});
+
+	it('drops a layer whose coverage rounds to nothing rather than drawing an invisible field', () => {
+		const a = deriveAppearance(mk({ vegetation: veg({
+			layers: [{ morphology: 'flora', label: 'Flora', coverage: 0.001, opacity: 0.9, colorHex: '#4f8f2a', light: 0 }]
+		}) } as any));
+		expect(a.vegetation).toBeNull();
+	});
+});

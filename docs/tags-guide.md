@@ -47,6 +47,19 @@ it has stopped being true.
 
 **Yours.** Anything you add by hand, for any purpose. It survives every re-process and every save.
 
+### One physics tag that is deliberately not deterministic
+
+`biodiversity/pigment` names the pigment most of a world's photosynthetic life uses, and it is
+**drawn** rather than calculated. The engine works out what light actually reaches that world's
+ground — its star, filtered by its sky — scores every pigment in the rule pack against it, and
+usually finds several that would work. `biodiversity/pigment-viable` lists the others. Which one
+dominates is then a weighted draw among them, seeded on the world itself.
+
+That is not the engine giving up. Without an evolutionary history to consult, a real biosphere's
+outcome genuinely is contingent: nature tries many things and the second best can dominate. So two
+similar worlds around similar stars can legitimately grow different-coloured plants, and the same
+world always gives you the same answer no matter how many times you re-process it.
+
 ## Categories
 
 A category is a group of related tags sharing a namespace and a colour: `faction/*`, `resource/*`,

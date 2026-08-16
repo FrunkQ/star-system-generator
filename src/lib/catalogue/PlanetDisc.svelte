@@ -263,6 +263,47 @@
     });
   })();
 
+  // LIFE ON THE LAND — one patch field per morphology, drawn in the model's painter order so the
+  // later, more sophisticated layers cover the earlier ones exactly as the hierarchy says.
+  //
+  // Placement follows the DERIVED band (physics/vegetation.ts) rather than any rule about poles or
+  // equators: patches are scattered within |latitude| in [centre - width, centre + width], which on
+  // Earth-like worlds empties the poles and on hot ones empties the equator, because that is where
+  // the solvent stops being liquid. The disc is drawn in the body's own frame here — the wrapper
+  // squashes for oblateness and rotates to the axial tilt as the final step — so latitude maps
+  // straight to y and the band travels with the tilt for free.
+  $: vegPatches = (() => {
+    const veg = a.vegetation;
+    if (!veg) return [] as { cx: number; cy: number; r: number; fill: string; op: number }[];
+    const out: { cx: number; cy: number; r: number; fill: string; op: number }[] = [];
+    veg.layers.forEach((layer, li) => {
+      const rnd = seeded(311 + li * 17);
+      // Enough blobs that the painted area actually reads as the stated coverage — the same union
+      // arithmetic the flattened colour uses, so the disc and the swatch agree.
+      const blobR = 5 + rnd() * 3;
+      const share = (blobR * blobR) / (30 * 30);
+      // COVERAGE IS OF THE LAND. Scattering `layer.coverage` over the whole disc paints the ocean
+      // as well, which turned Earth into a single-colour world; the land share is what the patches
+      // may occupy. The flattened apparent colour gets this right for free because its vegetation
+      // step runs BEFORE the ocean covers it — the disc has to say it out loud.
+      const f = Math.min(0.92, Math.max(0.02, layer.coverage * veg.landFraction));
+      const n = Math.min(40, Math.max(1, Math.round(Math.log(1 - f) / Math.log(1 - share))));
+      const loLat = Math.max(0, veg.bandCentreDeg - veg.bandWidthDeg);
+      const hiLat = Math.min(90, veg.bandCentreDeg + veg.bandWidthDeg);
+      for (let i = 0; i < n; i++) {
+        const lat = (loLat + rnd() * (hiLat - loLat)) * (rnd() < 0.5 ? -1 : 1);
+        const y = 50 - Math.sin((lat * Math.PI) / 180) * 30;
+        const halfWidth = Math.cos((lat * Math.PI) / 180) * 30;
+        const cx = 50 + (rnd() * 2 - 1) * halfWidth;
+        out.push({
+          cx, cy: y, r: blobR * (0.7 + rnd() * 0.7), fill: layer.colorHex,
+          op: Math.max(0.15, Math.min(0.95, layer.opacity))
+        });
+      }
+    });
+    return out;
+  })();
+
   // Cloud deck (2D): east-west streaks organised into a few latitude BANDS with a clear equatorial lane —
   // the same physics the 3D deck uses (winds run E-W; an even band count leaves the equator visible). Each
   // patch is a flattened ellipse; x is placed within the disc's width at that latitude. Seeded, static.
@@ -618,6 +659,16 @@
         <g clip-path="url(#clip-{uid})">
           {#each frostPatches as p}
             <circle cx={p.cx} cy={p.cy} r={p.r} fill={a.frost.colorHex} opacity={0.2 + a.frost.coverage * 0.4} />
+          {/each}
+        </g>
+      {/if}
+
+      <!-- Life on the land: one patch field per morphology, in the model's painter order, so plant
+           life covers fungal and fungal colours microbial. Under the clouds, over the ground. -->
+      {#if a.vegetation}
+        <g clip-path="url(#clip-{uid})" data-vegetation={a.vegetation.pigmentLabel ?? 'life'}>
+          {#each vegPatches as p}
+            <circle cx={p.cx} cy={p.cy} r={p.r} fill={p.fill} opacity={p.op} />
           {/each}
         </g>
       {/if}

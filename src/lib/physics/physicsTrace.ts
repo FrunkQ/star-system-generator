@@ -573,6 +573,58 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     }
   }
 
+  // 6d. Surface light — the star's spectrum after the sky took its cut. Runs before the colour and
+  //     biosphere layers because both consume it.
+  if (body.surfaceSpectrum) {
+    const s = body.surfaceSpectrum;
+    layers.push({
+      id: 'surface-light', title: 'Surface light — what reaches the ground', link: '/physics#surface-light',
+      inputs: [
+        { label: 'Star', value: `${Math.round(s.starTempK)} K at ${s.distanceAU < 1 ? s.distanceAU.toFixed(3) : s.distanceAU.toFixed(2)} AU` },
+        { label: 'Above the atmosphere', value: `${n(s.totalTopWm2, 0, 'W/m²')} · peak ${s.peakTopNm} nm` },
+        { label: 'The sky takes', value: s.attenuators.length
+          ? s.attenuators.map((a) => `${a.label} ${pct(a.strength)}`).join(' · ')
+          : 'nothing — no atmosphere' }
+      ],
+      outputs: [
+        { label: `At the ${s.level}`, value: `${n(s.totalSurfaceWm2, 0, 'W/m²')} (${pct(s.totalTopWm2 > 0 ? s.totalSurfaceWm2 / s.totalTopWm2 : 0)} of it)` },
+        { label: 'Ground peak', value: `${s.peakSurfaceNm} nm` },
+        { label: 'Daylight colour', value: `${s.surfaceLightHex} — as human eyes would see it` }
+      ],
+      notes: [
+        'The star\'s Planck curve, scaled by the same luminosity the radiation model reads over the same inverse square, then filtered: Rayleigh scattering from the atmosphere\'s own column density (which is why the blue end goes first), each gas\'s authored absorption bands, and a GREY cut from any cloud deck. The peak quoted is the peak per unit WAVELENGTH — the peak per unit frequency of the same curve sits about 1.76 times further out, and the two are different numbers.',
+        `The LEVEL is named rather than assumed: this reading is at the ${s.level}. A world with no solid surface has a 1-bar level, not a surface, and nothing here turns one into the other.`
+      ]
+    });
+  }
+
+  // 6e. Life, and what colour it takes from that light.
+  if (body.vegetation) {
+    const v = body.vegetation;
+    const viable = v.ranked.filter((r) => r.viable);
+    layers.push({
+      id: 'biosphere', title: 'Biosphere — pigment and cover', link: '/physics#biosphere',
+      inputs: [
+        { label: 'Energy source', value: body.biosphere?.energy_source ?? '—' },
+        { label: 'Morphologies', value: v.layers.map((l) => `${l.label} ${pct(l.coverage)}`).join(' · ') || '—' },
+        { label: 'Solvent', value: body.hydrosphere?.composition ?? 'none' }
+      ],
+      outputs: [
+        { label: 'Dominant pigment', value: v.pigmentLabel
+          ? `${v.pigmentLabel}${viable.length > 1 ? ` (drawn from ${viable.length} viable)` : ''}`
+          : 'none — this biosphere does not photosynthesise' },
+        ...(viable.length > 1 ? [{ label: 'Also viable', value: viable.filter((r) => r.key !== v.pigment).map((r) => `${r.label} ${pct(r.drawWeight)}`).join(' · ') }] : []),
+        { label: 'Life on the land', value: `${pct(v.visibleCover)} — the union of the layers, not their sum` },
+        { label: 'Clusters at', value: `${Math.round(Math.max(0, v.bandCentreDeg - v.bandWidthDeg))}–${Math.round(Math.min(90, v.bandCentreDeg + v.bandWidthDeg))}° latitude` }
+      ],
+      notes: [
+        'A pigment is NOT chosen by maximising captured energy — Earth falsifies that directly, since the Sun peaks in the green and chlorophyll reflects green. Three competing pressures are scored together and multiplied, so each switches itself off where it stops applying: how far what it absorbs reaches the flux a photosystem can process (it saturates), how much overload and wasted photon energy it avoids, and whether it feeds off the steep flanks of the spectrum rather than its summit. Under a dim sky the broadband absorber wins and vegetation reads black; under a generous one everything has enough and the other two pressures decide.',
+        'Several pigments are usually viable, so the dominant is a WEIGHTED DRAW over the scored set, seeded on this body. That contingency is the model, not a placeholder: without an evolutionary history a real biosphere\'s outcome genuinely is contingent, and a similar world next door can legitimately grow a different colour. This world always gives the same answer.',
+        'Coverage is of the LAND and the layers stack painter-style in list order, so they are independent and may total past 100%. Where life sits is derived from where the biosphere\'s OWN solvent stays liquid across the latitude profile — the poles emptying out on an Earth-like world is a consequence, not a rule.'
+      ]
+    });
+  }
+
   // 7. Apparent colour
   if (body.apparentColor) {
     layers.push({

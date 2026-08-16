@@ -426,6 +426,9 @@
           <p class="section-hint">Planet rulepack overrides.</p>
           <button class="section-btn" on:click={() => { dispatch('editatmospheres'); showModal = false; }}>Atmospheres…</button>
           <button class="section-btn" on:click={() => { dispatch('editliquids'); showModal = false; }}>Liquids…</button>
+          <button class="section-btn" on:click={() => { dispatch('editbiospheres'); showModal = false; }}>Biospheres…</button>
+          <p class="section-hint">What each life morphology looks like, how much ground it covers by default, and
+            the order it paints in — plus the pigments a world's light can favour.</p>
 
         {:else}
           <p class="section-hint">App-wide preferences.</p>

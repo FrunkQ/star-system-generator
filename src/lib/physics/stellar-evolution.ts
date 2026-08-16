@@ -315,6 +315,29 @@ export function classifyStar(params: {
     return { category: 'Invalid / Exotic Unknown', lumClass: '?' };
 }
 
+/**
+ * A star's photosphere temperature, from the star's OWN data.
+ *
+ * Reads `temperatureK` when it has one. When it does not, it does NOT reach for the Sun: it inverts
+ * Stefan-Boltzmann on this star's own luminosity and radius, T = T☉·(L/L☉)^¼/(R/R☉)^½, which is a
+ * calibration anchor rather than an assumed baseline — the answer comes from this star.
+ *
+ * WHY THIS EXISTS: `temperatureK` is on the baseline test's DERIVED-and-stripped list and nothing in
+ * `process()` puts it back, so in that fixture every star has none. Two existing readers quietly
+ * substitute the Sun when that happens — `calculateEquilibriumTemperature` (`star.temperatureK ||
+ * 5778`) and `apparentColor.starColorFromTempK`'s default — which is the never-assume-a-Sol-baseline
+ * rule being broken silently in a derivation. Both should read this instead; that is a separate item
+ * and is on the board.
+ */
+export function photosphereTempK(star: { temperatureK?: number; radiationOutput?: number; radiusKm?: number } | undefined): number | undefined {
+    if (!star) return undefined;
+    if (star.temperatureK && star.temperatureK > 0) return star.temperatureK;
+    const lum = star.radiationOutput;
+    const rSolar = (star.radiusKm ?? 0) / SOLAR_RADIUS_KM;
+    if (!(lum && lum > 0) || !(rSolar > 0)) return undefined;
+    return SOLAR_TEMPERATURE_K * Math.pow(lum, 0.25) / Math.sqrt(rSolar);
+}
+
 export function deriveStarFromHR(temperatureK: number, luminositySolar: number, isRemnant: boolean = false, progenitorMassKg?: number): StarSeed {
     const progenitorSolar = (progenitorMassKg ?? (Math.pow(luminositySolar, 0.28) * SOLAR_MASS_KG)) / SOLAR_MASS_KG;
     

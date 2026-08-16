@@ -1,5 +1,5 @@
 import type { ISystemProcessor } from './interfaces';
-import type { System, RulePack, CelestialBody, Barycenter } from '../types';
+import type { System, RulePack, CelestialBody, Barycenter, SurfaceSpectrumCurves } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket, radiationPlace } from '../physics/radiation';
@@ -38,9 +38,11 @@ import { rotationalDeform } from '../physics/rotation';
 import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveVolatileRetention } from '../physics/volatileRetention';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
+import { deriveSurfaceSpectrum } from '../physics/surfaceSpectrum';
+import { deriveVegetation } from '../physics/vegetation';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
-import { flareActivity } from '../physics/stellar-evolution';
+import { flareActivity, photosphereTempK } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
 import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlausibility';
 import { applyActivityScatter, activityFromFieldExcess } from '../physics/ionisingOutput';
@@ -1246,17 +1248,22 @@ export class SystemProcessor implements ISystemProcessor {
         // The host star's photosphere temperature drives liquid shades (#8) — walk up the parent
         // chain to the nearest star (fall back to the most massive star in the system).
         let hostStarTempK: number | undefined;
+        let hostStar: CelestialBody | undefined;
         {
             let cur: any = body;
             for (let hops = 0; cur?.parentId && hops < 10; hops++) {
                 cur = allNodes.find((n) => n.id === cur.parentId);
-                if (cur && (cur as any).roleHint === 'star') { hostStarTempK = (cur as any).temperatureK; break; }
+                if (cur && (cur as any).roleHint === 'star') { hostStar = cur as CelestialBody; hostStarTempK = photosphereTempK(cur as any); break; }
             }
             if (hostStarTempK === undefined) {
                 const brightest = allNodes
                     .filter((n: any) => n.kind === 'body' && n.roleHint === 'star')
                     .sort((a: any, b: any) => (b.massKg || 0) - (a.massKg || 0))[0] as any;
-                hostStarTempK = brightest?.temperatureK;
+                hostStar = brightest;
+                // NOT `brightest?.temperatureK` — a star with no stored temperature has its
+                // photosphere temperature derived from its own luminosity and radius rather than
+                // silently becoming the Sun. See photosphereTempK.
+                hostStarTempK = photosphereTempK(brightest);
             }
         }
         // SURFACE OXIDATION — why Mars is red and the Moon, with the same iron and age but no
@@ -1267,6 +1274,62 @@ export class SystemProcessor implements ISystemProcessor {
             const rust = deriveOxidation(body);
             if (rust) body.tags.push({ key: OXIDISED_TAG, value: rust });
         }
+        // SURFACE SPECTRUM + THE LOOK OF ITS LIFE. This is ONE derivation with TWO consumers: the
+        // pigment model reads its photon counts, the presentation layer reads its colour. It runs
+        // HERE — after the atmosphere and cloud decks are final (they are the filter) and BEFORE the
+        // apparent colour, which consumes the vegetation tint. Nothing below it may write anything
+        // it reads (PHY-1).
+        //
+        // TAG-6 — `biodiversity/` has exactly ONE owning pass and this is it, cleared once, here,
+        // not per branch.
+        // Read a GM's PINNED pigment before the clear — `stripForReprocess` keeps a manual tag, so
+        // this survives anyway, but reading it first makes the override an INPUT to the derivation
+        // rather than a second answer sitting beside it. Same shape as a manual cloud deck.
+        const pinnedPigment = body.tags?.find((t) => t.key === 'biodiversity/pigment' && t.manual)?.value;
+        body.tags = stripForReprocess(body.tags, ['biodiversity/']);
+        body.surfaceSpectrum = undefined;
+        body.vegetation = undefined;
+        // The full sampled curves are used HERE and then dropped — only the summary rides on the
+        // body. Three 113-element arrays per body is ten thousand lines on the Sol fixture and rides
+        // every save and every broadcast, for a value the same function rebuilds on demand.
+        let spectrumCurves: SurfaceSpectrumCurves | undefined;
+        if (hostStar && hostStarTempK) {
+            const distAU = calculateDistanceToStar(body, hostStar, allNodes);
+            const spectrum = deriveSurfaceSpectrum(body, {
+                starTempK: hostStarTempK,
+                luminositySolar: hostStar.radiationOutput ?? 1,
+                distanceAU: distAU
+            }, pack);
+            body.surfaceSpectrum = spectrum?.summary;
+            spectrumCurves = spectrum?.curves;
+        }
+        if (body.biosphere && mk.gas <= 0.5) {
+            // Seeded on the BODY ID, one stream per named purpose (DATA-G1) — the shared per-run rng
+            // would move every saved seed's answer the moment anyone inserted a draw above it. The
+            // draw itself is the MODEL, not a placeholder: without an evolutionary history a real
+            // biosphere's outcome genuinely is contingent.
+            body.vegetation = deriveVegetation(body, spectrumCurves, {
+                roll: (purpose: string) => hash01(`${body.id}|veg|${purpose}`),
+                pinnedPigment
+            }, pack);
+        }
+        if (body.vegetation) {
+            const veg = body.vegetation;
+            // PHY-2 — WHAT each tag measures, WHERE, IN WHAT UNITS:
+            //   biodiversity/pigment        the DRAWN dominant pigment (a key, not a colour)
+            //   biodiversity/pigment-viable one per pigment scoring within the viability fraction;
+            //                               emitted repeatedly on purpose, like volatiles/ices
+            //   biodiversity/land-cover     percent OF THE LAND showing any life colour — the UNION
+            //                               of the painted layers, never the sum of the sliders
+            if (veg.pigment) emit(body.tags, { key: 'biodiversity/pigment', value: veg.pigment });
+            for (const r of veg.ranked) {
+                if (r.viable && r.key !== veg.pigment) body.tags.push({ key: 'biodiversity/pigment-viable', value: r.key });
+            }
+            if (veg.visibleCover > 0.005) {
+                emit(body.tags, { key: 'biodiversity/land-cover', value: `${Math.round(veg.visibleCover * 100)}%` });
+            }
+        }
+
         const apparent = deriveApparentColorParts(body, pack, { starTempK: hostStarTempK });
         body.apparentColor = apparent;
         body.apparentColorHex = apparent.hex;

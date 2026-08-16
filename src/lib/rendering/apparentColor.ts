@@ -11,6 +11,7 @@ import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '
 import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
 import { phaseAtP, liquidDef } from '$lib/physics/liquids';
 import { decksFromTags, condensateTint, oxidationStrength } from '$lib/physics/cloudDecks';
+import { vegetationTint } from '$lib/physics/vegetation';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 
 type RGB = [number, number, number];
@@ -142,6 +143,19 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     push(rgbToHex(col), 'surface', 1, `oxidised ${surfDom} surface`);
   } else {
     push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
+  }
+
+  // 1b. LIFE ON THE LAND. It goes here, between the bare ground and the ocean, because that is
+  //     physically where it is: vegetation covers LAND, and the sea then covers its own fraction of
+  //     the result. Nothing is derived in this file — `body.vegetation` was resolved from pack data
+  //     in physics (see physics/vegetation.ts), the same move `auroraEmitters` already makes, so a
+  //     renderer never needs the rule pack to draw it. That is the deliberate answer to C2's missing
+  //     thread rather than a second one alongside it.
+  const veg = vegetationTint(body.vegetation);
+  if (veg && !rendersAsGiant(body)) {
+    col = mix(col, hexToRgb(veg.hex), Math.min(0.92, veg.cover));
+    push(veg.hex, 'vegetation', veg.cover,
+      body.vegetation?.pigmentLabel ? `${body.vegetation.pigmentLabel} vegetation` : 'surface life');
   }
 
   // 2. Surface liquid — ANY liquid, proportional to coverage (#9): the disc is land×(1−cover) +

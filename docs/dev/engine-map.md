@@ -114,6 +114,20 @@ WHY: habitability cleared in two branches; the two then disagreed about sparing 
 because a rule applied to one was silently absent from the other (B38).
 BLAST: if you find a second clear of one namespace, hoist rather than add a third.
 
+### TAG-22 `biodiversity/*` is the surface-light pass's namespace, and one tag there is a DRAW
+WHERE: `SystemProcessor.processClassification` — the block that clears `biodiversity/` and calls
+`deriveSurfaceSpectrum` + `deriveVegetation`.
+RULE: one owning pass, one clear (TAG-6). It must run AFTER the cloud decks (they are the filter) and
+BEFORE `deriveApparentColorParts` (it consumes the tint). `biodiversity/pigment-viable` is emitted
+once per pigment on purpose, like `volatiles/ices`.
+WHY: `biodiversity/pigment` is a WEIGHTED DRAW over the scored set, not a calculation, and it is
+seeded `hash01(id + '|veg|pigment')` per DATA-G1. Using the shared per-run rng would re-roll every
+saved seed the moment anyone inserted a draw above it. The contingency is the model, not a
+placeholder — say so wherever it is explained, or a reader reads it as unfinished.
+BLAST: `biodiversity/land-cover` is the UNION of the painted layers, never the sum of the coverage
+sliders — those are coverage OF THE LAND, are independent, and legitimately total past 100%. Anything
+that adds them is wrong.
+
 ### TAG-7 Tag keys are case-insensitive with ONE canonical spelling
 WHERE: `tagLifecycle.canonicalTagKey`, `tagSlugSegment`, `canonicaliseTags`
 RULE: fold at creation, not by comparing loosely everywhere. Lowercase, spaces→hyphens. Display
@@ -296,6 +310,41 @@ WHY: seven such edges at once in B13; one put a hundredfold error on Earth's rad
 other test runs `process()` ONCE and therefore pins pass-1 values a GM never sees.
 BLAST: corollaries — a derived CLASS is never a physics input (the classifier runs late); when a
 quantity depends on another body, iterate PARENT BEFORE CHILD, not in file order.
+
+### PHY-14 The human eye enters at the END or it poisons the derivation
+WHERE: `physics/spectrum.ts` (everything below the PRESENTATION BRANCH divider), `physics/pigments.ts`,
+`rendering/apparentColor.ts`.
+RULE: a selection, score or ranking reads PHOTON COUNTS (`photonFlux` / `photonSpectrum`). Colour
+matching (`spectrumToHex`, `reflectedHexUnderIlluminant`, `wavelengthHex`) is the LAST step and only
+ever on the presentation branch. Anything that derives an RGB and then chooses from it is the bug.
+WHY: the original pigment sketch measured "available light" with Rec. 709 luma, which weights green at
+0.7152 because HUMAN retinas are green-sensitive — a fact about us inside a claim about alien biology
+(B45). `apparentColor.ts` has the same fault one level up: it filters starlight in RGB, so every
+absorption is projected onto three human primaries before anything is computed (B54).
+BLAST: two colours exist for one reflected spectrum and they are NOT interchangeable —
+`reflectedHex` is chromatically ADAPTED to the local star (the pigment's identity, right for a
+legend) and `reflectedUnderStarHex` leaves the cast and brightness in (what a renderer must use, or a
+world's vegetation is white-balanced while its oceans are not). Both must SAY WHOSE in any label.
+Also: per-gas `colorHex` must never be read by the spectral filter for the same reason.
+
+### PHY-15 A capture term that does not SATURATE is the naive maximiser, and Earth falsifies it
+WHERE: `physics/pigments.ts` — `sufficiency = 1 - exp(-absorbedFlux / saturationFlux)`.
+RULE: photon capture saturates, the three pressures MULTIPLY rather than adding, and the capture term
+reads the PIGMENT's own absorption while the colour reads pigment PLUS tissue.
+WHY: each of those three was got wrong first and each produced the same visible failure — melanin on
+top under every star, i.e. black vegetation around a Sun-like star, which is the one case every
+reader knows is wrong. (a) Unsaturated capture IS an argmax over available energy. (b) A weighted SUM
+keeps each term discriminating where it has stopped meaning anything and the three sit on
+incomparable scales, so whichever varies most wins by accident; a product lets protection go to 1
+when there is no overload. (c) The tissue floor is shared by every pigment, so folding it into the
+scoring drowns the pigment-specific differences and the ranking collapses to "whichever absorbs
+least". Also: the steadiness weight is normalised on the PHOTON-WEIGHTED MEAN slope, not the maximum
+— the maximum is in the far tail where there is no light, and normalising on it made the whole term
+do nothing.
+BLAST: `pigments.spec.ts` asserts melanin is NOT top around a G star and that chlorophyll is in the
+leading group and reads green. It deliberately does NOT assert chlorophyll ranks first — Sol is a
+calibration anchor, not a target, and fitting the constants to it is the forbidden move. If you
+change a weight, that spec is the thing that catches you.
 
 ### PHY-2 A quantity correct for its purpose can still be published as a lie
 WHERE: `tags/tagConsistency.spec.ts`

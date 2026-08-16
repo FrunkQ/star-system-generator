@@ -2,7 +2,21 @@
   // /physics — the honesty appendix. Documents the constants, the derivations, the
   // deliberate fudges, and how classification + tags are produced. Stable section IDs
   // (#temperature, #radiation-split, #classification, …) so tooltips can deep-link.
-  import { G, UNIVERSAL_GAS_CONSTANT, AU_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
+  import { G, UNIVERSAL_GAS_CONSTANT, AU_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR, PLANCK_H, BOLTZMANN_K, SOLAR_CONSTANT_WM2 } from '$lib/constants';
+  import { GRID_MIN_NM, GRID_MAX_NM, GRID_STEP_NM } from '$lib/physics/spectrum';
+  import SurfaceLightExplorer from '$lib/charts/SurfaceLightExplorer.svelte';
+  import MorphologyStackExplorer from '$lib/charts/MorphologyStackExplorer.svelte';
+  import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
+  import { onMount } from 'svelte';
+  import type { RulePack } from '$lib/types';
+
+  // The live diagrams below run the ENGINE's own functions, which need the rule pack's gas optics
+  // and pigment data. Fetched here rather than reimplemented: a page that carried its own copy of
+  // the numbers would be a second authority on them the day the pack changed.
+  let pack = $state<RulePack | null>(null);
+  onMount(async () => {
+    try { pack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json'); } catch { /* defaults */ }
+  });
 
   const toc = [
     ['layering', 'How the model layers'],
@@ -29,6 +43,8 @@
     ['resonance', 'Resonances & stability'],
     ['eclipses', 'Eclipses'],
     ['ejection', 'Who gets ejected'],
+    ['surface-light', 'Surface light & the spectrum'],
+    ['biosphere', 'Biospheres: pigment & cover'],
     ['colour', 'Apparent colour & visualisation'],
     ['views', 'Spatial views: grids & routes'],
     ['habitability', 'Habitability score'],
@@ -51,7 +67,10 @@
     ['R⊕', EARTH_RADIUS_KM, 'km', 'Earth radius — the radius_Re feature unit.'],
     ['g⊕', EARTH_GRAVITY, 'm·s⁻²', 'Standard surface gravity.'],
     ['ρ⊕', EARTH_DENSITY, 'kg·m⁻³', 'Earth bulk density (≈5.51 g/cc).'],
-    ['Dose₀', RADIATION_UNSHIELDED_DOSE_MSV_YR, 'mSv·yr⁻¹', 'Unshielded GCR+SPE dose at 1 AU from a Sun-like star.']
+    ['Dose₀', RADIATION_UNSHIELDED_DOSE_MSV_YR, 'mSv·yr⁻¹', 'Unshielded GCR+SPE dose at 1 AU from a Sun-like star.'],
+    ['h', PLANCK_H, 'J·s', 'Planck constant — the spectrum model (Planck\'s law, photon energy).'],
+    ['k', BOLTZMANN_K, 'J·K⁻¹', 'Boltzmann constant — Planck\'s law.'],
+    ['S☉', SOLAR_CONSTANT_WM2, 'W·m⁻²', 'Solar constant at 1 AU — the scale anchor for every surface spectrum.']
   ];
 </script>
 
@@ -817,6 +836,143 @@
         which also broke repeatability has bitten this engine before. The cheap half is the pre-filter: how dark
         an occulter could <em>ever</em> manage is pure arithmetic on orbital radii, so one that could never reach
         the floor is dismissed without a single propagation.</p>
+    </section>
+
+    <section id="surface-light">
+      <h2>Surface light — the spectrum that reaches the ground <span class="phase">B45 · B54</span></h2>
+      <p>Every reference chart of alien plant colour keys on one number: the star's temperature. That is the
+        wrong input, and it is wrong in a way that matters. <strong>Plants see the light that reaches the
+        ground</strong>, and between the star and the ground sits a sky. So this engine derives a
+        <strong>surface spectrum</strong> — the star's own output, filtered — and everything downstream reads
+        that instead. The sentence the model can now justify is <em>"its sun is red <strong>and</strong> its sky
+        eats what is left"</em>, which is a statement about the SHAPE of a curve rather than about a peak.</p>
+      <p>The chain is four steps and each is a real quantity:</p>
+      <ul>
+        <li><strong>The star.</strong> A Planck curve at the star's photosphere temperature, scaled by the same
+          luminosity the radiation model reads, over the same inverse square. There is no second sum.</li>
+        <li><strong>Rayleigh scattering.</strong> The λ<sup>−4</sup> that makes a sky blue takes the blue end
+          away from the ground. Its depth comes from the atmosphere's own <em>column density</em> —
+          pressure over gravity and molar mass, all quantities already present — times a per-gas
+          cross-section carried in the rule pack. CO₂ scatters about two and a half times as hard as
+          nitrogen; hydrogen about a fifth as hard.</li>
+        <li><strong>Absorption bands.</strong> Each gas eats specific bands, authored per species in the pack.
+          Water's near-infrared bands, methane's ladder through the red, sulphur dioxide's ultraviolet wall.
+          A gas with no authored band simply takes its Rayleigh share, which is the honest answer for
+          nitrogen and argon.</li>
+        <li><strong>Cloud decks.</strong> A deck is <em>grey</em>: droplets far larger than the wavelength
+          scatter every colour alike, which is why an overcast day is dim rather than tinted. It scatters
+          rather than absorbs, so there is a floor — an overcast world is not pitch dark underneath.</li>
+      </ul>
+      <p><strong>A gas giant gets a spectrum too, at the 1-bar level, and the level is named.</strong> Having a
+        level is not the same as having a surface, and nothing here re-enables a surface claim on a world
+        that has none.</p>
+      <h3>Two consumers, one spectrum — and the human eye comes LAST</h3>
+      <p>The same curve answers two different questions and they must not be answered the same way. For
+        <em>how much light is available to an organism</em>, the measure is the <strong>photon count</strong>:
+        photosynthesis is quantum-driven, one photon driving one charge separation whatever its energy, so
+        counting joules would over-rank the blue end for a reason biology does not care about. For
+        <em>what does it look like</em>, the curve is projected through the human eye's colour-matching
+        functions — and that step happens <strong>once, at the very end, on the presentation branch only</strong>.
+        The pigment model never reads a colour. Deriving red-green-blue first and choosing a pigment from it
+        would smuggle a fact about our retinas (they are green-sensitive) into a claim about alien biology.</p>
+      <p>The grid runs {GRID_MIN_NM}–{GRID_MAX_NM} nm in {GRID_STEP_NM} nm steps, and that is deliberately
+        <em>not</em> "the visible band" — visible is <strong>our</strong> band. Below about 280 nm a photon
+        carries enough energy to break the bonds it would otherwise power; above about 1400 nm it carries too
+        little to drive a biological charge separation at all. Both ends are set by molecular physics.</p>
+      <p><strong>"Peak" is ambiguous and we mean one of them.</strong> A blackbody's peak per unit
+        <em>wavelength</em> and per unit <em>frequency</em> sit at different wavelengths, about 1.76× apart.
+        Everything here is the per-wavelength peak — 2.898 × 10<sup>6</sup> nm·K / T, so about 500 nm for the
+        Sun, which is the figure the charts quote.</p>
+
+      <h3>Try it</h3>
+      <p>Everything below is computed live by the same two functions the engine calls on every body in every
+        system. Move a slider and you are re-running the physics, not a mock-up of it.</p>
+      <SurfaceLightExplorer {pack} />
+
+      <h3>Where this model stops</h3>
+      <ul>
+        <li>Scattering is treated as extinction, so the sky's own glow is not added back to the ground. Real
+          diffuse skylight returns some of that scattered blue.</li>
+        <li>Bands are Gaussians at authored centres, not line-by-line radiative transfer.</li>
+        <li>One column, straight up. No air mass, no zenith angle, no seasons.</li>
+        <li>There is no ozone in the bundled gas set, so Earth's ultraviolet cut is not modelled.</li>
+      </ul>
+    </section>
+
+    <section id="biosphere">
+      <h2>Biospheres — which pigment, and how much of the ground <span class="phase">G19 · B53</span></h2>
+      <p>A world's life is described by four things it already carried — how complex it is, what its chemistry
+        is built on, where it gets its energy, and which <em>morphologies</em> are present — plus, now, how
+        much of the land each of those covers.</p>
+
+      <h3>Energy source is the gate</h3>
+      <p>Only <strong>photosynthetic</strong> life has any reason to be the colour of its star. A chemosynthetic
+        vent biosphere does not care what the sky looks like, and a thermosynthetic one still less. So the
+        whole pigment derivation is gated on that one field: no photosynthesis, no pigment, and any morphology
+        whose definition says it is entirely pigment-coloured then paints nothing at all. That is the right
+        answer for life that lives at a vent, and no code anywhere tests for it.</p>
+
+      <h3>The pigment is chosen under competing pressures, not by maximising energy</h3>
+      <p>The obvious model — pick whatever absorbs the most light — is <strong>falsified by the one case every
+        reader knows</strong>. The Sun's light peaks in the green. Chlorophyll <em>reflects</em> green and
+        absorbs either side of it. That is why leaves are green, and a naive maximiser instead predicts black
+        vegetation under a Sun-like star.</p>
+      <p><strong>Three explanations for that compete and this engine does not pick between them.</strong>
+        <em>Path dependence</em>: earlier retinal-based organisms may have occupied the green band first, so
+        chlorophyll took what was left — the "purple Earth" hypothesis. <em>Photoprotection</em>: absorbing
+        right at the peak overloads the photosystem, so sitting off-peak is a safety margin.
+        <em>Steadiness</em>: photosystems may optimise for a steady supply rather than a maximum one, which
+        favours the steep flanks of a spectrum over its summit (Arp and colleagues, <em>Science</em>, 2020).
+        All three are live; the model scores all three at once and the weights are rule-pack data.</p>
+      <p>The three pressures <strong>multiply</strong> rather than adding, which is what lets each one switch
+        itself off where it stops meaning anything. Under a dim sky nothing reaches saturation, capture still
+        discriminates, and the pigment that takes everything wins — <strong>black vegetation, arrived at
+        rather than asserted</strong>. Under a generous sky everything worth considering has enough, capture
+        stops separating them, and the decision falls to overload and steadiness. Selectivity scales with
+        available energy, and nothing in the code says so.</p>
+
+      <h3>The answer is a ranked set, and the winner is drawn</h3>
+      <p>Around a Sun-like star every common pigment is viable; the strongest honest claim is which is most
+        <em>widespread</em>. So the engine keeps the whole scored set and <strong>draws</strong> the dominant
+        from it, weighted by score and seeded on the body's own id. <strong>That randomness is the model, not
+        a placeholder.</strong> Without an evolutionary history a real biosphere's outcome genuinely is
+        contingent — nature tries many things and the second best can dominate — so two similar worlds around
+        similar stars can legitimately grow different colours. The same world always gives the same answer.</p>
+
+      <h3>The colour is what is left over — and it says whose</h3>
+      <p>Vegetation colour is not looked up. It is the surface spectrum minus what the pigment absorbs, minus
+        what the surrounding tissue absorbs, projected through the human eye at the last step. Two versions
+        are derived and they answer different questions: one <em>adapted</em> to the local star, which shows
+        the pigment's own identity the way your eyes would settle after an hour outdoors; and one with the
+        star's cast and brightness <strong>left in</strong>, which is what you would see arriving from orbit
+        and is what the renderers use. Neither is "the" colour, and both are labelled.</p>
+
+      <h3>Morphologies stack, and the order is the hierarchy</h3>
+      <p>Each morphology present carries <strong>its own coverage of the land</strong>, and they are painted in
+        list order — microbial first, then fungal over it, then flora over that. Plant life covers fungal;
+        fungal colours microbial. <strong>Coverage is of the LAND, not a share of it</strong>: three layers at
+        80%, 50% and 60% are independent statements and may total well past 100% without being wrong.</p>
+      <p><strong>There are no special rules.</strong> Every morphology is one uniform record and one code path
+        reads all of them. Flora having no lights is an <em>empty light range</em> in flora's definition.
+        Fauna contributing nothing you can see from orbit is <em>two empty ranges</em> in fauna's — no tints,
+        no pigment drive — not a case in the code. Technological life, dark by day and lit by night, is a dark
+        tint range and a strong light range, and it needed no code at all. Adding a sixth kind is another
+        entry in the pack.</p>
+      <p><strong>Where life sits is derived, not decreed.</strong> There is no rule saying "skip the poles".
+        The band is wherever the surface temperature keeps the biosphere's <em>own solvent</em> liquid, read
+        off the same latitude decomposition the temperature panel shows. On an Earth-like world that empties
+        the poles; on a hotter one it empties the equator instead; on a methane world it lands somewhere else
+        entirely and nothing in the code knew that was coming.</p>
+      <MorphologyStackExplorer {pack} />
+      <p>What the engine records on a world: <code>biodiversity/pigment</code> (the drawn dominant),
+        <code>biodiversity/pigment-viable</code> once per other viable pigment, and
+        <code>biodiversity/land-cover</code> as the percentage of the land showing any life colour. The
+        resolved layer colours ride on the body itself, so every renderer draws the same thing without
+        needing the rule pack.</p>
+      <p class="fudge-note"><strong>What is not here yet.</strong> Competing populations, which morphology takes
+        <em>which</em> pigment, biospheres ageing, and a world's colour changing as its life evolves. Coverage
+        per layer plus an order is already the shape those need, so the time-scrubbing falls out of what is
+        built rather than replacing it.</p>
     </section>
 
     <section id="colour">

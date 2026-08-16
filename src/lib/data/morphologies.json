@@ -1,0 +1,57 @@
+[
+  {
+    "key": "microbial",
+    "label": "Microbial",
+    "order": 10,
+    "defaultCoverage": 0.7,
+    "tints": ["#5d6b4a", "#7a6b4e", "#4a5d63", "#6d5f45"],
+    "pigmentDriven": 0.5,
+    "opacity": 0.55,
+    "light": { "min": 0, "max": 0 },
+    "note": "Mats and films. Half its colour is the pigment it uses, half is the ground it grows on."
+  },
+  {
+    "key": "fungal",
+    "label": "Fungal",
+    "order": 20,
+    "defaultCoverage": 0.35,
+    "tints": ["#cbbfa4", "#8a7663", "#b5603a", "#2e2a28", "#d0a13c"],
+    "pigmentDriven": 0.15,
+    "opacity": 0.75,
+    "light": { "min": 0, "max": 0 },
+    "note": "Mostly not photosynthetic, so mostly not the colour of its star. The tint list is deliberately wide — Earth's own surface-colouring fungal-ish organism is lichen, and lichen runs from near-black to bright orange."
+  },
+  {
+    "key": "flora",
+    "label": "Flora",
+    "order": 30,
+    "defaultCoverage": 0.5,
+    "tints": [],
+    "pigmentDriven": 1,
+    "opacity": 0.9,
+    "light": { "min": 0, "max": 0 },
+    "note": "An empty tint list and full pigment drive: flora is the colour of what its pigment reflects, and nothing else. Its lack of lights is an EMPTY LIGHT RANGE here, not a rule in the code."
+  },
+  {
+    "key": "fauna",
+    "label": "Fauna",
+    "order": 40,
+    "defaultCoverage": 0.2,
+    "tints": [],
+    "pigmentDriven": 0,
+    "opacity": 0,
+    "light": { "min": 0, "max": 0 },
+    "note": "Animals do not tint a world seen from orbit. That is TWO EMPTY RANGES in this record — no tints, no pigment drive — not a special case anywhere in the code."
+  },
+  {
+    "key": "techno",
+    "label": "Technological",
+    "order": 50,
+    "defaultCoverage": 0.05,
+    "tints": ["#20242b", "#2b3038"],
+    "pigmentDriven": 0,
+    "opacity": 0.85,
+    "light": { "min": 0.35, "max": 1 },
+    "note": "Dark by day, lit by night. It needed no code: a dark tint range and a strong light range, in the same record shape as everything else. This is the extensibility test — a sixth morphology is another entry here."
+  }
+]

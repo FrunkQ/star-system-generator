@@ -7,13 +7,21 @@
 
   const dispatch = createEventDispatcher();
 
+  import { allMorphologies, biosphereLayers } from '$lib/physics/vegetation';
+
   const complexities = ['none', 'simple', 'complex', 'sapient'];
   const biochemistries = ['water-carbon', 'ammonia-silicon', 'methane-carbon'];
   const energySources = ['photosynthesis', 'chemosynthesis', 'thermosynthesis'];
-  const morphologies = ['microbial', 'fungal', 'flora', 'fauna'];
 
-  let currentMorphologies: string[] = body.biosphere?.morphologies || [];
-  
+  // The morphologies a GM can add come from the RULE PACK, not from a list in this file — so adding a
+  // fifth (or a sixth) is a pack edit and this editor picks it up with no change. Settings → Planets
+  // → Biospheres is where they are defined.
+  $: morphDefs = allMorphologies(rulePack).slice().sort((a, b) => a.order - b.order);
+  // ONE reader normalises both stored forms (a legacy list of bare strings, or the layer records this
+  // editor writes). There is no second store of which morphologies are present.
+  $: layers = biosphereLayers(body.biosphere, rulePack);
+  $: presentKeys = new Set(layers.map((l) => l.morphology));
+
   let habitabilityTier = 'None';
   let tierColor = 'var(--tier-none)';
 
@@ -42,7 +50,7 @@
               coverage: 0.1,
               biochemistry: 'water-carbon',
               energy_source: 'photosynthesis',
-              morphologies: ['microbial']
+              morphologies: [{ morphology: 'microbial', coverage: 0.4 }]
           };
       } else {
           body.biosphere = undefined;
@@ -50,17 +58,43 @@
       dispatch('update');
   }
 
-  function toggleMorphology(morph: string) {
+  // Every write below goes through the NORMALISED list, so a legacy save is migrated the first time
+  // the GM touches it and never half-converted.
+  function writeLayers(next: { morphology: string; coverage: number }[]) {
       if (!body.biosphere) return;
-      // A generated biosphere can lack morphologies entirely (just complexity + coverage) — seed it.
-      if (!body.biosphere.morphologies) body.biosphere.morphologies = [];
-      if (body.biosphere.morphologies.includes(morph)) {
-          body.biosphere.morphologies = body.biosphere.morphologies.filter(m => m !== morph);
-      } else {
-          body.biosphere.morphologies = [...body.biosphere.morphologies, morph];
-      }
-      currentMorphologies = body.biosphere.morphologies;
+      body.biosphere.morphologies = next;
       dispatch('update');
+  }
+
+  function toggleMorphology(key: string) {
+      if (!body.biosphere) return;
+      const cur = biosphereLayers(body.biosphere, rulePack);
+      if (cur.some((l) => l.morphology === key)) {
+          writeLayers(cur.filter((l) => l.morphology !== key));
+      } else {
+          const def = morphDefs.find((d) => d.key === key);
+          // A new layer joins at its definition's default coverage, in its definition's order slot —
+          // so switching one on lands it where the hierarchy says it belongs rather than on top.
+          const next = [...cur, { morphology: key, coverage: def?.defaultCoverage ?? 0.5 }];
+          next.sort((a, b) =>
+            (morphDefs.findIndex((d) => d.key === a.morphology)) - (morphDefs.findIndex((d) => d.key === b.morphology)));
+          writeLayers(next);
+      }
+  }
+
+  function setCoverage(key: string, value: number) {
+      const cur = biosphereLayers(body.biosphere, rulePack);
+      writeLayers(cur.map((l) => (l.morphology === key ? { ...l, coverage: value } : l)));
+  }
+
+  // THE ORDER IS THE HIERARCHY, so moving a row is a real edit and not a display preference.
+  function move(index: number, delta: number) {
+      const cur = biosphereLayers(body.biosphere, rulePack);
+      const to = index + delta;
+      if (to < 0 || to >= cur.length) return;
+      const next = cur.slice();
+      [next[index], next[to]] = [next[to], next[index]];
+      writeLayers(next);
   }
 
   function handleUpdate() {
@@ -191,16 +225,89 @@
         </div>
 
         <div class="form-group">
-            <label>Morphologies</label>
+            <div class="label-row">
+                <label>Morphologies &amp; land cover</label>
+                <span class="hint-inline">order = hierarchy</span>
+            </div>
+            <p class="hint">Each covers that share of the <strong>land</strong>, painted over the ones above it —
+                so they are independent and may total past 100%. Move a row to change which covers which.</p>
+            {#if layers.length}
+                <div class="layer-list">
+                    {#each layers as l, i}
+                        {@const def = morphDefs.find((d) => d.key === l.morphology)}
+                        {@const drawn = body.vegetation?.layers?.find((v) => v.morphology === l.morphology)}
+                        <div class="layer-row">
+                            <div class="order-btns">
+                                <button type="button" title="Move deeper (drawn earlier)" disabled={i === 0} on:click={() => move(i, -1)}>▲</button>
+                                <button type="button" title="Move on top (drawn later)" disabled={i === layers.length - 1} on:click={() => move(i, 1)}>▼</button>
+                            </div>
+                            {#if drawn?.colorHex}
+                                <span class="chip" style="background:{drawn.colorHex}" title="{drawn.colorHex} — as human eyes would see it under this star"></span>
+                            {:else}
+                                <span class="chip none" title="This morphology contributes no colour seen from orbit"></span>
+                            {/if}
+                            <span class="layer-name">{def?.label ?? l.morphology}</span>
+                            <input type="range" min="0" max="1" step="0.01" value={l.coverage}
+                                   on:input={(e) => setCoverage(l.morphology, +e.currentTarget.value)} />
+                            <span class="layer-pct">{Math.round(l.coverage * 100)}%</span>
+                            <button type="button" class="drop" title="Remove" on:click={() => toggleMorphology(l.morphology)}>×</button>
+                        </div>
+                    {/each}
+                </div>
+            {:else}
+                <p class="hint">No morphologies yet — add one below.</p>
+            {/if}
             <div class="morphology-checkboxes">
-                {#each morphologies as morph}
-                    <label class="checkbox-label">
-                        <input type="checkbox" checked={currentMorphologies.includes(morph)} on:change={() => toggleMorphology(morph)} />
-                        {morph.charAt(0).toUpperCase() + morph.slice(1)}
-                    </label>
+                {#each morphDefs.filter((d) => !presentKeys.has(d.key)) as def}
+                    <button type="button" class="add-morph" title={def.note ?? ''} on:click={() => toggleMorphology(def.key)}>+ {def.label}</button>
                 {/each}
             </div>
         </div>
+
+        {#if body.vegetation}
+            <hr />
+            <h4>Derived look</h4>
+            <div class="derived">
+                {#if body.vegetation.pigmentLabel}
+                    <div class="derived-row">
+                        <span class="k">Dominant pigment</span>
+                        <span class="v">{body.vegetation.pigmentLabel}</span>
+                    </div>
+                    {#if body.vegetation.ranked?.length}
+                        <div class="derived-row">
+                            <span class="k">Also viable</span>
+                            <span class="v">{body.vegetation.ranked.filter((r) => r.viable && r.key !== body.vegetation?.pigment).map((r) => r.label).join(', ') || 'nothing else'}</span>
+                        </div>
+                    {/if}
+                {:else}
+                    <div class="derived-row">
+                        <span class="k">Pigment</span>
+                        <span class="v">none — this biosphere does not photosynthesise, so it takes no colour from its star</span>
+                    </div>
+                {/if}
+                <div class="derived-row">
+                    <span class="k">Life on the land</span>
+                    <span class="v">{Math.round(body.vegetation.visibleCover * 100)}% (the union of the layers, not their sum)</span>
+                </div>
+                <div class="derived-row">
+                    <span class="k">Clusters at</span>
+                    <span class="v">{Math.round(Math.max(0, body.vegetation.bandCentreDeg - body.vegetation.bandWidthDeg))}°–{Math.round(Math.min(90, body.vegetation.bandCentreDeg + body.vegetation.bandWidthDeg))}° latitude, where the solvent stays liquid</span>
+                </div>
+                {#if body.surfaceSpectrum}
+                    <div class="derived-row">
+                        <span class="k">Daylight there</span>
+                        <span class="v">
+                            <span class="chip inline" style="background:{body.surfaceSpectrum.surfaceLightHex}"></span>
+                            peaks at {body.surfaceSpectrum.peakSurfaceNm} nm at the {body.surfaceSpectrum.level}
+                            ({Math.round(body.surfaceSpectrum.totalSurfaceWm2)} W/m² of {Math.round(body.surfaceSpectrum.totalTopWm2)})
+                        </span>
+                    </div>
+                {/if}
+                <p class="hint">Which pigment dominates is a weighted draw over everything viable, seeded on this
+                    body — several usually work, and without a history the outcome genuinely is contingent.
+                    <a href="/physics#biosphere" target="_blank" rel="noopener">How this is derived</a>.</p>
+            </div>
+        {/if}
     {/if}
 </div>
 
@@ -374,15 +481,49 @@
   .morphology-checkboxes {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 6px;
+      margin-top: 6px;
   }
-  .checkbox-label {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      color: var(--text);
-      font-size: 0.9em;
+  .add-morph {
+      padding: 3px 8px;
+      font-size: 0.8em;
+      border-radius: 999px;
+      border: 1px dashed var(--border, #2a2d36);
+      background: transparent;
+      color: var(--text-muted, #cfcfcf);
       cursor: pointer;
   }
-  .checkbox-label input[type="checkbox"] { width: auto; margin: 0; }
+  .add-morph:hover { background: var(--bg-control-hover, #232733); color: var(--text, #fff); }
+
+  .hint { font-size: 0.78em; color: var(--text-faint, #8a8f9a); margin: 2px 0 6px; }
+  .hint-inline { font-size: 0.72em; color: var(--text-faint, #8a8f9a); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .layer-list { display: flex; flex-direction: column; gap: 4px; }
+  .layer-row { display: flex; align-items: center; gap: 6px; }
+  .layer-row input[type="range"] { flex: 1; min-width: 60px; padding: 0; }
+  .layer-name { font-size: 0.85em; min-width: 74px; color: var(--text, #eee); }
+  .layer-pct { font-size: 0.8em; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted, #cfcfcf); }
+  .order-btns { display: flex; flex-direction: column; gap: 1px; }
+  .order-btns button {
+      line-height: 1; font-size: 0.55em; padding: 1px 3px; border-radius: 2px;
+      border: 1px solid var(--border, #2a2d36); background: var(--bg-control, #1b1e26);
+      color: var(--text-muted, #cfcfcf); cursor: pointer;
+  }
+  .order-btns button:disabled { opacity: 0.3; cursor: default; }
+  .drop {
+      border: none; background: transparent; color: var(--text-faint, #8a8f9a);
+      cursor: pointer; font-size: 1em; line-height: 1; padding: 0 2px;
+  }
+  .drop:hover { color: #e74c3c; }
+  .chip {
+      width: 14px; height: 14px; border-radius: 3px; flex: none;
+      border: 1px solid var(--border, #2a2d36);
+  }
+  .chip.none { background: repeating-linear-gradient(45deg, #3a3d46 0 3px, transparent 3px 6px); }
+  .chip.inline { display: inline-block; vertical-align: -2px; margin-right: 4px; }
+
+  .derived { display: flex; flex-direction: column; gap: 4px; }
+  .derived-row { display: flex; gap: 10px; font-size: 0.82em; align-items: baseline; }
+  .derived-row .k { color: var(--text-faint, #8a8f9a); min-width: 108px; flex: none; }
+  .derived-row .v { color: var(--text-muted, #cfcfcf); }
 </style>

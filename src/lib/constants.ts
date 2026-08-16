@@ -29,6 +29,14 @@ export const HYDROSTATIC_MIN_RADIUS_KM = 200;
 export const EARTH_GRAVITY = 9.80665; // m/s^2
 export const EARTH_DENSITY = 5514; // kg/m^3
 
+// Radiometry — the surface-spectrum model (physics/spectrum.ts). Planck's law needs h and k; the
+// solar constant is the SCALE that turns a star's luminosity into an irradiance at a distance, and
+// it is the one calibration anchor in the spectral chain (Sol at 1 AU).
+export const PLANCK_H = 6.62607015e-34;         // J·s (exact, SI 2019)
+export const BOLTZMANN_K = 1.380649e-23;        // J/K (exact, SI 2019)
+export const AVOGADRO = 6.02214076e23;          // mol⁻¹ (exact, SI 2019) — atmospheric column density
+export const SOLAR_CONSTANT_WM2 = 1361;         // W/m² — total solar irradiance at 1 AU
+
 // Unshielded radiation dose at 1 AU from a Sun-like star (mSv/year)
 // Approx baseline for GCR + Solar Particle Events in free space.
 export const RADIATION_UNSHIELDED_DOSE_MSV_YR = 500;

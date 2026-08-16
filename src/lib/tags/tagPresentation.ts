@@ -396,7 +396,12 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'habitability/human':      { label: 'Human-habitable',  description: 'Liveable for unprotected humans with little or no life support.' },
   'habitability/alien':      { label: 'Alien-habitable',  description: 'Hostile to humans but viable for some biochemistry.' },
   'habitability/subsurface': { label: 'Subsurface niche',  description: 'No surface biosphere, but a liquid subsurface ocean with an energy source could host sub-ice life (Europa/Enceladus).' },
-  'habitability/none':       { label: 'Uninhabitable',    description: 'No plausible biosphere under the current model.' }
+  'habitability/none':       { label: 'Uninhabitable',    description: 'No plausible biosphere under the current model.' },
+
+  // --- Biosphere: what its life uses to catch the light, and how much of the ground it covers ---
+  'biodiversity/pigment':        { label: 'Dominant pigment',  description: 'The pigment most of this world\'s photosynthetic life uses, drawn from the set that scores as viable under the light reaching its ground. Several usually are, so which one dominates is contingent — the same world always gives the same answer, a similar world next door may not.' },
+  'biodiversity/pigment-viable': { label: 'Viable pigment',    description: 'Another pigment that would also work under this world\'s surface light. Carried once per pigment: a real biosphere has near-equal options and history picks between them.' },
+  'biodiversity/land-cover':     { label: 'Life on the land',  description: 'How much of the LAND shows any colour of life, as a percentage. It is the union of the layers painted over one another, not the sum of their coverages — each layer covers that share of the land, so the sliders may total well past 100%.' }
 };
 
 // --- Legacy tag cleanup -----------------------------------------------------------------------

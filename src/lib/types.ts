@@ -52,7 +52,7 @@ export interface Hydrosphere { coverage?: number; depth_m?: number; composition?
 // Derived apparent colour, kept BOTH as a flattened single swatch (hex — what the flat orrery
 // shows) AND as the un-mixed palette of contributions, so a future sphere/shader renderer can
 // draw Earth's ocean/land/cloud mix or Jupiter's bands from the same derivation (§2e).
-export type ApparentColorRole = 'surface' | 'ocean' | 'cloud' | 'ice-cap' | 'atmosphere' | 'incandescent';
+export type ApparentColorRole = 'surface' | 'vegetation' | 'ocean' | 'cloud' | 'ice-cap' | 'atmosphere' | 'incandescent';
 export interface ApparentColorStop { hex: string; role: ApparentColorRole; weight: number; label?: string; }
 export interface ApparentColor { hex: string; palette: ApparentColorStop[]; banding?: number; }
 // Bulk interior makeup (mass fractions, normalised). Density + radius derive from it (§2a).
@@ -152,12 +152,161 @@ export interface Magnetism {
   notes: string[];
 }
 
+/** One morphology present on a world, with how much of the LAND it paints.
+ *
+ *  COVERAGE IS OF THE LAND, NOT A SHARE OF IT. The layers stack painter-style in list order, so
+ *  microbial at 80%, fungal at 50% and flora at 60% are independent statements and may sum well past
+ *  100% without being wrong — fungal paints its 50% over whatever microbial already covered. Two
+ *  people will otherwise implement this two ways (inbox G19). */
+export interface BiosphereLayer {
+  morphology: string;   // a key into the rule pack's morphology definitions — NOT a closed union
+  coverage: number;     // 0..1 of the land, painted OVER the layers before it
+}
+
 export interface Biosphere {
   complexity: 'simple' | 'complex';
   coverage: number;
   biochemistry: 'water-carbon' | 'ammonia-silicon' | 'methane-carbon';
   energy_source: 'photosynthesis' | 'chemosynthesis' | 'thermosynthesis';
-  morphologies: ('microbial' | 'fungal' | 'flora' | 'fauna')[];
+  /** Ordered, deepest FIRST — THE ORDER IS THE HIERARCHY, and it is what makes the render a
+   *  painter's algorithm (plant life covers fungal, fungal colours microbial).
+   *
+   *  Widened from the closed union `('microbial'|'fungal'|'flora'|'fauna')[]` deliberately (G19):
+   *  a user-extensible list cannot be a closed union, so a morphology is now a KEY into pack data,
+   *  the same move gases and liquids already made. Saved campaigns carry bare strings and still
+   *  load — `biosphereLayers()` in physics/vegetation.ts is the ONE reader that normalises both
+   *  forms, so there is no second store of this fact and nothing to keep in sync. */
+  morphologies: (string | BiosphereLayer)[];
+}
+
+/** One absorption feature of a pigment: a Gaussian in wavelength. */
+export interface PigmentBand { centreNm: number; widthNm: number; strength: number; }
+
+/** A photosynthetic pigment as RULE-PACK DATA. Its colour is NOT authored — it is whatever the
+ *  pigment fails to absorb out of the light that actually reaches the ground, which is why the same
+ *  pigment presents green under one star and near-black under another. */
+export interface PigmentDef {
+  key: string;
+  label: string;
+  bands: PigmentBand[];
+  baselineAbsorptance?: number;   // flat absorption across the whole grid (melanin ≈ 0.8)
+  note?: string;
+}
+
+/** How the competing selection pressures are weighed. All of it is pack data because none of it is
+ *  settled science — see the three competing explanations on /physics#biosphere. */
+export interface PigmentModelConfig {
+  // The three weights are EXPONENTS — the pressures multiply rather than adding, so each one
+  // switches itself off in the regime where it stops meaning anything. See scorePigments.
+  captureWeight: number;        // photons absorbed, saturating
+  protectionWeight: number;     // damage avoided at high flux and at the high-energy end
+  steadinessWeight: number;     // steadiness of supply — absorbing on the flanks, not at the peak
+  /** Flat absorption of the ORGANISM the pigment sits in — water and structure, neither of them a
+   *  mirror. It is what makes a leaf dark green rather than a bright paint chip. */
+  tissueAbsorptance: number;
+  /** The photon flux at which a photosystem stops keeping up, photons·m⁻²·s⁻¹. Real vegetation
+   *  light-saturates at a fraction of full sunlight; this is the number that says at what fraction,
+   *  and it is what makes selectivity scale with available energy rather than being thresholded. */
+  saturationFlux: number;
+  /** The red limit of the reaction centre, nm. Everything a pigment absorbs shorter than this is
+   *  converted at the same fixed yield, so the excess energy is dumped as heat — the term that tells
+   *  a blue absorber apart from a red one. */
+  reactionCentreNm: number;
+  damageThresholdNm: number;    // photons shorter than this start doing harm as well as work
+  damageScale: number;          // how hard overload is punished
+  viabilityFraction: number;    // a pigment is viable at this fraction of the best score
+  drawSharpness: number;        // how sharply the weighted draw favours the leaders
+}
+
+/** One life morphology as RULE-PACK DATA. ONE uniform record; there are no special rules and no
+ *  render modes. A morphology that contributes no colour has an EMPTY tint list and zero pigment
+ *  drive; one that contributes no light has an EMPTY light range. Adding a sixth morphology is
+ *  another entry in this list and no code at all. */
+export interface MorphologyDef {
+  key: string;
+  label: string;
+  order: number;                    // painter order — lower paints first, deeper
+  defaultCoverage: number;          // 0..1 of the land, when a GM switches it on
+  tints: string[];                  // candidate surface colours; EMPTY = contributes no colour of its own
+  pigmentDriven: number;            // 0..1 how far the derived pigment colour replaces the tint
+  opacity: number;                  // how completely this layer hides what is beneath it
+  light: { min: number; max: number }; // night-side emission, 0..1; an EMPTY range means no lights
+  note?: string;
+}
+
+/** The spectrum that actually reaches the reference level, and the filter it came through.
+ *  PHY-2 — WHAT: spectral irradiance. WHERE: named by `level`. UNITS: W·m⁻²·nm⁻¹ on GRID_NM. */
+export interface SurfaceSpectrum {
+  level: 'surface' | '1 bar';   // NAME THE LEVEL. A giant has a level, not a surface (B18/B22).
+  starTempK: number;
+  distanceAU: number;
+  totalTopWm2: number;
+  totalSurfaceWm2: number;
+  photonFlux: number;           // photons·m⁻²·s⁻¹ reaching the level over the whole grid
+  peakTopNm: number;            // per-unit-WAVELENGTH peak (B53 — the two definitions differ)
+  peakSurfaceNm: number;
+  surfaceLightHex: string;      // what that light looks like TO HUMAN EYES
+  attenuators: { label: string; strength: number }[];   // strongest first; strength = 1 − transmission at its band
+}
+
+/** The full sampled curves behind a `SurfaceSpectrum`, on `GRID_NM`.
+ *
+ *  DELIBERATELY NOT STORED ON THE BODY. Three 113-element arrays per body is ten thousand lines on
+ *  the Sol fixture alone, and that fixture is a DIFF-REVIEW surface — burying every future physics
+ *  change in spectra makes it useless. It would also ride every save and every broadcast snapshot
+ *  for a value any consumer can rebuild in microseconds. The summary is what a body carries; a chart
+ *  that wants the shape calls `deriveSurfaceSpectrum` again, which is the SAME derivation and
+ *  therefore not a second authority on it. */
+export interface SurfaceSpectrumCurves {
+  nm: number[];
+  topOfAtmosphere: number[];    // W·m⁻²·nm⁻¹ above the atmosphere
+  surface: number[];            // W·m⁻²·nm⁻¹ at the reference level
+  transmission: number[];       // 0..1, what the sky let through
+}
+
+/** One pigment scored against a world's surface spectrum. A RANKED SET, never a single winner —
+ *  seven pigments are all viable around a G star and the honest claim is only which dominates. */
+export interface PigmentRank {
+  key: string;
+  label: string;
+  captured: number;      // fraction of available photons absorbed
+  sufficiency: number;   // 0..1, how far what it absorbs reaches the SATURATING flux — capture, capped
+  protection: number;    // 0..1, higher = less overload and less high-energy damage taken
+  steadiness: number;    // 0..1, 0.5 = neutral; above = absorbing on the flanks rather than at the peak
+  score: number;
+  viable: boolean;
+  drawWeight: number;    // share of the weighted draw among the viable set
+  /** What it reflects, ADAPTED to this star — the pigment's own identity, right for a legend. */
+  reflectedHex: string;
+  /** What it reflects with the star's cast and brightness LEFT IN — what you would see arriving
+   *  from orbit. This is the one a renderer uses; see reflectedHexUnderIlluminant for why. */
+  reflectedUnderStarHex: string;
+}
+
+/** The derived look of a world's life. Resolved from pack data onto the body — every renderer reads
+ *  this and none of them needs the rule pack, the same move `auroraEmitters` already makes. */
+export interface VegetationLayerSpec {
+  morphology: string;
+  label: string;
+  coverage: number;      // 0..1 of the land
+  opacity: number;
+  colorHex: string | null;   // null = this morphology contributes no colour (empty tints, no pigment drive)
+  light: number;             // 0..1 night-side emission
+}
+export interface Vegetation {
+  pigment: string | null;        // the drawn dominant; null when nothing photosynthesises here
+  pigmentLabel: string | null;
+  ranked: PigmentRank[];
+  layers: VegetationLayerSpec[]; // painter order, deepest first
+  visibleCover: number;          // 0..1 of the LAND showing any life colour (the union, not the sum)
+  /** 0..1 of the globe that IS land. Every coverage above is of the land, so a renderer scattering
+   *  patches over a whole disc must multiply by this or it paints the ocean green. Derived here,
+   *  where the hydrosphere is in hand, rather than re-derived per renderer. */
+  landFraction: number;
+  /** Where life clusters, as |latitude| in [centre - width, centre + width]. ONE convention: the
+   *  whole globe is centre 45 / width 45, never centre 0 / width 90. */
+  bandCentreDeg: number;
+  bandWidthDeg: number;
 }
 
 export interface Engine {
@@ -422,6 +571,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
   apparentColor?: ApparentColor;  // un-mixed palette behind apparentColorHex (for richer rendering)
+  /** The star's spectrum after the sky took its cut. ONE quantity, TWO consumers — the pigment
+   *  branch reads its photon counts, the presentation branch reads its colour — and it is derived
+   *  here in physics rather than in a renderer (inbox B54). */
+  surfaceSpectrum?: SurfaceSpectrum;
+  /** The derived look of this world's life: the ranked pigments, the drawn dominant, and one
+   *  painter-ordered layer per morphology with its colour already resolved from pack data. */
+  vegetation?: Vegetation;
   image?: ImageRef;           // type/artwork image; ImageRef.custom = a GM-uploaded picture the processor won't overwrite
   
   // Traveller Data
@@ -628,6 +784,14 @@ export interface GasReaction { from: string[]; yield?: number; }
 export interface GasPhysics {
   molarMass: number;
   shielding: number;
+  /** Rayleigh scattering cross-section RELATIVE TO N2 — the visible-light analogue of `shielding`,
+   *  which is the ionising one. Absent = 1 (treat it like nitrogen). CO2 scatters about 2.4× as
+   *  hard, H2 about 0.2× — that ratio is why a thick CO2 sky is not simply a thicker blue one. */
+  rayleigh?: number;
+  /** Where this gas EATS the incoming spectrum, as Gaussian bands. Absent = it takes only its
+   *  Rayleigh share, which is the honest answer for N2, O2 and Ar. Authoring, not architecture —
+   *  the shape was always here, the numbers were not (inbox B54). */
+  absorptionBands?: PigmentBand[];
   greenhouse: number;
   specificHeat: number;
   radiativeCooling: number;
@@ -672,6 +836,11 @@ export interface RulePack {
   gasMolarMassesKg?: Record<string, number>; // Legacy support (optional)
   gasShielding?: Record<string, number>; // Legacy support (optional)
   liquids?: LiquidDef[];
+  // Biosphere look levers — all OPTIONAL overrides of the built-in defaults in src/lib/data/.
+  // A pack ships them together in one `biospheres.json`; see rulepack-loader.
+  pigments?: PigmentDef[];
+  pigmentModel?: PigmentModelConfig;
+  morphologies?: MorphologyDef[];
   orbitalConstants?: Record<string, number>;
   constructTemplates?: Record<string, CelestialBody[]>; // Templates are CelestialBody objects
   engineDefinitions?: {
@@ -797,6 +966,7 @@ export interface RulePackOverrides {
   gasPhysics?: Record<string, GasPhysics>;
   atmosphereCompositions?: any[];
   liquids?: LiquidDef[];
+  morphologies?: MorphologyDef[];
 }
 
 export interface TemporalHierarchyUnit {

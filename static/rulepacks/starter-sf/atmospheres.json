@@ -3,6 +3,7 @@
     "N2": {
       "molarMass": 0.028,
       "shielding": 7.2,
+      "rayleigh": 1,
       "greenhouse": 0,
       "specificHeat": 1.04,
       "radiativeCooling": 0.05,
@@ -31,6 +32,11 @@
     "O2": {
       "molarMass": 0.032,
       "shielding": 7.5,
+      "rayleigh": 0.94,
+      "absorptionBands": [
+        { "centreNm": 762, "widthNm": 6, "strength": 0.5 },
+        { "centreNm": 688, "widthNm": 6, "strength": 0.15 }
+      ],
       "greenhouse": 0,
       "specificHeat": 0.92,
       "radiativeCooling": 0.05,
@@ -82,6 +88,7 @@
     "Ar": {
       "molarMass": 0.04,
       "shielding": 8.5,
+      "rayleigh": 0.92,
       "greenhouse": 0,
       "specificHeat": 0.52,
       "radiativeCooling": 0,
@@ -102,6 +109,7 @@
     "He": {
       "molarMass": 0.004,
       "shielding": 1,
+      "rayleigh": 0.06,
       "greenhouse": 0,
       "specificHeat": 5.19,
       "radiativeCooling": 0,
@@ -118,6 +126,7 @@
     "Ne": {
       "molarMass": 0.02,
       "shielding": 3,
+      "rayleigh": 0.08,
       "greenhouse": 0,
       "specificHeat": 1.03,
       "radiativeCooling": 0,
@@ -138,6 +147,7 @@
     "Kr": {
       "molarMass": 0.084,
       "shielding": 12,
+      "rayleigh": 2.2,
       "greenhouse": 0,
       "specificHeat": 0.25,
       "radiativeCooling": 0,
@@ -162,6 +172,11 @@
     "CO2": {
       "molarMass": 0.044,
       "shielding": 8,
+      "rayleigh": 2.45,
+      "absorptionBands": [
+        { "centreNm": 1050, "widthNm": 30, "strength": 5 },
+        { "centreNm": 1400, "widthNm": 70, "strength": 120 }
+      ],
       "greenhouse": 22,
       "specificHeat": 0.84,
       "radiativeCooling": 0.9,
@@ -194,6 +209,14 @@
     "H2O": {
       "molarMass": 0.018,
       "shielding": 8.5,
+      "rayleigh": 1.05,
+      "absorptionBands": [
+        { "centreNm": 720, "widthNm": 18, "strength": 7.5 },
+        { "centreNm": 820, "widthNm": 20, "strength": 21 },
+        { "centreNm": 940, "widthNm": 30, "strength": 72 },
+        { "centreNm": 1130, "widthNm": 35, "strength": 108 },
+        { "centreNm": 1380, "widthNm": 55, "strength": 575 }
+      ],
       "greenhouse": 3,
       "specificHeat": 1.86,
       "radiativeCooling": 0.6,
@@ -218,6 +241,15 @@
     "CH4": {
       "molarMass": 0.016,
       "shielding": 5,
+      "rayleigh": 1.4,
+      "absorptionBands": [
+        { "centreNm": 619, "widthNm": 14, "strength": 0.5 },
+        { "centreNm": 727, "widthNm": 18, "strength": 1.2 },
+        { "centreNm": 890, "widthNm": 25, "strength": 3.5 },
+        { "centreNm": 1000, "widthNm": 30, "strength": 5 },
+        { "centreNm": 1160, "widthNm": 35, "strength": 9 },
+        { "centreNm": 1330, "widthNm": 45, "strength": 12 }
+      ],
       "greenhouse": 25,
       "specificHeat": 2.22,
       "radiativeCooling": 0.5,
@@ -254,6 +286,10 @@
     "SO2": {
       "molarMass": 0.064,
       "shielding": 12,
+      "rayleigh": 2,
+      "absorptionBands": [
+        { "centreNm": 295, "widthNm": 25, "strength": 60 }
+      ],
       "greenhouse": 15,
       "specificHeat": 0.64,
       "radiativeCooling": 0.55,
@@ -282,6 +318,10 @@
     "H2S": {
       "molarMass": 0.034,
       "shielding": 7.5,
+      "rayleigh": 1.8,
+      "absorptionBands": [
+        { "centreNm": 290, "widthNm": 22, "strength": 40 }
+      ],
       "greenhouse": 12,
       "specificHeat": 1.01,
       "radiativeCooling": 0.4,
@@ -306,6 +346,13 @@
     "NH3": {
       "molarMass": 0.017,
       "shielding": 5,
+      "rayleigh": 1.6,
+      "absorptionBands": [
+        { "centreNm": 648, "widthNm": 16, "strength": 1.5 },
+        { "centreNm": 790, "widthNm": 20, "strength": 3 },
+        { "centreNm": 930, "widthNm": 26, "strength": 6 },
+        { "centreNm": 1220, "widthNm": 40, "strength": 9 }
+      ],
       "greenhouse": 18,
       "specificHeat": 2.17,
       "radiativeCooling": 0.45,
@@ -330,6 +377,10 @@
     "Cl2": {
       "molarMass": 0.071,
       "shielding": 15,
+      "rayleigh": 3.6,
+      "absorptionBands": [
+        { "centreNm": 330, "widthNm": 45, "strength": 25 }
+      ],
       "greenhouse": 5,
       "specificHeat": 0.48,
       "radiativeCooling": 0.2,
@@ -362,6 +413,10 @@
     "F2": {
       "molarMass": 0.038,
       "shielding": 15,
+      "rayleigh": 1.1,
+      "absorptionBands": [
+        { "centreNm": 290, "widthNm": 30, "strength": 20 }
+      ],
       "greenhouse": 0,
       "specificHeat": 0.82,
       "radiativeCooling": 0.2,
@@ -386,6 +441,7 @@
     "H2": {
       "molarMass": 0.002,
       "shielding": 0.5,
+      "rayleigh": 0.21,
       "greenhouse": 0,
       "specificHeat": 14.3,
       "radiativeCooling": 0.01,
@@ -418,6 +474,7 @@
     "CO": {
       "molarMass": 0.028,
       "shielding": 7.2,
+      "rayleigh": 0.98,
       "greenhouse": 5,
       "specificHeat": 1.04,
       "radiativeCooling": 0.7,
@@ -442,6 +499,10 @@
     "HCN": {
       "molarMass": 0.028,
       "shielding": 5,
+      "rayleigh": 1.7,
+      "absorptionBands": [
+        { "centreNm": 300, "widthNm": 30, "strength": 30 }
+      ],
       "greenhouse": 15,
       "specificHeat": 1.32,
       "radiativeCooling": 0.5,
@@ -477,6 +538,10 @@
     "C2H6": {
       "molarMass": 0.03,
       "shielding": 5.5,
+      "rayleigh": 2.4,
+      "absorptionBands": [
+        { "centreNm": 1180, "widthNm": 30, "strength": 8 }
+      ],
       "greenhouse": 20,
       "specificHeat": 1.75,
       "radiativeCooling": 0.6,
@@ -501,6 +566,7 @@
     "CFC": {
       "molarMass": 0.121,
       "shielding": 20,
+      "rayleigh": 3,
       "greenhouse": 150,
       "specificHeat": 0.6,
       "radiativeCooling": 0.85,
@@ -525,6 +591,10 @@
     "Na": {
       "molarMass": 0.023,
       "shielding": 15,
+      "rayleigh": 40,
+      "absorptionBands": [
+        { "centreNm": 589, "widthNm": 6, "strength": 4000 }
+      ],
       "greenhouse": 5,
       "specificHeat": 0.9,
       "radiativeCooling": 0.3,
@@ -540,6 +610,10 @@
     "K": {
       "molarMass": 0.039,
       "shielding": 18,
+      "rayleigh": 50,
+      "absorptionBands": [
+        { "centreNm": 768, "widthNm": 8, "strength": 5000 }
+      ],
       "greenhouse": 5,
       "specificHeat": 0.53,
       "radiativeCooling": 0.3,
@@ -555,6 +629,10 @@
     "Fe": {
       "molarMass": 0.056,
       "shielding": 80,
+      "rayleigh": 6,
+      "absorptionBands": [
+        { "centreNm": 380, "widthNm": 60, "strength": 40 }
+      ],
       "greenhouse": 15,
       "specificHeat": 0.37,
       "radiativeCooling": 0.4,
@@ -570,6 +648,7 @@
     "SiO": {
       "molarMass": 0.044,
       "shielding": 50,
+      "rayleigh": 3,
       "greenhouse": 20,
       "specificHeat": 0.7,
       "radiativeCooling": 0.5,
@@ -585,6 +664,7 @@
     "HF": {
       "molarMass": 0.02,
       "shielding": 3,
+      "rayleigh": 0.6,
       "greenhouse": 10,
       "specificHeat": 1.45,
       "radiativeCooling": 0.3,
@@ -613,6 +693,7 @@
     "HCl": {
       "molarMass": 0.036,
       "shielding": 10,
+      "rayleigh": 1.5,
       "greenhouse": 5,
       "specificHeat": 0.8,
       "radiativeCooling": 0.3,
@@ -637,6 +718,10 @@
     "H2SO4": {
       "molarMass": 0.098,
       "shielding": 20,
+      "rayleigh": 3.2,
+      "absorptionBands": [
+        { "centreNm": 300, "widthNm": 35, "strength": 30 }
+      ],
       "greenhouse": 40,
       "specificHeat": 0.7,
       "radiativeCooling": 0.6,
@@ -716,6 +801,10 @@
     "S": {
       "molarMass": 0.032,
       "shielding": 3,
+      "rayleigh": 2.4,
+      "absorptionBands": [
+        { "centreNm": 420, "widthNm": 70, "strength": 25 }
+      ],
       "greenhouse": 0,
       "specificHeat": 0.71,
       "radiativeCooling": 0.3,
@@ -727,6 +816,7 @@
     "H": {
       "molarMass": 0.001,
       "shielding": 0.2,
+      "rayleigh": 0.15,
       "greenhouse": 0,
       "specificHeat": 14.3,
       "radiativeCooling": 0.01,
