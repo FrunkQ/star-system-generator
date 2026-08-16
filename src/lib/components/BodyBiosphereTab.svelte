@@ -10,6 +10,7 @@
   import { allMorphologies, biosphereLayers } from '$lib/physics/vegetation';
   import { maxUsefulCoverage } from '$lib/rendering/landmass';
   import { allPigments } from '$lib/physics/pigments';
+  import UnderThisLight from '$lib/charts/UnderThisLight.svelte';
 
   const complexities = ['none', 'simple', 'complex', 'sapient'];
   const biochemistries = ['water-carbon', 'ammonia-silicon', 'methane-carbon'];
@@ -378,6 +379,12 @@
                         </span>
                     </div>
                 {/if}
+                {#if body.surfaceSpectrum}
+                    <details class="under-light-block">
+                        <summary>What things look like down there</summary>
+                        <UnderThisLight body={body} pack={rulePack} height={210} />
+                    </details>
+                {/if}
                 <p class="hint">Which pigment dominates is a weighted draw over everything viable, seeded on this
                     body — several usually work, and without a history the outcome genuinely is contingent.
                     <a href="/physics#biosphere" target="_blank" rel="noopener">How this is derived</a>.</p>
@@ -622,6 +629,8 @@
   .derived-row { display: flex; gap: 10px; font-size: 0.82em; align-items: baseline; }
   .derived-row .k { color: var(--text-faint, #8a8f9a); min-width: 108px; flex: none; }
   .derived-row .v { color: var(--text-muted, #cfcfcf); }
+  .under-light-block { margin: 6px 0; }
+  .under-light-block summary { cursor: pointer; font-size: 0.82em; color: var(--link, #6cb6ff); }
   .pigment-pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .pigment-pick select { padding: 3px 6px; font-size: 0.95em; max-width: 210px; }
   .swatches { display: flex; gap: 3px; }

@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.660-beta - 16th Aug 2026
+
+- NEW: "what it looks like from inside". A familiar colour chart and a row of wires, with a world's own daylight applied to one half and a slider to wipe between home and there. It is the honest answer to a question that comes up at a table more often than it should — can they tell which wire is the red one?
+- Underneath it, how confusable each pair actually becomes, quoted against home so it reads "66% as distinct" rather than as an abstract number. Measured AFTER your eyes adjust, which is the fair test: a cast is something a person gets used to within the hour, but two colours the light cannot separate stay inseparable however long they stand there.
+- On /physics it follows the star and sky you set in the explorer above it, so you can drag a G star down to an M dwarf and watch the blues go. On a world's Bio tab it uses that world's own light.
+- The GM's picture of a world gains a view switch, top-left: the artist's impression for its type, the 2D disc, a spinnable 3D globe, its colour swatches, and the horizon view under its own daylight. The 2D/3D switching is the same one the player document already uses rather than a second copy of it.
+- FIXED on the way: a saturated colour came back washed out even under our own Sun. Turning a colour back into a spectrum needs the basis curves to SUBTRACT from one another, and they were being held non-negative — so a red kept the green its own broad curve was spilling.
+
 ## v2.1.658-beta - 16th Aug 2026
 
 - FIXED: the colour ribbon under a spectrum plot showed bright cyan in the ultraviolet and mint green in the infrared — colour where the eye has none. Each wavelength was being scaled to full brightness on its own, which amplified numerical noise in the tails. It now fades to black at both ends, which is the honest edge of your own vision.

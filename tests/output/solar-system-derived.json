@@ -277,10 +277,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#9c8646",
+        "hex": "#9a7d41",
         "palette": [
           {
-            "hex": "#837258",
+            "hex": "#816651",
             "role": "surface",
             "weight": 1,
             "label": "metal surface"
@@ -294,7 +294,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#9c8646",
+      "apparentColorHex": "#9a7d41",
       "classification": {
         "base": "planet/hot-eyeball",
         "baseScore": 1.56,
@@ -752,10 +752,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#ebaa99",
+        "hex": "#ecaa9a",
         "palette": [
           {
-            "hex": "#dc0025",
+            "hex": "#e10027",
             "role": "surface",
             "weight": 1,
             "label": "oxidised rock surface"
@@ -769,7 +769,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#ebaa99",
+      "apparentColorHex": "#ecaa9a",
       "classification": {
         "base": "planet/silicate",
         "baseScore": 1.23,
@@ -1409,10 +1409,10 @@
         "bandWidthDeg": 39.5
       },
       "apparentColor": {
-        "hex": "#8dabab",
+        "hex": "#93a3ab",
         "palette": [
           {
-            "hex": "#9a8058",
+            "hex": "#98724e",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
@@ -1424,7 +1424,7 @@
             "label": "Chlorophyll vegetation"
           },
           {
-            "hex": "#6c97aa",
+            "hex": "#7989ab",
             "role": "ocean",
             "weight": 0.71,
             "label": "water ocean"
@@ -1438,7 +1438,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#8dabab",
+      "apparentColorHex": "#93a3ab",
       "classification": {
         "base": "planet/earth-analogue",
         "baseScore": 2.17,
@@ -1907,10 +1907,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#a08861",
+        "hex": "#9f7856",
         "palette": [
           {
-            "hex": "#a08861",
+            "hex": "#9f7856",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
@@ -1918,7 +1918,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#a08861",
+      "apparentColorHex": "#9f7856",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.2,
@@ -2381,10 +2381,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#9f8054",
+        "hex": "#9f6546",
         "palette": [
           {
-            "hex": "#9e7d4e",
+            "hex": "#9e6140",
             "role": "surface",
             "weight": 1,
             "label": "oxidised rock surface"
@@ -2398,7 +2398,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#9f8054",
+      "apparentColorHex": "#9f6546",
       "classification": {
         "base": "planet/sub-earth",
         "baseScore": 1.3,
@@ -2784,10 +2784,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -2795,7 +2795,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,
@@ -3198,10 +3198,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -3209,7 +3209,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "asteroid/comet",
         "baseScore": 1.43,
@@ -3782,10 +3782,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#c7b8a3",
+        "hex": "#c6b8a3",
         "palette": [
           {
-            "hex": "#ddc9a5",
+            "hex": "#d7c09d",
             "role": "surface",
             "weight": 1,
             "label": "gas surface"
@@ -3805,7 +3805,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#c7b8a3",
+      "apparentColorHex": "#c6b8a3",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -4245,10 +4245,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#b09d7a",
+        "hex": "#af9171",
         "palette": [
           {
-            "hex": "#9c8460",
+            "hex": "#9b7555",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
@@ -4262,7 +4262,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#b09d7a",
+      "apparentColorHex": "#af9171",
       "classification": {
         "base": "planet/sulfur",
         "baseScore": 1.68,
@@ -4762,16 +4762,16 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#cbd5d7",
+        "hex": "#cacad3",
         "palette": [
           {
-            "hex": "#a38c67",
+            "hex": "#a27d5c",
             "role": "surface",
             "weight": 1,
             "label": "rock surface"
           },
           {
-            "hex": "#cfdde3",
+            "hex": "#ced2e0",
             "role": "surface",
             "weight": 1,
             "label": "water ice sheet"
@@ -4779,7 +4779,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#cbd5d7",
+      "apparentColorHex": "#cacad3",
       "classification": {
         "base": "planet/subsurface-ocean",
         "baseScore": 2.16,
@@ -5225,16 +5225,16 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#d1dfe5",
+        "hex": "#d0d4e2",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
           },
           {
-            "hex": "#cfdde3",
+            "hex": "#ced2e0",
             "role": "surface",
             "weight": 1,
             "label": "water ice sheet"
@@ -5242,7 +5242,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d1dfe5",
+      "apparentColorHex": "#d0d4e2",
       "classification": {
         "base": "planet/ice",
         "baseScore": 1.3,
@@ -5659,16 +5659,16 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#d1dfe5",
+        "hex": "#d0d4e2",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
           },
           {
-            "hex": "#cfdde3",
+            "hex": "#ced2e0",
             "role": "surface",
             "weight": 1,
             "label": "water ice sheet"
@@ -5676,7 +5676,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d1dfe5",
+      "apparentColorHex": "#d0d4e2",
       "classification": {
         "base": "planet/ice",
         "baseScore": 1.3,
@@ -6118,7 +6118,7 @@
         "hex": "#bdad99",
         "palette": [
           {
-            "hex": "#e3c895",
+            "hex": "#ddbf8e",
             "role": "surface",
             "weight": 1,
             "label": "gas surface"
@@ -6637,10 +6637,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#f1da89",
+        "hex": "#f1d58b",
         "palette": [
           {
-            "hex": "#ffdd6e",
+            "hex": "#ffd671",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -6654,7 +6654,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#f1da89",
+      "apparentColorHex": "#f1d58b",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.16,
@@ -7075,16 +7075,16 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#d1dfe5",
+        "hex": "#d0d4e2",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
           },
           {
-            "hex": "#cfdde3",
+            "hex": "#ced2e0",
             "role": "surface",
             "weight": 1,
             "label": "water ice sheet"
@@ -7092,7 +7092,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d1dfe5",
+      "apparentColorHex": "#d0d4e2",
       "classification": {
         "base": "planet/subsurface-ocean",
         "baseScore": 2.16,
@@ -7503,10 +7503,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -7514,7 +7514,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,
@@ -7948,10 +7948,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -7959,7 +7959,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,
@@ -8386,10 +8386,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -8397,7 +8397,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "asteroid/comet",
         "baseScore": 1.43,
@@ -8826,10 +8826,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -8837,7 +8837,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/barren",
         "baseScore": 1.19,
@@ -9230,10 +9230,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -9241,7 +9241,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/barren",
         "baseScore": 1.19,
@@ -9674,10 +9674,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#60b1d2",
+        "hex": "#60b1d1",
         "palette": [
           {
-            "hex": "#dfca96",
+            "hex": "#d9c08f",
             "role": "surface",
             "weight": 1,
             "label": "gas surface"
@@ -9691,7 +9691,7 @@
         ],
         "banding": 3
       },
-      "apparentColorHex": "#60b1d2",
+      "apparentColorHex": "#60b1d1",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -10075,10 +10075,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -10086,7 +10086,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -10476,10 +10476,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -10487,7 +10487,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -10881,10 +10881,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -10892,7 +10892,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,
@@ -11321,10 +11321,10 @@
         ]
       },
       "apparentColor": {
-        "hex": "#608ace",
+        "hex": "#5f8ace",
         "palette": [
           {
-            "hex": "#dfc99b",
+            "hex": "#d9c094",
             "role": "surface",
             "weight": 1,
             "label": "gas surface"
@@ -11338,7 +11338,7 @@
         ],
         "banding": 3
       },
-      "apparentColorHex": "#608ace",
+      "apparentColorHex": "#5f8ace",
       "classification": {
         "base": "planet/ice-giant",
         "baseScore": 1.4,
@@ -11830,16 +11830,16 @@
         ]
       },
       "apparentColor": {
-        "hex": "#d0dde3",
+        "hex": "#cfd3e0",
         "palette": [
           {
-            "hex": "#dfe5e6",
+            "hex": "#dddde3",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
           },
           {
-            "hex": "#cfdde3",
+            "hex": "#ced2e0",
             "role": "surface",
             "weight": 1,
             "label": "water ice sheet"
@@ -11853,7 +11853,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d0dde3",
+      "apparentColorHex": "#cfd3e0",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -12414,10 +12414,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -12425,7 +12425,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/dwarf-planet",
         "baseScore": 1.2,
@@ -12828,10 +12828,10 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#e7f4f6",
+        "hex": "#e5e9f5",
         "palette": [
           {
-            "hex": "#e7f4f6",
+            "hex": "#e5e9f5",
             "role": "surface",
             "weight": 1,
             "label": "ice surface"
@@ -12839,7 +12839,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e7f4f6",
+      "apparentColorHex": "#e5e9f5",
       "classification": {
         "base": "planet/planetesimal",
         "baseScore": 1.2,

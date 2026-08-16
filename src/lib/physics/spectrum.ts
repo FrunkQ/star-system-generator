@@ -210,47 +210,104 @@ function srgbGamma(u: number): number {
  * neutral assumption rather than a right answer. Authoring real reflectance curves per material
  * would beat it, and the pack's shape already allows that.
  */
-const BASIS = [
+export const BASIS_LOBES = [
   { c: 640, w: 95 },   // long
   { c: 545, w: 70 },   // middle
   { c: 458, w: 62 }    // short
 ];
 export function reflectanceFromHex(hex: string): Spectrum {
+  return reflectanceFromLinear(...srgbToLinear(hex));
+}
+
+/** sRGB hex → linear RGB. Reflectance is a linear quantity; an authored hex is a display colour. */
+export function srgbToLinear(hex: string): [number, number, number] {
   const h = hex.replace('#', '');
   const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
   const v = parseInt(n, 16);
-  // sRGB -> linear: the authored value is a display colour, and reflectance is a linear quantity.
-  const toLin = (u: number) => (u <= 0.04045 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4));
-  const rgb = [toLin(((v >> 16) & 255) / 255), toLin(((v >> 8) & 255) / 255), toLin((v & 255) / 255)];
-  const white = Math.min(rgb[0], rgb[1], rgb[2]);
-  const excess = rgb.map((x) => Math.max(0, x - white));
+  const f = (u: number) => (u <= 0.04045 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4));
+  return [f(((v >> 16) & 255) / 255), f(((v >> 8) & 255) / 255), f((v & 255) / 255)];
+}
 
-  const build = (w: number[]) => GRID_NM.map((nm) => {
-    // Flat past the red end: an authored colour carries no infrared information, so do not invent any.
-    const lam = Math.min(nm, 700);
-    let r = white;
-    for (let i = 0; i < BASIS.length; i++) {
-      const t = (lam - BASIS[i].c) / BASIS[i].w;
-      r += w[i] * Math.exp(-0.5 * t * t);
-    }
-    return Math.max(0, Math.min(1, r));
-  });
+/**
+ * The basis WEIGHTS for a linear RGB — white plus the three lobes.
+ *
+ * SOLVED, not fitted. The reflectance is a linear combination of the four basis curves and the
+ * conversion to linear sRGB is linear in the spectrum, so the whole map from weights to colour is a
+ * single 3x3 (the white basis is flat and lands exactly on (1,1,1) by construction). Inverting it
+ * once gives the weights in closed form.
+ *
+ * It replaced a two-pass iterative correction. Same answers, but it is ~40x cheaper and exact, which
+ * is what makes filtering a whole IMAGE through a world's light affordable — a quarter of a million
+ * pixels cannot each afford an iterative fit.
+ */
+export function basisWeights(r: number, g: number, b: number): [number, number, number, number] {
+  const white = Math.min(r, g, b);
+  const e = [r - white, g - white, b - white];
+  const M = basisInv();
+  // NOT clamped to zero. The lobes are broad and overlap heavily in the eye's response — the long
+  // one spills a great deal into the green — so a saturated red needs a NEGATIVE green weight to
+  // cancel that spill. Clamping the weights left the spill in, and a pillar-box red came back as
+  // pale peach under our own sun: a round trip that should not move at all. Subtraction between
+  // basis functions is how this method is meant to work; the RESULT is clamped non-negative
+  // instead, which is where the physical constraint actually belongs.
+  return [
+    white,
+    M[0][0] * e[0] + M[0][1] * e[1] + M[0][2] * e[2],
+    M[1][0] * e[0] + M[1][1] * e[1] + M[1][2] * e[2],
+    M[2][0] * e[0] + M[2][1] * e[1] + M[2][2] * e[2]
+  ];
+}
 
-  // CORRECT THE WEIGHTS, twice. The three lobes overlap heavily in the eye's own response — the
-  // short one in particular lands where the green and blue cone responses both sit — so using the
-  // channel excesses raw comes back a different hue than it went in. Two multiplicative passes
-  // measuring what the curve ACTUALLY produces and scaling toward the target fixes it, and it is
-  // cheap because the whole thing is a hundred-odd samples.
-  let w = excess.slice();
-  for (let pass = 0; pass < 2; pass++) {
-    const got = linearRgbOf(build(w));
-    for (let i = 0; i < 3; i++) {
-      if (excess[i] <= 1e-6) { w[i] = 0; continue; }
-      const target = rgb[i], have = got[i];
-      if (have > 1e-6) w[i] = Math.max(0, Math.min(4, w[i] * Math.pow(target / have, 0.9)));
-    }
-  }
-  return build(w);
+/** A reflectance curve for a linear RGB. */
+export function reflectanceFromLinear(r: number, g: number, b: number): Spectrum {
+  const [w, wr, wg, wb] = basisWeights(r, g, b);
+  const raw = GRID_NM.map((nm, i) =>
+    Math.max(0, w + wr * BASIS_CURVES[0][i] + wg * BASIS_CURVES[1][i] + wb * BASIS_CURVES[2][i]));
+  // SCALE, NEVER CLAMP. A reflectance cannot exceed 1, but a saturated colour needs a taller lobe
+  // than that — three broad basis curves cannot make a pillar-box red without one. CLIPPING the peak
+  // flattens it and broadens the curve, which changes the HUE: a saturated red came back as pale
+  // peach even under our own sun, a round trip that should not move at all. Scaling the whole curve
+  // instead moves the LIGHTNESS and leaves the hue alone — and darker is the honest answer, because
+  // a maximally saturated surface really is a dark one.
+  const peak = Math.max(...raw);
+  return peak > 1 ? raw.map((v) => v / peak) : raw;
+}
+
+/** Each lobe sampled on the grid, once. Flat past the red end — an authored colour says nothing
+ *  about the infrared, so nothing is invented there. */
+const BASIS_CURVES: number[][] = BASIS_LOBES.map((bs) =>
+  GRID_NM.map((nm) => {
+    const t = (Math.min(nm, 700) - bs.c) / bs.w;
+    return Math.exp(-0.5 * t * t);
+  }));
+
+/** The 3x3 taking lobe weights to linear sRGB under equal-energy light, inverted.
+ *  LAZY, because it needs the D65 constant declared further down and module initialisation runs top
+ *  to bottom — an eager version threw "cannot access D65 before initialization" on import. */
+let _basisInv: number[][] | null = null;
+function basisInv(): number[][] {
+  if (_basisInv) return _basisInv;
+  _basisInv = (() => {
+  const cols = BASIS_CURVES.map((curve) => linearRgbOf(curve));
+  // Column-major → the matrix A with A·w = rgb.
+  const A = [
+    [cols[0][0], cols[1][0], cols[2][0]],
+    [cols[0][1], cols[1][1], cols[2][1]],
+    [cols[0][2], cols[1][2], cols[2][2]]
+  ];
+  const d =
+    A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) -
+    A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) +
+    A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+  if (!d) return [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  const inv = (i: number, j: number) => {
+    const m = [0, 1, 2].filter((x) => x !== j).map((x) => [0, 1, 2].filter((y) => y !== i).map((y) => A[x][y]));
+    const c = m[0][0] * m[1][1] - m[0][1] * m[1][0];
+    return ((i + j) % 2 ? -c : c) / d;
+  };
+    return [0, 1, 2].map((i) => [0, 1, 2].map((j) => inv(i, j)));
+  })();
+  return _basisInv;
 }
 
 /** Linear-sRGB of a reflectance curve under EQUAL-ENERGY light — the reference the upsample corrects

@@ -2426,7 +2426,7 @@
                 {/if}
             {/if}
             
-            <BodyImage body={focusedBody} />
+            <BodyImage body={focusedBody} {system} {rulePack} />
             {#if focusedBody?.roleHint === 'star' && $systemStore?.credits?.author}
                 {@const c = $systemStore.credits}
                 <div class="system-credit">
