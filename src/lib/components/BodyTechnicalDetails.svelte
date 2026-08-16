@@ -7,6 +7,7 @@
   import { biosphereLayers, morphologyDef } from '$lib/physics/vegetation';
   import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
   import { calculateSurfaceTemperature } from '$lib/physics/temperature';
+  import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
   import { systemStore, fmt } from '$lib/stores';
   import { get } from 'svelte/store';
   import { onMount } from 'svelte';
@@ -312,7 +313,7 @@
             // The MEAN a reader wants is the average of the day and night sides, which the physics
             // publishes on the profile; `temperatureK` is the RADIATING temperature and they part
             // company exactly when the swing is large (inbox B63).
-            surfaceTempC = (body.temperatureProfile?.meanK ?? body.temperatureK) - 273.15;
+            surfaceTempC = meanSurfaceTempK(body) - 273.15;
 
             tempTooltip = `Equilibrium: ${$fmt.tempK(body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K | Radiates at: ${$fmt.tempK(body.temperatureK || 0)} (power balance — above the average whenever day and night differ)`;
             // Break the same numbers out by SOURCE for the Internal Heat block. Kept beside the

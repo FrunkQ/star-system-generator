@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, Barycenter, RulePack } from '$lib/types';
   import { calculateEquilibriumTemperature, estimateBondAlbedo, estimateInternalHeatK, composeBodySurfaceTemperature } from '$lib/physics/temperature';
+  import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
   import { fmt } from '$lib/stores';
 
   export let body: CelestialBody;
@@ -120,7 +121,7 @@
   // derives from the energy balance (physics/surfaceTemperature). `temperatureK` is the composed
   // RADIATING temperature and is what the rest of the engine keys on; they part company exactly when
   // the swing is large (inbox B63). Falls back to it for anything with no profile yet.
-  $: meanSurfaceK = body.temperatureProfile?.meanK ?? body.temperatureK ?? 0;
+  $: meanSurfaceK = meanSurfaceTempK(body);
 
   let lastEqKey = '';
   $: {

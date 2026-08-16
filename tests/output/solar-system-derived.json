@@ -394,12 +394,12 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 15.38726864009779,
+      "habitabilityScore": 32.88726864009779,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
-            "points": 0,
+            "points": 17.5,
             "max": 25,
             "value": "440 K (167 °C)",
             "ideal": "10–25 °C",
@@ -465,14 +465,14 @@
             }
           }
         ],
-        "surfaceScore": 25,
+        "surfaceScore": 43,
         "modifiers": [
           {
             "label": "Geologically inactive (no recycling)",
             "delta": -10
           }
         ],
-        "finalScore": 15,
+        "finalScore": 33,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
@@ -928,7 +928,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 410.44142124688244,
+        "minLeoKm": 410.6486130208151,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
         "heoUpperBoundaryKm": 1004980.1034093457,
@@ -1705,7 +1705,7 @@
         "tier": "habitability/earth-like"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 174.47518580365875,
+        "minLeoKm": 174.2402647689005,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 35792.2216003442,
         "heoUpperBoundaryKm": 1490025.4381473116,
@@ -2044,12 +2044,12 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 5.687994145048869,
+      "habitabilityScore": 0,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
-            "points": 17.1,
+            "points": 0,
             "max": 25,
             "value": "270 K (-3 °C)",
             "ideal": "10–25 °C",
@@ -2115,7 +2115,7 @@
             }
           }
         ],
-        "surfaceScore": 24,
+        "surfaceScore": 7,
         "modifiers": [
           {
             "label": "Geologically inactive (no recycling)",
@@ -2126,7 +2126,7 @@
             "delta": -8
           }
         ],
-        "finalScore": 6,
+        "finalScore": 0,
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
@@ -2571,7 +2571,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 175.2426361909787,
+        "minLeoKm": 169.86383301580688,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 16996.90684070823,
         "heoUpperBoundaryKm": 1079042.9061374362,
@@ -3908,7 +3908,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 461.22856252967614,
+        "minLeoKm": 460.5165659222014,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 90094.92904786355,
         "heoUpperBoundaryKm": 53076768.64063506,
@@ -6266,7 +6266,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 980.2066661213756,
+        "minLeoKm": 982.9909507948422,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 54005.76829774813,
         "heoUpperBoundaryKm": 65407793.930461206,
@@ -6733,12 +6733,12 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 47.09310522695509,
+      "habitabilityScore": 46.938177210151096,
       "habitabilityBreakdown": {
         "factors": [
           {
             "label": "Temperature",
-            "points": 13.5,
+            "points": 13.3,
             "max": 25,
             "value": "97 K (-176 °C)",
             "ideal": "−162 °C ±30",
@@ -6819,7 +6819,7 @@
         "tier": "habitability/alien"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 461.08501468970127,
+        "minLeoKm": 460.202973444303,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 49715.16653476396,
         "heoUpperBoundaryKm": 49715.16653476396,
@@ -9814,7 +9814,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 610.1034927488298,
+        "minLeoKm": 608.2357809629538,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 57323.95674102323,
         "heoUpperBoundaryKm": 70160108.0952793,
@@ -11487,7 +11487,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 421.12037938440164,
+        "minLeoKm": 421.56825784760355,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 58883.29385587132,
         "heoUpperBoundaryKm": 116160577.26195094,
@@ -12062,7 +12062,7 @@
         "tier": "habitability/subsurface"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 145.07953798128224,
+        "minLeoKm": 145.47534357712675,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 13234.897524442571,
         "heoUpperBoundaryKm": 13234.897524442571,
@@ -12637,7 +12637,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 160.66263644158025,
+        "minLeoKm": 160.54525948320577,
         "leoMoeBoundaryKm": 215.37516817319738,
         "meoHeoBoundaryKm": 215.37516817319738,
         "heoUpperBoundaryKm": 215.37516817319738,

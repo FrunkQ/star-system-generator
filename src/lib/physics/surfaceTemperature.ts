@@ -74,6 +74,23 @@ export interface SurfaceTempInputs {
 
 const FLOOR_K = 3; // radiative floor — nothing in deep space sits at absolute zero
 
+/**
+ * THE MEAN SURFACE TEMPERATURE — the average of this body's day and night sides.
+ *
+ * NOT `temperatureK`, which is the RADIATING temperature: the one at which the body gives off what it
+ * takes in. Radiated power goes as T⁴, so a world that bakes by day and freezes by night radiates as
+ * much as a uniformly warm one while AVERAGING far below it — Luna radiates at 270 K and averages
+ * 214, Mercury 440 and 310 (PHY-19, inbox B63/B71).
+ *
+ * ONE HELPER because seven places ask this question — three of them in the physics, where the wrong
+ * answer is not merely displayed but scored — and a `??` chain spelled seven times is a rule nobody
+ * can find. Falls back to the radiating figure for a body with no profile yet, which is the honest
+ * best available rather than a guess.
+ */
+export function meanSurfaceTempK(body: { temperatureProfile?: { meanK?: number } | null; temperatureK?: number }): number {
+  return body?.temperatureProfile?.meanK ?? body?.temperatureK ?? 0;
+}
+
 // Thermal inertia of a bare regolith surface, J m⁻² K⁻¹ s^-½. This is the MEASURED value for lunar
 // and Mercurian regolith (~50) rather than a fitted one; solid rock is ~2000 and the difference is
 // almost all porosity.

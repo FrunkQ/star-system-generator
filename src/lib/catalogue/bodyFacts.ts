@@ -1,6 +1,7 @@
 // Player-safe "facts" for a body, shared by the catalogue's diagrammatic browser and the
 // interactive console inspector. The snapshot is already redacted, so we just format for reading.
 import type { CelestialBody, RulePack } from '$lib/types';
+import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
 import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
 import { formatDistanceKm, formatDistanceAu, formatOrbitRadiusAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
@@ -41,8 +42,8 @@ export function massRel(b: CelestialBody): string {
 // anything with a real day/night swing — the Moon radiates at 270 K and averages 214 (inbox B63).
 // A star has no profile and reads its photosphere directly.
 export function tempC(b: CelestialBody, tempUnit: TemperatureUnit = 'C'): string {
-  const k = b.temperatureProfile?.meanK ?? b.temperatureK;
-  return k === undefined ? '' : formatTempK(k, tempUnit);
+  if (b.temperatureProfile?.meanK === undefined && b.temperatureK === undefined) return '';
+  return formatTempK(meanSurfaceTempK(b), tempUnit);
 }
 export function atmosphere(b: CelestialBody): string {
   if (!b.atmosphere) return 'None';

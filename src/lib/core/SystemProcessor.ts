@@ -27,7 +27,7 @@ const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
 const ASCENT_TAG = 'flight/ascent';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
-import { surfaceTempProfile } from '../physics/surfaceTemperature';
+import { surfaceTempProfile, meanSurfaceTempK } from '../physics/surfaceTemperature';
 import { deriveFluidLayers } from '../physics/fluidLayers';
 import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, deriveOxidation, CLOUD_DECK_TAG, PRECIPITATION_TAG,
   LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG, OXIDISED_TAG } from '../physics/cloudDecks';
@@ -688,6 +688,11 @@ export class SystemProcessor implements ISystemProcessor {
         // tidal hotspots) — the whole picture, not one opaque min/max.
         body.tags = body.tags || [];
         body.tags = stripForReprocess(body.tags, ['tidal/volcanism', 'tidal/lava-flows']);
+        // THE ONE READER THAT CANNOT USE THE MEAN, AND THE REASON IS ORDERING (inbox B71). This flag
+        // is an INPUT to the profile below — an ocean redistributes heat, which is what sets the
+        // day/night split — so the mean does not exist yet and asking for it would be circular. It is
+        // also the case where the two figures barely differ: a world with a standing ocean has the
+        // damping that makes them agree. Reading last pass's mean instead would break PHY-1.
         const surfaceLiquidWater = (body.hydrosphere?.composition === 'water')
             && (body.hydrosphere?.coverage ?? 0) > 0.2 && (body.temperatureK ?? 0) >= 273;
         const { profile, tags: tempTags } = surfaceTempProfile({
@@ -1453,7 +1458,10 @@ export class SystemProcessor implements ISystemProcessor {
         if (hasRequiredData) {
             const planetData: PlanetData = {
                 gravity: body.calculatedGravity_ms2!,
-                surfaceTempKelvin: body.temperatureK!,
+                // THE FIELD SAYS SURFACE, SO IT IS HANDED THE SURFACE FIGURE (inbox B71). The profile
+                // is committed several passes above this, so the mean is available here — unlike the
+                // ocean gate, which produces it. Mercury's two answers are 130 K apart.
+                surfaceTempKelvin: meanSurfaceTempK(body),
                 massKg: body.massKg!,
                 rotationPeriodSeconds: body.calculatedRotationPeriod_s!,
                 molarMassKg: body.atmosphere?.molarMassKg ?? 0.028,
@@ -1607,8 +1615,13 @@ export class SystemProcessor implements ISystemProcessor {
         let tempIdealLo = 283, tempIdealHi = 298, tempFall = 40; // water default (10–25 °C)
         if (planet.hydrosphere?.composition === 'methane') { tempIdealLo = tempIdealHi = 111; tempFall = 30; }
         else if (planet.hydrosphere?.composition === 'ammonia') { tempIdealLo = tempIdealHi = 218; tempFall = 30; }
-        if (planet.temperatureK) {
-            factors.temp = scoreFromPlateau(planet.temperatureK, tempIdealLo, tempIdealHi, tempFall);
+        // THE MEAN SURFACE TEMPERATURE, not the radiating one (inbox B71). "Is this world in the
+        // solvent's liquid range" is a question about the ground, and the two figures diverge by 56 K
+        // on Luna and 130 K on Mercury — a habitability score keyed on the wrong one is scoring a
+        // world nobody could stand on.
+        const surfaceMeanK = meanSurfaceTempK(planet);
+        if (surfaceMeanK) {
+            factors.temp = scoreFromPlateau(surfaceMeanK, tempIdealLo, tempIdealHi, tempFall);
         }
         score += factors.temp * 25;
 

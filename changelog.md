@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.695-beta - 16th Aug 2026
+
+- FIXED: habitability was scored against the temperature a world RADIATES at rather than the one on its ground, and for an airless world those are not the same number. The Moon averages -59 C and was being scored as though it sat at -3; Mercury averages 37 C and was scored at 167. Landing budgets read the same wrong figure under a field called surface temperature.
+
+
 ## v2.1.694-beta - 16th Aug 2026
 
 - The star editor says what a star currently IS, under the type dropdown, and that it follows the numbers. A planet has an auto-classify switch and a star deliberately has none - a planet's type is a judgement about the parameters you authored, a star's designation is a readout of where it sits on the HR diagram - and the difference now says so rather than looking like a missing control.
