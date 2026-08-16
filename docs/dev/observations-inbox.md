@@ -632,6 +632,42 @@ human-habitability becomes the DEFAULT rather than the whole model.
 - **VTT integration** — last, by owner decision. [[G14]] (model binaries to remote players) rides with it.
 - **V4** — `docs/dev/v4-scope.md`. [[G17]] is shelved there and is NOT a separate design job.
 
+## ROSTER UPDATE — 2026-08-16: the star workstream is CLOSED, and the biosphere prompt is written and unstarted
+
+**"Custom-image block unification" IS RETIRED at ~90%, and it is worth knowing what it became.** It
+started as [[G21]], a ten-line lookup fix. **The owner extended it into the whole star
+classification rewrite and it shipped v2.1.601 to v2.1.640 in one run** — [[B48]], [[B49]], [[B50]],
+[[B55]], [[B56]], [[B57]], the magnetar merge, the log-uniform bands, luminosity computed rather than
+stored, the remnant frame bug, implausibility tags, plain-English designations, and luminosity split
+from ionising output. **The headline measurement: `classifyStar` went from FIVE OF TEN reference
+stars wrong to TEN OF TEN correct (v2.1.637), by classifying on POSITION rather than brightness.**
+**Owner, 2026-08-16: *"I am sure we are done there. If something comes up I will ask then — use it
+to spawn a child session."* So the area is CLOSED: do not reopen it speculatively; a bug report
+spawns a CHILD session rather than a cold restart, which keeps the design context.**
+
+**FOUR QUESTIONS WERE LEFT OPEN AND ARE THE OWNER'S, all landing on the EDITOR rather than the
+engine, which is why none of them blocked the work.** (1) Does a pin survive AGEING? A pin against a
+slider the GM is holding is not the same as a pin against an automatic process. (2) Do stars default
+to DERIVED where planets default to PINNED? Opposite defaults on two body kinds must be deliberate
+and explained in the UI or it reads as a bug. (3) *"O is dead, O1a is valid"* — read as *a bare
+letter is an incomplete designation and is no longer offered in the picker*, **my reading of a short
+remark, never confirmed.** (4) Does picking a designation land on the band MIDPOINT or a seeded
+draw? Midpoint recommended; variety belongs in generation.
+
+**NEXT UP AND ALREADY WRITTEN: the biosphere toolset ([[G19]] + [[B45]]), prompted 2026-08-16 and
+NOT STARTED.** Its own fresh context by owner decision. The prompt carries the V3 scope (coverage
+per morphology, reorderable hierarchy, pack-data colour table, `energy_source` as the gate), the
+physics chain from [[B54]], the four rules on it, and the [[C2]] trap. **One judgement recorded so it
+can be overruled: G19 says the ABSORB-versus-REFLECT rule must be settled before anything ships. The
+prompt tells the session to BUILD ON "absorb the wings, reflect near the peak" and flag it loudly,
+BECAUSE THE COLOUR TABLE IS PACK DATA — reversing the rule is then a data edit, not a rewrite. That
+is the whole reason the pack-data instruction is not optional.**
+
+**STILL OPEN FROM THE STAR WORK, NOT ABSORBED BY IT:** [[B58]] (planet spacing is Sol's
+Titius-Bode in absolute AU — user-reported, root cause confirmed, mutual-Hill-radius spacing
+proposed) and [[B59]] (moon counts and types; the mass half is fixed). **Both are GENERATION rather
+than classification, and both should now use the star model this workstream built.**
+
 ## SESSION ROSTER — 2026-08-15, context figures REPORTED BY THE OWNER
 
 **These supersede the 2026-08-14 LIVE SESSIONS list below for WHO EXISTS. Everything else in that
