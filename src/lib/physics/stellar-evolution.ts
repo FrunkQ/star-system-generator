@@ -1,4 +1,18 @@
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
+import type { RulePack } from '../types';
+import { luminosityClassFromPosition } from '../system/starBandMatch';
+
+// The reader-facing name for a band, keeping the vocabulary the old cuts used so nothing downstream
+// has to learn a new word. Temperature only picks the adjective.
+function categoryForBand(band: 'I' | 'III' | 'V', tempK: number): string {
+    if (band === 'I') {
+        if (tempK > 10000) return 'Blue Supergiant';
+        if (tempK > 5000) return 'Yellow Supergiant';
+        return 'Red Supergiant';
+    }
+    if (band === 'III') return 'Giant';
+    return tempK < 3700 ? 'Red Dwarf (MS)' : 'Main Sequence';
+}
 
 export interface StarSeed {
     id: string;
@@ -218,7 +232,15 @@ export function classifyStar(params: {
      * about the PROGENITOR, so this is the better discriminator whenever it survives — see below.
      */
     progenitorMassKg?: number
-}): { category: string, lumClass: string } {
+},
+    /**
+     * The rule pack, when the caller has one. WITH it, the luminosity class comes from the star's
+     * POSITION against the pack's own bands, which is the only thing that gets the hot end right;
+     * without it, the absolute cuts below are used and are known to call every O and B dwarf a
+     * supergiant. Optional so existing callers keep working, but every caller that CAN pass it should.
+     */
+    pack?: RulePack | any
+): { category: string, lumClass: string } {
     const { tempK, lumSolar, massKg, ageGyr, isRemnant, progenitorMassKg } = params;
     const mSolar = massKg / SOLAR_MASS_KG;
     const logL = Math.log10(lumSolar);
@@ -258,6 +280,17 @@ export function classifyStar(params: {
     if (mSolar < 0.08) {
         if (mSolar < 0.013) return { category: 'Sub-Brown Dwarf / Planemo', lumClass: 'V' };
         return { category: 'Brown Dwarf', lumClass: 'V' };
+    }
+
+    // POSITION BEATS BRIGHTNESS, and this is the fix for the hot end. A luminosity class is a
+    // statement about surface gravity - radius at a given temperature - so it is read off the star's
+    // place among the pack's bands rather than from how bright it is. Radius comes from the pair we
+    // already have: L = R^2 T^4 in solar units, so R = sqrt(L) / (T/Tsun)^2.
+    // Measured: this takes the ten reference stars from five right to ten.
+    if (pack) {
+        const radiusSolar = Math.sqrt(Math.max(0, lumSolar)) / Math.pow(tempK / SOLAR_TEMPERATURE_K, 2);
+        const band = luminosityClassFromPosition(pack, { temperatureK: tempK, radiusSolar });
+        if (band) return { category: categoryForBand(band, tempK), lumClass: band };
     }
     if (mSolar > 1000 && tempK < 5000) return { category: 'Quasi-Star', lumClass: '0' };
     const eddingtonLum = 32000 * mSolar;

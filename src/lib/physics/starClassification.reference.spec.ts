@@ -12,6 +12,7 @@
 // A skipped test would say nothing; this says exactly what is broken and by how much.
 import { describe, it, expect } from 'vitest';
 import { classifyStar, determineSpectralClass } from './stellar-evolution';
+import { loadStarterPack } from '$lib/import/realsky/testPack';
 
 const SOLAR_MASS_KG = 1.989e30;
 
@@ -49,8 +50,15 @@ const REFERENCE: Ref[] = [
 	{ name: 'Betelgeuse', mk: 'M1Ia', tempK: 3600, lum: 126000, mass: 16.5, published: 'I', today: 'I' }
 ];
 
+const pack = loadStarterPack() as any;
+
+/** WITHOUT a pack: the legacy absolute-luminosity cuts. Kept because it is still the fallback. */
 const classOf = (r: Ref) =>
 	classifyStar({ tempK: r.tempK, lumSolar: r.lum, massKg: r.mass * SOLAR_MASS_KG, ageGyr: 1 }).lumClass;
+
+/** WITH a pack: position against the pack's own bands, which is what callers should use. */
+const classWithPack = (r: Ref) =>
+	classifyStar({ tempK: r.tempK, lumSolar: r.lum, massKg: r.mass * SOLAR_MASS_KG, ageGyr: 1 }, pack).lumClass;
 
 describe('reference stars — the SPECTRAL LETTER is derived correctly today', () => {
 	it.each(REFERENCE.map((r) => [r.name, r.tempK, r.mk[0]] as const))(
@@ -123,5 +131,29 @@ describe('remnants are classified in the right FRAME', () => {
 		expect(remnant((0.6 + 1.4) / 2).category).toBe('White Dwarf');
 		expect(remnant((1.4 + 2.2) / 2).category).toBe('Neutron Star');
 		expect(remnant((3 + 100) / 2).category).toBe('Black Hole');
+	});
+});
+
+// THE FIX, AND THE WHOLE POINT OF THIS FILE. The table above records what the absolute-luminosity
+// cuts return: five of ten wrong, every one of them a main-sequence star called something evolved.
+// Given the PACK, the class comes from the star's POSITION against the same bands the generator draws
+// from - radius at a given temperature, which is what a luminosity class physically measures.
+describe('given the rule pack, all ten reference stars are classified correctly', () => {
+	it.each(REFERENCE.map((r) => [`${r.name} (${r.mk})`, r] as const))('%s', (_n, r) => {
+		expect(classWithPack(r as Ref)).toBe((r as Ref).published);
+	});
+
+	it('turns five wrong into none', () => {
+		expect(REFERENCE.filter((r) => classWithPack(r) !== r.published).map((r) => r.name)).toEqual([]);
+		// ...and the legacy path is still what it was, so the difference is the PACK and nothing else.
+		expect(REFERENCE.filter((r) => classOf(r) !== r.published).length).toBe(5);
+	});
+
+	it('fixes precisely the hot dwarfs the old cuts inflated', () => {
+		for (const name of ['Vega', 'B1V', 'O5V', 'B2V']) {
+			const r = REFERENCE.find((x) => x.name === name)!;
+			expect(classOf(r), `${name} legacy`).not.toBe('V');   // was wrong
+			expect(classWithPack(r), `${name} with pack`).toBe('V'); // is right
+		}
 	});
 });

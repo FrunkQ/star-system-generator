@@ -15,6 +15,8 @@
 
   export let rulePack: RulePack;
   export let exampleSystems: string[] = [];
+  import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
+  import { explainStarClass } from '$lib/system/starClassExplain';
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -50,6 +52,22 @@
   // --- Star helpers for the hierarchy preview + age feedback ---
   const SOL = SOLAR_MASS_KG;
   const SPECTRAL_COLOR: Record<string, string> = { O: '#9bb0ff', B: '#aabfff', A: '#cad7ff', F: '#f8f7ff', G: '#fff4ea', K: '#ffd2a1', M: '#ffb56b' };
+
+  // THE DESIGNATION FOR A POINT ON THE DIAGRAM. Temperature gives the letter; the luminosity class
+  // comes from POSITION against the pack's own bands (radius at a given temperature), which is what
+  // takes the hot end from wrong to right — an O5V is bright AND a dwarf, and brightness alone cannot
+  // tell you that. Radius from the pair the wizard already holds: R = sqrt(L) / (T/Tsun)^2.
+  function designationOf(seed: { temperatureK: number; luminositySolar: number; spectralClass?: string }) {
+    const t = seed.temperatureK, l = seed.luminositySolar;
+    if (!(t > 0) || !(l > 0)) return undefined;
+    const radiusSolar = Math.sqrt(l) / Math.pow(t / 5778, 2);
+    const band = luminosityClassFromPosition(rulePack, { temperatureK: t, radiusSolar });
+    const letter = seed.spectralClass || determineSpectralClass(t);
+    const key = band && band !== 'V' ? `star/${letter}-${band}` : `star/${letter}`;
+    const ex = explainStarClass(rulePack, key);
+    return { designation: `${letter}${band ? ' ' + band : ''}`, text: ex?.text ?? '' };
+  }
+
   const starColor = (s: { spectralClass: string }) => SPECTRAL_COLOR[s.spectralClass] ?? '#ffd2a1';
   const massSolar = (s: { massKg: number }) => s.massKg / SOL;
   let hovered: StarSeed | null = null;  // live readout of the point under the cursor on the HR diagram
@@ -286,7 +304,14 @@
                              value={+row.seed.luminositySolar.toPrecision(3)} on:change={(e) => setStarField(row.seed, 'l', e.currentTarget.value)} /><span class="se-u">L☉</span>
                       <input class="se-num" class:bad={st?.mBad} type="number" min="0" step="any" title="Mass (Sol = 1)"
                              value={+massSolar(row.seed).toPrecision(3)} on:change={(e) => setStarField(row.seed, 'm', e.currentTarget.value)} /><span class="se-u">M☉</span>
-                      <span class="se-cls" class:bad={st?.impossible}>{st?.impossible ? 'Exotic' : `${row.seed.spectralClass}-type`}</span>
+                      <!-- THE CIRCLE CLOSED. Clicking the HR diagram gives a POSITION; this reads the
+                           designation back out of it, so the row says "G V" rather than "G-type" and
+                           the luminosity class is visible where the GM is choosing. Hover for the
+                           plain-English reading, matching the diagram's own hover affordance. -->
+                      <span class="se-cls" class:bad={st?.impossible}
+                            title={st?.impossible ? 'No star can sit here.' : (designationOf(row.seed)?.text ?? '')}>
+                        {st?.impossible ? 'Exotic' : (designationOf(row.seed)?.designation ?? `${row.seed.spectralClass}-type`)}
+                      </span>
                       {#if st?.anyBad}<button class="se-fix" title="Recompute the other figures (and type) to be physically consistent" on:click={() => fixStar(row.seed)}>Fix</button>{/if}
                     </span>
                     <button class="x" title="Remove" on:click={() => (selectedStars = selectedStars.filter((x) => x.id !== row.seed.id))}>×</button>

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.637-beta - 16th Aug 2026
+
+* Star systems: the classifier no longer calls bright main-sequence stars giants. Vega came back a giant, and every O and B dwarf a supergiant, because the test was how BRIGHT a star is — but a hot dwarf is genuinely brilliant. It now asks how BIG the star is for its temperature, which is what a luminosity class actually measures. All ten reference stars are correct where five were wrong.
+* Generation wizard: the star list now shows the full designation — "G V" rather than "G-type" — with the plain-English reading on hover. Clicking a point on the HR diagram and reading its class back now agree.
+
 ## v2.1.636-beta - 16th Aug 2026
 
 * Internal: answered where planet spacing and moon generation stand, and proposed replacing the Solar-System-shaped spacing rule with one that scales to any star.
