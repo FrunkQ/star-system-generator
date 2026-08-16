@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.700-beta - 16th Aug 2026
+
+- Docs: the observations inbox records A42, A47, A48 and E8 as done, with two of their recorded diagnoses corrected, two new findings and one correction to the known-not-ours list.
+
 ## v2.1.699-beta - 16th Aug 2026
 
 - The player-preset editor's long steps now collapse. The Starmap and System steps had grown to fifteen and twenty controls in a single box; they are grouped by what you are actually doing - Grid & routes, Depth & camera, Bodies & belts, Scale & camera, Scene & sky, Labels & markers - and each group opens and shuts. On the System step that turns a screen-and-a-half of scrolling into no scrolling at all.
