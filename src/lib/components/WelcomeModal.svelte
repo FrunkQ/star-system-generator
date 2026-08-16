@@ -33,14 +33,20 @@
   // surface spectrum. It did NOT ride with the V4 generation engine after all, so its line is BACK
   // and its `pending` flag is gone. The clusters-and-galaxies removal still stands — that is V3.1.
   const features: { title: string; blurb: string; pending?: string }[] = [
+    // PLAYER VIEWS LEADS — owner, 2026-08-16: "this is the feature's BIGGEST drop and replaces 2
+    // older tools. The 3D was done to SUPPORT this — so this is the reason it exists." It had been
+    // fifth, and briefly retitled "Player views in 3D", which UNDERSOLD it: 3D is one of three
+    // presentations, not the point. The point is that you choose how your table sees the universe.
+    // It supersedes the Field Guide and the Projector (see inbox A42/A47).
+    { title: 'Player views', blurb: "The headline. Design exactly what your table sees and serve it live to their own phones, tablets and screens — as text, as a 2D map, or as the real three-dimensional system, whichever suits the moment. Redacted to what they should know, updating as you play, and dressed with filters and transitions so it reads as YOUR universe rather than as a tool. It replaces the old Field Guide and Projector outright, and everything else here exists to feed it." },
     { title: 'A rewritten physics engine', blurb: 'What a world is made of decides everything else: density, temperature, atmosphere and cloud decks, oceans and ice, magnetism, geology, the radiation it throws out and the colour you actually see. The Newton panel shows the working.' },
-    // The 3D half was implicit and is the interesting bit: a player is not sent a picture of the
-    // system, they get the real three-dimensional view on their own device (engine map TAG-20 — the
-    // player's system view is HoloView at both tiers). Two separate lines never said that between them.
-    { title: 'Player views in 3D', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — not a flat picture of the system but the real three-dimensional view, redacted to what they should know, updating as you play, and dressed with filters and transitions that lean hard into your setting's look." },
     { title: 'The light that reaches the ground', blurb: 'A star’s spectrum is filtered by the air and the cloud decks above it, so what lands on the surface is not what left the star. That light sets the colour of the land, the sea and the sky, and decides what colour the plants would be to grow under it — and the physics pages draw the curve rather than describing it.' },
     { title: 'Life is a tag too', blurb: 'What lives on a world — microbes, fungi, plants, animals, or something that builds cities — is described the same way everything else is, and it shows on the planet: vegetation spreads inland from the coast, in a colour worked out from the light that actually reaches it. Searchable, editable, and yours to invent from.' },
-    { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system — orbits, tilts and moons where the physics puts them, each world lit by its own star.' },
+    // Reworded to sit UNDER Player views rather than beside it: the 3D view was built to serve the
+    // player view (owner, 2026-08-16), and TAG-20 records that a player's system view is the same
+    // renderer at both tiers. Saying so makes both lines honest instead of two rival headlines.
+    { title: 'The system in 3D', blurb: 'The view behind all of that: a real three-dimensional system — orbits, tilts and moons where the physics puts them, each world lit by its own star. It is the same renderer whether you are running the table or sitting at it.' },
+    { title: 'Stand on the surface', blurb: 'A world has a Horizon view: the landscape as it would look under that world&rsquo;s own daylight, with the sky and the ground taking their colour from the light that actually reaches them. A red dwarf&rsquo;s noon does not look like ours.' },
     { title: 'Stars properly classified', blurb: 'Stars carry their real classification — spectral type and luminosity class — read from size and temperature rather than from how bright they look, so a supergiant is a supergiant rather than a dwarf that shares its colour. Antares arrives as the giant it is, every type is named in plain words with a famous example, and a star whose numbers break physics is kept and labelled rather than refused.' },
     { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
     { title: 'Your own stars in the sky', blurb: 'Your starmap becomes the night sky behind the 3D view — every system at its true direction, brightness and colour — so the constellations your players see are made of places they can fly to.' },

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.675-beta - 16th Aug 2026
+
+* Player views now lead the what’s-new list, described as what they are — text, 2D or 3D, themed to your setting — and the surface Horizon view gets a line of its own.
+
 ## v2.1.674-beta - 16th Aug 2026
 
 - FIXED, and it is the big one: **scattered light is not absorbed light**. The sky model treated every photon turned out of the direct beam as destroyed, which costs almost nothing at Earth's optical depth of 0.1 and is catastrophic at Venus's 16 — it said one part in ten million reached the ground, and reported Venus's midday as "a night under a full moon". A photon that scatters is still in the atmosphere and mostly still arrives. Scattering now gets its own two-stream transmittance, so Venus's midday reads 13% of an Earth noon, which is about what Venera measured standing on it, while Earth, Mars and Luna do not move at all.
