@@ -16,7 +16,7 @@
   export let rulePack: RulePack;
   export let exampleSystems: string[] = [];
   import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
-  import { explainStarClass } from '$lib/system/starClassExplain';
+  import { explainStarClass, fullDesignation } from '$lib/system/starClassExplain';
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -65,7 +65,9 @@
     const letter = seed.spectralClass || determineSpectralClass(t);
     const key = band && band !== 'V' ? `star/${letter}-${band}` : `star/${letter}`;
     const ex = explainStarClass(rulePack, key);
-    return { designation: `${letter}${band ? ' ' + band : ''}`, text: ex?.text ?? '' };
+    // The FULL designation now - G3V rather than G V - computed from the same position. Subclass is
+    // main-sequence only; a giant honestly gets its letter and class without one.
+    return { designation: fullDesignation(letter, t, band ?? undefined), text: ex?.text ?? '' };
   }
 
   const starColor = (s: { spectralClass: string }) => SPECTRAL_COLOR[s.spectralClass] ?? '#ffd2a1';

@@ -205,3 +205,45 @@ export function pickerLabel(pack: RulePack | any, classKey: string): string | un
 	const eg = exemplarFor(classKey);
 	return `${head} — ${ex.kind}${ex.colour ? ` (${ex.colour})` : ''}${eg ? ` · ${eg}` : ''}`;
 }
+
+// ---------------------------------------------------------------------------------------------
+// THE SUBCLASS — the "2" of G2V, derived from temperature rather than authored.
+//
+// Each letter spans a temperature range and the subclass runs 0 (hot end) to 9 (cool end), so this
+// is one interpolation, not a table. Measured against published types: the Sun comes out G2.6
+// against G2, Rigel B8.1 against B8, Betelgeuse M0.7 against M1, Proxima M4.6 against M5.5 and Vega
+// A1.4 against A0 — within about a subclass and a half, which is the bar for "reasonably realistic".
+//
+// AND IT IS DERIVED ONLY FOR THE MAIN SEQUENCE, WHICH IS THE HONEST LIMIT. The relation between
+// temperature and subclass depends on the LUMINOSITY CLASS — a K1.5 giant is cooler than a K1.5
+// dwarf — so applying the main-sequence ladder to a giant is wrong by a lot: Arcturus (K1.5III)
+// derives as K5.5, four subclasses out. That is DATA-R10 again, the letter alone determining less
+// than it appears to. A giant therefore gets its letter and luminosity class with NO subclass, which
+// is both honest and how people actually speak of them ("a K giant").
+const MAIN_SEQUENCE_TEMP_BAND: Record<string, [number, number]> = {
+	O: [30000, 50000], B: [10000, 30000], A: [7500, 10000],
+	F: [6000, 7500], G: [5200, 6000], K: [3700, 5200], M: [2400, 3700]
+};
+
+/** The subclass 0..9 for a MAIN-SEQUENCE star, or undefined where the ladder does not apply. */
+export function spectralSubclass(letter: string, tempK: number, band?: string): number | undefined {
+	if (band && band !== 'V') return undefined; // giants and supergiants: see above
+	const range = MAIN_SEQUENCE_TEMP_BAND[letter];
+	if (!range || !(tempK > 0)) return undefined;
+	const [lo, hi] = range;
+	const sub = (9 * (hi - tempK)) / (hi - lo);
+	return Math.max(0, Math.min(9, Math.round(sub * 10) / 10));
+}
+
+/**
+ * The full MK designation for a star's measured state: `G2V`, `K III`, `M1 Ia`-ish.
+ *
+ * COMPUTED FROM POSITION, never authored — which is what makes the full designation space affordable
+ * at all. There is no 700-cell grid to fill in, because a designation is a place on the HR diagram
+ * rather than a row in a table.
+ */
+export function fullDesignation(letter: string, tempK: number, band?: 'I' | 'III' | 'V'): string {
+	const sub = spectralSubclass(letter, tempK, band);
+	const subText = sub == null ? '' : String(Math.round(sub));
+	return `${letter}${subText}${band ?? ''}`;
+}

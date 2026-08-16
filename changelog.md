@@ -2,7 +2,12 @@
 
 All notable changes are listed here:
 
-## v2.1.641-beta - 16th Aug 2026
+## v2.1.643-beta - 16th Aug 2026
+
+* Generation wizard: a star clicked on the HR diagram now reads as a full designation — G3V rather than G-type — with the subclass worked out from its temperature.
+* Giants and supergiants deliberately show no subclass. The temperature that means "K1.5" for a dwarf means something else for a giant, so stating a number there would be confidently wrong; "K III" is both honest and how people actually talk about them.
+
+## v2.1.642-beta - 16th Aug 2026
 
 * Star editor: the magnetic field slider now shows what it does — the star's ionising output, in multiples of the Sun's, updating as you drag. Field is what drives that radiation, so it is the one control rather than two saying the same thing differently.
 
