@@ -635,6 +635,31 @@ human-habitability becomes the DEFAULT rather than the whole model.
 - **VTT integration** — last, by owner decision. [[G14]] (model binaries to remote players) rides with it.
 - **V4** — `docs/dev/v4-scope.md`. [[G17]] is shelved there and is NOT a separate design job.
 
+## V3 REMAINING SCOPE, CHUNKED — 2026-08-16, asked for by the owner to get a feel for a release date
+
+**THE ANCHOR IS ALREADY IN THE PRODUCT AND NOBODY HAD USED IT AS ONE: `WelcomeModal.svelte`'s feature list IS the release scope statement.** Eighteen entries, of which **three carry a `pending` flag** (`'coming'` or `'in testing'`) and fifteen do not. **An entry without a flag is a claim V3 makes on first launch**, and that file's own comment already sets the rule: *"a line that advertises what a tester cannot reach, however honestly labelled, reads as a promise"* — two lines were removed on exactly that ground.
+
+**CHECKED AGAINST WHAT THE CODE CAN BACK, 2026-08-16: FOURTEEN OF THE FIFTEEN ARE TRUE TODAY. ONE IS NOT.**
+
+**"Sharper generation" — *"Procedural systems have been retuned to sit better inside the new physics"* — IS THE ONE CLAIM V3 CANNOT CURRENTLY BACK.** [[B58]]: planet spacing is still Sol's Titius-Bode in absolute AU, so nothing orbits closer than ~0.4 AU around any star and a red dwarf gets Solar System distances. [[B59]]: a gas giant is moonless 10 times in 72. [[G24]]: the generation sliders show no visible effect. **This is also the only one a USER has reported, unprompted, from normal play. It is release-critical by the product's own statement, and it is one bundle.**
+
+**THE THREE PENDING ONES DO NOT BLOCK, and their flags are honest:** *Life is a tag too* (`coming`) — the biosphere work, and the modal already says *"Showing it on the planet itself follows later"*, so the flag stays and the owner's own work sets when it comes off; *Your own map behind the stars* (`coming`) — [[G16]], gated on [[A48]]; *Virtual tabletop integration* (`in testing`) — held to last by owner decision, and a moving target.
+
+**SO THE RELEASE READ IS: V3 IS ONE BUNDLE AWAY FROM BEING ABLE TO MAKE EVERY CLAIM IT MAKES.** Everything else below is either flagged pending or is polish that does not block.
+
+| # | bundle | contents | blocks V3? |
+|---|---|---|---|
+| **1** | **Generation rebalance** | [[B58]] Hill-radius spacing replacing Titius-Bode, [[B59]] moon counts and types, [[G24]] slider range then realism banding. **Do B58 FIRST — the other two may partly resolve on their own** | **YES — the only false claim** |
+| 2 | **Biosphere** | [[G19]] + [[B45]] + [[B54]] + [[B53]]. Owner-held, prompt written | No — flagged `coming` |
+| 3 | **Star tail** | [[B60]] full SIMBAD designations, dedupe the ten bare-letter keys, legacy cleaner on load; [[B61]] seeded draw + `SPECTRAL_DATA` into the pack | No — closes the workstream |
+| 4 | **UI closeout** | [[A42]]+[[A47]] removal with the preset-fallback gate, [[A48]] the 99-control regroup (**which unblocks [[G16]]**), [[A43]], [[A45]], [[A50]], [[E6]], and whether `PLAYER_VIEWS_ENABLED` should still exist | No |
+| 5 | **Physics consistency tail** | [[B36]] (routed to positions/eclipses), [[B34]], [[B41]], [[B42]], [[D11]], [[D12]]. **SEVERAL MAY ALREADY BE ABSORBED BY [[B48]] — sweep before scoping** | No |
+| 6 | **Data and content** | [[D23]] Cerebus Alpha (authorised, never done — it rode on the prompt that evaporated), [[D25]] Astrophage in real systems, [[D6]]/[[D16]] with [[G11]] scoped cheaply | No |
+| 7 | **Documentation** | The four explanation surfaces, `GettingStarted.md` ~190 versions stale, and **no user doc mentions the Stop-load button, the safe-mode screen, the Memory panel or the diagnostic bundle — all shipped, all user-facing** | No, but it is what a NEW user meets first |
+| 8 | **Physics-page diagrams** | [[G23]], piloted by the biosphere work | No — background effort |
+
+**TWO CAVEATS ON THIS, STATED RATHER THAN BURIED.** (1) **It is built from the roadmap sections and this session, NOT from a full audit of every open id** — a sweep would firm up bundles 5 and 6 in particular, and bundle 5 may shrink a lot. (2) **A PLAN IN MY MEMORY SAYS beta ships with Player Views MASKED. That looks SUPERSEDED** — the modal lists Player Views as a headline unpending V3 feature — **but it is a release-gating assumption and should be confirmed rather than assumed dead.**
+
 ## ROSTER UPDATE — 2026-08-16: the star workstream is CLOSED, and the biosphere prompt is written and unstarted
 
 **"Custom-image block unification" IS RETIRED at ~90%, and it is worth knowing what it became.** It
