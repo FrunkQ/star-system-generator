@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.697-beta - 16th Aug 2026
+
+- FIXED: a player-view link whose preset no longer exists used to open the old Field Guide instead, without saying so - a different tool, silently, on a screen your players are looking at. It now falls back to the shipped Guide player preset and states plainly which preset was missing, so a stale link is something you can see and fix rather than something you notice weeks later. The message waits until the campaign has actually arrived before it appears, so a window that is merely still connecting is never accused of being broken.
+
 ## v2.1.696-beta - 16th Aug 2026
 
 - A giant reads as "K III" in the star editor rather than "K-III". The hyphen is how the key is spelled in the data; it is not how anyone says it.

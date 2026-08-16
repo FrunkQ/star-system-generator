@@ -571,9 +571,42 @@
   // opened window sets activePresetId at mount while the starmap is still null, so we must re-resolve
   // (and apply) the moment the campaign's presets arrive — otherwise a custom preset never applies and
   // the window is stuck on the default skin. (resolvePreset() alone hides `starmap` inside a function.)
-  $: pendingPreset = activePresetId
+  $: resolvedPreset = activePresetId
     ? (BUILTIN_PRESETS.find((p) => p.id === activePresetId) || (starmap?.playerPresets ?? []).find((p) => p.id === activePresetId) || null)
     : null;
+  // A47 — WHERE AN UNRESOLVED PRESET LANDS, AND THAT IT SAYS SO.
+  // An id that resolved to nothing used to leave `activePreset` null, and every preset-driven branch
+  // below is guarded on it — so the page fell through to whatever `themeKey` happened to be, which is
+  // 'guide': the LEGACY Field Guide. That was wrong twice over. It is a different tool, not a degraded
+  // version of the one asked for; and it was SILENT, so a GM whose link was stale saw a working screen
+  // and no reason to doubt it. The fallback is now a real player preset — the shipped Guide, which is
+  // what the legacy skin became — and the failure is stated on screen.
+  const FALLBACK_PRESET_ID = 'guide';
+  // Resolved by id rather than by index so a reorder of the shipped list cannot silently move it; the
+  // index is only the guard against someone renaming the id out from under this.
+  const FALLBACK_PRESET = BUILTIN_PRESETS.find((p) => p.id === FALLBACK_PRESET_ID) ?? BUILTIN_PRESETS[0];
+  // NOT-YET-ARRIVED IS NOT FAILED, and this is the whole subtlety. A custom preset lives on the
+  // CAMPAIGN (`starmap.playerPresets`), which arrives by broadcast — a window opens, paints, and only
+  // then receives SYNC_STARMAP. "Unresolved" is therefore the normal state for the first second of
+  // every custom-preset window, and warning then would cry wolf on every open. It is a genuine failure
+  // only once a campaign HAS arrived and still does not contain the id. (This also answers A47's own
+  // question (1): custom ids DO resolve on the player side, through this list — what they cannot do is
+  // resolve before the campaign carrying them lands, which is exactly why a built-in id looked fine in
+  // the same session. A built-in needs no data at all.)
+  $: presetMissing = !!activePresetId && !resolvedPreset && !!starmap;
+  $: pendingPreset = resolvedPreset ?? (presetMissing ? FALLBACK_PRESET : null);
+  // Announce it once per id, to the console as well as the screen: the screen tells whoever is looking
+  // at the player window, the console gives the GM something to paste back.
+  let warnedPresetId: string | null = null;
+  $: if (presetMissing && warnedPresetId !== activePresetId) {
+    warnedPresetId = activePresetId;
+    console.warn(`[player view] preset "${activePresetId}" is not in this campaign — falling back to "${FALLBACK_PRESET.name}".`);
+  }
+  $: if (!presetMissing && warnedPresetId) warnedPresetId = null;
+  // Dismissible, and re-armed whenever the id changes: a GM who has read it should not have to keep
+  // reading it, but a DIFFERENT broken id is news again.
+  let missingNoticeDismissedFor: string | null = null;
+  $: showMissingNotice = presetMissing && missingNoticeDismissedFor !== activePresetId;
   // Re-apply on CONTENT change, not just id change: saving an edit in the Player Views editor updates
   // the preset in place (same id) and rides the next SYNC_STARMAP — the open window must refresh live.
   $: pendingPresetJson = pendingPreset ? JSON.stringify(pendingPreset) : null;
@@ -1087,6 +1120,15 @@
 <main bind:this={stageMain} class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
   <!-- D8: view-entry transition overlay — the outgoing stage snapshot animates away here. -->
   <canvas class="entry-transition" bind:this={entryOverlay}></canvas>
+  <!-- A47: the preset asked for is not in this campaign. Said plainly and OVER everything, including
+       the cover — a fallback nobody is told about is the fault this replaces, and the GM is usually
+       the first person looking at this window. -->
+  {#if showMissingNotice}
+    <div class="preset-missing" role="status">
+      <span class="pm-text">This view's preset (<code>{activePresetId}</code>) is not in this campaign — showing <strong>{FALLBACK_PRESET.name}</strong> instead. Re-open it from Player Views to fix the link.</span>
+      <button class="pm-close" aria-label="Dismiss" on:click={() => (missingNoticeDismissedFor = activePresetId)}>×</button>
+    </div>
+  {/if}
   {#if presetHold}
     <!-- GM closed the live view: the quote interstitial holds the screen until they open one again. -->
     <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
@@ -1367,6 +1409,23 @@
   /* D8: full-stage entry-transition overlay — above the stage, below the interstitial (500). Cleared
      (transparent) whenever no transition is running, so it never blocks the view; taps pass through. */
   .entry-transition { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 450; pointer-events: none; }
+  /* A47 broken-link notice. Above the entry-transition overlay (450) and the preset cover (60) — it has
+     to be readable whatever stage is showing, and it is deliberately NOT themed by the preset: this is
+     the app talking, not the fiction. */
+  .preset-missing {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 500;
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 10px;
+    background: #3a2a12; color: #ffd9a0;
+    border-bottom: 1px solid #7a5a20;
+    font: 400 0.78rem/1.4 system-ui, sans-serif;
+  }
+  .preset-missing code { font-family: ui-monospace, Consolas, monospace; font-size: 0.95em; color: #fff0d6; }
+  .preset-missing .pm-text { flex: 1 1 auto; min-width: 0; }
+  .pm-close {
+    flex: 0 0 auto; background: none; border: none; color: inherit;
+    font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0 2px;
+  }
 
   /* --- status bar (device chrome) --- */
   .statusbar {
