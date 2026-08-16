@@ -8,7 +8,7 @@
   import { resolveStarImage } from '$lib/system/starImage';
   import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
-  import { ionisingOutputSolar, ionisingBands, activityForFraction, IONISING_FRACTION_QUIET } from '$lib/physics/ionisingOutput';
+  import { ionisingOutputSolar, ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona } from '$lib/physics/ionisingOutput';
 
   let { body, rulePack } = $props();
 
@@ -284,6 +284,8 @@
 
   // The star's ionising output in multiples of the quiet Sun's — a frame a GM can reason in.
   let ionisingSolar = $derived(ionisingOutputSolar(radiation || 0, activityValue));
+  // Only true for a star that is BOTH cool and puffed out, which is why the note it drives is rare.
+  let pastCoronalLine = $derived(!isNonThermal && !hasHotCorona(massSuns, radiusSuns, tempK));
   function fmtIonising(x: number): string {
       if (!(x > 0)) return '0';
       if (x < 10) return x.toPrecision(2);
@@ -890,7 +892,12 @@
                    class="full-width-slider overlay" />
         </div>
         <div class="sub-label">
-            {#if ionisingLocked}
+            <!-- CONTEXTUAL, not encyclopaedic (owner, 2026-08-16): the corona note appears only on the
+                 stars it actually applies to. A GM editing a G dwarf never sees it. -->
+            {#if pastCoronalLine}
+                Cool and swollen &mdash; past the coronal dividing line, so it holds no hot corona and
+                irradiates far less than its size suggests.
+            {:else if ionisingLocked}
                 Derived from class and age &mdash; a young M dwarf flares hard, an old one is quiet. Unlock to vary it.
             {:else}
                 Set by you. <button type="button" class="link-btn inline" on:click={resetActivity}>Use the physics</button>

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.639-beta - 16th Aug 2026
+
+* Physics page: a new section on ionising output and the corona — why a star's brightness and the radiation that strips atmospheres are different numbers, and why a red giant is not the fierce X-ray source its size suggests.
+* Star editor: a star past the coronal dividing line now says so, and only such a star does. Editing an ordinary dwarf never shows the note.
+* Generation wizard: the a/b/c labels are lowercase and quiet, so they no longer read as the star's type, and the pairing diagram matches. The designation itself is what stands out now.
+
 ## v2.1.638-beta - 16th Aug 2026
 
 * Star systems: a star's ionising output now follows its magnetic field, which is what actually drives it — X-ray output tracks total magnetic flux across about twelve orders of magnitude in the real relation.

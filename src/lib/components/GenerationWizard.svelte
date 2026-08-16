@@ -137,7 +137,9 @@
   }
   function planString(node: StarPlanNode | null): string {
     if (!node) return '';
-    return node.kind === 'star' ? (LETTERS[node.index] ?? '?') : `(${planString(node.a)} · ${planString(node.b)})`;
+    // Lowercase, like the row labels: the pairing diagram describes STRUCTURE, and a bold capital
+    // reads as a star's type rather than as its name (owner, 2026-08-16).
+    return node.kind === 'star' ? (LETTERS[node.index] ?? '?').toLowerCase() : `(${planString(node.a)} · ${planString(node.b)})`;
   }
   const sepLabel = (au: number) =>
     au < 0.3 ? `very close · ${fmt(au, 2)} AU` : au < 2 ? `close · ${fmt(au, 1)} AU`
@@ -290,13 +292,17 @@
               {#each planRows as row}
                 {#if row.type === 'pair'}
                   <div class="pair-row" style="padding-left:{row.depth * 16}px">
-                    <span class="pair-bracket">⌐</span><span class="pair-label">binary — {sepLabel(row.sepAU)}</span>
+                    <span class="pair-bracket">⌐</span><span class="pair-label">binary — {sepLabel(row.sepAU)}</span><!-- lowercase via CSS: pairing is structure, not identity -->
                   </div>
                 {:else}
                   {@const st = statuses.get(row.seed.id)}
                   <div class="hier-row" style="padding-left:{row.depth * 16}px">
                     <span class="star-dot" style="background:{starColor(row.seed)}"></span>
-                    <span class="role">{LETTERS[row.index] ?? '?'}</span>
+                    <!-- Owner, 2026-08-16: the A/B/C label was bold and accent-coloured, so it read
+                         as the star's TYPE. It is only a name for "which star in this system" — the
+                         quietest thing in the row — so it is lowercase and neutral, and the emphasis
+                         moves to the designation, which is what a GM is actually choosing. -->
+                    <span class="role">{(LETTERS[row.index] ?? '?').toLowerCase()}</span>
                     <span class="star-edit">
                       <input class="se-num" class:bad={st?.tBad} type="number" min="0" title="Temperature (K)"
                              value={Math.round(row.seed.temperatureK)} on:change={(e) => setStarField(row.seed, 't', e.currentTarget.value)} /><span class="se-u">K</span>
@@ -449,17 +455,18 @@
   .hierarchy { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-panel, #14161c); }
   .hier-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, #cfcfcf); margin-bottom: 6px; }
   .hier-empty { font-size: 0.82em; color: var(--text-faint, #8a8a8a); font-style: italic; }
-  .diagram { font-family: ui-monospace, monospace; font-size: 0.86em; color: var(--accent, #ff5a1f); margin-bottom: 6px; letter-spacing: 0.02em; }
-  .pair-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 0.74em; color: var(--text-faint, #8a8a8a); text-transform: uppercase; letter-spacing: 0.04em; }
-  .pair-bracket { color: var(--link); font-weight: 700; }
+  .diagram { font-family: ui-monospace, monospace; font-size: 0.86em; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.02em; }
+  /* Pairing is STRUCTURE, not identity — it should not shout either (owner, 2026-08-16). */
+  .pair-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 0.74em; color: var(--text-faint, #8a8a8a); text-transform: lowercase; letter-spacing: 0.02em; }
+  .pair-bracket { color: var(--text-faint, #8a8a8a); font-weight: 400; }
   .hier-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
   .star-dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 6px rgba(255,255,255,0.25); }
-  .role { font-size: 0.78em; font-weight: 700; color: var(--link); min-width: 84px; }
+  .role { font-size: 0.78em; font-weight: 400; color: var(--text-faint, #8a8a8a); min-width: 84px; }
   .star-edit { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; flex: 1; font-size: 0.82em; }
   .se-num { width: 62px; background: var(--bg-control); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 2px 5px; font-size: 0.95em; }
   .se-num.bad { border-color: #cc5555; background: rgba(204, 85, 85, 0.12); color: #ff9a9a; }
   .se-u { color: var(--text-faint); margin-right: 4px; }
-  .se-cls { color: var(--text-muted); margin-left: 2px; }
+  .se-cls { color: var(--text); font-weight: 600; margin-left: 4px; }
   .se-cls.bad { color: #cc5555; font-weight: 600; }
   .se-fix { background: var(--accent, #ff5a1f); border: none; color: #fff; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 0.95em; }
   .hier-row .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1em; line-height: 0.5; }

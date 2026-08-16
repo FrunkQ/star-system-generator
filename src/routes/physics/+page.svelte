@@ -16,6 +16,7 @@
     ['temp-range', 'Temperature range & tidal heat'],
     ['radiation', 'Surface radiation'],
     ['radiation-split', 'Spectral photon/particle split'],
+    ['ionising-output', 'Ionising output & the corona'],
     ['star-designations', 'Reading a star designation'],
     ['belts', 'Trapped belts & the giants'],
     ['fluids', 'Fluid layers'],
@@ -368,6 +369,34 @@
       <p class="note">Brightness is never stored: it is computed from radius and temperature by
         <code>L = 4&pi;R&sup2;&sigma;T&#8308;</code>, which is exact. A figure that is derived cannot
         drift away from the numbers it came from.</p>
+    </section>
+
+    <!-- Placed HERE, beside the other radiation sections, rather than in the star-designation
+         section: this is about what a star DOES to its planets, which is what a reader is thinking
+         about at this point in the page. -->
+    <section id="ionising-output">
+      <h2>Ionising output &amp; the corona <span class="phase">04.6</span></h2>
+      <p><strong>Brightness and ionising output are two different numbers.</strong> A star's visible
+        brightness is fixed by its size and temperature. Its X-ray and extreme-ultraviolet output &mdash;
+        the part that strips atmospheres and matters to anything living there &mdash; comes from its
+        <em>magnetic field</em> instead. The two usually rise together, because a bigger star has more
+        of everything, but they come apart exactly where it counts: a flare changes a star's total
+        brightness by about a hundredth of a percent and its X-ray output by a factor of a thousand.</p>
+      <p>The engine follows the real relation, in which X-ray output tracks a star's <em>total
+        magnetic flux</em> &mdash; field strength across its whole surface, so field times area. That
+        relation holds over roughly twelve orders of magnitude, from a single sunspot group to the most
+        violently active stars. It is capped at a ceiling that real stars do not cross: past a certain
+        point the dynamo stops responding and X-ray output stops climbing, however fast the star spins.</p>
+      <p><strong>The exception is the one worth knowing, because it is counter-intuitive: a red giant
+        is not a fierce X-ray source.</strong> Past what astronomers call the <em>coronal dividing
+        line</em>, a star that is both cool and enormously swollen stops holding a hot corona at all.
+        The closed magnetic loops that make X-rays give way to a slow, massive wind. Betelgeuse has no
+        detected X-ray corona whatsoever &mdash; so an active red dwarf, ten thousand times dimmer,
+        genuinely irradiates its planets far harder than a red giant does. The engine tests this by a
+        star's own surface gravity and temperature rather than by its type, so it applies wherever it
+        is true and nowhere else.</p>
+      <p class="note">A gas giant is a radiation source too, by a third mechanism again: trapped
+        particles in its magnetic field, with no light involved. See <a href="#belts">trapped belts</a>.</p>
     </section>
 
     <section id="radiation-split">
