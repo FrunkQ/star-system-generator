@@ -34,28 +34,31 @@
   // and its `pending` flag is gone. The clusters-and-galaxies removal still stands — that is V3.1.
   const features: { title: string; blurb: string; pending?: string }[] = [
     { title: 'A rewritten physics engine', blurb: 'What a world is made of decides everything else: density, temperature, atmosphere and cloud decks, oceans and ice, magnetism, geology, the radiation it throws out and the colour you actually see. The Newton panel shows the working.' },
+    // The 3D half was implicit and is the interesting bit: a player is not sent a picture of the
+    // system, they get the real three-dimensional view on their own device (engine map TAG-20 — the
+    // player's system view is HoloView at both tiers). Two separate lines never said that between them.
+    { title: 'Player views in 3D', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — not a flat picture of the system but the real three-dimensional view, redacted to what they should know, updating as you play, and dressed with filters and transitions that lean hard into your setting's look." },
     { title: 'The light that reaches the ground', blurb: 'A star’s spectrum is filtered by the air and the cloud decks above it, so what lands on the surface is not what left the star. That light sets the colour of the land, the sea and the sky, and decides what colour the plants would be to grow under it — and the physics pages draw the curve rather than describing it.' },
-    { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
-    { title: 'Stars properly classified', blurb: 'Stars carry their real classification — spectral type and luminosity class — read from size and temperature rather than from how bright they look, so a supergiant is a supergiant rather than a dwarf that shares its colour. Antares arrives as the giant it is, every type is named in plain words with a famous example, and a star whose numbers break physics is kept and labelled rather than refused.' },
-    { title: 'Player views', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — redacted, updating as you play, and dressed with filters and transitions that lean hard into your setting's look." },
-    { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system — orbits, tilts and moons where the physics puts them, each world lit by its own star.' },
-    { title: 'Starmaps have depth', blurb: 'Systems carry a z-axis, so distances are true in three dimensions. If you prefer a flat map, everything still works exactly as it did in 2D.' },
-    { title: 'Your own stars in the sky', blurb: 'Your starmap becomes the night sky behind the 3D view — every system at its true direction, brightness and colour — so the constellations your players see are made of places they can fly to.' },
-    { title: '3D ships', blurb: 'Bring your own models: constructs can be shown as real 3D craft.' },
-    { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
-    { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — the real stars near you at their true positions, with their confirmed planets, and plausible worlds filled in around the rest if you want them.' },
-    { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
     { title: 'Life is a tag too', blurb: 'What lives on a world — microbes, fungi, plants, animals, or something that builds cities — is described the same way everything else is, and it shows on the planet: vegetation spreads inland from the coast, in a colour worked out from the light that actually reaches it. Searchable, editable, and yours to invent from.' },
+    { title: 'The system in 3D', blurb: 'A real three-dimensional view of any system — orbits, tilts and moons where the physics puts them, each world lit by its own star.' },
+    { title: 'Stars properly classified', blurb: 'Stars carry their real classification — spectral type and luminosity class — read from size and temperature rather than from how bright they look, so a supergiant is a supergiant rather than a dwarf that shares its colour. Antares arrives as the giant it is, every type is named in plain words with a famous example, and a star whose numbers break physics is kept and labelled rather than refused.' },
+    { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
+    { title: 'Your own stars in the sky', blurb: 'Your starmap becomes the night sky behind the 3D view — every system at its true direction, brightness and colour — so the constellations your players see are made of places they can fly to.' },
+    { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — the real stars near you at their true positions, with their confirmed planets, and plausible worlds filled in around the rest if you want them.' },
+    { title: 'Starmaps have depth', blurb: 'Systems carry a z-axis, so distances are true in three dimensions. If you prefer a flat map, everything still works exactly as it did in 2D.' },
+    { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
+    { title: '3D ships', blurb: 'Bring your own models: constructs can be shown as real 3D craft.' },
+    { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
+    // FLAG REVERTED 2026-08-16, owner correcting the coordinator: "every physics improvement we have
+    // tweaked the generation system to include the new stuff, so it is being background evolved."
+    // He is right and I read the claim too strictly. The line says generation has been RETUNED TO SIT
+    // BETTER INSIDE THE NEW PHYSICS, which is exactly what has been happening continuously — it does
+    // not claim the spacing is finished. B58/B59/G24 are named remaining faults, not evidence the
+    // sentence is false, and a pending tag would have understated real work. Left unflagged.
+    { title: 'Sharper generation', blurb: 'Procedural systems are retuned alongside the physics as it grows, so a generated system reflects what the engine currently knows rather than what it knew when the generator was written.' },
+    { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
     { title: 'Virtual tabletop integration', pending: 'in testing', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and Foundry are in testing.' },
-    // FLAGGED 2026-08-16 by the coordinator, applying this file's own rule: an unpending line is a
-    // claim the release makes, and this one is not yet true. B58 measured that planet spacing is
-    // still the Solar System's own distances in absolute AU, so nothing generates closer than about
-    // 0.4 AU around ANY star — a red dwarf gets Sol's layout. B59 has a gas giant moonless 10 times
-    // in 72, and G24 has the generation sliders showing no visible effect. Clear the flag when the
-    // generation rebalance lands; it is the only line on this list the code cannot currently back.
-    { title: 'Sharper generation', pending: 'being retuned', blurb: 'Procedural systems are being retuned to sit better inside the new physics — spacing, moons and the generation controls are the current work.' },
-    { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     { title: 'Many improvements and fixes', blurb: 'Hundreds of smaller changes throughout — the changelog has every one, build by build.' }
   ];
 </script>
