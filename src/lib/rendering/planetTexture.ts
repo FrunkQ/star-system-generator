@@ -285,13 +285,30 @@ interface SurfaceBand {
 /** Everything the ice pass needs. `ragged` and `feather` are in DEGREES of latitude. */
 interface IcePaint { north: number; south: number; ragged: number; feather: number; highlandReach: number; seaSpread: number; }
 
+/** Fade a ground colour toward whatever is ABOVE it, by how much of the ground can be seen at all.
+ *  The `surface` stop's weight carries that (see apparentColor): 1 on an ordinary world, and near
+ *  zero under a sky nothing gets through — which is why nobody has photographed Venus's rock. */
+function throughTheSky(hex: string, body: CelestialBody): string {
+  const pal = body.apparentColor?.palette ?? [];
+  const surf = pal.find((p) => p.role === 'surface');
+  const seen = surf?.weight ?? 1;
+  if (seen >= 0.995) return hex;
+  const above = pal.filter((p) => p.role === 'cloud' || p.role === 'atmosphere').slice(-1)[0];
+  if (!above) return hex;
+  const a = rgbOf(hex), b = rgbOf(above.hex);
+  const h2 = (v: number) => Math.round(v).toString(16).padStart(2, '0');
+  return `#${h2(b[0] + (a[0] - b[0]) * seen)}${h2(b[1] + (a[1] - b[1]) * seen)}${h2(b[2] + (a[2] - b[2]) * seen)}`;
+}
+
 function surfacePaint(body: CelestialBody, landHex: string, seaHex: string, seaCover: number) {
   // Read the APPEARANCE MODEL, not the body. It has already dropped the layers that paint nothing,
   // gated out stars, belts and giants, and defaulted the land fraction — so a renderer that reached
   // round it would be re-deciding all three, badly and separately. That is what the model is for.
   const a = deriveAppearance(body);
   const field = landFieldFor(body.id || 'x', Math.max(0, Math.min(1, 1 - seaCover)));
-  const colours = { land: landHex, sea: seaHex, deep: toneHex(seaHex, -0.35), shallow: toneHex(seaHex, 0.3) };
+  const land = throughTheSky(landHex, body);
+  const sea = throughTheSky(seaHex, body);
+  const colours = { land, sea, deep: toneHex(sea, -0.35), shallow: toneHex(sea, 0.3) };
   const bands: SurfaceBand[] = (a.vegetation?.layers ?? []).map((l) => {
     const band = vegetationBand(field, l.coverage, l.waterReach);
     return { low: band.low, high: band.high, hex: l.colorHex, opacity: l.opacity, light: l.light,

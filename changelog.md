@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.665-beta - 16th Aug 2026
+
+- FIXED, properly this time: Venus was still pink on the drawn disc. The previous fix corrected the single flattened swatch a world is summarised by, but the 2D and 3D renderers do not use that — they paint the ground from the palette and veil it with the cloud, and nothing told them the sky was opaque. How visible a world's ground is now travels with the palette, so the renderers know too. Venus is a featureless pale ball, as it is.
+
 ## v2.1.664-beta - 16th Aug 2026
 
 - The body panel's Colours view is now the colour chart under that world's own daylight, rather than a list of the swatches the world is made of. The old one answered a question nobody was asking; this one answers the question a GM actually has — what does a familiar colour look like down there.

@@ -381,6 +381,12 @@ export function deriveApparentColorParts(
       // Down and back up: what returns from the ground has crossed the sky twice.
       const seen = Math.max(0, Math.min(1, transmission * transmission));
       col = mix(hexToRgb(veilTop.hex), col, seen);
+      // AND TELL THE PALETTE, not just the flattened swatch. The texture renderers paint the ground
+      // from the `surface` STOP and then veil it with the deck — they never see the number above, so
+      // fixing only `col` fixed the one-swatch view and left the drawn disc showing crimson rock
+      // through an opaque sky. The stop's WEIGHT is how visible that ground is; the renderers read it.
+      const surf = palette.find((p) => p.role === 'surface');
+      if (surf) surf.weight = seen;
     }
   }
 
