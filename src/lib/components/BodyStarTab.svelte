@@ -10,7 +10,7 @@
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
   import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatsFromPack } from '$lib/generation/star';
-  import { stellarTypeForBand, subclassForTemp } from '$lib/physics/starDesignation';
+  import { stellarTypeForBand, spectralSubclass } from '$lib/physics/starDesignation';
   import { SeededRNG } from '$lib/rng';
 
   let { body, rulePack } = $props();
@@ -470,7 +470,7 @@
           // luminosity class is kept, since the GM moved the temperature and not the size class.
           const { luminosity, band } = body.stellarType ?? {};
           const letter = newClass.split('/')[1];
-          const sub = subclassForTemp(letter, k, rulePack);
+          const sub = spectralSubclass(letter, k, rulePack, band);
           body.stellarType = {
               spectral: letter,
               ...(sub != null ? { subclass: Math.round(sub) } : {}),

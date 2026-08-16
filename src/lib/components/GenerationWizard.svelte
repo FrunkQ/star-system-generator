@@ -67,7 +67,7 @@
     const ex = explainStarClass(rulePack, key);
     // The FULL designation now - G3V rather than G V - computed from the same position. Subclass is
     // main-sequence only; a giant honestly gets its letter and class without one.
-    return { designation: fullDesignation(letter, t, band ?? undefined), text: ex?.text ?? '' };
+    return { designation: fullDesignation(letter, t, band ?? undefined, rulePack), text: ex?.text ?? '' };
   }
 
   const starColor = (s: { spectralClass: string }) => SPECTRAL_COLOR[s.spectralClass] ?? '#ffd2a1';

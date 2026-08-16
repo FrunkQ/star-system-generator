@@ -1,7 +1,7 @@
 // The owner's own examples, asserted as written, plus the property that makes them maintainable:
 // the size clause is DERIVED from the pack band, so it cannot drift from the physics.
 import { describe, it, expect } from 'vitest';
-import { explainStarClass, sizeInWords, pickerLabel, luminosityClassOfKey, exemplarFor, spectralSubclass, fullDesignation } from './starClassExplain';
+import { explainStarClass, sizeInWords, pickerLabel, luminosityClassOfKey, exemplarFor } from './starClassExplain';
 import { loadStarterPack } from '$lib/import/realsky/testPack';
 
 const pack = loadStarterPack() as any;
@@ -159,41 +159,7 @@ describe('a flare star is described as one', () => {
 	});
 });
 
-// THE SUBCLASS closes the full MK designation: G2V rather than G-type, computed from position rather
-// than authored, so there is no grid to hand-fill.
-describe('the subclass, derived from temperature', () => {
-	it('lands within about a subclass and a half of the published type', () => {
-		// Published on the right. The bar is "reasonably realistic", not decimals.
-		expect(spectralSubclass('G', 5772)).toBeCloseTo(2.6, 1);   // Sun, G2
-		expect(spectralSubclass('B', 12100)).toBeCloseTo(8.1, 1);  // Rigel, B8
-		expect(spectralSubclass('M', 3600)).toBeCloseTo(0.7, 1);   // Betelgeuse, M1
-		expect(spectralSubclass('M', 3042)).toBeCloseTo(4.6, 1);   // Proxima, M5.5
-		expect(spectralSubclass('A', 9600)).toBeCloseTo(1.4, 1);   // Vega, A0
-		for (const [L, T, published] of [['G', 5772, 2], ['B', 12100, 8], ['M', 3600, 1]] as const) {
-			expect(Math.abs(spectralSubclass(L, T)! - published)).toBeLessThan(1.5);
-		}
-	});
-
-	it('REFUSES to derive one for a giant, because the ladder is main-sequence', () => {
-		// Arcturus is K1.5III and the main-sequence ladder puts it at K5.5 — four subclasses out,
-		// because a giant of a given subclass is cooler than a dwarf of the same one (DATA-R10).
-		// Better to say "K III" than to state a confident wrong number.
-		expect(spectralSubclass('K', 4286, 'III')).toBeUndefined();
-		expect(spectralSubclass('M', 3500, 'I')).toBeUndefined();
-		expect(spectralSubclass('K', 4286, 'V')).toBeDefined();
-	});
-
-	it('stays inside 0..9 and declines what it cannot answer', () => {
-		expect(spectralSubclass('G', 99999)).toBe(0);
-		expect(spectralSubclass('G', 1)).toBe(9);
-		expect(spectralSubclass('WD' as any, 5000)).toBeUndefined();
-		expect(spectralSubclass('G', 0)).toBeUndefined();
-	});
-
-	it('builds the designation a GM recognises', () => {
-		expect(fullDesignation('G', 5772, 'V')).toBe('G3V');   // rounds 2.6
-		expect(fullDesignation('B', 12100, 'V')).toBe('B8V');
-		expect(fullDesignation('K', 4286, 'III')).toBe('KIII'); // no subclass, deliberately
-		expect(fullDesignation('M', 3600, 'I')).toBe('MI');
-	});
-});
+// (THE SUBCLASS TESTS MOVED to `physics/starDesignation.spec.ts` with the derivation itself. The
+//  ladder they pinned divided each letter into ten equal temperature steps and was accurate to about
+//  a subclass and a half; the anchors that replaced it are exact for ten of twelve published stars,
+//  so the assertions changed with the numbers. The giant REFUSAL moved unchanged.)

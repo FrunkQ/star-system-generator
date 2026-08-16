@@ -32,10 +32,18 @@ export function subclassAnchors(pack?: RulePack | any): SubclassAnchors | undefi
  * no anchors for it. Interpolated between the two nearest anchors and clamped to the letter's own
  * range: a star hotter than its letter's 0 anchor is a 0, not a negative.
  *
+ * DERIVED ONLY FOR THE MAIN SEQUENCE, WHICH IS THE HONEST LIMIT AND IS OLDER THAN THIS FILE. The
+ * relation between temperature and subclass depends on the LUMINOSITY CLASS — a K1.5 giant is cooler
+ * than a K1.5 dwarf — so the ladder applied to a giant is wrong by a lot: Arcturus (K1.5III) derives
+ * as K5.5 on it, four subclasses out. A giant gets its letter and its class with NO subclass, which
+ * is both honest and how people speak of them ("a K giant"). DATA-R10: the letter alone determines
+ * less than it appears to.
+ *
  * Returns a number so a half-subclass (M1.5, the value SIMBAD really publishes for Betelgeuse)
  * survives the round trip; `formatStellarType` prints whatever it is given.
  */
-export function subclassForTemp(spectral: string, tempK: number, pack?: RulePack | any): number | undefined {
+export function spectralSubclass(spectral: string, tempK: number, pack?: RulePack | any, band?: string): number | undefined {
+  if (band && band !== 'V') return undefined;   // giants and supergiants: see above
   const anchors = subclassAnchors(pack)?.[spectral];
   if (!anchors || !(tempK > 0)) return undefined;
   const points = Object.entries(anchors)
@@ -77,7 +85,7 @@ export function stellarTypeForBand(
   if (!name) return undefined;
   const m = /^([OBAFGKMLTY])(?:-(I|III|V))?$/.exec(name);
   if (!m) return { spectral: name };  // star/WD, star/NS, star/BH, ...
-  const sub = tempK != null ? subclassForTemp(m[1], tempK, pack) : undefined;
+  const sub = tempK != null ? spectralSubclass(m[1], tempK, pack, m[2]) : undefined;
   return {
     spectral: m[1],
     ...(sub != null ? { subclass: Math.round(sub) } : {}),
@@ -98,10 +106,24 @@ export function designationFor(params: {
   tempK: number;
   luminosity?: string;
 }, pack?: RulePack | any): { spectral: string; subclass?: number; luminosity?: string; band?: string } {
-  const sub = subclassForTemp(params.spectral, params.tempK, pack);
+  const band = params.luminosity?.replace(/[ab]/g, '');
+  const sub = spectralSubclass(params.spectral, params.tempK, pack, band);
   return {
     spectral: params.spectral,
     ...(sub != null ? { subclass: Math.round(sub) } : {}),
     ...(params.luminosity ? { luminosity: params.luminosity, band: params.luminosity.replace(/[ab]/g, '') } : {})
   };
+}
+
+/**
+ * The full MK designation for a star's measured state: `G2V`, `K III`, `M Ia`-ish.
+ *
+ * COMPUTED FROM POSITION, never authored — which is what makes the full designation space affordable
+ * at all. There is no 700-cell grid to fill in, because a designation is a place on the HR diagram
+ * rather than a row in a table.
+ */
+export function fullDesignation(letter: string, tempK: number, band?: 'I' | 'III' | 'V', pack?: RulePack | any): string {
+  const sub = spectralSubclass(letter, tempK, pack, band);
+  const subText = sub == null ? '' : String(Math.round(sub));
+  return `${letter}${subText}${band ?? ''}`;
 }

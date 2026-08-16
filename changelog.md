@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.692-beta - 16th Aug 2026
+
+- FIXED: the Sun was labelled G3V. There were two ways of working out the digit in a designation and they disagreed - one divided each spectral letter into ten equal temperature steps, which the real sequence is not, and it was the one the generation wizard displayed. Both are now the anchored version, which gets ten of twelve published stars exactly right. Vega reads A0V rather than A1V, Proxima M5 rather than M4.
+- A giant still gets its letter and its class with no digit at all, deliberately: the ladder is main-sequence, and applying it to Arcturus puts it four subclasses out. Better to say "K giant" than a confident wrong number.
+
+
 ## v2.1.690-beta - 16th Aug 2026
 
 - FIXED: the dust-storm figure read the same as the everyday one, which says a storm makes no difference. Both were clamping to the horizon. Two causes: the storm load was a multiplier on the baseline rather than a storm's own measured depth — Opportunity read an optical depth near 10.8 in the 2018 global storm, so a severe one is anchored there — and suspended dust is now spread over half the gas scale height, because aerosols settle rather than filling the column. The line only appears at all when it differs from the clear-air figure. Mars: 3.4 km normally, 2.4 km with a storm up.
