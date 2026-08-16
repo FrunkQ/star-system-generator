@@ -13,10 +13,11 @@
   import type { RulePack, CelestialBody } from '$lib/types';
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
   import { deriveVisibility, distanceWords, LAMPS } from '$lib/physics/visibility';
+  import { surfaceSceneFor, drawSky, drawMaterials, drawMarkers, drawEmissive, drawSpectrumEdges } from './surfaceScene';
   import { blackbodySpectrum, gridShare, spectrumToHex } from '$lib/physics/spectrum';
   import {
     lightOperator, relightImage, colourUnderOperator, confusability,
-    homeDaylight, brightnessVs, brightnessWords
+    homeDaylight, homeDaylightSpectrum, brightnessVs, brightnessWords
   } from '$lib/physics/imageUnderLight';
 
   let { body = null, light = null, pack = null, height = 260, standalone = false,
@@ -102,6 +103,15 @@
   // whether the thing in the murk gets a surprise round.
   const sight = $derived(body ? deriveVisibility(body, pack) : standalone ? deriveVisibility(demoBody, pack) : null);
 
+  // The scene IS the world: its own ground, its own sky, its life if it has any, and markers standing
+  // out to where its air gives up. `homeScene` is the same set of surfaces under Earth's sky, which
+  // is what the left of the wipe means.
+  const world = $derived(surfaceSceneFor(body ?? (standalone ? demoBody : null), pack, surfaceLight));
+  const homeWorld = $derived(world ? { ...world, skyLowHex: '#bcd6ea', skyHighHex: '#5b8fc9', airless: false } : null);
+  // Earth's own extinction, so the near markers on the home side fade the way they really do.
+  const HOME_EXTINCTION = 1.155e-5;
+  let matCanvas: HTMLCanvasElement | null = null;
+
   const level = $derived(op ? brightnessVs(op, daylightOp) : 1);
   const levelPct = $derived(
     level >= 0.1 ? `${Math.round(level * 100)}%`
@@ -156,15 +166,59 @@
     const ctx = canvas.getContext('2d')!;
     const H = canvas.height;
     ctx.clearRect(0, 0, W, H);
-    if (activeScene === 'chart') drawChart(ctx, H);
-    else drawLandscape(ctx, H);
-    // Re-light only the right-hand side; the wipe edge is the comparison.
     const x0 = Math.round((split / 100) * W);
-    if (x0 < W) {
-      const img = ctx.getImageData(x0, 0, W - x0, H);
-      relightImage(img.data, op, adapt, trueLevel ? level : 1);
-      ctx.putImageData(img, x0, 0);
+    if (activeScene === 'chart') {
+      drawChart(ctx, H);
+      // Re-light only the right-hand side; the wipe edge is the comparison.
+      if (x0 < W) {
+        const img = ctx.getImageData(x0, 0, W - x0, H);
+        relightImage(img.data, op, adapt, trueLevel ? level : 1);
+        ctx.putImageData(img, x0, 0);
+      }
+      return;
     }
+
+    // THE SURFACE VIEW. Sky and star are LIGHT and are painted in their final colour on each side;
+    // ground, water, plants and the reference blocks are REFLECTANCES and go through the operator.
+    // Keeping them apart is the whole reason there are two layers: re-lighting a sky asks what it
+    // looks like when lit by itself, and painting the ground pre-lit would show the world under its
+    // own sun on the "at home" side too.
+    if (!world) return;
+    const home = homeWorld ?? world;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, x0, H); ctx.clip();
+    drawSky(ctx, W, H, home);
+    ctx.restore();
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x0, 0, W - x0, H); ctx.clip();
+    drawSky(ctx, W, H, world);
+    ctx.restore();
+
+    const mat = matCanvas ?? (matCanvas = document.createElement('canvas'));
+    mat.width = W; mat.height = H;
+    const mctx = mat.getContext('2d')!;
+    mctx.clearRect(0, 0, W, H);
+    drawMaterials(mctx, W, H, world);
+    if (x0 < W) {
+      // relightImage leaves fully transparent pixels alone, so the sky behind shows through with no
+      // masking of its own.
+      const img = mctx.getImageData(x0, 0, W - x0, H);
+      relightImage(img.data, op, adapt, trueLevel ? level : 1);
+      mctx.putImageData(img, x0, 0);
+    }
+    ctx.drawImage(mat, 0, 0);
+
+    // Airlight last, and per side: at home this world's surfaces sit in Earth's air, over there in
+    // its own. On a hazy world that is the shot — the far markers are simply gone.
+    drawMarkers(ctx, W, H, world, HOME_EXTINCTION, home.skyLowHex, 0, x0);
+    drawMarkers(ctx, W, H, world, world.sight.extinctionPerM, world.skyLowHex, x0, W);
+    // Lava and lit windows make their OWN light, so they are not re-lit and not veiled by haze
+    // between you and them at these distances. A settlement therefore reads the same on both sides
+    // of the wipe while everything around it changes, which is exactly what a lamp does.
+    drawEmissive(ctx, W, H, world);
+    // And the quick reference that explains the rest: home's spectrum up the left edge, this
+    // world's up the right.
+    drawSpectrumEdges(ctx, W, H, homeDaylightSpectrum(), surfaceLight);
     // The seam is DOM, not canvas — see the handle below. Drawn here it would scale with the bitmap
     // and could not be grabbed.
   }
@@ -210,32 +264,7 @@
     });
   }
 
-  function drawLandscape(ctx: CanvasRenderingContext2D, H: number) {
-    // A schematic scene rather than a photograph: sky, hills, a treeline, water and a few built
-    // shapes. Crude on purpose — what is being compared is the COLOUR, and a drawing keeps the
-    // licence question out of it entirely.
-    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.55);
-    sky.addColorStop(0, '#5b8fc9'); sky.addColorStop(1, '#bcd6ea');
-    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H * 0.55);
-    ctx.fillStyle = '#f2e6c8';
-    ctx.beginPath(); ctx.arc(W * 0.78, H * 0.16, H * 0.07, 0, 7); ctx.fill();
-    ctx.fillStyle = '#6f7f5a';
-    ctx.beginPath(); ctx.moveTo(0, H * 0.55);
-    for (let x = 0; x <= W; x += 16) ctx.lineTo(x, H * 0.55 - Math.sin(x / 90) * H * 0.07 - Math.sin(x / 31) * H * 0.02);
-    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
-    ctx.fillStyle = '#3f6b3a';
-    for (let i = 0; i < 26; i++) {
-      const x = 12 + (i * 97) % (W - 24), y = H * 0.58 + ((i * 53) % Math.round(H * 0.18));
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 9, y + 22); ctx.lineTo(x - 9, y + 22); ctx.fill();
-    }
-    ctx.fillStyle = '#3d6f8f'; ctx.fillRect(0, H * 0.84, W, H * 0.16);
-    ['#b8563a', '#c9b48a', '#8a8f96'].forEach((c, i) => {
-      ctx.fillStyle = c; ctx.fillRect(W * (0.12 + i * 0.24), H * 0.62, 46, 40);
-      ctx.fillStyle = '#e8d9a8'; ctx.fillRect(W * (0.12 + i * 0.24) + 8, H * 0.66, 10, 12);
-    });
-  }
-
-  $effect(() => { split; adapt; trueLevel; level; activeScene; op; demoTempK; demoSky; draw(); });
+  $effect(() => { split; adapt; trueLevel; level; activeScene; op; world; demoTempK; demoSky; draw(); });
   onMount(draw);
 </script>
 
@@ -264,7 +293,7 @@
         <label class="scene">
           <select bind:value={scene}>
             <option value="chart">Colour chart &amp; wires</option>
-            <option value="landscape">A landscape</option>
+            <option value="landscape">The surface view</option>
           </select>
         </label>
       {/if}

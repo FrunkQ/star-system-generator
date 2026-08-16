@@ -54,7 +54,11 @@ export interface Hydrosphere { coverage?: number; depth_m?: number; composition?
 // shows) AND as the un-mixed palette of contributions, so a future sphere/shader renderer can
 // draw Earth's ocean/land/cloud mix or Jupiter's bands from the same derivation (§2e).
 export type ApparentColorRole = 'surface' | 'vegetation' | 'ocean' | 'cloud' | 'ice-cap' | 'atmosphere' | 'incandescent';
-export interface ApparentColorStop { hex: string; role: ApparentColorRole; weight: number; label?: string; }
+// `hex` is APPEARANCE — the material as this world's own light leaves it. `rawHex` is the MATERIAL,
+// the authored reflectance before any star touched it. The surface view needs the second: painting a
+// scene from `hex` and then re-lighting it lights everything twice, and the "at home" half of the
+// comparison would show the world under its own sun rather than under ours.
+export interface ApparentColorStop { hex: string; role: ApparentColorRole; weight: number; label?: string; rawHex?: string; }
 export interface ApparentColor { hex: string; palette: ApparentColorStop[]; banding?: number; }
 // Bulk interior makeup (mass fractions, normalised). Density + radius derive from it (§2a).
 export interface Makeup { metal?: number; rock?: number; carbon?: number; ice?: number; gas?: number; }

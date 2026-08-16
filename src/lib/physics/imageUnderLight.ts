@@ -208,6 +208,13 @@ export function relightImage(
 }
 
 let HOME: LightOperator | null = null;
+let HOME_SPECTRUM: Spectrum | null = null;
+
+/** Home's spectrum itself, for anything that needs the curve rather than the operator. */
+export function homeDaylightSpectrum(): Spectrum {
+	if (!HOME_SPECTRUM) homeDaylight();
+	return HOME_SPECTRUM!;
+}
 
 /**
  * HOME — the light everything else is quoted against, and it is Earth's OWN midday.
@@ -229,7 +236,8 @@ export function homeDaylight(): LightOperator {
 	} as unknown as CelestialBody;
 	// The rule pack is deliberately NOT passed: home has to stay put even if a GM edits their gases.
 	const r = deriveSurfaceSpectrum(earth, { starTempK: 5778, luminositySolar: 1, distanceAU: 1 }, null);
-	HOME = lightOperator(r?.curves.surface ?? blackbodySpectrum(5778, 1000 * gridShare(5778)));
+	HOME_SPECTRUM = r?.curves.surface ?? blackbodySpectrum(5778, 1000 * gridShare(5778));
+	HOME = lightOperator(HOME_SPECTRUM);
 	return HOME;
 }
 

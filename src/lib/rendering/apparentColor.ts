@@ -124,8 +124,15 @@ export function deriveApparentColorParts(
 ): ApparentColor {
   const mk = makeupFractions(body);
   const palette: ApparentColorStop[] = [];
+  // Lit hex -> the authored MATERIAL colour it came from, so the palette can carry both. The surface
+  // view paints a scene from the MATERIAL and lights it itself; handed the appearance it would light
+  // everything twice, and the "at home" side of that comparison would show the world under its own
+  // sun instead of ours. Recorded here rather than threaded through twenty push() calls.
+  const rawOf = new Map<string, string>();
   const push = (hex: string, role: ApparentColorStop['role'], weight: number, label?: string) => {
-    if (weight > 0.02) palette.push({ hex, role, weight: Math.min(1, weight), label });
+    if (weight > 0.02) {
+      palette.push({ hex, role, weight: Math.min(1, weight), label, rawHex: rawOf.get(hex) ?? hex });
+    }
   };
   const star = starColorFromTempK(opts?.starTempK);
   // THE LIGHT THIS WORLD IS ACTUALLY LIT BY. Handed in by the processor, which has already filtered
@@ -146,9 +153,9 @@ export function deriveApparentColorParts(
   // starlight; the ground takes what got through.
   const topLight: Spectrum = opts?.topLight ?? starSpectrum;
   /** What a material of this authored colour looks like on the GROUND. */
-  const under = (hex: string) => materialUnderLight(hex, light);
+  const under = (hex: string) => { const lit = materialUnderLight(hex, light); rawOf.set(lit, hex); return lit; };
   /** …and what it looks like ABOVE the weather, where a cloud top or a haze layer sits. */
-  const underTop = (hex: string) => materialUnderLight(hex, topLight);
+  const underTop = (hex: string) => { const lit = materialUnderLight(hex, topLight); rawOf.set(lit, hex); return lit; };
 
   // 1. Surface base ("land") from makeup fractions.
   let col = mixWeighted([

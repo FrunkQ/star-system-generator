@@ -41,7 +41,7 @@
     { id: 'disc', label: '2D', title: 'This world as the orrery draws it, from its own physics' },
     system ? { id: 'sphere', label: '3D', title: 'This world as a globe — drag to spin it' } : null,
     hasLight ? { id: 'swatch', label: 'Colours', title: 'Familiar colours as they look under this world\'s own daylight' } : null,
-    hasLight ? { id: 'horizon', label: 'Horizon', title: 'A landscape under this world\'s own daylight' } : null
+    hasLight ? { id: 'horizon', label: 'Surface view', title: 'Standing on it: this world\'s own ground, sky and light, and how far you can see' } : null
   ].filter(Boolean) as { id: View; label: string; title: string }[]);
 
   // Never leave the panel on a view this world cannot show.

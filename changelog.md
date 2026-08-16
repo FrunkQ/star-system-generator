@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.668-beta - 16th Aug 2026
+
+- The Horizon view is now the **Surface view**, and it is a view of THAT WORLD rather than a stock Earth. Its ground is the world's own rock, its sky is the colour its own air scatters, its sea appears only if it has one, and its life is drawn in the pigments its morphologies actually settled on — every layer of them, since a world's mats and its canopy often choose differently.
+- The ground is shaped by the tags the engine already committed to. An ancient surface nothing has resurfaced keeps every crater it took; plate tectonics gives it sharp folded peaks; tidal volcanism gives it cones and lava that glows; ice worlds bank ice against the far ground; a dust-storm world gets dunes. Nothing here is a new judgement about the world — it is the old ones spent rather than repeated.
+- Anything that lights up at night now puts a settlement on the skyline with lit windows. The windows make their own light, so they do not change across the wipe while everything around them does — which is exactly what a lamp does.
+- Depth markers stand at known distances, each veiled by the air between you and it. Far enough out they are simply gone, at exactly the range the visibility figure quotes: the picture and the number cannot disagree, because they come from the same extinction.
+- A spectrum band runs up each edge — home on the left, this world on the right. Venus's goes black below 550 nm, and that black stripe is the whole explanation for why a blue wire down there is a dark grey one.
+- An airless world gets what it should: hard black sky, stars at noon, and its genuine surface colour under a bare star.
+- The sky and the star are painted directly rather than re-lit, and lava and lit windows with them. Only reflectances go through the re-lighting, which is the difference between "the same surfaces under a different sun" and lighting everything twice. The palette now carries each stop's authored material colour alongside its appearance so the scene can tell them apart.
+
 ## v2.1.667-beta - 16th Aug 2026
 
 - NEW: how far you can see, in metres. Occluded sight lines are where the plot is — "the air is thick" is scenery, but "you can see forty metres and your torch reaches twelve" decides whether the thing in the murk gets a surprise round. Every world now works out its visual range, its horizon, and how far a hand torch, headlights and a floodlight actually reach.
