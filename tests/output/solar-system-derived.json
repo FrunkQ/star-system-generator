@@ -5249,14 +5249,14 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#d1d4e2",
+        "hex": "#d1d4e1",
         "palette": [
           {
-            "hex": "#e7e9f1",
+            "hex": "#eae8ee",
             "role": "surface",
             "weight": 1,
             "label": "ice surface",
-            "rawHex": "#dbecfb"
+            "rawHex": "#deebf8"
           },
           {
             "hex": "#ced2e0",
@@ -5268,7 +5268,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d1d4e2",
+      "apparentColorHex": "#d1d4e1",
       "classification": {
         "base": "planet/ice",
         "baseScore": 1.3,

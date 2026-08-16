@@ -348,6 +348,8 @@ export function spaceWeathering(body: CelestialBody): number {
   // thin-aired Mars is red from RUST rather than grey from weathering — different process, and the
   // tags say which one a world got.
   if ((body.atmosphere?.pressure_bar ?? 0) >= 0.001) return 0;
+  // A belt or a ring is a population, not a surface. Nothing here applies to it.
+  if (body.roleHint === 'belt' || body.roleHint === 'ring') return 0;
   // makeupFractions, NOT body.makeup — the fractions are DERIVED from mass and density and are not
   // stored on the body. Reading the raw field returned undefined for every world in the catalogue,
   // so the guard below silently switched the whole effect off.
@@ -355,13 +357,29 @@ export function spaceWeathering(body: CelestialBody): number {
   // An icy crust does not mature this way: it sputters and anneals rather than accumulating iron.
   if (mk.ice > 0.3 || mk.gas > 0.5) return 0;
   if (!(mk.rock > 0 || mk.metal > 0 || mk.carbon > 0)) return 0;
+  // FLUENCE, NOT FLUX (inbox B65). `irradiationDose` is a RATE — how hard the surface is being hit —
+  // and maturity is what has accumulated, which is rate x time. Taking the rate alone said a freshly
+  // resurfaced world at Mercury's distance was as weathered as one that had sat there for four
+  // billion years, which is exactly backwards from why fresh crater rays are bright.
+  //
+  // It saturates, because the coating stops changing once the grains are covered: 1 - exp(-k*D*t).
+  // k is set so a Luna-like surface — dose 1.44, four billion years — lands at 0.94, since that is
+  // the one case anyone can eyeball.
   const dose = (body as any).irradiationDose;
-  if (typeof dose === 'number') return Math.max(0, Math.min(1, Math.min(1, dose) * 0.95));
+  const ageGyr = (body as any).geoActivity?.surfaceAgeGyr;
+  if (typeof dose === 'number') {
+    const t = typeof ageGyr === 'number' && ageGyr > 0 ? ageGyr : 4;
+    return Math.max(0, Math.min(0.95, 1 - Math.exp(-0.5 * Math.max(0, dose) * t)));
+  }
   // Fall back to the tags when the raw dose is not on the body (a hand-authored world, a fixture).
+  // BOTH must be present. Defaulting the missing one turned every belt and ring in the catalogue —
+  // which carry neither, and are not surfaces at all — into something a third space-weathered.
+  // A world we know nothing about is not weathered; it is unmeasured.
   const tag = (k: string) => body.tags?.find((t) => t.key === k)?.value;
-  const d = { high: 1, moderate: 0.62, low: 0.3 }[tag('surface/irradiation') ?? ''] ?? 0.5;
-  const t = { ancient: 1, moderate: 0.5, young: 0.15 }[tag('surface/age') ?? ''] ?? 0.6;
-  return Math.max(0, Math.min(1, d * t * 0.95));
+  const d = { high: 1, moderate: 0.62, low: 0.3 }[tag('surface/irradiation') ?? ''];
+  const t = { ancient: 1, moderate: 0.5, young: 0.15 }[tag('surface/age') ?? ''];
+  if (d === undefined || t === undefined) return 0;
+  return Math.max(0, Math.min(0.95, d * t * 0.95));
 }
 
 // ── Weather (derived from the decks + the body's own physics) ────────────────────────────────────

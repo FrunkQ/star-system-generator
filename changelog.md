@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.681-beta - 16th Aug 2026
+
+- FIXED: space weathering modelled a rate where the physics is an accumulation. The irradiation dose says how hard a surface is being hit; maturity is what has built up, which is dose times TIME. Taking the rate alone said a freshly resurfaced world was as weathered as one that had sat there for four billion years — backwards from the reason fresh crater rays are bright. Io and Europa are now unweathered, as young surfaces should be, while Luna and Mercury still saturate.
+- FIXED: every belt and ring in the catalogue came back a third space-weathered, from fallback defaults applied to bodies that carry neither of the tags it reads. A world we know nothing about is unmeasured, not half-weathered — and a belt is a population, not a surface, so it is out of scope entirely.
+- Belts and rings drop the views that cannot mean anything for them. There is no ground to draw, no daylight to stand in and no horizon to see to, so they keep the artist's impression and a 3D view — and a ring is now drawn WITH its host, since a hoop on its own is the one picture nobody needs.
+
 ## v2.1.680-beta - 16th Aug 2026
 
 - FIXED: Mercury and Mars had Earth's blue overhead. The Surface view worked out what COLOUR the scattered light is but never how MUCH of it there is, and the colour step normalises — so an exosphere of a hundred-billionth of a bar returned a fully saturated blue sky. A sky's brightness is the share of the beam it scatters, so Mercury, Luna, Io and Europa are now black with stars at noon, and whether stars come out is that rather than a pressure test.
