@@ -12,6 +12,7 @@
 // the physics, and retuning a band updates every explanation for free. Authoring "roughly 10 times
 // wider" as a string would have been a second copy of a number the pack already holds.
 import type { RulePack } from '$lib/types';
+import { starClassParts } from '$lib/physics/starDesignation';
 import { starStatTemplate } from '$lib/generation/star';
 import { SOLAR_RADIUS_KM } from '$lib/constants';
 
@@ -66,12 +67,15 @@ const COLOUR_BY_LETTER: Record<string, string> = {
 };
 
 /** Parse a pack key or MK designation into its letter and luminosity band. */
+// The key parser lives in `physics/starDesignation` with the derivation that WRITES these keys, so
+// the thing that spells a designation and the thing that reads one cannot drift apart.
 function parts(key: string): { letter?: string; band?: string; bare?: string } {
+	const p = starClassParts(key);
+	// A key this module has a KIND for (WD, NS, brown dwarfs) is 'bare' here even when the parser
+	// found a letter in it — `star/L` is a brown-dwarf band, not an L-class main-sequence star.
 	const name = key.replace(/^star\//, '');
 	if (KIND_BY_KEY[name]) return { bare: name };
-	const m = /^([OBAFGKMLTY])(\d+(?:\.\d+)?)?-?(0|Ia|Iab|Ib|I{1,3}|IV|VI|V)?$/.exec(name);
-	if (!m) return {};
-	return { letter: m[1], band: m[3] };
+	return { letter: p.letter, band: p.band };
 }
 
 /**

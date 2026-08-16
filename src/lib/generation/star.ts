@@ -7,7 +7,7 @@ import { SOLAR_TEMPERATURE_K } from '../physics/stellar-evolution';
 import { bodyFactory } from '../core/BodyFactory';
 import { resolveStarImage, spectralLetterOf } from '../system/starImage';
 import { activityScatterFromRoll } from '../physics/ionisingOutput';
-import { stellarTypeForBand } from '../physics/starDesignation';
+import { stellarTypeForBand, starClassParts, bandKeyOf } from '../physics/starDesignation';
 
 // The stat template for a star class, falling back from the full spectral class to its letter
 // (star/G5V -> star/G). Exported because BOTH star-creation paths need it: the legacy random
@@ -28,11 +28,20 @@ export function starStatTemplate(pack: RulePack, starClass: string): any | undef
     starClass = LEGACY_CLASS_ALIAS[starClass] ?? starClass;
     const direct = pack.statTemplates?.[starClass];
     if (direct) return direct;
+    // A DESIGNATION RESOLVES TO ITS OWN BAND, WHICH MEANS ITS LUMINOSITY CLASS TOO — `star/G5III` is a
+    // G GIANT and must not fall back to the G dwarf band, which is what taking the first character
+    // alone did (a 10-solar-radius star handed a 1-radius template). One lookup, most specific first,
+    // using the same key parser that WRITES these keys (inbox B60).
     if (starClass.startsWith('star/')) {
-        const spectral = starClass.split('/')[1];
-        if (spectral && spectral.length > 1) {
-            const byLetter = pack.statTemplates?.[`star/${spectral[0]}`];
-            if (byLetter) return byLetter;
+        const band = bandKeyOf(starClass);
+        if (band !== starClass) {
+            const byBand = pack.statTemplates?.[band];
+            if (byBand) return byBand;
+            const p = starClassParts(starClass);
+            if (p.letter) {
+                const byLetter = pack.statTemplates?.[`star/${p.letter}`];
+                if (byLetter) return byLetter;
+            }
         }
     }
     return pack.statTemplates?.['star/default'];

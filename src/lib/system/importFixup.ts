@@ -13,6 +13,10 @@ import { makeupFractions } from '$lib/physics/makeup';
 import { survivesRederive } from '$lib/tags/tagLifecycle';
 import { inferAxialTilt, bodyCanHaveTilt } from '$lib/physics/axialTilt';
 import { spinProvenanceTags } from '$lib/generation/spinProvenance';
+import { starClassParts, starClassKeyFor, isBandKey } from '$lib/physics/starDesignation';
+import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
+import { determineSpectralClass } from '$lib/physics/stellar-evolution';
+import { SOLAR_RADIUS_KM } from '$lib/constants';
 
 // Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
 // so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
@@ -217,6 +221,55 @@ function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack): void {
   if (tipped && !body.tags.some((x) => x.key === 'spin/tipped')) body.tags.push({ key: 'spin/tipped' });
 }
 
+// THE LEGACY CLASS CLEANER — a bare letter is a BAND, and a body may not hold one (inbox B60).
+//
+// Owner, 2026-08-16: "O is dead, O1a is valid." A band is the range a draw comes from; a designation
+// is what a particular star IS, and `star/G` is not something a star can be. Every star saved before
+// v2.1.693 holds one, so the load path resolves it.
+//
+// IT NEEDS NO MAPPING TABLE, IT NEEDS TO RUN THE CLASSIFIER, and that classifier already exists and
+// is tested: a body holding `star/G` has a temperature and a radius, and `matchStarBand` returns the
+// luminosity class from that position — the same bands generation draws from, which is what makes
+// classification the inverse of generation rather than a second opinion (B48 section 10).
+//
+// AN AUTHORED STAR IS NOT RECLASSIFIED, IT IS RESOLVED. Hand authoring is hand authoring: a GM who
+// set `star/K` keeps K and gets the digit its own temperature states — `star/K3V`, never `star/G2V`
+// because the physics disagrees with them. If the parameters really are impossible for a K, the
+// implausibility pass says so in a tag, which is this engine's answer everywhere: refuse to PRODUCE,
+// never refuse to ACCEPT.
+//
+// AUTHORED IS THE DEFAULT HERE, AND THE TEST IS `autoClassify` BEING TRUTHY — the same rule
+// `SystemProcessor` applies before it commits a classification ("only the engine's own creations or
+// class-less bodies get (re)classified"). One rule, two places, rather than a second opinion about
+// whose data this is. A star the ENGINE made says so and gets the full readout; a star that arrived
+// in a save file keeps its letter. The owner's "a star's designation is a readout of its physics"
+// governs what a NEW star defaults to in the editor, not what a load may overwrite.
+//
+// A GIANT, A SUPERGIANT AND A REMNANT ARE ALREADY WHAT THEY CAN BE. `star/K-III` states everything
+// the main-sequence subclass ladder lets us say about a K giant, and a white dwarf's identity is a
+// track rather than a position (PHY-14), so both are left exactly as they are.
+function resolveLegacyStarClass(body: CelestialBody, pack?: RulePack): void {
+  if (body.roleHint !== 'star') return;
+  const held = body.classes?.[0];
+  if (!held || !held.startsWith('star/') || !isBandKey(held)) return;   // already a designation, or a remnant
+  const parts = starClassParts(held);
+  if (!parts.letter) return;
+  const tempK = body.temperatureK ?? 0;
+  if (!(tempK > 0)) return;                                            // nothing to resolve it from
+  // PINNED: keep the authored letter and its stated class, and fill in only the digit.
+  // DERIVED: ask the classifier where this star actually sits, which is the whole point of a
+  // designation being a READOUT of the physics (owner's second answer, same exchange).
+  const authored = !body.autoClassify;
+  const radiusSolar = (body.radiusKm ?? 0) / SOLAR_RADIUS_KM;
+  const band = authored
+    ? (parts.band ?? 'V')
+    : (luminosityClassFromPosition(pack, { temperatureK: tempK, radiusSolar }) ?? parts.band ?? 'V');
+  const letter = authored ? parts.letter : (starClassParts(`star/${determineSpectralClass(tempK)}`).letter ?? parts.letter);
+  const key = starClassKeyFor({ letter, tempK, band }, pack);
+  if (key === held) return;
+  body.classes = [key, ...(body.classes ?? []).slice(1).filter((c) => c !== key)];
+}
+
 export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
   for (const node of system.nodes) {
@@ -224,6 +277,7 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
     stripBody(node as CelestialBody, classNames);
     backfillGiantAtmosphere(node as CelestialBody);
     inferMissingAxialTilt(node as CelestialBody, pack);
+    resolveLegacyStarClass(node as CelestialBody, pack);
   }
   // NOTE: we used to DELETE every auto-barycentre here and let the processor regenerate them. But a
   // nested auto-barycentre (e.g. a planet + an oversized moon that v1 promoted) carries the pair's REAL

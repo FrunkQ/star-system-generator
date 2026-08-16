@@ -103,7 +103,10 @@ export function starParamsFromType(type, statTemplates, { otype } = {}) {
 //   VI/VII (subdwarf, and the old name for a white dwarf) -> V. The pack has no subdwarf band and
 //       inventing one is out of scope; a real white dwarf is caught by the D-type test below.
 // Giving II and IV their own bands later is a clean incremental change.
-const LUMINOSITY_BAND = {
+// EXPORTED because the class-key resolver needs the SAME folding: II is a bright giant and lands on
+// the supergiant band, IV is a subgiant and lands on the dwarf band. A second copy of this table
+// would put Canopus in one band for its numbers and another for its picture.
+export const LUMINOSITY_BAND = {
   I: 'I', Ia: 'I', Iab: 'I', Ib: 'I', II: 'I',
   III: 'III',
   IV: 'V', V: 'V', VI: 'V', VII: 'V'
@@ -282,7 +285,18 @@ export function starClasses(type, { otype } = {}) {
   // work has been removing.
   const band = luminosityClassOf(s);
   const specific = band && band !== 'V' ? [`star/${letter}-${band}`] : [];
-  const classes = [...specific, `star/${letter}`, ...(full && full !== letter ? [`star/${full}`] : [])];
+  // THE CATALOGUE'S OWN DESIGNATION LEADS, WHEN IT STATES ONE (inbox B60). A real star's MK type is
+  // MEASURED — `M1.5Iab` for Betelgeuse — and is better than anything the engine would derive from
+  // its temperature, so it is what the body IS. Written through `formatStellarType(parseStellarType)`
+  // rather than the raw string, which drops astronomers' annotations (`M5.5Ve` -> `M5.5V`) and the
+  // COMPANION, because `star/M1.5Iab+B2Vn` is two stars in one key and parses as neither.
+  // Falls back to the band when the type states no subclass, which is a designation that says less
+  // rather than one that says something wrong.
+  const own = parseStellarType(s);
+  const designation = own?.subclass != null ? formatStellarType({ ...own, companion: undefined }) : '';
+  const lead = designation ? [`star/${designation}`] : [];
+  const classes = [...lead, ...specific, `star/${letter}`, ...(full && full !== letter ? [`star/${full}`] : [])]
+    .filter((c, i, a) => a.indexOf(c) === i);
   return {
     classes,
     // MOST SPECIFIC IMAGE FIRST, THEN THE LETTER — the same fallback chain the classes and the pack

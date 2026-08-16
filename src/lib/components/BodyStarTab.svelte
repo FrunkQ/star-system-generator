@@ -10,7 +10,11 @@
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
   import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatsFromPack } from '$lib/generation/star';
-  import { stellarTypeForBand, spectralSubclass } from '$lib/physics/starDesignation';
+  import { stellarTypeForBand, spectralSubclass, starClassParts, starClassKeyFor, isBandKey, bandKeyOf } from '$lib/physics/starDesignation';
+
+  // A key a BODY holds rather than a range it was drawn from — used to drop the previous designation
+  // when a new one is written, so a star cannot accumulate two.
+  const isDesignationKey = (c: string) => c.startsWith('star/') && !isBandKey(c);
   import { SeededRNG } from '$lib/rng';
 
   let { body, rulePack } = $props();
@@ -213,9 +217,12 @@
   // --- Derived Ranges ---
   let currentClass = $state('star/G');
 
+  // THE DROPDOWN'S VALUE IS A BAND, AND A BODY NOW HOLDS A DESIGNATION, so the held key is mapped
+  // back to the range it came from: `star/G2V` selects "G-Type (Yellow Dwarf)". That mapping is the
+  // designation's own letter and luminosity class — no table, and it inverts `starClassKeyFor`.
   $effect(() => {
       if (body?.classes?.[0]) {
-          currentClass = body.classes[0];
+          currentClass = bandKeyOf(body.classes[0]);
       }
   });
 
@@ -444,8 +451,12 @@
       // re-deriving would silently demote a supergiant the moment a GM nudged the slider (D19,
       // reappearing inside the editor). Previously a fixed list of six; now anything that is not a
       // bare letter band, so a pack's own extra classes are covered too.
+      // Anything that states MORE than a main-sequence position keeps what it was given. Reads the
+      // class key rather than testing for a bare letter, so `star/G2V` — what a pick now writes —
+      // counts as main sequence exactly as `star/G` did.
       const currentClassInBody = body.classes?.[0] || '';
-      if (currentClassInBody && !/^star\/[OBAFGKMLTY]$/.test(currentClassInBody)) return;
+      const heldParts = starClassParts(currentClassInBody);
+      if (currentClassInBody && (!heldParts.letter || (heldParts.band && heldParts.band !== 'V'))) return;
 
       let newClass = 'star/Y';
       if (k >= 30000) newClass = 'star/O';
@@ -459,10 +470,11 @@
       else if (k >= 700) newClass = 'star/T';
       else newClass = 'star/Y';
       
-      if (body.classes[0] !== newClass) {
+      const newKey = starClassKeyFor({ letter: newClass.split('/')[1], tempK: k, band: 'V' }, rulePack);
+      if (body.classes[0] !== newKey) {
           const prefixes = Object.keys(SPECTRAL_DATA);
-          const others = body.classes.filter((c: string) => !prefixes.includes(c));
-          body.classes = [newClass, ...others];
+          const others = body.classes.filter((c: string) => !prefixes.includes(c) && !isDesignationKey(c));
+          body.classes = [newKey, ...others];
           // Keep the structured classification in step, or the body says one thing in its class and
           // another in its type. The SUBCLASS is RE-DERIVED rather than dropped: it is relative to the
           // letter, so the 5.5 of M5.5V means nothing once the star is a K — but the new temperature
@@ -476,7 +488,7 @@
               ...(sub != null ? { subclass: Math.round(sub) } : {}),
               ...(luminosity ? { luminosity, band } : {})
           };
-          currentClass = newClass;
+          currentClass = newClass;   // the BAND, for the dropdown; the body holds the designation
           updateImage(newClass);
       }
   }
@@ -597,7 +609,7 @@
       body.radiationOutput = R;
       currentClass = cls;
       if (!body.classes) body.classes = [];
-      const others = body.classes.filter((c: string) => !Object.keys(SPECTRAL_DATA).includes(c));
+      const others = body.classes.filter((c: string) => !Object.keys(SPECTRAL_DATA).includes(c) && !isDesignationKey(c));
       body.classes = [cls, ...others];
       updateImage(cls);
       accSliderPos = posFromF(f);
@@ -652,8 +664,7 @@
       currentClass = val;
       if (!body.classes) body.classes = [];
       const prefixes = Object.keys(SPECTRAL_DATA);
-      const others = body.classes.filter((c: string) => !prefixes.includes(c));
-      body.classes = [val, ...others];
+      const others = body.classes.filter((c: string) => !prefixes.includes(c) && !isDesignationKey(c));
       updateImage(val);
 
       // A SEEDED DRAW ACROSS THE BAND, NOT ITS MIDPOINT (owner, 2026-08-16: "always seeded draw").
@@ -693,6 +704,15 @@
       // is a G2 and saying so is stating what the draw already decided (inbox B60). Runs AFTER the
       // draw for exactly that reason.
       body.stellarType = stellarTypeForBand(val, body.temperatureK, rulePack);
+      // A PICK IS A BAND; WHAT THE STAR ENDS UP BEING IS A DESIGNATION (owner, 2026-08-16: "O is
+      // dead, O1a is valid"). The dropdown offers the pack's ranges — "make this a G dwarf" — and the
+      // body records what the draw produced, `star/G2V`. A giant keeps its band key, because the
+      // subclass ladder is main-sequence and `star/K-III` already states everything we can say.
+      const bandParts = starClassParts(val);
+      const designation = bandParts.letter
+          ? starClassKeyFor({ letter: bandParts.letter, tempK: body.temperatureK ?? 0, band: bandParts.band }, rulePack)
+          : val;   // remnants keep their own key
+      body.classes = [designation, ...others];
       // Picking a black hole from the dropdown applies the per-state presets too (event horizon
       // from mass, no-hair zero field for quiescent / disc values for feeding).
       if (val === 'star/BH' || val === 'star/BH_active') applyBHPresets(val);

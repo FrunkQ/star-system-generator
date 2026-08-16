@@ -10,6 +10,7 @@
 // Every spectral string below is one SIMBAD actually returns — the census inside 16.5 ly was dumped
 // to get them, so `dM6`, `M1-M2Ia-Iab`, `F5IV-V+DQZ`, `M1VIp` and `K6VeFe-1` are real, not invented.
 import { describe, it, expect } from 'vitest';
+import { bandKeyOf } from '$lib/physics/starDesignation';
 import { starParamsFromType, starClasses, luminosityClassOf, parseStellarType, formatStellarType } from './stars.mjs';
 import { loadStarterPack } from './testPack';
 
@@ -80,11 +81,13 @@ describe('starClasses — the D-type test is case-sensitive', () => {
 	});
 
 	it('does NOT swallow the lowercase dwarf prefix (four stars inside 16.5 ly)', () => {
-		// `/^D/i` matched `dM6` and imported Wolf 359 as a 1.0 Msun, 24,000 K white dwarf.
-		expect(starClasses('dM6').classes[0]).toBe('star/M'); // Wolf 359, Teegarden's Star
-		expect(starClasses('dM4').classes[0]).toBe('star/M'); // Ross 128
-		expect(starClasses('dM3').classes[0]).toBe('star/M'); // AD Leo
-		expect(starClasses('dK5').classes[0]).toBe('star/K');
+		// `/^D/i` matched `dM6` and imported Wolf 359 as a 1.0 Msun, 24,000 K white dwarf. What this
+		// guards is the LETTER, which the designation resolves to (B60: `dM6` is an M6 dwarf, so the
+		// class it leads with is `star/M6V` and it belongs to the `star/M` band).
+		expect(bandKeyOf(starClasses('dM6').classes[0])).toBe('star/M'); // Wolf 359, Teegarden's Star
+		expect(bandKeyOf(starClasses('dM4').classes[0])).toBe('star/M'); // Ross 128
+		expect(bandKeyOf(starClasses('dM3').classes[0])).toBe('star/M'); // AD Leo
+		expect(bandKeyOf(starClasses('dK5').classes[0])).toBe('star/K');
 	});
 });
 
@@ -280,26 +283,39 @@ describe('the invariant: created AS it, classifies back AS it', () => {
 // because the classes read `star/M` and `star/M1.5Iab+B2Vn` — the letter and the raw string, with
 // nothing between them — so every consumer keyed on classes saw an M star.
 describe('the classes carry the luminosity class', () => {
+	// B60 MOVED WHAT SITS IN classes[0] AND B44'S POINT SURVIVES INTACT. A star's own DESIGNATION now
+	// leads when the catalogue states one — `star/M1.5Iab` is what Antares IS, and it is MEASURED,
+	// which beats anything the engine would derive — with the pack's BAND key immediately behind it
+	// for every lookup. B44's requirement was never that classes[0] be a pack key; it was that a class
+	// must RESOLVE to one, which is `star/red-giant`'s fault stated properly. It still does.
 	it.each([
-		['M1.5Iab+B2Vn', 'star/M-I', 'star/M'], // Antares
-		['M1-M2Ia-Iab', 'star/M-I', 'star/M'], // Betelgeuse
-		['B8Ia', 'star/B-I', 'star/B'], // Rigel
-		['K1.5III', 'star/K-III', 'star/K'], // Arcturus
-		['F0II', 'star/F-I', 'star/F'] // Canopus — a bright giant, folded up
-	])('%s emits %s ahead of %s', (sp, specific, letter) => {
+		['M1.5Iab+B2Vn', 'star/M1.5Iab', 'star/M-I', 'star/M'], // Antares — companion dropped
+		['M1-M2Ia-Iab', 'star/M1Ia', 'star/M-I', 'star/M'],     // Betelgeuse — range takes the first
+		['B8Ia', 'star/B8Ia', 'star/B-I', 'star/B'],            // Rigel
+		['K1.5III', 'star/K1.5III', 'star/K-III', 'star/K'],    // Arcturus
+		['F0II', 'star/F0II', 'star/F-I', 'star/F']             // Canopus — a bright giant, folded up
+	])('%s emits %s, then %s, then %s', (sp, designation, specific, letter) => {
 		const { classes } = starClasses(sp);
-		// MOST SPECIFIC FIRST, so `classes[0]` is the real answer for the consumers that read only it…
-		expect(classes[0]).toBe(specific);
-		// …and the LETTER is still present for anything that only cares about colour.
+		// MOST SPECIFIC FIRST: what this star is, then the band it belongs to, then the letter.
+		expect(classes[0]).toBe(designation);
+		expect(classes).toContain(specific);
 		expect(classes).toContain(letter);
+		// AND THE DESIGNATION RESOLVES TO THE BAND, which is what stops it being a second vocabulary:
+		// the stat template, the portrait and the dropdown all reach the same pack entry through it.
+		expect(bandKeyOf(classes[0])).toBe(specific);
 	});
 
-	it('emits nothing extra for a main-sequence star, or one that states no class', () => {
-		// The patch must stay a no-op for the ordinary case: most catalogue entries state no class.
-		expect(starClasses('G2V').classes).toEqual(['star/G', 'star/G2V']);
-		expect(starClasses('M5.5Ve').classes).toEqual(['star/M', 'star/M5.5Ve']);
-		expect(starClasses('M2').classes).toEqual(['star/M', 'star/M2']);
-		expect(starClasses('F5IV-V').classes[0]).toBe('star/F'); // a subgiant folds to the dwarf band
+	it('emits nothing extra for a star whose type states no subclass', () => {
+		// No digit stated, nothing to lead with — the band is the whole of what the catalogue said.
+		expect(starClasses('M').classes).toEqual(['star/M']);
+		expect(starClasses('F5IV-V').classes[0]).toBe('star/F5IV'); // a subgiant...
+		expect(starClasses('F5IV-V').classes).toContain('star/F');   // ...folds to the dwarf band
+	});
+
+	it('keeps a main-sequence designation as the class, dropping astronomers annotations', () => {
+		expect(starClasses('G2V').classes[0]).toBe('star/G2V');
+		expect(starClasses('M5.5Ve').classes[0]).toBe('star/M5.5V');  // the emission `e` is an annotation
+		expect(starClasses('M2').classes[0]).toBe('star/M2');
 	});
 
 	it('ONE VOCABULARY: every band class it emits is a key the pack actually defines', () => {
@@ -308,7 +324,8 @@ describe('the classes carry the luminosity class', () => {
 		// nothing can resolve is `star/red-giant`'s fault repeated.
 		for (const L of LETTERS) {
 			for (const [sp, key] of [[`${L}2Iab`, `star/${L}-I`], [`${L}2III`, `star/${L}-III`]]) {
-				expect(starClasses(sp).classes[0]).toBe(key);
+				expect(bandKeyOf(starClasses(sp).classes[0])).toBe(key);
+				expect(starClasses(sp).classes).toContain(key);
 				expect(st[key], `${key} emitted as a class but missing from the pack`).toBeTruthy();
 			}
 		}
@@ -354,8 +371,8 @@ describe('compact objects classify from otype, not from a spectral type they do 
 	it('does NOT override a real spectral type — an X-ray binary is typed by its DONOR', () => {
 		// `* gam Cas` is HXB with sp_type B0.5IVpe; `RX J2130.6+4710` is XB* with DA+M3.5/4Ve. The
 		// spectral type describes the star we can see, and classifying by it is right.
-		expect(starClasses('B0.5IVpe', { otype: 'HXB' }).classes[0]).toBe('star/B');
-		expect(starClasses('G5', { otype: 'XB*' }).classes[0]).toBe('star/G');
+		expect(bandKeyOf(starClasses('B0.5IVpe', { otype: 'HXB' }).classes[0])).toBe('star/B');
+		expect(bandKeyOf(starClasses('G5', { otype: 'XB*' }).classes[0])).toBe('star/G');
 		// …and a pulsar that DOES carry a white-dwarf spectral string still reads as one.
 		expect(starClasses('DC', { otype: 'Psr' }).classes).toEqual(['star/WD']);
 	});
@@ -370,7 +387,7 @@ describe('compact objects classify from otype, not from a spectral type they do 
 
 	it('leaves an unknown otype alone rather than guessing', () => {
 		// A type it recognises still wins…
-		expect(starClasses('M4V', { otype: 'Er*' }).classes[0]).toBe('star/M');
+		expect(bandKeyOf(starClasses('M4V', { otype: 'Er*' }).classes[0])).toBe('star/M');
 		// …and an otype it has no mapping for does NOT become a red dwarf by default. `PM*` (high
 		// proper motion) and `*` (star) are the common ones, and neither says anything about type.
 		for (const otype of ['gB', 'PM*', '*', 'LM*', '**']) {

@@ -2,7 +2,7 @@
  "id": "starmap-local-neighbourhood-scifi",
  "name": "Local Neighbourhood (Science Fiction)",
  "description": "The same real stars as the Local Neighbourhood map, at their true positions — but populated with the famous science fiction set among them. Sol runs on The Expanse; Pandora circles Alpha Centauri A; Reach guards Epsilon Eridani; the Nostromo is still answering that beacon at Zeta Reticuli. This map is deliberately fictional: the planets, stations and ships come from the novels, films and games, not from the catalogues. Stars without a famous fictional tenant keep their real confirmed planets.",
- "appVersion": "2.1.542-beta",
+ "appVersion": "2.1.692-beta",
  "baseMapVersion": 2,
  "distanceUnit": "ly",
  "unitIsPrefix": false,
@@ -3725,8 +3725,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/G",
-       "star/G2V"
+       "star/G2V",
+       "star/G"
       ],
       "massKg": 2.1461309999999998e+30,
       "radiusKm": 847363,
@@ -3758,8 +3758,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/K",
-       "star/K1V"
+       "star/K1V",
+       "star/K"
       ],
       "massKg": 1.808001e+30,
       "radiusKm": 597606,
@@ -3791,6 +3791,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M5.5V",
        "star/M",
        "star/M5.5Ve"
       ],
@@ -4081,8 +4082,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M4V"
+       "star/M4V",
+       "star/M"
       ],
       "massKg": 3.22218e+29,
       "radiusKm": 130096,
@@ -4512,6 +4513,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M6.5V",
        "star/M",
        "star/M6.5Ve"
       ],
@@ -4705,8 +4707,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M2V"
+       "star/M2V",
+       "star/M"
       ],
       "massKg": 7.755111e+29,
       "radiusKm": 256365,
@@ -4823,6 +4825,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/A0",
        "star/A",
        "star/A0mA1Va"
       ],
@@ -4997,6 +5000,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M5.5V",
        "star/M",
        "star/M5.5Ve"
       ],
@@ -5030,6 +5034,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M6V",
        "star/M",
        "star/M6Ve"
       ],
@@ -5089,6 +5094,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M3.5V",
        "star/M",
        "star/M3.5Ve"
       ],
@@ -5135,8 +5141,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M6V"
+       "star/M6V",
+       "star/M"
       ],
       "massKg": 2.8840499999999997e+29,
       "radiusKm": 132183,
@@ -5181,8 +5187,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/K",
-       "star/K2V"
+       "star/K2V",
+       "star/K"
       ],
       "massKg": 1.6309799999999997e+30,
       "radiusKm": 528110,
@@ -5736,8 +5742,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M2V"
+       "star/M2V",
+       "star/M"
       ],
       "massKg": 9.84555e+29,
       "radiusKm": 325588,
@@ -5902,8 +5908,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M4V"
+       "star/M4V",
+       "star/M"
       ],
       "massKg": 3.34152e+29,
       "radiusKm": 136844,
@@ -6014,6 +6020,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M5V",
        "star/M",
        "star/M5Ve"
       ],
@@ -6047,8 +6054,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M6V"
+       "star/M6V",
+       "star/M"
       ],
       "massKg": 1.9034729999999997e+29,
       "radiusKm": 97398,
@@ -6080,6 +6087,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M5V",
        "star/M",
        "star/M5Ve"
       ],
@@ -6151,6 +6159,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/F5IV",
        "star/F",
        "star/F5IV-V"
       ],
@@ -6356,8 +6365,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/K",
-       "star/K5V"
+       "star/K5V",
+       "star/K"
       ],
       "massKg": 1.346553e+30,
       "radiusKm": 464032,
@@ -6389,8 +6398,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/K",
-       "star/K7V"
+       "star/K7V",
+       "star/K"
       ],
       "massKg": 1.251081e+30,
       "radiusKm": 413246,
@@ -6509,8 +6518,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3V"
+       "star/M3V",
+       "star/M"
       ],
       "massKg": 6.5637e+29,
       "radiusKm": 244191,
@@ -6572,8 +6581,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3.5V"
+       "star/M3.5V",
+       "star/M"
       ],
       "massKg": 4.9725e+29,
       "radiusKm": 194796,
@@ -6643,8 +6652,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M2V"
+       "star/M2V",
+       "star/M"
       ],
       "massKg": 7.5582e+29,
       "radiusKm": 264366,
@@ -6736,8 +6745,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M4V"
+       "star/M4V",
+       "star/M"
       ],
       "massKg": 2.9834999999999998e+29,
       "radiusKm": 125226,
@@ -6795,6 +6804,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M6.5V",
        "star/M",
        "star/M6.5Ve"
       ],
@@ -6853,8 +6863,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/K",
-       "star/K5V"
+       "star/K5V",
+       "star/K"
       ],
       "massKg": 1.5912e+30,
       "radiusKm": 496034,
@@ -6940,8 +6950,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/T",
-       "star/T1"
+       "star/T1",
+       "star/T"
       ],
       "massKg": 1.269762e+29,
       "radiusKm": 56004,
@@ -6973,8 +6983,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/T",
-       "star/T6"
+       "star/T6",
+       "star/T"
       ],
       "massKg": 1.0116339999999999e+29,
       "radiusKm": 57395,
@@ -7032,8 +7042,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/G",
-       "star/G8V"
+       "star/G8V",
+       "star/G"
       ],
       "massKg": 1.557387e+30,
       "radiusKm": 577431,
@@ -7374,8 +7384,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M4.5V"
+       "star/M4.5V",
+       "star/M"
       ],
       "massKg": 2.8243799999999996e+29,
       "radiusKm": 109225,
@@ -7510,8 +7520,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M5.5V"
+       "star/M5.5V",
+       "star/M"
       ],
       "massKg": 2.3868e+29,
       "radiusKm": 108529,
@@ -7646,8 +7656,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3.5V"
+       "star/M3.5V",
+       "star/M"
       ],
       "massKg": 5.7680999999999995e+29,
       "radiusKm": 203840,
@@ -7752,6 +7762,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M7V",
        "star/M",
        "star/M7.0V"
       ],
@@ -7888,6 +7899,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M1V",
        "star/M",
        "star/sdM1"
       ],
@@ -7976,8 +7988,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3V"
+       "star/M3V",
+       "star/M"
       ],
       "massKg": 5.39019e+29,
       "radiusKm": 209406,
@@ -8009,8 +8021,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M4V"
+       "star/M4V",
+       "star/M"
       ],
       "massKg": 3.50064e+29,
       "radiusKm": 145401,
@@ -8080,8 +8092,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M8.5V"
+       "star/M8.5V",
+       "star/M"
       ],
       "massKg": 1.4917499999999999e+29,
       "radiusKm": 65396,
@@ -8113,8 +8125,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/T",
-       "star/T6"
+       "star/T6",
+       "star/T"
       ],
       "massKg": 8.540999999999999e+28,
       "radiusKm": 50090,
@@ -8172,8 +8184,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/Y",
-       "star/Y4"
+       "star/Y4",
+       "star/Y"
       ],
       "massKg": 1.1388e+28,
       "radiusKm": 73049,
@@ -8218,8 +8230,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3.5V"
+       "star/M3.5V",
+       "star/M"
       ],
       "massKg": 5.8476599999999994e+29,
       "radiusKm": 213580,
@@ -8354,8 +8366,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M4.5V"
+       "star/M4.5V",
+       "star/M"
       ],
       "massKg": 2.9834999999999998e+29,
       "radiusKm": 114095,
@@ -8430,8 +8442,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3V"
+       "star/M3V",
+       "star/M"
       ],
       "massKg": 6.9615e+29,
       "radiusKm": 253673,
@@ -8506,8 +8518,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3V"
+       "star/M3V",
+       "star/M"
       ],
       "massKg": 7.956e+29,
       "radiusKm": 291011,
@@ -8612,8 +8624,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3.5V"
+       "star/M3.5V",
+       "star/M"
       ],
       "massKg": 6.3648e+29,
       "radiusKm": 208710,
@@ -8778,8 +8790,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M5.5V"
+       "star/M5.5V",
+       "star/M"
       ],
       "massKg": 2.3868e+29,
       "radiusKm": 95311,
@@ -8884,8 +8896,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M1.5V"
+       "star/M1.5V",
+       "star/M"
       ],
       "massKg": 8.9505e+29,
       "radiusKm": 307191,
@@ -8960,8 +8972,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M3.5V"
+       "star/M3.5V",
+       "star/M"
       ],
       "massKg": 5.3703e+29,
       "radiusKm": 207496,
@@ -9078,8 +9090,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/K",
-       "star/K0.5V"
+       "star/K0.5V",
+       "star/K"
       ],
       "massKg": 1.55142e+30,
       "radiusKm": 559343,
@@ -9167,6 +9179,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/M4.5V",
        "star/M",
        "star/M4.5Ve"
       ],
@@ -9308,8 +9321,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/A",
-       "star/A7V"
+       "star/A7V",
+       "star/A"
       ],
       "massKg": 3.69954e+30,
       "radiusKm": 1266174,
@@ -9516,6 +9529,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/A0",
        "star/A",
        "star/A0Va"
       ],
@@ -9702,8 +9716,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/G",
-       "star/G2V"
+       "star/G2V",
+       "star/G"
       ],
       "massKg": 1.80999e+30,
       "radiusKm": 681786,
@@ -9735,6 +9749,7 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
+       "star/G3V",
        "star/G",
        "star/G3-5V"
       ],
@@ -10145,8 +10160,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/L",
-       "star/L7.5"
+       "star/L7.5",
+       "star/L"
       ],
       "massKg": 6.718919999999999e+28,
       "radiusKm": 70961,
@@ -10178,8 +10193,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/T",
-       "star/T0.5"
+       "star/T0.5",
+       "star/T"
       ],
       "massKg": 5.58012e+28,
       "radiusKm": 70961,
@@ -10237,8 +10252,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/M",
-       "star/M8V"
+       "star/M8V",
+       "star/M"
       ],
       "massKg": 1.786122e+29,
       "radiusKm": 82927,

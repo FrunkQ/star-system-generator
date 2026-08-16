@@ -212,7 +212,9 @@ describe('BodyStarTab — dragging the temperature reselects the type', () => {
 		await tick();
 
 		// The data changed AND the control shows it — the second half is what was broken.
-		expect(body.classes[0]).toBe('star/Y');
+		// The BODY holds a designation and the DROPDOWN shows the band it came from (B60): a pick is
+		// a range to draw from, a class is what the star turned out to be.
+		expect(body.classes[0]).toBe('star/Y0');
 		expect(select.value).toBe('star/Y');
 	});
 

@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.693-beta - 16th Aug 2026
+
+- Stars now say what they ARE, not what range they were drawn from. A star used to be filed as "a G" - the same label the picker uses for the whole G band - and is now a G2V, a M6V, a K1V. Bare letters stay as the ranges a pick draws from, which is what they are good for; nothing in a campaign is labelled with one any more.
+- Every star in a saved campaign is upgraded on load. A star you PICKED and left alone keeps the letter you chose and gains the digit its own temperature states - your K stays a K - while a star the engine made is read off its position on the HR diagram, which is what its designation has always been a readout of.
+- The bundled starmaps carry each real star's own catalogue designation, which is measured rather than derived: Proxima is M5.5V, Wolf 359 M6.5V, Betelgeuse M1Ia.
+- FIXED: a supergiant asked for its numbers or its portrait by full designation got the DWARF band of the same letter - a 10-solar-radius star handed a 1-radius template, and red dwarf art on a red supergiant.
+
+
 ## v2.1.692-beta - 16th Aug 2026
 
 - FIXED: the Sun was labelled G3V. There were two ways of working out the digit in a designation and they disagreed - one divided each spectral letter into ten equal temperature steps, which the real sequence is not, and it was the one the generation wizard displayed. Both are now the anchored version, which gets ten of twelve published stars exactly right. Vega reads A0V rather than A1V, Proxima M5 rather than M4.

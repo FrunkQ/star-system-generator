@@ -6,6 +6,7 @@
 // the branch that diverges first is the one no author ever selects, so the drift sat in the
 // FALLBACK, which every test walked straight past.
 import type { RulePack } from '$lib/types';
+import { bandKeyOf } from '$lib/physics/starDesignation';
 
 // DATA-R13: when the question is "does this class have a spectral letter", ask THAT, never keep a
 // list of the classes that do not. This is the shape that entry names, verbatim, and it is
@@ -48,6 +49,13 @@ export function resolveStarImage(
     pack?.classifier?.starImages ?? pack?.starImages;
   if (!images || !starClass) return undefined;
   if (images[starClass]) return images[starClass];
+  // EXACT, THEN THE BAND, THEN THE LETTER. The band step is what keeps a supergiant's own art: an
+  // imported Betelgeuse holds `star/M1.5Iab`, and resolving straight to its letter would hand it the
+  // red DWARF picture — a wrong claim, drawn (inbox B60, and DATA-R12's fault reappearing). The band
+  // is worked out by the same helper the stat template uses, so a class cannot resolve to one band
+  // for its numbers and another for its picture.
+  const band = bandKeyOf(starClass);
+  if (band !== starClass && images[band]) return images[band];
   const letter = spectralLetterOf(starClass);
   return letter ? images[`star/${letter}`] : undefined;
 }

@@ -48,7 +48,9 @@ describe('the classification survives import', () => {
 		expect(byName['Arcturus'].massKg / SOLAR_MASS_KG).toBeGreaterThan(1);
 		// ...and the dwarfs are still dwarfs. Wolf 359 used to import as a 1.0 Msun WHITE dwarf.
 		expect(byName['Wolf 359'].massKg / SOLAR_MASS_KG).toBeLessThan(0.5);
-		expect(byName['Wolf 359'].classes[0]).toBe('star/M');
+		// Its CLASS is its designation now (B60) and it resolves to the M dwarf band.
+		expect(byName['Wolf 359'].classes[0]).toBe('star/M6V');
+		expect(byName['Wolf 359'].classes).toContain('star/M');
 	});
 
 	it('survives the fix-up every loaded starmap goes through', () => {

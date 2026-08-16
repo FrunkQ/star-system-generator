@@ -1537,6 +1537,26 @@ hand-maintained `baseArchetypes` Set that lists ~17 of the rulepack's 64 `kind: 
 a second answer to "which classes are mutually exclusive", dormant only because the starter pack
 ships fingerprints. It is the shape that produced those fossils.
 
+### DATA-R18 A BAND is a range to draw from; a DESIGNATION is what a star IS. Bodies hold designations
+WHERE: `physics/starDesignation` (`starClassKeyFor`, `isBandKey`, `bandKeyOf`); the pack's
+`statTemplates`; `system/importFixup.resolveLegacyStarClass`.
+RULE: the pack keeps BANDS — `star/G`, `star/K-III` — and a pick chooses one. A BODY holds the
+designation the draw produced: `star/G2V`, `star/M6V`, and for an imported star its own catalogue
+type, `star/M1.5Iab`. No body may hold a bare letter; owner, 2026-08-16: *"O is dead, O1a is valid."*
+A GIANT KEEPS ITS BAND KEY and that is not an exception: the subclass ladder is main-sequence, so
+`star/K-III` states everything that can honestly be said, and `K III` is exactly how it reads.
+WHY: a bare letter as a body's class was two claims in one string — the range it came from and what
+it turned out to be — so every G dwarf a GM placed was the same star, and the engine could not say
+what any of them was. Splitting the two is what let the full designation space in without a 700-key
+pack (B46b's grid trap): a designation is COMPUTED from position, so there is nothing to author.
+BLAST: any lookup keyed on `classes[0]` must resolve through `bandKeyOf` — stat template, class
+portrait and the editor's dropdown all do, and a supergiant that resolves by LETTER alone gets the
+red dwarf's band and the red dwarf's picture (D19 by another route). `bandKeyOf` folds II up to I and
+IV down to V through the importer's own `LUMINOSITY_BAND`, because the pack states three positional
+bands per letter and not seven. The load path migrates saved files; an AUTHORED star keeps its letter
+and gains only the digit, on the same `autoClassify` test `SystemProcessor` uses to decide whose data
+a class is.
+
 ### DATA-R10 A star's class is (LETTER, LUMINOSITY CLASS). The letter alone determines nothing but colour
 WHERE: `src/lib/import/realsky/stars.mjs` (`parseStellarType`, `starClasses`, `starParamsFromType`),
 `static/rulepacks/starter-sf/stars.json` (`statTemplates`), `CelestialBody.stellarType`.
