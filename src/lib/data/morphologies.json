@@ -4,22 +4,41 @@
     "label": "Microbial",
     "order": 10,
     "defaultCoverage": 0.7,
-    "tints": ["#5d6b4a", "#7a6b4e", "#4a5d63", "#6d5f45"],
+    "tints": [
+      "#5d6b4a",
+      "#7a6b4e",
+      "#4a5d63",
+      "#6d5f45"
+    ],
     "pigmentDriven": 0.5,
     "opacity": 0.55,
-    "light": { "min": 0, "max": 0 },
-    "note": "Mats and films. Half its colour is the pigment it uses, half is the ground it grows on."
+    "light": {
+      "min": 0,
+      "max": 0
+    },
+    "note": "Mats and films. Half its colour is the pigment it uses, half is the ground it grows on.",
+    "waterReach": 0.25
   },
   {
     "key": "fungal",
     "label": "Fungal",
     "order": 20,
     "defaultCoverage": 0.35,
-    "tints": ["#cbbfa4", "#8a7663", "#b5603a", "#2e2a28", "#d0a13c"],
+    "tints": [
+      "#cbbfa4",
+      "#8a7663",
+      "#b5603a",
+      "#2e2a28",
+      "#d0a13c"
+    ],
     "pigmentDriven": 0.15,
     "opacity": 0.75,
-    "light": { "min": 0, "max": 0 },
-    "note": "Mostly not photosynthetic, so mostly not the colour of its star. The tint list is deliberately wide — Earth's own surface-colouring fungal-ish organism is lichen, and lichen runs from near-black to bright orange."
+    "light": {
+      "min": 0,
+      "max": 0
+    },
+    "note": "Mostly not photosynthetic, so mostly not the colour of its star. The tint list is deliberately wide \u2014 Earth's own surface-colouring fungal-ish organism is lichen, and lichen runs from near-black to bright orange.",
+    "waterReach": 0.0
   },
   {
     "key": "flora",
@@ -29,8 +48,12 @@
     "tints": [],
     "pigmentDriven": 1,
     "opacity": 0.9,
-    "light": { "min": 0, "max": 0 },
-    "note": "An empty tint list and full pigment drive: flora is the colour of what its pigment reflects, and nothing else. Its lack of lights is an EMPTY LIGHT RANGE here, not a rule in the code."
+    "light": {
+      "min": 0,
+      "max": 0
+    },
+    "note": "An empty tint list and full pigment drive: flora is the colour of what its pigment reflects, and nothing else. Its lack of lights is an EMPTY LIGHT RANGE here, not a rule in the code.",
+    "waterReach": 0.12
   },
   {
     "key": "fauna",
@@ -40,18 +63,29 @@
     "tints": [],
     "pigmentDriven": 0,
     "opacity": 0,
-    "light": { "min": 0, "max": 0 },
-    "note": "Animals do not tint a world seen from orbit. That is TWO EMPTY RANGES in this record — no tints, no pigment drive — not a special case anywhere in the code."
+    "light": {
+      "min": 0,
+      "max": 0
+    },
+    "note": "Animals do not tint a world seen from orbit. That is TWO EMPTY RANGES in this record \u2014 no tints, no pigment drive \u2014 not a special case anywhere in the code.",
+    "waterReach": 0.0
   },
   {
     "key": "techno",
     "label": "Technological",
     "order": 50,
     "defaultCoverage": 0.05,
-    "tints": ["#20242b", "#2b3038"],
+    "tints": [
+      "#4a463f",
+      "#565049"
+    ],
     "pigmentDriven": 0,
-    "opacity": 0.85,
-    "light": { "min": 0.35, "max": 1 },
-    "note": "Dark by day, lit by night. It needed no code: a dark tint range and a strong light range, in the same record shape as everything else. This is the extensibility test — a sixth morphology is another entry here."
+    "opacity": 0.4,
+    "light": {
+      "min": 0.08,
+      "max": 1
+    },
+    "note": "A grey-brown urban haze by day, a network of lights by night, and the ONLY morphology that can take the oceans \u2014 waterReach 1, because a civilisation that has covered its continents roofs its seas next. The brush is LIGHT rather than paint, which is why the opacity is low and the light range is strong: from orbit a city reads as what it emits. It needed no code for any of that \u2014 same record shape as everything else, which is the extensibility test.",
+    "waterReach": 1.0
   }
 ]

@@ -177,6 +177,18 @@
     "minScore": 10,
     "fingerprints": [
       {
+        "class": "planet/ecumenopolis",
+        "kind": "base",
+        "note": "A world built over from coast to coast — the settlement IS the surface.",
+        "weight": 1.6,
+        "match": {
+          "settledCover": [
+            0.75,
+            100
+          ]
+        }
+      },
+      {
         "class": "planet/rogue",
         "kind": "base",
         "note": "Unbound — no parent star.",

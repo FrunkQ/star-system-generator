@@ -2,6 +2,23 @@
 
 All notable changes are listed here:
 
+## v2.1.653-beta - 16th Aug 2026
+
+- Continents. Land, sea, ice and life are now thresholds of ONE elevation field per world, so a world has one geography instead of three separate scatters that disagreed with each other.
+- Coastlines are domain-warped fractal noise rather than overlapping circles: peninsulas, inlets, island arcs and bays. Surface textures are 2.7x the resolution to show them.
+- The 2D disc and the 3D globe now draw the SAME continents, because the field lives on the sphere rather than being rolled per projection.
+- Plant life grows from the COAST INWARDS, which is where life reaches land and where it holds on longest. Raising the coverage widens the band toward the interior; past 100% of the dry land it spills into the water, and the slider goes that far with a tick where the land runs out.
+- How far past ordinary dry ground a morphology can hold is now a number in its definition, and it governs the ice caps as well as the sea — whatever roofs an ocean is not stopped by a glacier. Plants stop at the sunlit shelf; a city has poles like everywhere else. "Only technology takes the seas and the caps" is therefore data, not a rule about technology anywhere in the code.
+- The Bio tab shows both figures side by side — the share of the LAND you are setting, and what that is as a share of the whole globe, which is what you would see from orbit.
+- The single global Coverage slider is gone from the Bio tab. With a coverage per morphology it was a second answer to the same question sitting right above the sliders that actually drive the render; moving it did nothing. Saved campaigns still use the stored value to scale their old morphology list on first open.
+- Every morphology in the stack is painted now, in order, rather than only the topmost — so the hierarchy is visible and reordering rows does something.
+- Ice caps follow the world instead of being flat ellipses: a ragged edge, reaching further down high ground, thick and bright on land but thin and blue over sea — and the two caps are DIFFERENT SIZES, because the hemispheres are not in the same season.
+- The cap edge is now the latitude at which that world's own liquid freezes, derived, rather than a fixed fraction of the disc.
+- Technological life reads as what it EMITS: a grey-brown urban haze by day and a network of light by night, spreading from the coasts exactly as plant cover does. How BRIGHT it burns is separate from how far it spreads, which is why a world can be a quarter occupied and still look dark — about a quarter of Earth's surface is held or worked by people, and a few per cent of it is lit. Take the same settlement out over the sea and it becomes `biodiversity/ecumenopolis`.
+- New tags: `biodiversity/settled` and `biodiversity/ecumenopolis`.
+- A world settled past 75% now CLASSIFIES as an ecumenopolis and takes that type's picture. The rule pack already carried the picture and nothing could ever emit the type; it can now, keyed on how settled a world is rather than on any named morphology.
+- Four new rows in the reference galleries showing coverage, pigment, the painter's hierarchy and the night side. They run the engine, so they cannot go stale.
+
 ## v2.1.652-beta - 16th Aug 2026
 
 - Biospheres. A world's life now has a look, and it is derived rather than dialled in.

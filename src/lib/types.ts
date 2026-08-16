@@ -231,6 +231,19 @@ export interface MorphologyDef {
   pigmentDriven: number;            // 0..1 how far the derived pigment colour replaces the tint
   opacity: number;                  // how completely this layer hides what is beneath it
   light: { min: number; max: number }; // night-side emission, 0..1; an EMPTY range means no lights
+  /** How far past ORDINARY DRY GROUND this morphology can hold, as a fraction of the world's water.
+   *
+   *  0 = strictly dry land. Plants get a little, because a shallow shelf is lit to the bottom and
+   *  green. Technological life gets ALL of it — a civilisation that has covered its continents roofs
+   *  its seas next, and the ocean becomes the floor it stands on rather than a boundary.
+   *
+   *  ONE number, TWO consequences, because they are the same claim: it also says how far the
+   *  morphology holds ground that is under ICE. Something that can roof an ocean is not stopped by a
+   *  glacier, and a planet-wide city has poles like everywhere else. A shelf-bound plant has neither.
+   *
+   *  This is the field that makes "only technology takes the seas and the caps" true WITHOUT a rule
+   *  saying so. Nothing in the code knows what `techno` is; it simply has a 1 here. */
+  waterReach: number;
   note?: string;
 }
 
@@ -292,6 +305,7 @@ export interface VegetationLayerSpec {
   opacity: number;
   colorHex: string | null;   // null = this morphology contributes no colour (empty tints, no pigment drive)
   light: number;             // 0..1 night-side emission
+  waterReach: number;        // how much of the world's WATER this morphology can take (see MorphologyDef)
 }
 export interface Vegetation {
   pigment: string | null;        // the drawn dominant; null when nothing photosynthesises here

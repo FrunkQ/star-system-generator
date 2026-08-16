@@ -1328,6 +1328,15 @@ export class SystemProcessor implements ISystemProcessor {
             if (veg.visibleCover > 0.005) {
                 emit(body.tags, { key: 'biodiversity/land-cover', value: `${Math.round(veg.visibleCover * 100)}%` });
             }
+            // A world whose lit morphology has taken essentially all of its land is a planet-wide
+            // city. It needs no rule of its own — it is the ordinary coverage number reaching its
+            // end — but it deserves a name, because at that point the world IS the settlement.
+            const lit = veg.layers.filter((l) => l.light > 0.001);
+            if (lit.length) {
+                const most = Math.max(...lit.map((l) => l.coverage));
+                emit(body.tags, { key: 'biodiversity/settled', value: `${Math.round(most * 100)}%` });
+                if (most >= 0.95) emit(body.tags, { key: 'biodiversity/ecumenopolis' });
+            }
         }
 
         const apparent = deriveApparentColorParts(body, pack, { starTempK: hostStarTempK });
@@ -1338,6 +1347,11 @@ export class SystemProcessor implements ISystemProcessor {
         // them (biome worlds on a biosphere + climate, glaciated on ice + albedo, volcanic on the
         // geology regime, …). Still raw physics — no tag circularity.
         features['hasBiosphere'] = body.biosphere ? 1 : 0;
+        // How far the most widespread LIT morphology has got, as a share of the land. Named for what
+        // it measures rather than for `techno`, because the classifier must not know that a
+        // particular morphology exists — a pack that adds a second lit kind gets this for free.
+        features['settledCover'] = Math.max(0,
+            ...((body.vegetation?.layers ?? []).filter((l) => l.light > 0.001).map((l) => l.coverage)));
         features['geoRegime'] = body.geoActivity?.regime ?? 'none';
         features['hasPolarIce'] = (body.tags || []).some(t => t.key === 'climate/polar-ice') ? 1 : 0;
         features['hasIcyShell'] = (body.tags || []).some(t => t.key === 'structure/icy-shell') ? 1 : 0;

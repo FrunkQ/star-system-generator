@@ -401,6 +401,8 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   // --- Biosphere: what its life uses to catch the light, and how much of the ground it covers ---
   'biodiversity/pigment':        { label: 'Dominant pigment',  description: 'The pigment most of this world\'s photosynthetic life uses, drawn from the set that scores as viable under the light reaching its ground. Several usually are, so which one dominates is contingent — the same world always gives the same answer, a similar world next door may not.' },
   'biodiversity/pigment-viable': { label: 'Viable pigment',    description: 'Another pigment that would also work under this world\'s surface light. Carried once per pigment: a real biosphere has near-equal options and history picks between them.' },
+  'biodiversity/settled':        { label: 'Settled',           description: 'How much of the LAND carries a morphology that lights up at night. From orbit a settlement reads as what it emits rather than as a colour, so this is the figure behind the night-side glow: it spreads from the coasts inland exactly as plant cover does, because people settle the same ground first.' },
+  'biodiversity/ecumenopolis':   { label: 'Ecumenopolis',      description: 'A planet-wide city: the lit morphology has taken essentially all of this world\'s land. The night side is a continuous network of light from coast to coast.' },
   'biodiversity/land-cover':     { label: 'Life on the land',  description: 'How much of the LAND shows any colour of life, as a percentage. It is the union of the layers painted over one another, not the sum of their coverages — each layer covers that share of the land, so the sliders may total well past 100%.' }
 };
 

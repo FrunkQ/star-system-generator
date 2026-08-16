@@ -1399,7 +1399,8 @@
             "coverage": 0.5599999999999999,
             "opacity": 0.55,
             "colorHex": "#563b8f",
-            "light": 0
+            "light": 0,
+            "waterReach": 0.25
           },
           {
             "morphology": "flora",
@@ -1407,7 +1408,8 @@
             "coverage": 0.4,
             "opacity": 0.9,
             "colorHex": "#6219bb",
-            "light": 0
+            "light": 0,
+            "waterReach": 0.12
           },
           {
             "morphology": "fauna",
@@ -1415,7 +1417,8 @@
             "coverage": 0.16000000000000003,
             "opacity": 0,
             "colorHex": null,
-            "light": 0
+            "light": 0,
+            "waterReach": 0
           }
         ],
         "visibleCover": 0.5571200000000001,

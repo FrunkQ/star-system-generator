@@ -167,7 +167,10 @@ export function deriveVegetation(
   for (const entry of entries) {
     const def = morphologyDef(entry.morphology, pack);
     if (!def) continue;   // a morphology the pack no longer defines simply does not draw
-    const coverage = Math.max(0, Math.min(1, entry.coverage));
+    // NOT clamped to 1. Coverage is OF THE LAND, and a value above 1 means the morphology has
+    // taken all of it and gone out over the water — how far it gets is its own `waterReach`.
+    // Clamping here was invisible: the slider moved, the number moved, and the world did not.
+    const coverage = Math.max(0, entry.coverage);
 
     // ONE uniform arithmetic for every morphology. A tint list and a pigment drive are two ranges;
     // an empty range contributes zero weight, and a layer with no weight at all has no colour. That
@@ -199,7 +202,12 @@ export function deriveVegetation(
       coverage,
       opacity: Math.max(0, Math.min(1, def.opacity)),
       colorHex,
-      light: light * coverage
+      // The INTRINSIC brightness, NOT scaled by coverage. Coverage already decides how much of the
+      // world is lit — it sets the band's area — so multiplying by it again dimmed a small
+      // settlement's lights as well as shrinking them, and a 10% world came out invisible. A city is
+      // as bright as a city whatever share of the planet it covers.
+      light,
+      waterReach: Math.max(0, Math.min(1, def.waterReach ?? 0.1))
     });
   }
   if (!layers.length) return undefined;

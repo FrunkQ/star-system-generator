@@ -10,7 +10,8 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { decksFromTags, PRECIPITATION_TAG } from '$lib/physics/cloudDecks';
   import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST,
-    GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL, buildGiantLab } from '$lib/catalogue/galleryExamples';
+    GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL, buildGiantLab,
+    GALLERY_COVERAGE, GALLERY_PIGMENTS, GALLERY_STACK, GALLERY_TECHNO } from '$lib/catalogue/galleryExamples';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
     id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
@@ -305,6 +306,52 @@
   <h2>Same Earth under different stars — starlight tints ocean, cloud &amp; surface</h2>
   <div class="gallery">
     {#each earthUnderStars as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Life on the land — coverage grows from the coast inwards</h2>
+  <p class="note">One world, one geography, one slider. Life reaches the land at the water&rsquo;s edge and spreads
+    inland, so raising the coverage widens the band toward the interior — and past 100% it goes the other way,
+    into the shallows. Nothing here is hand-tinted: each disc is <code>deriveSurfaceSpectrum</code> then
+    <code>deriveVegetation</code>, the same two calls the processor makes on every body.</p>
+  <div class="gallery">
+    {#each GALLERY_COVERAGE as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>The pigment decides the colour</h2>
+  <p class="note">The same world under the same star, with each viable pigment pinned in turn. Each colour is what
+    that pigment fails to absorb out of the light reaching this ground — which is why they are not swatches.</p>
+  <div class="gallery">
+    {#each GALLERY_PIGMENTS as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>The hierarchy is a painter&rsquo;s algorithm</h2>
+  <p class="note">Plant life covers fungal, fungal colours microbial — layers painted in order. Fauna is present on
+    the last one and paints nothing, because animals do not tint a world seen from orbit.</p>
+  <div class="gallery">
+    {#each GALLERY_STACK as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Technological life — lights, not paint (look at the night side)</h2>
+  <p class="note">A settlement spreads exactly as plant cover does, from the coasts inland, because people settle
+    the same ground first. It reads as what it EMITS: a grey-brown urban haze by day and a network of light by
+    night. <strong>It is also the only morphology that can take the oceans</strong> — a civilisation that has
+    covered its continents roofs its seas next — and that is a number in its definition
+    (<code>waterReach</code>), not a rule about technology anywhere in the code.</p>
+  <p class="note">How LIT a world is and how much of it is OCCUPIED are different questions, which is why the
+    first world below is dark. About a quarter of Earth's surface is held or worked by people, but only a few
+    per cent of it is built and burning — so the night side is a scatter of coastal points rather than a web.
+    Turn the light up and the same extent becomes a grid; take it past the shoreline and it becomes
+    <code>biodiversity/ecumenopolis</code>.</p>
+  <div class="gallery">
+    {#each GALLERY_TECHNO as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>

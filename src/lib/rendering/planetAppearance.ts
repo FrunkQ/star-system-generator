@@ -148,6 +148,7 @@ export interface VegetationLayerDraw {
 	opacity: number;
 	colorHex: string;
 	light: number;      // 0..1 night-side emission; zero for everything whose light range is empty
+	waterReach: number; // how much of the world's WATER it can take — 0 for everything but technology
 }
 export interface VegetationSpec {
 	layers: VegetationLayerDraw[];  // painter order, deepest first — draw in array order
@@ -177,6 +178,16 @@ export interface AppearanceModel {
 	tidallyLocked: boolean;
 	// surface features (flags + params; renderers seed any positions themselves)
 	polarIce: boolean;
+	/** Where each ice cap REACHES, as |latitude| in degrees — the latitude at which this world's
+	 *  surface liquid stops being liquid, read off the same temperature decomposition the panel
+	 *  shows. 90 means no cap. Derived rather than a fixed fraction of the disc, so a cold world's
+	 *  caps genuinely march toward the equator and a warm one's do not.
+	 *
+	 *  TWO figures because the two hemispheres are not in the same season. The swing comes from the
+	 *  profile's SEASONAL component, so a high-obliquity world shows a summer cap and a winter one
+	 *  and an untilted world shows a matched pair. It is a snapshot, not an animation: the texture is
+	 *  cached on the body's look, and re-rendering it as the clock runs would thrash that cache. */
+	polarIceLatDeg: { north: number; south: number };
 	regolith: number;             // 0..1 space-weathering desaturation of an airless silicate surface (Moon/Mercury grey)
 	craters: CraterSpec | null;   // rocky impact record (icy worlds fracture instead — see iceCracks)
 	rough: RoughSpec | null;      // knobbly regolith of a small strengthless rubble pile (instead of craters)
@@ -484,6 +495,30 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 				colorHex2: underDeck ? underDeck.colorHex : shade(topDeck.colorHex, 0.18), giant: false }
 			: null;
 
+	// WHERE THE ICE REACHES. The cap edge is the latitude at which this world's own surface liquid
+	// stops being liquid, walked off the temperature profile's LATITUDE component — the same
+	// decomposition the temperature panel shows, not a second model of it. A fixed fraction of the
+	// disc (which is what this replaced) drew Earth and a snowball world the same caps.
+	const polarIceLatDeg = (() => {
+		if (!polarIce) return { north: 90, south: 90 };
+		const lat = body.temperatureProfile?.components?.find((c) => c.source === 'latitude');
+		const seasonal = body.temperatureProfile?.components?.find((c) => c.source === 'seasonal');
+		const melt = liquidDef(body.hydrosphere?.composition)?.meltK;
+		if (!lat || !melt || !(Math.abs(lat.highK - lat.lowK) > 0.5)) return { north: 65, south: 65 };
+		// First-order T(lat) = T_pole + (T_equator - T_pole)*cos(lat), the same form the biosphere
+		// band uses. Walk equatorward until it drops below the melting point.
+		const edge = (offsetK: number) => {
+			for (let d = 90; d >= 0; d -= 1) {
+				const t = lat.lowK + offsetK + (lat.highK - lat.lowK) * Math.cos((d * Math.PI) / 180);
+				if (t >= melt) return Math.min(90, d + 1);
+			}
+			return 0;   // frozen everywhere — a snowball
+		};
+		// One hemisphere is in summer while the other is in winter, by the seasonal half-swing.
+		const swing = seasonal ? (seasonal.highK - seasonal.lowK) / 2 : 0;
+		return { north: edge(+swing), south: edge(-swing) };
+	})();
+
 	// LIFE ON THE LAND. Nothing is derived here — `body.vegetation` already carries resolved colours
 	// (physics/vegetation.ts), so this is a straight read plus the surface gate. A giant has no land
 	// to paint, so it takes none of this whatever its tags say (PHY-4's rule in a renderer's clothes:
@@ -493,7 +528,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		.filter((l: any) => l.colorHex && l.coverage > 0.005 && l.opacity > 0)
 		.map((l: any) => ({
 			morphology: l.morphology, coverage: l.coverage, opacity: l.opacity,
-			colorHex: l.colorHex, light: l.light ?? 0
+			colorHex: l.colorHex, light: l.light ?? 0, waterReach: l.waterReach ?? 0.1
 		}));
 	const vegetation: VegetationSpec | null = vegLayers.length
 		? {
@@ -526,6 +561,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		atmPressureBar,
 		tidallyLocked: !!(body as any).tidallyLocked,
 		polarIce,
+		polarIceLatDeg,
 		regolith,
 		craters,
 		rough,

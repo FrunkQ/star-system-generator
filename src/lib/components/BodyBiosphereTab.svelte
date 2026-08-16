@@ -8,6 +8,7 @@
   const dispatch = createEventDispatcher();
 
   import { allMorphologies, biosphereLayers } from '$lib/physics/vegetation';
+  import { maxUsefulCoverage } from '$lib/rendering/landmass';
 
   const complexities = ['none', 'simple', 'complex', 'sapient'];
   const biochemistries = ['water-carbon', 'ammonia-silicon', 'methane-carbon'];
@@ -21,6 +22,18 @@
   // editor writes). There is no second store of which morphologies are present.
   $: layers = biosphereLayers(body.biosphere, rulePack);
   $: presentKeys = new Set(layers.map((l) => l.morphology));
+  // How much of this world is dry ground. Coverage is OF THE LAND, so 100% means the whole of it —
+  // and the slider is allowed past that because plant life also lives in SHALLOW SEAS, which are
+  // visible from orbit. A world with little land gets a longer run, because that is where its life
+  // would actually be.
+  $: landFraction = body.vegetation?.landFraction
+      ?? (1 - (body.hydrosphere?.layers?.find((l) => l.location === 'surface')?.coverage
+               ?? body.hydrosphere?.coverage ?? 0));
+  // The ceiling is PER MORPHOLOGY, because how far past the shore one can reach is a property of
+  // that morphology (its `waterReach`) rather than of the world. Plants stop at the sunlit shelf;
+  // technological life can roof the whole ocean, so its slider runs to the entire globe.
+  $: coverMaxFor = (key: string) =>
+      maxUsefulCoverage(landFraction, morphDefs.find((d) => d.key === key)?.waterReach ?? 0.1);
 
   let habitabilityTier = 'None';
   let tierColor = 'var(--tier-none)';
@@ -208,22 +221,11 @@
             </select>
         </div>
 
-        <div class="form-group">
-            <div class="label-row">
-                <label>Coverage ({Math.round(body.biosphere.coverage * 100)}%)</label>
-                <input type="number" min="0" max="100" step="1" value={Math.round(body.biosphere.coverage * 100)} on:input={(e) => { body.biosphere.coverage = e.currentTarget.value / 100; handleUpdate(); }} style="width: 60px;" />
-            </div>
-            <input 
-                type="range" 
-                min="0" 
-                max="1" 
-                step="0.01" 
-                bind:value={body.biosphere.coverage} 
-                on:input={handleUpdate} 
-                class="full-width-slider" 
-            />
-        </div>
-
+        <!-- The old single global Coverage slider used to live here. It is gone, not hidden: with a
+             coverage per morphology it was a second answer to the same question, sitting directly
+             above the sliders that actually drive the render, and a GM moving it saw nothing happen.
+             The stored field is still read — it is what scales a legacy save's morphologies the
+             first time it is opened (see biosphereLayers) — but it is no longer an input. -->
         <div class="form-group">
             <div class="label-row">
                 <label>Morphologies &amp; land cover</label>
@@ -231,10 +233,14 @@
             </div>
             <p class="hint">Each covers that share of the <strong>land</strong>, painted over the ones above it —
                 so they are independent and may total past 100%. Move a row to change which covers which.</p>
+            <p class="hint">Land fills <strong>first</strong>, from the coasts inwards. Past the tick a row has taken
+                all the dry ground and is going out over the water — how far it can get is that morphology's own
+                business, and only a technological one can roof an entire ocean.</p>
             {#if layers.length}
                 <div class="layer-list">
                     {#each layers as l, i}
                         {@const def = morphDefs.find((d) => d.key === l.morphology)}
+                        {@const cMax = coverMaxFor(l.morphology)}
                         {@const drawn = body.vegetation?.layers?.find((v) => v.morphology === l.morphology)}
                         <div class="layer-row">
                             <div class="order-btns">
@@ -247,9 +253,18 @@
                                 <span class="chip none" title="This morphology contributes no colour seen from orbit"></span>
                             {/if}
                             <span class="layer-name">{def?.label ?? l.morphology}</span>
-                            <input type="range" min="0" max="1" step="0.01" value={l.coverage}
-                                   on:input={(e) => setCoverage(l.morphology, +e.currentTarget.value)} />
-                            <span class="layer-pct">{Math.round(l.coverage * 100)}%</span>
+                            <span class="slider-wrap">
+                                <input type="range" min="0" max={cMax} step="0.01" value={l.coverage}
+                                       on:input={(e) => setCoverage(l.morphology, +e.currentTarget.value)} />
+                                {#if cMax > 1.01}
+                                    <span class="land-tick" style="left: {(1 / cMax) * 100}%"
+                                          title="All the dry land — {Math.round(landFraction * 100)}% of the globe. Past here it is out over the water."></span>
+                                {/if}
+                            </span>
+                            <span class="layer-pct" class:shallows={l.coverage > 1}
+                                  title="of the LAND — the layers stack, so these are independent and may total past 100%">{Math.round(l.coverage * 100)}%</span>
+                            <span class="layer-globe" title="of the WHOLE GLOBE, which is what you would see from orbit">
+                                {Math.round(Math.min(1, l.coverage * landFraction + Math.max(0, l.coverage - 1) * landFraction) * 100)}%&#8202;g</span>
                             <button type="button" class="drop" title="Remove" on:click={() => toggleMorphology(l.morphology)}>×</button>
                         </div>
                     {/each}
@@ -500,7 +515,17 @@
 
   .layer-list { display: flex; flex-direction: column; gap: 4px; }
   .layer-row { display: flex; align-items: center; gap: 6px; }
-  .layer-row input[type="range"] { flex: 1; min-width: 60px; padding: 0; }
+  .layer-row .slider-wrap { position: relative; flex: 1; min-width: 60px; display: flex; align-items: center; }
+  .layer-row input[type="range"] { width: 100%; margin: 0; padding: 0; }
+  /* Where the dry land runs out. Beyond it the slider is buying shallow-sea life. */
+  .land-tick {
+      position: absolute; top: 0; bottom: 0; width: 2px;
+      background: var(--text-faint, #8a8f9a); opacity: 0.75; pointer-events: none;
+      transform: translateX(-1px);
+  }
+  .layer-pct.shallows { color: var(--link, #6cb6ff); }
+  /* Both figures, because a GM thinks in globes and the model stores land. */
+  .layer-globe { font-size: 0.72em; min-width: 34px; text-align: right; color: var(--text-faint, #8a8f9a); font-variant-numeric: tabular-nums; }
   .layer-name { font-size: 0.85em; min-width: 74px; color: var(--text, #eee); }
   .layer-pct { font-size: 0.8em; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted, #cfcfcf); }
   .order-btns { display: flex; flex-direction: column; gap: 1px; }
