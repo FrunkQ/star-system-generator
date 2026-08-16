@@ -1,5 +1,6 @@
 // WS2 `schematic` block — the reinstated "simple system line-drawing." A faithful CANVAS port of the
-// legacy Field Guide's SVG log-scale orbital diagram (`CatalogueBrowser.svelte:194-222`), so it now
+// legacy Field Guide's SVG log-scale orbital diagram (`CatalogueBrowser.svelte`, removed by A42 at
+// v2.1.698 — this is now the only copy), so it
 // goes through the GPU filter with the rest of the document instead of being a separate SVG that the
 // new preset path dropped. Each star gets a horizontal distance-line; planets sit on it by log10(a),
 // belts render as blobs, moons as a small pip. Drawn in the SVG's virtual coordinate space then scaled

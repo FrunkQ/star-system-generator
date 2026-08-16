@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.698-beta - 16th Aug 2026
+
+- The old **Field Guide** and **Projector** are gone. Player Views does everything they did and does it from one engine, so every look they offered is now a preset you can open, duplicate and edit - the monochrome terminal, the survey datapad, the starship console, The Guide, the holo table and the overhead projection. Two doors to the same room have become one.
+- Branding - your campaign's letterhead name and logo - now lives in the Player Views panel, under the share link. It was only reachable from the Field Guide launcher before, and it applies to every view you deploy rather than to one preset.
+- Old `/projector` windows and `/catalogue?theme=...` links no longer open. Open the view you want from Player Views and share the link it gives you.
+- The release flag that hid Player Views is gone too. It had one branch left, and the instruction written beside it would have hidden the headline feature at the next production cut and brought the two retired tools back.
+- REMOVED, said plainly: the Field Guide's "include artificial constructs" switch has no equivalent in Player Views. It had already stopped working the moment a preset was in play, so nothing changes today - but hiding every ship and station from your players in one move is not currently something a preset can do.
+
 ## v2.1.697-beta - 16th Aug 2026
 
 - FIXED: a player-view link whose preset no longer exists used to open the old Field Guide instead, without saying so - a different tool, silently, on a screen your players are looking at. It now falls back to the shipped Guide player preset and states plainly which preset was missing, so a stale link is something you can see and fix rather than something you notice weeks later. The message waits until the campaign has actually arrived before it appears, so a window that is merely still connecting is never accused of being broken.

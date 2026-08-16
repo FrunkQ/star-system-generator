@@ -1,10 +1,15 @@
 <script lang="ts">
-  // Companion App — the player-facing, GM-curated, live-synced field guide.
-  // Mirrors /projector?sid= but is a player-driven *browse* of the same redacted snapshot the
-  // GM already broadcasts (computePlayerSnapshot over SYNC_SYSTEM). Two flavours over one dataset:
-  //   - lo-fi terminal (green / amber): the printed-report document under a phosphor CRT skin.
-  //   - hi-tech console: the live projector orbital map, tap a body for player-safe data.
-  // v1 is local-only: same-machine BroadcastChannel, zero network (spec COMPANION-APP-SPEC.md §3).
+  // THE PLAYER VIEW — the player-facing, GM-curated, live-synced window onto the campaign.
+  // It renders the redacted snapshot the GM broadcasts (computePlayerSnapshot over SYNC_SYSTEM /
+  // SYNC_STARMAP), and WHAT it renders is decided entirely by a PlayerPreset: its cover, its starmap
+  // module, its system module, its theme, its filter. One engine, many named looks.
+  //
+  // A42 (v2.1.698): the legacy skin registry that used to live here is GONE. There were once five
+  // hard-coded "skins" (mono / guide / clean / console / holo) chosen by the GM's Field Guide
+  // launcher and pushed over SYNC_GUIDECONFIG, plus a separate /projector window. Every one of them
+  // is now a preset of this engine - see presets.ts, where `guide`, `datapad`, `console`, `crt`,
+  // `holo` and `projection` are the same six looks rebuilt from one code path. There is no
+  // preset-less path through this page any more: with no ?preset= the shipped Guide is used.
   import { onMount, onDestroy, beforeUpdate, afterUpdate } from 'svelte';
   // The category list resolves a highlighted tag's colour and label. `mapHighlights` here comes off the
   // BROADCAST (see the SYNC_PRESET handler), not off a local store — this window may be the player's.
@@ -16,7 +21,6 @@
   import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
-  import CatalogueBrowser from '$lib/catalogue/CatalogueBrowser.svelte';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { skyStarsFor, magnitudeLimitFor } from '$lib/map/skyStars';
@@ -24,41 +28,14 @@
   import { drawHud } from '$lib/catalogue/infoCard';
   import { drawCover } from '$lib/catalogue/coverCard';
   import FilteredCanvas from '$lib/components/FilteredCanvas.svelte';
-  import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
   import HoloView from '$lib/holo/HoloView.svelte';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
-  import CRTOverlay from '$lib/components/CRTOverlay.svelte';
-  import { crtControls, CRT_DEFAULTS } from '$lib/catalogue/crtControls';
-  import { AU_KM, G } from '$lib/constants';
+  import { AU_KM } from '$lib/constants';
   import { formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
-  import { MONO_COLORS, normalizeGuideConfig } from '$lib/catalogue/guideConfig';
-  import type { MonoColor } from '$lib/catalogue/guideConfig';
   import { randomGuideNote } from '$lib/catalogue/guideNotes';
   import type { System, RulePack, CelestialBody, Starmap } from '$lib/types';
 
-  // The view is GM-ENFORCED: the GM's Companion launcher broadcasts SYNC_GUIDECONFIG and the
-  // guide applies it — there is no player-facing picker. The URL carries the initial choice so
-  // the first paint matches before the broadcast lands.
-  type ThemeKey = 'mono' | 'guide' | 'clean' | 'console' | 'holo';
-  interface ThemeDef {
-    label: string;
-    blurb: string;
-    tier: 'static' | 'interactive' | 'holo';
-    reportTheme: string;            // which ReportDocument theme to render underneath
-    tint: 'mono' | 'none';
-  }
-  const THEMES: Record<ThemeKey, ThemeDef> = {
-    mono:    { label: 'Monochrome Terminal', blurb: 'Salvaged CRT terminal',     tier: 'static',      reportTheme: 'retro',    tint: 'mono' },
-    guide:   { label: 'The Guide',           blurb: 'Friendly travel companion', tier: 'static',      reportTheme: 'standard', tint: 'none' },
-    clean:   { label: 'Survey Datapad',      blurb: 'Clean instrument feed',     tier: 'static',      reportTheme: 'standard', tint: 'none' },
-    console: { label: 'Starship Console',    blurb: 'Live orbital plot',         tier: 'interactive', reportTheme: 'standard', tint: 'none' },
-    holo:    { label: 'Holo Table',          blurb: '3D orbital hologram',       tier: 'holo',        reportTheme: 'standard', tint: 'none' },
-  };
-
-  const EARTH_GRAVITY = 9.80665;
-  const EARTH_MASS_KG = 5.972e24;
-
-  // The guide is campaign-wide: the GM broadcasts the whole redacted starmap; the player browses
+  // The view is campaign-wide: the GM broadcasts the whole redacted starmap; the player browses
   // systems and drills into one. (Systems whose main star is hidden never arrive — see
   // computePlayerStarmapSnapshot.)
   let starmap: Starmap | null = null;
@@ -66,7 +43,6 @@
   let branding: { name: string; logo: string | null } = { name: '', logo: null };
   let rulePack: RulePack | null = null;
   let sessionId: string | null = null;
-  let themeKey: ThemeKey = 'guide';   // The Guide is the default pre-picked skin
 
   // Holo look presets + live style. A GM picks a preset (one dropdown) or opens the control panel to
   // tweak live and save a new preset. Filter ids are hardcoded here so the filter package (which pulls
@@ -106,22 +82,9 @@
     document.addEventListener('pointerdown', handler, true);
     return { destroy() { document.removeEventListener('pointerdown', handler, true); } };
   }
-  // CRT "screen content" effects applied to <main> on the mono skin (overlay layers live in CRTOverlay).
-  // Invert is a PALETTE SWAP (handled by the .crt-invert class below), not a luminance filter:
-  // the terminal colour becomes the background and the content goes dark (green-on-black ↔
-  // black-on-green). Only brightness/contrast/skew/corners are filter/transform here.
-  $: crtStyle = theme?.tint === 'mono'
-    ? `filter: brightness(${$crtControls.brightness}) contrast(${$crtControls.contrast}); transform: skewX(${$crtControls.skew * 18}deg); border-radius: ${$crtControls.roundedCorners * 100}vmin;`
-    : '';
-  let monoColor: MonoColor = 'green';
   let lastUpdate: number | null = null;
   let connected = false;
-  // GM choice (?constructs=0) — whether artificial constructs appear in the guide, over and above
-  // the standard player redaction (mirrors the printed report's "include constructs" option).
-  let includeConstructs = true;
 
-  let previewSystemId: string | null = null; // starmap-level: clicked-but-not-entered system
-  $: previewNode = starmap?.systems.find((s) => s.id === previewSystemId) || null;
   $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
 
   // ANCHOR THE LOCAL CLOCK TO GAME TIME (RENDER-S18). This surface opens at `Date.now()`, but
@@ -199,40 +162,16 @@
     : skyStarsFor(starmap, selectedSystemId,
         { magnitudeLimit: magnitudeLimitFor(activePreset!.constellations ?? 'off') });
 
-  // Project the starmap's system positions into an SVG viewBox (with route lines) for the clickable
-  // starmap diagram. Stays on top; the selected system's preview shows below.
-  function computeStarmapView(map: Starmap | null) {
-    if (!map?.systems?.length) return { W: 600, H: 300, nodes: [] as any[], routes: [] as any[] };
-    const xs = map.systems.map((s) => s.position?.x ?? 0);
-    const ys = map.systems.map((s) => s.position?.y ?? 0);
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
-    const W = 600;
-    const H = Math.max(240, Math.min(560, Math.round(W * (h / w)) || 300));
-    const pad = 46;
-    const s = Math.min((W - 2 * pad) / w, (H - 2 * pad) / h);
-    const ox = pad + ((W - 2 * pad) - w * s) / 2 - minX * s;
-    const oy = pad + ((H - 2 * pad) - h * s) / 2 - minY * s;
-    const pos = new Map<string, { x: number; y: number }>();
-    const nodes = map.systems.map((node) => {
-      const x = (node.position?.x ?? 0) * s + ox;
-      const y = (node.position?.y ?? 0) * s + oy;
-      pos.set(node.id, { x, y });
-      return { node, x, y };
-    });
-    const routes = (map.routes || []).map((r: any) => {
-      const a = pos.get(r.sourceSystemId), b = pos.get(r.targetSystemId);
-      return a && b ? { x1: a.x, y1: a.y, x2: b.x, y2: b.y } : null;
-    }).filter(Boolean);
-    return { W, H, nodes, routes };
-  }
-  $: starmapView = computeStarmapView(starmap);
-  // The system the guide actually shows: the selected one, optionally with constructs stripped.
-  $: displaySystem = (() => {
-    const sys = selectedSystemNode?.system ?? null;
-    if (!sys || includeConstructs) return sys;
-    return { ...sys, nodes: sys.nodes.filter((n) => n.kind !== 'construct') };
-  })();
+  // The system the view shows. Redaction has already happened at the source (computePlayerSnapshot);
+  // this is just the selection.
+  // (A42: an `includeConstructs` filter used to sit here, fed by the Field Guide launcher's
+  // "include artificial constructs" checkbox and its `?constructs=0` URL parameter. It could only
+  // ever be TRUE under a preset — `applyPlayerPreset` set it so on every application — so with a
+  // preset always in play it was a filter with one branch. NO PRESET FIELD REPLACES IT: hiding every
+  // construct from players in one move is a capability the Field Guide had and Player Views does not.
+  // Reported rather than reinvented here — it wants a preset field and a control, not a resurrected
+  // URL parameter.)
+  $: displaySystem = selectedSystemNode?.system ?? null;
 
   // G3: each modelled ship's drive data for the scene's plume - max accel (thrust reads as a
   // fraction of the ship's OWN capability) and the exhaust colour of its dominant engine
@@ -338,9 +277,7 @@
     window.addEventListener('pointerup', onUp);
   }
 
-  // --- Console navigation: a clickable star/planet list, with moons + constructs once a
-  //     planet is focused. Jumping also focuses the visualizer on that body. ---
-  // Short type label for a body row in the system list.
+  // Short type label for a body row in the system list module.
   function bodyTypeLabel(n: any): string {
     if (n.kind === 'construct') return String(n.construct_type || 'Construct').replace(/(^|[-_ ])(\w)/g, (_: string, s: string, c: string) => (s ? ' ' : '') + c.toUpperCase());
     if (isStarNode(n)) return 'Star';
@@ -350,97 +287,14 @@
   function isStarNode(n: any): boolean {
     return n?.roleHint === 'star' || (Array.isArray(n?.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
   }
-  function isNavPlanet(n: any): boolean {
-    return n?.kind === 'body' && !isStarNode(n) && n.roleHint !== 'moon' && n.roleHint !== 'belt' && n.roleHint !== 'ring' && n.roleHint !== 'barycenter';
-  }
-  $: consoleStars = ((displaySystem?.nodes ?? []) as any[]).filter(isStarNode) as CelestialBody[];
-  function consolePlanetsOf(hostId: string): CelestialBody[] {
-    return ((displaySystem?.nodes ?? []) as any[])
-      .filter((n) => isNavPlanet(n) && (n.parentId === hostId || n.orbit?.hostId === hostId))
-      .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0)) as CelestialBody[];
-  }
-  // Console nav: planets PLUS belts and barycentres (shown as their dominant member, e.g. Pluto),
-  // so they're not missing from the jump list. Each entry's `id` is what gets focused.
-  function consoleBaryDominantId(bary: any): string {
-    const ns = (displaySystem?.nodes ?? []) as any[];
-    const members = ns.filter((n) => (bary.memberIds || []).includes(n.id) || n.parentId === bary.id);
-    members.sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
-    return members[0]?.id ?? bary.id;
-  }
-  function consoleNavOf(hostId: string): { id: string; label: string; icon: string }[] {
-    const ns = (displaySystem?.nodes ?? []) as any[];
-    const beltMidAU = (n: any) => n.orbit?.elements?.a_AU
-      || (n.radiusInnerKm && n.radiusOuterKm ? (n.radiusInnerKm + n.radiusOuterKm) / 2 / AU_KM : 0);
-    const out: { id: string; label: string; icon: string; a: number }[] = [];
-    for (const n of ns) {
-      if (!(n.parentId === hostId || n.orbit?.hostId === hostId)) continue;
-      if (isNavPlanet(n)) out.push({ id: n.id, label: n.name, icon: '●', a: n.orbit?.elements?.a_AU || 0 });
-      else if (n.roleHint === 'belt') out.push({ id: n.id, label: n.name, icon: '◌', a: beltMidAU(n) });
-      else if (n.kind === 'barycenter') {
-        const domId = consoleBaryDominantId(n);
-        const dom = ns.find((x) => x.id === domId);
-        out.push({ id: domId, label: dom?.name ?? n.name, icon: '●', a: n.orbit?.elements?.a_AU || 0 });
-      }
-    }
-    return out.sort((a, b) => a.a - b.a).map(({ id, label, icon }) => ({ id, label, icon }));
-  }
-  function consoleChildrenOf(id: string | null): CelestialBody[] {
-    if (!id) return [];
-    return ((displaySystem?.nodes ?? []) as any[])
-      .filter((n) => (n.parentId === id || n.orbit?.hostId === id) && (n.roleHint === 'moon' || n.kind === 'construct'))
-      .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0)) as CelestialBody[];
-  }
-  // The planet whose moon/construct family is open in the nav (and governs the adaptive clock):
-  // the focused planet itself, or the focused child's parent planet.
-  $: expandedPlanetId = (() => {
-    const all = (displaySystem?.nodes ?? []) as any[];
-    const f = all.find((n) => n.id === focusedBodyId);
-    if (!f) return null;
-    if (isNavPlanet(f)) return f.id as string;
-    const pid = f.parentId || f.orbit?.hostId;
-    const p = all.find((n) => n.id === pid);
-    return p && isNavPlanet(p) ? (p.id as string) : null;
-  })();
-  $: expandedChildren = consoleChildrenOf(expandedPlanetId);
   function jumpTo(id: string) {
     focusedBodyId = id;
     const node = displaySystem?.nodes.find((n) => n.id === id);
     selectedBody = node && (node.kind === 'body' || node.kind === 'construct') ? (node as CelestialBody) : null;
   }
 
-  // --- Adaptive time: slow the clock so the FASTEST orbiting object in view completes one
-  //     orbit every ~2 seconds (fast moons stay selectable). "In view" = the focused body's
-  //     children when it has any, else the system's planets. ---
-  function periodSec(b: any): number | null {
-    const d = b?.orbital_period_days;
-    return typeof d === 'number' && d > 0 ? d * 86400 : null;
-  }
-  $: timeScale = (() => {
-    const all = (displaySystem?.nodes ?? []) as any[];
-    let watched: any[] = expandedChildren.length ? expandedChildren : [];
-    if (!watched.length) watched = all.filter(isNavPlanet);
-    const periods = watched.map(periodSec).filter((p): p is number => p !== null);
-    if (!periods.length) return 86400; // fallback: ~a day per second
-    return Math.max(1, Math.min(...periods) / 2);
-  })();
-  function fmtTimeRate(sps: number): string {
-    const Y = 86400 * 365.25;
-    if (sps >= 2 * Y) return `${Math.round(sps / Y)} years`;
-    if (sps >= 2 * 86400) return `${Math.round(sps / 86400)} days`;
-    if (sps >= 2 * 3600) return `${Math.round(sps / 3600)} hours`;
-    if (sps >= 2 * 60) return `${Math.round(sps / 60)} minutes`;
-    return `${Math.round(sps)} seconds`;
-  }
-
-  // --- The Guide: DON'T PANIC front cover (once per session) + random margin-note banners. ---
-  let guideCoverDismissed = false;
-  if (browser) {
-    try { guideCoverDismissed = sessionStorage.getItem('sse-guide-cover-seen') === '1'; } catch { /* ignore */ }
-  }
-  function dismissGuideCover() {
-    guideCoverDismissed = true;
-    try { sessionStorage.setItem('sse-guide-cover-seen', '1'); } catch { /* ignore */ }
-  }
+  // --- Guide tips: the random margin notes a preset can switch on (guideTips: off/top/bottom/both).
+  // Nothing to do with the retired Field Guide skin — these ride the preset's own HUD and document. ---
   let topNote = '';
   let bottomNote = '';
   function rollNotes(_trigger: string | null) {
@@ -451,46 +305,30 @@
   // Fresh notes every time the reader MOVES — between systems, in/out of a body focus, or across the
   // cover/starmap/system layers. A fresh funny line each time the view changes (the guide "updates").
   $: rollNotes(`${selectedSystemId}|${focusedBodyId}|${showPresetCover}`);
-  // Words wrap as units (letters are individually coloured, so each word is a nowrap group).
-  const PANIC_WORDS = "DON'T PANIC!!!!".split(' ').map((w, wi, arr) => ({
-    letters: w.split(''),
-    offset: arr.slice(0, wi).reduce((n, p) => n + p.length + 1, 0),
-  }));
 
-  $: theme = THEMES[themeKey];
   $: nowLabel = lastUpdate ? new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
-  // Apply a GM-broadcast (or URL-derived) view config. The CRT effect is GM-controlled: if the
-  // broadcast carries crt settings, adopt them (players have no CRT panel of their own).
-  function applyGuideConfig(raw: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> }) {
-    const c = normalizeGuideConfig(raw);
-    const themeChanged = c.theme !== themeKey;
-    themeKey = c.theme;
-    monoColor = c.monoColor;
-    includeConstructs = c.includeConstructs;
-    if (raw.crt && typeof raw.crt === 'object') {
-      crtControls.set({ ...CRT_DEFAULTS, ...(raw.crt as any) });
-    }
-    if (themeChanged) selectedBody = null;
-  }
-
   // --- Unified PlayerPreset deploy (?preset=<id> + live SYNC_PRESET) --------------------------------
-  // Guarded/additive: only active once a preset is in play (URL on open, then the GM's Player Views
-  // modal drives it live). Maps the preset's system view to a catalogue skin; for the 3D holo it feeds
-  // the full holoStyle so it deploys at full fidelity. The GM's momentary overrides (hide labels /
-  // suspend filter / pause orbit) come down the same channel. A null broadcast = hold screen.
-  // Read the preset id from the URL SYNCHRONOUSLY (not in onMount) so the very first paint already knows
-  // a preset is in play — otherwise the default 'guide' skin's DON'T PANIC cover flashes for a frame
-  // before the preset resolves.
-  let activePresetId: string | null = browser ? new URLSearchParams(window.location.search).get('preset') : null;
+  // A preset is ALWAYS in play. It picks the cover, the starmap module, the system module, the theme
+  // and the filter; the GM's momentary overrides (hide labels / suspend filter / pause orbit) come
+  // down the same channel, and a null SYNC_PRESET broadcast is the hold screen.
+  //
+  // THE FALLBACK, and why it is a preset rather than a default skin (A47/A42). An id that does not
+  // resolve — and, since A42, a URL with no `?preset=` at all — lands on the shipped Guide preset,
+  // which is what the old default skin became. `presetMissing` below is the difference between the
+  // two cases: an id that was ASKED for and did not resolve is a broken link and says so; no id at
+  // all is simply the default and says nothing.
+  const FALLBACK_PRESET_ID = 'guide';
+  // Resolved by id rather than by index so a reorder of the shipped list cannot silently move it; the
+  // index is only the guard against someone renaming the id out from under this.
+  const FALLBACK_PRESET = BUILTIN_PRESETS.find((p) => p.id === FALLBACK_PRESET_ID) ?? BUILTIN_PRESETS[0];
+  // Read the preset id from the URL SYNCHRONOUSLY (not in onMount) so the very first paint already
+  // knows which preset is in play, rather than painting the fallback's cover for a frame first.
+  let activePresetId: string = (browser ? new URLSearchParams(window.location.search).get('preset') : null) || FALLBACK_PRESET_ID;
   let appliedPresetJson: string | null = null;
   let presetHold = false; // GM closed the view → show a hold screen
-  const BUILTIN_THEME: Record<string, ThemeKey> = { guide: 'guide', datapad: 'clean', console: 'console', crt: 'mono', holo: 'holo', projection: 'holo' };
   function applyPlayerPreset(p: PlayerPreset) {
-    // themeKey still drives the page chrome (background/status bar); the preset's own layers render on
-    // top of it. holoStyle is always derived so a holo3d system view deploys at full fidelity.
-    themeKey = BUILTIN_THEME[p.id] ?? (p.systemView === 'holo3d' ? 'holo' : p.systemView === 'list' ? 'guide' : 'console');
-    includeConstructs = true;
+    // holoStyle is always derived so a holo3d system view deploys at full fidelity.
     holoStyle = holoStyleOf(p);
     // (The preset's inspectorWidthPct is adopted by the reactive block that CALLS this — see there for
     // why it cannot be assigned from inside a function.)
@@ -570,21 +408,18 @@
   // Resolve reactively so BOTH `activePresetId` AND `starmap` are tracked dependencies: a freshly
   // opened window sets activePresetId at mount while the starmap is still null, so we must re-resolve
   // (and apply) the moment the campaign's presets arrive — otherwise a custom preset never applies and
-  // the window is stuck on the default skin. (resolvePreset() alone hides `starmap` inside a function.)
-  $: resolvedPreset = activePresetId
-    ? (BUILTIN_PRESETS.find((p) => p.id === activePresetId) || (starmap?.playerPresets ?? []).find((p) => p.id === activePresetId) || null)
-    : null;
+  // the window is stuck on the fallback. (resolvePreset() alone hides `starmap` inside a function.)
+  $: resolvedPreset =
+    BUILTIN_PRESETS.find((p) => p.id === activePresetId)
+    || (starmap?.playerPresets ?? []).find((p) => p.id === activePresetId)
+    || null;
   // A47 — WHERE AN UNRESOLVED PRESET LANDS, AND THAT IT SAYS SO.
   // An id that resolved to nothing used to leave `activePreset` null, and every preset-driven branch
-  // below is guarded on it — so the page fell through to whatever `themeKey` happened to be, which is
-  // 'guide': the LEGACY Field Guide. That was wrong twice over. It is a different tool, not a degraded
+  // below is guarded on it — so the page fell through to whatever `themeKey` happened to be, which was
+  // 'guide': the LEGACY Field Guide. That was wrong twice over. It was a different tool, not a degraded
   // version of the one asked for; and it was SILENT, so a GM whose link was stale saw a working screen
   // and no reason to doubt it. The fallback is now a real player preset — the shipped Guide, which is
-  // what the legacy skin became — and the failure is stated on screen.
-  const FALLBACK_PRESET_ID = 'guide';
-  // Resolved by id rather than by index so a reorder of the shipped list cannot silently move it; the
-  // index is only the guard against someone renaming the id out from under this.
-  const FALLBACK_PRESET = BUILTIN_PRESETS.find((p) => p.id === FALLBACK_PRESET_ID) ?? BUILTIN_PRESETS[0];
+  // what that legacy skin became — and the failure is stated on screen.
   // NOT-YET-ARRIVED IS NOT FAILED, and this is the whole subtlety. A custom preset lives on the
   // CAMPAIGN (`starmap.playerPresets`), which arrives by broadcast — a window opens, paints, and only
   // then receives SYNC_STARMAP. "Unresolved" is therefore the normal state for the first second of
@@ -593,8 +428,13 @@
   // question (1): custom ids DO resolve on the player side, through this list — what they cannot do is
   // resolve before the campaign carrying them lands, which is exactly why a built-in id looked fine in
   // the same session. A built-in needs no data at all.)
-  $: presetMissing = !!activePresetId && !resolvedPreset && !!starmap;
-  $: pendingPreset = resolvedPreset ?? (presetMissing ? FALLBACK_PRESET : null);
+  $: presetMissing = !resolvedPreset && !!starmap;
+  // The fallback waits for the same signal the message does, and for a second reason: applying it
+  // early would count as the FIRST application, and `firstApply` below is what lets a width this
+  // reader dragged outrank the preset's. A custom preset would then arrive second and overrule a drag
+  // it was never meant to touch. A built-in id resolves with no data at all, so the ordinary no-URL
+  // case never waits for anything.
+  $: pendingPreset = resolvedPreset ?? (starmap ? FALLBACK_PRESET : null);
   // Announce it once per id, to the console as well as the screen: the screen tells whoever is looking
   // at the player window, the console gives the GM something to paste back.
   let warnedPresetId: string | null = null;
@@ -720,7 +560,7 @@
   $: systemListModel = {
     heading: displaySystem?.name || 'System',
     rows: ((displaySystem?.nodes ?? []) as any[])
-      .filter((n) => (n.kind === 'body' || n.kind === 'construct') && n.roleHint !== 'ring' && n.roleHint !== 'barycenter' && (includeConstructs || n.kind !== 'construct'))
+      .filter((n) => (n.kind === 'body' || n.kind === 'construct') && n.roleHint !== 'ring' && n.roleHint !== 'barycenter')
       .map((n) => ({
         id: n.id,
         title: String(n.name ?? ''),
@@ -826,12 +666,13 @@
         tips: hudTipsOn ? { top: tipTop, bottom: tipBottom, accent: presetAccent, font: presetFont, mono: tipMono } : null
       })
     : null;
-  // The system level reuses the existing console/holo/doc stages; pick which by the preset's systemView.
-  // The "2D map" is now the holo renderer LOCKED OVERHEAD + flat/unlit — a real top-down view that goes
-  // through the same GPU filter and picking, instead of a separate SVG orrery + CSS approximation.
-  $: effectiveSystemTier = activePreset
-    ? (activePreset.systemView === 'holo3d' ? 'holo' : activePreset.systemView === 'diagram2d' ? 'holo' : 'static')
-    : theme.tier;
+  // Which system stage renders, picked by the preset's systemView. The "2D map" is the holo renderer
+  // LOCKED OVERHEAD + flat/unlit — a real top-down view that goes through the same GPU filter and
+  // picking, rather than a separate SVG orrery under a CSS approximation.
+  // (A42: there used to be a third tier, 'interactive', reachable only when NO preset was in play —
+  // it mounted SystemVisualizer, the GM's own orrery, as the legacy Starship Console skin. With a
+  // preset always in play it was unreachable, so both the tier and that mount are gone.)
+  $: effectiveSystemTier = activePreset?.systemView === 'holo3d' || activePreset?.systemView === 'diagram2d' ? 'holo' : 'static';
   $: system2dOverhead = !!activePreset && activePreset.systemView === 'diagram2d';
   // WS2 Guide document: the interactive canvas document (schematic + in-page info block + navigator),
   // drawn by the block-model engine through the real filter. Falls under the 'static' tier (no 3D scene).
@@ -927,54 +768,11 @@
     // Nothing left to step out of — the browser has already navigated away.
   }
 
-  // --- player-safe derived display helpers (snapshot is already redacted) ---
-  function fmt(n: number | undefined | null, d = 0) {
-    if (n === undefined || n === null || !Number.isFinite(n)) return '-';
-    if (Math.abs(n) > 1e15) return n.toExponential(2);
-    return n.toLocaleString(undefined, { maximumFractionDigits: d });
-  }
-  function gravityG(b: CelestialBody) {
-    if (!b.massKg || !b.radiusKm) return '-';
-    const rm = b.radiusKm * 1000;
-    return (G * b.massKg / (rm * rm) / EARTH_GRAVITY).toFixed(2) + ' g';
-  }
-  function massRel(b: CelestialBody) {
-    if (!b.massKg) return '-';
-    const m = b.massKg / EARTH_MASS_KG;
-    return (m < 1000 ? m.toFixed(2) : m.toExponential(2)) + ' M⊕';
-  }
-  // (A local `tempC` lived here — the same four lines as `bodyFacts.tempC`, uncalled. It would have
-  //  answered "what temperature is this world" with the RADIATING figure while the info block beside
-  //  it answered with the day/night mean, 56 K apart on Luna. Deleted rather than resynced, B63/B70.)
-  function orbitDist(b: CelestialBody) {
-    const a = b.orbit?.elements?.a_AU;
-    if (typeof a !== 'number' || a <= 0) return '-';
-    return a < 0.05 ? fmt(a * AU_KM) + ' km' : a.toFixed(3) + ' AU';
-  }
-  function atmo(b: CelestialBody) {
-    if (!b.atmosphere) return 'None';
-    const p = b.atmosphere.pressure_bar ?? b.atmosphere.pressure_atm ?? 0;
-    return `${b.atmosphere.name || 'Unknown'} (${p < 0.001 ? '<0.001' : p.toFixed(2)} bar)`;
-  }
-
-  // One-line contents summary for a system card on the starmap-level list.
-  function systemSummary(node: Starmap['systems'][number]): string {
-    const ns = node.system?.nodes ?? [];
-    const isStar = (n: any) => n.roleHint === 'star' || (Array.isArray(n.classes) && n.classes.some((c: string) => String(c).startsWith('star/')));
-    let stars = 0, planets = 0, moons = 0, constructs = 0;
-    for (const n of ns as any[]) {
-      if (n.kind === 'construct') { if (includeConstructs) constructs++; continue; }
-      if (isStar(n)) stars++;
-      else if (n.roleHint === 'moon') moons++;
-      else if (n.roleHint === 'planet' || n.roleHint === 'dwarf-planet') planets++;
-    }
-    const parts: string[] = [];
-    if (stars) parts.push(`${stars} star${stars > 1 ? 's' : ''}`);
-    if (planets) parts.push(`${planets} planet${planets > 1 ? 's' : ''}`);
-    if (moons) parts.push(`${moons} moon${moons > 1 ? 's' : ''}`);
-    if (constructs) parts.push(`${constructs} construct${constructs > 1 ? 's' : ''}`);
-    return parts.join(' · ') || 'uncharted';
-  }
+  // (A42: five local display helpers stood here — fmt, gravityG, massRel, orbitDist, atmo — and a
+  //  sixth, tempC, had already been removed under B63/B70 for answering "what temperature is this
+  //  world" with a different figure from the info block beside it. The remaining five were the same
+  //  hazard, uncalled since the legacy skins' <dl> went: a private second formatter for gravity, mass,
+  //  orbit distance and atmosphere, where `bodyFacts` is the one that reaches every surface.)
 
   let units: MeasurementUnits = 'metric';   // in-system km/miles, from the launcher URL (?units=)
   let tempUnit: TemperatureUnit = 'C';       // temperature °C/°F/K, from the launcher URL (?temp=)
@@ -982,17 +780,9 @@
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
-    activePresetId = params.get('preset');
+    activePresetId = params.get('preset') || FALLBACK_PRESET_ID;
     units = params.get('units') === 'imperial' ? 'imperial' : 'metric';
     { const tp = params.get('temp'); tempUnit = tp === 'F' || tp === 'K' ? tp : 'C'; }
-    // Initial view from the URL (legacy green/amber theme keys fold into mono + colour);
-    // the GM's SYNC_GUIDECONFIG broadcast takes over from there.
-    applyGuideConfig({
-      theme: params.get('theme') || 'guide',   // The Guide is the default pre-picked skin
-      monoColor: params.get('color') || 'green',
-      includeConstructs: params.get('constructs') !== '0',
-    });
-
     try {
       rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
     } catch (e) {
@@ -1008,8 +798,6 @@
       (pan, zoom, isManual, viewMin) => followViewport(pan, zoom, isManual, viewMin), // GM manual pan/zoom → rough viewport
       () => {},
       (t) => followTime(t), // GM clock → inherited wholesale while following (absolute time + rate)
-      () => {},
-      () => {},
       sessionId
     );
     window.addEventListener('popstate', onPopState);
@@ -1021,8 +809,6 @@
       connected = true;
     };
     broadcastService.onBrandingUpdate = (b) => { branding = b || { name: '', logo: null }; };
-    // A preset owns the view; ignore the GM's classic guide-config in that mode.
-    broadcastService.onGuideConfigUpdate = (c) => { if (c && !activePresetId) applyGuideConfig(c); };
     // Live GM control (Player Views modal): switch preset, apply overrides, or hold (null).
     broadcastService.onPresetUpdate = (p) => {
       if (!p) { presetHold = true; return; }
@@ -1057,11 +843,11 @@
 <svelte:window bind:innerWidth={viewportW} />
 
 <svelte:head>
-  <title>{selectedSystemNode?.name ?? starmap?.name ?? 'Field Guide'} — Catalogue</title>
+  <title>{selectedSystemNode?.name ?? starmap?.name ?? 'Player View'} — Star System Explorer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 </svelte:head>
 
-<!-- The body info panel — shared by the holo/console tier AND the text-list tier (tap a body → its file). -->
+<!-- The body info panel — shared by the holo/2D tier AND the text-list tier (tap a body → its file). -->
 {#snippet inspectorAside()}
   {#if selectedBody}
     <aside class="inspector" class:expanded={bodyExpanded} class:filtered={!!inspFx && !hudCardOn} class:hud-hidden={hudCardOn}
@@ -1090,8 +876,10 @@
       <div class="insp-detail">
         {#if activePreset && displaySystem}
           <!-- D6 unify: the SAME document engine renders the info block (facts + tags + description +
-               body graphic) with the preset's full appearance. The aside stays as chrome (title, close,
-               resize); the legacy skins below keep their original markup. -->
+               body graphic) with the preset's full appearance. The aside stays as chrome (title,
+               close, resize). (A42: a hand-rolled <dl> fact list used to sit in the {:else} here, for
+               the legacy skins. It was a SECOND rendering of the info block — the exact duplication
+               D6 exists to prevent — and it went with them.) -->
           <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg {rulePack} liveReadings={!!activePreset?.liveReadings} nowMs={docNowMs}
             font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
             fontScale={infoFontScale} listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle}
@@ -1099,25 +887,13 @@
             imagery={activePreset.bodyGfx} photoFrame={activePreset.photoFrame}
             bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
             interactive={presetInteractive} {units} {tempUnit} />
-        {:else}
-          {#if selectedBody.image?.url}
-            <img class="insp-photo" src={selectedBody.image.url} alt={(selectedBody.kind === 'construct' ? 'Image of ' : "Artist's impression of ") + selectedBody.name} />
-          {/if}
-          <dl class="insp-grid">
-            {#each bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem, nowMs: currentTime }) as f}
-              <dt>{f.label}</dt><dd>{f.value}</dd>
-            {/each}
-          </dl>
-          {#if selectedBody.description}
-            <p class="insp-desc">{selectedBody.description}</p>
-          {/if}
         {/if}
       </div>
     </aside>
   {/if}
 {/snippet}
 
-<main bind:this={stageMain} class="catalogue tint-{theme.tint} skin-{themeKey}" class:interactive={theme.tier === 'interactive'} class:crt-invert={theme.tint === 'mono' && $crtControls.invert} style="--mono:{MONO_COLORS[monoColor].hex}; {crtStyle}">
+<main bind:this={stageMain} class="catalogue">
   <!-- D8: view-entry transition overlay — the outgoing stage snapshot animates away here. -->
   <canvas class="entry-transition" bind:this={entryOverlay}></canvas>
   <!-- A47: the preset asked for is not in this campaign. Said plainly and OVER everything, including
@@ -1161,24 +937,6 @@
     </span>
   </header>
 
-  {#if themeKey === 'guide' && !guideCoverDismissed && !activePresetId}
-    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-    <div class="guide-cover" role="button" tabindex="0" on:click={dismissGuideCover} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') dismissGuideCover(); }}>
-      <div class="cover-inner">
-        <div class="panic" aria-label="Don't panic">
-          {#each PANIC_WORDS as word, wi}{#if wi > 0}{' '}{/if}<span class="panic-word">{#each word.letters as ch, i}<span style="--i:{word.offset + i}">{ch}</span>{/each}</span>{/each}
-        </div>
-        <p class="cover-sub">The Field Guide: the standard repository for all knowledge and wisdom. Abridged. Redacted. Mostly accurate.</p>
-        <p class="cover-hint">tap anywhere to open the Guide</p>
-      </div>
-    </div>
-  {/if}
-
-  {#if themeKey === 'guide' && (selectedSystemNode || starmap) && !activePreset}
-    <div class="guide-banner">A traveller's guide to {selectedSystemNode?.name ?? starmap?.name} — friendly, illustrated, and mostly accurate.</div>
-    {#if topNote}<div class="guide-note top">{topNote}</div>{/if}
-  {/if}
-
   {#if !starmap}
     <!-- Waiting / offline: the quote interstitial (connected, nothing broadcast yet). -->
     <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
@@ -1221,63 +979,11 @@
           selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
       {/if}
     </div>
-  {:else if !selectedSystemId}
-    <!-- Starmap level: choose a system -->
-    <div class="doc-scroll">
-      <div class="cat-browser">
-        <header class="cat-head">
-          <h1>{starmap.name || 'Known Space'}</h1>
-          <p class="sub">{starmap.systems.length} system{starmap.systems.length === 1 ? '' : 's'} · tap one to explore</p>
-        </header>
-        {#if starmap.systems.length === 0}
-          <p class="empty">No systems are visible in this guide yet.</p>
-        {:else}
-          <svg class="starmap-diagram" viewBox="0 0 {starmapView.W} {starmapView.H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Star map">
-            {#each starmapView.routes as r}
-              <line class="sm-route" x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} />
-            {/each}
-            {#each starmapView.nodes as p (p.node.id)}
-              <g class="sm-node" class:sel={previewSystemId === p.node.id} role="button" tabindex="0"
-                 on:click={() => (previewSystemId = p.node.id)} on:keydown={(e) => { if (e.key === 'Enter') previewSystemId = p.node.id; }}>
-                <circle class="sm-star" cx={p.x} cy={p.y} r="6" />
-                <text class="sm-label" x={p.x} y={p.y + 17} text-anchor="middle">{p.node.name}</text>
-              </g>
-            {/each}
-          </svg>
-          {#if previewNode}
-            <section class="sm-preview">
-              <h2>★ {previewNode.name}</h2>
-              <p class="sm-sum">{systemSummary(previewNode)}</p>
-              <button class="explore-btn" on:click={() => { pushNavStep(); selectedSystemId = previewNode.id; previewSystemId = null; selectedBody = null; }}>Explore system →</button>
-            </section>
-          {:else}
-            <p class="sm-hint">Tap a system to preview it, then explore.</p>
-          {/if}
-        {/if}
-      </div>
-    </div>
-  {:else if effectiveSystemTier === 'interactive' || effectiveSystemTier === 'holo'}
-    <!-- Hi-tech: live orbital map (2D console or 3D holo table) + tap-to-inspect -->
+  {:else if effectiveSystemTier === 'holo'}
+    <!-- Live orbital map (the holo renderer, tilted for 3D or locked overhead for 2D) + tap-to-inspect -->
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
-        {#if effectiveSystemTier === 'holo'}
-          <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} on:focus={handleFocus} />
-        {:else}
-          <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-            <SystemVisualizer
-              system={displaySystem}
-              {rulePack}
-              {currentTime}
-              {focusedBodyId}
-              highlights={mapHighlights}
-              showNames={true}
-              toytownFactor={displaySystem.toytownFactor || 0}
-              fullScreen={true}
-              backgroundColor="#05070c"
-              on:focus={handleFocus}
-            />
-          </FilterFrame>
-        {/if}
+        <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} on:focus={handleFocus} />
       {/if}
       {#if activePreset?.systemOverlay && !hudOverlayOn}
         <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
@@ -1298,10 +1004,9 @@
           />
         </div>
       {/if}
-      <!-- Adaptive clock read-out: the fastest body in view does ~1 orbit per 2 s. -->
-      <!-- Player time controls (Field Guide): collapsed to a play/pause icon; click to expand a rate
-           slider (arbitrary — just to see movement). Hidden while following the GM (time is INHERITED
-           from the GM's clock — positions match their map) and on non-interactive presets. -->
+      <!-- Player time controls: collapsed to a play/pause icon; click to expand a rate slider
+           (arbitrary — just to see movement). Hidden while following the GM (time is INHERITED from
+           the GM's clock — positions match their map) and on non-interactive presets. -->
       {#if followClockLabel}
         <!-- Campaign time, in the campaign's own calendar. Sits where the local time controls
              would be - the two are mutually exclusive by construction (controls hide while
@@ -1373,25 +1078,14 @@
         on:select={(e) => selectBodyById(e.detail)} />
       {#if !activePreset.hideInfoPanel}{@render inspectorAside()}{/if}
     </div>
-  {:else}
-    <!-- Lo-fi / datapad / Guide: diagrammatic browser — clickable layout + a body panel. -->
-    <div class="doc-scroll">
-      <CatalogueBrowser system={displaySystem} {includeConstructs} {units} {tempUnit} colorful={themeKey === 'guide'}
-        imagery={themeKey === 'guide' ? 'disc' : themeKey === 'clean' ? 'photo' : 'none'} />
-    </div>
   {/if}
-
-  {#if themeKey === 'guide' && starmap && bottomNote && !activePreset}
-    <div class="guide-note bottom">{bottomNote}</div>
-  {/if}
+  <!-- (A42: the final {:else} here mounted CatalogueBrowser, the legacy Field Guide's SVG schematic +
+       chip picker + inline panel. Its content assembly, its schematic and its topology walk were all
+       ported into the document engine long ago — guideDocument.ts / systemSchematic.ts /
+       systemTopology.ts each say so at the top — so the component was the last copy of code that had
+       already been replaced.) -->
 
 </main>
-
-<!-- CRT layers live OUTSIDE main so the brightness/invert/skew filter doesn't touch them. The CRT
-     effect is GM-controlled (set in the GM's Companion launcher), so there's no player-side panel. -->
-{#if theme.tint !== 'none'}
-  <CRTOverlay color={MONO_COLORS[monoColor].hex} />
-{/if}
 
 <style>
   :global(body) { margin: 0; }
@@ -1450,131 +1144,10 @@
   }
   .back-btn:hover { opacity: 1; }
 
-  /* Starmap-level system list (page-scoped; CatalogueBrowser has its own .cat-* styles). */
-  .cat-browser { max-width: 760px; margin: 0 auto; padding: 16px 18px 40px; }
-  .cat-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.02em; }
-  .cat-head .sub { margin: 2px 0 14px; opacity: 0.6; font-size: 0.8rem; }
-  .empty { opacity: 0.5; font-style: italic; }
-  /* Clickable star map (skin-tinted via currentColor). */
-  .starmap-diagram { width: 100%; height: auto; display: block; border: 1px solid currentColor; border-radius: 8px; }
-  .sm-route { stroke: currentColor; stroke-opacity: 0.25; stroke-width: 1; }
-  .sm-node { cursor: pointer; }
-  .sm-star { fill: currentColor; opacity: 0.7; }
-  .sm-node:hover .sm-star, .sm-node.sel .sm-star { opacity: 1; }
-  .sm-node.sel .sm-star { stroke: currentColor; stroke-width: 3; }
-  .sm-label { fill: currentColor; opacity: 0.85; font-size: 11px; }
-  .sm-preview { margin-top: 14px; border: 1px solid currentColor; border-radius: 8px; padding: 12px 14px; }
-  .sm-preview h2 { margin: 0 0 4px; font-size: 1.15rem; }
-  .sm-sum { margin: 0 0 10px; opacity: 0.7; font-size: 0.85rem; }
-  .explore-btn {
-    background: color-mix(in srgb, currentColor 16%, transparent); color: inherit;
-    border: 1px solid currentColor; border-radius: 6px; padding: 7px 14px; cursor: pointer; font: inherit;
-  }
-  .explore-btn:hover { background: color-mix(in srgb, currentColor 28%, transparent); }
-  .sm-hint { margin-top: 12px; opacity: 0.5; font-size: 0.82rem; font-style: italic; }
   .status { margin-left: auto; opacity: 0.85; }
   .status.live { color: #6fffa0; }
   .status.offline { color: #ffb061; }
-  /* --- diagrammatic browser tier --- */
-  .doc-scroll {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    background: #04060a;
-  }
-  /* Each skin just sets the terminal colour + background; the browser is built from currentColor
-     and thin borders, so it adopts the hue. CRTOverlay (added for tint != none) supplies scanlines.
-     (A WebGL filter package — spec §5 — is the eventual upgrade over this CSS approach.) */
-  .tint-mono { color: var(--mono, #74f7b0); }
-  .tint-mono .doc-scroll { background: color-mix(in srgb, var(--mono, #74f7b0) 4%, #010204); text-shadow: 0 0 1px currentColor; }
-  .tint-mono .sys-name, .tint-mono .status.live { color: var(--mono, #74f7b0); }
-
-  /* Invert = palette swap: the terminal colour becomes the background, content goes dark
-     (green-on-black ↔ black-on-green). Content reads via currentColor, so flipping `color` +
-     the backgrounds is enough; the few explicit var(--mono) text colours are overridden too. */
-  .catalogue.tint-mono.crt-invert { background: var(--mono, #74f7b0); color: #04070b; }
-  .tint-mono.crt-invert .doc-scroll { background: transparent; text-shadow: none; }
-  .tint-mono.crt-invert .sys-name, .tint-mono.crt-invert .status.live { color: #04070b; }
-
-  /* --- The Guide: friendly illustrated travel companion — hopelessly, joyfully colourful.
-     Several FRIENDLY fonts: rounded sans for body, comic/chalk for banners and the cover. --- */
-  .guide-banner {
-    flex: 0 0 auto;
-    text-align: center;
-    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
-    font-style: italic;
-    font-size: 13px;
-    color: #061a10;
-    background: linear-gradient(90deg, #7CFFB2, #ffd76e, #ff9ce8, #8ed0ff, #7CFFB2);
-    padding: 7px 12px;
-    letter-spacing: 0.02em;
-  }
-  .skin-guide { background: #04140d; color: #d6ffe8; font-family: 'Trebuchet MS', 'Segoe UI', Verdana, sans-serif; }
-  .skin-guide .statusbar { background: #07241a; border-bottom-color: rgba(124, 255, 178, 0.3); font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', cursive; }
-  .skin-guide .status.live { color: #7CFFB2; }
-  .skin-guide .sys-name { color: #ffd76e; }
-  .skin-guide .brand-name { color: #ff9ce8; }
-  .skin-guide .doc-scroll { background: #04140d; }
-  /* Random Guide margin notes, top and bottom. */
-  .guide-note {
-    flex: 0 0 auto;
-    text-align: center;
-    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
-    font-size: 15px;
-    line-height: 1.5;
-    padding: 9px 16px;
-  }
-  .guide-note.top { color: #06231a; background: linear-gradient(90deg, #8ed0ff, #b9a4ff); }
-  .guide-note.bottom { color: #2a1606; background: linear-gradient(90deg, #ffd76e, #ff9c6e); border-top: 2px dashed rgba(0,0,0,0.35); }
-  .guide-note.bottom::before { content: 'THE GUIDE SAYS: '; font-weight: 700; letter-spacing: 0.05em; }
-  .guide-note.top::before { content: 'TRAVELLER ADVISORY: '; font-weight: 700; letter-spacing: 0.05em; }
-  /* The front cover: big, friendly, colourful letters. Tap to pass. */
-  .guide-cover {
-    position: absolute;
-    inset: 0;
-    z-index: 300;
-    display: grid;
-    place-items: center;
-    background: radial-gradient(ellipse at 50% 35%, #0a3322, #04140d 70%);
-    cursor: pointer;
-    text-align: center;
-    padding: 24px;
-  }
-  .cover-inner { max-width: 560px; }
-  .panic {
-    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Trebuchet MS', cursive;
-    font-weight: 700;
-    font-size: clamp(38px, 11vw, 92px);
-    line-height: 1.05;
-    user-select: none;
-  }
-  .panic-word { white-space: nowrap; display: inline-block; }
-  .panic-word span {
-    display: inline-block;
-    color: hsl(calc(var(--i) * 26), 95%, 66%);
-    transform: rotate(calc((var(--i) - 7) * 1.6deg));
-    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
-  }
-  .cover-sub {
-    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', cursive;
-    color: #d6ffe8;
-    margin: 22px 0 0;
-    font-size: 15px;
-    line-height: 1.5;
-  }
-  .cover-hint {
-    font-family: 'Trebuchet MS', Verdana, sans-serif;
-    color: #7CFFB2;
-    opacity: 0.6;
-    font-size: 12px;
-    margin-top: 26px;
-    animation: cover-pulse 1.6s ease-in-out infinite;
-  }
-  @keyframes cover-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.85; } }
-  .skin-clean { color: #dfe5ef; }
-  .skin-clean .doc-scroll { background: #0b0e14; }
-
-  /* --- hi-tech console tier --- */
+  /* --- the live orbital-map stage (holo 3D / locked-overhead 2D) --- */
   .console-stage { flex: 1; position: relative; min-height: 0; }
 
   /* Preset-driven layers (deployed player view). */
@@ -1710,9 +1283,4 @@
     .inspector:not(.expanded) .insp-close { display: none; }
   }
   .insp-sub { font-size: 11px; letter-spacing: 0.08em; opacity: 0.6; margin: 2px 0 12px; }
-  .insp-photo { width: 100%; height: auto; border-radius: 6px; display: block; margin: 0 0 12px; }
-  .insp-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 0; font-size: 13px; }
-  .insp-grid dt { opacity: 0.55; }
-  .insp-grid dd { margin: 0; text-align: right; }
-  .insp-desc { margin-top: 12px; font-size: 13px; line-height: 1.5; font-style: italic; opacity: 0.85; white-space: pre-wrap; }
 </style>

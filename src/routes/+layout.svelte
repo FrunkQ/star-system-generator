@@ -13,7 +13,7 @@
 	// Requires Web Analytics enabled in the Vercel project too.
 	//
 	// ONE EVENT PER BROWSER PER DAY, NOT ONE PER ROUTE CHANGE. This app invites heavy
-	// back-and-forth between routes (/physics, /projector, /catalogue) while a GM tweaks and
+	// back-and-forth between routes (/physics, /catalogue, /report) while a GM tweaks and
 	// re-reads, and Vercel counts every route change as a billable Web Analytics event — which
 	// burns the 50,000/month Hobby allowance for no extra information, because all we want is the
 	// raw volume of visitors.

@@ -1130,9 +1130,7 @@
         on:findtag={() => { railOpen = false; dispatch('findtag'); }}
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
-        on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
         on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
-        on:projector={() => { railOpen = false; dispatch('projector'); }}
         on:report={() => { railOpen = false; dispatch('report'); }}
         on:clear={() => { railOpen = false; dispatch('clear'); }}
       />

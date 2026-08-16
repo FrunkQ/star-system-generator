@@ -259,8 +259,9 @@ WHERE: `catalogue/+page.svelte:effectiveSystemTier` (holo3d AND diagram2d → `'
 RULE: a tag badge has FOUR renderers and they are not interchangeable. GM 2D orrery =
 `SystemVisualizer` canvas. GM starmap = `Starmap.svelte` SVG. PLAYER system view, 2D *and* 3D =
 `holo/scene.ts` label sprites. PLAYER starmap, 2D *and* 3D = `starmapScene.ts` label sprites. The
-textual guide is a fifth, through the document block model. `SystemVisualizer` serves ONLY the lo-fi
-`'static'` tier on a player view.
+textual guide is a fifth, through the document block model. `SystemVisualizer` NO LONGER APPEARS ON A
+PLAYER VIEW AT ALL — it served the legacy Starship Console skin, which A42 removed at v2.1.698; the
+`'static'` tier is now the document and list modules only.
 WHY: a previous session wired `SystemVisualizer` believing it was the player's 2D map. It is not —
 RENDER-B2 records the same trap one level up for the starmap. "The 2D system view" names two different
 renderers depending on who is looking.
@@ -697,7 +698,8 @@ ALSO, because it is the same shape one level down and the two are easy to swap: 
 map is likewise `holo/scene.ts` locked overhead + flat/unlit (`catalogue/+page.svelte:793`,
 `effectiveSystemTier` maps both `holo3d` and `diagram2d` to `'holo'`) — NOT `SystemVisualizer.svelte`,
 which is the GM's 2D orrery and is still very much mounted (SystemView, the projector, the `/p/` share
-route, and the catalogue's static tier). So "the 2D system view" names two different renderers
+route — NOT the catalogue, whose SystemVisualizer mount and the `/projector` route both went with
+A42 at v2.1.698). So "the 2D system view" names two different renderers
 depending on who is looking; RENDER-S19's "a transiting ship drew PARKED on player views" lived on that
 seam. Four surfaces, one grid vocabulary, and `components/Grid.svelte` is a fifth that shares neither.
 BLAST: A PER-VERTEX EFFECT NEEDS GEOMETRY SEGMENTED TO ITS OWN SCALE. `addLattice` fades per vertex
@@ -1915,6 +1917,27 @@ callers. Note its data model is Accrete's own (`Planetismal`: axis / eccentricit
 ### UI-*  (panels, editors, player views)
 _Unwritten. Candidates: which surfaces read the player snapshot; the four explanation surfaces that
 drift silently (physics page, Newton explainer, tags guide, classification doc)._
+
+#### The player view (A42/A47) — added 2026-08-16 by the player-view closeout
+
+### UI-P1 There is no preset-less path through `/catalogue`, and the FALLBACK is what makes that true
+WHERE: `routes/catalogue/+page.svelte` — `FALLBACK_PRESET`, `resolvedPreset`, `presetMissing`,
+`pendingPreset`.
+RULE: `activePresetId` defaults to `'guide'` when the URL carries no `?preset=`, and an id that fails
+to resolve falls back to the same shipped preset. So `activePreset` is null in exactly ONE window: after
+mount and before the first `SYNC_STARMAP`, and the page shows the waiting interstitial there anyway. Do
+not add a branch for "no preset" — it is unreachable, and the last one that existed rendered the
+retired Field Guide.
+WHY: every preset-driven branch is guarded on `activePreset`, so a null one did not render nothing, it
+rendered whatever the legacy default happened to be. That is how a broken custom-preset link opened a
+different tool with no error (A47).
+BLAST: the fallback DELIBERATELY WAITS FOR `starmap` rather than applying immediately, for two reasons
+and both are load-bearing. (1) "Not yet arrived" is the normal state for the first second of every
+CUSTOM-preset window — customs ride `starmap.playerPresets` — so warning before the campaign lands
+would cry wolf on every open. (2) Applying it early would count as the FIRST application, and
+`firstApply` is what lets a width this reader dragged outrank the preset's; the real preset would then
+arrive second and overrule a drag it was never meant to touch (A32's rule, one indirection away).
+A built-in id resolves with no data at all, so the ordinary no-URL case never waits.
 
 #### Construct appearance (G3) — added 2026-08-04 by the ship-appearance stream
 

@@ -2,7 +2,7 @@
   // Thin Svelte wrapper around the imperative three.js holo scene. Deliberately holds NO static
   // import of three or ./scene — the scene module is dynamically imported on mount so three.js is
   // code-split into its own chunk and the 2D app never pays for it. Mirrors the prop surface of
-  // SystemVisualizer so the catalogue/projector can swap one for the other.
+  // SystemVisualizer, the 2D orrery it stands in for.
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import type { System } from '$lib/types';
   import type { HoloController } from '$lib/holo/scene';

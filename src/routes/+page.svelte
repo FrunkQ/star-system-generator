@@ -16,13 +16,9 @@
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
-  import CompanionModal from '$lib/components/CompanionModal.svelte';
   import PlayerViewModal from '$lib/components/PlayerViewModal.svelte';
-  import { PLAYER_VIEWS_ENABLED } from '$lib/config/releaseFlags';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
   import { brandingStore } from '$lib/catalogue/branding';
-  import { guideConfigStore } from '$lib/catalogue/guideConfig';
-  import { crtControls } from '$lib/catalogue/crtControls';
   import { starmapStore } from '$lib/starmapStore';
   import { perfStage, perfEnabled } from '$lib/perfTrace';
   import { APP_VERSION } from '$lib/constants';
@@ -87,18 +83,10 @@
   // the map — docs/dev/vtt-integration-design.md 9.1/1A) so player links/QRs survive reloads and PC
   // moves; generateId() is only the pre-load fallback so the service is never idless.
   let broadcastSessionId = generateId();
-  let showCompanionModal = false;
   let showPlayerPresets = false;
-  // BETA: Projector + Report on the STARMAP rail act on the last-loaded system ($systemStore). The
-  // system view has its own copies inside SystemView; these mirror them so the rail entries work from
-  // the starmap too. Delete alongside the Field Guide beta-scaffolding before the production cut.
+  // Report on the STARMAP rail acts on the last-loaded system ($systemStore). The system view has its
+  // own copy inside SystemView; this mirrors it so the rail entry works from the starmap too.
   let showReportConfigModal = false;
-  let starmapProjectorWindow: Window | null = null;
-  function openProjectorFromStarmap() {
-    starmapProjectorWindow = window.open(`/projector?sid=${broadcastSessionId}`, 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
-    const sys = get(systemStore);
-    if (sys) broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot(sys) });
-  }
   function handleStarmapReport(event: CustomEvent<{ mode: 'GM' | 'Player'; theme: string; includeConstructs: boolean }>) {
     const sys = get(systemStore);
     showReportConfigModal = false;
@@ -782,7 +770,6 @@
       const map = get(starmapStore);
       if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers(map) });
       broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
-      broadcastService.sendMessage({ type: 'SYNC_GUIDECONFIG', payload: { ...get(guideConfigStore), crt: get(crtControls) } });
       // A player joining (or reloading) AFTER the GM set the live overrides never used to hear about
       // them — Follow GM et al. only rode the modal's own broadcasts, so late windows silently ignored
       // the GM. Re-state the running view + overrides on every join. (Never send null here: a player
@@ -807,13 +794,9 @@
   $: if (browser && $starmapStore && $starmapUiStore) {
     broadcastService.sendIfChanged({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers($starmapStore) });
   }
-  // Push branding (company name + logo) to guides whenever the GM edits it.
+  // Push branding (company name + logo) to player views whenever the GM edits it.
   $: if (browser && $brandingStore) {
     broadcastService.sendIfChanged({ type: 'SYNC_BRANDING', payload: $brandingStore });
-  }
-  // Push the GM-enforced guide view (skin/colour/constructs + CRT effect) whenever the GM changes it.
-  $: if (browser && ($guideConfigStore || $crtControls)) {
-    broadcastService.sendIfChanged({ type: 'SYNC_GUIDECONFIG', payload: { ...$guideConfigStore, crt: $crtControls } });
   }
 
   // Keep the runtime display units in sync with the loaded starmap (source of truth).
@@ -1843,7 +1826,6 @@
         on:routes={() => showRoutes = true}
         on:about={() => showAbout = true}
         on:help={() => showHelpMenu = true}
-        on:catalogue={() => showCompanionModal = true}
         on:playerviews={() => showPlayerPresets = true}
         on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
         on:back={handleBackToStarmap}
@@ -1859,9 +1841,7 @@
       rulePack={selectedRulepack}
       routesAttention={routesData.worstAttention}
       on:new={handleRequestNewStarmap}
-      on:catalogue={() => showCompanionModal = true}
       on:playerviews={() => showPlayerPresets = true}
-      on:projector={openProjectorFromStarmap}
       on:report={() => showReportConfigModal = true}
       on:systemclick={handleSystemClick}
       on:focusconstruct={(e) => enterSystemAndFocus(e.detail.systemId, e.detail.id)}
@@ -1967,19 +1947,11 @@
     <AboutModal rulePack={$systemStore ? effectiveRulePack : null} on:close={() => showAbout = false} />
   {/if}
 
-  {#if showCompanionModal}
-    <CompanionModal sessionId={broadcastSessionId}
-      on:close={() => showCompanionModal = false}
-      on:presets={() => { showCompanionModal = false; showPlayerPresets = true; }} />
-  {/if}
-
   {#if showReportConfigModal}
     <ReportConfigModal on:generate={handleStarmapReport} on:close={() => showReportConfigModal = false} />
   {/if}
 
-  <!-- Player Views (V2.2 line): masked by the same single flag as its rail entry, so no stray dispatch
-       can open it while it is hidden. Flip $lib/config/releaseFlags to bring the whole feature back. -->
-  {#if showPlayerPresets && PLAYER_VIEWS_ENABLED}
+  {#if showPlayerPresets}
     <PlayerViewModal sessionId={broadcastSessionId} on:close={() => showPlayerPresets = false} />
   {/if}
 

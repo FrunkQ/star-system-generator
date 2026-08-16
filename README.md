@@ -36,7 +36,7 @@ V2 is a ground-up overhaul. The headline changes:
 
 **Interstellar travel.** Fly between systems with abstract **Jump** drives or realistic reaction drives, including **relativistic time dilation** — watch crew-frame and observer-frame clocks diverge as you approach light speed. Under-fuelled ships fall short and drift; gravity assists curve real trajectories around destination stars.
 
-**The Field Guide — SSE's companion app.** SSE can now *serve* its data live to your players' own devices, in four skins: a retro monochrome terminal, a clean survey datapad, a starship console with an orbital map, and *The Guide* (hopelessly colourful, DON'T PANIC). All obey the same redaction rules as the printed reports.
+**Player Views — SSE's companion app.** SSE can now *serve* its data live to your players' own devices. You design what they see as a **preset** — text list, document, 2D map or the full 3D system — and dress it with fonts, colours, filters, transitions and your own letterhead. Six looks ship with it, including a retro monochrome terminal, a clean survey datapad, a starship console, *The Guide* (hopelessly colourful, DON'T PANIC), a 3D holo table, and an overhead projection that follows the GM. All obey the same redaction rules as the printed reports.
 
 **Planetary composition & geology, physically derived.**
 - Density now emerges from a metal/rock/carbon/ice/gas interior makeup.
@@ -84,7 +84,7 @@ Plus a long tail: a tape-measure tool, a far richer temperature model (tidal hea
 * **Orbital mechanics & planetology.** Δv budgets to land or ascend, orbital boundaries (LEO/GEO/Hill sphere) with a Hill-Sphere view, detailed atmospheres, derived magnetospheres, and resonance-aware stability assessment.
 * **Interactive 2D visualiser.** A real-time orbital view with playback, zoom, focus, sensor overlays, and true-colour procedural bodies.
   ![Toytown View](static/screenshots/Expanse-Toytown.PNG)
-* **The Field Guide & Player View.** Serve a live, redacted catalogue to players' devices in four skins, or open a clean full-screen Projector View that syncs to the GM's camera, time and focus — retro CRT effect optional.
+* **Player Views.** Serve a live, redacted view to players' devices — designed as a preset and deployed to phones, tablets or a second screen — or run the overhead Projection preset, which follows the GM's camera, time and focus and can be dropped onto a greenscreen for OBS.
   ![Greenscreen Projection View](static/screenshots/Greenscreen-ProjectionView.png)
 * **GM tools.** Per-object and per-description visibility controls, autosaved GM notes never shown to players, and Player-Safe exports that strip spoilers.
 * **AI-powered descriptions.** Optional OpenRouter integration generates narrative write-ups for any body, guided by style and tags.

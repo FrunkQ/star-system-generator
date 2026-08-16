@@ -8,6 +8,7 @@
   import { get } from 'svelte/store';
   import QRCode from 'qrcode';
   import { broadcastService } from '$lib/broadcast';
+  import { brandingStore } from '$lib/catalogue/branding';
   import { measurementUnit, temperatureUnit } from '$lib/stores';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { DEFAULT_PRESET, makePresetId, accentSolid, isRainbow, RAINBOW_GRADIENT, normalizePreset } from '$lib/player/presets';
@@ -87,6 +88,32 @@
       color: t?.color || c?.color || '#888',
       textColor: t?.textColor || c?.textColor || '#fff'
     };
+  }
+
+  // --- Branding: the in-universe letterhead every player view wears -------------------------------
+  // A42: this moved here from the Field Guide launcher when that was removed. It is NOT part of a
+  // preset and deliberately so — it is the CAMPAIGN's letterhead, one name and one logo across every
+  // view a GM deploys, and it rides SYNC_BRANDING to whatever window is open. The player view's
+  // status bar and its waiting screen both read it.
+  let logoInput: HTMLInputElement;
+  // Downscale any uploaded logo to a small PNG data URL (max 160px) so it's tiny enough to broadcast
+  // every time and store locally. Keeps the "letterhead" feature cheap.
+  function onLogoPick(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file || !browser) return;
+    const img = new Image();
+    img.onload = () => {
+      const max = 160;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      brandingStore.update((b) => ({ ...b, logo: c.toDataURL('image/png') }));
+    };
+    img.src = URL.createObjectURL(file);
   }
 
   let selectedId: string | null = null;
@@ -251,6 +278,22 @@
             </div>
           </div>
 
+          <!-- Campaign letterhead — applies to EVERY preset, not this one. -->
+          <div class="branding">
+            <span class="ov-head">Branding <span class="ov-sub">every view, not just this preset</span></span>
+            <input type="text" class="org-name" placeholder="Company / faction name (e.g. a megacorp or survey authority)" bind:value={$brandingStore.name} />
+            <div class="logo-row">
+              {#if $brandingStore.logo}
+                <img class="logo-preview" src={$brandingStore.logo} alt="Logo preview" />
+                <button on:click={() => brandingStore.update((b) => ({ ...b, logo: null }))}>Remove logo</button>
+              {:else}
+                <button on:click={() => logoInput?.click()}>Upload logo…</button>
+                <span class="logo-hint">PNG/JPG; auto-shrunk. Use your own art (no trademarked logos).</span>
+              {/if}
+              <input type="file" accept="image/*" bind:this={logoInput} on:change={onLogoPick} style="display:none" />
+            </div>
+          </div>
+
           <div class="overrides">
             <span class="ov-head">Quick overrides <span class="ov-sub">live · never saved{$runningPresetId ? '' : ' · start a view first'}</span></span>
             <label class="chk">
@@ -357,6 +400,12 @@
   .share-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .share-hint { margin: 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
   .share-col button { align-self: flex-start; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 11px; cursor: pointer; font: inherit; }
+  .branding { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+  .org-name { width: 100%; box-sizing: border-box; padding: 0.45em 0.5em; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; font-size: 0.8rem; }
+  .logo-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .logo-row button { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px; cursor: pointer; font: inherit; font-size: 0.78rem; }
+  .logo-preview { height: 36px; width: auto; max-width: 110px; border-radius: 4px; background: #fff; padding: 3px; }
+  .logo-hint { font-size: 0.68rem; color: var(--text-faint); line-height: 1.35; }
   .overrides { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-top: 0.2rem; }
   .ov-head { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
   .ov-sub { text-transform: none; letter-spacing: 0; font-style: italic; opacity: 0.8; }

@@ -241,13 +241,6 @@
   // The visualizer's wheel-zoom flag: FOLLOW keeps panning with the body but the ZOOM is the user's —
   // followers must treat that viewport as manual too (zoom-out over a focused body was never mirrored).
   let userZoomOverride = false;
-  let isCrtMode = false;
-  // Projector window tracking: when it's open the rail's Projector entry becomes a
-  // greenscreen (chroma-key) toggle; we poll for the window closing to revert.
-  let projectorWindow: Window | null = null;
-  let projectorOpen = false;
-  let isGreenscreen = false;
-  let projectorPoll: ReturnType<typeof setInterval> | null = null;
   let isEditing = false;
   let isPlanning = false;
   let plannerOriginId: ID = '';
@@ -267,11 +260,6 @@
   let isShipLogOpen: boolean = false;
   
   export let broadcastSessionId: string; // owned by +page so the guide works from the starmap too
-
-  function handleToggleCrt() {
-      isCrtMode = !isCrtMode;
-      broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
-  }
 
   // Context Menu State
   let showSummaryContextMenu = false;
@@ -1455,29 +1443,6 @@
     reader.readAsArrayBuffer(file);
   }
 
-  async function handleShare() {
-      projectorWindow = window.open(`/projector?sid=${broadcastSessionId}`, 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
-      projectorOpen = !!projectorWindow;
-      if ($systemStore) {
-          broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot($systemStore) });
-      }
-      // Watch for the user closing the projector window → revert the rail entry.
-      if (projectorPoll) clearInterval(projectorPoll);
-      projectorPoll = setInterval(() => {
-          if (!projectorWindow || projectorWindow.closed) {
-              projectorOpen = false;
-              isGreenscreen = false;
-              projectorWindow = null;
-              if (projectorPoll) { clearInterval(projectorPoll); projectorPoll = null; }
-          }
-      }, 800);
-  }
-
-  function toggleGreenscreen() {
-      isGreenscreen = !isGreenscreen;
-      broadcastService.sendMessage({ type: 'SYNC_GREENSCREEN', payload: isGreenscreen });
-  }
-
   let unsubscribePanStore: () => void;
   let unsubscribeZoomStore: () => void;
 
@@ -1522,8 +1487,6 @@
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
                 broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
-                broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
-                broadcastService.sendMessage({ type: 'SYNC_GREENSCREEN', payload: isGreenscreen });
             }
         };
 
@@ -1572,7 +1535,6 @@
   onDestroy(() => {
     if (browser) {
       if (timeSyncInterval) clearInterval(timeSyncInterval);
-      if (projectorPoll) clearInterval(projectorPoll);
     }
     stopAlignAnimation();
     if (unsubscribePanStore) {
@@ -2179,15 +2141,10 @@
     <svelte:fragment slot="rail">
       <RailNav
         activeView="system"
-        {projectorOpen}
         rulerOn={rulerActive}
-        crtOn={isCrtMode}
         {routesAttention}
         on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
-        on:projector={() => { railOpen = false; handleShare(); }}
-        on:projectorcrt={handleToggleCrt}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
-        on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
         on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
         on:ruler={() => { railOpen = false; rulerActive = !rulerActive; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
@@ -2207,7 +2164,7 @@
       >
       <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
            phone now that the summary strip is retired in favour of the BodyPicker. The
-           Starmap nav, Projector and Report moved up into the icon rail proper. -->
+           Starmap nav and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
       <input type="file" accept="application/json,.json,.zip,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />

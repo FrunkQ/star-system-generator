@@ -28,20 +28,18 @@ export type BroadcastMessage =
   | { type: 'SYNC_CAMERA'; payload: { pan: PanState; zoom: number; isManual: boolean; viewMin?: number } }
   | { type: 'SYNC_VIEW_SETTINGS'; payload: ViewSettings }
   | { type: 'SYNC_TIME'; payload: TimeState }
-  | { type: 'SYNC_CRT_MODE'; payload: boolean }
-  | { type: 'SYNC_GREENSCREEN'; payload: boolean }
   | { type: 'REQUEST_SYNC'; payload: string | null }
-  // Companion App (whole campaign): the redacted starmap, requested + streamed independently of the
-  // projector's per-system SYNC_SYSTEM, so both can be served from the one session.
+  // The whole campaign, redacted: requested + streamed independently of the per-system SYNC_SYSTEM,
+  // so both can be served from the one session.
   | { type: 'SYNC_STARMAP'; payload: Starmap }
   | { type: 'REQUEST_STARMAP'; payload: string | null }
   | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } }
-  // GM-enforced Field Guide view (skin + terminal colour + constructs + CRT effect) — players
-  // can't override; the CRT controls live on the GM, so `crt` carries the GM's chosen settings.
-  | { type: 'SYNC_GUIDECONFIG'; payload: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> } }
   // Unified player-view: the GM's Player Views modal drives the open player window — which preset is
   // live + the momentary overrides (hide labels / suspend filter / pause orbit / follow GM). A null
-  // payload means "closed" (the player window shows a hold screen). Supersedes SYNC_GUIDECONFIG.
+  // payload means "closed" (the player window shows a hold screen).
+  // (A42 removed three siblings that served the retired Field Guide and Projector: SYNC_GUIDECONFIG
+  // pushed the GM's enforced skin, and SYNC_CRT_MODE / SYNC_GREENSCREEN toggled the projector's CRT
+  // and chroma-key. All three are preset fields now.)
   | { type: 'SYNC_PRESET'; payload: PresetBroadcast | null }
   // G3 construct models: a player missing a model binary asks for it BY HASH and the GM answers
   // once - the binary never rides the snapshot (design §4: sendIfChanged re-sends whole payloads,
@@ -235,8 +233,6 @@ class BroadcastService {
       onCameraUpdate: (pan: PanState, zoom: number, isManual: boolean, viewMin?: number) => void,
       onViewSettingsUpdate: (settings: ViewSettings) => void,
       onTimeUpdate: (time: TimeState) => void,
-      onCrtModeUpdate: (isCrt: boolean) => void,
-      onGreenscreenUpdate: (isGreen: boolean) => void,
       targetId: string | null = null
   ) {
     this.isSender = false;
@@ -247,8 +243,6 @@ class BroadcastService {
     this.onCameraUpdate = onCameraUpdate;
     this.onViewSettingsUpdate = onViewSettingsUpdate;
     this.onTimeUpdate = onTimeUpdate;
-    this.onCrtModeUpdate = onCrtModeUpdate;
-    this.onGreenscreenUpdate = onGreenscreenUpdate;
     
     // Request initial state
     // For REQUEST_SYNC, we send it "from" no one (or self?), but the payload targets the specific GM
@@ -331,18 +325,15 @@ class BroadcastService {
   private onCameraUpdate: ((pan: PanState, zoom: number, isManual: boolean, viewMin?: number) => void) | null = null;
   private onViewSettingsUpdate: ((settings: ViewSettings) => void) | null = null;
   private onTimeUpdate: ((time: TimeState) => void) | null = null;
-  private onCrtModeUpdate: ((isCrt: boolean) => void) | null = null;
-  private onGreenscreenUpdate: ((isGreen: boolean) => void) | null = null;
 
   // Handlers for incoming messages
   public onRequestSync: ((requestingId: string | null) => void) | null = null;
-  // Companion App: set by the catalogue (receiver) to get the whole redacted starmap, and by the
-  // host owner (+page) to answer a guide's REQUEST_STARMAP. Separate from onRequestSync so the
-  // projector (per-system) and the catalogue (whole map) can both be served by one session.
+  // Set by the player view (receiver) to get the whole redacted starmap, and by the host owner
+  // (+page) to answer its REQUEST_STARMAP. Separate from onRequestSync so a per-system consumer and
+  // a whole-map one can both be served by one session.
   public onStarmapUpdate: ((map: Starmap) => void) | null = null;
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
-  public onGuideConfigUpdate: ((c: { theme: string; monoColor: string; includeConstructs: boolean; crt?: Record<string, number | boolean> }) => void) | null = null;
   public onPresetUpdate: ((p: PresetBroadcast | null) => void) | null = null;
   public onFocusLevelUpdate: ((p: { id: string; level: number }) => void) | null = null;
   // G3 construct models (sender side answers, receiver side stores) - transport only, the model
@@ -399,12 +390,6 @@ class BroadcastService {
           case 'SYNC_TIME':
               if (!this.isSender && this.onTimeUpdate) this.onTimeUpdate(msg.payload);
               break;
-          case 'SYNC_CRT_MODE':
-              if (!this.isSender && this.onCrtModeUpdate) this.onCrtModeUpdate(msg.payload);
-              break;
-          case 'SYNC_GREENSCREEN':
-              if (!this.isSender && this.onGreenscreenUpdate) this.onGreenscreenUpdate(msg.payload);
-              break;
           case 'REQUEST_SYNC':
               // Sender Logic: Only respond if payload matches OUR sessionId (or is null/legacy)
               if (this.isSender && this.onRequestSync) {
@@ -418,9 +403,6 @@ class BroadcastService {
               break;
           case 'SYNC_BRANDING':
               if (!this.isSender && this.onBrandingUpdate) this.onBrandingUpdate(msg.payload);
-              break;
-          case 'SYNC_GUIDECONFIG':
-              if (!this.isSender && this.onGuideConfigUpdate) this.onGuideConfigUpdate(msg.payload);
               break;
           case 'SYNC_PRESET':
               if (!this.isSender && this.onPresetUpdate) this.onPresetUpdate(msg.payload);

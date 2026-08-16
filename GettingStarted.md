@@ -166,9 +166,11 @@ drag it to a player-facing screen for the shared-screen case.
 
 ![Greenscreen Projection View](static/screenshots/Greenscreen-ProjectionView.png)
 
-> The older **Field Guide** and **Projector Mode** did parts of this and are being retired — Player
-> Views does everything they did and rather more. If you have a workflow built on either, it still
-> works for now, but move it across when you can.
+> The older **Field Guide** and **Projector Mode** have been removed. Player Views does everything
+> they did and rather more, and every look they offered ships as a preset — the monochrome terminal,
+> the survey datapad, the starship console, The Guide, the holo table, and the overhead projection.
+> Old `/catalogue?theme=...` and `/projector` links no longer work; open the view you want from
+> Player Views and share the link it gives you.
 
 ### Paper reports (low-tech tables)
 Hamburger menu → **Generate Report** → choose **GM** (full intel) or **Player** (redacted) and a theme, then print or save as PDF. The Player version auto-redacts hidden objects and descriptions — a safe "sensor scan" handout.

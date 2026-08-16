@@ -42,7 +42,7 @@ describe('CustomImageBlock — the labels are a prop, not a reason for a second 
 describe('CustomImageBlock — removing hands the picture back to whatever derives it', () => {
 	it('clears the whole ImageRef and reports the change', async () => {
 		// Clearing the flag alone would leave a stale url behind, and every reader of `image.url` is
-		// generic (bodyImage.ts, CatalogueBrowser, the bundle packer) — they would all still show it.
+		// generic (bodyImage.ts, the document builder, the bundle packer) — they would all still show it.
 		const target: any = { image: { url: CUSTOM, custom: true, credit: 'A. Painter' } };
 		const onUpdate = vi.fn();
 		const { container } = render(CustomImageBlock, { props: { target, onUpdate, removeLabel: 'Remove' } });
