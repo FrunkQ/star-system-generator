@@ -4,7 +4,7 @@
   // SYNC_STARMAP), and WHAT it renders is decided entirely by a PlayerPreset: its cover, its starmap
   // module, its system module, its theme, its filter. One engine, many named looks.
   //
-  // A42 (v2.1.698): the legacy skin registry that used to live here is GONE. There were once five
+  // A42 (v2.1.702): the legacy skin registry that used to live here is GONE. There were once five
   // hard-coded "skins" (mono / guide / clean / console / holo) chosen by the GM's Field Guide
   // launcher and pushed over SYNC_GUIDECONFIG, plus a separate /projector window. Every one of them
   // is now a preset of this engine - see presets.ts, where `guide`, `datapad`, `console`, `crt`,

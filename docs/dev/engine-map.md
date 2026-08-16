@@ -260,7 +260,7 @@ RULE: a tag badge has FOUR renderers and they are not interchangeable. GM 2D orr
 `SystemVisualizer` canvas. GM starmap = `Starmap.svelte` SVG. PLAYER system view, 2D *and* 3D =
 `holo/scene.ts` label sprites. PLAYER starmap, 2D *and* 3D = `starmapScene.ts` label sprites. The
 textual guide is a fifth, through the document block model. `SystemVisualizer` NO LONGER APPEARS ON A
-PLAYER VIEW AT ALL — it served the legacy Starship Console skin, which A42 removed at v2.1.698; the
+PLAYER VIEW AT ALL — it served the legacy Starship Console skin, which A42 removed at v2.1.702; the
 `'static'` tier is now the document and list modules only.
 WHY: a previous session wired `SystemVisualizer` believing it was the player's 2D map. It is not —
 RENDER-B2 records the same trap one level up for the starmap. "The 2D system view" names two different
@@ -699,7 +699,7 @@ map is likewise `holo/scene.ts` locked overhead + flat/unlit (`catalogue/+page.s
 `effectiveSystemTier` maps both `holo3d` and `diagram2d` to `'holo'`) — NOT `SystemVisualizer.svelte`,
 which is the GM's 2D orrery and is still very much mounted (SystemView, the projector, the `/p/` share
 route — NOT the catalogue, whose SystemVisualizer mount and the `/projector` route both went with
-A42 at v2.1.698). So "the 2D system view" names two different renderers
+A42 at v2.1.702). So "the 2D system view" names two different renderers
 depending on who is looking; RENDER-S19's "a transiting ship drew PARKED on player views" lived on that
 seam. Four surfaces, one grid vocabulary, and `components/Grid.svelte` is a fifth that shares neither.
 BLAST: A PER-VERTEX EFFECT NEEDS GEOMETRY SEGMENTED TO ITS OWN SCALE. `addLattice` fades per vertex

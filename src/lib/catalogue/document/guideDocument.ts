@@ -1,6 +1,6 @@
 // Builds the WS2 Guide document's block model from a system + the currently-selected body. This is the
 // content assembly that replaced the legacy Field Guide's page (`CatalogueBrowser.svelte`, removed by
-// A42 at v2.1.698 — this is now the only copy): the
+// A42 at v2.1.702 — this is now the only copy): the
 // orbital schematic up top, then the selected body's title + imagery + facts + description, with its
 // moons / constructs as in-document navigator lists to drill into. The engine (`renderDocument`) draws
 // it; this file just decides WHAT appears, so the same content can be re-themed (book ↔ terminal) and

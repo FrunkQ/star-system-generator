@@ -2,18 +2,18 @@
 
 All notable changes are listed here:
 
-## v2.1.700-beta - 16th Aug 2026
+## v2.1.704-beta - 16th Aug 2026
 
 - Docs: the observations inbox records A42, A47, A48 and E8 as done, with two of their recorded diagnoses corrected, two new findings and one correction to the known-not-ours list.
 
-## v2.1.699-beta - 16th Aug 2026
+## v2.1.703-beta - 16th Aug 2026
 
 - The player-preset editor's long steps now collapse. The Starmap and System steps had grown to fifteen and twenty controls in a single box; they are grouped by what you are actually doing - Grid & routes, Depth & camera, Bodies & belts, Scale & camera, Scene & sky, Labels & markers - and each group opens and shuts. On the System step that turns a screen-and-a-half of scrolling into no scrolling at all.
 - Which groups you leave open is remembered, per machine, and survives closing and reopening the editor. First run opens the one group per step that carries the choice everything else hangs off, and leaves the rest shut. It is your layout, not the preset's: it never travels to a player's screen.
 - The "Colours" panel inside the two document sections now opens and shuts like every other group instead of being a second, different kind of collapsing thing in the same editor.
 - Nothing about any control changed - not what it does, not what it is called, not when it appears. This was a layout pass.
 
-## v2.1.698-beta - 16th Aug 2026
+## v2.1.702-beta - 16th Aug 2026
 
 - The old **Field Guide** and **Projector** are gone. Player Views does everything they did and does it from one engine, so every look they offered is now a preset you can open, duplicate and edit - the monochrome terminal, the survey datapad, the starship console, The Guide, the holo table and the overhead projection. Two doors to the same room have become one.
 - Branding - your campaign's letterhead name and logo - now lives in the Player Views panel, under the share link. It was only reachable from the Field Guide launcher before, and it applies to every view you deploy rather than to one preset.
@@ -21,7 +21,7 @@ All notable changes are listed here:
 - The release flag that hid Player Views is gone too. It had one branch left, and the instruction written beside it would have hidden the headline feature at the next production cut and brought the two retired tools back.
 - REMOVED, said plainly: the Field Guide's "include artificial constructs" switch has no equivalent in Player Views. It had already stopped working the moment a preset was in play, so nothing changes today - but hiding every ship and station from your players in one move is not currently something a preset can do.
 
-## v2.1.697-beta - 16th Aug 2026
+## v2.1.701-beta - 16th Aug 2026
 
 - FIXED: a player-view link whose preset no longer exists used to open the old Field Guide instead, without saying so - a different tool, silently, on a screen your players are looking at. It now falls back to the shipped Guide player preset and states plainly which preset was missing, so a stale link is something you can see and fix rather than something you notice weeks later. The message waits until the campaign has actually arrived before it appears, so a window that is merely still connecting is never accused of being broken.
 
