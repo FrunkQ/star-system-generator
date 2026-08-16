@@ -31,6 +31,13 @@
   const classExplanation = $derived(
       explainStarClass(rulePack, currentClass, activityBucket)
   );
+  // The designation the body actually holds, shown so a GM can see it follow the sliders. Remnants
+  // and anything with no letter show nothing rather than a made-up string.
+  const designationNow = $derived.by(() => {
+      const held = body?.classes?.[0] ?? '';
+      const p = starClassParts(held);
+      return p.letter && !p.bare ? held.replace(/^star\//, '') : '';
+  });
 
   // --- State ---
   let massSuns = $state(0);
@@ -759,6 +766,17 @@
                 <strong>{classExplanation.kind}</strong>{#if classExplanation.colour}, {classExplanation.colour} to human eyes{/if}{#if classExplanation.size}, {classExplanation.size}{/if}
             </div>
         {/if}
+        <!-- WHY A STAR HAS NO "auto-classify" CHECKBOX WHERE A PLANET DOES, said out loud (owner,
+             2026-08-16). The opposite default on two body kinds is deliberate and reads as a bug
+             unless the UI explains it: a planet's type is a judgement about parameters the GM
+             authored, so it stays pinned; a star's designation is a READOUT of where it sits on the
+             HR diagram, so it follows the numbers. Moving the temperature slider re-letters it in
+             front of you, which is the same statement made by the control rather than in prose. -->
+        {#if designationNow}
+            <div class="designation-line" title="A star's designation is a readout of its physics, not a label attached to it — change the temperature or the radius and it changes. That is the opposite of a planet, whose type you pin and the engine leaves alone.">
+                Currently <strong>{designationNow}</strong> — read from its temperature and radius, and it follows them.
+            </div>
+        {/if}
         {#if currentClass === 'star/BH' || currentClass === 'star/BH_active'}
             <div class="bh-accretion" style="margin-top:10px;">
                 <label style="font-size:0.85em; display:flex; justify-content:space-between;">
@@ -1004,6 +1022,7 @@
   .full-width-slider { width: 100%; margin: 0; cursor: pointer; }
   hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
   .sub-label { font-size: 0.75em; color: var(--text-faint); text-align: right; }
+  .designation-line { font-size: 0.78em; color: var(--text-faint); margin-top: 4px; }
   /* One bordered group, so the three read as related rather than as three separate settings. */
   .triad { border-left: 2px solid var(--border); padding-left: 8px; }
   .triad-row { margin-top: 6px; }

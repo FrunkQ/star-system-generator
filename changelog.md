@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.694-beta - 16th Aug 2026
+
+- The star editor says what a star currently IS, under the type dropdown, and that it follows the numbers. A planet has an auto-classify switch and a star deliberately has none - a planet's type is a judgement about the parameters you authored, a star's designation is a readout of where it sits on the HR diagram - and the difference now says so rather than looking like a missing control.
+
+
 ## v2.1.693-beta - 16th Aug 2026
 
 - Stars now say what they ARE, not what range they were drawn from. A star used to be filed as "a G" - the same label the picker uses for the whole G band - and is now a G2V, a M6V, a K1V. Bare letters stay as the ranges a pick draws from, which is what they are good for; nothing in a campaign is labelled with one any more.

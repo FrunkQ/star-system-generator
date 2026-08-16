@@ -249,3 +249,22 @@ describe('BodyStarTab — dragging the temperature reselects the type', () => {
 		expect(body.classes[0]).toBe('star/M-I');
 	});
 });
+
+// ANSWER 3, 2026-08-16: stars default to DERIVED where planets default to PINNED, and the difference
+// must be VISIBLE or it reads as a bug — a planet has an auto-classify checkbox and a star has none.
+describe('BodyStarTab — the star says its designation is a readout', () => {
+	it('shows the designation the body holds, and says it follows the numbers', () => {
+		const body: any = { ...makeStar(['star/G2V']), id: 'sd' };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		const line = container.querySelector('.designation-line')!;
+		expect(line, 'the star tab must explain why it has no pin control').toBeTruthy();
+		expect(line.textContent).toContain('G2V');
+		expect(line.textContent).toMatch(/follows/i);
+	});
+
+	it('says nothing for a remnant, which has no designation to read', () => {
+		const body: any = { ...makeStar(['star/WD']), id: 'wd' };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		expect(container.querySelector('.designation-line')).toBeNull();
+	});
+});
