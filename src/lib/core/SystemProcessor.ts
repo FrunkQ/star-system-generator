@@ -718,7 +718,7 @@ export class SystemProcessor implements ISystemProcessor {
         body.temperatureRangeK = { min: profile.totalMinK, max: profile.totalMaxK };
 
         // Atmosphere Retention Check (Physics-based stripping)
-        const totalStellarRadiation = this.calculateTotalStellarFlux(body, allStars, allNodes);
+        const totalStellarRadiation = calculateTotalStellarRadiation(body, allNodes);
         const magneticFieldStrength = body.magneticField?.strengthGauss || 0;
         const atmosphereRetentionFactor = pack.generation_parameters?.atmosphere_retention_factor || 100;
         const retainsAtmosphere = (magneticFieldStrength * atmosphereRetentionFactor) > totalStellarRadiation;
@@ -1397,16 +1397,12 @@ export class SystemProcessor implements ISystemProcessor {
         return raw >= 100;
     }
 
-    private calculateTotalStellarFlux(planet: CelestialBody, stars: CelestialBody[], allNodes: (CelestialBody | Barycenter)[]): number {
-        let total = 0;
-        for (const star of stars) {
-            const dist_au = calculateDistanceToStar(planet, star, allNodes);
-            if (dist_au > 0) {
-                total += (star.radiationOutput || 1) / (dist_au * dist_au);
-            }
-        }
-        return total;
-    }
+    // DELETED: a second copy of the flux sum. It spelled the same `radiationOutput / d^2` as
+    // `calculateTotalStellarRadiation` in physics/radiation.ts, but was fed a DIFFERENT set of
+    // sources - `roleHint === 'star'` here against `isLuminousSource` there, which also counts a
+    // self-luminous brown dwarf. So a moon of a brown dwarf was irradiated for its temperature and
+    // radiation and NOT for its atmosphere-retention check: the same question answered two ways.
+    // There is now one function, and it owns the source set as well as the formula.
 
     private calculateHabitabilityAndBiosphere(planet: CelestialBody, rng: SeededRNG, pack: RulePack) {
         if (planet.roleHint !== 'planet' && planet.roleHint !== 'moon') return;

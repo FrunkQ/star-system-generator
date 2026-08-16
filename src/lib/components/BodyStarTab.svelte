@@ -22,7 +22,7 @@
       (body?.tags ?? []).find((t: any) => t.key === STELLAR_ACTIVITY_TAG)?.value as string | undefined
   );
   const classExplanation = $derived(
-      explainStarClass(rulePack, body?.classes?.[0] ?? 'star/G', activityBucket)
+      explainStarClass(rulePack, currentClass, activityBucket)
   );
 
   // --- State ---
@@ -709,7 +709,17 @@
     <div class="form-group">
         <label>Spectral Type</label>
         <div style="display: flex; gap: 10px;">
-            <select value={body.classes?.[0] || 'star/G'} on:change={updateSpectralType}
+            <!-- BOUND TO `currentClass`, NOT `body.classes[0]`. Dragging the temperature slider DOES
+                 re-derive the class - temperature to spectral letter is a direct lookup - but it does
+                 so by MUTATING `body.classes`, which nothing in this template tracks, so the dropdown
+                 never moved and the change looked like it had not happened. `currentClass` is $state
+                 and is already kept in step by every path that changes the class. -->
+            <!-- BIND, not `value=`. A plain `value={...}` on a <select> whose options come from an
+                 {#each} is NOT kept in step by Svelte - measured: dragging the temperature set
+                 body.classes to star/Y and the dropdown still read star/G. Temperature to spectral
+                 letter is a direct lookup and the class was being re-derived correctly all along;
+                 only the control failed to show it. `bind:value` makes the select track the state. -->
+            <select bind:value={currentClass} on:change={updateSpectralType}
                     title={classExplanation?.text ?? ''}>
                 {#each spectralTypes as type}
                     <option value={type} title={explainStarClass(rulePack, type)?.text ?? ''}>{pickerLabel(rulePack, type) ?? SPECTRAL_DATA[type].label}</option>

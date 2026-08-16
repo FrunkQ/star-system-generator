@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.635-beta - 16th Aug 2026
+
+* Star editor: dragging the effective temperature now moves the spectral type dropdown with it. It was re-deriving the class correctly all along — the control just never showed it.
+* Star systems: a moon of a self-luminous brown dwarf is now counted as irradiated when working out whether it keeps its atmosphere. Two copies of the same sum disagreed about what counts as a light source.
+* Internal: documented the three ways a body irradiates its neighbours — brightness, ionising output and trapped-particle belts — and that they have separate sources and must not be swapped. A gas giant irradiates its moons with no brightness at all.
+
 ## v2.1.634-beta - 16th Aug 2026
 
 * Star editor: brightness and ionising output now sit either side of a lock. Locked, ionising output follows brightness — raise the star's size or heat and it rises with them. Unlock it to set a star's ionising output deliberately, without pretending it got brighter.

@@ -1461,6 +1461,40 @@ is a TRACK; a remnant's identity lives on the track and cannot be read off the p
 that generates a remnant must carry the progenitor mass forward, or the round-trip fails for every
 one of them.** The signatures already took the inputs; only the branch read the wrong one.
 
+### PHY-11 THREE THINGS A BODY RADIATES, ONE SOURCE FIELD EACH — never conflate them
+WHERE: `radiationOutput` on a star; `physics/radiation.ts` (`calculateTotalStellarRadiation`,
+`photonParticleSplit`, `beltParticleFlux`); `physics/ionisingOutput.ts`; `flareActivity` +
+`overrides.flareActivity`.
+RULE: a body irradiates its neighbours by THREE independent mechanisms, and each has exactly one
+source quantity. Reading one where another is meant is the recurring fault here.
+
+  1. **BOLOMETRIC LUMINOSITY** — `radiationOutput`, in L(sun). DERIVED from radius and temperature
+     (`L = 4piR^2 sigma T^4`, exact) for every thermal emitter; a BAND states it only for the four
+     non-thermal classes whose output is accretion- or magnetosphere-driven (`BH`, `BH_active`, `NS`,
+     `magnetar`). Flux is `radiationOutput / d^2` and there is ONE function that sums it.
+  2. **IONISING OUTPUT** — `L_bol x (L_X/L_bol)`, where the FRACTION is the magnetic dynamo's, not
+     the star's size. Driven by `flareActivity` (class and age), spans 1e-7 (quiet Sun) to 1e-3
+     (saturation, an observed ceiling). **This is why a flare barely changes brightness and changes
+     ionising output a thousandfold**, and why the two have separate controls with a lock between.
+  3. **TRAPPED-PARTICLE BELTS** — a magnetised, rotating host bombarding a close moon. The source is
+     the host's FIELD STRENGTH and SPIN PERIOD, and NOT luminosity at all. **A gas giant is a
+     radiation source with zero luminosity** — Io is not lit by Jupiter, it is bombarded by it.
+
+WHY: three separate faults, all from conflating these. `radiation_output` was a free band that drifted
+60,000x from the radius and temperature beside it (B57). The star editor labelled bolometric
+luminosity "Ionising Radiation Level", so the only lever for "make this star dangerous" also made it
+brighter — and taking a red giant up in it produced a contradiction complaint instead of a flare.
+And the flare tag was once gated on LUMINOSITY, which is backwards: a luminous O star is not
+especially flare-prone and an M dwarf, which is, is feeble.
+BLAST: **one source field is not the same as one source SET, and that is the trap that survived
+longest.** Two copies of `radiationOutput / d^2` existed, agreeing on the formula and disagreeing on
+who counts: `isLuminousSource` (stars AND self-luminous brown dwarfs) against `roleHint === 'star'`.
+A moon of a brown dwarf was irradiated for its temperature and radiation, and not for its
+atmosphere-retention check. Deleted; `calculateTotalStellarRadiation` owns the set as well as the sum.
+**STILL OPEN, recorded rather than fixed:** atmosphere retention reads STARLIGHT only, so a moon
+stripped by its host's belt is not modelled as stripped. Pre-existing, and mechanism 3 is the one it
+is missing.
+
 ### PHY-9 An ageing profile is keyed on MASS, never on the star's TYPE
 WHERE: the [[B48]] star-classification workstream; `docs/dev/type-vocabulary-prev4.md` section 9.4.
 The pattern it protects is PHY-1's corollary — a derived CLASS is never a physics input.

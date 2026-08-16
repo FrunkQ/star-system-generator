@@ -4,6 +4,7 @@
 // which door you came through. The pack is now the only copy. These tests assert that: the editor's
 // numbers must BE the pack's numbers, not merely resemble them.
 import { render } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import { describe, it, expect } from 'vitest';
 import BodyStarTab from './BodyStarTab.svelte';
 import { loadStarterPack } from '$lib/import/realsky/testPack';
@@ -153,5 +154,62 @@ describe('BodyStarTab — a custom star picture survives the class sync (G20)', 
 
 		expect(body.image?.url).toMatch(/M-I/);
 		expect(body.image?.custom).toBeFalsy();
+	});
+});
+
+// Owner, 2026-08-16: "dragging the effective temperature slider does not reselect star type - when
+// that is a direct lookback." It IS a direct lookup, and the class was being re-derived correctly —
+// but by MUTATING `body.classes`, which the template did not track, so the dropdown never moved.
+describe('BodyStarTab — dragging the temperature reselects the type', () => {
+	const tempSlider = (c: HTMLElement) =>
+		Array.from(c.querySelectorAll('input[type="range"]')).find((i) =>
+			/Effective Temperature/.test(i.closest('.form-group')?.textContent ?? '')) as HTMLInputElement;
+
+	it('moves the DROPDOWN, not just the underlying data', async () => {
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		const select = container.querySelector('select')!;
+		expect(select.value).toBe('star/G');
+
+		// Drag the temperature down into the M band.
+		const slider = tempSlider(container);
+		slider.value = '0';
+		slider.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+
+		// The data changed AND the control shows it — the second half is what was broken.
+		expect(body.classes[0]).toBe('star/Y');
+		expect(select.value).toBe('star/Y');
+	});
+
+	it('walks the whole ladder as the temperature rises', async () => {
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		const select = container.querySelector('select')!;
+		const slider = tempSlider(container);
+		const seen = new Set<string>();
+		// A FINE step, because the bands are not equal widths on a log slider: G spans 5,200-6,000 K,
+		// which is 3.1% of a 500-50,000 K log range. A coarser sweep steps straight over it.
+		for (let p = 0; p <= 1.0001; p += 0.02) {
+			slider.value = String(p);
+			slider.dispatchEvent(new Event('input', { bubbles: true }));
+			await tick();
+			seen.add(select.value);
+		}
+		// A direct lookup should sweep the sequence, not stick on one band.
+		for (const cls of ['star/M', 'star/K', 'star/G', 'star/F', 'star/A', 'star/B', 'star/O']) {
+			expect(seen, `${cls} never selected`).toContain(cls);
+		}
+	});
+
+	it('still refuses to re-derive a class that states more than a letter', async () => {
+		// A supergiant and a dwarf share a temperature and differ in everything else, so nudging the
+		// slider must not silently demote a supergiant (D19 inside the editor).
+		const body: any = makeStar(['star/M-I']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		const slider = tempSlider(container);
+		slider.value = '1';
+		slider.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(body.classes[0]).toBe('star/M-I');
 	});
 });
