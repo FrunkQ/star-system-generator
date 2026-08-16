@@ -70,7 +70,11 @@
     // map (a framed world wants its surroundings) and wrong here — there are no surroundings, so the
     // body sat small in the middle of whatever space the info block gave it.
     unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, fillFrac: 0.92, portrait, portraitFixed: tidal,
-    background: bg, beltStyle: 'rocks', labelSize: 0, filter: 'none', filterParams: undefined
+    // BAND, not rocks. A ring drawn as individually tumbling rocks is a few thousand animated objects
+    // in a thumbnail the size of a postage stamp, and it showed: the portrait juddered while the rocks
+    // ate the frame budget to render detail nobody can see at this scale. The orrery's flat band reads
+    // the same at 220px and costs nothing.
+    background: bg, beltStyle: 'band', labelSize: 0, filter: 'none', filterParams: undefined
   };
 </script>
 

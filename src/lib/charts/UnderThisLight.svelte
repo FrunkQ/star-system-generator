@@ -13,7 +13,7 @@
   import type { RulePack, CelestialBody } from '$lib/types';
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
   import { deriveVisibility, distanceWords, LAMPS } from '$lib/physics/visibility';
-  import { surfaceSceneFor, drawSky, drawMaterials, drawMarkers, drawEmissive, drawSpectrumEdges, dimHex } from './surfaceScene';
+  import { surfaceSceneFor, drawSky, drawMaterials, drawMarkers, drawEmissive, drawSpectrumEdges, dimHex, homeSky } from './surfaceScene';
   import { blackbodySpectrum, gridShare, spectrumToHex } from '$lib/physics/spectrum';
   import {
     lightOperator, relightImage, colourUnderOperator, confusability,
@@ -110,8 +110,8 @@
     // HOME IS EARTH'S SKY, so it takes Earth's weather and Earth's sun — not this world's. Spreading
   // the whole scene meant Venus's 74% cloud cover came with it, and the sun went missing from the
   // "at home" half too, which is the half that is supposed to look familiar.
-  const homeWorld = $derived(world ? { ...world, skyLowHex: '#bcd6ea', skyHighHex: '#5b8fc9',
-    airless: false, cloudCover: 0.25, starHex: '#fff6e0', starSize: 1 } : null);
+  const homeWorld = $derived(world ? { ...world, skyLowHex: homeSky().low, skyHighHex: homeSky().high,
+    airless: false, cloudCover: 0.3, starHex: '#fff6e0', starSize: 1 } : null);
   // Earth's own extinction, so the near markers on the home side fade the way they really do.
   const HOME_EXTINCTION = 1.155e-5;
   let matCanvas: HTMLCanvasElement | null = null;
@@ -385,7 +385,13 @@
       <!-- FUNCTION, NOT LESSON. In the body panel a GM wants the numbers and the picture; the working
            belongs on the physics page, one click away, rather than three paragraphs down the panel. -->
       <p class="note small">
-        <a href="/physics#surface-light" target="_blank" rel="noopener noreferrer">how this is worked out</a>
+        <a href="/physics#standing-on-it" target="_blank" rel="noopener noreferrer">how this is worked out</a>
+        {#if activeScene === 'chart'}
+          &mdash; so you know which colour wire to cut at t&minus;00:01.
+        {:else if sight && sight.gasTau > 0}
+          &mdash; distances are a CEILING: photochemical haze is not modelled, so a smoggy world reads
+          clearer than it is.
+        {/if}
       </p>
     {:else}
       <p class="note small">

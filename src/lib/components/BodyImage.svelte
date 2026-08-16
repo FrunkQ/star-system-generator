@@ -35,8 +35,8 @@
   $: infoUrl = planetTypeInfoUrl(body?.classes);
   // A BELT OR A RING HAS NO SURFACE, so most of these views ask questions it cannot answer: there is
   // no ground to draw, no daylight to stand in and no horizon to see to. It gets the artist's
-  // impression and a 3D view — which for a ring means its HOST as well, since a ring on its own is
-  // the one picture nobody needs.
+  // impression and nothing else — a hoop or a scattered swarm portrayed alone is the one picture
+  // nobody needs, and it is exactly the case that made the 3D window judder.
   $: isPopulation = body?.roleHint === 'belt' || body?.roleHint === 'ring';
   $: hasLight = !!body?.surfaceSpectrum && !isPopulation;
   // A world with no derived colour has nothing to show in the last three views, so they are not
@@ -44,7 +44,7 @@
   $: views = ([
     body?.image?.url ? { id: 'photo', label: 'Type', title: "The artist's impression for this world's type" } : null,
     isPopulation ? null : { id: 'disc', label: '2D', title: 'This world as the orrery draws it, from its own physics' },
-    system ? { id: 'sphere', label: '3D', title: 'This world as a globe — drag to spin it' } : null,
+    system && !isPopulation ? { id: 'sphere', label: '3D', title: 'This world as a globe — drag to spin it' } : null,
     hasLight ? { id: 'swatch', label: 'Colours', title: 'Familiar colours as they look under this world\'s own daylight' } : null,
     hasLight ? { id: 'horizon', label: 'Surface view', title: 'Standing on it: this world\'s own ground, sky and light, and how far you can see' } : null
   ].filter(Boolean) as { id: View; label: string; title: string }[]);
@@ -53,13 +53,13 @@
   $: if (views.length && !views.some((v) => v.id === view)) view = views[0].id;
 
   $: ringed = (body?.tags ?? []).some((t) => t.key === 'ring/system');
-  // Just this body, for the 3D portrait — the same single-body system the player document builds.
-  // A ring is drawn WITH what it goes round — on its own it is a hoop in the dark. Everything else
-  // is portrayed alone, as the player document does it.
+  // This body for the 3D portrait, as the player document builds it — PLUS ITS RINGS. Rings are
+  // separate nodes, so filtering to "this body and a star" quietly dropped them and Saturn was
+  // portrayed bare, which is the one thing everybody knows about it.
   $: soloSystem = system && body
     ? ({ ...system, nodes: system.nodes.filter((n: any) =>
         n.id === body!.id || n.roleHint === 'star'
-        || (isPopulation && (n.id === (body as any).parentId || n.id === (body as any).hostId))) } as System)
+        || (n.roleHint === 'ring' && n.parentId === body!.id)) } as System)
     : null;
 
 </script>

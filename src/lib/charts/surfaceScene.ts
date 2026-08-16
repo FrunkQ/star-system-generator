@@ -25,6 +25,7 @@
 import type { CelestialBody, RulePack } from '$lib/types';
 import { GRID_NM, spectrumToHex, wavelengthHex, gridShare, type Spectrum } from '$lib/physics/spectrum';
 import { deriveVisibility, distanceWords, type Visibility } from '$lib/physics/visibility';
+import { homeDaylightSpectrum } from '$lib/physics/imageUnderLight';
 
 /**
  * WHAT THE GROUND IS SHAPED LIKE, read off the tags the engine already derived.
@@ -83,6 +84,27 @@ function angularSize(body: CelestialBody): number {
 	const bolometric = s.totalTopWm2 / share;           // the grid holds only part of the curve
 	const ours = Math.sqrt(1361) / (5778 * 5778);
 	return Math.sqrt(bolometric) / (s.starTempK * s.starTempK) / ours;
+}
+
+/**
+ * EARTH'S SKY, run through the very same pipeline as everyone else's.
+ *
+ * The home half of the wipe used to carry two hand-picked blues, which guaranteed the one thing that
+ * must never happen: viewing EARTH showed a visible step in the sky across the seam, because a
+ * hardcoded blue was sitting next to a derived one. Earth against Earth is the control case — if the
+ * two halves are not indistinguishable there, nothing the view says about anywhere else is trustable.
+ *
+ * Earth's own Rayleigh depth and a typical cloud cover, memoised because it never changes.
+ */
+let HOME_SKY: { high: string; low: string } | null = null;
+export function homeSky(): { high: string; low: string } {
+	if (HOME_SKY) return HOME_SKY;
+	const cover = 0.3;
+	const strength = skyStrength(0.0973, 0, cover);      // Earth's zenith Rayleigh optical depth
+	const lit = Math.min(1, strength / 0.3);
+	const sky = dimHex(airlightHex(homeDaylightSpectrum(), false, cover), lit);
+	HOME_SKY = { high: sky, low: shade(sky, 0.34 * lit) };
+	return HOME_SKY;
 }
 
 /** Deterministic per world: the same planet is the same place every time you look at it. */

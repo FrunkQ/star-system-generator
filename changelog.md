@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.707-beta - 16th Aug 2026
+
+- FIXED: on the Surface view the sky changed colour across the seam — visibly so on EARTH, which is the one world where the two halves must be identical. The home side carried two hand-picked blues sitting next to a derived one. Home now runs through the same pipeline as everywhere else, so Earth against Earth has no seam, and if it ever gets one again a test says so.
+- A ringed world is portrayed WITH its rings on the 3D view. They are separate nodes and the portrait was filtering to "this body and a star", so Saturn was shown bare — the one thing everybody knows about it.
+- The 3D portrait draws rings and belts as a band rather than as thousands of individually tumbling rocks. That was a few thousand animated objects in a thumbnail the size of a stamp, which is what made the window judder; the band reads the same at that size and costs nothing.
+- Belts and rings show the artist's impression and nothing else. A swarm or a hoop portrayed on its own is the one picture nobody needs.
+- The colour chart says what it is for, and the surface view admits what it does not model: distances are a ceiling, because photochemical haze is not in the model and a smoggy world therefore reads clearer than it is.
+
 ## v2.1.705-beta - 16th Aug 2026
 
 * Internal: split star tails into the tidal kind, which we can already work out, and the wind-blown kind, which needs data we do not hold.
@@ -56,7 +64,6 @@ All notable changes are listed here:
 
 - FIXED: the Sun was labelled G3V. There were two ways of working out the digit in a designation and they disagreed - one divided each spectral letter into ten equal temperature steps, which the real sequence is not, and it was the one the generation wizard displayed. Both are now the anchored version, which gets ten of twelve published stars exactly right. Vega reads A0V rather than A1V, Proxima M5 rather than M4.
 - A giant still gets its letter and its class with no digit at all, deliberately: the ladder is main-sequence, and applying it to Arcturus puts it four subclasses out. Better to say "K giant" than a confident wrong number.
-
 
 ## v2.1.690-beta - 16th Aug 2026
 
