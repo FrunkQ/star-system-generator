@@ -259,7 +259,12 @@
 </div>
 
 <style>
-  .under-light { margin: 12px 0; }
+  .under-light { margin: 12px 0; container-type: inline-size; }
+  /* In a narrow panel the controls stack instead of squeezing onto one line. */
+  @container (max-width: 460px) {
+    .controls { gap: 8px; }
+    .controls .scene, .controls .wipe, .controls .adapt { flex: 1 1 100%; }
+  }
   .controls.demo { border-bottom: 1px solid var(--border, #2a2d36); padding-bottom: 8px; margin-bottom: 8px; }
   .controls .star, .controls .sky { display: flex; flex-direction: column; gap: 2px; flex: 1 1 240px; min-width: 200px; }
   .controls .star input { width: 100%; }

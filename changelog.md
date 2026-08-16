@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.662-beta - 16th Aug 2026
+
+- FIXED: the body panel's 2D view showed a plain coloured circle instead of the real render. It was asking for the lightweight by-type disc rather than the full one the render gallery draws — texture, surface features and terminator.
+- FIXED: the view switch is an overlay, and the Colours and Horizon panes were drawing underneath it. They now clear it, and the colour swatches lay out as a grid so every label has room instead of running off the edge.
+- A world's picture now leads its panel, the way a construct's does. It stopped being decoration when it gained the derived views.
+- The picture sits in a fixed 4:3 box, so the panel no longer jumps as you switch between a tall artist's impression, a square render and a wide chart. Pictures overzoom to fill it — a slightly cropped planet reads better than a panel that resizes under the cursor.
+
 ## v2.1.661-beta - 16th Aug 2026
 
 - The "from inside" view now has just two controls, because two things decide a colour: the star's colour, and the sky. Luminosity and distance are gone from it — they change how BRIGHT a world is, which matters enormously to a pigment deciding whether it can afford to be choosy and hardly at all to what a wire looks like.

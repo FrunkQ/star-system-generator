@@ -2343,6 +2343,13 @@
             />
             {/if}
 
+            <!-- The picture leads now, the way a construct's does. It stopped being decoration when it
+                 gained the derived views: the 2D and 3D renders, the colours and the horizon are all
+                 answers a GM wants BEFORE the prose, not after the delta-v table. -->
+            {#if focusedBody && !isPlanning}
+                <BodyImage body={focusedBody} {system} {rulePack} />
+            {/if}
+
             {#if focusedBody && !isPlanning}
                 <DescriptionEditor body={focusedBody} editing={isEditing} on:update={handleBodyUpdate} />
             {/if}
@@ -2426,7 +2433,6 @@
                 {/if}
             {/if}
             
-            <BodyImage body={focusedBody} {system} {rulePack} />
             {#if focusedBody?.roleHint === 'star' && $systemStore?.credits?.author}
                 {@const c = $systemStore.credits}
                 <div class="system-credit">

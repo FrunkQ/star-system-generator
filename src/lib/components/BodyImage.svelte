@@ -72,7 +72,10 @@
       </div>
     {:else}
       <div class="pane gfx-pane" class:spin={view === 'sphere'}>
-        <BodyGraphic {body} system={soloSystem} mode={view === 'sphere' ? 'sphere' : 'disc'}
+        <!-- 'flat' is BodyGraphic's name for the FULL 2D-gallery render — texture, surface features,
+             terminator, the thing the disc gallery shows. Its 'disc' mode is the lightweight plain
+             circle coloured by TYPE, which is not what anyone means by "the 2D view". -->
+        <BodyGraphic {body} system={soloSystem} mode={view === 'sphere' ? 'sphere' : 'flat'}
                      {ringed} interactive={view === 'sphere'} />
       </div>
     {/if}
@@ -96,31 +99,52 @@
 {/if}
 
 <style>
+  /* A FIXED 4:3 box, so the panel does not jump as you switch between a tall artist's impression,
+     a square render and a wide chart. Overzooming the picture to fill it is the right trade: a
+     slightly cropped planet reads better than a panel that resizes under the cursor. */
   .planet-image-container {
     position: relative;
     width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 5px;
+    overflow: hidden;
   }
   .planet-image {
-    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-radius: 5px;
     display: block;
   }
   .pane {
     width: 100%;
-    min-height: 190px;
+    height: 100%;
+    overflow: auto;
     border-radius: 5px;
     background: #05070c;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px;
+    /* Top padding clears the pill group, which is an overlay: without it the first swatches sit
+       underneath it and the panel looks broken. */
+    padding: 40px 10px 10px;
     box-sizing: border-box;
   }
-  .gfx-pane { padding: 6px; }
+  .gfx-pane { padding: 38px 6px 6px; }
   .gfx-pane.spin { cursor: grab; }
-  .horizon-pane { align-items: stretch; flex-direction: column; }
-  .swatch-pane { flex-wrap: wrap; gap: 10px; align-content: flex-start; justify-content: flex-start; }
-  .swatch-pane .sw { display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted, #cfcfcf); }
+  .horizon-pane { align-items: stretch; flex-direction: column; padding: 38px 10px 10px; }
+  .swatch-pane {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px 12px;
+    align-content: flex-start;
+    justify-content: stretch;
+  }
+  .swatch-pane .sw {
+    display: flex; align-items: center; gap: 6px; font-size: 0.72rem;
+    color: var(--text-muted, #cfcfcf); min-width: 0;
+  }
+  .swatch-pane .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .swatch-pane .chip {
     width: 18px; height: 18px; border-radius: 4px; flex: none;
     border: 1px solid rgba(255, 255, 255, 0.2);
