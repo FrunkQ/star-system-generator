@@ -27,8 +27,14 @@
   // advertises what a tester cannot reach, however honestly labelled, reads as a promise. Two lines
   // were removed on this rule (owner, 2026-08-13): visible biospheres, which ride with the new
   // generation engine, and the scale-up to clusters and galaxies, which is the release after this.
+  //
+  // UPDATE 2026-08-16 — HALF OF THAT IS NOW STALE, AND A STALE INSTRUCTION READS AS AUTHORITY.
+  // VISIBLE BIOSPHERES SHIPPED (v2.1.652-665): vegetation is drawn on the planet, coloured by the
+  // surface spectrum. It did NOT ride with the V4 generation engine after all, so its line is BACK
+  // and its `pending` flag is gone. The clusters-and-galaxies removal still stands — that is V3.1.
   const features: { title: string; blurb: string; pending?: string }[] = [
     { title: 'A rewritten physics engine', blurb: 'What a world is made of decides everything else: density, temperature, atmosphere and cloud decks, oceans and ice, magnetism, geology, the radiation it throws out and the colour you actually see. The Newton panel shows the working.' },
+    { title: 'The light that reaches the ground', blurb: 'A star’s spectrum is filtered by the air and the cloud decks above it, so what lands on the surface is not what left the star. That light sets the colour of the land, the sea and the sky, and decides what colour the plants would be to grow under it — and the physics pages draw the curve rather than describing it.' },
     { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
     { title: 'Stars properly classified', blurb: 'Stars carry their real classification — spectral type and luminosity class — read from size and temperature rather than from how bright they look, so a supergiant is a supergiant rather than a dwarf that shares its colour. Antares arrives as the giant it is, every type is named in plain words with a famous example, and a star whose numbers break physics is kept and labelled rather than refused.' },
     { title: 'Player views', blurb: "Design what your players see and serve it live to their own phones, tablets and screens — redacted, updating as you play, and dressed with filters and transitions that lean hard into your setting's look." },
@@ -39,10 +45,16 @@
     { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
     { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — the real stars near you at their true positions, with their confirmed planets, and plausible worlds filled in around the rest if you want them.' },
     { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
-    { title: 'Life is a tag too', pending: 'coming', blurb: 'What lives on a world — microbes, fungi, plants, animals, or something that builds cities — is described the same way everything else is, with how much of the world it covers and what colour it should read as. Searchable, editable, and yours to invent from. Showing it on the planet itself follows later.' },
+    { title: 'Life is a tag too', blurb: 'What lives on a world — microbes, fungi, plants, animals, or something that builds cities — is described the same way everything else is, and it shows on the planet: vegetation spreads inland from the coast, in a colour worked out from the light that actually reaches it. Searchable, editable, and yours to invent from.' },
     { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
     { title: 'Virtual tabletop integration', pending: 'in testing', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and Foundry are in testing.' },
-    { title: 'Sharper generation', blurb: 'Procedural systems have been retuned to sit better inside the new physics.' },
+    // FLAGGED 2026-08-16 by the coordinator, applying this file's own rule: an unpending line is a
+    // claim the release makes, and this one is not yet true. B58 measured that planet spacing is
+    // still the Solar System's own distances in absolute AU, so nothing generates closer than about
+    // 0.4 AU around ANY star — a red dwarf gets Sol's layout. B59 has a gas giant moonless 10 times
+    // in 72, and G24 has the generation sliders showing no visible effect. Clear the flag when the
+    // generation rebalance lands; it is the only line on this list the code cannot currently back.
+    { title: 'Sharper generation', pending: 'being retuned', blurb: 'Procedural systems are being retuned to sit better inside the new physics — spacing, moons and the generation controls are the current work.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     { title: 'Many improvements and fixes', blurb: 'Hundreds of smaller changes throughout — the changelog has every one, build by build.' }
   ];
