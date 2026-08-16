@@ -1442,7 +1442,28 @@ uniquifier that REPORTS: silently renaming would hide the next one.
 ALSO: the primary keeps `<slug>-star`, so every `parentId` and `orbit.hostId` built from it is
 unchanged — renaming the primary would have been a far larger change for no gain.
 
-### PHY-10 A REMNANT'S MASS AND ITS PROGENITOR'S ARE TWO FRAMES, AND ONE PARAMETER CARRIED BOTH
+### PHY-17 A LUMINOSITY CLASS IS RADIUS AT A TEMPERATURE, never brightness
+WHERE: `system/starBandMatch.ts` (`matchStarBand`, `luminosityClassFromPosition`), consumed by
+`classifyStar` when a pack is passed; pinned by `starBandMatch.spec.ts` and
+`physics/starClassification.reference.spec.ts`.
+RULE: classify a star by its POSITION against the pack's own bands — radius at a given temperature —
+not by how luminous it is. That makes classification the exact INVERSE of generation: the same bands
+the generator draws from are the ones the classifier tests, so "pick X, get X back" is structural
+rather than hoped for. Radius comes from the pair already present: `R = sqrt(L) / (T/Tsun)^2`.
+WHY: `classifyStar` cut on ABSOLUTE luminosity (`logL > 4` supergiant, `> 1.5` giant) and got FIVE OF
+TEN published reference stars wrong — Vega came back "III Giant", B1V and O5V "I Blue Supergiant".
+The fault is conceptual, not a bad threshold: **a B0V genuinely IS 10^4.5 Lsun, so brightness alone
+can never tell you it is a dwarf.** What separates a K dwarf from a K giant is 40x in radius at the
+same temperature, which is what surface gravity — and therefore a luminosity class — actually means.
+BLAST: **THE CHEAP FIX WAS MEASURED AND DOES NOT WORK, so do not retry it.** Making the test relative
+to a main-sequence line needs a ZAMS proxy, and of the two candidates the linear-in-logT line breaks
+Proxima into a false subdwarf while the mass-luminosity relation collapses Rigel and Betelgeuse below
+any threshold that keeps Vega on the main sequence. The failure modes sit at opposite ends of the
+sequence; no single relative threshold classifies all ten. **The `pack` argument is OPTIONAL and the
+legacy cuts still run without it** — every caller that can pass a pack should, and the reference
+fixture asserts BOTH paths so the difference is provably the pack and nothing else.
+
+### PHY-14 A REMNANT'S MASS AND ITS PROGENITOR'S ARE TWO FRAMES, AND ONE PARAMETER CARRIED BOTH
 WHERE: `physics/stellar-evolution.ts` — `classifyStar`'s remnant branch and `deriveStarFromHR`;
 pinned by `starClassification.reference.spec.ts`.
 RULE: `massKg` is the object's OWN mass, always. A remnant's IDENTITY is a fact about the star it
@@ -1461,7 +1482,7 @@ is a TRACK; a remnant's identity lives on the track and cannot be read off the p
 that generates a remnant must carry the progenitor mass forward, or the round-trip fails for every
 one of them.** The signatures already took the inputs; only the branch read the wrong one.
 
-### PHY-11 THREE THINGS A BODY RADIATES, ONE SOURCE FIELD EACH — never conflate them
+### PHY-15 THREE THINGS A BODY RADIATES, ONE SOURCE FIELD EACH — never conflate them
 WHERE: `radiationOutput` on a star; `physics/radiation.ts` (`calculateTotalStellarRadiation`,
 `photonParticleSplit`, `beltParticleFlux`); `physics/ionisingOutput.ts`; `flareActivity` +
 `overrides.flareActivity`.
@@ -1500,7 +1521,7 @@ plus XUV and wind erosion, scaled by magnetic shielding), and that is where belt
 if it is ever modelled as a stripping term. **The lesson generalises: before fixing a physics branch,
 check that something reads its output.**
 
-### PHY-9 An ageing profile is keyed on MASS, never on the star's TYPE
+### PHY-16 An ageing profile is keyed on MASS, never on the star's TYPE
 WHERE: the [[B48]] star-classification workstream; `docs/dev/type-vocabulary-prev4.md` section 9.4.
 The pattern it protects is PHY-1's corollary — a derived CLASS is never a physics input.
 RULE: **ageing PRODUCES state (T, L, mass, radius); classification READS state; nothing reads the

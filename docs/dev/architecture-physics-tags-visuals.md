@@ -70,7 +70,7 @@ Related: `docs/dev/cloud-decks-design.md` (first full application of this rule),
 
 Added 2026-08-16 after an audit prompted by the owner: *"are we using one uniform source of radiation
 in all calcs from stars - we got mixed up before."* One source field each, and they are not
-interchangeable. The full rule and its history are in `engine-map.md` under **PHY-11**.
+interchangeable. The full rule and its history are in `engine-map.md` under **PHY-15**.
 
 | Mechanism | Source quantity | Derived from |
 |---|---|---|

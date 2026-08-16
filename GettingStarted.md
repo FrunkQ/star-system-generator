@@ -57,6 +57,32 @@ Every world is classified into one of 50–60 planet types, each visualised and 
 
 The **Testion** demo system catalogues most of the possible types in one place if you want to browse them.
 
+### Stars
+
+A star's type is read from its **physics**, not stored as a label — so a designation like `G2V` means
+something you can check. The letter and number come from its temperature; the roman numeral says how
+big it has grown for that temperature, which is what separates a dwarf from a giant of the same
+colour. The dropdown names each one in plain words with a famous example (`G V — Main-sequence dwarf
+(yellow) · the Sun`), and the panel says the same thing underneath in a sentence.
+
+Because it is derived, **the type follows what you edit**: drag the temperature and the star walks
+along the spectral sequence; make it hugely larger and it becomes a giant. If your numbers describe a
+star that could not exist — a B-type dragged down to a hundredth of the Sun's mass, say — you still
+get it, with a red **Physically implausible** tag naming the law it breaks. The engine will never
+GENERATE such a star; it simply does not stop you making one.
+
+Two figures are worth knowing apart, because they are different things:
+
+* **Luminosity** is how bright the star is, worked out from its size and temperature.
+* **Ionising output** is the X-ray and ultraviolet radiation that strips atmospheres, and it follows
+  the star's **magnetic field** instead. A flare barely changes brightness and changes this a
+  thousandfold. Slide the magnetic field and watch it climb out of the normal band into the flaring
+  one — until it saturates, which the panel tells you, because real stars have a ceiling.
+
+Cool giants are the exception worth expecting: past a point a swollen, cool star stops holding a hot
+corona at all, so a red giant is a far gentler neighbour than its size suggests, and an active red
+dwarf is a far harsher one than its dimness suggests.
+
 ## 5. The Newton panel — "show the working"
 
 Click the **apple icon** on any body to open the Newton panel. It lays out, layer by layer, how the body was derived: interior makeup → gravity → temperature and tidal heat → fluids → magnetism → geology → colour → habitability → stability, each with its inputs and outputs. It also lists every **tag** and the rule or physics that produced it. Each layer deep-links into the in-app **`/physics`** reference, which explains the models, the shortcuts taken, and the honest fudges.
@@ -97,8 +123,9 @@ Populate your system with infrastructure.
 
 * **Flight profile**: real Δv and thrust-to-weight from the fitted engines and fuel — it'll tell you whether the ship can actually land on the planet it's orbiting.
 * **Modules**: refit with cargo, weapons or sensors.
-* **Custom images**: give a construct (or a body) its own picture, with its credit, licence and
-  source recorded alongside it.
+* **Custom images**: give a construct, a planet or a **star** its own picture, with its credit,
+  licence and source recorded alongside it. Removing an uploaded picture hands the body back to the
+  one the engine derives — the planet's type image, or the star's spectral-class portrait.
 * **3D models**: give a ship an actual hull. Upload a GLB, STL or OBJ in the construct editor and it
   is converted, simplified if it is heavy, and shown as a turntable in the info block — then as a
   real craft on the 3D map, with a drive plume scaled to how hard it is burning. Pick from seven

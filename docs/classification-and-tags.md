@@ -106,6 +106,32 @@ model (it computes a habitability *score* + tier, not vegetation), and they shar
 envelope with `earth-like` — so auto‑assigning is guessing. They stay in the vocab + images for
 **manual** GM assignment. Revisit if/when a biome model lands.
 
+## Stars are classified differently — by POSITION, not fingerprints
+
+Added 2026-08-16. **The fingerprint machinery above is PLANETS ONLY.** There are no `star/*`
+fingerprints in the pack and `classification.ts` has no star branch — a star's type is derived a
+different way, and confusing the two is easy because both end in a `star/…` or `planet/…` class key.
+
+A star's class comes from **where it sits**: the LETTER from its temperature, and the LUMINOSITY
+CLASS from its radius *at* that temperature, matched against the pack's own `statTemplates` bands
+(`system/starBandMatch.ts`). That is what makes classification the inverse of generation — the same
+bands the generator draws from are the ones the classifier tests — and it is why "pick `G2V`, get
+`G2V` back" holds.
+
+**Why not brightness?** Because it does not work: cutting on absolute luminosity got five of ten
+published reference stars wrong, calling Vega a giant and every O and B dwarf a supergiant. A B0V
+genuinely *is* 10⁴·⁵ solar luminosities; only its size for its temperature says it is a dwarf. The
+engine map's **PHY-17** carries the full rule and the measurements, including the cheaper fixes that
+were tried and do not work.
+
+Two consequences for anyone reading star classes:
+
+- **The subclass (`G2`) is main-sequence only.** The temperature that means "K1.5" for a dwarf means
+  something else for a giant, so giants get a letter and a luminosity class and no number.
+- **Remnants are not positions.** A white dwarf's place on the diagram says hot and dim; it cannot say
+  what made it. Their identity depends on the progenitor, which is why `classifyStar` takes a
+  progenitor mass separately (**PHY-14**).
+
 ## Tags = orthogonal conditions/history (namespaced)
 
 ### Provenance — the column that decides what may delete a tag

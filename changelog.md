@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.646-beta - 16th Aug 2026
+
+* The welcome panel now lists the star overhaul: type read from where a star sits rather than how bright it looks, brightness derived so it cannot drift, magnetism driving the radiation that strips atmospheres, and implausible stars kept and labelled rather than refused.
+* Getting Started gains a section on stars — what a designation means, why the type follows what you edit, and why brightness and ionising output are two different figures.
+* The classification guide now says plainly that stars are classified differently from planets: by position on the temperature/size diagram rather than by the fingerprint system, which is planets only.
+
 ## v2.1.645-beta - 16th Aug 2026
 
 * Star editor: when a star's ionising output stops rising, it now says why. Past a point the magnetic dynamo stops responding and output holds at about a thousandth of the star's own brightness — a real ceiling that real stars do not cross. The magnetic field slider marks where that happens, so the remaining travel is visibly doing nothing rather than appearing broken.

@@ -737,7 +737,7 @@ export class SystemProcessor implements ISystemProcessor {
         // The LIVE model is `physics/atmosphere.ts`, which does the same job properly: thermal (Jeans)
         // escape plus non-thermal XUV and stellar-wind erosion, scaled by magnetic shielding. That is
         // where an atmosphere-stripping question belongs, and where belt bombardment should go if it
-        // is ever modelled as a stripping term (it is a real mechanism — see PHY-11 — but adding it
+        // is ever modelled as a stripping term (it is a real mechanism — see PHY-15 — but adding it
         // to a dead branch would have looked like progress and changed nothing).
     }
 

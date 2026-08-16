@@ -28,7 +28,7 @@ export interface BandMatch {
 	distance: number;
 }
 
-/** Bands that describe a position on the HR diagram. Remnants are identity, not position (PHY-10). */
+/** Bands that describe a position on the HR diagram. Remnants are identity, not position (PHY-14). */
 const NON_POSITIONAL = /^star\/(WD|NS|BH|BH_active|magnetar|default)$/;
 
 function bandOf(key: string): 'I' | 'III' | 'V' | undefined {

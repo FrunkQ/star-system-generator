@@ -134,7 +134,7 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     // THIS RUNS HERE ONLY BECAUSE NO STAR CLASSIFIER EXISTS YET (B48). It is the classifier reading
     // physical state, and it MOVES into that pass when it lands - it does not become a second
     // opinion. Nothing downstream may read the label back to decide the field; the arrow is
-    // field -> label, and PHY-9 is the entry that explains why.
+    // field -> label, and PHY-16 is the entry that explains why.
     starClass = magnetarLabelFor(pack, starClass, starMagneticField?.strengthGauss);
 
     // G21 - one lookup, shared with the editor and generateFromConfig. This copy truncated on

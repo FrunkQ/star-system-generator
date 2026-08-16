@@ -7,6 +7,47 @@ definitions"*, with the star-ageing lifecycle rolled in. Extended in section 9 w
 on 2026-08-15; the outline above section 9 is as written on 2026-08-13 except where marked CORRECTED.
 Originally owner-initiated.
 
+## STATUS AT v2.1.645-beta (2026-08-16) — MUCH OF THIS IS NOW BUILT
+
+Read this before the design below, because the design was written when none of it existed and reads
+as future tense throughout.
+
+**SHIPPED:**
+- **Classification by POSITION, not brightness** — `system/starBandMatch.ts`. A luminosity class is
+  read from radius at a given temperature against the pack's own bands, which makes classification
+  the inverse of generation. **Ten of ten reference stars correct, where the old absolute-luminosity
+  cuts got five wrong** (Vega came back a giant; every O and B dwarf a supergiant). Pinned by
+  `starBandMatch.spec.ts` and `physics/starClassification.reference.spec.ts`, the latter asserting
+  BOTH paths so the improvement is provably the pack.
+- **Luminosity computed, never stored** ([[B57]]) — a band states it only for the four non-thermal
+  classes. Twenty-six bands lost theirs; `star/G` was the only one that had agreed with its own
+  radius and temperature, out to 60,000x on `star/M`.
+- **Log-aware band draws** ([[B56]]) — `drawFromBand`, with the scale inferred by ratio.
+- **The magnetar merge** — not a spawn type; one band, field drawn, label derived, rate emergent.
+- **Ionising output separated from luminosity and driven by MAGNETIC FLUX**, with the coronal
+  dividing line — `physics/ionisingOutput.ts`. See **PHY-15** for the three-mechanism rule.
+- **The subclass**, derived from temperature and DELIBERATELY REFUSED for giants (the ladder is
+  main-sequence; Arcturus derives four subclasses out).
+- **Implausibility tags** naming which law a hand-authored star breaks (`physics/implausible`).
+- **The editor and wizard surfaces**: plain-English designations with exemplars, the derived
+  luminosity/ionising/field group, the read-only ionising gauge with its saturation marker.
+
+**NOT BUILT, and still described in future tense below:**
+- `star/*` FINGERPRINTS in the pack. Section 6 step 2's match regions are derived at runtime by
+  `matchStarBand` rather than authored as pack entries — which satisfies the invariant but means the
+  vocabulary is not yet ONE record per type with three faces (section 4).
+- **Folding `SPECTRAL_DATA` into the pack** (step 3) — the editor's bands are still hardcoded in
+  `BodyStarTab.svelte`.
+- **Pointing `starClasses()` and `updateClassFromTemp` at one lookup** (step 4).
+- **Deleting the legacy `baseArchetypes` path** (step 5).
+- **The round-trip test over the whole vocabulary** (step 6) — it exists for star BANDS
+  (`starBandMatch.spec.ts` round-trips every positional band) but not across planets and stars
+  together, which is what step 6 asks for.
+- **The full MK space as KEYS** — designations are COMPUTED (`G3V`) but `star/G2V` is not a pack key
+  resolving both ways.
+- **Dynamic ageing** (section 6c) — still V4, still generation-time only.
+
+
 Owner, 2026-08-13: *"I think there is a pre-V4 refactor required to better integrate the various
 planet and star types (the picker) and their inverse use cases (the classifier). I think we have
 allowed a couple of systems to evolve independently."* And, on what actually matters: *"They should
