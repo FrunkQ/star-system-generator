@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.685-beta - 16th Aug 2026
+
+- FIXED: the Moon's noon read 209 C and its night -214 C, against a measured 120 and -173. Day and night now come from the energy balance and the mean is what they average to, rather than a symmetric swing hung off a figure that was never a mean. The sunlit side gets the ceiling it never had - no surface can pass the temperature at which the ground alone re-radiates the light falling straight down on it - and the night side is held up by the heat the ground stored during the day instead of falling through its floor. The Moon now reads 111 C noon, -165 C night, and an average of 214 K where Diviner measures about 215.
+- An equilibrium temperature balances POWER, and power goes as the fourth power of temperature - so a world that bakes by day and freezes by night gives off as much as a uniformly warm one while AVERAGING far below it. That is why the Moon radiates at 270 K and averages 214, and both figures are now on screen, each named for what it is.
+- Rotation moved to where it belongs. It used to scale the size of the swing and clamped, so Ganymede and Callisto came out identical to the kelvin despite one having a day twice as long; they now differ, and both land within 5 K of measurement. Slow rotators freeze harder, cold worlds barely swing at all, and Pluto, Triton and Titan come out very nearly uniform - which is correct, and which the old model could not express.
+- The sun rises on Mercury. Its captured 3:2 resonance was being drawn as a permanently lit face and a permanently dark one; it now reads as a day/night cycle 176 days long, with a 421 C noon at perihelion against a measured 427.
+- Venus does not move by a single kelvin, and that is the point: 92 bar of atmosphere evens the swing out completely, so the world with no day/night difference still has none.
+- FIXED: a world's radiation reading was labelled "Incoming Star Flux" when it had not been only starlight since the trapped-belt model landed. Io reads 26,279 times Earth's flux there and 0.037 times Earth's sunlight, because what dominates Io is Jupiter's magnetosphere. Both figures are now published, named apart, and shown side by side in the Newton panel - and the classifier is given the starlight, which is what every rule about irradiation ever meant.
+
+
 ## v2.1.682-beta - 16th Aug 2026
 
 - FIXED: space weathering modelled a rate where the physics is an accumulation. The irradiation dose says how hard a surface is being hit; maturity is what has built up, which is dose times TIME. Taking the rate alone said a freshly resurfaced world was as weathered as one that had sat there for four billion years — backwards from the reason fresh crater rays are bright. Io and Europa are now unweathered, as young surfaces should be, while Luna and Mercury still saturate.

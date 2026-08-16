@@ -910,9 +910,9 @@
     const m = b.massKg / EARTH_MASS_KG;
     return (m < 1000 ? m.toFixed(2) : m.toExponential(2)) + ' M⊕';
   }
-  function tempC(b: CelestialBody) {
-    return b.temperatureK === undefined ? '-' : formatTempK(b.temperatureK, tempUnit);
-  }
+  // (A local `tempC` lived here — the same four lines as `bodyFacts.tempC`, uncalled. It would have
+  //  answered "what temperature is this world" with the RADIATING figure while the info block beside
+  //  it answered with the day/night mean, 56 K apart on Luna. Deleted rather than resynced, B63/B70.)
   function orbitDist(b: CelestialBody) {
     const a = b.orbit?.elements?.a_AU;
     if (typeof a !== 'number' || a <= 0) return '-';
