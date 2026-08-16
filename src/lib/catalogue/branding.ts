@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-// GM-set in-universe branding for the Field Guide (a company / faction name + optional logo) — the
+// GM-set in-universe branding for the player view (a company / faction name + optional logo) — the
 // "letterhead" that makes the guide feel like that faction's real device. Persisted locally on the
 // GM machine and broadcast to connected guides. The logo is a small data URL (size-capped on upload).
 // Ship NO trademarked assets by default (FOSS-safe, per the spec) — the GM supplies their own.

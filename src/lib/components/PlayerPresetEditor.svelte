@@ -31,6 +31,7 @@
   import FilteredDocumentView from './FilteredDocumentView.svelte';
   import { DOCUMENT_STYLES, documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import TransitionParamControls from './TransitionParamControls.svelte';
+  import CollapsibleSection from './CollapsibleSection.svelte';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { starsOf } from '$lib/catalogue/document/systemTopology';
   import { MAP_OVERLAY_OPTIONS, SYSTEM_OVERLAY_OPTIONS } from '$lib/map/mapOverlay';
@@ -109,6 +110,51 @@
   type TabId = (typeof TABS)[number]['id'];
   let tab: TabId = 'general';
   $: tabIndex = TABS.findIndex((t) => t.id === tab);
+
+  // ── A48: collapsible sections, per GM ───────────────────────────────────────
+  // The tab strip above IS the top-level grouping the item asked for — Identity/Theme, Cover,
+  // Starmap, System, Transitions, Filter — and it has been there since the wizard landed. What was
+  // missing is INSIDE the two long steps: the Starmap's one fieldset ran to fifteen controls and the
+  // System's "3D display" to twenty, mixing four different jobs in one scroll. So the regroup is
+  // within a step, and it is by WHAT A GM IS DOING rather than by which component renders it:
+  // bodies, then scale and camera, then the scene and sky, then labels and markers.
+  //
+  // WHICH SECTIONS START OPEN IS DATA, and this is the whole of it. Everything else about a section
+  // (its label, its controls, when they appear) stays at the use site, because these controls are not
+  // declarable — see CollapsibleSection's header for why the FilterParamControls COMPONENT could not
+  // simply be reused. A section id missing from a GM's stored map takes its default here, so adding a
+  // section later opens as intended rather than arriving silently shut.
+  const SECTION_DEFAULTS: Record<string, boolean> = {
+    // Open on a first run: identity, and the one section per step that carries the choice everything
+    // else on that step hangs off. Discovery still works; the wall does not.
+    identity: true, behaviour: false, theme: false, graphics: false,
+    'cover-page': true, 'cover-graphic': false,
+    'starmap-stage': true, 'starmap-document': false, 'starmap-grid': false,
+    'starmap-camera': false, 'starmap-graphic': false,
+    'system-stage': true, 'system-bodies': false, 'system-scale': false,
+    'system-scene': false, 'system-labels': false, 'system-info': false, 'system-graphic': false,
+    transition: true,
+    filter: true,
+    // The per-slot palette inside the two document sections — one each, so tweaking the system's
+    // colours does not silently open the starmap's.
+    'colours-system': false, 'colours-starmap': false
+  };
+  // A GM's layout, not the preset's (A48 point 3): saving it into the preset would send one GM's
+  // scroll position to a player's screen.
+  const SECTION_KEY = 'sse-preset-editor-sections';
+  let openSections: Record<string, boolean> = (() => {
+    const out = { ...SECTION_DEFAULTS };
+    if (!browser) return out;
+    try {
+      const saved = JSON.parse(localStorage.getItem(SECTION_KEY) || '{}');
+      for (const k of Object.keys(out)) if (typeof saved?.[k] === 'boolean') out[k] = saved[k];
+    } catch { /* unreadable / private mode — the defaults are a fine answer */ }
+    return out;
+  })();
+  function setSection(id: string, open: boolean) {
+    openSections = { ...openSections, [id]: open };
+    try { localStorage.setItem(SECTION_KEY, JSON.stringify(openSections)); } catch { /* private mode */ }
+  }
 
   // What the preview pane shows. The filter tab picks a layer with its own buttons; other tabs
   // preview themselves (general shows a theme sample).
@@ -230,8 +276,11 @@
 {/snippet}
 
 {#snippet colourSlots(scope: ColourScope)}
-  <details class="colour-picker">
-    <summary>Colours</summary>
+  <!-- A48: this was a bare <details>/<summary> — a SECOND collapsing idiom in the same editor, which
+       is the duplication this codebase keeps finding. Same component as every other section now; its
+       open state is remembered with them, per scope so the two documents do not share one. -->
+  <CollapsibleSection nested label="Colours" open={openSections['colours-' + scope] ?? false}
+    on:toggle={(e) => setSection('colours-' + scope, e.detail)}>
     <div class="doc-colours">
       {#each docColoursFor(scope) as slot (slot.id)}
         <label class="col-row"><span>{slot.label}</span>
@@ -240,7 +289,7 @@
         </label>
       {/each}
     </div>
-  </details>
+  </CollapsibleSection>
 {/snippet}
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
@@ -265,13 +314,13 @@
     <div class="body">
       <div class="controls">
         {#if tab === 'general'}
-          <fieldset>
-            <legend>Identity</legend>
+          <CollapsibleSection label="Identity" open={openSections['identity']}
+            on:toggle={(e) => setSection('identity', e.detail)}>
             <label>Name <input type="text" bind:value={draft.name} /></label>
             <label>Description <input type="text" bind:value={draft.description} /></label>
-          </fieldset>
-          <fieldset>
-            <legend>Behaviour</legend>
+          </CollapsibleSection>
+          <CollapsibleSection label="Behaviour" open={openSections['behaviour']}
+            on:toggle={(e) => setSection('behaviour', e.detail)}>
             <label class="chk"><input type="checkbox" bind:checked={draft.followGM} /> Follows the GM (projection-style)</label>
             <label class="chk"><input type="checkbox" bind:checked={draft.interactive} /> Players can click / focus / scrub</label>
             <label>Default time
@@ -280,9 +329,9 @@
               </select>
             </label>
             <label class="chk"><input type="checkbox" bind:checked={draft.defaultPlaying} /> Start playing (unticked = paused)</label>
-          </fieldset>
-          <fieldset>
-            <legend>Theme (used by every stage)</legend>
+          </CollapsibleSection>
+          <CollapsibleSection label="Theme (every stage)" open={openSections['theme']}
+            on:toggle={(e) => setSection('theme', e.detail)}>
             <label>Font{draft.systemView === 'document' ? ' (body)' : ''}
               <select bind:value={draft.font}>
                 {#each FONT_STACKS as f}<option value={f.css}>{f.label}</option>{/each}
@@ -310,9 +359,9 @@
               </select>
             </label>
             <p class="hint">Funny in-universe advisories ("The Guide" margin notes) shown inside the filter on every stage; a fresh line each time the view changes.</p>
-          </fieldset>
-          <fieldset>
-            <legend>Graphics library</legend>
+          </CollapsibleSection>
+          <CollapsibleSection label="Graphics library" open={openSections['graphics']}
+            on:toggle={(e) => setSection('graphics', e.detail)}>
             <div class="assets">
               {#each $playerAssetList as a (a.id)}
                 <div class="asset">
@@ -327,10 +376,10 @@
             <button on:click={() => fileInput?.click()}>Upload image…</button>
             <input type="file" accept="image/*" bind:this={fileInput} on:change={onAssetPick} style="display:none" />
             <p class="hint">PNG keeps transparency. Auto-shrunk; saved with the campaign. Upload here, then place any of them on the Cover, Starmap and System stages — different images and positions per screen.</p>
-          </fieldset>
+          </CollapsibleSection>
         {:else if tab === 'cover'}
-          <fieldset>
-            <legend>Cover page</legend>
+          <CollapsibleSection label="Cover page" open={openSections['cover-page']}
+            on:toggle={(e) => setSection('cover-page', e.detail)}>
             <label class="chk"><input type="checkbox" bind:checked={draft.cover.enabled} /> This preset has a cover / hold screen</label>
             {#if draft.cover.enabled}
               <label>Title <input type="text" bind:value={draft.cover.title} placeholder="DON'T PANIC" /></label>
@@ -338,17 +387,17 @@
               <label>Body <input type="text" bind:value={draft.cover.body} /></label>
               <label>Label / stamp <input type="text" bind:value={draft.cover.label} placeholder="CONFIDENTIAL" /></label>
             {/if}
-          </fieldset>
+          </CollapsibleSection>
           {#if draft.cover.enabled}
-            <fieldset>
-              <legend>Cover graphic</legend>
+            <CollapsibleSection label="Cover graphic" open={openSections['cover-graphic']}
+              on:toggle={(e) => setSection('cover-graphic', e.detail)}>
               <GraphicPlacementControls placement={draft.cover.graphic} assets={$playerAssetList} label="Image"
                 on:change={(e) => (draft = { ...draft, cover: { ...draft.cover, graphic: e.detail } })} />
-            </fieldset>
+            </CollapsibleSection>
           {/if}
         {:else if tab === 'starmap'}
-          <fieldset>
-            <legend>Starmap stage</legend>
+          <CollapsibleSection label="Starmap stage" open={openSections['starmap-stage']}
+            on:toggle={(e) => setSection('starmap-stage', e.detail)}>
             <label class="chk"><input type="checkbox" bind:checked={draft.starmapEnabled} /> Players get a starmap level</label>
             {#if !draft.starmapEnabled}
               <!-- WS5 lock-down: no starmap ⇒ the player is dropped into ONE system and can never reach
@@ -362,8 +411,7 @@
               </label>
               <p class="hint">Players drop straight into this system with no way back to the starmap. Leave
                 as "first system" to follow whatever is first on the map.</p>
-            {/if}
-            {#if draft.starmapEnabled}
+            {:else}
               <label>View
                 <select bind:value={draft.starmapView}>
                   <option value="list">Document</option>
@@ -371,98 +419,109 @@
                   <option value="holo3d">3D map</option>
                 </select>
               </label>
-              {#if draft.starmapView === 'list'}
-                <!-- G1: the ARRANGEMENT — the shape the same content takes. It composes with the document
-                     colouration and list style rather than replacing them, so the looks multiply. -->
-                <label>Arrangement
-                  <select bind:value={draft.starmapLayout}>
-                    <option value="list">Index — one row per system</option>
-                    <option value="dossier">Dossier — a form per system</option>
-                    <option value="glyphs">Catalogue — name and its worlds, drawn</option>
-                    <option value="diagram">Diagram — compact system shapes</option>
-                    <option value="diagram-full">Diagram — full, with names</option>
-                  </select>
-                </label>
-                <p class="hint">The shape of the page. Colouration and fonts apply on top.</p>
-                {#if draft.starmapLayout === 'dossier'}
-                  <label class="chk"><input type="checkbox" bind:checked={draft.starmapFieldIcons} /> Field icons</label>
-                {/if}
-                <!-- Every width in the arrangements derives from the text scale — the card grid's column
-                     count, the dossier's field columns, the glyph row's disc size — so this one slider is
-                     what sizes the whole page, not just its type. -->
-                <label>Text size <span>{Math.round((draft.starmapFontScale ?? 1) * 100)}%</span>
-                  <input type="range" min="0.7" max="1.8" step="0.05"
-                    value={draft.starmapFontScale ?? 1}
-                    on:input={(e) => (draft = { ...draft, starmapFontScale: Number((e.currentTarget as HTMLInputElement).value) })} />
-                </label>
-                <p class="hint">Sizes the layout as well as the type.</p>
-                <!-- The starmap document's OWN palette, same controls and same order as the system
-                     document's. No greyscale CHECKBOX here: the colouration list already offers it, and
-                     picking it sets monochrome by itself (makeDocTheme) — one lever, not two that have
-                     to agree. The 2D/3D map branch below keeps its checkbox, having no palette list. -->
-                {@render colouration('starmap')}
-                {#if styleOf('starmap') !== 'greyscale'}
-                  {@render colourSlots('starmap')}
-                {/if}
-              {/if}
-              <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
-              {#if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
-                <label>Overlay
-                  <select bind:value={draft.grid}>
-                    {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
-                  </select>
-                </label>
-                <label class="chk"><input type="checkbox" bind:checked={draft.starmapRouteGlow} /> Glowing routes</label>
-                <!-- The stems tie each system to the reference plane and the rings mark where they
-                     land, which is what makes an exaggerated depth readable — you cannot otherwise
-                     tell above from below. On a map with real depth and a crowded field they are also
-                     the loudest thing on it, so this is a trade rather than a tidy-up. -->
-                <label class="chk" title="The vertical lines down to the plane and the rings at their feet. Off is cleaner; depth becomes harder to judge."><input type="checkbox" checked={draft.starmapDropLines !== false} on:change={(e) => (draft.starmapDropLines = e.currentTarget.checked)} /> Depth tethers</label>
-                <!-- The lattice is FLAT by default. This adds the depth cue: each grid line at full
-                     intensity with a short curtain fading away beneath it. Only on the tilted 3D map —
-                     the 2D starmap is the same renderer locked overhead, where a curtain is edge-on. -->
-                <!-- The z-axis curtain: each grid line at full intensity with a skirt fading away
-                     BELOW it, which is what gives the lattice its dimensional look. 3D only — the 2D
-                     starmap is this renderer locked overhead, where a curtain is edge-on and invisible.
-                     A slider rather than a switch: how deep it hangs is the whole of the effect. -->
-                {#if draft.starmapView === 'holo3d' && draft.grid !== 'off'}
-                  <label>Grid depth <span>{Math.round(gridDepthPct(draft.starmapGridDepth) * 100)}%</span><input type="range" min="0" max="1" step="0.05" value={gridDepthPct(draft.starmapGridDepth)} on:input={(e) => (draft.starmapGridDepth = +e.currentTarget.value)} /></label>
-                {/if}
-                <!-- G4: one dial for every overlay type, polar included — near cells bright, falling
-                     away with distance so the grid reads as ground rather than fighting the map. -->
-                {#if draft.grid !== 'off'}
-                  <label>Grid falloff <span>{Math.round((draft.starmapGridFalloff ?? 0.5) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.starmapGridFalloff} /></label>
-                {/if}
-                <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (bleach — for a tinting filter)</label>
-                {#if draft.starmapView === 'holo3d'}
-                  <!-- WS7: stretch DEPTH so it reads on screen. Visual only — journey distances are
-                       unaffected (see lib/map/systemDistance.ts). 1x = true depth. -->
-                  <label>Depth exaggeration <span>{(draft.zExaggeration ?? 1) === 1 ? 'true depth' : (draft.zExaggeration ?? 1) + '×'}</span>
-                    <input type="range" min="1" max="20" step="0.5" value={draft.zExaggeration ?? 1}
-                      on:input={(e) => (draft = { ...draft, zExaggeration: Number((e.currentTarget as HTMLInputElement).value) })} />
-                  </label>
-                  <p class="hint">Lifts systems off the map plane so their depth reads on a tilted view. Display only — journey distances never change. A map with real depth is already dramatic at 1x, so a little goes a long way; zoom out if you push it.</p>
-                  <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
-                {:else}
-                  <!-- 2D only: keeps the classic flat fixed starmap. Zoom + pan still work either way. -->
-                  <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
-                {/if}
-                <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
-              {/if}
-            {:else}
-              <p class="hint">Disabled: players skip straight to the system level; no back-to-systems navigation is shown.</p>
             {/if}
-          </fieldset>
-          {#if draft.starmapEnabled}
-            <fieldset>
-              <legend>Starmap overlay</legend>
+          </CollapsibleSection>
+
+          {#if draft.starmapEnabled && draft.starmapView === 'list'}
+            <!-- The DOCUMENT starmap: the shape of the page, then its palette. -->
+            <CollapsibleSection label="Document page" open={openSections['starmap-document']}
+              on:toggle={(e) => setSection('starmap-document', e.detail)}>
+              <!-- G1: the ARRANGEMENT — the shape the same content takes. It composes with the document
+                   colouration and list style rather than replacing them, so the looks multiply. -->
+              <label>Arrangement
+                <select bind:value={draft.starmapLayout}>
+                  <option value="list">Index — one row per system</option>
+                  <option value="dossier">Dossier — a form per system</option>
+                  <option value="glyphs">Catalogue — name and its worlds, drawn</option>
+                  <option value="diagram">Diagram — compact system shapes</option>
+                  <option value="diagram-full">Diagram — full, with names</option>
+                </select>
+              </label>
+              <p class="hint">The shape of the page. Colouration and fonts apply on top.</p>
+              {#if draft.starmapLayout === 'dossier'}
+                <label class="chk"><input type="checkbox" bind:checked={draft.starmapFieldIcons} /> Field icons</label>
+              {/if}
+              <!-- Every width in the arrangements derives from the text scale — the card grid's column
+                   count, the dossier's field columns, the glyph row's disc size — so this one slider is
+                   what sizes the whole page, not just its type. -->
+              <label>Text size <span>{Math.round((draft.starmapFontScale ?? 1) * 100)}%</span>
+                <input type="range" min="0.7" max="1.8" step="0.05"
+                  value={draft.starmapFontScale ?? 1}
+                  on:input={(e) => (draft = { ...draft, starmapFontScale: Number((e.currentTarget as HTMLInputElement).value) })} />
+              </label>
+              <p class="hint">Sizes the layout as well as the type.</p>
+              <!-- The starmap document's OWN palette, same controls and same order as the system
+                   document's. No greyscale CHECKBOX here: the colouration list already offers it, and
+                   picking it sets monochrome by itself (makeDocTheme) — one lever, not two that have
+                   to agree. The 2D/3D map branch below keeps its checkbox, having no palette list. -->
+              {@render colouration('starmap')}
+              {#if styleOf('starmap') !== 'greyscale'}
+                {@render colourSlots('starmap')}
+              {/if}
+            </CollapsibleSection>
+          {/if}
+
+          <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
+          {#if draft.starmapEnabled && (draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d')}
+            <CollapsibleSection label="Grid & routes" open={openSections['starmap-grid']}
+              on:toggle={(e) => setSection('starmap-grid', e.detail)}>
+              <label>Overlay
+                <select bind:value={draft.grid}>
+                  {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                </select>
+              </label>
+              <label class="chk"><input type="checkbox" bind:checked={draft.starmapRouteGlow} /> Glowing routes</label>
+              <!-- The stems tie each system to the reference plane and the rings mark where they
+                   land, which is what makes an exaggerated depth readable — you cannot otherwise
+                   tell above from below. On a map with real depth and a crowded field they are also
+                   the loudest thing on it, so this is a trade rather than a tidy-up. -->
+              <label class="chk" title="The vertical lines down to the plane and the rings at their feet. Off is cleaner; depth becomes harder to judge."><input type="checkbox" checked={draft.starmapDropLines !== false} on:change={(e) => (draft.starmapDropLines = e.currentTarget.checked)} /> Depth tethers</label>
+              <!-- The z-axis curtain: each grid line at full intensity with a skirt fading away
+                   BELOW it, which is what gives the lattice its dimensional look. 3D only — the 2D
+                   starmap is this renderer locked overhead, where a curtain is edge-on and invisible.
+                   A slider rather than a switch: how deep it hangs is the whole of the effect. -->
+              {#if draft.starmapView === 'holo3d' && draft.grid !== 'off'}
+                <label>Grid depth <span>{Math.round(gridDepthPct(draft.starmapGridDepth) * 100)}%</span><input type="range" min="0" max="1" step="0.05" value={gridDepthPct(draft.starmapGridDepth)} on:input={(e) => (draft.starmapGridDepth = +e.currentTarget.value)} /></label>
+              {/if}
+              <!-- G4: one dial for every overlay type, polar included — near cells bright, falling
+                   away with distance so the grid reads as ground rather than fighting the map. -->
+              {#if draft.grid !== 'off'}
+                <label>Grid falloff <span>{Math.round((draft.starmapGridFalloff ?? 0.5) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.starmapGridFalloff} /></label>
+              {/if}
+              <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (bleach — for a tinting filter)</label>
+            </CollapsibleSection>
+
+            <CollapsibleSection label="Depth, camera & labels" open={openSections['starmap-camera']}
+              on:toggle={(e) => setSection('starmap-camera', e.detail)}>
+              {#if draft.starmapView === 'holo3d'}
+                <!-- WS7: stretch DEPTH so it reads on screen. Visual only — journey distances are
+                     unaffected (see lib/map/systemDistance.ts). 1x = true depth. -->
+                <label>Depth exaggeration <span>{(draft.zExaggeration ?? 1) === 1 ? 'true depth' : (draft.zExaggeration ?? 1) + '×'}</span>
+                  <input type="range" min="1" max="20" step="0.5" value={draft.zExaggeration ?? 1}
+                    on:input={(e) => (draft = { ...draft, zExaggeration: Number((e.currentTarget as HTMLInputElement).value) })} />
+                </label>
+                <p class="hint">Lifts systems off the map plane so their depth reads on a tilted view. Display only — journey distances never change. A map with real depth is already dramatic at 1x, so a little goes a long way; zoom out if you push it.</p>
+                <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
+              {:else}
+                <!-- 2D only: keeps the classic flat fixed starmap. Zoom + pan still work either way. -->
+                <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
+              {/if}
+              <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
+            </CollapsibleSection>
+          {/if}
+
+          {#if !draft.starmapEnabled}
+            <p class="hint">Disabled: players skip straight to the system level; no back-to-systems navigation is shown.</p>
+          {:else}
+            <CollapsibleSection label="Overlay graphic" open={openSections['starmap-graphic']}
+              on:toggle={(e) => setSection('starmap-graphic', e.detail)}>
               <GraphicPlacementControls placement={draft.starmapOverlay} assets={$playerAssetList} label="Overlay image"
                 on:change={(e) => (draft = { ...draft, starmapOverlay: e.detail })} />
-            </fieldset>
+            </CollapsibleSection>
           {/if}
         {:else if tab === 'system'}
-          <fieldset>
-            <legend>System stage</legend>
+          <CollapsibleSection label="System stage" open={openSections['system-stage']}
+            on:toggle={(e) => setSection('system-stage', e.detail)}>
             <label class="chk"><input type="checkbox" bind:checked={draft.systemEnabled} /> Players can open systems</label>
             {#if draft.systemEnabled}
               <label>View
@@ -475,236 +534,261 @@
             {:else}
               <p class="hint">Disabled: systems aren't openable; the starmap (or cover) is the whole guide.</p>
             {/if}
-          </fieldset>
+          </CollapsibleSection>
           {#if draft.systemEnabled}
             {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
-              <!-- DISPLAY (orrery/scene) controls. Interacting here HIDES the info-block preview so you
-                   can focus on the scene; the Info Block fieldset below brings it back. -->
+              <!-- DISPLAY (orrery/scene) controls, split by WHAT A GM IS DOING rather than by which
+                   renderer owns the setting: what the bodies look like, how the system is scaled and
+                   framed, what surrounds it, and what is written on it. They share ONE wrapper because
+                   they share ONE behaviour — interacting anywhere in here HIDES the info-block preview
+                   so you can see the scene, and the Info block section below brings it back. Keeping
+                   that on the wrapper rather than repeating it four times is also what makes clicking
+                   a section HEADER switch the preview, which is what you want when you open it. -->
               <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-              <fieldset on:pointerdown={() => (infoPreview = false)} on:focusin={() => (infoPreview = false)}>
-                <legend>{draft.systemView === 'holo3d' ? '3D display' : '2D map display'}</legend>
-                <label>Colour
-                  <select bind:value={draft.bodyStyle}>
-                    <option value="textured">True colour</option>
-                    <option value="flat">Flat colour</option>
-                    <option value="white">Monochrome (for tinting filters)</option>
-                  </select>
-                </label>
-                <label>Background
-                  <select bind:value={draft.background}>
-                    <option value="space">Space</option>
-                    <option value="green">Greenscreen</option>
-                    <option value="blue">Bluescreen</option>
-                    <option value="black">Black</option>
-                  </select>
-                </label>
-                <label>Render
-                  <select bind:value={draft.render}>
-                    <option value="filled">Filled</option>
-                    <option value="lopoly-filled">Lo-poly — filled</option>
-                    <option value="lopoly-lines">Lo-poly — filled + lines</option>
-                    <option value="wire-glow">Wireframe — glow</option>
-                    <option value="wire-flat">Wireframe — flat</option>
-                    <option value="wire-glow-occ">Wireframe — glow (solid)</option>
-                    <option value="wire-flat-occ">Wireframe — flat (solid)</option>
-                  </select>
-                </label>
-                <label>Overlay
-                  <select bind:value={draft.grid}>
-                    {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
-                  </select>
-                </label>
-                <!-- G4: the same falloff dial the starmap has, on the system view's ground grid. Its
-                     OWN field, defaulted to 0 — the system grid has always been evenly lit and should
-                     not change unless a GM asks. Deliberately not sharing `starmapGridFalloff`: the
-                     grid TYPE already shares one field across both stages and that is a recorded fault. -->
-                {#if draft.grid !== 'off'}
-                  <label>Grid falloff <span>{Math.round((draft.gridFalloff ?? 0) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.gridFalloff} /></label>
-                {/if}
-                <!-- Both dials share a convention that nothing on screen was saying: the LEFT end is
-                     physical truth (0% spread = true distances; body size "true" = true radii) and the
-                     right end is the readable exaggeration. The green pip marks the ACTUAL end, and the
-                     read-out turns green when the dial is on it. -->
-                <label>Spread <span class:actual-on={draft.compression === 0}>{draft.compression === 0 ? 'actual distances' : Math.round(draft.compression * 100) + '%'}</span>
-                  <div class="range-actual" title="Left end = actual (true) distances"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></div>
-                </label>
-                <label>Body size <span class:actual-on={draft.bodySize === 0}>{draft.bodySize === 0 ? 'actual size' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span>
-                  <div class="range-actual" title="Left end = actual (true) body sizes"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></div>
-                </label>
-                <label>Belts &amp; rings
-                  <select bind:value={draft.beltStyle}>
-                    <option value="rocks">Rocks</option>
-                    <option value="band">Grey bands (like the GM orrery)</option>
-                  </select>
-                </label>
-                {#if draft.beltStyle !== 'band'}
-                  <!-- Only the rock field has a particle budget; a band is one flat shape. -->
-                  <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
-                {/if}
-                <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
-                <!-- ONE field, both maps. The colour is never chosen here: it always comes from the tag
-                     or its category, so a faction flies its own colour whichever shape is picked. -->
-                <label>Highlighted tags
-                  <select bind:value={draft.markerStyle}>
-                    <option value="label">Tag chips — as they look in the panels</option>
-                    <option value="pin">Map pins — initials on a pin</option>
-                    <option value="flag">Flags — a chip on a staff</option>
-                  </select>
-                </label>
-                <p class="hint">How a tag you have highlighted appears on the players' system map and starmap. Every shape carries its text, so it still reads under a CRT or colour-blind filter. Choose what to highlight in <strong>Find by tag</strong>.</p>
-                {#if draft.systemView === 'holo3d'}
-                  <!-- 3D only: a flat map has no tilt to set, and no turntable to spin. -->
-                  <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
-                  <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
-                  <label class="chk"><input type="checkbox" bind:checked={draft.unlit} /> Flat / no lighting (efficient 2D map)</label>
-                  <label class="chk"><input type="checkbox" checked={draft.lensing !== false} on:change={(e) => draft.lensing = e.currentTarget.checked} /> Black-hole gravitational lensing</label>
-                  <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
-                {:else}
-                  <!-- 2D only, in the turntable's place: a flat map stays fixed unless you say otherwise. -->
-                  <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
-                {/if}
-                <!-- Both: off = tapping a body zooms to it (GM-orrery style); on = a fixed whole-system
-                     plan view that never zooms. -->
-                <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system (never zoom to a body)</label>
-                <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
-                <!-- G9: the campaign's OWN charted systems, drawn into that starfield at their true
-                     direction, brightness and colour. An enum rather than a tickbox because the third
-                     state is a different claim, not a decoration: diffraction spikes are an INSTRUMENT
-                     artifact, so they read as "annotated" rather than as something an eye would see.
-                     Only meaningful over the starfield, so it follows it. -->
-                {#if draft.skybox}
-                  <label>Charted stars
-                    <select bind:value={draft.constellations}>
-                      {#each SKY_MODE_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+              <div class="scene-sections" on:pointerdown={() => (infoPreview = false)} on:focusin={() => (infoPreview = false)}>
+                <CollapsibleSection label="Bodies & belts" open={openSections['system-bodies']}
+                  on:toggle={(e) => setSection('system-bodies', e.detail)}>
+                  <label>Colour
+                    <select bind:value={draft.bodyStyle}>
+                      <option value="textured">True colour</option>
+                      <option value="flat">Flat colour</option>
+                      <option value="white">Monochrome (for tinting filters)</option>
                     </select>
                   </label>
-                  {#if (draft.constellations ?? 'off') !== 'off'}
-                    <!-- ONE dial for the contrast between the two populations: it fades the generic
-                         starfield back and lifts the charted stars together. Pushing only one of them
-                         runs out of headroom before they separate. The right-hand end deliberately
-                         oversaturates — past that point it is presentation, not apparent magnitude. -->
-                    <label>Star boost <span>{Math.round((draft.constellationBoost ?? 0.35) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.constellationBoost} /></label>
-                    {#if draft.constellations === 'marked'}
-                      <!-- 0 is OFF, and it is the point of the control as much as the sizing is: with
-                           names off you get the diffraction spikes alone, which is the cleaner way to
-                           read a pattern. -->
-                      <label>Name size <span>{(draft.constellationLabelSize ?? 11) > 0 ? `${draft.constellationLabelSize ?? 11} px` : 'Off'}</span><input type="range" min="0" max="28" step="1" bind:value={draft.constellationLabelSize} /></label>
+                  <label>Render
+                    <select bind:value={draft.render}>
+                      <option value="filled">Filled</option>
+                      <option value="lopoly-filled">Lo-poly — filled</option>
+                      <option value="lopoly-lines">Lo-poly — filled + lines</option>
+                      <option value="wire-glow">Wireframe — glow</option>
+                      <option value="wire-flat">Wireframe — flat</option>
+                      <option value="wire-glow-occ">Wireframe — glow (solid)</option>
+                      <option value="wire-flat-occ">Wireframe — flat (solid)</option>
+                    </select>
+                  </label>
+                  <!-- Shares a convention with Spread on the next section, and nothing on screen was
+                       saying it: the LEFT end is physical truth (body size "true" = true radii) and the
+                       right end is the readable exaggeration. The green pip marks the ACTUAL end, and
+                       the read-out turns green when the dial is on it. -->
+                  <label>Body size <span class:actual-on={draft.bodySize === 0}>{draft.bodySize === 0 ? 'actual size' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span>
+                    <div class="range-actual" title="Left end = actual (true) body sizes"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></div>
+                  </label>
+                  <label>Belts &amp; rings
+                    <select bind:value={draft.beltStyle}>
+                      <option value="rocks">Rocks</option>
+                      <option value="band">Grey bands (like the GM orrery)</option>
+                    </select>
+                  </label>
+                  {#if draft.beltStyle !== 'band'}
+                    <!-- Only the rock field has a particle budget; a band is one flat shape. -->
+                    <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
+                  {/if}
+                  <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
+                  {#if draft.systemView === 'holo3d'}
+                    <label class="chk"><input type="checkbox" checked={draft.lensing !== false} on:change={(e) => draft.lensing = e.currentTarget.checked} /> Black-hole gravitational lensing</label>
+                  {/if}
+                </CollapsibleSection>
+
+                <CollapsibleSection label="Scale & camera" open={openSections['system-scale']}
+                  on:toggle={(e) => setSection('system-scale', e.detail)}>
+                  <!-- Same convention as Body size: the LEFT end is physical truth (0% spread = true
+                       distances), the right end is the readable exaggeration. -->
+                  <label>Spread <span class:actual-on={draft.compression === 0}>{draft.compression === 0 ? 'actual distances' : Math.round(draft.compression * 100) + '%'}</span>
+                    <div class="range-actual" title="Left end = actual (true) distances"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></div>
+                  </label>
+                  {#if draft.systemView === 'holo3d'}
+                    <!-- 3D only: a flat map has no tilt to set, and no turntable to spin. -->
+                    <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
+                    <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
+                    <label class="chk"><input type="checkbox" bind:checked={draft.unlit} /> Flat / no lighting (efficient 2D map)</label>
+                    <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
+                  {:else}
+                    <!-- 2D only, in the turntable's place: a flat map stays fixed unless you say otherwise. -->
+                    <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
+                  {/if}
+                  <!-- Both: off = tapping a body zooms to it (GM-orrery style); on = a fixed whole-system
+                       plan view that never zooms. -->
+                  <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system (never zoom to a body)</label>
+                </CollapsibleSection>
+
+                <CollapsibleSection label="Scene & sky" open={openSections['system-scene']}
+                  on:toggle={(e) => setSection('system-scene', e.detail)}>
+                  <label>Background
+                    <select bind:value={draft.background}>
+                      <option value="space">Space</option>
+                      <option value="green">Greenscreen</option>
+                      <option value="blue">Bluescreen</option>
+                      <option value="black">Black</option>
+                    </select>
+                  </label>
+                  <label>Overlay
+                    <select bind:value={draft.grid}>
+                      {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                    </select>
+                  </label>
+                  <!-- G4: the same falloff dial the starmap has, on the system view's ground grid. Its
+                       OWN field, defaulted to 0 — the system grid has always been evenly lit and should
+                       not change unless a GM asks. Deliberately not sharing `starmapGridFalloff`: the
+                       grid TYPE already shares one field across both stages and that is a recorded fault. -->
+                  {#if draft.grid !== 'off'}
+                    <label>Grid falloff <span>{Math.round((draft.gridFalloff ?? 0) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.gridFalloff} /></label>
+                  {/if}
+                  <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
+                  <!-- G9: the campaign's OWN charted systems, drawn into that starfield at their true
+                       direction, brightness and colour. An enum rather than a tickbox because the third
+                       state is a different claim, not a decoration: diffraction spikes are an INSTRUMENT
+                       artifact, so they read as "annotated" rather than as something an eye would see.
+                       Only meaningful over the starfield, so it follows it. -->
+                  {#if draft.skybox}
+                    <label>Charted stars
+                      <select bind:value={draft.constellations}>
+                        {#each SKY_MODE_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                      </select>
+                    </label>
+                    {#if (draft.constellations ?? 'off') !== 'off'}
+                      <!-- ONE dial for the contrast between the two populations: it fades the generic
+                           starfield back and lifts the charted stars together. Pushing only one of them
+                           runs out of headroom before they separate. The right-hand end deliberately
+                           oversaturates — past that point it is presentation, not apparent magnitude. -->
+                      <label>Star boost <span>{Math.round((draft.constellationBoost ?? 0.35) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.constellationBoost} /></label>
+                      {#if draft.constellations === 'marked'}
+                        <!-- 0 is OFF, and it is the point of the control as much as the sizing is: with
+                             names off you get the diffraction spikes alone, which is the cleaner way to
+                             read a pattern. -->
+                        <label>Name size <span>{(draft.constellationLabelSize ?? 11) > 0 ? `${draft.constellationLabelSize ?? 11} px` : 'Off'}</span><input type="range" min="0" max="28" step="1" bind:value={draft.constellationLabelSize} /></label>
+                      {/if}
                     {/if}
                   {/if}
-                {/if}
-                <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
-              </fieldset>
+                </CollapsibleSection>
+
+                <CollapsibleSection label="Labels & markers" open={openSections['system-labels']}
+                  on:toggle={(e) => setSection('system-labels', e.detail)}>
+                  <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
+                  <!-- ONE field, both maps. The colour is never chosen here: it always comes from the tag
+                       or its category, so a faction flies its own colour whichever shape is picked. -->
+                  <label>Highlighted tags
+                    <select bind:value={draft.markerStyle}>
+                      <option value="label">Tag chips — as they look in the panels</option>
+                      <option value="pin">Map pins — initials on a pin</option>
+                      <option value="flag">Flags — a chip on a staff</option>
+                    </select>
+                  </label>
+                  <p class="hint">How a tag you have highlighted appears on the players' system map and starmap. Every shape carries its text, so it still reads under a CRT or colour-blind filter. Choose what to highlight in <strong>Find by tag</strong>.</p>
+                </CollapsibleSection>
+              </div>
             {/if}
             <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-            <fieldset on:pointerdown={() => (infoPreview = true)} on:focusin={() => (infoPreview = true)}>
-              <legend>Info Block Appearance</legend>
-              {#if draft.systemView === 'document'}
-                <!-- Colouration: a documentStyle SEEDS the colours, then tweak each slot. Layout is the
-                     same across styles — only the palette (and fonts, set on General) changes. -->
-                {@render colouration('system')}
-                <label>Colour
-                  <select bind:value={draft.bodyStyle}>
-                    <option value="textured">True colour</option>
-                    <option value="flat">Flat colour (by type)</option>
-                    <option value="white">Greyscale (for tinting filters)</option>
-                  </select>
-                </label>
-                {#if draft.bodyStyle !== 'white' && draft.documentStyle !== 'greyscale'}
-                  {@render colourSlots('system')}
+            <div class="scene-sections" on:pointerdown={() => (infoPreview = true)} on:focusin={() => (infoPreview = true)}>
+              <CollapsibleSection label="Info block appearance" open={openSections['system-info']}
+                on:toggle={(e) => setSection('system-info', e.detail)}>
+                {#if draft.systemView === 'document'}
+                  <!-- Colouration: a documentStyle SEEDS the colours, then tweak each slot. Layout is the
+                       same across styles — only the palette (and fonts, set on General) changes. -->
+                  {@render colouration('system')}
+                  <label>Colour
+                    <select bind:value={draft.bodyStyle}>
+                      <option value="textured">True colour</option>
+                      <option value="flat">Flat colour (by type)</option>
+                      <option value="white">Greyscale (for tinting filters)</option>
+                    </select>
+                  </label>
+                  {#if draft.bodyStyle !== 'white' && draft.documentStyle !== 'greyscale'}
+                    {@render colourSlots('system')}
+                  {/if}
                 {/if}
-              {/if}
-              <!-- "Body graphics" is the per-body PICTURE in the info block — now for EVERY view (D6:
-                   the 2D/3D panels render through the same engine). The 3D orrery itself stays spheres. -->
-              <label>Body graphics
-                <select bind:value={draft.bodyGfx}>
-                  <option value="sphere">3D sphere</option>
-                  <option value="photo">Photo</option>
-                  <option value="disc">Simple disc</option>
-                  <option value="flat">Flat shape</option>
-                  <option value="none">None</option>
-                </select>
-              </label>
-              {#if draft.systemView === 'document' && draft.bodyGfx === 'sphere'}
-                <!-- The 3D body graphic is the real holo render, so it takes the same render styles. -->
-                <label>Render
-                  <select bind:value={draft.render}>
-                    <option value="filled">Filled</option>
-                    <option value="lopoly-filled">Lo-poly — filled</option>
-                    <option value="lopoly-lines">Lo-poly — filled + lines</option>
-                    <option value="wire-glow">Wireframe — glow</option>
-                    <option value="wire-flat">Wireframe — flat</option>
-                    <option value="wire-glow-occ">Wireframe — glow (solid)</option>
-                    <option value="wire-flat-occ">Wireframe — flat (solid)</option>
+                <!-- "Body graphics" is the per-body PICTURE in the info block — now for EVERY view (D6:
+                     the 2D/3D panels render through the same engine). The 3D orrery itself stays spheres. -->
+                <label>Body graphics
+                  <select bind:value={draft.bodyGfx}>
+                    <option value="sphere">3D sphere</option>
+                    <option value="photo">Photo</option>
+                    <option value="disc">Simple disc</option>
+                    <option value="flat">Flat shape</option>
+                    <option value="none">None</option>
                   </select>
                 </label>
-              {/if}
-              {#if draft.bodyGfx === 'photo'}
-                <label>Photo framing
-                  <select bind:value={draft.photoFrame}>
-                    <option value="letterbox">Letterbox band</option>
-                    <option value="full">Full image</option>
-                    <option value="sliver">Vertical sliver</option>
-                  </select>
-                </label>
-              {/if}
-              <label>Tags
-                <select bind:value={draft.tagStyle}>
-                  <option value="pills">Coloured pills</option>
-                  <option value="grouped">Grouped pills</option>
-                  <option value="grouped-list">Grouped list (headings, plain)</option>
-                  <option value="list">Plain list</option>
-                </select>
-              </label>
-              {#if draft.systemView === 'document'}
-                <label>Navigation
-                  <select bind:value={draft.navStyle}>
-                    <option value="chips">Buttons — side by side</option>
-                    <option value="boxed">Buttons — one per row</option>
-                    <option value="plain">Plain text</option>
-                  </select>
-                </label>
-              {/if}
-              <!-- The list GLYPHS are normally seeded by the colouration; this overrides them for both
-                   stages. 'cards' is the one that changes the shape rather than the bullet. -->
-              <label>Lists
-                <select value={draft.listStyle ?? ''}
-                  on:change={(e) => { const v = (e.currentTarget as HTMLSelectElement).value;
-                    draft = { ...draft, listStyle: (v || undefined) as any }; }}>
-                  <option value="">From the colouration</option>
-                  <option value="plain">Plain bullets</option>
-                  <option value="illustrated-bullets">Illustrated bullets</option>
-                  <option value="numbered-dossier">Numbered</option>
-                  <option value="terminal-log">Terminal log</option>
-                  <option value="ledger">Ruled rows</option>
-                  <option value="manifest">Manifest</option>
-                  <option value="cards">Pickable cards</option>
-                </select>
-              </label>
-              <!-- A29: a star catalogue holds what a ship CAN carry; only an instrument knows what is in
-                   the tanks now. Off = capacity alone, on = current-of-capacity. -->
-              <label class="chk"><input type="checkbox" bind:checked={draft.liveReadings} /> Live readings</label>
-              <p class="hint">Fuel, cargo and crew as they are now, not just capacity.</p>
-              <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info {draft.systemView === 'document' ? 'block' : 'panel'} (clean display)</label>
-              {#if !draft.hideInfoPanel}
-                <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block is
-                     part of the page, so it has no width to set — only a text size. -->
-                {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
-                  <label>Info panel width (desktop) <span>{Math.round(draft.inspectorWidthPct * 100)}% of screen</span><input type="range" min="0.15" max="0.5" step="0.01" bind:value={draft.inspectorWidthPct} /></label>
+                {#if draft.systemView === 'document' && draft.bodyGfx === 'sphere'}
+                  <!-- The 3D body graphic is the real holo render, so it takes the same render styles. -->
+                  <label>Render
+                    <select bind:value={draft.render}>
+                      <option value="filled">Filled</option>
+                      <option value="lopoly-filled">Lo-poly — filled</option>
+                      <option value="lopoly-lines">Lo-poly — filled + lines</option>
+                      <option value="wire-glow">Wireframe — glow</option>
+                      <option value="wire-flat">Wireframe — flat</option>
+                      <option value="wire-glow-occ">Wireframe — glow (solid)</option>
+                      <option value="wire-flat-occ">Wireframe — flat (solid)</option>
+                    </select>
+                  </label>
                 {/if}
-                {#if draft.systemView !== 'list'}
-                  <label>Info text size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="2.5" step="0.05" bind:value={draft.infoFontScale} /></label>
+                {#if draft.bodyGfx === 'photo'}
+                  <label>Photo framing
+                    <select bind:value={draft.photoFrame}>
+                      <option value="letterbox">Letterbox band</option>
+                      <option value="full">Full image</option>
+                      <option value="sliver">Vertical sliver</option>
+                    </select>
+                  </label>
                 {/if}
-              {/if}
-            </fieldset>
-            <fieldset>
-              <legend>System overlay</legend>
+                <label>Tags
+                  <select bind:value={draft.tagStyle}>
+                    <option value="pills">Coloured pills</option>
+                    <option value="grouped">Grouped pills</option>
+                    <option value="grouped-list">Grouped list (headings, plain)</option>
+                    <option value="list">Plain list</option>
+                  </select>
+                </label>
+                {#if draft.systemView === 'document'}
+                  <label>Navigation
+                    <select bind:value={draft.navStyle}>
+                      <option value="chips">Buttons — side by side</option>
+                      <option value="boxed">Buttons — one per row</option>
+                      <option value="plain">Plain text</option>
+                    </select>
+                  </label>
+                {/if}
+                <!-- The list GLYPHS are normally seeded by the colouration; this overrides them for both
+                     stages. 'cards' is the one that changes the shape rather than the bullet. -->
+                <label>Lists
+                  <select value={draft.listStyle ?? ''}
+                    on:change={(e) => { const v = (e.currentTarget as HTMLSelectElement).value;
+                      draft = { ...draft, listStyle: (v || undefined) as any }; }}>
+                    <option value="">From the colouration</option>
+                    <option value="plain">Plain bullets</option>
+                    <option value="illustrated-bullets">Illustrated bullets</option>
+                    <option value="numbered-dossier">Numbered</option>
+                    <option value="terminal-log">Terminal log</option>
+                    <option value="ledger">Ruled rows</option>
+                    <option value="manifest">Manifest</option>
+                    <option value="cards">Pickable cards</option>
+                  </select>
+                </label>
+                <!-- A29: a star catalogue holds what a ship CAN carry; only an instrument knows what is in
+                     the tanks now. Off = capacity alone, on = current-of-capacity. -->
+                <label class="chk"><input type="checkbox" bind:checked={draft.liveReadings} /> Live readings</label>
+                <p class="hint">Fuel, cargo and crew as they are now, not just capacity.</p>
+                <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info {draft.systemView === 'document' ? 'block' : 'panel'} (clean display)</label>
+                {#if !draft.hideInfoPanel}
+                  <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block is
+                       part of the page, so it has no width to set — only a text size. -->
+                  {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
+                    <label>Info panel width (desktop) <span>{Math.round(draft.inspectorWidthPct * 100)}% of screen</span><input type="range" min="0.15" max="0.5" step="0.01" bind:value={draft.inspectorWidthPct} /></label>
+                  {/if}
+                  {#if draft.systemView !== 'list'}
+                    <label>Info text size <span>{Math.round(draft.infoFontScale * 100)}%</span><input type="range" min="0.8" max="2.5" step="0.05" bind:value={draft.infoFontScale} /></label>
+                  {/if}
+                {/if}
+              </CollapsibleSection>
+            </div>
+            <CollapsibleSection label="Overlay graphic" open={openSections['system-graphic']}
+              on:toggle={(e) => setSection('system-graphic', e.detail)}>
               <GraphicPlacementControls placement={draft.systemOverlay} assets={$playerAssetList} label="Overlay image"
                 on:change={(e) => (draft = { ...draft, systemOverlay: e.detail })} />
-            </fieldset>
+            </CollapsibleSection>
           {/if}
         {:else if tab === 'transitions'}
-          <fieldset>
-            <legend>Page transition</legend>
+          <CollapsibleSection label="Page transition" open={openSections['transition']}
+            on:toggle={(e) => setSection('transition', e.detail)}>
             <label>Transition
               <select value={draft.transition}
                 on:change={(e) => { const id = (e.currentTarget as HTMLSelectElement).value; draft = { ...draft, transition: id, transitionParams: transitionRegistry.defaultParams(id) }; }}>
@@ -718,10 +802,10 @@
                   on:change={(e) => (draft = { ...draft, transitionParams: e.detail })} />
               </div>
             {/if}
-          </fieldset>
+          </CollapsibleSection>
         {:else if tab === 'filter'}
-          <fieldset>
-            <legend>Visual filter</legend>
+          <CollapsibleSection label="Visual filter" open={openSections['filter']}
+            on:toggle={(e) => setSection('filter', e.detail)}>
             <label>Filter
               <select bind:value={draft.filter}>
                 <option value="none">No filter</option>
@@ -737,7 +821,7 @@
               </div>
               <p class="hint">The 3D view uses the exact shader; text and 2D screens use a lighter matched version so their content stays readable.</p>
             {/if}
-          </fieldset>
+          </CollapsibleSection>
         {/if}
 
         <div class="wiz-nav">
@@ -896,8 +980,9 @@
   .hbtns { display: flex; gap: 0.5rem; }
   .body { display: grid; grid-template-columns: 330px 1fr; min-height: 0; flex: 1; }
   .controls { overflow-y: auto; padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 0.9rem; border-right: 1px solid var(--border); }
-  fieldset { border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; margin: 0; }
-  legend { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0 4px; }
+  /* A48: every group is a CollapsibleSection now, which carries its own box and head. The one thing
+     that has to live here is the gap between sibling sections inside a group wrapper. */
+  .scene-sections { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
   label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--text-muted); }
   label span { color: var(--text); font-size: 0.72rem; }
   label.inline, label.chk { flex-direction: row; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text); }
@@ -915,8 +1000,6 @@
     position: absolute; top: 10px; right: 10px; bottom: 10px; overflow-y: auto;
     background: rgba(6, 8, 13, 0.97); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
   }
-  .colour-picker > summary { font-size: 0.72rem; color: var(--text-muted); cursor: pointer; padding: 2px 0; list-style-position: inside; user-select: none; }
-  .colour-picker[open] > summary { margin-bottom: 3px; }
   .doc-colours { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; padding: 2px 0 2px 8px; border-left: 2px solid var(--border); }
   .col-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); gap: 6px; }
   .col-row input[type=color] { width: 34px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 3px; background: none; cursor: pointer; }

@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.699-beta - 16th Aug 2026
+
+- The player-preset editor's long steps now collapse. The Starmap and System steps had grown to fifteen and twenty controls in a single box; they are grouped by what you are actually doing - Grid & routes, Depth & camera, Bodies & belts, Scale & camera, Scene & sky, Labels & markers - and each group opens and shuts. On the System step that turns a screen-and-a-half of scrolling into no scrolling at all.
+- Which groups you leave open is remembered, per machine, and survives closing and reopening the editor. First run opens the one group per step that carries the choice everything else hangs off, and leaves the rest shut. It is your layout, not the preset's: it never travels to a player's screen.
+- The "Colours" panel inside the two document sections now opens and shuts like every other group instead of being a second, different kind of collapsing thing in the same editor.
+- Nothing about any control changed - not what it does, not what it is called, not when it appears. This was a layout pass.
+
 ## v2.1.698-beta - 16th Aug 2026
 
 - The old **Field Guide** and **Projector** are gone. Player Views does everything they did and does it from one engine, so every look they offered is now a preset you can open, duplicate and edit - the monochrome terminal, the survey datapad, the starship console, The Guide, the holo table and the overhead projection. Two doors to the same room have become one.

@@ -1,5 +1,5 @@
 // "The Guide" margin notes - friendly, mostly accurate, sourced from the GM's curated list
-// (Mostly_harmless.txt). Shown as random banners in the Guide skin of the Field Guide.
+// (Mostly_harmless.txt). Shown as random margin banners when a preset turns `guideTips` on.
 export const GUIDE_NOTES: string[] = [
   "Mostly harmless.",
   "Avoid unless you have a profound interest in plastic cutlery.",

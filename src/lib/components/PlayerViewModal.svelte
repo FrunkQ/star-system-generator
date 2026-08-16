@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Unified Player View — preset PICKER (replaces the Field Guide modal once parity lands). Left: the
+  // Unified Player View — preset PICKER (it replaced the Field Guide modal outright at A42). Left: the
   // preset card grid. Right: the SELECTED preset's summary with Edit/Duplicate/Delete, plus the
   // quick live-session overrides (Follow GM / disable filter / disable view orbit) — momentary, never
   // saved into the preset. All design work happens in the wizard editor (PlayerPresetEditor).

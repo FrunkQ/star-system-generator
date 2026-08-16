@@ -26,7 +26,7 @@
   // persisted so it advances across sessions, not just within one.
   const SPLASH_BLURBS = [
     'A procedural generator for scientifically-plausible star systems, with a real-time orbital visualiser and a multi-system starmap. Every world is derived from real physics — composition, oceans, magnetism, geology and true colour — and you can fly your own spacecraft between them: efficient transfers, hard burns, or relativistic interstellar jumps, with fuel, time and hazard all calculated.',
-    "Build scientifically-plausible star systems for your sci-fi table and bring them to life. Every world is derived from real physics; a real-time orrery and starmap let you fly efficient transfers, hard burns or relativistic interstellar journeys; NPC ships run their own routes on autopilot; and you can serve a live, redacted Field Guide straight to your players' own devices.",
+    "Build scientifically-plausible star systems for your sci-fi table and bring them to life. Every world is derived from real physics; a real-time orrery and starmap let you fly efficient transfers, hard burns or relativistic interstellar journeys; NPC ships run their own routes on autopilot; and you can design a player view and serve it live, redacted, straight to your players' own devices.",
   ];
   let blurbIndex = 0;
   if (typeof localStorage !== 'undefined') {
