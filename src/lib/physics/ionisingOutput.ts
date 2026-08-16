@@ -133,3 +133,76 @@ export function applyActivityScatter(base: number, scatter: number | undefined):
 	if (!scatter) return base;
 	return Math.max(0.005, Math.min(1, base + scatter));
 }
+
+// ---------------------------------------------------------------------------------------------
+// FIELD-DRIVEN IONISING OUTPUT — owner, 2026-08-16: *"the magnetic field would drive the ionising
+// radiation up and cause flaring... we could get rid of the separate ionising output but tie it to
+// magnetic field."*
+//
+// He is right, and the relation is one of the tightest in solar-stellar physics: X-ray luminosity
+// tracks TOTAL MAGNETIC FLUX, L_X ~ Phi^1.13, over roughly twelve decades from single solar features
+// to the most active stars (Pevtsov et al. 2003). Flux is field strength times area, so it is
+// computable from two numbers a star already has: `mag_gauss` and radius.
+//
+//     Phi (relative to the Sun) = (B / 1 gauss) x (R / Rsun)^2
+//
+// AND FLUX ALONE IS NOT ENOUGH, which was measured before this was written. Give Arcturus its real
+// 0.5 G field and its flux still comes out ~4x an active M dwarf's, where reality has the M dwarf
+// out-emitting it about thirtyfold. The missing physics is the CORONAL DIVIDING LINE: giants cooler
+// than roughly K2 III have chromospheres but essentially no hot corona at all, because they run
+// massive cool winds instead of closed magnetic loops (Linsky & Haisch 1979). Betelgeuse has no
+// detected X-ray corona whatsoever.
+//
+// TESTED AS A PROPERTY, NOT A CLASS LIST (DATA-R13): low surface gravity AND cool. Both conditions,
+// because it is COOL giants that lose their coronae - Rigel is a supergiant at 12,000 K and keeps
+// its wind X-rays. Verified to separate the Sun, an M dwarf, Vega and Rigel (corona) from Arcturus
+// and Betelgeuse (past the line) with no special cases.
+
+/** Surface gravity in cgs dex, from the two numbers every star carries. The Sun is 4.44. */
+export function logSurfaceGravity(massSolar: number, radiusSolar: number): number {
+	if (!(massSolar > 0) || !(radiusSolar > 0)) return 4.44;
+	return 4.44 + Math.log10(massSolar) - 2 * Math.log10(radiusSolar);
+}
+
+export const CORONAL_DIVIDING_LOGG = 3.0;
+export const CORONAL_DIVIDING_TEMP_K = 5500;
+/** How far below the flux relation a star past the dividing line sits. Two decades, observed. */
+export const CORONAL_SUPPRESSION = 0.01;
+
+/**
+ * Does this star sustain a hot corona? Cool AND puffed-out means no: the closed loops that make
+ * X-rays give way to a cool wind.
+ */
+export function hasHotCorona(massSolar: number, radiusSolar: number, tempK: number): boolean {
+	return !(logSurfaceGravity(massSolar, radiusSolar) < CORONAL_DIVIDING_LOGG && tempK < CORONAL_DIVIDING_TEMP_K);
+}
+
+/** Total magnetic flux relative to the Sun's: field strength times area. */
+export function magneticFluxRelative(fieldGauss: number, radiusSolar: number): number {
+	if (!(fieldGauss > 0) || !(radiusSolar > 0)) return 0;
+	return fieldGauss * radiusSolar * radiusSolar;
+}
+
+/**
+ * Ionising output in multiples of the quiet Sun's, DERIVED FROM THE FIELD.
+ *
+ * Capped at the saturation ceiling relative to the star's own bolometric luminosity, because that
+ * ceiling is a law: past a certain point the dynamo stops responding and X-ray output stops climbing.
+ */
+export function ionisingFromField(star: {
+	fieldGauss?: number; radiusSolar?: number; massSolar?: number; tempK?: number; luminositySolar?: number;
+}): number {
+	const flux = magneticFluxRelative(star.fieldGauss ?? 0, star.radiusSolar ?? 0);
+	if (flux <= 0) return 0;
+	let out = Math.pow(flux, 1.13);
+	if (!hasHotCorona(star.massSolar ?? 1, star.radiusSolar ?? 1, star.tempK ?? 5778)) {
+		out *= CORONAL_SUPPRESSION;
+	}
+	// The ceiling, expressed in the same solar units: L_bol x 1e-3, over the quiet Sun's 1e-7.
+	const lum = star.luminositySolar;
+	if (lum! > 0) {
+		const ceiling = (lum! * IONISING_FRACTION_SATURATED) / IONISING_FRACTION_QUIET;
+		if (out > ceiling) return ceiling;
+	}
+	return out;
+}

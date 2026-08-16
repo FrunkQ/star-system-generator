@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	ionisingFraction, activityForFraction, ionisingOutputSolar, ionisingBands,
 	activityScatterFromRoll, applyActivityScatter, ACTIVITY_SCATTER_SPREAD,
+	ionisingFromField, hasHotCorona, logSurfaceGravity, magneticFluxRelative,
 	IONISING_FRACTION_QUIET, IONISING_FRACTION_SATURATED
 } from './ionisingOutput';
 
@@ -61,20 +62,15 @@ describe('BUT NOT ALWAYS', () => {
 		expect(young / old).toBeGreaterThan(1000);
 	});
 
-	// A KNOWN LIMIT OF THE MODEL, PINNED RATHER THAN HIDDEN. In reality an active M dwarf OUT-EMITS a
-	// red giant in X-rays despite being ten thousand times dimmer: Arcturus sits near L_X/L_bol 1.5e-9
-	// while an active dwarf reaches 1e-3. This model cannot express that, because L_X scales with
-	// L_bol and `flareActivity` gives the old Sun 0.052 and a red giant 0.050 — indistinguishable.
-	//
-	// The floor here is calibrated on the SUN, and a giant's corona is roughly two decades fainter per
-	// unit luminosity, so a giant comes out too X-ray bright. Fixing it properly needs the ionising
-	// fraction to depend on the KIND of dynamo (surface gravity, convective envelope) rather than on
-	// one 0..1 scalar. Recorded as a finding rather than patched with a giant-shaped special case,
-	// which would be the anchor rule's forbidden move in a new place.
-	it('is known to over-estimate a giant, and this pins the gap until it is fixed', () => {
-		const activeDwarf = ionisingOutputSolar(0.012, 0.85);
-		const quietGiant = ionisingOutputSolar(800, 0.05);
-		expect(quietGiant).toBeGreaterThan(activeDwarf); // WRONG in reality; true of the model today
+	// THE LIMIT THIS FILE USED TO PIN AS WRONG IS NOW FIXED, and the entry is kept as the record of
+	// how it was found. The activity-only model had a quiet red giant out-emitting an active M dwarf,
+	// because L_X scaled with L_bol and a giant is enormously bright. Reality has the M dwarf ahead by
+	// about thirty. Tying ionising output to MAGNETIC FLUX and applying the coronal dividing line
+	// closes it — see the field-driven tests below.
+	it('no longer over-estimates a giant, which the luminosity-scaled model did', () => {
+		const activeDwarf = ionisingFromField({ fieldGauss: 550, radiusSolar: 0.4, massSolar: 0.27, tempK: 3050, luminositySolar: 0.012 });
+		const quietGiant = ionisingFromField({ fieldGauss: 0.5, radiusSolar: 25.4, massSolar: 1.08, tempK: 4286, luminositySolar: 170 });
+		expect(activeDwarf).toBeGreaterThan(quietGiant);
 	});
 });
 
@@ -125,5 +121,62 @@ describe('generated scatter', () => {
 		// planet's particle dose. A star that was never generated with one must be unaffected.
 		expect(applyActivityScatter(0.052, undefined)).toBe(0.052);
 		expect(applyActivityScatter(0.85, 0)).toBe(0.85);
+	});
+});
+
+// FIELD-DRIVEN IONISING OUTPUT, and the fix for the limit the earlier model pinned as wrong.
+describe('ionising output follows MAGNETIC FLUX, not brightness', () => {
+	const sun = { fieldGauss: 1, radiusSolar: 1, massSolar: 1, tempK: 5772, luminositySolar: 1 };
+	const activeMDwarf = { fieldGauss: 550, radiusSolar: 0.4, massSolar: 0.27, tempK: 3050, luminositySolar: 0.012 };
+	const arcturus = { fieldGauss: 0.5, radiusSolar: 25.4, massSolar: 1.08, tempK: 4286, luminositySolar: 170 };
+
+	it('anchors the quiet Sun at one', () => {
+		expect(ionisingFromField(sun)).toBeCloseTo(1, 2);
+	});
+
+	it('rises with FLUX, so a bigger star with the same field emits more', () => {
+		expect(magneticFluxRelative(1, 10)).toBe(100);
+		expect(ionisingFromField({ ...sun, radiusSolar: 10, massSolar: 10 })).toBeGreaterThan(ionisingFromField(sun));
+	});
+
+	// THE FIX. The previous model had a red giant out-emitting an active M dwarf by 40x; reality has
+	// the M dwarf ahead by about thirty. That gap was pinned as a known-wrong result, and this closes it.
+	it('lets an active M DWARF out-irradiate a red GIANT, as reality does', () => {
+		const dwarf = ionisingFromField(activeMDwarf);
+		const giant = ionisingFromField(arcturus);
+		expect(dwarf).toBeGreaterThan(giant);
+		// Real ratio is roughly 30x. Within a factor of a few is the bar here, not decimals.
+		expect(dwarf / giant).toBeGreaterThan(5);
+		expect(dwarf / giant).toBeLessThan(200);
+	});
+
+	it('never exceeds the saturation ceiling, whatever field is authored', () => {
+		const absurd = ionisingFromField({ ...sun, fieldGauss: 1e9 });
+		const ceiling = (1 * IONISING_FRACTION_SATURATED) / IONISING_FRACTION_QUIET;
+		expect(absurd).toBeLessThanOrEqual(ceiling);
+	});
+
+	it('says nothing for a star with no field', () => {
+		expect(ionisingFromField({ ...sun, fieldGauss: 0 })).toBe(0);
+	});
+});
+
+describe('the coronal dividing line, as a PROPERTY rather than a list of classes', () => {
+	it('is where a star is both COOL and puffed out', () => {
+		expect(logSurfaceGravity(1, 1)).toBeCloseTo(4.44, 2);
+		// Corona: the Sun, an M dwarf, Vega — and Rigel, which is a supergiant but HOT.
+		expect(hasHotCorona(1, 1, 5772)).toBe(true);
+		expect(hasHotCorona(0.27, 0.4, 3050)).toBe(true);
+		expect(hasHotCorona(2.1, 2.36, 9600)).toBe(true);
+		expect(hasHotCorona(21, 78.9, 12100)).toBe(true);
+		// Past the line: Arcturus and Betelgeuse. Betelgeuse has no detected X-ray corona at all.
+		expect(hasHotCorona(1.08, 25.4, 4286)).toBe(false);
+		expect(hasHotCorona(16.5, 764, 3600)).toBe(false);
+	});
+
+	it('needs BOTH conditions, because it is cool giants that lose their coronae', () => {
+		// Hot and puffed out keeps its emission; cool and compact keeps its dynamo.
+		expect(hasHotCorona(20, 80, 20000)).toBe(true);  // hot supergiant
+		expect(hasHotCorona(0.3, 0.3, 3200)).toBe(true); // cool dwarf
 	});
 });

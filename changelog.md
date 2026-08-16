@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.638-beta - 16th Aug 2026
+
+* Star systems: a star's ionising output now follows its magnetic field, which is what actually drives it — X-ray output tracks total magnetic flux across about twelve orders of magnitude in the real relation.
+* Star systems: cool giants no longer come out as fierce X-ray sources. Past a certain point a swollen, cool star stops sustaining a hot corona at all and runs a cool wind instead — Betelgeuse has no detected X-ray corona whatsoever. An active red dwarf now correctly out-irradiates a red giant despite being ten thousand times dimmer.
+
 ## v2.1.637-beta - 16th Aug 2026
 
 * Star systems: the classifier no longer calls bright main-sequence stars giants. Vega came back a giant, and every O and B dwarf a supergiant, because the test was how BRIGHT a star is — but a hot dwarf is genuinely brilliant. It now asks how BIG the star is for its temperature, which is what a luminosity class actually measures. All ten reference stars are correct where five were wrong.
