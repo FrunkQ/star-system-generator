@@ -303,6 +303,30 @@ state you are in rather than assuming the pane is broken — and it is worth ask
 
 ## PHYSICS — ordering and honesty
 
+### PHY-19 An equilibrium temperature is a POWER balance and is never a mean
+WHERE: `physics/temperature.calculateEquilibriumTemperature` and `composeBodySurfaceTemperature`
+(which produce it) vs `physics/surfaceTemperature.surfaceTempProfile` (which produces the mean).
+RULE: `equilibriumTempK` and `temperatureK` are the temperatures at which the body RADIATES what it
+takes in. The MEAN surface temperature is the average of the day and night sides and is a different
+number. Derive day and night from the balance and let the mean fall out of them; never hang a
+symmetric swing off the balance figure and call the result a mean. Every reader-facing "mean
+surface temperature" reads `temperatureProfile.meanK`; the classifier, the tags and the thermal
+fixed point read `temperatureK`. Two quantities, both correct, and each must say which it is.
+WHY: radiated power goes as T⁴, so a surface at 390 K noon and 100 K midnight radiates exactly as
+much as a uniform 270 K one while AVERAGING 60 K below it. Treating the balance figure as the mean
+made Luna read a mean of -3 °C, a noon of 209 °C (against a measured 120 °C) and a night of -214 °C
+(against -173 °C) — three symptoms of ONE fault, and no value of the swing constant fixes any of
+them, because the fault is the shape (B63). The corollary is the bound the old model lacked
+entirely: the sunlit side cannot exceed √2·Teq, the temperature at which the ground alone
+re-radiates light falling straight down on it.
+BLAST: the swing terms scale on `equilibriumK` but hang off the DERIVED mean, so anything reading
+`temperatureRangeK` moves when the mean does — `rendering/planetAppearance` (thermal glow, eyeball),
+`activity/sublimating` and `climate/polar-ice` in `SystemProcessor`, `physics/vegetation`. A world
+that is nearly isothermal (thick air, or simply cold — radiating is feeble at 70 K) correctly emits
+NO day/night component at all. Do not add a rival day/night model in a display component: one was
+deleted from `BodyTechnicalDetails.svelte` in the same commit, with its own constants, and nothing
+had ever rendered it.
+
 ### PHY-1 Nothing may read a value a later pass writes
 WHERE: `src/lib/system/idempotence.test.ts`
 RULE: process, process the result, process that — nothing on any body may change. If that test goes

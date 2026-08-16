@@ -1,8 +1,7 @@
 import type { CelestialBody, Barycenter } from '../types';
-import { SOLAR_RADIUS_KM } from '../constants';
+import { SOLAR_RADIUS_KM, STEFAN_BOLTZMANN_CONSTANT } from '../constants';
 
 const SOLAR_TEMP_K = 5778;
-const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
 
 /**
  * Calculates the luminosity of a star relative to the Sun.

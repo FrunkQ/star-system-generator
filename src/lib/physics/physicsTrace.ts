@@ -254,7 +254,12 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     { label: 'Tidal heat Δ (capped)', value: n(body.tidalHeatK, 1, 'K') },
     { label: 'Radiogenic Δ', value: n(body.radiogenicHeatK, 1, 'K') },
     { label: 'Internal heat Δ', value: n(body.internalHeatK, 1, 'K') },
-    { label: 'Mean surface temp', value: n(body.temperatureK, 0, 'K') }
+    // TWO temperatures, and saying which is which is the whole point of this layer. The composed
+    // figure balances POWER — it is what the body radiates — and radiated power goes as T⁴, so a
+    // world that bakes by day and freezes by night gives off as much as a uniformly warm one while
+    // AVERAGING far below it. The mean below is the average of its day and night sides, which is what
+    // a thermometer on the ground would read; they agree on anything well-mixed (inbox B63).
+    { label: 'Radiating temp (power balance)', value: n(body.temperatureK, 0, 'K') }
   ];
   const selfLumTeff = (body as any).selfLuminousTeffK as number | undefined;
   if ((body as any).isSelfLuminous && selfLumTeff) {
@@ -265,6 +270,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   }
   if (body.temperatureProfile) {
     const p = body.temperatureProfile;
+    tempOut.push({ label: 'Mean surface temp (day/night average)', value: n(p.meanK, 0, 'K') });
     tempOut.push({ label: 'Total range', value: `${p.totalMinK}–${p.totalMaxK} K` });
     for (const c of p.components) tempOut.push({ label: c.label, value: `${c.lowK}–${c.highK} K` });
   } else if (body.temperatureRangeK) {
@@ -337,7 +343,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       ...(bary ? [`Equilibrium temperature is set by the distance to ${ctx.star?.name ?? 'the star'} — the ${bary.name || 'barycentre'}'s ${n(heliocentricEl?.a_AU, 1, 'AU')} orbit — not the small orbit ${ctx.partner ? `around its partner ${ctx.partner.name}` : 'within the pair'}.`] : []),
       ...((body.radiogenicHeatK ?? 0) > 0 ? [`Radiogenic heat (+${n(body.radiogenicHeatK, 1, 'K')}, a GM override) is summed into the mean surface temperature in flux space alongside greenhouse, tidal and internal heat — so it feeds the habitability temperature score. The same override also drives the world's geological vigour (tectonics/volcanism), independently of sunlight.`] : []),
       ...(body.temperatureRangeK && body.temperatureRangeK.max - body.temperatureRangeK.min > 5
-        ? ['The mean averages heat over the whole body; the range captures cold night sides and localized (tidal-volcanic) hotspots.'] : [])
+        ? ['THE DAY AND NIGHT SIDES COME FROM THE ENERGY BALANCE AND THE MEAN FALLS OUT OF THEM, not the other way round. The sunlit side is bounded by the temperature at which the ground re-radiates the light falling straight down on it — √2 × the equilibrium figure, 110 °C for the Moon against a measured noon of about 120 °C — and the night side is held up by the heat the ground stored during the day, which is why a fast rotator freezes far less deeply than a slow one at the same distance. The range then adds latitude, season and localized (tidal-volcanic) hotspots.'] : [])
     ]
   });
 

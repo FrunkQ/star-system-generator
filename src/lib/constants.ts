@@ -36,6 +36,7 @@ export const PLANCK_H = 6.62607015e-34;         // J·s (exact, SI 2019)
 export const BOLTZMANN_K = 1.380649e-23;        // J/K (exact, SI 2019)
 export const AVOGADRO = 6.02214076e23;          // mol⁻¹ (exact, SI 2019) — atmospheric column density
 export const SOLAR_CONSTANT_WM2 = 1361;         // W/m² — total solar irradiance at 1 AU
+export const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8; // W m⁻² K⁻⁴ (exact, SI 2019)
 
 // Unshielded radiation dose at 1 AU from a Sun-like star (mSv/year)
 // Approx baseline for GCR + Solar Particle Events in free space.

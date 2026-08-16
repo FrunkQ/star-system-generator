@@ -1,5 +1,5 @@
 import type { CelestialBody, Barycenter, System, RulePack } from '../types';
-import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG } from '../constants';
+import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG, STEFAN_BOLTZMANN_CONSTANT } from '../constants';
 import { GIANT_METALLIC_HYDROGEN_MIN_MASS_ME } from './fluidLayers';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
@@ -11,7 +11,6 @@ import { makeupFractions } from './makeup';
 import { EARTH_RADIUS_KM } from '../constants';
 import { calculateGreenhouseEffect } from './atmosphere';
 
-const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
 const JUPITER_MASS_KG = 1.898e27;
 
 type DistanceRangeAU = { mean: number; min: number; max: number };

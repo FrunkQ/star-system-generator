@@ -6,7 +6,7 @@
   import { calculateDeltaVBudgets } from '$lib/physics/orbits';
   import { biosphereLayers, morphologyDef } from '$lib/physics/vegetation';
   import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
-  import { calculateSurfaceTemperature, composeBodySurfaceTemperature } from '$lib/physics/temperature';
+  import { calculateSurfaceTemperature } from '$lib/physics/temperature';
   import { systemStore, fmt } from '$lib/stores';
   import { get } from 'svelte/store';
   import { onMount } from 'svelte';
@@ -79,13 +79,15 @@
   let constructSpecs: ConstructSpecs | null = null;
 
   // Derived Reactive Properties
+  // NO SECOND DAY/NIGHT MODEL HERE, DELIBERATELY, AND THIS COMMENT IS THE POINT.
+  // Forty-five lines here recomputed the surface range and then split it into lit and dark
+  // hemispheres with its own constants (tEq x 0.70/1.35 airless, x 0.33/0.72 locked, a pressure mix,
+  // a latitudinal span), and NOTHING RENDERED THE RESULT — the four variables it produced were never
+  // read. It was a rival to `physics/surfaceTemperature`, which now derives the two sides from the
+  // energy balance and publishes them as components this panel already displays below. Deleted
+  // rather than resynced: syncing preserves the fault. Same shape as the dead `retainsAtmosphere`
+  // block in SystemProcessor, and the same fix.
   let surfaceTempC: number | null = null;
-  let minTempC: number | null = null;
-  let maxTempC: number | null = null;
-  let dayMinTempC: number | null = null;
-  let dayMaxTempC: number | null = null;
-  let nightMinTempC: number | null = null;
-  let nightMaxTempC: number | null = null;
   let massDisplay: string | null = null;
   let radiationLevel: string | null = null;
   let surfaceGravityG: number | null = null;
@@ -121,10 +123,6 @@
     surfaceGravityG = null;    
     densityRelative = null;
     surfaceTempC = null;
-    dayMinTempC = null;
-    dayMaxTempC = null;
-    nightMinTempC = null;
-    nightMaxTempC = null;
     massDisplay = null;
     radiationLevel = null;
     orbitalDistanceDisplay = null;
@@ -308,84 +306,12 @@
         }
 
         if (body.temperatureK) {
-            surfaceTempC = body.temperatureK - 273.15;
-            
-            // Prefer post-processed multi-star/barycenter-aware range when available.
-            const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
-            const eqMaxK = typeof (body as any).equilibriumTempMaxK === 'number' ? (body as any).equilibriumTempMaxK : null;
-            const pressureBar = body.atmosphere?.pressure_bar || 0;
+            // The MEAN a reader wants is the average of the day and night sides, which the physics
+            // publishes on the profile; `temperatureK` is the RADIATING temperature and they part
+            // company exactly when the swing is large (inbox B63).
+            surfaceTempC = (body.temperatureProfile?.meanK ?? body.temperatureK) - 273.15;
 
-            // Range variants recompose the body's OWN heat terms (greenhouse/tidal/radiogenic/internal/
-            // self-luminous) over a varied equilibrium via the shared helper — no per-term duplication,
-            // and the self-luminous term can't get dropped (the old 5-arg calls omitted it).
-            if (pressureBar < 0.01 && body.roleHint !== 'star') {
-                // Airless/near-airless worlds should expose large day/night surface swings.
-                const tEq = body.equilibriumTempK || 0;
-                const eqMinAirless = Math.max(3, tEq * 0.5);
-                const eqMaxAirless = tEq * 1.45;
-                minTempC = composeBodySurfaceTemperature(body, eqMinAirless) - 273.15;
-                maxTempC = composeBodySurfaceTemperature(body, eqMaxAirless) - 273.15;
-            } else if (eqMinK !== null && eqMaxK !== null) {
-                minTempC = composeBodySurfaceTemperature(body, eqMinK) - 273.15;
-                maxTempC = composeBodySurfaceTemperature(body, eqMaxK) - 273.15;
-            } else if (body.orbit && body.equilibriumTempK) {
-                // Fallback for legacy bodies that do not have precomputed ranges.
-                const e = body.orbit.elements.e;
-                const pressure = body.atmosphere?.pressure_bar || 0;
-                const orbitMax = Math.sqrt(1 / (1 - e));
-                const orbitMin = Math.sqrt(1 / (1 + e));
-                const variability = 0.4 / (1 + pressure);
-                const tEq = body.equilibriumTempK;
-                const tEqMaxK = tEq * orbitMax * (1 + variability);
-                const tEqMinK = tEq * orbitMin * (1 - variability);
-                const tMaxK = composeBodySurfaceTemperature(body, tEqMaxK);
-                const tMinK = composeBodySurfaceTemperature(body, tEqMinK);
-                maxTempC = tMaxK - 273.15;
-                minTempC = tMinK - 273.15;
-            }
-
-            if (surfaceTempC !== null) {
-                const cMin = minTempC ?? surfaceTempC;
-                const cMax = maxTempC ?? surfaceTempC;
-                const orbitalHalfRange = Math.max(0, (cMax - cMin) * 0.5);
-                const pressureMix = Math.max(0, Math.min(1, pressureBar / (pressureBar + 0.5)));
-
-                if (pressureBar < 0.01 && body.roleHint !== 'star') {
-                    // Airless bodies: compute lit/dark hemispheres directly from equilibrium,
-                    // then layer greenhouse/tidal/internal components consistently.
-                    const tEq = body.equilibriumTempK || 0;
-                    const dayMinEq = Math.max(3, tEq * (body.tidallyLocked ? 0.78 : 0.70));
-                    const dayMaxEq = tEq * (body.tidallyLocked ? 1.45 : 1.35);
-                    const nightMinEq = Math.max(3, tEq * (body.tidallyLocked ? 0.33 : 0.40));
-                    const nightMaxEq = tEq * (body.tidallyLocked ? 0.72 : 0.85);
-
-                    dayMinTempC = composeBodySurfaceTemperature(body, dayMinEq) - 273.15;
-                    dayMaxTempC = composeBodySurfaceTemperature(body, dayMaxEq) - 273.15;
-                    nightMinTempC = composeBodySurfaceTemperature(body, nightMinEq) - 273.15;
-                    nightMaxTempC = composeBodySurfaceTemperature(body, nightMaxEq) - 273.15;
-                } else {
-                    // Atmosphere damps day/night swings.
-                    let dayNightSpanC = (1 - pressureMix) * 70 + 8;
-                    if (body.tidallyLocked) {
-                        dayNightSpanC *= 1.15;
-                    }
-                    const latitudinalSpanC = (1 - pressureMix) * 35 + 20;
-
-                    const dayCenter = surfaceTempC + dayNightSpanC * 0.35;
-                    const nightCenter = surfaceTempC - dayNightSpanC * 0.65;
-
-                    dayMinTempC = dayCenter - (orbitalHalfRange + latitudinalSpanC * 0.7);
-                    dayMaxTempC = dayCenter + (orbitalHalfRange + latitudinalSpanC * 0.5);
-                    nightMinTempC = nightCenter - (orbitalHalfRange + latitudinalSpanC * 0.8);
-                    nightMaxTempC = nightCenter + (orbitalHalfRange + latitudinalSpanC * 0.3);
-                }
-
-                dayMinTempC = Math.max(-273, dayMinTempC);
-                dayMaxTempC = Math.max(dayMinTempC, dayMaxTempC);
-                nightMinTempC = Math.max(-273, nightMinTempC);
-                nightMaxTempC = Math.max(nightMinTempC, nightMaxTempC);
-            }
-            tempTooltip = `Equilibrium: ${$fmt.tempK(body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K`;
+            tempTooltip = `Equilibrium: ${$fmt.tempK(body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K | Radiates at: ${$fmt.tempK(body.temperatureK || 0)} (power balance — above the average whenever day and night differ)`;
             // Break the same numbers out by SOURCE for the Internal Heat block. Kept beside the
             // tooltip that already lists them so the two can never disagree.
             const selfLumK = (body as any).selfLuminousTeffK || 0;

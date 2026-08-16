@@ -101,7 +101,7 @@
         habitability are all <em>downstream</em> of its interior makeup and temperature.</p>
       <ol class="layering">
         <li><strong>Interior makeup</strong> (metal / rock / carbon / ice / gas fractions) → <strong>density</strong> and, with mass, <strong>radius</strong>.</li>
-        <li><strong>Orbit &amp; stars</strong> → equilibrium temperature → greenhouse, tidal, radiogenic &amp; internal heat → <strong>mean surface temperature</strong> and its <strong>range</strong> (cold night side ↔ tidal-volcanic hotspots).</li>
+        <li><strong>Orbit &amp; stars</strong> → equilibrium temperature → greenhouse, tidal, radiogenic &amp; internal heat → the <strong>radiating temperature</strong> → its <strong>day and night sides</strong>, whose average is the <strong>mean surface temperature</strong> and whose spread opens into the full <strong>range</strong> (cold night side ↔ tidal-volcanic hotspots).</li>
         <li><strong>Fluid layers</strong> — surface ocean, subsurface (under-ice) ocean, cloud decks, deep conductive interior — derived from makeup + temperature + atmosphere.</li>
         <li><strong>Magnetism</strong> — the dynamo implied by the conductive interior layers + rotation (intrinsic vs induced; dipolar vs tilted/off-centre).</li>
         <li><strong>Geological activity</strong> — tectonic regime + volcanism by <em>mechanism</em>, using makeup, mass/radius, system <em>age</em>, surface water and tidal heat.</li>
@@ -250,8 +250,13 @@
         surface temperature by around a fiftieth of a degree. It matters enormously for geology and not at all
         for climate, and the model says so rather than inventing a term.</p>
 
-      <p>The result is <strong>one</strong> mean surface temperature, and everything downstream reads that same
-        number: the <a href="#habitability">habitability</a> temperature score, the classifier, and the display.
+      <p>The result is <strong>one</strong> radiating temperature, and everything downstream reads that same
+        number: the <a href="#habitability">habitability</a> temperature score and the classifier. It balances
+        <em>power</em>, so it is what the world gives off — and because radiated power goes as T⁴, a world that
+        bakes by day and freezes by night radiates as much as a uniformly warm one while <em>averaging</em> far
+        below it. The <a href="#temp-range">mean surface temperature</a> a GM reads is therefore derived one step
+        later, from the day and night sides; the two agree on any world with enough air to even the swing out,
+        and part company on an airless one (the Moon radiates at 270&nbsp;K and averages about 214).
         <strong>Radiogenic heat</strong> is a GM override (0 by default — negligible against sunlight for most
         worlds); when set it both warms the surface <em>and</em> drives the world's
         <a href="#geology">geological vigour</a>, so a young or exotic world can run hot and tectonically alive
@@ -280,9 +285,41 @@
       </ul>
       <p>An <strong>atmosphere</strong> (and oceans) redistribute heat — the single biggest control — so a thick-air
         world is far more uniform than an airless one. The <em>total</em> range is the combined extreme (pole +
-        winter + night ↔ equator + summer + day, or a tidal hotspot). So Io reads a cold −210 °C night surface
-        <em>and</em> ~970 °C lava vents in the same readout. Calibrated loosely to Earth / Mars / the Moon /
+        winter + night ↔ equator + summer + day, or a tidal hotspot). So Io reads a cold −194 °C night surface
+        <em>and</em> ~960 °C lava vents in the same readout. Calibrated loosely to Earth / Mars / the Moon /
         Mercury — heuristic, and axial tilt defaults to 25° when a body doesn't specify one.</p>
+
+      <h3>Day and night are an energy balance, and the mean falls out of them</h3>
+      <p>The equilibrium temperature is a <strong>power</strong> balance — the one temperature at which a sphere
+        radiates away exactly what it absorbs — and it is <em>not</em> a mean surface temperature. Treating it as
+        one and hanging a symmetric swing off it gets three things wrong at once, and no value of the swing
+        constant fixes any of them, because the fault is the shape: the sunlit side has no ceiling, the night side
+        falls straight through its floor, and the mean sits too high. So the two sides are derived first and the
+        mean is what they average to. Writing <em>f</em> for the fraction of the absorbed energy that reaches the
+        night side (0 = none reaches it, 1 = the world is isothermal):</p>
+      <ul>
+        <li><strong>Day side</strong> radiates (2−<em>f</em>)·σT<sub>eq</sub>⁴, so it sits at T<sub>eq</sub>·(2−<em>f</em>)<sup>¼</sup>.</li>
+        <li><strong>Night side</strong> radiates <em>f</em>·σT<sub>eq</sub>⁴, at T<sub>eq</sub>·<em>f</em><sup>¼</sup>
+          — the two average back to σT<sub>eq</sub>⁴, so nothing is created or lost.</li>
+        <li><strong>The hottest point</strong> is where the star is straight overhead, and it cannot exceed the
+          temperature at which the ground alone re-radiates that light: √2·T<sub>eq</sub> when nothing is carried
+          away. That is 110&nbsp;°C for the Moon, against a measured noon of about 120&nbsp;°C — the bound reads
+          slightly low on purpose, because it uses the <em>bond</em> albedo where the real sub-solar point
+          reflects less. Before this, the Moon's noon read 209&nbsp;°C, because nothing bounded it at all.</li>
+        <li><strong>The mean</strong> is the average of the two sides. It equals the radiating temperature for a
+          well-mixed world and drops below it as the swing grows — the Moon radiates at 270&nbsp;K and averages
+          214, which is what Diviner measures at its equator.</li>
+      </ul>
+      <p><em>f</em> has two channels and they compose, because whatever the air does not carry the ground still
+        can. <strong>Bulk transport</strong> by atmosphere and ocean is the one that makes Venus a 460&nbsp;°C
+        world with no day/night difference at all. <strong>Heat stored in the ground</strong> is the standard
+        <em>thermal parameter</em> — the surface's rate of storing heat against its rate of radiating it away —
+        which is where rotation belongs: a slow rotator radiates its store away before dawn and freezes hard, and
+        a cold world barely cools at all, because radiating goes as T⁴ and at 70&nbsp;K that is feeble. Hence
+        Mercury's −176&nbsp;°C night out of a 421&nbsp;°C noon, and Pluto and Triton coming out very nearly
+        uniform. The one surface property this needs is thermal inertia, taken as bare regolith's measured value
+        and raised where an atmosphere puts gas in the pore spaces to conduct through — a whisper of air buys
+        almost all of that, which is why Mars holds its night far better than the airless Moon does.</p>
 
       <h3>Self-luminous brown dwarfs</h3>
       <p>A <strong>brown-dwarf-mass</strong> body (~8–80 M♃, i.e. the sub-brown-dwarf, brown-dwarf and

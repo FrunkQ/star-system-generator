@@ -35,8 +35,14 @@ export function massRel(b: CelestialBody): string {
   const m = b.massKg / EARTH_MASS_KG;
   return `${m < 1000 ? m.toFixed(2) : m.toExponential(2)} M⊕`;
 }
+// The MEAN surface temperature — the average of this world's day and night sides, which the physics
+// derives from the energy balance and publishes on the profile. NOT `temperatureK`: that balances
+// POWER (it is what the body radiates), and because power goes as T⁴ it sits above the average on
+// anything with a real day/night swing — the Moon radiates at 270 K and averages 214 (inbox B63).
+// A star has no profile and reads its photosphere directly.
 export function tempC(b: CelestialBody, tempUnit: TemperatureUnit = 'C'): string {
-  return b.temperatureK === undefined ? '' : formatTempK(b.temperatureK, tempUnit);
+  const k = b.temperatureProfile?.meanK ?? b.temperatureK;
+  return k === undefined ? '' : formatTempK(k, tempUnit);
 }
 export function atmosphere(b: CelestialBody): string {
   if (!b.atmosphere) return 'None';
@@ -321,8 +327,9 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   // Stars are always Kelvin (a ~5,778 K star reads oddly as °C); the switch governs planet/moon temps.
   add('Surface temp', tempC(b, b.roleHint === 'star' ? 'K' : tempUnit));
   // The range must be the SURFACE range, to match the row above it. `temperatureRangeK` is the
-  // SurfaceTempProfile's total (`totalMinK`/`totalMaxK`), built as mean ± the swings combined in
-  // quadrature — so it brackets `temperatureK` by construction. The EQUILIBRIUM min/max does not:
+  // SurfaceTempProfile's total (`totalMinK`/`totalMaxK`), built as the profile's own mean ± the swings
+  // combined in quadrature — so it brackets the row above by construction, which is why that row now
+  // reads the profile's mean rather than `temperatureK`. The EQUILIBRIUM min/max does not:
   // it omits the greenhouse and every other heat term, so a world with any air showed a mean sitting
   // outside its own quoted range (Pandora: 45 °C against −28 to −23 °C, the 71 K gap being its
   // greenhouse). Stars and constructs have neither field — `processEnvironment` returns early for a

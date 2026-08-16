@@ -246,6 +246,29 @@ describe('Solar System Physics Baseline', () => {
         // cycle, not a 3 K / 796 K face split).
         expect(moon.temperatureRangeK!.max).toBeLessThan(600);
 
+        // Day and night against MEASUREMENT, on the two bodies where the swing is the whole story
+        // (inbox B63). Luna: noon about 120 C, night about -173 C, and an equatorial average near
+        // 215 K — which is 55 K BELOW the temperature it radiates at, because power goes as T^4.
+        const ganymede = processedSystem.nodes.find(n => n.name === 'Ganymede') as CelestialBody;
+        const callisto = processedSystem.nodes.find(n => n.name === 'Callisto') as CelestialBody;
+        const lunaDayNight = moon.temperatureProfile!.components.find((c) => c.source === 'diurnal')!;
+        expect(lunaDayNight.highK).toBeGreaterThan(360);   // ~110 C — the bond-albedo bound reads low
+        expect(lunaDayNight.highK).toBeLessThan(400);      // and 209 C (482 K) was the bug
+        expect(lunaDayNight.lowK).toBeGreaterThan(85);     // ~100 K measured; -214 C (59 K) was the bug
+        expect(lunaDayNight.lowK).toBeLessThan(125);
+        expect(moon.temperatureProfile!.meanK).toBeLessThan(moon.temperatureK! - 40);
+        // Mercury: a captured 3:2 resonance is NOT a permanent face, so it gets a (very slow) cycle,
+        // and its noon at perihelion is the hottest surface in the system at about 427 C.
+        expect(mercury.temperatureProfile!.components.some((c) => c.source === 'locked-day')).toBe(false);
+        expect(mercury.temperatureRangeK!.max).toBeGreaterThan(650);
+        expect(mercury.temperatureRangeK!.max).toBeLessThan(750);
+        // Venus proves the damping term: 92 bar evens the swing out completely, so its mean must NOT
+        // move off the radiating temperature at all.
+        expect(Math.abs(venus.temperatureProfile!.meanK - venus.temperatureK!)).toBeLessThan(1);
+        expect(venus.temperatureProfile!.components.some((c) => c.source === 'diurnal')).toBe(false);
+        // Two slow rotators that the old clamped rotation factor made identical to the kelvin.
+        expect(ganymede.temperatureRangeK!.min).not.toBe(callisto.temperatureRangeK!.min);
+
         // --- Authored end-state preservation (the "double-aging" fix) ---
         // Hand-authored bodies carry no evolveAtmosphere/autoClassify flags, so processing must
         // NOT erode their deliberate trace exospheres nor overwrite their authored classes.

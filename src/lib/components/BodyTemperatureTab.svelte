@@ -116,6 +116,12 @@
   // switches) — NOT on every reprocess/body-prop update. Firing on every change made updateTotal fight
   // the processor's own temperature write and loop once an albedo override couples albedo → equilibrium
   // → greenhouse. After an edit the processor owns the committed temperature; the tab renders that.
+  // The MEAN a GM reads is the average of the day and night surface temperatures, which the profile
+  // derives from the energy balance (physics/surfaceTemperature). `temperatureK` is the composed
+  // RADIATING temperature and is what the rest of the engine keys on; they part company exactly when
+  // the swing is large (inbox B63). Falls back to it for anything with no profile yet.
+  $: meanSurfaceK = body.temperatureProfile?.meanK ?? body.temperatureK ?? 0;
+
   let lastEqKey = '';
   $: {
       const au = body.orbit?.elements.a_AU ?? parentBody?.orbit?.elements.a_AU ?? 0;
@@ -202,12 +208,23 @@
         
         <hr />
         
+        <!-- The MEAN is the average of this world's day and night surface temperatures, which is not
+             the same number as the heat balance above it: that balances POWER, and power goes as T⁴,
+             so a world with a huge swing radiates like a warm one while averaging far below it. The
+             two agree on anything with enough air to even the swing out. -->
         <div class="read-only-row highlight">
             <label>Mean Surface Temperature</label>
-            <span class="value large" style="color: {getTempColor(body.temperatureK || 0)}">
-                {$fmt.tempK(body.temperatureK || 0)}
+            <span class="value large" style="color: {getTempColor(meanSurfaceK)}">
+                {$fmt.tempK(meanSurfaceK)}
             </span>
         </div>
+
+        {#if Math.abs(meanSurfaceK - (body.temperatureK || 0)) >= 2}
+            <div class="read-only-row">
+                <label>Radiating Temperature <span class="derived-pill" title="The temperature this world RADIATES at, balancing the heat it takes in. Radiated power goes as T⁴, so a world that bakes by day and freezes by night gives off as much as a uniformly warm one while averaging much colder — the mean above is what a thermometer on the ground would average.">balance</span></label>
+                <span class="value" style="color: {getTempColor(body.temperatureK || 0)}">{$fmt.tempK(body.temperatureK || 0)}</span>
+            </div>
+        {/if}
 
         {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
             {@const p = body.temperatureProfile}
@@ -228,8 +245,10 @@
                 </div>
             {/each}
             <div class="range-note">
-                The mean averages heat over the whole body; each source above is the swing it alone
-                would add. The total is the combined extreme (pole + winter + night ↔ equator + summer + day, or a tidal hotspot).
+                The mean is the average of the day and night sides; each source above is the swing it
+                alone would add. The total is the combined extreme (pole + winter + night ↔ equator +
+                summer + day, or a tidal hotspot). The sunlit side is bounded by the temperature at
+                which the ground alone re-radiates the light falling straight down on it.
             </div>
         {/if}
     {/if}

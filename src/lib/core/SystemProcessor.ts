@@ -693,6 +693,15 @@ export class SystemProcessor implements ISystemProcessor {
         const { profile, tags: tempTags } = surfaceTempProfile({
             meanK: body.temperatureK ?? equilibriumTempK,
             equilibriumK: equilibriumTempK,
+            // The sunlit ceiling is (S(1−A)/σ)^¼ and a body reaches it at CLOSEST approach, so the
+            // hot side is bounded on the peri-astron equilibrium temperature rather than the mean-
+            // distance one. `commitThermal` above wrote it this pass from the same chain walk to the
+            // star that B42 recovered the seasonal eccentricity from — not a second model.
+            equilibriumMaxK: (body as any).equilibriumTempMaxK,
+            // Day, night and peak are derived in EQUILIBRIUM space and mapped to the surface here, so
+            // the greenhouse, tidal, radiogenic, internal and self-luminous terms are added by the one
+            // function that owns them instead of being re-implemented against a scaled amplitude.
+            composeSurfaceAt: (teqK: number) => composeBodySurfaceTemperature(body, teqK),
             pressureBar: body.atmosphere?.pressure_bar ?? 0,
             rotationHours: body.rotation_period_hours,
             tidallyLocked: body.tidallyLocked,
