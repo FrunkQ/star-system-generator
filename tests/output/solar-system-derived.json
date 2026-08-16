@@ -570,6 +570,10 @@
           "value": "light"
         },
         {
+          "key": "visibility/murky",
+          "value": "4.1 km"
+        },
+        {
           "key": "habitability/none"
         },
         {

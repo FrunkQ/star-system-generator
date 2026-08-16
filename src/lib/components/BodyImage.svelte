@@ -20,6 +20,18 @@
   type View = 'photo' | 'disc' | 'sphere' | 'swatch' | 'horizon';
   let view: View = 'photo';
 
+  // ICONS, not words. Five labels in a row ate most of the top of a 4:3 box; five glyphs read at a
+  // glance and leave the picture to be the picture. Each one still carries its title and aria-label,
+  // so nothing is lost to anyone who needs the words — they are just not printed over the art.
+  // Flat, 24-box, 2px stroke, currentColor: the house icon idiom.
+  const ICON: Record<View, string> = {
+    photo: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-6 6-2-2-5 5"/>',
+    disc: '<circle cx="12" cy="12" r="8.5"/><path d="M4.6 9.2c3 1.6 5.6 1.2 7.4 0s4.4-1.6 7.4 0M4.6 15.2c3 1.6 5.6 1.2 7.4 0s4.4-1.6 7.4 0"/>',
+    sphere: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><ellipse cx="12" cy="12" rx="4" ry="8.5"/>',
+    swatch: '<rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.2"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.2"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.2"/>',
+    horizon: '<path d="M2 18h20"/><path d="M6.5 18a5.5 5.5 0 0 1 11 0"/><path d="M12 5.5v2M5.2 8.2l1.4 1.4M18.8 8.2l-1.4 1.4"/>'
+  };
+
   $: infoUrl = planetTypeInfoUrl(body?.classes);
   $: hasLight = !!body?.surfaceSpectrum;
   // A world with no derived colour has nothing to show in the last three views, so they are not
@@ -71,8 +83,13 @@
     {#if views.length > 1}
       <div class="view-pills" role="group" aria-label="How to show this world">
         {#each views as v}
-          <button type="button" class:on={view === v.id} title={v.title}
-                  on:click={() => (view = v.id)}>{v.label}</button>
+          <button type="button" class:on={view === v.id} title="{v.label} — {v.title}"
+                  aria-label={v.title} aria-pressed={view === v.id} on:click={() => (view = v.id)}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              {@html ICON[v.id]}
+            </svg>
+          </button>
         {/each}
       </div>
     {/if}
@@ -147,14 +164,17 @@
     border: none;
     background: transparent;
     color: var(--text, #e8e8e8);
-    font-size: 0.68rem;
-    padding: 2px 8px;
+    padding: 4px;
     border-radius: 999px;
     cursor: pointer;
-    line-height: 1.5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.72;
   }
-  .view-pills button:hover { color: var(--accent, #ff5a1f); }
-  .view-pills button.on { background: rgba(255, 255, 255, 0.16); }
+  .view-pills button:hover { color: var(--accent, #ff5a1f); opacity: 1; }
+  .view-pills button.on { background: rgba(255, 255, 255, 0.18); opacity: 1; }
+  .view-pills button:focus-visible { outline: 2px solid var(--accent, #ff5a1f); outline-offset: 1px; }
 
   .info-pill {
     position: absolute;

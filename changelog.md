@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.667-beta - 16th Aug 2026
+
+- NEW: how far you can see, in metres. Occluded sight lines are where the plot is — "the air is thick" is scenery, but "you can see forty metres and your torch reaches twelve" decides whether the thing in the murk gets a surprise round. Every world now works out its visual range, its horizon, and how far a hand torch, headlights and a floodlight actually reach.
+- It is the same optical depth the surface spectrum already computes, turned on its side: a sky is dim overhead and a horizon is lost for one reason. Nothing about visibility is derived twice. Earth comes out at its clean-air limit of 343 km — the textbook figure, and the reason distant mountains go blue instead of vanishing — while Venus is 4 km of murk from sheer weight of air, its clouds being ninety bar over your head rather than around your knees.
+- A lamp is eaten TWICE, out to the target and back to the eye, which is why lights are so much less use in murk than people expect. Headlights that throw 720 m on Earth manage 580 m on Venus and about 30 m in fog.
+- NEW tag: `visibility/hazy|murky|thick|blind`, carrying the range as its value. Only ever present when the air actually gets in the way, so the tag's presence means occlusion — a clear sky and an airless rock are both "nothing between you and it", and tagging every world with that would be clutter. In Sol only Venus earns one.
+- The wipe between home and there is now a handle you drag ON the picture, rather than a slider underneath it. That is the gesture everyone already knows, and it gives the row of controls back to the things that cannot be done by dragging.
+- The body panel's view switch is icons rather than words — five labels ate most of the top of the box. Titles and labels are unchanged for anyone who needs the words.
+
 ## v2.1.666-beta - 16th Aug 2026
 
 - FIXED: standing on Venus, everything looked pink. The eye-adaptation model was unbounded — it assumed your eyes can discount any light however little of it there is. Venus's sky leaves the blue cones half a percent of the light they get at home, and the maths answered that by amplifying them 134 times, which does not recover the colour, it recovers the noise. A white card came back pink and a blue wire came back violet. Adaptation is now limited per channel by how much light that channel actually has, the way a low-pressure sodium street lamp leaves the world orange-grey rather than colour-corrected. Venus now reads as Venera photographed it: a deep orange world where blues go dark rust.

@@ -12,6 +12,7 @@
   import { onMount } from 'svelte';
   import type { RulePack, CelestialBody } from '$lib/types';
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
+  import { deriveVisibility, distanceWords, LAMPS } from '$lib/physics/visibility';
   import { blackbodySpectrum, gridShare, spectrumToHex } from '$lib/physics/spectrum';
   import {
     lightOperator, relightImage, colourUnderOperator, confusability,
@@ -97,6 +98,10 @@
   // what the eye adapts away. Venus is the case that makes the distinction earn its keep: a fifth of
   // the star's ENERGY reaches the ground, but it comes down peaking at 920 nm, so barely a
   // sixtieth of the visible light does.
+  // HOW FAR YOU CAN SEE — the other half of "what is it like to be there", and the half that decides
+  // whether the thing in the murk gets a surprise round.
+  const sight = $derived(body ? deriveVisibility(body, pack) : standalone ? deriveVisibility(demoBody, pack) : null);
+
   const level = $derived(op ? brightnessVs(op, daylightOp) : 1);
   const levelPct = $derived(
     level >= 0.1 ? `${Math.round(level * 100)}%`
@@ -160,9 +165,34 @@
       relightImage(img.data, op, adapt, trueLevel ? level : 1);
       ctx.putImageData(img, x0, 0);
     }
-    // The seam, so the eye knows where the comparison is.
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillRect(x0 - 1, 0, 2, H);
+    // The seam is DOM, not canvas — see the handle below. Drawn here it would scale with the bitmap
+    // and could not be grabbed.
+  }
+
+  // ── Dragging the wipe on the image itself ─────────────────────────────────────────────────────
+  // A separate slider under the picture works, but the gesture everyone already knows is dragging
+  // the seam, and it gives the row of controls back to the things that cannot be done by dragging.
+  let stage: HTMLDivElement;
+  let dragging = $state(false);
+
+  function seek(clientX: number) {
+    const r = stage.getBoundingClientRect();
+    if (r.width <= 0) return;
+    split = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+  }
+  function grab(e: PointerEvent) {
+    dragging = true;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    seek(e.clientX);
+  }
+  function move(e: PointerEvent) { if (dragging) seek(e.clientX); }
+  function drop() { dragging = false; }
+  function nudge(e: KeyboardEvent) {
+    const step = e.shiftKey ? 10 : 2;
+    const to = { ArrowLeft: -step, ArrowRight: step, Home: -100, End: 100 }[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    split = Math.max(0, Math.min(100, split + to));
   }
 
   function drawChart(ctx: CanvasRenderingContext2D, H: number) {
@@ -238,10 +268,6 @@
           </select>
         </label>
       {/if}
-      <label class="wipe">
-        <span>Home <b>|</b> there</span>
-        <input type="range" min="0" max="100" step="1" bind:value={split} />
-      </label>
       <label class="adapt">
         <input type="checkbox" bind:checked={adapt} />
         <span>once your eyes adjust</span>
@@ -256,8 +282,23 @@
       Midday here is <b>{levelPct}</b> of an Earth noon &mdash; {brightnessWords(level)}.
     </p>
 
-    <canvas bind:this={canvas} width={W} height={height}
-            aria-label="A familiar colour reference, with this world's own daylight applied to the right of the slider."></canvas>
+    <div class="stage" bind:this={stage} class:dragging
+         onpointerdown={grab} onpointermove={move} onpointerup={drop} onpointercancel={drop}>
+      <canvas bind:this={canvas} width={W} height={height}
+              aria-label="A familiar colour reference, with this world's own daylight applied to the right of the seam."></canvas>
+      <div class="seam" style="left:{split}%">
+        <span class="knob" role="slider" tabindex="0" aria-label="Drag to wipe between home and this world"
+              aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(split)}
+              aria-valuetext="{Math.round(split)}% home" onkeydown={nudge}>
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="14 7 19 12 14 17" /><polyline points="10 7 5 12 10 17" />
+          </svg>
+        </span>
+      </div>
+      <span class="edge left" aria-hidden="true">home</span>
+      <span class="edge right" aria-hidden="true">there</span>
+    </div>
 
     {#if !terse}
       <p class="note">
@@ -271,6 +312,27 @@
       </p>
     {/if}
 
+    <!-- WHAT THE HORIZON VIEW IS FOR. The chart answers "can they tell these two apart"; the
+         landscape answers "how far can they see, and what does a lamp buy them" — which is the one
+         that decides whether the thing in the murk gets a surprise round. Each scene carries the
+         readout it is asking about; the physics page, having room, carries both. -->
+    {#if sight && (activeScene === 'landscape' || !terse)}
+      <div class="sight">
+        <span class="pair">
+          {#if sight.rangeM < sight.horizonM}
+            The air gives out at <b>{distanceWords(sight.rangeM)}</b>
+          {:else}
+            You see to the horizon, <b>{distanceWords(sight.horizonM)}</b>
+          {/if}
+        </span>
+        {#each LAMPS as l}
+          <span class="pair">{l.label} <b>{distanceWords(sight.lampM[l.key])}</b></span>
+        {/each}
+        {#if sight.fogged}<span class="pair fog">fog on the ground</span>{/if}
+      </div>
+    {/if}
+
+    {#if activeScene === 'chart' || !terse}
     <div class="confusions">
       {#each confusions as c}
         <span class="pair" class:bad={c.ratio < 0.5} class:worse={c.ratio < 0.25}>
@@ -281,6 +343,7 @@
         </span>
       {/each}
     </div>
+    {/if}
     {#if terse}
       <!-- FUNCTION, NOT LESSON. In the body panel a GM wants the numbers and the picture; the working
            belongs on the physics page, one click away, rather than three paragraphs down the panel. -->
@@ -305,7 +368,7 @@
   /* In a narrow panel the controls stack instead of squeezing onto one line. */
   @container (max-width: 460px) {
     .controls { gap: 8px; }
-    .controls .scene, .controls .wipe, .controls .adapt { flex: 1 1 100%; }
+    .controls .scene { flex: 1 1 100%; }
   }
   .controls.demo { border-bottom: 1px solid var(--border, #2a2d36); padding-bottom: 8px; margin-bottom: 8px; }
   .controls .star, .controls .sky { display: flex; flex-direction: column; gap: 2px; flex: 1 1 240px; min-width: 200px; }
@@ -319,13 +382,32 @@
     padding: 3px 6px; background: var(--bg-control, #1b1e26); color: var(--text, #eee);
     border: 1px solid var(--border, #2a2d36); border-radius: 4px;
   }
-  .wipe { display: flex; flex-direction: column; gap: 2px; flex: 1 1 220px; min-width: 180px; }
-  .wipe input { width: 100%; }
   .adapt { display: flex; align-items: center; gap: 6px; }
   canvas {
     width: 100%; height: auto; display: block; border-radius: 6px;
     border: 1px solid var(--border, #2a2d36); background: #000;
   }
+  /* The wipe lives on the picture. Touch-action none so a drag does not scroll the panel instead. */
+  .stage { position: relative; cursor: ew-resize; touch-action: none; user-select: none; }
+  .stage.dragging { cursor: grabbing; }
+  .seam {
+    position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px;
+    background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 6px rgba(0, 0, 0, 0.7); pointer-events: none;
+  }
+  .knob {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; background: rgba(0, 0, 0, 0.66); color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.85); backdrop-filter: blur(2px); pointer-events: auto;
+    cursor: ew-resize;
+  }
+  .knob:focus-visible { outline: 2px solid var(--accent, #ff5a1f); outline-offset: 2px; }
+  .edge {
+    position: absolute; top: 6px; font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75); text-shadow: 0 1px 3px #000; pointer-events: none;
+  }
+  .edge.left { left: 8px; }
+  .edge.right { right: 8px; }
   .note { font-size: 0.8em; color: var(--text-muted, #cfcfcf); margin: 6px 0 0; }
   .note.small a { color: var(--text-faint, #8a8f9a); }
   .note.small a:hover { color: var(--accent, #ff5a1f); }
@@ -333,7 +415,9 @@
   .level.dim b { color: #e0a32a; }
   .note.small { font-size: 0.74em; color: var(--text-faint, #8a8f9a); }
   .none { font-size: 0.85em; color: var(--text-faint, #8a8f9a); }
-  .confusions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 0.78em; color: var(--text-muted, #cfcfcf); }
+  .confusions, .sight { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 0.78em; color: var(--text-muted, #cfcfcf); }
+  .sight .pair b { color: var(--text, #e8e8e8); }
+  .sight .fog { color: #e0a32a; }
   .pair { display: inline-flex; align-items: center; gap: 5px; }
   .pair .sw { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--border, #2a2d36); }
   .pair b { font-variant-numeric: tabular-nums; }

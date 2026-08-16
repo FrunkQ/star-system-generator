@@ -50,6 +50,27 @@ function surfaceGravityMs2(body: CelestialBody): number {
   return g && g > 0 ? g : EARTH_GRAVITY;
 }
 
+/**
+ * Zenith Rayleigh optical depth at 550 nm, scaled from Earth's own by column density and by the gas
+ * mix's relative cross-section — which is pack DATA (`rayleigh`), not a constant per gas in code.
+ *
+ * Exported because HOW FAR YOU CAN SEE is the same quantity looked at sideways: the sky is dim
+ * overhead and the horizon is lost for one reason, and a second derivation of it would drift from
+ * this one. `visibility.ts` divides it by the scale height to get extinction per metre.
+ */
+export function rayleighTau550(body: CelestialBody, pack?: RulePack | null): number {
+  const comp = body.atmosphere?.composition ?? {};
+  const columnRatio = EARTH_COLUMN_M2 > 0 ? columnDensity(body) / EARTH_COLUMN_M2 : 0;
+  if (!(columnRatio > 0)) return 0;
+  let sigmaRel = 0, fracSum = 0;
+  for (const [gas, frac] of Object.entries(comp)) {
+    if (!(frac > 0)) continue;
+    sigmaRel += frac * (pack?.gasPhysics?.[gas]?.rayleigh ?? 1);
+    fracSum += frac;
+  }
+  return EARTH_TAU_RAYLEIGH_550 * columnRatio * (fracSum > 0 ? sigmaRel / fracSum : 1);
+}
+
 /** Atmospheric column number density, molecules·m⁻². N = P/(m·g), with m the mean molecular mass. */
 function columnDensity(body: CelestialBody): number {
   const pBar = body.atmosphere?.pressure_bar ?? 0;
@@ -116,17 +137,8 @@ export function deriveSurfaceSpectrum(
   const columnRatio = EARTH_COLUMN_M2 > 0 ? column / EARTH_COLUMN_M2 : 0;
 
   if (columnRatio > 0) {
-    // RAYLEIGH — the λ⁻⁴ that makes a sky blue and takes the blue end away from the ground. Scaled
-    // from Earth's own zenith optical depth by column density and by the gas mix's relative
-    // cross-section, which is pack DATA (`rayleigh`) rather than a constant per gas in code.
-    let sigmaRel = 0, fracSum = 0;
-    for (const [gas, frac] of Object.entries(comp)) {
-      if (!(frac > 0)) continue;
-      sigmaRel += frac * (pack?.gasPhysics?.[gas]?.rayleigh ?? 1);
-      fracSum += frac;
-    }
-    sigmaRel = fracSum > 0 ? sigmaRel / fracSum : 1;
-    const tau550 = EARTH_TAU_RAYLEIGH_550 * columnRatio * sigmaRel;
+    // RAYLEIGH — the λ⁻⁴ that makes a sky blue and takes the blue end away from the ground.
+    const tau550 = rayleighTau550(body, pack);
     for (let i = 0; i < GRID_NM.length; i++) tau[i] += tau550 * Math.pow(550 / GRID_NM[i], 4);
     if (tau550 > 0.005) attenuators.push({ label: 'Rayleigh scattering', strength: 1 - Math.exp(-tau550) });
 

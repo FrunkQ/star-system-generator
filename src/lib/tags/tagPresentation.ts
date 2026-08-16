@@ -402,7 +402,16 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'biodiversity/pigment':        { label: 'Dominant pigment',  description: 'The pigment most of this world\'s photosynthetic life uses, drawn from the set that scores as viable under the light reaching its ground. Several usually are, so which one dominates is contingent — the same world always gives the same answer, a similar world next door may not.' },
   'biodiversity/settled':        { label: 'Settled',           description: 'How much of the LAND carries a morphology that lights up at night. From orbit a settlement reads as what it emits rather than as a colour, so this is the figure behind the night-side glow: it spreads from the coasts inland exactly as plant cover does, because people settle the same ground first.' },
   'biodiversity/ecumenopolis':   { label: 'Ecumenopolis',      description: 'A planet-wide city: the lit morphology has taken essentially all of this world\'s land. The night side is a continuous network of light from coast to coast.' },
-  'biodiversity/land-cover':     { label: 'Life on the land',  description: 'How much of the LAND shows any colour of life, as a percentage. It is the union of the layers painted over one another, not the sum of their coverages — each layer covers that share of the land, so the sliders may total well past 100%.' }
+  'biodiversity/land-cover':     { label: 'Life on the land',  description: 'How much of the LAND shows any colour of life, as a percentage. It is the union of the layers painted over one another, not the sum of their coverages — each layer covers that share of the land, so the sliders may total well past 100%.' },
+
+  // --- Visibility: how far you can see, which is where the plot is ---
+  // Only ever present when the AIR gets in the way. A clear sky and an airless rock both leave
+  // nothing between you and the view, and a tag on every world saying so would be noise. The value
+  // is the range at which a dark object is lost against the sky.
+  'visibility/hazy':             { label: 'Hazy',              description: 'The air is thick enough to soften the distance: a dark object is lost against the sky somewhere between ten and fifty kilometres out. Far enough that only long sight lines notice.' },
+  'visibility/murky':            { label: 'Murky',             description: 'Sight lines close to between one and ten kilometres — the far side of a valley is gone. Venus is here, from sheer weight of air rather than from any cloud: its decks sit ninety bar over your head.' },
+  'visibility/thick':            { label: 'Thick',             description: 'You can see a few hundred metres at most. A lamp is eaten twice over — out to the target and back to the eye — so it buys far less than the same lamp would at home.' },
+  'visibility/blind':            { label: 'Blind',             description: 'Under a hundred metres. Anything further away than a shout is simply not there, and everything arrives without warning.' }
 };
 
 // --- Legacy tag cleanup -----------------------------------------------------------------------

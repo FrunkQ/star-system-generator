@@ -66,7 +66,8 @@ export const ENGINE_NAMESPACES: { id: string; provenance: 'physics' | 'authored'
   { id: 'stellar', provenance: 'physics', label: 'Stellar activity' },
   { id: 'biodiversity', provenance: 'physics', label: 'Biosphere' },
   { id: 'atmosphere', provenance: 'physics', label: 'Atmosphere' },
-  { id: 'feature', provenance: 'physics', label: 'Features' }
+  { id: 'feature', provenance: 'physics', label: 'Features' },
+  { id: 'visibility', provenance: 'physics', label: 'Visibility' }
 ];
 
 

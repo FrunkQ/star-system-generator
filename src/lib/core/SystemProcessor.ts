@@ -39,6 +39,7 @@ import { deriveGeoActivity } from '../physics/geoActivity';
 import { deriveVolatileRetention } from '../physics/volatileRetention';
 import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { deriveSurfaceSpectrum } from '../physics/surfaceSpectrum';
+import { deriveVisibility, distanceWords } from '../physics/visibility';
 import { deriveVegetation } from '../physics/vegetation';
 import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
@@ -1336,6 +1337,20 @@ export class SystemProcessor implements ISystemProcessor {
                 emit(body.tags, { key: 'biodiversity/settled', value: `${Math.round(most * 100)}%` });
                 if (most >= 0.95) emit(body.tags, { key: 'biodiversity/ecumenopolis' });
             }
+        }
+
+        // HOW FAR YOU CAN SEE. The same optical depth the spectrum above just used, turned on its
+        // side — a sky is dim overhead and a horizon is lost for the same reason. It runs here
+        // because it needs the atmosphere AND the cloud decks final, which they are by now.
+        //
+        // TAG-6 — `visibility/` has exactly ONE owning pass and this is it.
+        // Emitted ONLY when the air actually gets in the way, so the tag's PRESENCE means occlusion.
+        // A clear sky and an airless rock are both "nothing between you and it", and tagging every
+        // world in the map with that would be the clutter, not the information.
+        body.tags = stripForReprocess(body.tags, ['visibility/']);
+        const sight = deriveVisibility(body, pack);
+        if (sight.band !== 'clear' && sight.band !== 'airless') {
+            emit(body.tags, { key: `visibility/${sight.band}`, value: distanceWords(sight.rangeM) });
         }
 
         // The apparent colour is lit by the SAME spectrum the pigment model read — one derivation,
