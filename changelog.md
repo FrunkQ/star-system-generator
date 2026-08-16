@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.670-beta - 16th Aug 2026
+
+- Regenerated the derived fixture so it records each palette stop's authored material colour alongside its appearance.
+
 ## v2.1.669-beta - 16th Aug 2026
 
 - Docs: a new physics section, "Standing on it", covering the three things that follow from the surface spectrum — how bright a world's midday is, why a bounded eye is the honest one, and how far you can see. It states what the model does NOT do as plainly as what it does: no aerosols, so every visibility figure is a ceiling.
