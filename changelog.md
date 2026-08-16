@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.640-beta - 16th Aug 2026
+
+* Internal: removed a dead atmosphere-retention check. It worked out whether a body kept its air and then threw the answer away — nothing had read it since the real escape model landed.
+
 ## v2.1.639-beta - 16th Aug 2026
 
 * Physics page: a new section on ionising output and the corona — why a star's brightness and the radiation that strips atmospheres are different numbers, and why a red giant is not the fierce X-ray source its size suggests.

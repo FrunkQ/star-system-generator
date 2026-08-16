@@ -717,11 +717,17 @@ export class SystemProcessor implements ISystemProcessor {
         body.temperatureProfile = profile;
         body.temperatureRangeK = { min: profile.totalMinK, max: profile.totalMaxK };
 
-        // Atmosphere Retention Check (Physics-based stripping)
-        const totalStellarRadiation = calculateTotalStellarRadiation(body, allNodes);
-        const magneticFieldStrength = body.magneticField?.strengthGauss || 0;
-        const atmosphereRetentionFactor = pack.generation_parameters?.atmosphere_retention_factor || 100;
-        const retainsAtmosphere = (magneticFieldStrength * atmosphereRetentionFactor) > totalStellarRadiation;
+        // NO ATMOSPHERE-RETENTION CHECK HERE, DELIBERATELY, AND THIS COMMENT IS THE POINT.
+        // A block here computed `retainsAtmosphere` from magnetic field against stellar flux — and
+        // NOTHING READ THE RESULT. It had been dead since whenever the real model landed, and it was
+        // convincing enough that I first "fixed" it by adding belt flux to it before noticing the
+        // variable was never used. Deleted rather than fixed.
+        //
+        // The LIVE model is `physics/atmosphere.ts`, which does the same job properly: thermal (Jeans)
+        // escape plus non-thermal XUV and stellar-wind erosion, scaled by magnetic shielding. That is
+        // where an atmosphere-stripping question belongs, and where belt bombardment should go if it
+        // is ever modelled as a stripping term (it is a real mechanism — see PHY-11 — but adding it
+        // to a dead branch would have looked like progress and changed nothing).
     }
 
     // Nodes ordered so that a parent always comes before its children. Used by pass 2b, where a

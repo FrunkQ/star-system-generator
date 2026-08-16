@@ -1491,9 +1491,14 @@ longest.** Two copies of `radiationOutput / d^2` existed, agreeing on the formul
 who counts: `isLuminousSource` (stars AND self-luminous brown dwarfs) against `roleHint === 'star'`.
 A moon of a brown dwarf was irradiated for its temperature and radiation, and not for its
 atmosphere-retention check. Deleted; `calculateTotalStellarRadiation` owns the set as well as the sum.
-**STILL OPEN, recorded rather than fixed:** atmosphere retention reads STARLIGHT only, so a moon
-stripped by its host's belt is not modelled as stripped. Pre-existing, and mechanism 3 is the one it
-is missing.
+**CORRECTED 2026-08-16 — the "atmosphere retention reads starlight only" note above was WRONG, and
+the way it was wrong is worth keeping.** That check computed `retainsAtmosphere` and NOTHING READ THE
+RESULT: dead since the real model landed. It was convincing enough that the belt term was added to it
+before anyone noticed the variable was unused — a fix to a dead branch, which would have looked like
+progress and changed nothing. Deleted. **The live model is `physics/atmosphere.ts`** (Jeans escape
+plus XUV and wind erosion, scaled by magnetic shielding), and that is where belt bombardment belongs
+if it is ever modelled as a stripping term. **The lesson generalises: before fixing a physics branch,
+check that something reads its output.**
 
 ### PHY-9 An ageing profile is keyed on MASS, never on the star's TYPE
 WHERE: the [[B48]] star-classification workstream; `docs/dev/type-vocabulary-prev4.md` section 9.4.
