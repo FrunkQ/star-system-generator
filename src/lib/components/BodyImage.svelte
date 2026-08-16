@@ -2,9 +2,9 @@
   // The GM's picture of a world — and the several different pictures a GM actually wants of it.
   //
   // The artist's impression says what KIND of thing it is. The 2D disc and the 3D globe say what
-  // THIS one looks like, derived from its own physics. The swatches say what colours are on it. And
-  // the horizon says what it looks like from the ground, under its own daylight — which is the one
-  // that answers questions at the table rather than in the panel.
+  // THIS one looks like, derived from its own physics. And the last two say what it is like to be
+  // THERE: familiar colours and a landscape under that world's own daylight, which is the pair that
+  // answers questions at the table rather than in the panel.
   //
   // The 2D/3D switching is not reinvented here: `BodyGraphic` already does it for the player
   // document (see DocPanel), and this passes it the same modes.
@@ -28,8 +28,8 @@
     body?.image?.url ? { id: 'photo', label: 'Type', title: "The artist's impression for this world's type" } : null,
     { id: 'disc', label: '2D', title: 'This world as the orrery draws it, from its own physics' },
     system ? { id: 'sphere', label: '3D', title: 'This world as a globe — drag to spin it' } : null,
-    body?.apparentColor ? { id: 'swatch', label: 'Colours', title: 'The colours on this world, and its daylight' } : null,
-    hasLight ? { id: 'horizon', label: 'Horizon', title: 'What things look like standing on it, under its own daylight' } : null
+    hasLight ? { id: 'swatch', label: 'Colours', title: 'Familiar colours as they look under this world\'s own daylight' } : null,
+    hasLight ? { id: 'horizon', label: 'Horizon', title: 'A landscape under this world\'s own daylight' } : null
   ].filter(Boolean) as { id: View; label: string; title: string }[]);
 
   // Never leave the panel on a view this world cannot show.
@@ -41,15 +41,6 @@
     ? ({ ...system, nodes: system.nodes.filter((n: any) => n.id === body!.id || n.roleHint === 'star') } as System)
     : null;
 
-  $: swatches = (() => {
-    const out: { hex: string; label: string }[] = [];
-    for (const p of body?.apparentColor?.palette ?? []) out.push({ hex: p.hex, label: p.label || p.role });
-    for (const l of body?.vegetation?.layers ?? []) {
-      if (l.colorHex) out.push({ hex: l.colorHex, label: `${l.label}${l.pigmentLabel ? ` · ${l.pigmentLabel}` : ''}` });
-    }
-    if (body?.surfaceSpectrum) out.push({ hex: body.surfaceSpectrum.surfaceLightHex, label: 'daylight there' });
-    return out;
-  })();
 </script>
 
 {#if body && (body.image || views.length)}
@@ -57,18 +48,15 @@
     {#if view === 'photo' && body.image}
       <img src={body.image.url} alt="Artist's impression of {body.name}" class="planet-image" />
     {:else if view === 'swatch'}
-      <div class="pane swatch-pane">
-        {#each swatches as s}
-          <span class="sw" title="{s.label} — {s.hex}, as human eyes would see it">
-            <span class="chip" style="background:{s.hex}"></span>
-            <span class="lbl">{s.label}</span>
-          </span>
-        {/each}
-        {#if !swatches.length}<p class="empty">Nothing derived yet — re-process the system.</p>{/if}
+      <!-- The old Colours view listed the swatches this world is MADE of, which turned out to answer a
+           question nobody was asking. What a GM wants is the other direction: familiar colours, as they
+           look down there. That is the chart, and the pill IS the scene picker so the viewer hides its own. -->
+      <div class="pane chart-pane">
+        <UnderThisLight {body} pack={rulePack} fixedScene="chart" height={150} />
       </div>
     {:else if view === 'horizon'}
       <div class="pane horizon-pane">
-        <UnderThisLight {body} pack={rulePack} height={190} />
+        <UnderThisLight {body} pack={rulePack} fixedScene="landscape" height={150} />
       </div>
     {:else}
       <div class="pane gfx-pane" class:spin={view === 'sphere'}>
@@ -125,26 +113,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Top padding clears the pill group, which is an overlay: without it the first swatches sit
-       underneath it and the panel looks broken. */
+    /* Top padding clears the pill group, which is an overlay: without it the pane's own controls
+       sit underneath the buttons and the panel looks broken. */
     padding: 40px 10px 10px;
     box-sizing: border-box;
   }
   .gfx-pane { padding: 38px 6px 6px; }
   .gfx-pane.spin { cursor: grab; }
   .horizon-pane { align-items: stretch; flex-direction: column; padding: 38px 10px 10px; }
-  .swatch-pane {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px 12px;
-    align-content: flex-start;
-    justify-content: stretch;
-  }
-  .swatch-pane .sw {
-    display: flex; align-items: center; gap: 6px; font-size: 0.72rem;
-    color: var(--text-muted, #cfcfcf); min-width: 0;
-  }
-  .swatch-pane .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chart-pane { align-items: stretch; flex-direction: column; padding: 34px 10px 10px; }
   .swatch-pane .chip {
     width: 18px; height: 18px; border-radius: 4px; flex: none;
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -152,9 +129,11 @@
   .swatch-pane .empty { color: var(--text-faint, #8a8f9a); font-size: 0.75rem; }
 
   /* Top-left, opposite the More-information pill so the two never fight for the same corner. */
+  /* TOP RIGHT. At top-left these sat directly on the viewer's own scene picker and wipe slider,
+     which is how the first version hid its own controls behind its buttons. */
   .view-pills {
     position: absolute;
-    left: 8px;
+    right: 8px;
     top: 8px;
     display: inline-flex;
     gap: 2px;

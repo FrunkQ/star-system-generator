@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.664-beta - 16th Aug 2026
+
+- The body panel's Colours view is now the colour chart under that world's own daylight, rather than a list of the swatches the world is made of. The old one answered a question nobody was asking; this one answers the question a GM actually has — what does a familiar colour look like down there.
+- Horizon is the landscape, Colours is the chart, and picking between them is the view switch itself, so the viewer no longer carries a dropdown that repeats it. That is the space the pair needed to fit.
+- The view switch moved to the top right. At the top left it sat directly on the viewer's own controls and hid them behind its own buttons.
+
 ## v2.1.663-beta - 16th Aug 2026
 
 - FIXED: Venus had gone pink. Its ground was being lit by the light that reaches the ground, correctly, while its clouds kept their Earth-daylight colour — and cream cloud over deep-red rock is pink. Cloud tops and haze are lit by the light ABOVE the weather now, because the cloud is most of what did the filtering; lighting it with the surface spectrum was lighting it with light that only exists underneath it.

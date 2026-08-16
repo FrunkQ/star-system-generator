@@ -15,13 +15,17 @@
   import { blackbodySpectrum, gridShare, spectrumToHex } from '$lib/physics/spectrum';
   import { lightOperator, relightImage, colourUnderOperator, confusability } from '$lib/physics/imageUnderLight';
 
-  let { body = null, light = null, pack = null, height = 260, standalone = false }:
+  let { body = null, light = null, pack = null, height = 260, standalone = false, fixedScene = null }:
     { body?: CelestialBody | null; light?: number[] | null; pack?: RulePack | null;
-      height?: number; standalone?: boolean } = $props();
+      height?: number; standalone?: boolean;
+      /** Pin the scene and hide its picker — for a host that already offers the choice itself. */
+      fixedScene?: 'chart' | 'landscape' } = $props();
 
   let split = $state(50);          // where the wipe sits, as a percentage
   let adapt = $state(true);        // after your eyes settle, vs the moment you step out
   let scene = $state('chart');
+  // A host that offers the scene as its own control owns it; the picker below then just repeats it.
+  const activeScene = $derived(fixedScene ?? scene);
 
   // ── Standalone controls ───────────────────────────────────────────────────────────────────────
   // Deliberately just TWO, and they are the two that change a colour. Luminosity and distance move
@@ -127,7 +131,7 @@
     const ctx = canvas.getContext('2d')!;
     const H = canvas.height;
     ctx.clearRect(0, 0, W, H);
-    if (scene === 'chart') drawChart(ctx, H);
+    if (activeScene === 'chart') drawChart(ctx, H);
     else drawLandscape(ctx, H);
     // Re-light only the right-hand side; the wipe edge is the comparison.
     const x0 = Math.round((split / 100) * W);
@@ -181,7 +185,7 @@
     });
   }
 
-  $effect(() => { split; adapt; scene; op; draw(); });
+  $effect(() => { split; adapt; activeScene; op; demoTempK; demoSky; draw(); });
   onMount(draw);
 </script>
 
@@ -206,12 +210,14 @@
     {/if}
 
     <div class="controls">
-      <label class="scene">
-        <select bind:value={scene}>
-          <option value="chart">Colour chart &amp; wires</option>
-          <option value="landscape">A landscape</option>
-        </select>
-      </label>
+      {#if !fixedScene}
+        <label class="scene">
+          <select bind:value={scene}>
+            <option value="chart">Colour chart &amp; wires</option>
+            <option value="landscape">A landscape</option>
+          </select>
+        </label>
+      {/if}
       <label class="wipe">
         <span>Home <b>|</b> there</span>
         <input type="range" min="0" max="100" step="1" bind:value={split} />
