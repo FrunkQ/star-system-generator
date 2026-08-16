@@ -57,10 +57,9 @@ Built with <a href="https://kit.svelte.dev/" target="_blank" rel="noopener noref
 <p>H-R Diagram Background: <a href="https://www.eso.org/public/images/eso0728c/" target="_blank" rel="noopener noreferrer">ESO</a>, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license.</p>
 <p>Weyland-Yutani Logo: Sourced from <a href="https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a> by <a href="https://commons.wikimedia.org/wiki/User:IllaZilla" target="_blank" rel="noopener noreferrer">IllaZilla</a>, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en" target="_blank" rel="noopener noreferrer">Creative Commons Attribution-Share Alike 3.0 Unported</a> license. Changes made: Logo Extracted.</p>
 
-<hr>
-
-<p><a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">Star System Explorer</a> © 2026 FrunkQ. Licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>.</p>
 `;
+  // The licence and the project links live in the FOOTER below, not in this scrolling body —
+  // one statement of each, always on screen, matching the Mappadux About box.
 
   function close() {
     dispatch('close');
@@ -87,6 +86,25 @@ Built with <a href="https://kit.svelte.dev/" target="_blank" rel="noopener noref
         {/if}
       </section>
     {/if}
+
+    <footer class="about-foot">
+      <div class="foot-title">Star System Explorer {APP_VERSION} — scientifically-plausible star systems</div>
+      <nav class="foot-links">
+        <a href="https://starsystemx.com/" target="_blank" rel="noopener noreferrer">starsystemx.com</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://beta.starsystemx.com/" target="_blank" rel="noopener noreferrer">Beta</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">Discord</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://ko-fi.com/frunkq" target="_blank" rel="noopener noreferrer">Ko-fi</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://github.com/FrunkQ/star-system-generator" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+      <div class="foot-licence">
+        This slop was vibe-coded by FrunkQ ·
+        <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank" rel="noopener noreferrer">GPL-3.0</a>
+      </div>
+    </footer>
   </div>
 </div>
 
@@ -143,4 +161,19 @@ Built with <a href="https://kit.svelte.dev/" target="_blank" rel="noopener noref
   }
   .debug-toggle:hover { background: var(--bg-control-hover); }
   hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+  /* Always on screen: the body scrolls, this does not — so the licence and the project links
+     cannot be missed by anyone who never reaches the bottom of a long credits list. */
+  .about-foot {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--border);
+    padding: 10px 18px 12px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted, #cfcfcf);
+  }
+  .foot-title { font-weight: 600; }
+  .foot-links { margin-top: 2px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .foot-links span { opacity: 0.5; }
+  .about-foot a { color: var(--link); }
+  .foot-licence { margin-top: 2px; opacity: 0.75; font-size: 0.8rem; }
 </style>

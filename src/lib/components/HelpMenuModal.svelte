@@ -32,10 +32,16 @@
           <span class="hi-title">Getting Started ↗</span>
           <span class="hi-desc">A guided walkthrough — the starmap, building worlds, tags, autopilot, playing at the table.</span>
         </a>
+        <!-- The Discord invitation is a SIBLING, not nested: `.help-item` is itself an anchor, and
+             an anchor inside an anchor is invalid and swallows the inner click. -->
         <a class="help-item" href="https://youtu.be/LrgNh2PVOlg" target="_blank" rel="noopener noreferrer">
           <span class="hi-title">Tutorial video ↗</span>
-          <span class="hi-desc">See it in action.</span>
+          <span class="hi-desc"><strong class="hi-warn">Well out of date.</strong> The ideas still hold, but almost every screen in it has changed since — useful for the shape of things, misleading on the detail.</span>
         </a>
+        <p class="help-aside">
+          Fancy making a newer one? We would happily point everyone at it —
+          <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">say hello on Discord</a>.
+        </p>
       </div>
 
       <div class="help-group">
@@ -128,4 +134,14 @@
   .help-note:hover { background: var(--bg-control); border-color: var(--border); }
   .hi-title { font-weight: 600; color: var(--accent); font-size: 0.92rem; }
   .hi-desc { color: var(--text-muted, #cfcfcf); font-size: 0.82rem; line-height: 1.4; }
+  .hi-warn { color: var(--status-warn, #e0a24d); }
+  .help-aside {
+    margin: 2px 0 0;
+    padding: 0 4px;
+    color: var(--text-muted, #cfcfcf);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    font-style: italic;
+  }
+  .help-aside a { color: var(--link); }
 </style>
