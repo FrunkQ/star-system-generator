@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	ionisingFraction, activityForFraction, ionisingOutputSolar, ionisingBands,
 	activityScatterFromRoll, applyActivityScatter, ACTIVITY_SCATTER_SPREAD,
-	ionisingFromField, hasHotCorona, logSurfaceGravity, magneticFluxRelative,
+	ionisingFromField, hasHotCorona, logSurfaceGravity, magneticFluxRelative, saturationFieldGauss,
 	IONISING_FRACTION_QUIET, IONISING_FRACTION_SATURATED
 } from './ionisingOutput';
 
@@ -178,5 +178,45 @@ describe('the coronal dividing line, as a PROPERTY rather than a list of classes
 		// Hot and puffed out keeps its emission; cool and compact keeps its dynamo.
 		expect(hasHotCorona(20, 80, 20000)).toBe(true);  // hot supergiant
 		expect(hasHotCorona(0.3, 0.3, 3200)).toBe(true); // cool dwarf
+	});
+});
+
+// THE CEILING IS REAL, AND ITS INVISIBILITY WAS THE BUG. Owner, 2026-08-16: "ionising output visually
+// caps at 456x Sun - but I have headroom in gauss." The cap was correct; saying nothing about it was
+// not. These pin the field at which it bites, so the UI can mark it.
+describe('the saturation field — where more gauss stops buying anything', () => {
+	const earlyM = { radiusSolar: 0.45, massSolar: 0.35, tempK: 3500, luminositySolar: 0.0456 };
+
+	it('reproduces the reported number exactly', () => {
+		// 0.0456 Lsun x (1e-3 / 1e-7) = 456x the quiet Sun's X-ray output. Not a coincidence, and not
+		// a bug: a star cannot emit more than about a thousandth of its brightness in X-rays.
+		const ceiling = (0.0456 * 1e-3) / 1e-7;
+		expect(Math.round(ceiling)).toBe(456);
+	});
+
+	it('is the field at which output first reaches the ceiling', () => {
+		const b = saturationFieldGauss(earlyM)!;
+		expect(b).toBeGreaterThan(0);
+		// Just below it, output is under the ceiling; at it, output is the ceiling.
+		const ceiling = (earlyM.luminositySolar * 1e-3) / 1e-7;
+		expect(ionisingFromField({ ...earlyM, fieldGauss: b * 0.5 })).toBeLessThan(ceiling);
+		expect(ionisingFromField({ ...earlyM, fieldGauss: b })).toBeCloseTo(ceiling, 0);
+	});
+
+	it('stays flat above it, however much field is authored', () => {
+		const b = saturationFieldGauss(earlyM)!;
+		const at = ionisingFromField({ ...earlyM, fieldGauss: b });
+		expect(ionisingFromField({ ...earlyM, fieldGauss: b * 10 })).toBeCloseTo(at, 6);
+		expect(ionisingFromField({ ...earlyM, fieldGauss: b * 1e6 })).toBeCloseTo(at, 6);
+	});
+
+	it('sits HIGHER for a brighter star, because the ceiling scales with luminosity', () => {
+		const sun = { radiusSolar: 1, massSolar: 1, tempK: 5772, luminositySolar: 1 };
+		expect(saturationFieldGauss(sun)!).toBeGreaterThan(saturationFieldGauss(earlyM)!);
+	});
+
+	it('declines when there is no ceiling to compute', () => {
+		expect(saturationFieldGauss({ radiusSolar: 0, luminositySolar: 1 })).toBeUndefined();
+		expect(saturationFieldGauss({ radiusSolar: 1, luminositySolar: 0 })).toBeUndefined();
 	});
 });

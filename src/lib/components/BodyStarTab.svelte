@@ -8,7 +8,7 @@
   import { resolveStarImage } from '$lib/system/starImage';
   import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
-  import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField } from '$lib/physics/ionisingOutput';
+  import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
 
   let { body, rulePack } = $props();
 
@@ -274,6 +274,22 @@
       fieldGauss: magGauss, radiusSolar: radiusSuns, massSolar: massSuns,
       tempK, luminositySolar: radiation || 0
   }));
+  // At the ceiling? Then the field slider's remaining travel does nothing, and saying so is the
+  // difference between "physically capped" and "apparently broken".
+  let satField = $derived(saturationFieldGauss({
+      radiusSolar: radiusSuns, massSolar: massSuns, tempK, luminositySolar: radiation || 0
+  }));
+  let isSaturated = $derived(!!satField && magGauss >= satField);
+  /** The saturation field as a position on the magnetic slider's own log axis. */
+  let satFieldPct = $derived.by(() => {
+      if (!(satField! > 0)) return null;
+      const p = (Math.log(Math.max(magMin, Math.min(magMax, satField!))) - magLogMin) / (magLogMax - magLogMin);
+      return p > 0.02 && p < 0.98 ? p * 100 : null;
+  });
+  function fmtField(g: number | undefined): string {
+      if (!(g! > 0)) return '';
+      return g! > 10000 ? `${g!.toExponential(1)} G` : `${Math.round(g!).toLocaleString()} G`;
+  }
   let pastCoronalLine = $derived(!isNonThermal && !hasHotCorona(massSuns, radiusSuns, tempK));
 
   /** Solar multiples, readable at any magnitude: a Sun-like 1.6, a wound-up giant 4.9e+5. */
@@ -853,7 +869,11 @@
             </svg>
         </div>
         <div class="sub-label">
-            {#if pastCoronalLine}
+            {#if isSaturated}
+                <strong>Saturated.</strong> Past about {fmtField(satField)} the dynamo stops responding
+                and output stops climbing &mdash; more field buys nothing. A real ceiling, at a thousandth
+                of the star's own brightness.
+            {:else if pastCoronalLine}
                 Cool and swollen &mdash; past the coronal dividing line, so it holds no hot corona and
                 irradiates far less than its size suggests.
             {:else}
@@ -868,6 +888,12 @@
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
                 <rect x="{getRangePct('mag', 'start')}%" y="0" width="{getRangePct('mag', 'width')}%" height="8" fill="#22aa44" />
+                <!-- Where more field stops doing anything. Everything to its right is real field and
+                     no extra radiation, which is worth SHOWING rather than leaving to be discovered. -->
+                {#if satFieldPct != null}
+                    <line x1="{satFieldPct}%" y1="0" x2="{satFieldPct}%" y2="12" stroke="#e0a24a" stroke-width="2" />
+                    <text x="{Math.min(88, satFieldPct + 1)}%" y="26" class="rad-label">saturated</text>
+                {/if}
             </svg>
             <input type="range" min="0" max="1" step="0.001" bind:value={magSliderPos} disabled={currentClass === 'star/BH'} on:input={updateMagSlider} class="full-width-slider overlay" />
         </div>

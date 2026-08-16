@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.645-beta - 16th Aug 2026
+
+* Star editor: when a star's ionising output stops rising, it now says why. Past a point the magnetic dynamo stops responding and output holds at about a thousandth of the star's own brightness — a real ceiling that real stars do not cross. The magnetic field slider marks where that happens, so the remaining travel is visibly doing nothing rather than appearing broken.
+
 ## v2.1.644-beta - 16th Aug 2026
 
 * Star editor: brightness, ionising output and magnetic field now sit together as one group, reading top to bottom as cause and effect. The field is the only one you set; the other two follow from it.

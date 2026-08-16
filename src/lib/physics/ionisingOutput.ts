@@ -223,3 +223,25 @@ export function activityFromFieldExcess(fieldGauss: number | undefined, typicalG
 	const excess = Math.log10(fieldGauss! / typicalGauss!) / 2; // two decades above the norm = 1
 	return Math.max(0, Math.min(1, excess));
 }
+
+/**
+ * The field strength at which this star's ionising output SATURATES, in gauss.
+ *
+ * Past it, more field buys nothing: the dynamo stops responding and X-ray output stops climbing at
+ * about 1e-3 of bolometric. That is a real ceiling, but a slider with headroom above it and no
+ * explanation reads as broken — owner, 2026-08-16: "ionising output visually caps at 456x Sun but I
+ * have headroom in gauss." So the UI marks THIS field, and says why nothing happens beyond it.
+ *
+ * Undefined when the star has no ceiling to hit (no radius, no luminosity).
+ */
+export function saturationFieldGauss(star: {
+	radiusSolar?: number; massSolar?: number; tempK?: number; luminositySolar?: number;
+}): number | undefined {
+	const r = star.radiusSolar, lum = star.luminositySolar;
+	if (!(r! > 0) || !(lum! > 0)) return undefined;
+	// Invert the output relation: ceiling = flux^1.13 x suppression, and flux = B x R^2.
+	const ceiling = (lum! * IONISING_FRACTION_SATURATED) / IONISING_FRACTION_QUIET;
+	const suppression = hasHotCorona(star.massSolar ?? 1, r!, star.tempK ?? 5778) ? 1 : CORONAL_SUPPRESSION;
+	const fluxAtCeiling = Math.pow(ceiling / suppression, 1 / 1.13);
+	return fluxAtCeiling / (r! * r!);
+}
