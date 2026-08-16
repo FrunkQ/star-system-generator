@@ -167,10 +167,18 @@ export function deriveVisibility(body: CelestialBody, pack?: RulePack | null): V
 	// here — the standing rule is that band edges are data — and they are grouped and named so that
 	// move is a lift rather than a hunt.
 	const DUST_TAU: Record<string, number> = { seasonal: 0.35, frequent: 0.7, 'planet-wide': 1.4 };
-	const STORM_MULTIPLIER = 5;
+	// A planet-encircling storm is not "the usual load, times something" — it is its own event with
+	// its own MEASURED depth, so it is anchored on one rather than on a round number. Opportunity read
+	// tau near 10.8 during the 2018 global storm, the one that ended the mission; 9 is a severe storm
+	// rather than the worst on record.
+	const STORM_TAU = 9;
 	const dust = body.tags?.find((t) => t.key === 'weather/dust-storms')?.value;
 	const dustTau = dust ? (DUST_TAU[dust] ?? 0.3) : 0;
-	if (dustTau > 0 && h > 0) beta += dustTau / h;
+	// AEROSOLS SETTLE, so dust does not fill the same height the gas does — it is concentrated in the
+	// lower atmosphere. Half the gas scale height is a coarse stand-in for that and is stated as one;
+	// spreading dust over the full column made a severe storm barely register.
+	const dustH = h * 0.5;
+	if (dustTau > 0 && dustH > 0) beta += dustTau / dustH;
 
 	const rangeM = beta > 0 ? CONTRAST_THRESHOLD / beta : Infinity;
 	const hor = horizonM(body);
@@ -179,8 +187,13 @@ export function deriveVisibility(body: CelestialBody, pack?: RulePack | null): V
 	for (const l of LAMPS) lampM[l.key] = Math.min(lampReachM(l.candela, beta), hor);
 	// What it is like when the storm is actually up, which is the number a table wants — a world that
 	// has dust storms is not having one most of the time.
-	const stormBeta = dustTau > 0 && h > 0 ? beta + (dustTau * (STORM_MULTIPLIER - 1)) / h : 0;
-	const stormM = stormBeta > 0 ? Math.min(CONTRAST_THRESHOLD / stormBeta, hor) : null;
+	const stormBeta = dustTau > 0 && dustH > 0
+		? beta - dustTau / dustH + STORM_TAU / dustH : 0;
+	const stormRaw = stormBeta > 0 ? Math.min(CONTRAST_THRESHOLD / stormBeta, hor) : null;
+	// Only worth saying if it says something. On a world whose horizon is closer than its air can
+	// reach, both figures clamp to the horizon and printing them side by side implies a storm makes
+	// no difference — which is not what "we cannot tell you" should look like.
+	const stormM = stormRaw !== null && stormRaw < seeM * 0.9 ? stormRaw : null;
 	return {
 		extinctionPerM: beta, rangeM, horizonM: hor, seeM, lampM, fogged, stormM,
 		dustTau, gasTau: rayleighTau550(body, pack),

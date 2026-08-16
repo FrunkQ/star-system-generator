@@ -249,9 +249,16 @@ export function surfaceSceneFor(
 	// iron-oxide fines, not at air. Nothing new is authored for it; it is the surface material.
 	const dustShare = sight.dustTau / Math.max(1e-9, sight.dustTau + sight.gasTau);
 	const scattered = airlightHex(surfaceLight, noSky, cloudCover);
+	// THE SKY IS A SOURCE, NOT A REFLECTOR, and dimming it by the scattering fraction forgot that.
+	// The colour above is the material's LIT appearance, and the ground only returns about a fifth of
+	// what lands on it while the sky sends on the whole fraction it scatters — so a dusty sky comes
+	// out BRIGHTER than the dust it is made of, not at 29% of it. Mars was coming back a heavy dark
+	// brown for that reason. A sky reaches its full apparent brightness once it scatters roughly a
+	// third of the beam; below that it genuinely does fade toward black.
+	const lit = Math.min(1, strength / 0.3);
 	const sky = dimHex(
 		noSky ? scattered : rgbToHex(mix(hexToRgb(scattered), hexToRgb(ground), dustShare)),
-		strength);
+		lit);
 	return {
 		groundHex: ground,
 		rockHex: shade(ground, -0.28),
@@ -260,7 +267,7 @@ export function surfaceSceneFor(
 		settled,
 		// The horizon is brighter than the zenith because you are looking through more air — but only
 		// where there is air enough for that to mean anything.
-		skyLowHex: noSky ? '#05070c' : shade(sky, 0.34 * strength),
+		skyLowHex: noSky ? '#05070c' : shade(sky, 0.34 * lit),
 		skyHighHex: noSky ? '#05070c' : sky,
 		// THE STAR'S OWN COLOUR AND SIZE, both derived rather than assumed.
 		//

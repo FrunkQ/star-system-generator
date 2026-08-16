@@ -72,8 +72,13 @@ describe('how far you can see', () => {
     expect(deriveVisibility(clean).stormM).toBeNull();
     // …and a world that HAS storms is not having one most of the time, so the storm case is its own
     // number rather than the everyday one.
+    // …and it is only REPORTED when it says something. On a world whose horizon is nearer than its
+    // air can reach, both figures clamp to the horizon, and printing them side by side implies a
+    // storm makes no difference — which is not what "we cannot separate these" should look like.
     const v = deriveVisibility(dusty);
-    expect(v.stormM!).toBeLessThan(v.rangeM);
+    expect(v.stormM!).toBeLessThan(v.seeM * 0.9);
+    expect(deriveVisibility({ ...MARS, tags: [{ key: 'weather/dust-storms', value: 'seasonal' }] } as CelestialBody).stormM)
+      .toBeLessThan(deriveVisibility(clean).seeM);
   });
 
   it('leaves an airless world limited only by its own curve', () => {

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.690-beta - 16th Aug 2026
+
+- FIXED: the dust-storm figure read the same as the everyday one, which says a storm makes no difference. Both were clamping to the horizon. Two causes: the storm load was a multiplier on the baseline rather than a storm's own measured depth — Opportunity read an optical depth near 10.8 in the 2018 global storm, so a severe one is anchored there — and suspended dust is now spread over half the gas scale height, because aerosols settle rather than filling the column. The line only appears at all when it differs from the clear-air figure. Mars: 3.4 km normally, 2.4 km with a storm up.
+- FIXED: the sky came out too dark and heavy, Mars worst of all. Its brightness was being scaled down by the fraction of light it scatters — but that colour is already the material's LIT appearance, and the ground only returns about a fifth of what lands on it while the sky passes on the whole fraction it scatters. A dusty sky is therefore BRIGHTER than the dust it is made of, not a third of it. Mars goes from a dark brown to butterscotch.
+
 ## v2.1.687-beta - 16th Aug 2026
 
 - A star built in the editor or rolled by generation now knows its full designation - the 2 in G2V, not just the G. It was already read and written correctly for stars imported from the real sky; what was missing was the one step that says which digit a temperature deserves, so two thirds of the stars in a campaign could not state one. Anchored on the measured main-sequence temperatures rather than by cutting each letter into ten equal slices, because the real sequence is uneven: G0 to G2 is 160 degrees and K5 to K7 is 340.
@@ -21,7 +26,6 @@ All notable changes are listed here:
 - The sun rises on Mercury. Its captured 3:2 resonance was being drawn as a permanently lit face and a permanently dark one; it now reads as a day/night cycle 176 days long, with a 421 C noon at perihelion against a measured 427.
 - Venus does not move by a single kelvin, and that is the point: 92 bar of atmosphere evens the swing out completely, so the world with no day/night difference still has none.
 - FIXED: a world's radiation reading was labelled "Incoming Star Flux" when it had not been only starlight since the trapped-belt model landed. Io reads 26,279 times Earth's flux there and 0.037 times Earth's sunlight, because what dominates Io is Jupiter's magnetosphere. Both figures are now published, named apart, and shown side by side in the Newton panel - and the classifier is given the starlight, which is what every rule about irradiation ever meant.
-
 
 ## v2.1.682-beta - 16th Aug 2026
 
