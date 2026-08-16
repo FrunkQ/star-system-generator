@@ -8,7 +8,7 @@
   import { resolveStarImage } from '$lib/system/starImage';
   import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
-  import { ionisingOutputSolar, ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona } from '$lib/physics/ionisingOutput';
+  import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField } from '$lib/physics/ionisingOutput';
 
   let { body, rulePack } = $props();
 
@@ -283,7 +283,13 @@
   }
 
   // The star's ionising output in multiples of the quiet Sun's — a frame a GM can reason in.
-  let ionisingSolar = $derived(ionisingOutputSolar(radiation || 0, activityValue));
+  // IONISING OUTPUT FOLLOWS THE FIELD (owner, 2026-08-16). X-ray output tracks total magnetic flux -
+  // field strength times area - so the magnetic-field slider below IS the lever, and this is a
+  // readout of it rather than a second control saying the same thing a different way.
+  let ionisingSolar = $derived(ionisingFromField({
+      fieldGauss: magGauss, radiusSolar: radiusSuns, massSolar: massSuns,
+      tempK, luminositySolar: radiation || 0
+  }));
   // Only true for a star that is BOTH cool and puffed out, which is why the note it drives is rare.
   let pastCoronalLine = $derived(!isNonThermal && !hasHotCorona(massSuns, radiusSuns, tempK));
   function fmtIonising(x: number): string {
@@ -961,6 +967,16 @@
             </svg>
             <input type="range" min="0" max="1" step="0.001" bind:value={magSliderPos} disabled={currentClass === 'star/BH'} on:input={updateMagSlider} class="full-width-slider overlay" />
         </div>
+        <!-- THE FIELD IS THE IONISING LEVER, so its consequence is stated here rather than on a
+             separate control. Owner: "the magnetic field would drive the ionising radiation up and
+             cause flaring... we could get rid of the separate ionising output but tie it to magnetic
+             field." -->
+        {#if !isNonThermal && magGauss > 0}
+            <div class="sub-label field-consequence">
+                Ionising output: <strong>{fmtIonising(ionisingSolar)}&times; the Sun's</strong>
+                {#if pastCoronalLine}&mdash; suppressed, no hot corona{/if}
+            </div>
+        {/if}
         <div class="sub-label">
             {#if currentClass === 'star/BH'}
                 0 G — an isolated black hole keeps no magnetic field (no-hair theorem); feed it to anchor a disc field
@@ -992,6 +1008,7 @@
       font-size: 0.95em; cursor: pointer; line-height: 1.4; }
   .lock-btn.locked { border-color: var(--accent, #ff5a1f); }
   .link-note { font-size: 0.72em; color: var(--text-faint); }
+  .field-consequence { text-align: right; color: var(--text-muted); }
   .derived-readout { width: 100px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.95em; }
   .class-explain { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
   

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.641-beta - 16th Aug 2026
+
+* Star editor: the magnetic field slider now shows what it does — the star's ionising output, in multiples of the Sun's, updating as you drag. Field is what drives that radiation, so it is the one control rather than two saying the same thing differently.
+
 ## v2.1.640-beta - 16th Aug 2026
 
 * Internal: removed a dead atmosphere-retention check. It worked out whether a body kept its air and then threw the answer away — nothing had read it since the real escape model landed.
