@@ -59,21 +59,22 @@ describe('BodyStarTab — the spectral picker is driven by the rule pack', () =>
 	});
 });
 
-describe('BodyStarTab — picking a class applies the PACK band midpoint', () => {
-	// FIVE OF THE EIGHT THAT DISAGREED. `star/red-giant` was the sixth and is RETIRED at B46a in
-	// favour of `star/M-III` — the two described the same object and disagreed by ~100x on radiation
-	// output, which is the same divergence D22 is about, one layer further on. Each row names the ONE axis that moved and the midpoint the
-	// hard-coded copy used to apply, so the assertion is that a GM now gets the pack's answer AND
-	// that the two answers were genuinely different. star/BH and star/BH_active are the other two
-	// and are deliberately absent: `applyBHPresets` overrides the midpoint for those, so the table
-	// never reached a GM there in the first place.
+describe('BodyStarTab — picking a class draws from the PACK band, seeded', () => {
+	// D22: the per-class table used to exist twice and the two copies disagreed for 8 of 16 classes,
+	// so the same pick produced two different stars depending on which door you came through. The pack
+	// is the only copy now, and these still assert that. What CHANGED at B61 is the draw: picking used
+	// to apply the band MIDPOINT, which made every G dwarf a GM placed numerically identical to every
+	// other one, and disagreed with generation, which has always drawn across the band. Each row names
+	// the axis where the two copies differed and the midpoint the dead copy applied, so the assertion
+	// is still that a GM gets the PACK's band — now anywhere inside it rather than at its centre.
+	// star/BH and star/BH_active are deliberately absent: `applyBHPresets` overrides the pick.
 	it.each([
 		['star/O', 'mass', 58], //          editor 16-100 Msun, pack 16-90
 		['star/M', 'temp', 2850], //        editor floor 2,000 K, pack 2,400 - the L band starts at 2,000
 		['star/WD', 'temp', 52000], //      editor 4,000-100,000 K centres a white dwarf on a very hot young one
 		['star/NS', 'mass', 2.2], //        editor to 3 Msun, above the observed maximum
 		['star/magnetar', 'mass', 2.2] //   as star/NS
-	])('%s: %s comes from the pack now, not the copy that disagreed', async (key, axis, oldMid) => {
+	])('%s: %s lands inside the pack band, not the copy that disagreed', async (key, axis, oldMid) => {
 		const body: any = makeStar([key]);
 		const { container } = render(BodyStarTab, { props: { body, rulePack } });
 		const select = container.querySelector('select')!;
@@ -81,15 +82,48 @@ describe('BodyStarTab — picking a class applies the PACK band midpoint', () =>
 		select.dispatchEvent(new Event('change', { bubbles: true }));
 
 		const band = st[key];
-		const packMass = (band.mass_solar[0] + band.mass_solar[1]) / 2;
-		const packTemp = Math.round((band.temp_k[0] + band.temp_k[1]) / 2);
-		// Every axis must match the pack, whichever one moved.
-		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(packMass, 2);
-		expect(body.temperatureK).toBe(packTemp);
-		expect(body.radiusKm / SOLAR_RADIUS_KM).toBeCloseTo((band.radius_solar[0] + band.radius_solar[1]) / 2, 4);
-		// And the named axis genuinely moved, or this test proves nothing.
-		const applied = axis === 'mass' ? packMass : packTemp;
-		expect(Math.abs(applied - oldMid)).toBeGreaterThan(Math.abs(oldMid) * 0.01);
+		const within = (v: number, b: number[]) => v >= b[0] - 1e-9 && v <= b[1] + 1e-9;
+		expect(within(body.massKg / SOLAR_MASS_KG, band.mass_solar), `mass ${body.massKg / SOLAR_MASS_KG}`).toBe(true);
+		expect(within(body.radiusKm / SOLAR_RADIUS_KM, band.radius_solar), `radius`).toBe(true);
+		expect(within(body.temperatureK, band.temp_k), `temp ${body.temperatureK}`).toBe(true);
+		// And the named axis is genuinely the pack's band rather than the dead copy's, or this test
+		// proves nothing: the two copies' centres must differ.
+		const oldBand = axis === 'mass' ? band.mass_solar : band.temp_k;
+		const packMid = (oldBand[0] + oldBand[1]) / 2;
+		expect(Math.abs(packMid - oldMid)).toBeGreaterThan(Math.abs(oldMid) * 0.01);
+	});
+
+	it('two different stars given the same class are not the same star (B61)', async () => {
+		// The whole point of the owner's ruling. Every G dwarf in a campaign being identical to four
+		// decimal places is the artefact; picking G twice must give two slightly different G stars.
+		const pick = (id: string) => {
+			const body: any = { ...makeStar(['star/G']), id };
+			const { container } = render(BodyStarTab, { props: { body, rulePack } });
+			const select = container.querySelector('select')!;
+			select.value = 'star/G';
+			select.dispatchEvent(new Event('change', { bubbles: true }));
+			return body;
+		};
+		const a = pick('star-alpha'), b = pick('star-beta');
+		expect(a.temperatureK).not.toBe(b.temperatureK);
+		expect(a.massKg).not.toBe(b.massKg);
+		// Same band, so still the same KIND of star.
+		expect(Math.abs(a.temperatureK - b.temperatureK)).toBeLessThan(st['star/G'].temp_k[1] - st['star/G'].temp_k[0] + 1);
+	});
+
+	it('the SAME star picked twice does not move — this is an editor, not a slot machine', async () => {
+		// Seeded from the body id, so re-opening the panel or re-picking the same class cannot reroll
+		// the star under the GM's hands (DATA-G1).
+		const pick = () => {
+			const body: any = { ...makeStar(['star/K']), id: 'the-same-star' };
+			const { container } = render(BodyStarTab, { props: { body, rulePack } });
+			const select = container.querySelector('select')!;
+			select.value = 'star/G';
+			select.dispatchEvent(new Event('change', { bubbles: true }));
+			return body;
+		};
+		expect(pick().temperatureK).toBe(pick().temperatureK);
+		expect(pick().massKg).toBe(pick().massKg);
 	});
 
 	it('a supergiant pick gives supergiant figures', async () => {

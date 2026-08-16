@@ -9,6 +9,8 @@
   import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
   import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
+  import { starStatsFromPack } from '$lib/generation/star';
+  import { SeededRNG } from '$lib/rng';
 
   let { body, rulePack } = $props();
 
@@ -659,12 +661,23 @@
       body.stellarType = stellarTypeForBand(val);
       updateImage(val);
 
-      const data = SPECTRAL_DATA[val];
-      if (data) {
-          const newMass = (data.ranges.mass[0] + data.ranges.mass[1]) / 2;
-          const newRadius = (data.ranges.radius[0] + data.ranges.radius[1]) / 2;
-          const newTemp = (data.ranges.temp[0] + data.ranges.temp[1]) / 2;
-          
+      // A SEEDED DRAW ACROSS THE BAND, NOT ITS MIDPOINT (owner, 2026-08-16: "always seeded draw").
+      // The midpoint made every G dwarf a GM placed numerically identical to every other one — the
+      // artefact, not the variety — and it disagreed with generation, which has always drawn.
+      // `starStatsFromPack` is that one draw, so the two paths cannot answer differently (inbox B61).
+      //
+      // THE SEED IS THE BODY ID PLUS THE CHOSEN CLASS, and both halves matter. The body id makes the
+      // draw stable: this is an EDITOR, and a positional or time-based seed would reroll the star
+      // every time the panel re-rendered, under the GM's hands. The class makes the draws
+      // INDEPENDENT between classes — seeding on the id alone would land every band at the same
+      // fraction of its width, so a star switched from G to K would land at the same relative point
+      // each time rather than being a fresh K. Its own stream, never the system's (DATA-G1).
+      const drawn = starStatsFromPack(rulePack, val, new SeededRNG(`${body.id}|starpick|${val}`));
+      if (drawn) {
+          const newMass = drawn.massSolar;
+          const newRadius = drawn.radiusSolar;
+          const newTemp = drawn.tempK;
+
           massSuns = newMass;
           massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, newMass))) - massLogMin) / (massLogMax - massLogMin);
           body.massKg = massSuns * SOLAR_MASS_KG;

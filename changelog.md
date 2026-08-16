@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.686-beta - 16th Aug 2026
+
+- Picking a spectral type in the star editor now draws a star from that class's range instead of handing back the exact middle of it every time, so two G dwarfs in a campaign are two different G dwarfs rather than the same numbers twice. The draw is seeded from the star itself, so re-opening the panel never rerolls it under you, and it is the same draw system generation has always made - a hand-placed G2V and a generated one are now the same kind of object.
+
+
 ## v2.1.685-beta - 16th Aug 2026
 
 - FIXED: the Moon's noon read 209 C and its night -214 C, against a measured 120 and -173. Day and night now come from the energy balance and the mean is what they average to, rather than a symmetric swing hung off a figure that was never a mean. The sunlit side gets the ceiling it never had - no surface can pass the temperature at which the ground alone re-radiates the light falling straight down on it - and the night side is held up by the heat the ground stored during the day instead of falling through its floor. The Moon now reads 111 C noon, -165 C night, and an average of 214 K where Diviner measures about 215.

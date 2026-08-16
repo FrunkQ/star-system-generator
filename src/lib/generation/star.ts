@@ -56,6 +56,29 @@ export function magnetarLabelFor(pack: RulePack, starClass: string, fieldGauss: 
     return fieldGauss >= threshold ? 'star/magnetar' : starClass;
 }
 
+/**
+ * The BULK STATS for a star class, drawn from the pack's own bands: mass, radius and temperature.
+ *
+ * Exported because there are two places that answer "what is a G2V like" and they must not answer
+ * differently (inbox B61). Generation has always drawn from the band; the EDITOR's spectral-type
+ * picker took the band MIDPOINT, so every G dwarf a GM placed by hand was numerically identical to
+ * every other one — the artefact, not the variety. Same bands, same draw, one implementation.
+ *
+ * CALLERS PASS THEIR OWN STREAM (DATA-G1). The editor seeds from the BODY ID and the chosen class, so
+ * re-opening the panel cannot reroll the star under the GM's hands, and two bodies given the same
+ * class still differ.
+ */
+export function starStatsFromPack(pack: RulePack, starClass: string, rng: SeededRNG):
+    { massSolar: number; radiusSolar: number; tempK: number } | undefined {
+    const tpl = starStatTemplate(pack, starClass);
+    if (!tpl) return undefined;
+    return {
+        massSolar: randomFromRange(rng, tpl.mass_solar[0], tpl.mass_solar[1]),
+        radiusSolar: randomFromRange(rng, tpl.radius_solar[0], tpl.radius_solar[1]),
+        tempK: randomFromRange(rng, tpl.temp_k[0], tpl.temp_k[1])
+    };
+}
+
 export function starFieldFromPack(pack: RulePack, starClass: string, rng: SeededRNG) {
     const tpl = starStatTemplate(pack, starClass);
     const band = tpl?.mag_gauss;
@@ -99,9 +122,12 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     let starMagneticField;
 
     if (starTemplate) {
-        starMassKg = randomFromRange(rng, starTemplate.mass_solar[0], starTemplate.mass_solar[1]) * SOLAR_MASS_KG;
-        starRadiusKm = randomFromRange(rng, starTemplate.radius_solar[0], starTemplate.radius_solar[1]) * SOLAR_RADIUS_KM;
-        starTemperatureK = randomFromRange(rng, starTemplate.temp_k[0], starTemplate.temp_k[1]);
+        // Same draw the editor's picker makes, so a generated G2V and a hand-placed one are the same
+        // KIND of object rather than two implementations that can drift (inbox B61).
+        const stats = starStatsFromPack(pack, starClass, rng)!;
+        starMassKg = stats.massSolar * SOLAR_MASS_KG;
+        starRadiusKm = stats.radiusSolar * SOLAR_RADIUS_KM;
+        starTemperatureK = stats.tempK;
         starMagneticField = starFieldFromPack(pack, starClass, rng);
     }
 
