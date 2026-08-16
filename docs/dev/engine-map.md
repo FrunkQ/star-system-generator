@@ -312,6 +312,46 @@ other test runs `process()` ONCE and therefore pins pass-1 values a GM never see
 BLAST: corollaries — a derived CLASS is never a physics input (the classifier runs late); when a
 quantity depends on another body, iterate PARENT BEFORE CHILD, not in file order.
 
+### PHY-17 Chromatic adaptation is BOUNDED — never amplify a cone that has no photons in it
+WHERE: `physics/imageUnderLight.adaptationMatrix`, and any future re-lighting on the GPU.
+RULE: the degree of adaptation is PER CONE, scaled by `sqrt(this cone's share of the light, here vs
+at home)`. A starved channel is left as it arrived, not gained back up.
+WHY: plain von Kries divides by the illuminant's own cone response, which assumes the eye can
+discount any light however little of it there is. On Venus the S cones receive 0.5% of their home
+share and the maths asked for a 134-fold gain. That does not recover the colour, it recovers the
+noise: a white card came back `#ffcdc8` and a blue wire came back violet, so the whole world went
+pink. The everyday proof of the bound is a low-pressure sodium street lamp — under one the world
+looks orange-grey, NOT colour-corrected.
+BLAST: the same physics used to be applied a SECOND time as a per-channel `snr` weight inside
+`confusability()`. It is removed there. If it ever comes back, every dim world reads as more
+confusing than it is, because the two mechanisms multiply.
+
+### PHY-18 Visibility is the surface spectrum's optical depth turned on its side — derive it ONCE
+WHERE: `physics/visibility.ts`, reading `surfaceSpectrum.rayleighTau550`.
+RULE: extinction at the ground is `rayleighTau550 / scaleHeight`. Do not re-derive a column density,
+a cross-section or a Rayleigh law anywhere else; that export exists so there is one of each.
+WHY: a sky is dim overhead and a horizon is lost for the SAME reason — light scattered out of the
+path. Two derivations of it would drift, and the drift would be silent because both would look
+plausible. The check that it has not drifted: Earth must come out near 340 km, the textbook
+clean-air Rayleigh limit.
+BLAST: the visibility BAND keys on the atmospheric range, never on `seeM`. Clamped to the horizon,
+Earth, Mars, Titan and Venus all read "murky", because a standing person's horizon is a few
+kilometres everywhere and says nothing about the air.
+
+### RENDER-B4 In the Surface view, a REFLECTANCE is re-lit and LIGHT is not
+WHERE: `charts/surfaceScene.ts` (`drawMaterials` vs `drawSky` / `drawEmissive` / `drawMarkers`) and
+`charts/UnderThisLight.svelte`'s draw path.
+RULE: three layers, and which one a thing belongs to is physics, not convenience. Ground, water,
+plants and buildings are reflectances and go through the operator. Sky and star are light and are
+painted in their final colour. Lava, lit windows and AIRLIGHT are emission or added light and go on
+the composite afterwards.
+WHY: re-lighting a sky asks what it looks like when lit by itself. Painting the ground from the
+palette's `hex` lights it twice AND makes the "at home" half of the wipe show the world under its own
+sun, which is not a comparison. `ApparentColorStop.rawHex` exists for exactly this: `hex` is
+appearance, `rawHex` is the material.
+BLAST: `relightImage` skips fully transparent pixels, which is what lets the material layer be an
+offscreen canvas composited over the sky with no mask of its own. Do not "optimise" that skip away.
+
 ### PHY-16 Normalise a colour-matching result against the BAND, never against its own peak channel
 WHERE: `physics/spectrum.wavelengthHex` (the chart ribbon) and, by the same argument, anything else
 that turns a narrow spectral feature into a colour.

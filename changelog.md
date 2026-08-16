@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.669-beta - 16th Aug 2026
+
+- Docs: a new physics section, "Standing on it", covering the three things that follow from the surface spectrum — how bright a world's midday is, why a bounded eye is the honest one, and how far you can see. It states what the model does NOT do as plainly as what it does: no aerosols, so every visibility figure is a ceiling.
+- Engine map: PHY-17 (adaptation is bounded per cone), PHY-18 (visibility is the surface spectrum's optical depth turned on its side — derive it once), RENDER-B4 (a reflectance is re-lit and light is not).
+
 ## v2.1.668-beta - 16th Aug 2026
 
 - The Horizon view is now the **Surface view**, and it is a view of THAT WORLD rather than a stock Earth. Its ground is the world's own rock, its sky is the colour its own air scatters, its sea appears only if it has one, and its life is drawn in the pigments its morphologies actually settled on — every layer of them, since a world's mats and its canopy often choose differently.

@@ -45,6 +45,7 @@
     ['eclipses', 'Eclipses'],
     ['ejection', 'Who gets ejected'],
     ['surface-light', 'Surface light & the spectrum'],
+    ['standing-on-it', 'Standing on it: brightness & visibility'],
     ['biosphere', 'Biospheres: pigment & cover'],
     ['colour', 'Apparent colour & visualisation'],
     ['views', 'Spatial views: grids & routes'],
@@ -919,6 +920,70 @@
         <li>One column, straight up. No air mass, no zenith angle, no seasons.</li>
         <li>There is no ozone in the bundled gas set, so Earth's ultraviolet cut is not modelled.</li>
       </ul>
+    </section>
+
+    <section id="standing-on-it">
+      <h2>Standing on it — brightness, colour and how far you can see <span class="phase">B45 · B63</span></h2>
+      <p>The surface spectrum answers what light arrives. Three things follow from it that a GM can actually
+        use at a table, and all three are the same derivation read differently.</p>
+
+      <h3>How bright, which is not the same question as what colour</h3>
+      <p>A star's cast is something eyes adjust to within the hour. How much light there is, they do not.
+        The <strong>midday brightness</strong> figure is the illuminant's own <em>Y</em> — its photopic
+        luminance — against Earth's own ground-level noon, so Earth reads exactly 1.</p>
+      <p>Venus is the case that makes the distinction earn its keep. About a <strong>fifth of the star's
+        energy</strong> reaches its ground, which sounds bright; but the surviving light peaks at
+        <strong>920 nm</strong>, out in the infrared, so only about <strong>1.6% of the visible light</strong>
+        gets down. Quoting the energy would say "dim". Quoting the luminance says "you would want the lights
+        on", which is the true answer. Below about a thousandth of an Earth noon colour drains toward grey,
+        because rods carry none — a moonlit world is grey however long you look at it.</p>
+
+      <h3>Why a bounded eye is the honest one</h3>
+      <p>Adaptation is modelled per cone, and it is <strong>never complete</strong>. The textbook von Kries
+        correction divides by the illuminant's own cone response, which quietly assumes your eyes can discount
+        any light however little of it there is. Venus's sky leaves the blue cones half a percent of the light
+        they get at home, and that maths answered by amplifying them <strong>134-fold</strong> — which does not
+        recover the colour, it recovers the noise. A white card came back pink and a blue wire came back
+        violet.</p>
+      <p>So the degree of adaptation in each channel is scaled by how much light that channel actually has,
+        shot-noise limited, so the trustworthy fraction goes as the square root. The everyday proof of the
+        bound is a low-pressure sodium street lamp: under one the world looks orange-grey, not colour-corrected.
+        Venus now reads as Venera photographed it — a deep orange world where blues go dark rust.</p>
+
+      <h3>How far you can see, and how far a lamp reaches</h3>
+      <p>A sky is dim overhead and a horizon is lost for one reason: light scattered out of the path. So
+        visibility is the <a href="#surface-light">same optical depth</a> turned on its side —
+        <code>&tau;<sub>550</sub> / H</code>, the column's depth spread over the scale height it occupies —
+        and nothing about it is derived twice. Range is Koschmieder's 2% contrast threshold,
+        <code>3.912 / &beta;</code>.</p>
+      <p>The check that it has not drifted: <strong>Earth comes out at 343 km</strong>, the textbook clean-air
+        Rayleigh limit and the reason distant mountains go blue rather than vanishing. <strong>Venus is 4 km</strong>
+        of murk from sheer weight of air — its cloud decks condense at 1.5 bar under a 92 bar surface, which is
+        ninety bar over your head, so it is not fog. You still cannot see past the horizon, which for a standing
+        person is 4.7 km on Earth and 2.4 km on the Moon.</p>
+      <p>Lamp reach is Allard's law, out <em>and back</em>:
+        <code>&rho;&middot;I&middot;e<sup>&minus;2&beta;d</sup> / (&pi;d&sup2;)</code> against a detection
+        threshold. The 2 in that exponent is the whole point — murk eats a lamp twice, on the way to the
+        target and on the way back to your eye, which is why lights are so much less use in it than people
+        expect. Headlights that throw 720 m on Earth manage 580 m on Venus and about 30 m in fog.</p>
+
+      <h3>What this does not model</h3>
+      <ul>
+        <li><strong>Aerosols.</strong> Dust, smoke, spray and photochemical haze are the usual reason real
+          visibility is short, and none of them are here. Earth therefore reads as its clean-air limit rather
+          than the twenty or thirty kilometres a damp day gives you, and Titan reads far clearer than its
+          orange smog really is. Every figure is a <em>ceiling</em>.</li>
+        <li>Fog depth. A deck whose base sits at the surface is spread over a scale height, where real fog is
+          a boundary-layer thing tens of metres deep.</li>
+        <li>Beam shape — a lamp is its on-axis intensity, so these are reaches down the beam, not radii.</li>
+        <li>The sky's own glow, which in daylight is what a dark object is lost <em>against</em>. On a world
+          with almost no scattering the contrast holds further out than this says.</li>
+      </ul>
+
+      <p>The <strong>Surface view</strong> on a body panel draws all of it: that world's own ground and sky,
+        its life in the pigments its morphologies settled on, terrain shaped by the tags it already carries,
+        markers standing out to where its air gives up, and a spectrum band up each edge — home on the left,
+        that world on the right.</p>
     </section>
 
     <section id="biosphere">
