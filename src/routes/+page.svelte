@@ -623,6 +623,13 @@
           if (overrides.morphologies && overrides.morphologies.length) {
               pack.morphologies = overrides.morphologies;  // whole-list replace, same shape as liquids
           }
+
+          if (overrides.pigments && overrides.pigments.length) {
+              pack.pigments = overrides.pigments;          // whole-list replace, same shape as liquids
+          }
+          if (overrides.pigmentModel) {
+              pack.pigmentModel = overrides.pigmentModel;
+          }
       }
       return pack;
   })();

@@ -9,6 +9,7 @@
 
   import { allMorphologies, biosphereLayers } from '$lib/physics/vegetation';
   import { maxUsefulCoverage } from '$lib/rendering/landmass';
+  import { allPigments } from '$lib/physics/pigments';
 
   const complexities = ['none', 'simple', 'complex', 'sapient'];
   const biochemistries = ['water-carbon', 'ammonia-silicon', 'methane-carbon'];
@@ -22,6 +23,32 @@
   // editor writes). There is no second store of which morphologies are present.
   $: layers = biosphereLayers(body.biosphere, rulePack);
   $: presentKeys = new Set(layers.map((l) => l.morphology));
+
+  // WHICH PIGMENT, as a free choice. Several always score as viable and the engine draws one of
+  // them; picking a different one is not a correction, it is choosing among outcomes the model
+  // itself says are all available — so this is an ordinary dropdown and not an override badge.
+  //
+  // The stored form is a hand-added `biodiversity/pigment` tag, which is the mechanism a manual
+  // cloud deck already uses: the derivation READS it and everything downstream follows, so there is
+  // no second store of what this world's pigment is.
+  $: pigmentTag = body.tags?.find((t) => t.key === 'biodiversity/pigment');
+  $: pinnedPigment = pigmentTag?.manual ? pigmentTag.value : '';
+  // Offer every pigment the pack carries, ranked as this world's own light ranks them, so the list
+  // reads as "what would work here" rather than as an alphabetical menu.
+  $: pigmentChoices = (() => {
+      const ranked = body.vegetation?.ranked ?? [];
+      const rest = allPigments(rulePack)
+          .filter((p) => !ranked.some((r) => r.key === p.key))
+          .map((p) => ({ key: p.key, label: p.label, viable: false, reflectedUnderStarHex: null as string | null }));
+      return [...ranked, ...rest];
+  })();
+
+  function setPigment(key: string) {
+      const kept = (body.tags ?? []).filter((t) => t.key !== 'biodiversity/pigment');
+      // Empty = hand the choice back to the engine's own weighted draw.
+      body.tags = key ? [...kept, { key: 'biodiversity/pigment', value: key, manual: true }] : kept;
+      dispatch('update');
+  }
   // How much of this world is dry ground. Coverage is OF THE LAND, so 100% means the whole of it —
   // and the slider is allowed past that because plant life also lives in SHALLOW SEAS, which are
   // visible from orbit. A world with little land gets a longer run, because that is where its life
@@ -286,14 +313,26 @@
                 {#if body.vegetation.pigmentLabel}
                     <div class="derived-row">
                         <span class="k">Dominant pigment</span>
-                        <span class="v">{body.vegetation.pigmentLabel}</span>
+                        <span class="v pigment-pick">
+                            <select value={pinnedPigment} on:change={(e) => setPigment(e.currentTarget.value)}>
+                                <option value="">{body.vegetation.pigmentLabel} — drawn for this world</option>
+                                {#each pigmentChoices as c}
+                                    <option value={c.key}>{c.label}{c.viable === false && 'viable' in c ? ' (outclassed here)' : ''}</option>
+                                {/each}
+                            </select>
+                            <span class="swatches">
+                                {#each (body.vegetation.ranked ?? []).filter((r) => r.viable) as r}
+                                    <button type="button" class="pig-chip" class:on={r.key === body.vegetation?.pigment}
+                                            style="background:{r.reflectedUnderStarHex}"
+                                            title="{r.label} — {Math.round(r.drawWeight * 100)}% of the draw. Click to pin it."
+                                            on:click={() => setPigment(r.key)} aria-label={r.label}></button>
+                                {/each}
+                            </span>
+                        </span>
                     </div>
-                    {#if body.vegetation.ranked?.length}
-                        <div class="derived-row">
-                            <span class="k">Also viable</span>
-                            <span class="v">{body.vegetation.ranked.filter((r) => r.viable && r.key !== body.vegetation?.pigment).map((r) => r.label).join(', ') || 'nothing else'}</span>
-                        </div>
-                    {/if}
+                    <p class="hint">All of these work under this world's light — the engine draws one, and picking
+                        another is choosing among outcomes it already calls viable, not correcting it. Leave it on
+                        the first entry to let the draw stand.</p>
                 {:else}
                     <div class="derived-row">
                         <span class="k">Pigment</span>
@@ -551,4 +590,12 @@
   .derived-row { display: flex; gap: 10px; font-size: 0.82em; align-items: baseline; }
   .derived-row .k { color: var(--text-faint, #8a8f9a); min-width: 108px; flex: none; }
   .derived-row .v { color: var(--text-muted, #cfcfcf); }
+  .pigment-pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pigment-pick select { padding: 3px 6px; font-size: 0.95em; max-width: 210px; }
+  .swatches { display: flex; gap: 3px; }
+  .pig-chip {
+      width: 15px; height: 15px; border-radius: 3px; cursor: pointer; padding: 0;
+      border: 1px solid var(--border, #2a2d36);
+  }
+  .pig-chip.on { border-color: var(--link, #6cb6ff); box-shadow: 0 0 0 1px var(--link, #6cb6ff); }
 </style>

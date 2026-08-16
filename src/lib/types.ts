@@ -981,6 +981,8 @@ export interface RulePackOverrides {
   atmosphereCompositions?: any[];
   liquids?: LiquidDef[];
   morphologies?: MorphologyDef[];
+  pigments?: PigmentDef[];
+  pigmentModel?: PigmentModelConfig;
 }
 
 export interface TemporalHierarchyUnit {

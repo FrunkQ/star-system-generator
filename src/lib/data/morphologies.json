@@ -80,12 +80,12 @@
       "#565049"
     ],
     "pigmentDriven": 0,
-    "opacity": 0.4,
+    "opacity": 0.78,
     "light": {
       "min": 0.08,
       "max": 1
     },
-    "note": "A grey-brown urban haze by day, a network of lights by night, and the ONLY morphology that can take the oceans \u2014 waterReach 1, because a civilisation that has covered its continents roofs its seas next. The brush is LIGHT rather than paint, which is why the opacity is low and the light range is strong: from orbit a city reads as what it emits. It needed no code for any of that \u2014 same record shape as everything else, which is the extensibility test.",
+    "note": "A built surface by day and a network of lights by night, and the ONLY morphology that can take the oceans and the ice caps \u2014 waterReach 1, because a civilisation that has covered its continents roofs its seas next and is not stopped by a glacier. The opacity is high because a roofed sea has to stop reading as sea; what keeps a LIGHTLY settled world subtle is its small coverage band, not a translucent wash. It needed no code for any of that \u2014 same record shape as everything else, which is the extensibility test.",
     "waterReach": 1.0
   }
 ]

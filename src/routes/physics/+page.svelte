@@ -939,6 +939,22 @@
         contingent — nature tries many things and the second best can dominate — so two similar worlds around
         similar stars can legitimately grow different colours. The same world always gives the same answer.</p>
 
+      <h3>Why a world offers the colours it offers</h3>
+      <p>The Bio tab lets you <strong>choose</strong> which pigment a world's life settled on, from a list. That
+        list is not a palette — it is this world's <em>scored viable set</em>, everything that comes within the
+        viability fraction of the leader under the light reaching its ground. A world whose sky eats the red
+        will not offer you a red-absorbing pigment near the top, and a starved world will offer you very little
+        that is not black.</p>
+      <p>So picking a different one is <strong>not correcting the engine</strong>. The model's own claim is that
+        several of these would work and history decided between them; changing the answer is choosing a different
+        history, not a different physics. That is why it is an ordinary dropdown with no warning attached — and
+        why the choice is remembered, as a hand-added <code>biodiversity/pigment</code> tag that the derivation
+        reads on every pass. Leave it alone and the weighted draw stands.</p>
+      <p>Every pigment in that list is <strong>rule-pack data</strong>, editable under
+        <em>Settings &rarr; Planets &rarr; Biospheres</em>: its absorption bands, how broadly it absorbs, and the
+        weights that decide between them. Add one of your own and it joins the scoring immediately — there is no
+        list of pigments anywhere in the code.</p>
+
       <h3>The colour is what is left over — and it says whose</h3>
       <p>Vegetation colour is not looked up. It is the surface spectrum minus what the pigment absorbs, minus
         what the surrounding tissue absorbs, projected through the human eye at the last step. Two versions

@@ -8,9 +8,11 @@
   // here and no code anywhere. If a difference you want cannot be said in these fields, the SCHEMA
   // is short a field — say so; do not ask for a branch.
   import { createEventDispatcher, onMount } from 'svelte';
-  import type { Starmap, RulePack, MorphologyDef } from '$lib/types';
+  import type { Starmap, RulePack, MorphologyDef, PigmentDef, PigmentModelConfig } from '$lib/types';
   import { allMorphologies } from '$lib/physics/vegetation';
-  import { allPigments, pigmentModel } from '$lib/physics/pigments';
+  import { allPigments, pigmentModel, absorptance, scorePigments } from '$lib/physics/pigments';
+  import { blackbodySpectrum, gridShare, GRID_NM } from '$lib/physics/spectrum';
+  import SpectrumChart from '$lib/charts/SpectrumChart.svelte';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -29,14 +31,66 @@
       : baseList;
     morphs = JSON.parse(JSON.stringify(source));
     morphs.sort((a, b) => a.order - b.order);
+    pigments = JSON.parse(JSON.stringify(
+      starmap.rulePackOverrides?.pigments?.length ? starmap.rulePackOverrides.pigments : basePigments));
+    model = { ...(starmap.rulePackOverrides?.pigmentModel ?? baseModel) };
   });
 
-  const pigments = allPigments(rulePack);
-  const model = pigmentModel(rulePack);
+  // Pigments are managed here the same way liquids and gases are: start from a clone of the base
+  // list, edit freely, and record an override only if it ends up different.
+  const basePigments: PigmentDef[] = allPigments(rulePack);
+  const baseModel: PigmentModelConfig = pigmentModel(rulePack);
+  let pigments: PigmentDef[] = [];
+  let model: PigmentModelConfig = { ...baseModel };
+  let previewTempK = 5778;
+  let openPigment: string | null = null;
+
+  // What each pigment would look like under the preview star, computed by the ENGINE from whatever
+  // bands are in the boxes right now — so editing a band centre and watching the swatch move is the
+  // fastest way to understand what the numbers mean.
+  $: previewLight = blackbodySpectrum(previewTempK, 1361 * gridShare(previewTempK));
+  $: preview = scorePigments(previewLight, { ...rulePack, pigments, pigmentModel: model } as RulePack);
+  $: previewOf = (key: string) => preview.find((r) => r.key === key);
+  $: shownAbsorbed = (() => {
+    const def = pigments.find((d) => d.key === openPigment);
+    if (!def) return null;
+    const abs = absorptance(def, 0);
+    return previewLight.map((v, i) => v * abs[i]);
+  })();
+
+  function addPigment() {
+    const key = prompt('A unique id for the new pigment (e.g. rhodopsin-b):');
+    if (!key) return;
+    if (pigments.some((x) => x.key === key)) { alert('That id already exists.'); return; }
+    pigments = [...pigments, {
+      key, label: key.charAt(0).toUpperCase() + key.slice(1),
+      baselineAbsorptance: 0.06,
+      bands: [{ centreNm: 550, widthNm: 40, strength: 0.8 }]
+    }];
+    openPigment = key;
+  }
+  function removePigment(i: number) {
+    if (!confirm(`Remove "${pigments[i].label}"? Worlds already using it fall back to whatever else scores best.`)) return;
+    pigments = pigments.filter((_, k) => k !== i);
+  }
+  function resetPigment(i: number) {
+    const base = basePigments.find((b) => b.key === pigments[i]?.key);
+    if (base) { pigments[i] = JSON.parse(JSON.stringify(base)); pigments = [...pigments]; }
+  }
+  function addBand(i: number) {
+    pigments[i].bands = [...pigments[i].bands, { centreNm: 600, widthNm: 30, strength: 0.7 }];
+    pigments = [...pigments];
+  }
+  function removeBand(i: number, b: number) {
+    pigments[i].bands = pigments[i].bands.filter((_, k) => k !== b);
+    pigments = [...pigments];
+  }
 
   function handleSave() {
     const overrides: any = {};
     if (JSON.stringify(baseList) !== JSON.stringify(morphs)) overrides.morphologies = morphs;
+    if (JSON.stringify(basePigments) !== JSON.stringify(pigments)) overrides.pigments = pigments;
+    if (JSON.stringify(baseModel) !== JSON.stringify(model)) overrides.pigmentModel = model;
     dispatch('save', overrides);
     dispatch('close');
   }
@@ -154,25 +208,134 @@
 
     <button class="add" on:click={addMorph}>+ Add a morphology</button>
 
-    <details class="pigment-ref">
-      <summary>Pigments and how one is chosen ({pigments.length} in this pack)</summary>
+    <details class="pigment-ref" open>
+      <summary>Pigments — what life here can catch the light with ({pigments.length})</summary>
       <p class="intro">
-        These are <strong>read-only here</strong> — a pigment's colour is not authored, it is whatever the
-        pigment fails to absorb out of the light reaching that world's ground, so it changes with the star.
-        Edit them by shipping a <code>biospheres.json</code> in your rule pack.
+        A pigment is a set of <strong>absorption bands</strong>. Its colour is not authored anywhere: it is
+        whatever the pigment fails to absorb out of the light reaching a world's ground, which is why the
+        same pigment presents green under one star and near-black under another. Edit a band and the swatch
+        moves. <a href="/physics#biosphere" target="_blank" rel="noopener">How one is chosen</a>.
       </p>
-      <ul class="pig-list">
-        {#each pigments as p}
-          <li><b>{p.label}</b> — absorbs {p.bands.map((b) => `${b.centreNm} nm`).join(', ')}{p.baselineAbsorptance ? `, plus ${Math.round(p.baselineAbsorptance * 100)}% flat` : ''}{p.note ? `. ${p.note}` : ''}</li>
+
+      <label class="preview-star">
+        <span>Preview star <b>{Math.round(previewTempK)} K</b></span>
+        <input type="range" min="2600" max="11000" step="50" bind:value={previewTempK} />
+        <small>an airless world at 1 AU — the swatches below are what these pigments would present there</small>
+      </label>
+
+      <div class="rows">
+        {#each pigments as pg, i}
+          {@const pv = previewOf(pg.key)}
+          <div class="row">
+            <div class="row-head">
+              <button class="disclose" type="button" aria-expanded={openPigment === pg.key}
+                      on:click={() => (openPigment = openPigment === pg.key ? null : pg.key)}>
+                {openPigment === pg.key ? '▾' : '▸'}
+              </button>
+              {#if pv}<span class="chip" style="background:{pv.reflectedUnderStarHex}" title="{pv.reflectedUnderStarHex} — as human eyes would see it under this star"></span>{/if}
+              <input class="label-in" bind:value={pg.label} aria-label="Label" />
+              <code class="key">{pg.key}</code>
+              {#if pv}<span class="score" title="score under the preview star — several are always viable">{pv.score.toFixed(3)}{pv.viable ? '' : ' (outclassed)'}</span>{/if}
+              <span class="spacer"></span>
+              {#if basePigments.some((b) => b.key === pg.key)}<button class="mini" on:click={() => resetPigment(i)}>Reset</button>{/if}
+              <button class="mini danger" on:click={() => removePigment(i)}>Remove</button>
+            </div>
+
+            {#if openPigment === pg.key}
+              <div class="fields">
+                <label>
+                  <span>Flat absorption <b>{Math.round((pg.baselineAbsorptance ?? 0) * 100)}%</b></span>
+                  <input type="range" min="0" max="1" step="0.01"
+                         value={pg.baselineAbsorptance ?? 0}
+                         on:input={(e) => { pigments[i].baselineAbsorptance = +e.currentTarget.value; pigments = [...pigments]; }} />
+                  <small>absorbed at every wavelength. High here means broadband and dark — it works under any star.</small>
+                </label>
+              </div>
+
+              <div class="bands">
+                <div class="bands-head"><span>Absorption bands</span><button class="mini" on:click={() => addBand(i)}>+ band</button></div>
+                {#each pg.bands as bd, bi}
+                  <div class="band-row">
+                    <label><small>centre</small>
+                      <input type="number" min="280" max="1400" step="1" bind:value={bd.centreNm} /><small>nm</small></label>
+                    <label><small>width</small>
+                      <input type="number" min="2" max="400" step="1" bind:value={bd.widthNm} /><small>nm</small></label>
+                    <label><small>strength</small>
+                      <input type="number" min="0" max="1" step="0.01" bind:value={bd.strength} /></label>
+                    <button class="mini danger" on:click={() => removeBand(i, bi)}>×</button>
+                  </div>
+                {/each}
+                {#if !pg.bands.length}<p class="note">No bands — this pigment absorbs evenly at whatever the flat figure says.</p>{/if}
+              </div>
+
+              {#if shownAbsorbed}
+                <SpectrumChart surface={previewLight} absorbed={shownAbsorbed}
+                  absorbedLabel={`what ${pg.label} takes`} surfaceLabel="light from the preview star"
+                  topOfAtmosphere={null} yLabel="W&#183;m&#8315;&#178;&#183;nm&#8315;&#185;" />
+              {/if}
+              {#if pg.note}<p class="note">{pg.note}</p>{/if}
+            {/if}
+          </div>
         {/each}
-      </ul>
-      <p class="intro">
-        Selection weighs three competing pressures at once — capture (saturating at
-        {model.saturationFlux.toExponential(1)} photons·m⁻²·s⁻¹), protection (reaction centre
-        {model.reactionCentreNm} nm, damage threshold {model.damageThresholdNm} nm) and steadiness — then
-        draws a dominant from everything scoring above {Math.round(model.viabilityFraction * 100)}% of the
-        leader. Several usually qualify, and which one wins is contingent.
-      </p>
+      </div>
+
+      <button class="add" on:click={addPigment}>+ Add a pigment</button>
+
+      <details class="model-ref">
+        <summary>How one is chosen — the three pressures</summary>
+        <p class="intro">
+          A pigment is not picked by grabbing the most light: Earth disproves that, since the Sun peaks in the
+          green and chlorophyll reflects green. Three pressures are scored and <strong>multiplied</strong>, so
+          each switches itself off where it stops applying.
+        </p>
+        <div class="fields">
+          <label>
+            <span>Capture weight <b>{model.captureWeight}</b></span>
+            <input type="number" min="0" max="4" step="0.1" bind:value={model.captureWeight} />
+            <small>photons absorbed, saturating</small>
+          </label>
+          <label>
+            <span>Protection weight <b>{model.protectionWeight}</b></span>
+            <input type="number" min="0" max="4" step="0.1" bind:value={model.protectionWeight} />
+            <small>overload and wasted photon energy avoided</small>
+          </label>
+          <label>
+            <span>Steadiness weight <b>{model.steadinessWeight}</b></span>
+            <input type="number" min="0" max="4" step="0.1" bind:value={model.steadinessWeight} />
+            <small>feeding off the flanks rather than the peak</small>
+          </label>
+          <label>
+            <span>Saturating flux</span>
+            <input type="number" min="1e18" max="1e23" step="1e19" bind:value={model.saturationFlux} />
+            <small>photons&#183;m&#8315;&#178;&#183;s&#8315;&#185; a photosystem can process. THE number that makes selectivity scale with available light.</small>
+          </label>
+          <label>
+            <span>Reaction centre <b>{model.reactionCentreNm} nm</b></span>
+            <input type="number" min="400" max="1400" step="5" bind:value={model.reactionCentreNm} />
+            <small>its red limit; everything shorter wastes its excess as heat</small>
+          </label>
+          <label>
+            <span>Damage threshold <b>{model.damageThresholdNm} nm</b></span>
+            <input type="number" min="200" max="700" step="5" bind:value={model.damageThresholdNm} />
+            <small>shorter than this, a photon breaks chemistry as well as powering it</small>
+          </label>
+          <label>
+            <span>Tissue absorption <b>{Math.round(model.tissueAbsorptance * 100)}%</b></span>
+            <input type="range" min="0" max="0.8" step="0.01" bind:value={model.tissueAbsorptance} />
+            <small>the organism around the pigment — what makes a leaf dark rather than a paint chip. Colour only; it feeds no photosystem.</small>
+          </label>
+          <label>
+            <span>Viable at <b>{Math.round(model.viabilityFraction * 100)}%</b> of the leader</span>
+            <input type="range" min="0.2" max="1" step="0.01" bind:value={model.viabilityFraction} />
+            <small>anything above this is in the draw</small>
+          </label>
+          <label>
+            <span>Draw sharpness <b>{model.drawSharpness}</b></span>
+            <input type="number" min="1" max="30" step="1" bind:value={model.drawSharpness} />
+            <small>how hard the weighted draw favours the leaders</small>
+          </label>
+        </div>
+      </details>
     </details>
 
     <footer>
@@ -238,7 +401,22 @@
   }
   .pigment-ref { border-top: 1px solid var(--border, #2a2d36); padding-top: 8px; }
   .pigment-ref summary { cursor: pointer; font-size: 0.85em; color: var(--text, #eee); }
-  .pig-list { font-size: 0.78em; color: var(--text-muted, #cfcfcf); line-height: 1.55; padding-left: 18px; }
+  .preview-star { display: flex; flex-direction: column; gap: 2px; font-size: 0.78em; margin: 8px 0; }
+  .preview-star input { width: 100%; }
+  .preview-star small { color: var(--text-faint, #8a8f9a); }
+  .disclose {
+    background: none; border: none; color: var(--text-muted, #cfcfcf); cursor: pointer;
+    font-size: 0.8em; padding: 0 2px; line-height: 1;
+  }
+  .score { font-size: 0.72em; color: var(--text-faint, #8a8f9a); font-variant-numeric: tabular-nums; }
+  .bands { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .bands-head { display: flex; align-items: center; gap: 8px; font-size: 0.75em; color: var(--text-faint, #8a8f9a); }
+  .band-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .band-row label { display: flex; align-items: center; gap: 4px; font-size: 0.75em; }
+  .band-row input { width: 68px; background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36); color: var(--text, #eee); border-radius: 4px; padding: 2px 5px; }
+  .model-ref { margin-top: 10px; border-top: 1px solid var(--border, #2a2d36); padding-top: 8px; }
+  .model-ref summary { cursor: pointer; font-size: 0.8em; color: var(--text, #eee); }
+  .model-ref input[type='number'] { background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36); color: var(--text, #eee); border-radius: 4px; padding: 3px 6px; width: 100%; }
   footer { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--border, #2a2d36); padding-top: 10px; }
   footer button { padding: 5px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
   .secondary { background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36); color: var(--text-muted, #cfcfcf); }

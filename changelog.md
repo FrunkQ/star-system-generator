@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.654-beta - 16th Aug 2026
+
+- Pigments are now managed like liquids and gases: Settings -> Planets -> Biospheres edits their absorption bands, how broadly they absorb, and the weights that decide between them. Add your own and it joins the scoring immediately — there is no list of pigments anywhere in the code.
+- The pigment editor previews as you type. Drag the preview star, edit a band centre, and the swatch and the spectrum plot move with it, because they run the same scoring the engine does.
+- You can now PICK a world's pigment on the Bio tab, from that world's own viable set. It is an ordinary dropdown with no warning attached, because choosing between outcomes the model already calls viable is choosing a history, not correcting a physics. Leave it alone and the engine's draw stands.
+- /physics explains why a world offers the colours it offers, and why picking one is a free choice.
+- A technological world now genuinely reads as built where it has built: the day-side surface stops looking like ocean once the ocean has been roofed.
+
 ## v2.1.653-beta - 16th Aug 2026
 
 - Continents. Land, sea, ice and life are now thresholds of ONE elevation field per world, so a world has one geography instead of three separate scatters that disagreed with each other.
