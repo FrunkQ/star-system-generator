@@ -10,7 +10,7 @@
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
 import { phaseAtP, liquidDef } from '$lib/physics/liquids';
-import { decksFromTags, condensateTint, oxidationStrength } from '$lib/physics/cloudDecks';
+import { decksFromTags, condensateTint, oxidationStrength, spaceWeathering } from '$lib/physics/cloudDecks';
 import { vegetationTint } from '$lib/physics/vegetation';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
 import { blackbodySpectrum, gridShare, materialUnderLight, reflectanceFromHex,
@@ -177,6 +177,25 @@ export function deriveApparentColorParts(
   // it arrives as a tag (see deriveOxidation) and tints the surface here.
   const rust = oxidationStrength(body.tags);
   if (rust > 0) col = mix(col, [168, 74, 38], rust);   // hematite red-ochre
+  // SPACE WEATHERING — the other half of that sentence, and until now the unimplemented half. An
+  // airless surface accumulates nanophase iron, which mutes the mineral colour and darkens it; that
+  // is why the Moon is a dark warm grey rather than the plant-pot brown its bulk makeup alone gives.
+  // Muting first, then darkening: they are two separate optical effects of the same coating, and
+  // doing it the other way round loses the mute in the dark.
+  // The nanophase iron a vacuum-exposed surface accumulates MUTES its mineral bands, which is why a
+  // mature regolith reads as grey however warm the rock under it started. This is the same maturity
+  // the renderers used to apply themselves at paint time; it now happens once, here, so the colour
+  // chip beside a render agrees with it.
+  //
+  // DESATURATION ONLY, deliberately. Weathering does also lower the albedo — the Moon's is 0.12,
+  // darker than asphalt — but how BRIGHT a body looks is the lighting's job and the renderers already
+  // do it. Darkening the material colour as well would double-count it and hand back a charcoal
+  // swatch for a world that plainly reads pale grey.
+  const mature = rendersAsGiant(body) ? 0 : spaceWeathering(body);
+  if (mature > 0) {
+    const lum = 0.2126 * col[0] + 0.7152 * col[1] + 0.0722 * col[2];
+    col = mix(col, [lum, lum, lum], mature);
+  }
   // THE GROUND IS LIT BY THE SAME LIGHT AS EVERYTHING ELSE. The makeup mix above is the material's
   // own colour — what it would look like under daylight — so it goes through the spectral path too,
   // and a rocky world under a red dwarf reddens because of what its sky and star left rather than

@@ -277,14 +277,14 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#9a7b42",
+        "hex": "#8d7e52",
         "palette": [
           {
-            "hex": "#816651",
+            "hex": "#716965",
             "role": "surface",
             "weight": 1,
             "label": "metal surface",
-            "rawHex": "#7e6855"
+            "rawHex": "#6c6b6a"
           },
           {
             "hex": "#ffd005",
@@ -296,7 +296,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#9a7b42",
+      "apparentColorHex": "#8d7e52",
       "classification": {
         "base": "planet/hot-eyeball",
         "baseScore": 1.56,
@@ -1919,19 +1919,19 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#9f7856",
+        "hex": "#867d78",
         "palette": [
           {
-            "hex": "#9f7856",
+            "hex": "#867d78",
             "role": "surface",
             "weight": 1,
             "label": "rock surface",
-            "rawHex": "#9c7a5a"
+            "rawHex": "#807f7d"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#9f7856",
+      "apparentColorHex": "#867d78",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.2,
@@ -5249,14 +5249,14 @@
         "attenuators": []
       },
       "apparentColor": {
-        "hex": "#d0d4e2",
+        "hex": "#d1d4e2",
         "palette": [
           {
-            "hex": "#e5e9f5",
+            "hex": "#e7e9f1",
             "role": "surface",
             "weight": 1,
             "label": "ice surface",
-            "rawHex": "#d8ecff"
+            "rawHex": "#dbecfb"
           },
           {
             "hex": "#ced2e0",
@@ -5268,7 +5268,7 @@
         ],
         "banding": 0
       },
-      "apparentColorHex": "#d0d4e2",
+      "apparentColorHex": "#d1d4e2",
       "classification": {
         "base": "planet/ice",
         "baseScore": 1.3,

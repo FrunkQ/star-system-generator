@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.676-beta - 16th Aug 2026
+
+- FIXED: Luna's colour chip was brown while its 2D and 3D views were correctly grey. Space weathering — the nanophase iron a vacuum-exposed surface accumulates, which mutes its mineral colour — was only ever applied by the texture renderers, downstream of the value everything else reads. It is a property of the SURFACE, not of one picture of it, so it now happens once on the apparent colour and everything agrees. Luna goes from #9f7856 to #867d78, Mercury greys, Mars keeps its red because that is rust and not weathering, and the icy moons are exempt because an icy crust anneals rather than accumulating iron.
+- The renderers no longer grey a second time on top of that, which would have counted the same iron twice.
+- Both surface processes are now written up on the physics page, next to the colour they produce.
+- The Surface view's canvases declare that they are read back every frame, which clears a console warning and stops the browser shuttling the surface to the GPU and back on every drag.
+
 ## v2.1.675-beta - 16th Aug 2026
 
 * Player views now lead the what’s-new list, described as what they are — text, 2D or 3D, themed to your setting — and the surface Horizon view gets a line of its own.

@@ -428,13 +428,9 @@ function render(body: CelestialBody): HTMLCanvasElement {
   // (craters/cracks/tholins/frost/rifts) are NOT baked here: this disc texture is the base layer for
   // PlanetDisc, which draws those crisply as SVG on top; baking them too would double them. (The 3D
   // equirect sibling has no such overlay, so it DOES bake the full set.)
-  {
-    if (appear.regolith > 0) {
-      ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = appear.regolith;
-      ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, SIZE, SIZE);
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-    }
-  }
+  // (Space-weathered greying used to be re-applied here as a saturation wash. It now arrives in the
+  // palette this texture is painted from — see apparentColor's space-weathering step — so doing it
+  // again would count the same nanophase iron twice.)
 
   // --- Haze: a wash plus a stronger limb tint (atmosphere reads thickest at the edge).
   if (haze) {
@@ -505,12 +501,7 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
   const wrap = (draw: (dx: number) => void) => { for (const dx of [-EQ_W, 0, EQ_W]) draw(dx); };
   const S = EQ_W / 512; // absolute-px sizes scale with the sheet resolution (relative ones auto-scale)
 
-  // Space-weathered regolith: desaturate an airless silicate surface toward grey (Moon/Mercury).
-  if (a.regolith > 0) {
-    ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = a.regolith;
-    ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, EQ_W, EQ_H);
-    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-  }
+  // (Space-weathered greying arrives in the palette now — see the disc renderer's note above.)
 
   // EYEBALL — a tidally-locked world's permanent day/night split: a hot (baked or molten-glowing)
   // substellar hemisphere fading through a terminator ring to a frozen antistellar one. The substellar

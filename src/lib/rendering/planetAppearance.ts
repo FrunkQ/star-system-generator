@@ -19,6 +19,7 @@ import { LIQUIDS } from '$lib/constants';
 import { starColorFromTempK } from './apparentColor';
 import { oblatePolarFactor } from './bodyShape';
 import { auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
+import { spaceWeathering } from '$lib/physics/cloudDecks';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { isSmallBodyShape } from '$lib/catalogue/smallBodyShape';
 import { decksFromTags, condensateTint } from '$lib/physics/cloudDecks';
@@ -314,8 +315,14 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// toward neutral (the Moon and Mercury are grey, not the tan of fresh rock); maturity tracks the
 	// irradiation dose. Gated on true vacuum, so thin-air, OXIDISED Mars keeps its red — its colour is
 	// rust, not space weathering.
-	const regolith = (solid && !icyShell && atmPressureBar < 0.001)
-		? clamp01(Math.min(1, dose) * 0.95) : 0;
+	// ONE DERIVATION, and it is no longer here. The greying is a physical property of the SURFACE, so
+	// it belongs on the apparent colour where everything can see it — the body swatch, the data panel,
+	// the Surface view — rather than being applied at paint time only. Luna was the proof: its 2D and
+	// 3D renders were correctly grey while the colour chip beside them stayed plant-pot brown, because
+	// the greying happened downstream of the value that chip reads.
+	// Kept as a scalar because `physicsTrace` reports it; the COLOUR change now happens once, in
+	// `apparentColor`, from this same function.
+	const regolith = solid && !icyShell ? spaceWeathering(body) : 0;
 
 	// ICE CRACKS / RIDGES — an icy crust flexed by tidal/freezing stress splits into a lineae network
 	// (Europa). Stronger on tidally-worked / cryovolcanic crusts.

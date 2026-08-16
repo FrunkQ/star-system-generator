@@ -325,6 +325,45 @@ export function oxidationStrength(tags: Tag[] | undefined): number {
   return v === 'heavy' ? 0.62 : v === 'moderate' ? 0.4 : v === 'light' ? 0.2 : 0;
 }
 
+/**
+ * SPACE WEATHERING — how far an exposed surface has been worked over, 0..1.
+ *
+ * The sibling of oxidation, and the other half of a claim this codebase has made in a comment for a
+ * long time without implementing: Mars is red because it rusted, and the Moon, with the same iron
+ * and the same age but no oxidiser, is grey. The rust was wired. The greying was not, so every
+ * airless rock kept the raw brown of its bulk makeup and Luna came out the colour of a plant pot.
+ *
+ * The mechanism is real and specific. Micrometeorites and the solar wind sputter grain surfaces and
+ * deposit nanophase metallic iron on them; that coating DARKENS the regolith, MUTES its mineral
+ * absorption bands, and reddens the continuum slope a little. Muted bands are why maturity reads as
+ * greyness even though the slope reddens — the surface keeps a warm cast but loses the saturation
+ * that says what mineral it is. It is also why fresh crater rays are bright: they are unweathered.
+ *
+ * Two tags already carry what it needs. `surface/irradiation` is the dose and `surface/age` is the
+ * exposure time, and the product of those is maturity. An ATMOSPHERE stops it outright, which is why
+ * this is an airless-body effect and why Mars — shielded, but rusting — gets the other one.
+ */
+export function spaceWeathering(body: CelestialBody): number {
+  // TRUE VACUUM ONLY. Even a wisp of air stops micrometeorites and deflects the wind, which is why
+  // thin-aired Mars is red from RUST rather than grey from weathering — different process, and the
+  // tags say which one a world got.
+  if ((body.atmosphere?.pressure_bar ?? 0) >= 0.001) return 0;
+  // makeupFractions, NOT body.makeup — the fractions are DERIVED from mass and density and are not
+  // stored on the body. Reading the raw field returned undefined for every world in the catalogue,
+  // so the guard below silently switched the whole effect off.
+  const mk = makeupFractions(body);
+  // An icy crust does not mature this way: it sputters and anneals rather than accumulating iron.
+  if (mk.ice > 0.3 || mk.gas > 0.5) return 0;
+  if (!(mk.rock > 0 || mk.metal > 0 || mk.carbon > 0)) return 0;
+  const dose = (body as any).irradiationDose;
+  if (typeof dose === 'number') return Math.max(0, Math.min(1, Math.min(1, dose) * 0.95));
+  // Fall back to the tags when the raw dose is not on the body (a hand-authored world, a fixture).
+  const tag = (k: string) => body.tags?.find((t) => t.key === k)?.value;
+  const d = { high: 1, moderate: 0.62, low: 0.3 }[tag('surface/irradiation') ?? ''] ?? 0.5;
+  const t = { ancient: 1, moderate: 0.5, young: 0.15 }[tag('surface/age') ?? ''] ?? 0.6;
+  return Math.max(0, Math.min(1, d * t * 0.95));
+}
+
 // ── Weather (derived from the decks + the body's own physics) ────────────────────────────────────
 // Flavour tags, but derived not sprinkled: each needs a real reason to exist, so a world only gets
 // them when its physics earns them. Kept OUT of the appearance model deliberately — they describe

@@ -1110,6 +1110,18 @@
 
     <section id="colour">
       <h2>Apparent colour &amp; visualisation <span class="phase">§2e</span></h2>
+      <p><strong>A surface is weathered as well as made of something.</strong> Bulk makeup alone gives every
+        rocky world the same brown, and two processes pull it apart. <strong>Oxidation</strong> is why Mars is
+        red: iron plus an oxidiser gives hematite, and it arrives as a tag. <strong>Space weathering</strong> is
+        why the Moon, with the same iron and the same age but no oxidiser, is grey — micrometeorites and the
+        solar wind deposit nanophase metallic iron on every grain, which mutes the mineral absorption bands
+        until the surface keeps only a faint warm cast. It needs true vacuum, so a world with even a wisp of
+        air gets the other one, and an icy crust is exempt because it anneals rather than accumulating iron.
+        Maturity is the irradiation dose; fresh crater rays are bright because they are unweathered.</p>
+      <p>Both happen <em>here</em>, on the apparent colour, rather than at paint time — they are properties of
+        the surface, not of one picture of it. That was a real bug: the greying used to be applied by the
+        texture renderers only, so Luna's 2D and 3D views were correctly grey while the colour chip beside
+        them stayed brown. One derivation, read by everything.</p>
       <p>Instead of one swatch per class, a body's <strong>true colour</strong> is composed: a surface base from
         makeup fractions, a blue ocean overlay, a tint from the dominant coloured atmospheric gas, condensed cloud
         decks veiling the surface (sulfuric/sulfur/alkali opaque; water patchy, so Earth stays blue), a giant's colour

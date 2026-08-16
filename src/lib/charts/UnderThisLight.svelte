@@ -163,7 +163,9 @@
 
   function draw() {
     if (!canvas || !op) return;
-    const ctx = canvas.getContext('2d')!;
+    // We read this back with getImageData on every drag frame, so say so — otherwise the browser
+    // keeps the surface GPU-side and warns about the readback each time.
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     const H = canvas.height;
     ctx.clearRect(0, 0, W, H);
     const x0 = Math.round((split / 100) * W);
@@ -196,7 +198,7 @@
 
     const mat = matCanvas ?? (matCanvas = document.createElement('canvas'));
     mat.width = W; mat.height = H;
-    const mctx = mat.getContext('2d')!;
+    const mctx = mat.getContext('2d', { willReadFrequently: true })!;
     mctx.clearRect(0, 0, W, H);
     drawMaterials(mctx, W, H, world);
     if (x0 < W) {
