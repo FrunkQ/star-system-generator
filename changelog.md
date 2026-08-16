@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.687-beta - 16th Aug 2026
+
+- A star built in the editor or rolled by generation now knows its full designation - the 2 in G2V, not just the G. It was already read and written correctly for stars imported from the real sky; what was missing was the one step that says which digit a temperature deserves, so two thirds of the stars in a campaign could not state one. Anchored on the measured main-sequence temperatures rather than by cutting each letter into ten equal slices, because the real sequence is uneven: G0 to G2 is 160 degrees and K5 to K7 is 340.
+- Dragging a star's temperature now updates its subclass with it, instead of dropping the digit and keeping only the letter.
+
+
 ## v2.1.686-beta - 16th Aug 2026
 
 - Picking a spectral type in the star editor now draws a star from that class's range instead of handing back the exact middle of it every time, so two G dwarfs in a campaign are two different G dwarfs rather than the same numbers twice. The draw is seeded from the star itself, so re-opening the panel never rerolls it under you, and it is the same draw system generation has always made - a hand-placed G2V and a generated one are now the same kind of object.

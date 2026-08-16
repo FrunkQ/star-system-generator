@@ -7,6 +7,7 @@ import { SOLAR_TEMPERATURE_K } from '../physics/stellar-evolution';
 import { bodyFactory } from '../core/BodyFactory';
 import { resolveStarImage, spectralLetterOf } from '../system/starImage';
 import { activityScatterFromRoll } from '../physics/ionisingOutput';
+import { stellarTypeForBand } from '../physics/starDesignation';
 
 // The stat template for a star class, falling back from the full spectral class to its letter
 // (star/G5V -> star/G). Exported because BOTH star-creation paths need it: the legacy random
@@ -239,6 +240,12 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     star.classes = baseSpectral && starClass !== baseSpectral ? [starClass, baseSpectral] : [starClass];
 
     star.temperatureK = starTemperatureK;
+    // THE STRUCTURED CLASSIFICATION, WHICH THIS PATH NEVER SET (inbox B60). An IMPORTED star has
+    // carried `stellarType` since the real-sky work — spectral letter, subclass, luminosity class —
+    // while a GENERATED one carried only a class string, so the inverse question ("what designation
+    // does this star state") had nothing to read for two thirds of the stars in a campaign. The
+    // subclass comes from the temperature drawn above, through the same anchors the editor uses.
+    star.stellarType = stellarTypeForBand(starClass, starTemperatureK, pack);
     star.magneticField = starMagneticField;
     star.radiationOutput = radiationOutput;
     star.image = starImage ? { url: starImage } : undefined;

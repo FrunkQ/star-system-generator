@@ -34,6 +34,19 @@
     },
     "stellarClassification": {
         "_note": "A magnetar is not a separate kind of object: it is a neutron star with a very strong field, so it is not SPAWNED. Generation draws star/NS and the field decides the label. The boundary is a PRODUCT CHOICE inside a real continuum - magnetars sit at 1e14-1e15 gauss and ordinary pulsars near 1e12, with high-B pulsars occupying the decade between - so it lives here as data rather than as a constant in code.",
-        "magnetar_field_gauss": 100000000000000
+        "magnetar_field_gauss": 100000000000000,
+        "_subclass_note": "THE DIGIT IN G2V, ANCHORED RATHER THAN TABULATED. A subclass is a position in temperature inside its letter, and the real sequence is unevenly spaced - G0 to G2 is 160 K and K5 to K7 is 340 - so a linear split of the letter's band is wrong everywhere except by accident. These are effective temperatures for named MAIN-SEQUENCE subclasses (Pecaut & Mamajek 2013), and anything between them is interpolated. Sparse on purpose: only the well-measured anchors are stated, because inventing the gaps would be inventing data. NO PARAMETER BANDS BELONG HERE - since luminosity is computed and the classifier works from HR position, a subclass needs nothing but its temperature. A pack describing a different classification scheme replaces this block; a pack that omits it gets letters with no digit, which is a designation that states less rather than one that states something wrong.",
+        "subclass_anchors": {
+            "O": { "3": 44900, "5": 41400, "7": 35100, "9": 32000 },
+            "B": { "0": 31400, "2": 20600, "5": 15200, "8": 12300, "9": 10700 },
+            "A": { "0": 9700, "2": 8800, "5": 8100, "7": 7760, "9": 7400 },
+            "F": { "0": 7220, "2": 6820, "5": 6550, "8": 6180, "9": 6050 },
+            "G": { "0": 5930, "2": 5770, "5": 5660, "8": 5490, "9": 5340 },
+            "K": { "0": 5280, "2": 5040, "5": 4410, "7": 4070, "9": 3940 },
+            "M": { "0": 3870, "2": 3550, "5": 3030, "7": 2650, "9": 2400 },
+            "L": { "0": 2250, "5": 1590, "9": 1300 },
+            "T": { "0": 1250, "5": 950, "9": 600 },
+            "Y": { "0": 450, "2": 350, "4": 250 }
+        }
     }
 }

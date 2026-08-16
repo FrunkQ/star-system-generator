@@ -10,6 +10,7 @@
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
   import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatsFromPack } from '$lib/generation/star';
+  import { stellarTypeForBand, subclassForTemp } from '$lib/physics/starDesignation';
   import { SeededRNG } from '$lib/rng';
 
   let { body, rulePack } = $props();
@@ -463,11 +464,18 @@
           const others = body.classes.filter((c: string) => !prefixes.includes(c));
           body.classes = [newClass, ...others];
           // Keep the structured classification in step, or the body says one thing in its class and
-          // another in its type. The SUBCLASS is dropped because it is relative to the letter — the
-          // 5.5 of M5.5V means nothing once the star is a K — while the luminosity class is kept,
-          // since the GM moved the temperature, not the size class.
+          // another in its type. The SUBCLASS is RE-DERIVED rather than dropped: it is relative to the
+          // letter, so the 5.5 of M5.5V means nothing once the star is a K — but the new temperature
+          // states a new digit, and dropping it published less than the engine knows (inbox B60). The
+          // luminosity class is kept, since the GM moved the temperature and not the size class.
           const { luminosity, band } = body.stellarType ?? {};
-          body.stellarType = { spectral: newClass.split('/')[1], ...(luminosity ? { luminosity, band } : {}) };
+          const letter = newClass.split('/')[1];
+          const sub = subclassForTemp(letter, k, rulePack);
+          body.stellarType = {
+              spectral: letter,
+              ...(sub != null ? { subclass: Math.round(sub) } : {}),
+              ...(luminosity ? { luminosity, band } : {})
+          };
           currentClass = newClass;
           updateImage(newClass);
       }
@@ -604,17 +612,9 @@
       applyAccretion(seed);
   }
 
-  // A pack band key -> the structured classification it states. `star/M-I` is an M supergiant;
-  // `star/K` is a K star with no luminosity class stated, which is exactly what a bare letter band
-  // means and must stay distinguishable from one stated as V. Remnants carry their own key as the
-  // spectral value, because 'WD' and 'BH' are classifications with no letter behind them.
-  function stellarTypeForBand(key: string): StellarType | undefined {
-      const name = key.split('/')[1];
-      if (!name) return undefined;
-      const m = /^([OBAFGKMLTY])(?:-(I|III|V))?$/.exec(name);
-      if (!m) return { spectral: name };  // star/WD, star/NS, star/BH, ...
-      return { spectral: m[1], ...(m[2] ? { luminosity: m[2], band: m[2] as 'I' | 'III' | 'V' } : {}) };
-  }
+  // (`stellarTypeForBand` lived here and now lives in `physics/starDesignation`, because generation
+  //  needs the same answer: a star built by the wizard used to carry no structured classification at
+  //  all, so only an IMPORTED star had one. Two doors, one map — inbox B60.)
 
   function updateImage(starClass: string) {
       // G20 - A GM-UPLOADED PICTURE OUTRANKS THE CLASS PORTRAIT, AND THIS IS THE ONE WRITER THAT
@@ -654,11 +654,6 @@
       const prefixes = Object.keys(SPECTRAL_DATA);
       const others = body.classes.filter((c: string) => !prefixes.includes(c));
       body.classes = [val, ...others];
-      // PICKING IS THE FORWARD DIRECTION and it must leave the same structured classification an
-      // IMPORT would (owner, 2026-08-14). Without this, a GM-built supergiant is a supergiant only
-      // by its class string, and the inverse — parameters back to a designation — has nothing to
-      // read. A pick states no subclass, so none is recorded: absent is not the same as zero.
-      body.stellarType = stellarTypeForBand(val);
       updateImage(val);
 
       // A SEEDED DRAW ACROSS THE BAND, NOT ITS MIDPOINT (owner, 2026-08-16: "always seeded draw").
@@ -690,6 +685,14 @@
           tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
           body.temperatureK = tempK;
       }
+      // PICKING IS THE FORWARD DIRECTION and it must leave the same structured classification an
+      // IMPORT would (owner, 2026-08-14). Without this, a GM-built supergiant is a supergiant only by
+      // its class string, and the inverse — parameters back to a designation — has nothing to read.
+      // IT NOW STATES A SUBCLASS TOO, and it can only do so because the pick DRAWS a temperature: a
+      // midpoint stood for the whole band and implied no particular digit, but a drawn 5,772 K G star
+      // is a G2 and saying so is stating what the draw already decided (inbox B60). Runs AFTER the
+      // draw for exactly that reason.
+      body.stellarType = stellarTypeForBand(val, body.temperatureK, rulePack);
       // Picking a black hole from the dropdown applies the per-state presets too (event horizon
       // from mass, no-hair zero field for quiescent / disc values for feeding).
       if (val === 'star/BH' || val === 'star/BH_active') applyBHPresets(val);
