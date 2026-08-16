@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.705-beta - 16th Aug 2026
+
+* Internal: split star tails into the tidal kind, which we can already work out, and the wind-blown kind, which needs data we do not hold.
+
 ## v2.1.704-beta - 16th Aug 2026
 
 - Docs: the observations inbox records A42, A47, A48 and E8 as done, with two of their recorded diagnoses corrected, two new findings and one correction to the known-not-ours list.
