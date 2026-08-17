@@ -36,7 +36,7 @@ const NEEDS_MASS_AND_RADIUS = (n) =>
 // filter, so this test goes red on a NEW break AND on a listed one being FIXED — which is what
 // stops an allowlist quietly becoming permanent. It held exactly one entry, and holds none now.
 //
-// D23, REPAIRED v2.1.744-beta. Uggi's "Hades-Cerebus Alpha Barycenter" pointed `parentId` and
+// D23, REPAIRED v2.1.758-beta. Uggi's "Hades-Cerebus Alpha Barycenter" pointed `parentId` and
 // `orbit.hostId` at `bary-auto-id-1771108225594-0gusavqhj`, which was not in the file, so
 // `pathToRoot` DIED for Cerebus Alpha and nothing downstream of it — distance to star,
 // temperature, eclipses — could be derived at all. The engine half was fixed at v2.1.538
