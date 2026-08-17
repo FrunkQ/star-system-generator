@@ -71,7 +71,7 @@
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave } from '$lib/map/provenance';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
-  import { unitKind, rescaleForUnitChange } from '$lib/map/distanceUnits';
+  import { unitKind, campaignUnit, normaliseCampaignUnit, applyUnitChange, type UnitChangeMode } from '$lib/map/distanceUnits';
   import { shouldOfferUpgrade, dismissUpgrade, type UpgradeOffer } from '$lib/map/upgradeOffer';
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
@@ -918,10 +918,16 @@
     const invertDisplay = sanitized.invertDisplay ?? false;
     if (sanitized.invertDisplay === undefined) changed = true;
 
-    const defaultUnit = sanitized.distanceUnit || 'LY';
+    // A43: `distanceUnit` and `scale.unit` are two fields holding one concept and a save can carry them
+    // DISAGREEING — which is why three call sites had each written out their own precedence. Fold them
+    // here, on the way in, so nothing downstream has to. It copies a label; it never touches geometry.
+    const unifiedUnit = campaignUnit(sanitized);
+    if (sanitized.distanceUnit !== unifiedUnit || (sanitized.scale && sanitized.scale.unit !== unifiedUnit)) changed = true;
+
+    const defaultUnit = unifiedUnit;
     const currentScale = sanitized.scale;
     const scale = currentScale && currentScale.pixelsPerUnit > 0
-      ? { ...currentScale, unit: currentScale.unit || defaultUnit }
+      ? { ...currentScale, unit: defaultUnit }
       : { unit: defaultUnit, pixelsPerUnit: 25, showScaleBar: true };
     if (!currentScale || !currentScale.unit || !(currentScale.pixelsPerUnit > 0) || currentScale.showScaleBar === undefined) {
       changed = true;
@@ -931,7 +937,7 @@
     if (temporalNormalized !== sanitized) changed = true;
 
     if (!changed) return sanitized;
-    return { ...temporalNormalized, mapMode, invertDisplay, scale, generationEngine: sanitized.generationEngine };
+    return { ...temporalNormalized, mapMode, invertDisplay, scale, distanceUnit: unifiedUnit, generationEngine: sanitized.generationEngine };
   }
 
   // WS7: this MUST go through lib/map/systemDistance.ts like every other distance. It used to measure
@@ -1742,24 +1748,28 @@
   }
 
 
-  function handleSaveSettings(event: CustomEvent<{ starmap: Partial<StarmapType> }>) {
-    const { starmap: starmapSettings } = event.detail;
+  function handleSaveSettings(event: CustomEvent<{ starmap: Partial<StarmapType>; unitMode?: UnitChangeMode }>) {
+    const { starmap: starmapSettings, unitMode } = event.detail;
     starmapStore.update(starmap => {
       if (starmap) {
         const merged = { ...starmap, ...starmapSettings };
-        // Changing the distance unit changes the RULER, not the layout: rescale pixelsPerUnit so nothing
-        // moves and every distance converts. Without this the numbers stay put and only the suffix changes,
-        // so a 3.8 ly depth reads "3.8 pc". Routes are rebuilt from geometry just below, so they follow.
-        if (merged.scale && unitKind(starmap.scale?.unit) && unitKind(merged.scale.unit)) {
-          merged.scale = {
-            ...merged.scale,
-            pixelsPerUnit: rescaleForUnitChange(
-              starmap.scale?.pixelsPerUnit ?? merged.scale.pixelsPerUnit,
-              starmap.scale?.unit,
-              merged.scale.unit
-            )
-          };
+        // A43. Changing the unit is a change of RULER, not of layout — positions stay in map units and a
+        // distance is `mapUnits / pixelsPerUnit`, so both outcomes are reachable without rewriting a single
+        // coordinate (the z/depth annotation included). WHICH outcome is the GM's call, asked at the moment
+        // of change and carried here as `unitMode`; this code must not decide.
+        //   convert — rescale the ruler: the map is right, express it the other way.
+        //   relabel — leave the ruler: the numbers were right and the unit was wrong.
+        // Until A43 this ALWAYS converted, which is precisely how a map mis-stamped as parsecs turned
+        // Alpha Centauri's 4.37 into 14.33. Default stays 'convert' for any caller that does not ask.
+        if (merged.scale && unitKind(campaignUnit(starmap)) && unitKind(merged.scale.unit)) {
+          merged.scale = applyUnitChange(
+            { ...merged.scale, unit: campaignUnit(starmap), pixelsPerUnit: starmap.scale?.pixelsPerUnit ?? merged.scale.pixelsPerUnit },
+            merged.scale.unit,
+            unitMode ?? 'convert'
+          );
         }
+        // The two unit fields must never leave this function disagreeing (A43's second fault).
+        Object.assign(merged, normaliseCampaignUnit(merged));
         if ((merged.mapMode ?? 'diagrammatic') === 'scaled') {
           return rebuildRouteDistancesFromGeometry(withStarmapDefaults(merged));
         }

@@ -3,7 +3,7 @@ import {
   offsetToMapPos, mapPosToOffset, wrapBearing, clampElevation, compassName, elevationName,
   bearingToRa, raToBearing, elevationToDec, decToElevation, formatRa, formatDec
 } from './spherical';
-import { unitKind, convertDistance, unitOptionsFor, rescaleForUnitChange, LY_PER_PC } from './distanceUnits';
+import { unitKind, convertDistance, unitOptionsFor, rescaleForUnitChange, campaignUnit, normaliseCampaignUnit, applyUnitChange, unitChangeOutcomes, LY_PER_PC } from './distanceUnits';
 
 const ORIGIN = { x: 100, y: 100, z: 0 };
 const PPU = 10; // 10 map units per distance unit
@@ -229,5 +229,64 @@ describe('distance units — changing a map’s unit rescales the ruler, not the
 
   it('ignores an unusable scale rather than producing an infinity', () => {
     expect(rescaleForUnitChange(0, 'ly', 'pc')).toBe(0);
+  });
+});
+
+
+describe('A43 — the two things a GM can mean by "change the unit"', () => {
+  // The reported fault, reproduced: a map whose figures were LIGHT YEARS arrives stamped 'pc' (the
+  // Traveller hex path adopts a ruler from geometry). Alpha Centauri reads 4.37. The GM then picks
+  // light years in Settings. Until A43 that ALWAYS converted, giving 4.37 x 3.26 = 14.25.
+  const PPU = 43.30127018922193;
+  const alphaCentauriPx = 4.37 * PPU; // stored map units that read 4.37 in the stored unit
+
+  it('RELABEL keeps the number and changes only the unit — the reported case', () => {
+    const next = applyUnitChange({ unit: 'pc', pixelsPerUnit: PPU }, 'ly', 'relabel');
+    expect(next.unit).toBe('ly');
+    expect(next.pixelsPerUnit).toBe(PPU);
+    expect(alphaCentauriPx / next.pixelsPerUnit).toBeCloseTo(4.37, 6); // NOT 14.25
+  });
+
+  it('CONVERT keeps the map and re-expresses it — and reproduces the 14.33 that was reported', () => {
+    const next = applyUnitChange({ unit: 'pc', pixelsPerUnit: PPU }, 'ly', 'convert');
+    expect(alphaCentauriPx / next.pixelsPerUnit).toBeCloseTo(4.37 * LY_PER_PC, 6);
+    expect(alphaCentauriPx / next.pixelsPerUnit).toBeCloseTo(14.25, 2);
+  });
+
+  it('neither mode moves a single coordinate — including depth', () => {
+    // Why the choice is cheap to offer: a distance is mapUnits / pixelsPerUnit, so the z annotation
+    // follows the ruler for free. Nothing rewrites geometry, so nothing can corrupt it.
+    const z = -13 * PPU;
+    expect(z / applyUnitChange({ unit: 'ly', pixelsPerUnit: PPU }, 'pc', 'relabel').pixelsPerUnit).toBeCloseTo(-13, 6);
+    expect(z / applyUnitChange({ unit: 'ly', pixelsPerUnit: PPU }, 'pc', 'convert').pixelsPerUnit).toBeCloseTo(-13 / LY_PER_PC, 6);
+  });
+
+  it('shows the GM both outcomes as numbers, which is what the prompt is worded on', () => {
+    const o = unitChangeOutcomes(4.37, 'pc', 'ly');
+    expect(o.relabel).toBeCloseTo(4.37, 6);
+    expect(o.convert).toBeCloseTo(14.25, 2);
+  });
+});
+
+describe('A43 — two fields holding one concept', () => {
+  it('resolves the campaign unit in ONE place, scale.unit winning', () => {
+    // scale.unit wins because it sits beside the pixelsPerUnit it must change with.
+    expect(campaignUnit({ distanceUnit: 'ly', scale: { unit: 'pc' } })).toBe('pc');
+    expect(campaignUnit({ distanceUnit: 'ly' })).toBe('ly');
+    expect(campaignUnit({})).toBe('LY');
+    expect(campaignUnit(null)).toBe('LY');
+  });
+
+  it('folds a save that carries the two fields DISAGREEING', () => {
+    const fixed = normaliseCampaignUnit({ distanceUnit: 'ly', scale: { unit: 'pc', pixelsPerUnit: 25 } });
+    expect(fixed.distanceUnit).toBe('pc');
+    expect(fixed.scale?.unit).toBe('pc');
+    // It copies a LABEL and must never touch the ruler.
+    expect((fixed.scale as { pixelsPerUnit: number }).pixelsPerUnit).toBe(25);
+  });
+
+  it('returns the same object when they already agree, so it is free on every load', () => {
+    const ok = { distanceUnit: 'ly', scale: { unit: 'ly' } };
+    expect(normaliseCampaignUnit(ok)).toBe(ok);
   });
 });

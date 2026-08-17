@@ -25,6 +25,7 @@
 // it produced". A mid-load failure wants both; on demand they differ only by unsaved edits.
 import { zipSync, strToU8 } from 'fflate';
 import { readMemory } from '$lib/memoryWatch';
+import { campaignUnit } from '$lib/map/distanceUnits';
 
 export interface DiagnosticInput {
   /** What the user did / what happened — 'stopped by user', 'load guard tripped', … */
@@ -124,7 +125,7 @@ function mapExtent(systems: any[], map: any): Record<string, unknown> {
   // Coordinates are stored in PIXELS; the reported figure ("85,103 ly apart") is in map units, so
   // both are given. Without the conversion nobody can match a report to a bundle.
   const perUnit = map?.scale?.pixelsPerUnit ?? null;
-  const unit = map?.scale?.unit ?? map?.distanceUnit ?? null;
+  const unit = campaignUnit(map as never); // A43: one accessor, not a hand-written precedence
   return {
     count: systems.length,
     spanX, spanY, spanZ, diagonal,

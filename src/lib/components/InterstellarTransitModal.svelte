@@ -17,6 +17,7 @@
   import { constructDisplayPlacement, interstellarConstructIds } from '$lib/transit/interstellar';
   import { redirectDeltaV, headingOffsetDeg } from '$lib/physics/redirect';
   import { fmt } from '$lib/stores';
+  import { campaignUnit } from '$lib/map/distanceUnits';
 
   export let starmap: Starmap;
   export let rulePack: RulePack;
@@ -154,7 +155,7 @@
     // WS7: the straight-line separation counts DEPTH (unless the campaign opted out). The redirect-dv
     // vector maths below stays planar — see the limitation note in lib/map/systemDistance.ts.
     const px = mapSeparation(originPoint, targetPoint, !zCounts(starmap));
-    const unit = starmap.scale?.unit || starmap.distanceUnit || 'LY';
+    const unit = campaignUnit(starmap); // A43: one accessor, not a hand-written precedence
     const perUnit = starmap.scale?.pixelsPerUnit || 1;
     const value = px / perUnit;
     const metersPerCoord = distanceToMeters(1, unit) / perUnit;

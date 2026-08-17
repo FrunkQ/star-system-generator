@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.758-beta - 17th Aug 2026
+
+- Changing a starmap between light years and parsecs now ASKS what you meant, showing both answers on a system from your own map: "TRAPPIST-1 is currently 40.66 pc from Sol - should it read 40.66 ly, or 133 ly?" Keeping the numbers (the unit was simply wrong) was previously impossible; every change converted, which is how a map loaded in Traveller mode ended up reading Alpha Centauri at 14.33 ly instead of 4.37. Neither answer moves anything on the map - depths included.
+
 ## v2.1.757-beta - 17th Aug 2026
 
 - **Fixed: opening a system cut off its outer edge — which you only notice in a binary, where the thing cut off is a STAR.** The opening view was a fixed camera position that took no account of the lens, and it sat close enough to show under three quarters of the system's radius. It is now fitted to what is actually being looked through, so the whole system is in frame on entry, and a narrow phone screen pulls further back rather than cropping the sides.

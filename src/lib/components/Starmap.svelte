@@ -50,6 +50,7 @@
   const markerPill = tagPillMetrics(6);
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  import { campaignUnit } from '$lib/map/distanceUnits';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
   // THE SELECTION IS PASSED IN, NEVER CLOSED OVER. `{@const hl = systemMarkers(systemNode)}` inside the
   // each-block only re-evaluates when a value it MENTIONS changes; a helper that reads `activeHighlights`
@@ -216,7 +217,7 @@
   $: mapMode = starmap.mapMode ?? 'diagrammatic';
   $: isScaled = mapMode === 'scaled';
   $: invertDisplay = starmap.invertDisplay ?? false;
-  $: activeScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
+  $: activeScale = starmap.scale ?? { unit: campaignUnit(starmap), pixelsPerUnit: 25, showScaleBar: true }; // A43
   $: scaleBarVisible = isScaled && (activeScale.showScaleBar ?? true);
   $: if (invertDisplay && $starmapUiStore.showBackgroundImage) {
     starmapUiStore.update((ui) => ({ ...ui, showBackgroundImage: false }));
@@ -446,6 +447,15 @@
 
   $: if (effectiveGridType === 'traveller-hex') {
     // Traveller convention: 1 hex center-to-center equals 1 parsec.
+    //
+    // A43 — THIS IS A THIRD KIND OF UNIT CHANGE AND IT IS NOT A BUG, but it was silent, which is why the
+    // fault was hard to see. Settings offers RELABEL or CONVERT (`distanceUnits.applyUnitChange`); this
+    // path does NEITHER. It ADOPTS A RULER DEFINED BY THE GRID: the hex spacing IS the parsec, so both
+    // the unit and `pixelsPerUnit` are redefined together from geometry. That is correct for Traveller —
+    // a hex map's scale is a property of its hexes — but it means a map can arrive stamped 'pc' with
+    // figures that were never parsecs, and a later CONVERT in Settings then multiplies them by 3.26.
+    // That relabel-then-convert pair is the whole of "Alpha Centauri reads 14.33 ly".
+    // Do not "unify" this with applyUnitChange: it answers a different question. Keep it stated.
     const hexSize = gridSize / 2;
     const hexCenterToCenterPx = Math.sqrt(3) * hexSize;
     const currentScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };

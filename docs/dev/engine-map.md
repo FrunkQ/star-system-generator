@@ -2177,6 +2177,35 @@ value per frame; for anything cached forward-only (PHY-6) a backwards scrub then
 recompute per frame.
 BLAST: any other panel row derived from a search or a propagation rather than from stored fields.
 
+### DATA-R19 THREE code paths change a campaign's distance unit, with OPPOSITE conventions
+WHERE: `map/distanceUnits.ts` (`applyUnitChange`, `campaignUnit`, `normaliseCampaignUnit`);
+`SettingsModal.svelte` asks, `routes/+page.svelte:handleSaveSettings` applies, and the Traveller branch
+at `Starmap.svelte`'s `effectiveGridType === 'traveller-hex'` is the third.
+RULE: changing the unit is a change of RULER, not of layout. Positions are stored in map units and a
+distance is `mapUnits / pixelsPerUnit`, so BOTH outcomes are reachable without rewriting a single
+coordinate - the z/depth annotation included, for free. Which outcome is meant is the GM's call and the
+app must not guess: **relabel** (the numbers were right, the unit was wrong) or **convert** (the map was
+right, express it the other way). The arithmetic lives in ONE function; a caller supplies only the mode.
+WHY: A43. The three paths disagreed and nothing said so. Settings ALWAYS converted (since v2.1.276); the
+Traveller hex grid ADOPTS A RULER FROM GEOMETRY (1 hex = 1 pc, so it writes both the unit and
+`pixelsPerUnit` from hex spacing), which as far as the stored figures are concerned is a RELABEL. Load a
+light-year map with Traveller mode on and it is stamped `pc` with its light-year figures intact; pick
+light years afterwards and Settings converts them - x3.26, and Alpha Centauri reads 14.33 against a true
+4.37. **Neither path was wrong on its own; the PAIR was.** Note the inbox row's own diagnosis said "no
+conversion", the opposite of the truth, so the fix looked like "add conversion" when RELABEL was the
+unreachable case. Re-read the code before trusting a diagnosis, however confidently it is written.
+BLAST: the Traveller path is a THIRD legitimate operation and must NOT be folded into `applyUnitChange`
+- it answers "what ruler does this grid define", not "what did the GM mean". Keep it stated in place.
+Any new writer of `scale.unit` goes through `applyUnitChange` or explains why it is a fourth.
+**AND THE UNIT LIVES IN TWO FIELDS:** `Starmap.distanceUnit` and `Starmap.scale.unit` both exist and a
+save can carry them DISAGREEING; three sites had each written out their own precedence. `campaignUnit()`
+is the single answer (`scale.unit` wins - it sits beside the `pixelsPerUnit` it must change with), and
+`withStarmapDefaults` folds them on load so nothing downstream has to care. Readers still spelling it by
+hand are a latent third copy: 16 files read `.distanceUnit`, 6 read `scale.unit`, and only the three that
+implemented the precedence were migrated - the rest are safe ONLY because the load-time fold makes them
+agree. Do not delete that fold thinking it is redundant.
+
+
 ---
 
 ## OPEN MISALIGNMENTS

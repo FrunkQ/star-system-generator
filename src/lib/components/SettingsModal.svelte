@@ -6,6 +6,7 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   // A45: the one list, filtered to what the 2D snap grid can draw — never a hand-written copy.
   import { SNAP_GRID_OPTIONS } from '$lib/map/mapOverlay';
+  import { unitKind, campaignUnit, unitChangeOutcomes, UNIT_SHORT, type UnitChangeMode } from '$lib/map/distanceUnits';
   import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
@@ -174,7 +175,51 @@
     syncEpochEditorFromCurrentMaster();
   }
 
+  // ── A43: changing the interstellar unit means one of two things, and the app must not guess ──────
+  // The GM either had the numbers right and the label wrong (relabel), or has the map right and wants
+  // it read the other way (convert). Both are legitimate; picking one silently is how Alpha Centauri
+  // came to read 14.33 ly against a true 4.37. So when — and ONLY when — the change is a real ly<->pc
+  // switch on a scaled map, ask, worded as the two OUTCOMES on a system actually on this map.
+  let pendingUnit: 'ly' | 'pc' | null = null;
+  $: currentKind = unitKind(campaignUnit(starmap));
+  // The example the prompt quotes: the system furthest from the first one, which is the distance a GM
+  // is most likely to recognise as right or wrong. Falls back to a bare 1-unit example on a map too
+  // small to have a pair.
+  $: unitExample = (() => {
+    const sys = starmap.systems ?? [];
+    const ppu = starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25;
+    if (sys.length < 2) return { name: null as string | null, reading: 1 };
+    const a = sys[0];
+    let best = sys[1], bestD = -1;
+    for (const s of sys.slice(1)) {
+      const dx = (s.position?.x ?? 0) - (a.position?.x ?? 0);
+      const dy = (s.position?.y ?? 0) - (a.position?.y ?? 0);
+      const dz = (s.position?.z ?? 0) - (a.position?.z ?? 0);
+      const d = Math.hypot(dx, dy, dz);
+      if (d > bestD) { bestD = d; best = s; }
+    }
+    return { name: best?.name ?? null, from: a?.name ?? null, reading: bestD / ppu };
+  })();
+  $: outcomes = pendingUnit ? unitChangeOutcomes(unitExample.reading, campaignUnit(starmap), pendingUnit) : null;
+  const fmtUnitVal = (v: number) => v >= 100 ? Math.round(v).toLocaleString('en-GB') : v.toFixed(2);
+
   function handleSave() {
+    // A real ly<->pc switch on a scaled map is the only case that needs the question. Going to or from
+    // a diagrammatic unit has no conversion factor at all, and re-picking the same unit is not a change.
+    const nextKind = unitChoice === 'diagrammatic' ? null : unitChoice;
+    if (nextKind && currentKind && nextKind !== currentKind && (starmap.mapMode ?? 'diagrammatic') === 'scaled' && !pendingUnit) {
+      pendingUnit = nextKind;
+      return; // the confirm step calls commitSave with the GM's answer
+    }
+    commitSave('convert'); // unreachable for a unit change; the mode is ignored when the unit is unchanged
+  }
+
+  function commitSave(unitMode: UnitChangeMode) {
+    pendingUnit = null;
+    doSave(unitMode);
+  }
+
+  function doSave(unitMode: UnitChangeMode) {
     const nextTemporal = JSON.parse(JSON.stringify(normalizedTemporal));
     nextTemporal.activeCalendarKey = activeCalendarKey;
 
@@ -188,6 +233,9 @@
     const diagrammatic = unitChoice === 'diagrammatic';
     const distanceUnit = diagrammatic ? (abstractUnit.trim() || 'J') : unitChoice;
     dispatch('save', {
+      // A43: the GM's answer travels with the payload. The receiver owns the arithmetic (one module,
+      // `applyUnitChange`); this modal owns only the question.
+      unitMode,
       starmap: {
         name: starmapName,
         distanceUnit,
@@ -561,6 +609,34 @@
     </div>
   </div>
 
+  {#if pendingUnit && outcomes}
+    <!-- A43. Deliberately worded as OUTCOMES on a real system, never as "convert": the GM knows which
+         number is right and does not have to work out which mechanism produces it. -->
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div class="unit-confirm-backdrop" on:click|stopPropagation>
+      <div class="unit-confirm" role="dialog" aria-modal="true" aria-labelledby="unit-confirm-title">
+        <h3 id="unit-confirm-title">Changing to {UNIT_SHORT[pendingUnit]}</h3>
+        {#if unitExample.name}
+          <p class="lede">
+            {unitExample.name} is currently <strong>{fmtUnitVal(unitExample.reading)} {UNIT_SHORT[currentKind ?? 'ly']}</strong>
+            from {unitExample.from}. Which should it be?
+          </p>
+        {:else}
+          <p class="lede">This map has no pair of systems to measure. Which did you mean?</p>
+        {/if}
+        <button class="unit-opt" on:click={() => commitSave('relabel')}>
+          <span class="val">{fmtUnitVal(outcomes.relabel)} {UNIT_SHORT[pendingUnit]}</span>
+          <span class="why">The distances were already right &mdash; only the unit was wrong.</span>
+        </button>
+        <button class="unit-opt" on:click={() => commitSave('convert')}>
+          <span class="val">{fmtUnitVal(outcomes.convert)} {UNIT_SHORT[pendingUnit]}</span>
+          <span class="why">The map is right &mdash; show the same distances in {UNIT_SHORT[pendingUnit]}.</span>
+        </button>
+        <button class="unit-cancel" on:click={() => (pendingUnit = null)}>Cancel</button>
+      </div>
+    </div>
+  {/if}
+
   {#if showAlphaDisclaimer}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div class="alpha-disclaimer-overlay" on:click|stopPropagation>
@@ -586,6 +662,33 @@
 {/if}
 
 <style>
+  /* A43 unit-change confirmation. Compact modal over the settings dialog, per the house popup style. */
+  .unit-confirm-backdrop {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5100; padding: 1rem;
+  }
+  .unit-confirm {
+    background: var(--panel-bg, #161b22); border: 1px solid var(--border, #30363d);
+    border-radius: 8px; padding: 1.1rem; max-width: 27rem; width: 100%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+  .unit-confirm h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+  .unit-confirm .lede { margin: 0 0 0.9rem; font-size: 0.85rem; line-height: 1.45; opacity: 0.85; }
+  .unit-opt {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--input-bg, #0d1117); border: 1px solid var(--border, #30363d);
+    border-radius: 6px; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; color: inherit;
+  }
+  .unit-opt:hover { border-color: var(--accent, #58a6ff); }
+  .unit-opt .val { display: block; font-size: 1.05rem; font-weight: 600; }
+  .unit-opt .why { display: block; font-size: 0.78rem; opacity: 0.75; margin-top: 0.15rem; }
+  .unit-cancel {
+    display: block; width: 100%; margin-top: 0.25rem; padding: 0.45rem;
+    background: none; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 0.85rem;
+  }
+  .unit-cancel:hover { opacity: 1; }
+
   .modal-backdrop {
     position: fixed;
     top: 0;
