@@ -62,7 +62,7 @@ export interface Visibility {
 	/** How far each lamp picks a target out of the dark, by lamp key. */
 	lampM: Record<string, number>;
 	/** A condensate deck sitting ON the ground rather than overhead — fog, not cloud. Always false
-	 *  today: the deck's base pressure does not survive onto the tag (inbox B62). */
+	 *  today: the deck's base pressure does not survive onto the tag (inbox B77). */
 	fogged: boolean;
 	/** Visual range while a dust storm is actually up, or null on a world that has none. */
 	stormM: number | null;
@@ -144,7 +144,7 @@ export function deriveVisibility(body: CelestialBody, pack?: RulePack | null): V
 	// everything.
 	//
 	// THAT DISTINCTION CANNOT BE MADE FROM WHAT REACHES A CONSUMER, and this is the second feature to
-	// hit it (inbox B62). `deriveCloudDecks` computes the deck's base pressure and its optical depth
+	// hit it (inbox B77). `deriveCloudDecks` computes the deck's base pressure and its optical depth
 	// and then throws both away: `decksFromTags` reconstructs only species, a five-way coverage
 	// bucket, and a condensation temperature. So a deck cannot say where it starts or how thick it is.
 	//

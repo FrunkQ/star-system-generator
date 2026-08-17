@@ -176,7 +176,7 @@ and is the owner's call.**
 The host-star lookup used to read `star.temperatureK` directly, and in the baseline fixture a star
 has none — `temperatureK` is stripped as derived and nothing puts it back. `photosphereTempK` now
 inverts Stefan-Boltzmann on the star's own luminosity and radius instead. **Two other readers still
-quietly substitute the Sun in the same situation** ([[B60]] on the board), which means every
+quietly substitute the Sun in the same situation** ([[B75]] on the board), which means every
 equilibrium temperature in that fixture has been computed as though every star were the Sun. It is
 invisible there because the only star is.
 

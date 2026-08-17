@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.739-beta - 17th Aug 2026
+
+- Docs only. Eight inbox ids that each named two different observations (A51, A52, B60-B64, G24) are untangled — the moved rows are A53, A54, B75-B79 and G29, each carrying its old id — and one finding that had been captured twice (B71) is merged. Three code comments and one physics-page phase tag are repointed to match. No behaviour change.
+
 ## v2.1.738-beta - 17th Aug 2026
 
 - FIXED: every real brown dwarf in the bundled maps was flagged as a physically impossible star. The masses were right and the check was wrong — and wrong in a small, findable way: the test for "is this a substellar class" was anchored at the END of the name, so `star/L7.5`, `star/T6` and `star/Y4` — which is how brown dwarfs are actually classed — all failed it. Each was then told it was "a brown dwarf rather than an L7.5 star". All eleven low-mass stars in the Local Neighbourhood now come back clean, including Luhman 16, WISE 0855 and Epsilon Indi B.

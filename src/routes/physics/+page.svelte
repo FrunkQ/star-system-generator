@@ -960,7 +960,7 @@
     </section>
 
     <section id="standing-on-it">
-      <h2>Standing on it — brightness, colour and how far you can see <span class="phase">B45 · B63</span></h2>
+      <h2>Standing on it — brightness, colour and how far you can see <span class="phase">B45 · B78 · B79</span></h2>
       <p>The surface spectrum answers what light arrives. Three things follow from it that a GM can actually
         use at a table, and all three are the same derivation read differently.</p>
 
