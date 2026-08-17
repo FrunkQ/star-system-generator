@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.722-beta - 17th Aug 2026
+
+* VTT integration 1B-1D + bridge: the discovery contract a host app uses to find and connect to a campaign. The GM tab now answers REQUEST_HELLO with ANNOUNCE (session id, starmap id and name, Player View names, app version - identity only, never campaign content), honours REQUEST_REMOTE (starts PeerJS hosting, with a notice on the GM screen), and sends a heartbeat every 5 s. Player views turn back to GM OFFLINE when it stops (the LIVE flag used to latch forever) and remote players re-dial a host that restarts or starts hosting late. New /bridge route: a hidden discovery frame for host apps, origin-allowlisted postMessage in both directions, read-only. New ?embed=1 on the player view hides the device chrome and accepts setPreset/ping commands from an allowlisted parent.
+
 ## v2.1.719-beta - 17th Aug 2026
 
 - On the GM starmap, a system's name, its depth cue and its tag badges now share one column to the right of the star, name at the top. They used to be placed independently and both to the right of the same point, so a long name and a badge landed on top of each other.

@@ -18,6 +18,7 @@
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
+  import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
   import { setModelFetcher, modelArrived } from '$lib/constructs/modelFetch';
   import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
@@ -85,6 +86,15 @@
   }
   let lastUpdate: number | null = null;
   let connected = false;
+  // Liveness (vtt-integration-design 9.1/1D): `connected` is now DERIVED from the age of the last
+  // frame heard from the GM (heartbeat every 5 s), so it goes back to OFFLINE when the GM stops —
+  // it used to latch true on the first snapshot and never fall.
+  let lastHeardAt = 0;
+  let livenessTimer: ReturnType<typeof setInterval> | null = null;
+  // Embed mode (design 9.1/1C): a host app (Mappadux StarMap, a VTT shim) frames this page and owns
+  // the surrounding chrome, so the device status bar is hidden and a small parent postMessage
+  // command set is enabled. Content, hold screen and waiting states are untouched.
+  let embedMode = false;
 
   $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
 
@@ -783,6 +793,7 @@
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
     activePresetId = params.get('preset') || FALLBACK_PRESET_ID;
+    embedMode = params.get('embed') === '1';
     units = params.get('units') === 'imperial' ? 'imperial' : 'metric';
     { const tp = params.get('temp'); tempUnit = tp === 'F' || tp === 'K' ? tp : 'C'; }
     try {
@@ -808,8 +819,18 @@
       perfCount('sync.starmap'); // each one re-clones the campaign + rebuilds the scene — track it
       starmap = map;
       lastUpdate = Date.now();
+      lastHeardAt = Date.now();
       connected = true;
     };
+    broadcastService.onHeartbeat = () => { lastHeardAt = Date.now(); connected = true; };
+    livenessTimer = setInterval(() => {
+      const alive = Date.now() - lastHeardAt < 15_000;
+      if (connected && !alive) {
+        connected = false;
+        broadcastService.redialPeer(); // remote guest: the host may have restarted — try again
+      }
+    }, 5000);
+    if (embedMode) window.addEventListener('message', onParentMessage);
     broadcastService.onBrandingUpdate = (b) => { branding = b || { name: '', logo: null }; };
     // The GM's tag vocabulary. Applied to the presentation registries (so the info block's chips and
     // every describeTag consumer here read the GM's labels and colours) AND kept as categories for
@@ -842,8 +863,26 @@
 
   const onPhoneMq = () => (isPhone = phoneMq?.matches ?? false);
 
+  // Parent → embedded view commands ({ns:'sse2-embed', v:1}). Origin-allowlisted; embed mode only.
+  // `setPreset` lets a host switch between its own StarMap slots on ONE warm iframe (no reload);
+  // a later GM SYNC_PRESET still wins — the GM drives the view, the host only picks the slot.
+  function onParentMessage(e: MessageEvent) {
+    if (!embedMode || window.parent === window || e.source !== window.parent) return;
+    if (!isAllowedEmbedOrigin(e.origin)) return;
+    const d = e.data;
+    if (!d || d.ns !== 'sse2-embed' || d.v !== 1) return;
+    if (d.cmd === 'ping') {
+      window.parent.postMessage({ ns: 'sse2-embed', v: 1, event: 'pong', requestId: d.requestId ?? null }, e.origin);
+    } else if (d.cmd === 'setPreset' && typeof d.presetId === 'string') {
+      presetHold = false;
+      activePresetId = d.presetId;
+    }
+  }
+
   onDestroy(() => {
     setModelFetcher(null); // stop routing model requests into a closed transport
+    if (livenessTimer) clearInterval(livenessTimer);
+    if (browser) window.removeEventListener('message', onParentMessage);
     broadcastService.close();
     phoneMq?.removeEventListener('change', onPhoneMq);
     if (browser) { cancelAnimationFrame(rafId); window.removeEventListener('popstate', onPopState); }
@@ -936,16 +975,18 @@
     </div>
   {/if}
   <!-- Device status bar -->
-  <header class="statusbar" style={activePreset ? `font-family:${presetFont}` : ''}>
+  <header class="statusbar" class:embed={embedMode} style={activePreset ? `font-family:${presetFont}` : ''}>
     {#if selectedSystemId && !(activePreset && activePreset.starmapEnabled === false)}
       <button class="back-btn" on:click={() => { selectedSystemId = null; selectedBody = null; }} title="Back to all systems">‹ Systems</button>
     {/if}
-    {#if branding.logo}<img class="brand-logo" src={branding.logo} alt="" />{/if}
-    {#if branding.name}<span class="brand-name">{branding.name}</span>{/if}
-    <span class="sys-name">{selectedSystemNode ? selectedSystemNode.name.toUpperCase() : (starmap ? (starmap.name || 'STARMAP').toUpperCase() : 'NO SIGNAL')}</span>
-    <span class="status" class:live={connected} class:offline={!connected}>
-      {#if connected}● LIVE{:else}○ GM OFFLINE — last {nowLabel}{/if}
-    </span>
+    {#if !embedMode}
+      {#if branding.logo}<img class="brand-logo" src={branding.logo} alt="" />{/if}
+      {#if branding.name}<span class="brand-name">{branding.name}</span>{/if}
+      <span class="sys-name">{selectedSystemNode ? selectedSystemNode.name.toUpperCase() : (starmap ? (starmap.name || 'STARMAP').toUpperCase() : 'NO SIGNAL')}</span>
+      <span class="status" class:live={connected} class:offline={!connected}>
+        {#if connected}● LIVE{:else}○ GM OFFLINE — last {nowLabel}{/if}
+      </span>
+    {/if}
   </header>
 
   {#if !starmap}
@@ -1146,6 +1187,9 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     z-index: 50;
   }
+  /* Embed mode: the host owns the chrome; only the back button (navigation) remains, floating. */
+  .statusbar.embed { background: transparent; border-bottom: none; padding: 0; position: absolute; top: 6px; left: 8px; }
+  .statusbar.embed:empty { display: none; }
   .sys-name { font-weight: 700; }
   .brand-logo { height: 20px; width: auto; max-width: 90px; object-fit: contain; }
   .brand-name { font-weight: 700; letter-spacing: 0.08em; opacity: 0.95; }

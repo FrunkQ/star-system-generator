@@ -1,7 +1,7 @@
 <script lang="ts">
   export let data;
   const { exampleSystems } = data;
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { pushState, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
@@ -16,6 +16,8 @@
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
+  import { playerPresetList } from '$lib/player/presetStore';
+  import type { AnnouncePayload } from '$lib/broadcast';
   import { tagCategories } from '$lib/tags/tagCategories';
   import { tagStyleSnapshot } from '$lib/tags/tagStyleSync';
   import PlayerViewModal from '$lib/components/PlayerViewModal.svelte';
@@ -742,6 +744,32 @@
     const type = (ui.travellerMode ? 'traveller-hex' : ui.gridType) as 'grid' | 'hex' | 'traveller-hex' | 'none';
     return { ...computePlayerStarmapSnapshot(map), mapGrid: { type, size: 50 } };
   }
+  // VTT integration discovery payload: what a host app (Mappadux StarMap, a Foundry/Owlbear shim)
+  // needs to FIND, LABEL and CONNECT to this campaign. Identity + Player View names only.
+  function announceNow(): AnnouncePayload | null {
+    const map = get(starmapStore);
+    if (!map?.broadcastId) return null;
+    return {
+      sessionId: map.broadcastId,
+      starmapId: map.id,
+      starmapName: map.name,
+      presets: get(playerPresetList).map((p) => ({ id: p.id, name: p.name })),
+      appVersion: APP_VERSION,
+    };
+  }
+  let remoteNotice: string | null = null;
+  let remoteNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  onDestroy(() => {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+  });
+  // Proactive re-announce on identity/preset-list change, so an open bridge hears a rename, a
+  // different map loading, or a new Player View without polling. Fingerprint-gated like the rest.
+  $: if (browser && $starmapStore?.broadcastId && $playerPresetList) {
+    const a = announceNow();
+    if (a) broadcastService.sendIfChanged({ type: 'ANNOUNCE', payload: a });
+  }
   // Mint the persistent broadcast id on first load of any map that lacks one; the autosave
   // reactive persists it with the map. Minted ONCE — never re-derived on rename (that would
   // break every stored player link); regeneration is the owner's deliberate action only.
@@ -780,6 +808,22 @@
       const pid = get(runningPresetId);
       if (pid) broadcastService.sendMessage({ type: 'SYNC_PRESET', payload: { presetId: pid, overrides: get(liveOverrides) } });
     };
+    // VTT integration (design 9.1/1B): discovery + remote-request answers. ANNOUNCE is identity
+    // metadata only — never campaign content — so it is safe to answer any same-machine prober.
+    broadcastService.onRequestHello = () => {
+      const a = announceNow();
+      if (a) broadcastService.sendMessage({ type: 'ANNOUNCE', payload: a });
+    };
+    broadcastService.onRequestRemote = () => {
+      broadcastService.enableRemote();
+      // Never host on the public broker silently: a small transient notice on the GM screen.
+      remoteNotice = `Remote sharing enabled for "${get(starmapStore)?.name ?? 'this starmap'}" — players can now connect from other devices.`;
+      if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+      remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 6000);
+    };
+    // Liveness (design 9.1/1D): a tiny wall-clock frame every 5 s. Receivers flip to OFFLINE when it
+    // stops and remote guests re-dial — replaces a LIVE flag that used to latch true forever.
+    heartbeatTimer = setInterval(() => broadcastService.sendMessage({ type: 'SYNC_HEARTBEAT', payload: Date.now() }), 5000);
     // G3: answer a player's model-by-hash request from the local store, once - the binary never
     // rides the snapshot (it would multiply every sendIfChanged resend). Chunked automatically.
     broadcastService.onRequestModel = async (_requestingId, hash) => {
@@ -1736,6 +1780,12 @@
 
   <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json,.zip" />
 
+  {#if remoteNotice}
+    <div class="mem-banner" role="status">
+      <span>{remoteNotice}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (remoteNotice = null)}>×</button>
+    </div>
+  {/if}
   {#if memBanner}
     <div class="mem-banner" class:critical={memBanner.critical} role="alert">
       <span>{memBanner.text}</span>

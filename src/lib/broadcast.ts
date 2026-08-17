@@ -62,7 +62,28 @@ export type BroadcastMessage =
   // once - the binary never rides the snapshot (design §4: sendIfChanged re-sends whole payloads,
   // so inline models would multiply every resend). b64 rides the existing chunked path.
   | { type: 'REQUEST_MODEL'; payload: { targetId: string | null; hash: string } }
-  | { type: 'SYNC_MODEL'; payload: { hash: string; b64: string; meta: Record<string, unknown> } };
+  | { type: 'SYNC_MODEL'; payload: { hash: string; b64: string; meta: Record<string, unknown> } }
+  // VTT INTEGRATION (docs/dev/vtt-integration-design.md 9.1/1B, 1D). Discovery: any guest asks
+  // "who is here" (null = any host) and the GM tab answers with the identity a host app needs to
+  // find, label and connect to this campaign — id, name, and the Player View names. NOTHING from
+  // the campaign body: this is discovery metadata, not the snapshot, and it is exactly what a
+  // sid-holder could learn anyway by joining. REQUEST_REMOTE asks the GM tab to start hosting on
+  // the PeerJS broker (enableRemote is opt-in) so remote players in a VTT can dial in.
+  | { type: 'REQUEST_HELLO'; payload: string | null }
+  | { type: 'ANNOUNCE'; payload: AnnouncePayload }
+  | { type: 'REQUEST_REMOTE'; payload: string | null }
+  // Liveness: the GM tab sends its wall clock every few seconds. Receivers turn "GM OFFLINE" back on
+  // when it stops (the old flag latched LIVE forever after first contact), and a remote guest
+  // re-dials when it goes quiet.
+  | { type: 'SYNC_HEARTBEAT'; payload: number };
+
+export interface AnnouncePayload {
+  sessionId: string;                       // = starmap.broadcastId (what a guest dials)
+  starmapId: string;
+  starmapName: string;
+  presets: { id: string; name: string }[]; // Player Views by name only
+  appVersion: string;                      // for integration gating ("update SSE2" below a floor)
+}
 
 export interface PresetOverrides {
   followGM: boolean | null; // null = use the preset's own flag
@@ -158,8 +179,20 @@ class BroadcastService {
         });
         conn.on('data', (data: any) => this.handlePeerData(data));
         conn.on('error', () => { /* ignore; local channel may still serve */ });
+        // Host went away (GM tab closed, network blip): forget the dead pipe and try again
+        // shortly. Before this, a guest that outlived the host never reconnected — the
+        // long-banked "GM started hosting AFTER the player opened" gap.
+        conn.on('close', () => {
+          if (this.peerOut === conn) this.peerOut = null;
+          this.scheduleRedial();
+        });
       });
-      this.peer.on('error', (e: any) => { console.warn('[peer guest]', e?.type || e); });
+      // 'peer-unavailable' = nobody is hosting that id (yet). Keep trying at a gentle cadence so a
+      // player who opened the link before the GM enabled remote sharing still gets through.
+      this.peer.on('error', (e: any) => {
+        if (e?.type === 'peer-unavailable') { this.scheduleRedial(); return; }
+        console.warn('[peer guest]', e?.type || e);
+      });
     } catch (e) {
       console.warn('PeerJS guest init failed (cross-device unavailable)', e);
     }
@@ -266,6 +299,39 @@ class BroadcastService {
     this.sendMessage({ type: 'REQUEST_SYNC', payload: targetId });
     // Also try to reach the host over the network (cross-device); local channel handles same-machine.
     this.initPeerGuest(targetId);
+  }
+
+  // Lightweight DISCOVERY receiver for the /bridge route and other same-machine probes: listens
+  // for ANNOUNCE only, filters by nothing (any host on this browser's channel may answer), and
+  // deliberately does NOT dial PeerJS — a probe is same-machine by definition. Avoids the
+  // full initReceiver ceremony for a caller that wants one answer.
+  public initProbe(onAnnounce: (a: AnnouncePayload) => void) {
+    this.isSender = false;
+    this.targetSessionId = null;
+    this.onAnnounce = onAnnounce;
+  }
+  public onAnnounce: ((a: AnnouncePayload) => void) | null = null;
+  public onHeartbeat: ((gmClockMs: number) => void) | null = null;
+  // Sender-side answers, owned by the GM route.
+  public onRequestHello: ((requestingId: string | null) => void) | null = null;
+  public onRequestRemote: ((requestingId: string | null) => void) | null = null;
+
+  // Guest liveness: when the far side goes quiet (peer connection closed, or heartbeats stop for
+  // longer than the receiver tolerates) re-dial the host. Idempotent; a no-op on the local pipe.
+  public redialPeer() {
+    if (this.isSender || !this.targetSessionId || this.closed) return;
+    if (this.peerOut?.open) return;
+    try { this.peer?.destroy(); } catch { /* already gone */ }
+    this.peer = null;
+    this.peerOut = null;
+    this.initPeerGuest(this.targetSessionId);
+  }
+  private static REDIAL_MS = 10_000;
+  private redialTimer: ReturnType<typeof setTimeout> | null = null;
+  private closed = false;
+  private scheduleRedial() {
+    if (this.redialTimer || this.closed || this.isSender) return;
+    this.redialTimer = setTimeout(() => { this.redialTimer = null; this.redialPeer(); }, BroadcastService.REDIAL_MS);
   }
 
   public sendMessage(msg: BroadcastMessage) {
@@ -445,10 +511,32 @@ class BroadcastService {
           case 'SYNC_MODEL':
               if (!this.isSender && this.onModelUpdate) this.onModelUpdate(msg.payload);
               break;
+          case 'REQUEST_HELLO':
+              if (this.isSender && this.onRequestHello) {
+                   const targetId = msg.payload;
+                   if (targetId && targetId !== this.sessionId) return;
+                   this.onRequestHello(msg.payload);
+              }
+              break;
+          case 'ANNOUNCE':
+              if (!this.isSender && this.onAnnounce) this.onAnnounce(msg.payload);
+              break;
+          case 'REQUEST_REMOTE':
+              if (this.isSender && this.onRequestRemote) {
+                   const targetId = msg.payload;
+                   if (targetId && targetId !== this.sessionId) return;
+                   this.onRequestRemote(msg.payload);
+              }
+              break;
+          case 'SYNC_HEARTBEAT':
+              if (!this.isSender && this.onHeartbeat) this.onHeartbeat(msg.payload);
+              break;
       }
   }
   
   public close() {
+      this.closed = true;
+      if (this.redialTimer) { clearTimeout(this.redialTimer); this.redialTimer = null; }
       if (this.channel) this.channel.close();
       try { this.peer?.destroy(); } catch { /* already gone */ }
       this.peer = null;
