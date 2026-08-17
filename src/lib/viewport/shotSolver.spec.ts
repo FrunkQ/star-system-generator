@@ -246,3 +246,45 @@ describe('headingDirection always returns a UNIT vector', () => {
 		expect(Math.pow(len, 600)).toBeCloseTo(1, 6); // ten seconds at 60fps must not drift
 	});
 });
+
+// A51(b): THE ENTRY SHOT CROPPED EVERY SYSTEM, and a binary is where it finally showed.
+//
+// The holo scene opened at a HARDCODED position, GRID_RADIUS * (0, 1.1, 1.4) - 1.78 x GRID_RADIUS
+// from the centre - which owes nothing to the lens. Meanwhile `compressRadius` maps the OUTERMOST
+// body to exactly GRID_RADIUS at every compression setting (both its limbs return gridRadius when
+// r = rMax), so the edge of the system sat outside the opening frame always. With one central star
+// nothing is missing that the eye asks for; put a SECOND star out there and it is simply absent.
+//
+// The invariant, stated as containment rather than as a magic distance: from the entry distance, a
+// body at GRID_RADIUS must project INSIDE the frame. `wholeSystemDistance` fits the bounding sphere
+// through the narrower half-angle, so it holds on a portrait phone too.
+describe('A51(b): the entry distance must CONTAIN the system, not crop it', () => {
+	const GRID = 12;
+	/** Half-extent visible at `dist`, on the narrower of the two axes. */
+	const visibleHalfExtent = (dist: number, lens: { fovYDeg: number; aspect: number }) => {
+		const halfV = (lens.fovYDeg * Math.PI) / 360;
+		const halfH = Math.atan(Math.tan(halfV) * lens.aspect);
+		return dist * Math.tan(Math.min(halfV, halfH));
+	};
+
+	it('contains a body at GRID_RADIUS, at every aspect from portrait to ultrawide', () => {
+		for (const aspect of [0.46, 0.75, 1, 1.6, 2.4]) {
+			const lens = { fovYDeg: 45, aspect };
+			expect(visibleHalfExtent(wholeSystemDistance(GRID, lens), lens)).toBeGreaterThanOrEqual(GRID);
+		}
+	});
+
+	it('the OLD hardcoded home position did not - which is the bug, pinned', () => {
+		const lens = { fovYDeg: 45, aspect: 1 };
+		const oldHome = GRID * Math.hypot(1.1, 1.4); // 1.78 x GRID - the constant that shipped
+		expect(visibleHalfExtent(oldHome, lens)).toBeLessThan(GRID);
+		// ...and it was short by a wide margin, not a rounding error: it showed under 75% of the radius.
+		expect(visibleHalfExtent(oldHome, lens) / GRID).toBeLessThan(0.75);
+	});
+
+	it('pulls FURTHER back as the viewport narrows, rather than cropping the sides', () => {
+		const wide = wholeSystemDistance(GRID, { fovYDeg: 45, aspect: 1.6 });
+		const portrait = wholeSystemDistance(GRID, { fovYDeg: 45, aspect: 0.46 });
+		expect(portrait).toBeGreaterThan(wide);
+	});
+});

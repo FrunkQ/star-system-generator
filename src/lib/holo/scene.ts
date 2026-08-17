@@ -237,6 +237,11 @@ interface ShipFx { rigs: PlumeRig[]; suppressed?: boolean }
 // ring). The pivot carries the tilt + tracks the planet; the particles advance in the local plane.
 interface RingVisual {
   pivot: THREE.Group;
+  // Outer radius in scene units, in the PARENT's local frame. Named as BeltVisual names it, and for
+  // the same reason: a ring's size is its ORBIT, never a body radius, so this is the only honest
+  // input to a framing decision about it (A51). It cannot be derived from `radii` - the flat BAND
+  // style has no particles and ships an empty array.
+  outerScene: number;
   points: THREE.Points | null; // null for the flat BAND style (no particles to advance)
   bandMesh?: THREE.Mesh | null; // the flat annulus (band style) — shaded per-vertex by the planet's shadow
   parentId: string;
@@ -413,8 +418,30 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // background matches on both paths. (Proven: clear-colour 5,7,12 -> 38,46,61 via composer; fixed.)
   scene.background = new THREE.Color(0x05070c);
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
-  const HOME_CAM = new THREE.Vector3(0, GRID_RADIUS * 1.1, GRID_RADIUS * 1.4);
-  camera.position.copy(HOME_CAM);
+  // The HOME viewing DIRECTION (a 38-degree elevation, the look everyone is used to). Only the
+  // direction is fixed here - see homeCam() for why the DISTANCE cannot be.
+  const HOME_DIR = new THREE.Vector3(0, 1.1, 1.4).normalize();
+  const _homeCam = new THREE.Vector3();
+  /**
+   * The entry shot, FITTED to the lens instead of hardcoded. A51(b).
+   *
+   * This was a fixed position, `GRID_RADIUS * (0, 1.1, 1.4)` - 1.78 x GRID_RADIUS from the centre.
+   * At a 45-degree vertical fov that shows +/-0.737 x GRID_RADIUS, while `compressRadius` maps the
+   * OUTERMOST body to exactly GRID_RADIUS at every compression setting (both its limbs return
+   * gridRadius when r = rMax). So the edge of every system has always been outside the entry frame,
+   * and it is invisible in the common case because what sits out there is a faint outer planet -
+   * but in a BINARY it is a STAR, which is how the owner met it.
+   *
+   * `wholeSystemDistance` already solves this properly, is tested, and is what `framingWhole` uses:
+   * it fits the bounding SPHERE through the lens and takes the narrower of the two half-angles, so
+   * a portrait phone is pulled further back rather than cropping. Same answer, one implementation.
+   */
+  function homeCam(): THREE.Vector3 {
+    const aspect = camera.aspect > 0 && Number.isFinite(camera.aspect) ? camera.aspect : 1;
+    const dist = wholeSystemDistance(GRID_RADIUS, { fovYDeg: camera.fov, aspect });
+    return _homeCam.copy(HOME_DIR).multiplyScalar(dist);
+  }
+  camera.position.copy(homeCam());
   scene.add(camera); // so camera-attached screen overlays (the HUD info card) render via RenderPass
 
   const controls = new OrbitControls(camera, canvas);
@@ -2249,7 +2276,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // the second click would wrap straight back to it.
       hasParent: contextPeerIds(currentSystem, b.id, pid).some((pid2) => bodyById.has(pid2))
         || routeLines.some((r) => { const c = shipClock(r.node); return r.id === b.id && c >= r.route.s && c <= r.route.e; }),
-      hasSatellites: bodies.some((x) => x.framingParentId === id),
+      // ...rings included: a ringed planet HAS a satellite rung even with no moons, which is the
+      // rung a selected ring is redirected to (A51(a)). Without this a bare ringed world offered
+      // only the close-up, and the ring - the thing clicked - fell outside it.
+      hasSatellites: bodies.some((x) => x.framingParentId === id) || ringVisuals.some((rv) => rv.parentId === id),
       hasRadius: !b.isConstruct && (b.radiusScene ?? 0) > 0, // a radius-less root keeps whole-system-first
       // A barycentre member's context is only its PARTNER, so it gets one rung further out — the orbit
       // the pair shares — instead of wrapping back in at pair scale.
@@ -2284,6 +2314,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const x of bodies) {
       if (x.framingParentId !== b.id) continue;
       maxSatelliteDist = Math.max(maxSatelliteDist, x.mesh.position.distanceTo(b.mesh.position));
+    }
+    // A RING IS SOMETHING ORBITING THE SUBJECT, so it belongs in the satellite rung's extent. It was
+    // absent, and that is A51(a): selecting a ring redirects the shot to its parent (correct - the
+    // host belongs in frame) and then sized it from the parent's rendered BODY radius alone. A ring
+    // reaches up to 4.5x that radius (9x for an accretion disc), while a close-up frames at 1.25x,
+    // so the thing actually selected was drawn well outside the frame. Its extent is its ORBIT, the
+    // same fact PHY-13/B11 record for a belt's mass, so the ring's own outer radius is the input.
+    for (const rv of ringVisuals) {
+      if (rv.parentId !== b.id) continue;
+      maxSatelliteDist = Math.max(maxSatelliteDist, rv.outerScene);
     }
     // Level 0 — past the partner, out to whatever the pair as a whole orbits.
     let pairContextDist = 0;
@@ -3226,8 +3266,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     followEngaged = false;
     lockedHeading = 0; // HOME sits on x=0, azimuth 0
     controls.minDistance = unfocusedMinDist();
-    resetOrigin(); // HOME_CAM and the target below are stated in absolute scene coordinates
-    camera.position.copy(HOME_CAM);
+    resetOrigin(); // homeCam() and the target below are stated in absolute scene coordinates
+    camera.position.copy(homeCam());
     controls.target.set(0, 0, 0);
     visibleSet = getVisibleNodeIds(currentSystem, null);
   }
@@ -3393,6 +3433,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       focusedId = null;
       reframing = false; reframePending = false; viewOffset = { ...IDENTITY_OFFSET }; lastBase = null;
       followEngaged = false;
+      // ...AND THE CAMERA, which is the other half of R6 ("a refresh of the same system preserves
+      // the camera; changing system resets") and was missing: only the focus was being cleared, so
+      // a new system inherited wherever the PREVIOUS one had been left - and with nothing focused
+      // `computeBase` returns null by design (the view is the user's), so nothing ever corrected
+      // it. Absolute coordinates are safe here: `resetOriginForRebuild` ran at the top of this
+      // function, so the origin is the system centre. A51(b).
+      camera.position.copy(homeCam());
+      controls.target.set(0, 0, 0);
       }
     currentSystem = system;
     if (!system) return;
@@ -5142,7 +5190,7 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
   const bandMesh = new THREE.Mesh(geo, mat);
   pivot.add(bandMesh);
   return {
-    pivot, points: null, bandMesh, parentId: parent.id,
+    pivot, outerScene, points: null, bandMesh, parentId: parent.id,
     radii: new Float32Array(0), baseAng: new Float32Array(0), omega: new Float32Array(0),
     t0Sec: 0, planetR: planetRenderedR, baseColor: base
   };
@@ -5231,7 +5279,7 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   const tiltRad = ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
   pivot.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), tiltRad);
   pivot.add(points);
-  return { pivot, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor, emissiveBase };
+  return { pivot, outerScene, points, parentId: parent.id, radii, baseAng, omega, t0Sec: timeMs / 1000, planetR: planetRenderedR, baseColor, emissiveBase };
 }
 
 
