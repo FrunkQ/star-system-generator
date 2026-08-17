@@ -201,7 +201,27 @@
         colder, water freezes, the lid stops moving, the surface ages, more rust, brighter, colder again, which
         is the same loop that gives Earth its snowball states — so the solve reports any world where it fails to
         settle rather than presenting a marginal answer as a firm one.</p>
-    </section>
+    
+      <h3>Ice ages, and that is most of what makes an icy moon bright or dark</h3>
+      <p>A frozen surface is not one thing. <strong>Fresh ice is brilliant and old ice is filthy</strong> — what
+        darkens it is a lag of material that cannot evaporate away: micrometeoritic infall, and the carbon-rich
+        residue radiation leaves behind as it processes the ice. Nothing removes that lag; only resurfacing
+        buries it. So the brightness of an icy world is a clock, and the two ends of it are in our own system:
+        <strong>Enceladus reflects 0.81</strong>, the brightest surface anywhere near us, because its plumes are
+        laying down new ice faster than the lag can build — while <strong>Callisto reflects 0.11</strong>, one of
+        the darkest, having sat untouched for four and a half billion years. They are the same process at
+        opposite ends, and a single "ice is bright" constant made them the same number.</p>
+      <p>The engine already works out how long a surface has gone unrepaved — the same figure the oxide-dust
+        grade above is read from — so the ice model asks it the same question the rock model does: not
+        <em>what is this made of</em> but <em>what has settled on it, and how long has it had</em>. Clean ice and
+        the dark lag are both rule-pack numbers, and the curve between them saturates, because the lag buries
+        the brightest ice first and then has less and less left to cover.</p>
+      <p class="aside"><strong>Where it does not reach:</strong> Ganymede. About sixty per cent of it was
+        resurfaced roughly two billion years ago and the rest is ancient, so its true answer is a mixture of two
+        ages — and the engine carries one age per world, which puts it alongside Callisto. It comes out darker
+        than it should. Fitting the curve to split them would need a terrain-mix figure that does not exist,
+        and would drag every other icy world off to do it.</p>
+</section>
 
     <section id="eccentric-flux">
       <h2>Eccentric flux distance <span class="phase">04.1</span></h2>

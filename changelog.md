@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.756-beta - 17th Aug 2026
+
+- FIXED: every icy moon was exactly as bright as every other one. Enceladus, which reflects more light than anything else near us, and Callisto, one of the darkest things in the outer solar system, came out at the same number - a five-fold error on one of them. Ice ages: it is brilliant when it is fresh and filthy when it is old, because infall and radiation leave behind a dark residue that nothing removes and only resurfacing buries. So an icy world's brightness is a clock, and the engine already knew how long each surface had gone unrepaved.
+- Callisto now reflects 0.13 against a measured 0.11, where it used to say 0.62; Enceladus and Triton land within 0.06 of their real values. Ganymede is the one this does not reach - most of it was resurfaced two billion years ago and the rest never was, so its real answer is a mixture of two ages, and the engine keeps one age per world.
+- Their temperatures follow: Ganymede and Callisto were both sitting fifteen to forty degrees too cold because they were modelled as far too bright.
+
 ## v2.1.755-beta - 17th Aug 2026
 
 - FIXED: Mercury was classified as an eyeball world - one face permanently sunward - while also carrying the 3:2 spin-orbit resonance that says the opposite. Being slowed by tides has two possible endings and the engine only recognised one of them: a permanent face, or a captured resonance where the whole surface still sees the star. Mercury has the second, and the Newton panel now says so instead of calling it a hot eyeball.

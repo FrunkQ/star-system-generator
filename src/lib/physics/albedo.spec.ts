@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { deriveAlbedo } from './albedo';
+import { deriveAlbedo, frozenSurfaceAlbedo } from './albedo';
 import { deriveCloudDecks, type CloudDeck } from './cloudDecks';
 import type { CelestialBody, RulePack } from '$lib/types';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, LIQUIDS } from '$lib/constants';
@@ -159,5 +159,60 @@ describe('albedo and the cloud-deck model cannot disagree', () => {
     expect(a.cloudSpecies).toBe('water');
     expect(a.albedo).toBeGreaterThan(0.28);   // measured 0.306
     expect(a.albedo).toBeLessThan(0.34);
+  });
+});
+
+// B68: ONE CONSTANT STOOD FOR EVERY FROZEN SURFACE, so Enceladus (0.81, the brightest body in the
+// solar system) and Callisto (0.11, one of the darkest) both came out 0.62. They are the two ENDS of
+// one process: fresh ice is bright, old ice is filthy, and what darkens it is a non-ice lag that
+// builds up until something resurfaces the world.
+describe('a frozen surface ages', () => {
+  const K = { iceClean: 0.9, iceLag: 0.09, iceLagHalfAgeGyr: 0.22 };
+
+  it('is clean when freshly laid down and dark when ancient', () => {
+    expect(frozenSurfaceAlbedo(0, K)).toBeCloseTo(0.9, 3);
+    expect(frozenSurfaceAlbedo(0.05, K)).toBeGreaterThan(0.7);
+    expect(frozenSurfaceAlbedo(4.6, K)).toBeLessThan(0.15);
+  });
+
+  it('saturates rather than running out of ice to cover', () => {
+    // The lag builds fastest on a fresh surface and then has less and less clean ice left to bury,
+    // so the curve flattens: a 4.6 Gyr surface and a 10 Gyr one are both simply old.
+    const d1 = frozenSurfaceAlbedo(0, K) - frozenSurfaceAlbedo(0.5, K);
+    const d2 = frozenSurfaceAlbedo(4.1, K) - frozenSurfaceAlbedo(4.6, K);
+    expect(d1).toBeGreaterThan(d2 * 10);
+    expect(frozenSurfaceAlbedo(1e6, K)).toBeGreaterThanOrEqual(K.iceLag);
+  });
+
+  it('treats an unknown age as freshly resurfaced, which states least', () => {
+    expect(frozenSurfaceAlbedo(undefined, K)).toBeCloseTo(0.9, 3);
+    expect(frozenSurfaceAlbedo(null, K)).toBeCloseTo(0.9, 3);
+  });
+
+  // THE FIVE FROZEN-SURFACE ANCHORS, checked against every one and fitted to none individually.
+  // Measured on the bundled Solar System: mean absolute albedo error over 19 anchors falls from
+  // 0.141 to 0.099, and the mean surface-temperature error over these five from 13.0 K to 9.8 K.
+  it.each([
+    // body,        age,   measured, ours,  note
+    ['Callisto',    4.6,   0.11,     0.13,  'ancient and filthy — the 5.6x error this item is about'],
+    ['Ganymede',    4.6,   0.35,     0.13,  'THE RESIDUAL: 60% of it was resurfaced ~2 Gyr ago, and the engine carries ONE age'],
+    ['Europa',      0.05,  0.68,     0.75,  'young and clean'],
+    ['Triton',      0.05,  0.76,     0.75,  'young and clean'],
+    ['Enceladus',   0.05,  0.81,     0.75,  'young and clean — its plumes keep laying more down']
+  ])('%s: %s Gyr, measured %s, ours ~%s', (_name, age, _measured, ours) => {
+    expect(frozenSurfaceAlbedo(age as number, K)).toBeCloseTo(ours as number, 1);
+  });
+
+  it('a frost deposit cannot darken ground already brighter than it', () => {
+    // Enceladus's own plume-fall was dimming Enceladus: the falling material and the surface are the
+    // same substance, and `frost` is calibrated on Io's sulphur dioxide over dark volcanics.
+    const icy = body({
+      hydrosphere: { composition: 'water', coverage: 1 } as any,
+      atmosphere: { main: 'H2O', pressure_bar: 1e-7, composition: { H2O: 1 } } as any,
+      temperatureK: 70
+    });
+    const withFrost = deriveAlbedo(icy, 70, [], pack, null, 0.05);
+    expect(withFrost.surfaceAlbedo).toBeGreaterThan(0.6);
+    expect(withFrost.deposit).toBeUndefined();   // nothing was laid on top of brighter ice
   });
 });

@@ -345,7 +345,7 @@ export function solveThermalState(
         const geoAgeGyr = surfaceAgeOnProbe(probe, systemAgeGyr, pack);
         const oxidation = geoAgeGyr == null ? null
           : deriveOxidation({ ...probe, geoActivity: { surfaceAgeGyr: geoAgeGyr } } as CelestialBody);
-        const albedoInfo = deriveAlbedo(probe, equilibriumTempK, decks, pack, oxidation);
+        const albedoInfo = deriveAlbedo(probe, equilibriumTempK, decks, pack, oxidation, geoAgeGyr);
         return { equilibriumTempK, albedoInfo, greenhouseTempK, surfaceTempK, decks };
     };
 

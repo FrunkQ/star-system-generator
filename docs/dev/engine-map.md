@@ -311,6 +311,28 @@ state you are in rather than assuming the pane is broken — and it is worth ask
 
 ## PHYSICS — ordering and honesty
 
+### PHY-20 A surface property that VARIES BY AN ORDER OF MAGNITUDE is a process, not a constant
+WHERE: `physics/albedo.frozenSurfaceAlbedo` and the `surface_albedo` block in `planets.json`
+(`ice_clean`, `ice_lag`, `ice_lag_half_age_Gyr`); the rocky analogue is `deriveOxidation` + `dust`.
+RULE: where one constant has to stand for a whole class of surface, check its SPREAD against
+measurement before believing it. If the class spans a factor of several, the constant is standing in
+for a process, and the process is almost always the same shape: a bare material, something that
+settles on it, and TIME. Both deposit models here take their time from the surface age the solve
+already computes, so a third one must read that same figure rather than adding an input.
+WHY: `ice: 0.62` and `frost: 0.62` made Enceladus (measured 0.81, the brightest body in the solar
+system) and Callisto (0.11, one of the darkest) the same number — a 5.6x error, and they are not
+edge cases but the two ENDS of one process: fresh ice is bright, old ice is filthy, and only
+resurfacing resets it. Ganymede sat ~15 K cold because of it.
+BLAST: albedo is INSIDE the thermal fixed point, so anything here moves equilibrium temperature and
+everything downstream — measured, five bodies moved and each of `equilibriumTempK`, the temperature
+profile, `volatiles.lambda`, `surface/irradiation` and `activity/sublimating` followed. Keep the new
+term keyed on SURFACE AGE and not on temperature, or it becomes a second feedback edge and B5's
+bistability trap (bright condensate is self-reinforcing) has a new way in. TWO STATES OF ONE
+MATERIAL ARE TWO NUMBERS: a frost condensing out of the air NOW is clean by definition and does not
+age, while a shell that has been lying there since the last resurfacing does — conflating them made
+Enceladus's own plume-fall darken Enceladus, and made Io and Pluto worse when the shared constant
+was raised.
+
 ### PHY-19 An equilibrium temperature is a POWER balance and is never a mean
 WHERE: `physics/temperature.calculateEquilibriumTemperature` and `composeBodySurfaceTemperature`
 (which produce it) vs `physics/surfaceTemperature.surfaceTempProfile` (which produces the mean).

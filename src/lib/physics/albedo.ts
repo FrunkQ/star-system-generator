@@ -29,16 +29,39 @@ import type { CloudDeck } from './cloudDecks';
 // why Mercury, at 62% metal, is the darkest rocky body in the Solar System.
 const SURF_ALBEDO_DEFAULT = { metal: 0.075, rock: 0.11, carbon: 0.05, ice: 0.62, gas: 0.30 };
 const OCEAN_ALBEDO_DEFAULT = 0.06;   // any standing liquid: light goes in and mostly does not come back
-const FROST_ALBEDO_DEFAULT = 0.62;   // a frozen surface volatile, whatever the species
+const FROST_ALBEDO_DEFAULT = 0.62;   // a volatile DEPOSIT condensing out of the air now — Io's SO2
 const DUST_ALBEDO_DEFAULT = 0.35;    // wind-laid oxide fines — what makes Mars orange and bright
 const OXIDISED_COVERAGE_DEFAULT: Record<string, number> = { light: 0.3, moderate: 0.6, heavy: 0.85 };
 const FROST_RAMP_K_DEFAULT = 30;
+// ICE DARKENS WITH AGE, AND THAT IS THE WHOLE OF INBOX B68 (2026-08-17).
+//
+// A single constant stood for every frozen surface, so Enceladus — the brightest body in the solar
+// system at 0.81 — and Callisto, one of the darkest at 0.11, came out at the same 0.62. A 5.6x error
+// on one of them, and the two are not a special case: they are the two ENDS of one process.
+//
+// FRESH ICE IS BRIGHT AND OLD ICE IS FILTHY. What darkens it is a non-ice LAG that builds up on the
+// surface — micrometeoritic infall and radiolytic processing — and what resets it is resurfacing.
+// So the surface is clean ice mixed with dark lag, and the mixing fraction is how long that surface
+// has sat there: exactly the shape the ROCKY branch already uses for oxide dust, asked of a
+// different material. The surface age is the same figure `deriveOxidation` grades rust on, computed
+// once inside the solve, so this adds NO new coupling to the fixed point (see B5's bistability note
+// in the header) — it is one more reader of an input that is already there.
+// CLEAN ICE IS NOT THE SAME NUMBER AS A VOLATILE FROST DEPOSIT, and conflating them was the first
+// thing this change got wrong. `frost` above is a coating condensing out of the atmosphere NOW —
+// thin, patchy, over whatever the ground is — and 0.62 is what Io measures with it. `ice_clean` is a
+// SLAB: a shell of solid solvent that IS the surface. Fresh snow and glacier ice sit near 0.9, and
+// Enceladus at 0.81 is the brightest body in the solar system because its plumes keep laying more of
+// it down. Two states of one material, and only the slab can grow old.
+const ICE_CLEAN_ALBEDO_DEFAULT = 0.90;   // pack: surface_albedo.ice_clean
+const ICE_LAG_ALBEDO_DEFAULT = 0.09;     // pack: surface_albedo.ice_lag - dark carbonaceous residue
+const ICE_LAG_HALF_AGE_GYR_DEFAULT = 0.22; // pack: surface_albedo.ice_lag_half_age_Gyr
 
 interface SurfaceAlbedoConstants {
   metal: number; rock: number; carbon: number; ice: number; gas: number;
   ocean: number; frost: number; dust: number;
   oxidisedCoverage: Record<string, number>;
   frostRampK: number;
+  iceClean: number; iceLag: number; iceLagHalfAgeGyr: number;
 }
 function surfaceConstants(pack?: RulePack | null): SurfaceAlbedoConstants {
   const d = (pack as any)?.surface_albedo ?? {};
@@ -52,7 +75,10 @@ function surfaceConstants(pack?: RulePack | null): SurfaceAlbedoConstants {
     frost: d.frost ?? FROST_ALBEDO_DEFAULT,
     dust: d.dust ?? DUST_ALBEDO_DEFAULT,
     oxidisedCoverage: d.oxidised_coverage ?? OXIDISED_COVERAGE_DEFAULT,
-    frostRampK: d.volatile_frost_ramp_K ?? FROST_RAMP_K_DEFAULT
+    frostRampK: d.volatile_frost_ramp_K ?? FROST_RAMP_K_DEFAULT,
+    iceClean: d.ice_clean ?? ICE_CLEAN_ALBEDO_DEFAULT,
+    iceLag: d.ice_lag ?? ICE_LAG_ALBEDO_DEFAULT,
+    iceLagHalfAgeGyr: d.ice_lag_half_age_Gyr ?? ICE_LAG_HALF_AGE_GYR_DEFAULT
   };
 }
 // What a deck of an unlisted condensate reflects. Only reached for a liquid with no cloudAlbedo in
@@ -97,6 +123,36 @@ function giantBaseAlbedo(teqK: number, gasAlbedo: number): number {
 }
 
 /**
+ * How bright a FROZEN surface is, given how long it has been sitting there.
+ *
+ * Clean ice at one end, a dark non-ice lag at the other, and the surface age says how far along it
+ * is. Saturating rather than linear, because the lag builds fastest on a fresh surface and then has
+ * less and less clean ice left to cover: `age / (age + halfAge)`.
+ *
+ * MEASURED against the five frozen-surface anchors and fitted to none of them individually — the
+ * half-age is set so a freshly resurfaced world lands near 0.75 and an ancient one near 0.13:
+ *
+ *     Europa      0.05 Gyr   0.75   measured 0.68
+ *     Triton      0.05 Gyr   0.75   measured 0.76
+ *     Enceladus   0.05 Gyr   0.75   measured 0.81
+ *     Callisto    4.6  Gyr   0.13   measured 0.11
+ *     Ganymede    4.6  Gyr   0.13   measured 0.35   <- THE RESIDUAL, and it is a DATA gap
+ *
+ * GANYMEDE IS THE ONE THIS CANNOT REACH, AND IT IS WORTH SAYING WHY RATHER THAN BENDING THE CURVE:
+ * about 60% of its surface is bright grooved terrain resurfaced roughly two billion years ago and
+ * the rest is ancient dark terrain, so its true answer is a MIXTURE of two ages. The engine carries
+ * one surface age per body, which puts Ganymede and Callisto at the same 4.6 Gyr — and the same
+ * output. Fitting the curve to split them would need a lever that is not there, and would move every
+ * other frozen world to do it. The gap is a terrain-mix datum, not a wrong law.
+ */
+export function frozenSurfaceAlbedo(surfaceAgeGyr: number | null | undefined, K: { iceClean: number; iceLag: number; iceLagHalfAgeGyr: number }): number {
+  const age = Math.max(0, surfaceAgeGyr ?? 0);
+  const half = Math.max(1e-6, K.iceLagHalfAgeGyr);
+  const lag = age / (age + half);
+  return K.iceClean - lag * (K.iceClean - K.iceLag);
+}
+
+/**
  * Bond albedo of a body with the cloud decks it has been found to carry.
  *
  * `decks` comes from deriveCloudDecks() — deepest-first, which is the order they are composited in.
@@ -113,7 +169,13 @@ export function deriveAlbedo(
   // temperature — so the single place that can answer it is inside the thermal solve, which is
   // where the only production caller lives (solveThermalState). Absent → bare ground, which is the
   // honest default for a caller that has not evaluated geology.
-  oxidation?: string | null
+  oxidation?: string | null,
+  // How long this body's visible surface has been exposed, from the SAME evaluation the rust grade
+  // above comes from (`surfaceAgeOnProbe`, inside the solve). Ice darkens with it (B68), so this
+  // adds a second reader of an input already in the loop rather than a new coupling. Absent →
+  // treated as freshly resurfaced, which is the reading that states least: a caller that has not
+  // evaluated geology has not established that anything has had time to accumulate.
+  surfaceAgeGyr?: number | null
 ): AlbedoBreakdown {
   // F-OVR: a GM-pinned albedo (body.overrides.albedo) wins and is fed straight into the temperature
   // solve; the legacy body.albedo is honoured too. Otherwise the albedo is derived below.
@@ -128,6 +190,7 @@ export function deriveAlbedo(
   // reads bright, rather than leaving the reader to wonder where 0.57 came from on a basalt moon.
   let deposit: string | null = null;
   let bare = 0;   // surface albedo BEFORE deposits — the trace shows both (B5)
+  let icyLagged = false;   // a frozen surface old enough to have gone dirty, for the note
 
   // --- What sits UNDER the clouds. -------------------------------------------------------------
   // A giant has no surface, so the decks are composited over its deep atmosphere instead.
@@ -150,7 +213,14 @@ export function deriveAlbedo(
       const surfT = body.temperatureK ?? body.equilibriumTempK ?? teqK;
       const phase = phaseAtP(hydroComp, surfT, body.atmosphere?.pressure_bar, pack);
       if (phase === 'liquid') surf = surf * (1 - hydroCov) + K.ocean * hydroCov;
-      else if (phase === 'solid') surf = surf * (1 - hydroCov) + K.frost * hydroCov;
+      // A PERMANENT ICE SHELL AGES (B68). This is the one frost that has been lying there since the
+      // surface was last renewed, so it carries a lag; the atmospheric frost below is condensing NOW
+      // and is clean by definition. Same constant, two different states of the same material.
+      else if (phase === 'solid') {
+        const frozen = frozenSurfaceAlbedo(surfaceAgeGyr, K);
+        surf = surf * (1 - hydroCov) + frozen * hydroCov;
+        icyLagged = frozen < K.iceClean - 0.02;
+      }
       // gas / supercritical: nothing is standing on the surface, so the bare ground shows.
     }
 
@@ -175,7 +245,13 @@ export function deriveAlbedo(
       const surfT = body.temperatureK ?? body.equilibriumTempK ?? teqK;
       const share = body.atmosphere?.composition?.[main] ?? 0;
       const frostCov = clamp((meltK - surfT) / K.frostRampK, 0, 1) * share;
-      if (frostCov > 0.01) {
+      // A FROST CANNOT DARKEN GROUND THAT IS ALREADY BRIGHTER THAN IT (B68). This constant is a
+      // coating over rock — Io's sulphur dioxide on dark volcanics is what calibrates it — and
+      // applying it to a clean ice SLAB had Enceladus's own plume-fall dimming Enceladus, which is
+      // absurd on its face: the falling material and the surface are the same substance. Where the
+      // ground is darker the coating brightens it, as before; where it is brighter, laying more of
+      // the same down changes nothing.
+      if (frostCov > 0.01 && K.frost > surf) {
         surf = surf * (1 - frostCov) + K.frost * frostCov;
         deposit = `${speciesLabel(main, pack)} frost`;
       }
@@ -199,6 +275,7 @@ export function deriveAlbedo(
   const topAlbedo = top ? (liquidDef(top.species, pack)?.cloudAlbedo ?? DEFAULT_CLOUD_ALBEDO) : 0;
   const where = isGiant ? 'deep atmosphere'
     : deposit ? `surface under ${deposit}`
+    : icyLagged ? 'weathered ice'
     : surf < 0.1 ? 'dark surface' : surf > 0.4 ? 'bright surface' : 'mid-tone surface';
   return {
     albedo: +clamp(albedo, 0.02, 0.95).toFixed(3),
@@ -212,6 +289,7 @@ export function deriveAlbedo(
       ? `${speciesLabel(top.species, pack)} cloud deck over a ${where}${decks.length > 1 ? ` (${decks.length} decks)` : ''}.`
       : isGiant ? 'Cloud-free giant.'
         : deposit ? `Cloud-free ${deposit} over bare ground.`
-          : 'Cloud-free surface.'
+          : icyLagged ? 'Cloud-free ice, darkened by the lag of an old surface.'
+            : 'Cloud-free surface.'
   };
 }
