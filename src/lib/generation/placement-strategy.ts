@@ -109,17 +109,30 @@ export function calculateOrbitalSlots(
         const firstHi = Math.max(firstLo, Math.min(formationFrostAU * rules.inner_edge_frost_fraction[1], systemLimitAu));
         let a = firstHi <= firstLo ? firstLo : drawFromBand(rng, [firstLo, firstHi], 'log');
 
-        // ONE SEPARATION SCALE PER SYSTEM, not per gap — and this is the parameter that decides
-        // whether a system comes out TRAPPIST-1-shaped or Sol-shaped. Weiss et al. find spacing far
-        // more uniform WITHIN a system than BETWEEN systems, and the two anchors bear it out:
-        // Kepler's compact multis sit at roughly 10 to 20 mutual Hill radii, while Sol's own inner
-        // planets are at 27 (Venus-Earth), 40 (Earth-Mars) and 63 (Mercury-Venus). Drawing every gap
-        // independently from one band averages those two populations into a single middling one that
-        // is neither: it produced only compact systems, so a Sun-like star never reached its own
-        // frost line and therefore never grew a giant beyond it (measured: 13% of Sol systems with a
-        // giant, median 1.0 AU, i.e. inside the frost line at 4.97). Drawing the scale ONCE and
-        // varying gaps modestly around it reproduces both populations.
-        const sysSeparation = randomFromRange(rng, rules.separation_hill_radii[0], rules.separation_hill_radii[1]);
+        // A GEOMETRIC RATIO IS THE SPACING; MUTUAL HILL RADII ARE THE FLOOR UNDER IT.
+        //
+        // The first cut of this made spacing a constant number of mutual Hill radii. That is the
+        // headline result for Kepler's compact multis, but SOL IS NOT LIKE THAT and it is the anchor
+        // we are checked against: its adjacent pairs run from 8 (Jupiter-Saturn) to 63 (Mercury-Venus)
+        // mutual Hill radii, because the term contains the planet masses and Sol's masses vary by
+        // four orders of magnitude. What IS near-constant in Sol is the RATIO of successive orbits —
+        // 1.85, 1.39, 1.52, 1.84, 1.86, 1.83, 2.02, 1.57, a mean near 1.7 — and the same is true of
+        // TRAPPIST-1 at about 1.32. One drawn ratio therefore reproduces both anchors, where one
+        // drawn Hill separation reproduces neither: with a constant separation the giants blow the
+        // chain apart (k >= 1) while the terrestrials crowd, and a Sun-like star came out with its
+        // outermost planet at 1.14 AU against Sol's 30.
+        //
+        // A ratio is also SCALE-FREE, so nothing about Sol is smuggled in: the chain still starts at
+        // a zone derived from the star's own luminosity, and 1.7 means the same thing around a brown
+        // dwarf as around a supergiant. This is NOT a return to Titius-Bode, which was an additive
+        // sequence in ABSOLUTE AU fitted to one system.
+        //
+        // The mutual Hill radius keeps the job it is actually good for — a STABILITY FLOOR. Where a
+        // drawn ratio would put two bodies closer than the pack's floor, the gap widens to the floor.
+        // That is the "steer generation towards stability" rule: slots either side of a large body
+        // are pushed apart because the Hill term contains its mass, without any special-casing.
+        const sysRatio = randomFromRange(rng, rules.spacing_ratio[0], rules.spacing_ratio[1]);
+        const spread = rules.separation_gap_spread ?? 0;
 
         const slots: number[] = [];
         let mPrev: number | null = null;
@@ -128,24 +141,31 @@ export function calculateOrbitalSlots(
             const m1 = mPrev ?? drawSpacingMassEarth(rng, rules, a, formationFrostAU, starMassKg, null);
             const m2 = drawSpacingMassEarth(rng, rules, a, formationFrostAU, starMassKg, m1);
 
-            const h = Math.cbrt(((m1 + m2) * EARTH_MASS_KG) / (3 * starMassKg));
-            // Never below the pack's stability floor — a chain that packed tighter than that would
-            // not survive the age the system is about to be told it has.
-            const spread = rules.separation_gap_spread ?? 0;
-            const sep = Math.max(rules.stability_floor_hill_radii,
-                sysSeparation * randomFromRange(rng, 1 - spread, 1 + spread));
-            const k = (sep * h) / 2;
-            // k >= 1 means the required gap runs away to infinity: two bodies that massive cannot sit
-            // that far apart around a star this light, so the disc simply has no next slot.
-            if (!(k < 1)) break;
+            // The ratio the system was drawn with, varied modestly per gap.
+            const ratio = Math.max(1.02, sysRatio * randomFromRange(rng, 1 - spread, 1 + spread));
+            let next = a * ratio;
 
-            a = a * (1 + k) / (1 - k);
+            // STABILITY FLOOR. Solve the mutual-Hill separation for the closest the pair may sit:
+            // with k = N h / 2, a2 = a1 (1 + k)/(1 - k). If the ratio put them nearer than that, the
+            // disc could not have kept both, so the outer one moves out to the floor.
+            const h = Math.cbrt(((m1 + m2) * EARTH_MASS_KG) / (3 * starMassKg));
+            const k = (rules.stability_floor_hill_radii * h) / 2;
+            if (k < 1) {
+                const minNext = a * (1 + k) / (1 - k);
+                if (next < minNext) next = minNext;
+            } else {
+                // Two bodies this massive cannot be separated enough around a star this light at all:
+                // the disc has no next slot rather than an unstable one.
+                break;
+            }
+
+            a = next;
             mPrev = m2;
         }
         // NO POST-HOC JITTER. The old code multiplied each slot by +/-10% after the fact, which can
         // push an adjacent pair back under the stability floor the spacing was just chosen to respect.
         // The randomness lives in the draws that have physical meaning instead: the first orbit, the
-        // per-gap separation and the masses.
+        // per-gap ratio and the masses.
         return slots;
     }
 

@@ -170,8 +170,8 @@ describe('the pack owns the spacing rules', () => {
 
   it('widening the pack band widens the system: the rules are data, not code', () => {
     const tight = pack(); const wide = pack();
-    (tight as any).generation_parameters.orbital_spacing.separation_hill_radii = [10, 11];
-    (wide as any).generation_parameters.orbital_spacing.separation_hill_radii = [55, 60];
+    (tight as any).generation_parameters.orbital_spacing.spacing_ratio = [1.1, 1.15];
+    (wide as any).generation_parameters.orbital_spacing.spacing_ratio = [2.5, 3.0];
     const span = (p: RulePack) => {
       let total = 0;
       for (let i = 0; i < 30; i++) {
@@ -186,5 +186,20 @@ describe('the pack owns the spacing rules', () => {
   it('the shipped pack no longer carries the Sol-fitted Titius-Bode block', () => {
     expect((pack() as any).distributions.titius_bode_law).toBeUndefined();
     expect((pack() as any).generation_parameters.orbital_spacing).toBeDefined();
+  });
+
+  it('the mutual-Hill FLOOR still holds the chain apart when the ratio would crowd it', () => {
+    // The ratio is the spacing rule; the Hill radius is the floor under it. Set an absurdly tight
+    // ratio and the floor must still keep successive orbits apart — that is what stops a slot
+    // opening either side of a massive body.
+    const p = pack();
+    (p as any).generation_parameters.orbital_spacing.spacing_ratio = [1.001, 1.002];
+    for (let i = 0; i < 20; i++) {
+      const slots = calculateOrbitalSlots(SOL(), p, new SeededRNG(`floor-${i}`), 8);
+      for (let k = 1; k < slots.length; k++) {
+        // Even at a ratio of 1.001 the floor must open a real gap, not a rounding one.
+        expect(slots[k] / slots[k - 1]).toBeGreaterThan(1.01);
+      }
+    }
   });
 });

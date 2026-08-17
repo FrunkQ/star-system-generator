@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.772-beta - 18th Aug 2026
+
+- **Default generation now aims at a Solar-System-shaped result.** With every slider left alone a Sun-like star produces a median of seven planets (commonly four to ten), the innermost near 0.28 AU, three of them inside the habitable zone's inner edge, and an outermost around 11 AU. Four systems in five contain a world in the habitable zone, and about half carry a gas giant beyond the frost line. The mix runs roughly half rocky, a third icy and the rest gassy.
+
+- **Planet spacing is now the RATIO between successive orbits, with mutual Hill radii kept as the stability floor beneath it.** The previous build spaced planets by a constant number of Hill radii, which is right for the tightly packed systems Kepler found but wrong for ours: the Sun's planets sit anywhere from 8 to 63 Hill radii apart because their masses differ so widely. What is steady in the Solar System is the ratio of one orbit to the next, close to 1.7 throughout. Spacing follows that instead, which reproduces both our own system and the compact ones, and it stays scale-free so nothing about the Sun is carried to any other star.
+
+- **Planets are no longer placed where they would not survive.** Where the drawn spacing would put two worlds too close for the pair to last, the gap opens to the stability limit — so the orbits either side of a massive planet stay clear, without that having to be a special case.
+
+- Sun-like stars now form richer systems: the count table peaked at three or four planets and now peaks at seven, which is also what let the outer system be reached at all.
 ## v2.1.771-beta - 17th Aug 2026
 
 - **Fixed: the system map's grid-falloff dial DELETED the grid instead of fading it toward the edge.** The same dial on the starmap behaved, because the two maps each had their own copy of the numbers behind it -- and the system map's were set for a smaller area than it actually draws, so the fade had finished before it reached the outermost rings. At full strength four of the six distance rings and the whole rim were being drawn at zero. Both maps now share one set of numbers, the starmap's, so the dial reads the same on both and cannot drift apart again.

@@ -736,14 +736,19 @@ export interface MetricDef { key: string; label: string; min: number; max: numbe
 export interface OrbitalSpacingRules {
   name?: string;
   /**
-   * Separation between adjacent planets, in mutual Hill radii. Drawn ONCE PER SYSTEM: spacing is
-   * far more uniform within a system than between systems, and this band spans both observed
-   * populations — Kepler's compact multis near the bottom, Sol's own inner planets near the top.
+   * RATIO of successive orbits, drawn ONCE PER SYSTEM. This is the spacing rule, because it is what
+   * is actually near-constant within real systems: Sol's successive ratios average about 1.7 and
+   * TRAPPIST-1's about 1.32, while their separations in mutual Hill radii vary by a factor of eight.
+   * Scale-free, so it carries nothing about Sol into other stars.
    */
-  separation_hill_radii: [number, number];
-  /** Per-gap multiplicative variation around the system's separation, e.g. 0.3 for +/-30%. */
+  spacing_ratio: [number, number];
+  /** Per-gap multiplicative variation around the system's ratio, e.g. 0.15 for +/-15%. */
   separation_gap_spread?: number;
-  /** No pair may sit closer than this, whatever the draw: below it the chain is not gigayear-stable. */
+  /**
+   * MINIMUM separation in mutual Hill radii. Not the spacing rule — the floor under it. Where the
+   * drawn ratio would put a pair closer than this, the gap widens. This is what keeps the slots
+   * either side of a massive body clear, since the Hill term contains that body's mass.
+   */
   stability_floor_hill_radii: number;
   /** The innermost planet is drawn between the dust edge and this fraction of the FORMATION frost line. */
   inner_edge_frost_fraction: [number, number];

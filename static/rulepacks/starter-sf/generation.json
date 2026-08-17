@@ -8,10 +8,10 @@
       "exotic_ratio_at_max": 5
     },
     "orbital_spacing": {
-      "name": "Adjacent-planet spacing in mutual Hill radii. Observed separations: Weiss et al. 2018 (Kepler multis cluster near 20); stability floor: Pu & Wu 2015 (roughly 10 for gigayear survival). Replaces the Titius-Bode block, which was Sol's own orbits in absolute AU applied to every star.",
-      "separation_hill_radii": [10, 60],
-      "separation_gap_spread": 0.3,
-      "stability_floor_hill_radii": 10,
+      "name": "Planet spacing. The RATIO of successive orbits is the rule, drawn once per system and varied slightly per gap: that is what is near-constant in real systems (Sol averages about 1.7, TRAPPIST-1 about 1.32), while their separations in mutual Hill radii vary eightfold because the planet masses do. Scale-free, so it carries nothing about Sol to another star - unlike the Titius-Bode block this replaced, which was Sol's own orbits in absolute AU. Mutual Hill radii are kept as the STABILITY FLOOR under the ratio (Pu & Wu 2015: roughly 10 for gigayear survival), which is also what keeps the slots either side of a massive body clear.",
+      "spacing_ratio": [1.35, 2.0],
+      "separation_gap_spread": 0.15,
+      "stability_floor_hill_radii": 9,
       "inner_edge_frost_fraction": [0.02, 0.6],
       "spacing_mass_earth_inside_frost": [0.05, 5],
       "spacing_mass_earth_outside_frost": [1, 300],
@@ -274,40 +274,52 @@
       "name": "Number of Planets (Main Sequence G, K, M, F)",
       "entries": [
         {
-          "weight": 5,
-          "value": 0
-        },
-        {
-          "weight": 10,
+          "weight": 1,
           "value": 1
         },
         {
-          "weight": 15,
+          "weight": 2,
           "value": 2
         },
         {
-          "weight": 20,
+          "weight": 4,
           "value": 3
         },
         {
-          "weight": 20,
+          "weight": 7,
           "value": 4
         },
         {
-          "weight": 15,
+          "weight": 11,
           "value": 5
         },
         {
-          "weight": 10,
+          "weight": 15,
           "value": 6
         },
         {
-          "weight": 5,
+          "weight": 17,
           "value": 7
         },
         {
-          "weight": 2,
+          "weight": 16,
           "value": 8
+        },
+        {
+          "weight": 13,
+          "value": 9
+        },
+        {
+          "weight": 9,
+          "value": 10
+        },
+        {
+          "weight": 5,
+          "value": 11
+        },
+        {
+          "weight": 2,
+          "value": 12
         }
       ]
     },
