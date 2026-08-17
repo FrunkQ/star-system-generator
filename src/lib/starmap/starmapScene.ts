@@ -44,7 +44,7 @@ import { isLattice as isLatticeMode, normaliseOverlay, isHexFamily, hasSubsector
 // Starmap ROLL-UP badges: a system flies the union of what everything inside it carries (design 9.4).
 // Same pill shape as the panel chip and the system view — see tags/tagPill.ts.
 import { capMarkers, type HighlightMarker } from '$lib/tags/mapHighlights';
-import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName, pinAside, flagStaffColor, type PinTextMode, type FlagStaffColor } from '$lib/tags/tagPill';
+import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_STEM, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName, pinAside, flagStaffColor, type PinTextMode, type FlagStaffColor } from '$lib/tags/tagPill';
 import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
 import { niceSeries, formatNice } from '$lib/map/niceInterval';
 
@@ -79,6 +79,11 @@ export interface StarmapController {
   setDistanceScale(pixelsPerUnit: number): void;
   // The vertical stems down to the reference plane and the rings that mark where they land.
   setDropLines(on: boolean): void;
+  // G4's two grid dials. Declared here because the object below returns them and `Starmap3DView`
+  // calls them: an interface that omits what its own implementation exports type-errors at BOTH ends
+  // and puts four permanent errors in the way of the next real one (A50).
+  setGridSkirt(v: number): void;   // 0 flat .. 1 a full depth curtain under each grid line (3D only)
+  setGridFalloff(v: number): void; // 0 even .. 1 bright near the focus, gone by the edge
   setZExaggeration(v: number): void; // DISPLAY ONLY — stretches depth for clarity, never distances
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setMono(on: boolean): void; // monochrome palette for tinting filters
@@ -91,6 +96,7 @@ export interface StarmapController {
   setLabelColor(hex: string | null): void;
   setLabelSize(px: number): void;
   setLabelFont(font: string | null): void;
+  setMarkerOptions(o: { size?: number; staff?: FlagStaffColor; pinText?: PinTextMode }): void;
   setFilter(id: string, params?: FilterParamValues): void;
   setHud(canvas: HTMLCanvasElement | null): void; // static overlay bitmap composited INTO the filter
   resize(w: number, h: number): void;
@@ -540,7 +546,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       }
     }
     addLattice(ringEdges, base.clone().multiplyScalar(0.45), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.55, skirt: gridSkirt });
-    addLattice(spokeEdges, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: false });
+    addLattice(spokeEdges, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: 0 });
   }
   // Both halves of the tether go together: the ring exists to say where the stem lands, so a ring on
   // its own would be marking the foot of a line nobody can see.

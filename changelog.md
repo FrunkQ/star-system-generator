@@ -7,6 +7,11 @@ All notable changes are listed here:
 - Quick overrides gains **Hide all artificial constructs (stations, ships)** - one tick and every ship, station and gate drops out of the players' view. It sits with Hide labels and Suspend filter because that is what it is: the thing you reach for mid-scene, not a property of a preset. Unticked by default, and it never comes back on its own after a reload.
 - Housekeeping: the 3D view's old look-preset store is deleted. It kept seven starter looks and its own browser storage from before Player Views existed, and nothing had imported any of it for a long time; the one piece still in use - the migration that folds a GM's old saved looks into their campaign - is untouched.
 
+## v2.1.744-beta - 17th Aug 2026
+
+- **A crash on the 3D starmap that four cosmetic type errors had been hiding.** `TAG_PILL_STEM` was used but never imported, so drawing a pin marker with a second line of text would have thrown. It surfaced the moment the noise around it was cleared -- which is exactly what that noise costs.
+- The starmap controller's interface now declares everything it actually returns (the two grid dials and the marker options). Nothing changes on screen; the next real error in that file is no longer buried.
+
 ## v2.1.743-beta - 17th Aug 2026
 
 - Docs only. Two inbox items found already solved before they were handed out (a pinch-as-tap fix present in code since v2.1.549; Jupiter's giant test now true because an absent makeup is inferred from mass and density), the 3D-starmap grid items re-anchored to their moved files, and undo/redo held until the current sessions land.
