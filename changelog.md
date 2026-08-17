@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.740-beta - 17th Aug 2026
+
+- Docs only. The undo/redo brief is written for a fresh session (`docs/dev/g28-undo-redo-handoff.md`); the inbox gains a session roster with every open item routed to the session that knows the code; the brown-dwarf work is verified closed; and the canvas-cannot-render-headless measurement is folded into the standing rule it corrects.
+
 ## v2.1.739-beta - 17th Aug 2026
 
 - Docs only. Eight inbox ids that each named two different observations (A51, A52, B60-B64, G24) are untangled — the moved rows are A53, A54, B75-B79 and G29, each carrying its old id — and one finding that had been captured twice (B71) is merged. Three code comments and one physics-page phase tag are repointed to match. No behaviour change.
