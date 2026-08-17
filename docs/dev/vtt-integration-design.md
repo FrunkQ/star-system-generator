@@ -1003,3 +1003,57 @@ griefing by sid-holders (F6, accepted trust model), and platform-cost abuse
 (F3). The two pre-existing items (F3, F4) are worth fixing on the SSE2 beta
 regardless of the VTT programme; everything else is already folded into the
 build specs above.
+
+## 14. Build status and the reuse boundary (2026-08-17)
+
+**Shipped.** SSE Phases 1-2 (v2.1.722-beta: stable readable `broadcastId`,
+REQUEST_HELLO/ANNOUNCE/REQUEST_REMOTE/SYNC_HEARTBEAT, guest re-dial,
+`?embed=1` + setPreset/ping, `/bridge`, origin allowlist) and the Mappadux
+StarMap map kind (Mappadux v2.18.0 — spec + verified build status in
+`dynamic-map-renderer-v2/docs/starmap-map-kind-design.md` section 11).
+Verified together in one browser, cross-origin (Mappadux :5180 framing SSE
+:5199): discovery, mint, live GM preview, live PiP player view, warm
+StarMap→handout→StarMap on the SAME iframe, filter precedence to SSE, both
+failure banners, and cold reconnect on page load.
+
+**The one shared piece of viewer code is SSE's own `/catalogue`, loaded at
+runtime.** No host copies it. A Mappadux/Foundry/Owlbear player window frames
+the live SSE app from the SSE origin the moment it is needed, so a change to
+SSE's player view reaches every host on next load and there is exactly one
+viewer codebase to maintain. Hosts own the WINDOW; SSE owns the CONTENT and
+its data channel. (Owner's requirement, restated because it is the load-
+bearing decision: players never hop windows — the host's normal player
+surface shows the SSE view, hides it for a handout, and shows the still-
+connected frame again.)
+
+**Reuse boundary — what each future host copies vs writes:**
+
+| Piece | Where it lives | Foundry / Owlbear |
+|---|---|---|
+| Discovery frame + protocol, ANNOUNCE shape, embed URL + setPreset/ping, heartbeat, allowlist | SSE origin | reuse as-is (add the host origin to `embedOrigins.ts`) |
+| `Sse2Bridge` client (hello / announce / ensureRemote / playerViewUrl / version gate) | `dynamic-map-renderer-v2/src/gm/Sse2Bridge.ts`, no Mappadux imports | copy verbatim |
+| Connection-aware dialog states (searching / found / not found / needs update) | `StarMapDialog.ts` | port the STATES; UI is host-native |
+| Warm full-bleed iframe + preset switch + fullscreen rebuild | `StarMapLayer.ts` | Foundry: AppV2 window; Owlbear: fullscreen modal — one line each |
+| starmap_show / full_state wire, Renderer pause, filter and tool gates | Mappadux only | not applicable |
+| Open the SSE tab for the GM, ensure-remote, auto-resume on announce | Mappadux only (we own the browser) | becomes an INSTRUCTION to the user |
+
+**Rule adopted (owner, 2026-08-17): automate when we own the surface,
+instruct the user when we do not.** Never rely on loading a starmap by URL
+(no such path — SSE stores one map; foreign files cannot be summoned). "Load
+starmap X in SSE" is a named instruction in every host; in Mappadux it is a
+banner that resolves itself when SSE announces the right map. A future
+`REQUEST_LOAD` (SSE loads X only if X is its saved slot or a bundled example)
+is the one automation still open — owner call whether it is worth it.
+
+**Filter precedence (owner's gotcha, settled): SSE wins.** Both apps carry
+the identical filter package; over a StarMap the host forces its own filter
+to `none` at the single broadcast seam and disables the controls, so the
+preset's GLSL is the only filter. Saved host filter state is untouched.
+
+**Network hardening (section 11) — status:** SHIPPED today: heartbeat
+liveness (LIVE→OFFLINE within ~15 s), guest re-dial on host loss and on
+"nobody hosting yet". STILL OPEN, in priority order: Phase 0 real WAN test
+(cellular vs broadband, both apps); explicit `iceServers` override delivered
+pre-connection (share URL param, StarMapConfig, module settings); connection-
+failed in-fiction error state; banked self-host escape hatch. These stay in
+section 11 as the single list.
