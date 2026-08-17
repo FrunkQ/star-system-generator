@@ -7,6 +7,25 @@
   import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
+  import { loadStoredIce, saveStoredIce, parseIceText, iceToText } from '$lib/iceConfig';
+
+  // BYO STUN/TURN for remote players (docs/dev/vtt-integration-design.md 11).
+  let iceText = '';
+  let iceStatus = '';
+  onMount(() => { iceText = iceToText(loadStoredIce()); iceStatus = summariseIce(); });
+  function saveIce() {
+    const servers = parseIceText(iceText);
+    saveStoredIce(servers.length ? servers : null);
+    iceText = iceToText(servers);
+    iceStatus = summariseIce();
+  }
+  function summariseIce(): string {
+    const s = loadStoredIce();
+    if (!s || s.length === 0) return 'Using the built-in relay only. New player links will not carry a custom relay.';
+    const n = s.length;
+    const tls = s.some((e) => (Array.isArray(e.urls) ? e.urls : [e.urls]).some((u) => /^turns:/i.test(u)));
+    return `${n} custom server${n === 1 ? '' : 's'} saved${tls ? ' (includes a TLS relay - good for locked-down networks)' : ' (no turns: entry - a UDP-blocking network may still fail)'}. Re-share player links so they carry it.`;
+  }
 
   let clearing = false;
   async function clearEverything() {
@@ -437,6 +456,18 @@
           <a class="section-btn" href="/discgallery" target="_blank" rel="noopener" on:click={() => showModal = false}>Rendered world gallery…</a>
           <p class="section-hint">A reference for how worlds are drawn from their physics and tags — polar ice, gas-giant banding, rotational shape and more.</p>
 
+          <h4 class="advanced-head">Remote players — network relay</h4>
+          <div class="form-group">
+            <p class="section-hint">Player views on other devices connect peer-to-peer. That works on home and
+              mobile networks by itself (a public relay is built in). A workplace network that blocks UDP can
+              stop it — then a relay that speaks TLS on port 443 is needed. Paste your own STUN/TURN servers
+              here, one per line as <code>turns:host:443|username|credential</code>; they are added ahead of
+              the built-in ones and ride in every player link and QR you share from now on.</p>
+            <textarea class="ice-input" rows="3" bind:value={iceText} on:change={saveIce}
+              placeholder="turns:relay.example.com:443|user|secret"></textarea>
+            <p class="section-hint">{iceStatus}</p>
+          </div>
+
           <h4 class="advanced-head">Your data</h4>
           <div class="form-group">
             <p class="section-hint">Your campaigns are stored in this browser. Browsers may clear that storage
@@ -643,6 +674,7 @@
   .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
   .danger-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--status-bad, #d04545) 16%, transparent) !important; }
   .danger-btn:disabled { opacity: 0.6; cursor: default; }
+  .ice-input { width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace; background: rgba(255,255,255,0.05); color: inherit; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; resize: vertical; }
   .section-btn {
     display: block;
     width: 100%;

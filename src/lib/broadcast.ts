@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { peerConfigFor, loadStoredIce, type IceServerEntry } from '$lib/iceConfig';
 import { perfCount } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
 import type { PanState } from '$lib/viewport/stores';
@@ -140,7 +141,10 @@ class BroadcastService {
     try {
       const Peer = await this.loadPeer();
       // The host registers under the session id, so a guest dials that id directly.
-      this.peer = new Peer(sessionId);
+      // BYO ICE (docs/dev/vtt-integration-design.md 11): custom STUN/TURN prepended to
+      // the PeerJS defaults, so a turns:443 relay can carry a locked-down network.
+      const cfg = peerConfigFor(this.iceServers ?? loadStoredIce());
+      this.peer = new Peer(sessionId, cfg ? { config: cfg } : undefined);
       this.peer.on('connection', (conn: any) => {
         conn.on('open', () => { if (!this.peerConns.includes(conn)) this.peerConns.push(conn); });
         conn.on('data', (data: any) => this.handlePeerData(data));
@@ -169,10 +173,24 @@ class BroadcastService {
     if (typeof window === 'undefined' || !sessionId) return;
     try {
       const Peer = await this.loadPeer();
-      this.peer = new Peer();
+      const cfg = peerConfigFor(this.iceServers ?? loadStoredIce());
+      this.peer = new Peer(undefined, cfg ? { config: cfg } : undefined);
       this.peer.on('open', () => {
         const conn = this.peer.connect(sessionId, { reliable: true });
         this.peerOut = conn;
+        // ICE failure detection: PeerJS surfaces the RTCPeerConnection once negotiation
+        // starts. `failed` means STUN and every TURN candidate were tried and none got
+        // through — typically UDP blocked with no turns:443 relay. Report it so the view
+        // can say so instead of waiting forever; the redial loop keeps trying regardless.
+        const watchIce = () => {
+          const pc: RTCPeerConnection | undefined = conn.peerConnection;
+          if (!pc) { setTimeout(watchIce, 250); return; }
+          pc.addEventListener('connectionstatechange', () => {
+            if (pc.connectionState === 'failed') this.onPeerFailed?.('ice-failed');
+            if (pc.connectionState === 'connected') this.onPeerFailed?.(null);
+          });
+        };
+        watchIce();
         conn.on('open', () => {
           conn.send({ sessionId: null, message: { type: 'REQUEST_SYNC', payload: sessionId } });
           conn.send({ sessionId: null, message: { type: 'REQUEST_STARMAP', payload: sessionId } });
@@ -274,6 +292,15 @@ class BroadcastService {
   // Fired when hosting failed because the id is ALREADY TAKEN by a live session elsewhere.
   // The GM route owns the user-facing choice (keep and retry later, or regenerate).
   public onHostIdUnavailable: (() => void) | null = null;
+
+  // BYO ICE servers for THIS instance (a player view reads them from its URL; the GM from
+  // settings). Null = stored GM setting, else PeerJS defaults. Set BEFORE dialling.
+  private iceServers: IceServerEntry[] | null = null;
+  public setIceServers(servers: IceServerEntry[] | null) { this.iceServers = servers; }
+  // Guest-side transport verdict: 'ice-failed' when no path (direct or relayed) could be
+  // negotiated; null when a connection later succeeds. Receivers turn this into an honest
+  // "blocked — relay needed" state rather than an endless waiting screen.
+  public onPeerFailed: ((reason: 'ice-failed' | null) => void) | null = null;
 
   // Setup for Player Mode (Receiver)
   public initReceiver(

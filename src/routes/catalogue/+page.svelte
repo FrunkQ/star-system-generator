@@ -19,6 +19,7 @@
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
+  import { parseIceParam } from '$lib/iceConfig';
   import { setModelFetcher, modelArrived } from '$lib/constructs/modelFetch';
   import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
@@ -95,6 +96,9 @@
   // the surrounding chrome, so the device status bar is hidden and a small parent postMessage
   // command set is enabled. Content, hold screen and waiting states are untouched.
   let embedMode = false;
+  // Transport verdict from the guest side: true when STUN and every TURN candidate failed —
+  // no direct or relayed path (usually a network that blocks UDP with no turns:443 relay).
+  let linkBlocked = false;
 
   $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
 
@@ -794,6 +798,10 @@
     sessionId = params.get('sid');
     activePresetId = params.get('preset') || FALLBACK_PRESET_ID;
     embedMode = params.get('embed') === '1';
+    // BYO ICE relay from the share URL (design 11): must be known BEFORE dialling —
+    // a player who cannot connect cannot be told anything over the channel.
+    broadcastService.setIceServers(parseIceParam(params.get('ice')));
+    broadcastService.onPeerFailed = (reason) => { linkBlocked = reason === 'ice-failed'; };
     units = params.get('units') === 'imperial' ? 'imperial' : 'metric';
     { const tp = params.get('temp'); tempUnit = tp === 'F' || tp === 'K' ? tp : 'C'; }
     try {
@@ -992,7 +1000,9 @@
   {#if !starmap}
     <!-- Waiting / offline: the quote interstitial (connected, nothing broadcast yet). -->
     <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
-      statusText="Reaching the host — this will fill in automatically once the GM is broadcasting."
+      statusText={linkBlocked
+        ? 'SENSOR LINK BLOCKED — this network will not carry a direct or relayed connection to the host (UDP blocked, no relay). Ask the GM for a link with a relay, or try another network.'
+        : 'Reaching the host — this will fill in automatically once the GM is broadcasting.'}
       sessionId={sessionId ?? ''}>
       <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId })}>
         Retry

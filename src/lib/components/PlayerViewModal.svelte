@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { encodeIceParam, loadStoredIce } from '$lib/iceConfig';
   // Unified Player View — preset PICKER (it replaced the Field Guide modal outright at A42). Left: the
   // preset card grid. Right: the SELECTED preset's summary with Edit/Duplicate/Delete, plus the
   // quick live-session overrides (Follow GM / disable filter / disable view orbit) — momentary, never
@@ -27,8 +28,11 @@
   let origin = '';
   let qrDataUrl = '';
   let copied = false;
+  // BYO ICE relay rides the share URL/QR so remote players on locked-down networks can connect
+  // (docs/dev/vtt-integration-design.md 11). Absent when the GM has not configured one.
+  $: iceParam = browser ? encodeIceParam(loadStoredIce()) : null;
   $: shareUrl = selected
-    ? `${origin}/catalogue?sid=${sessionId ?? ''}&preset=${selected.id}&units=${$measurementUnit}&temp=${$temperatureUnit}`
+    ? `${origin}/catalogue?sid=${sessionId ?? ''}&preset=${selected.id}&units=${$measurementUnit}&temp=${$temperatureUnit}${iceParam ? `&ice=${iceParam}` : ''}`
     : '';
   $: if (browser && shareUrl) {
     QRCode.toDataURL(shareUrl, { margin: 1, width: 220, color: { dark: '#0a0d14', light: '#ffffff' } })

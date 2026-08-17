@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.725-beta - 17th Aug 2026
+
+* Remote players on locked-down networks: bring-your-own STUN/TURN relay. Settings (Advanced) takes a list of servers (turns:host:443|user|credential); they are added ahead of the built-in public relay and ride in every player link and QR (?ice=), so a workplace network that blocks UDP can still connect through a TLS relay on 443. The player view now says SENSOR LINK BLOCKED when no direct or relayed path can be made, instead of waiting forever. Nothing changes for tables that never touch the setting.
+
 ## v2.1.724-beta - 17th Aug 2026
 
 * Internal: on a phone, background chrome should disappear entirely while a full-screen panel is open, rather than shrinking out of the way.
