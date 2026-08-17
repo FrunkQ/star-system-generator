@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.763-beta - 17th Aug 2026
+
+- **Audited every stellar zone across the whole catalogue, from an O supergiant to a Y dwarf — about ten orders of magnitude of starlight.** The six condensation lines (silicate, soot, formation frost, frost, CO2 ice, CO ice) all come out correct, correctly ordered and scaling exactly with the square root of the star's brightness at every point in that range, so the frost-line fault fixed in the last build was confined to generation's own private copy and never touched the zones themselves.
+
+- **Planet placement was using two hand-rolled zone sums of its own instead of the engine's.** Its "Roche limit" was the star's radius times 2.44 with the density term dropped, which is not a Roche limit: measured against the real one it is about 26,000 times too small for a neutron star and 26 times too small for a white dwarf — so planets could be placed inside the distance that would tear them apart — and around 900 times too large for a red supergiant. Its "soot line" was a different temperature from the one the engine calls by that name. Both now come from the engine.
+
+- Known and recorded, not yet fixed: the kill zone and danger zone are the only zones still built on a stored brightness value rather than a derived one.
 ## v2.1.762-beta - 17th Aug 2026
 
 - On a phone, the app furniture now gets out of the way of a dialog. Opening the import screen (or any other) hides the bottom "My Starmap" bar and the floating time control for as long as it is open, and puts them straight back when you close it - reported by a user whose import dialog was sandwiched between the two. Nothing becomes unreachable: with no dialog open the bar behaves exactly as before, and it is still the way to the starmap description and GM notes. On a desktop nothing changes, because there is room for both.

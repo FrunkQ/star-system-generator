@@ -1,8 +1,8 @@
 import type { CelestialBody, RulePack, OrbitalSpacingRules } from '../types';
 import { SeededRNG } from '../rng';
 import { drawFromBand, randomFromRange } from '../utils';
-import { AU_KM, EARTH_MASS_KG, SOLAR_MASS_KG } from '../constants';
-import { calculateAllStellarZones } from '../physics/zones';
+import { EARTH_MASS_KG, SOLAR_MASS_KG } from '../constants';
+import { calculateAllStellarZones, calculateRocheLimit } from '../physics/zones';
 
 /**
  * WHERE PLANETS GO, IN UNITS OF THE STAR RATHER THAN UNITS OF THE SOLAR SYSTEM.
@@ -39,7 +39,7 @@ import { calculateAllStellarZones } from '../physics/zones';
  * in scale, not with Sol's orbits.
  */
 
-/** The masses that set a gap are a PROXY, not the masses the caller will later assign — see GEN-9. */
+/** The masses that set a gap are a PROXY, not the masses the caller will later assign — see GEN-2. */
 function drawSpacingMassEarth(
     rng: SeededRNG, rules: OrbitalSpacingRules, aAU: number, formationFrostAU: number,
     starMassKg: number, previousMassEarth: number | null
@@ -77,10 +77,16 @@ export function calculateOrbitalSlots(
     const stellarZones = calculateAllStellarZones(star, pack);
     const systemLimitAu = stellarZones.systemLimitAu;
 
-    const rocheLimitAU = (star.radiusKm * 2.44) / AU_KM;
-    // Soot line approximation
-    const sootLineAU = ((star.radiusKm / 2) * Math.pow(star.temperatureK / 1800, 2)) / AU_KM;
-    const minOrbitAU = Math.max(rocheLimitAU, sootLineAU) * 1.2; // 20% buffer
+    // THE INNER EDGE, FROM THE ENGINE'S OWN ZONES RATHER THAN TWO HAND-ROLLED COPIES.
+    // This file used to compute its own Roche limit as `2.44 * R_star`, which drops the DENSITY
+    // ratio the Roche limit is made of, and its own "soot line" at 1800 K while `zones.ts` calls the
+    // 500 K line by that name. Both were wrong at the ends of the stellar range and only looked
+    // right for main-sequence stars: measured against `calculateRocheLimit`, the 2.44R form is
+    // 26,000x TOO SMALL for a neutron star and 26x too small for a white dwarf (so planets could be
+    // placed inside the radius that would shred them), and ~900x TOO LARGE for an M supergiant.
+    // The silicate line is already the engine's name for where dust can condense at all.
+    const rocheLimitAU = calculateRocheLimit(star);
+    const minOrbitAU = rocheLimitAU * 1.2; // 20% buffer
 
     const rules = pack.generation_parameters?.orbital_spacing;
 
@@ -96,7 +102,7 @@ export function calculateOrbitalSlots(
         // own luminosity, so the whole chain moves with the star.
         const dustEdgeAU = Math.max(minOrbitAU, stellarZones.silicateLine);
         const firstLo = Math.max(dustEdgeAU, formationFrostAU * rules.inner_edge_frost_fraction[0]);
-        // A very cold dwarf has its formation frost line INSIDE its own Roche/soot floor: there is no
+        // A very cold dwarf has its formation frost line INSIDE its own Roche/dust floor: there is no
         // warm disc at all, and everything it can keep is icy. The chain then simply starts at the
         // floor rather than collapsing to an empty list, which is what produced silent zero-planet
         // Y-dwarf systems before (B58). Deliberate, and flagged to the owner rather than assumed.

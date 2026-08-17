@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs'; import path from 'path';
 import { calculateOrbitalSlots } from './placement-strategy';
-import { calculateAllStellarZones } from '../physics/zones';
+import { calculateAllStellarZones, calculateRocheLimit } from '../physics/zones';
 import { SeededRNG } from '../rng';
 import type { RulePack, CelestialBody } from '$lib/types';
-import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, AU_KM } from '../constants';
+import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 
 /**
  * THE FAULT THIS FILE EXISTS TO CATCH (inbox B58): planet spacing used to be the Solar System's
@@ -96,9 +96,18 @@ describe('orbital slots scale with the STAR, not with the Solar System', () => {
     expect(slots.length).toBeGreaterThan(0);
   });
 
-  it('no slot is inside the star it orbits', () => {
-    for (const s of [SOL(), TRAPPIST1(), LDWARF(), YDWARF()]) {
-      const roche = (s.radiusKm! * 2.44) / AU_KM;
+  it('no slot is inside the TRUE Roche limit, remnants included', () => {
+    // This used to compare against `2.44 * R_star`, which is not the Roche limit — it drops the
+    // density ratio the limit is made of. That form is 26,000x too small for a NEUTRON STAR and 26x
+    // too small for a WHITE DWARF, so it would happily approve orbits well inside the radius that
+    // shreds a planet, and ~900x too LARGE for a supergiant. The remnants are in this list precisely
+    // because they are where the difference bites.
+    const WD = () => star(0.6, 12000, 0.013, 'star/WD');
+    const NS = () => star(1.4, 600000, 1.7e-5, 'star/NS');
+    const SUPERGIANT = () => star(15, 3500, 900, 'star/M-I');
+    for (const s of [SOL(), TRAPPIST1(), LDWARF(), YDWARF(), WD(), NS(), SUPERGIANT()]) {
+      const roche = calculateRocheLimit(s);
+      expect(roche).toBeGreaterThan(0);
       for (const a of pooled(s, 8)) expect(a).toBeGreaterThan(roche);
     }
   });
