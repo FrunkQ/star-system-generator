@@ -9,6 +9,12 @@
   import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  // THE GM'S TAG VOCABULARY, by the same rule as `highlights` above (TAG-15): a player window has its
+  // own store instances, and for this store that means the SHIPPED DEFAULTS — every colour the GM
+  // customised would be wrong there. So it arrives as a prop off the broadcast, and falls back to the
+  // local store only on the GM's own screen, where the store IS the answer.
+  export let tagStyles: import('$lib/tags/tagCategories').TagCategory[] | null = null;
+  $: activeTagCategories = tagStyles ?? $tagCategories;
   import type { MapHighlights } from '$lib/tags/mapHighlights';
 
   const dispatch = createEventDispatcher<{ focus: string }>();
@@ -159,7 +165,7 @@
   // value only ever arrives over the broadcast as a prop. Named in the expression, not closed over, or
   // the reactive statement would not re-run when the selection changes (TAG-17).
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
-  $: controller?.setHighlights(activeHighlights, $tagCategories, markerStyle ?? 'label',
+  $: controller?.setHighlights(activeHighlights, activeTagCategories, markerStyle ?? 'label',
                                { size: markerSize, staff: flagStaff, pinText });
 </script>
 

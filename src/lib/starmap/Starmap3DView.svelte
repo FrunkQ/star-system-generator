@@ -9,6 +9,12 @@
   import type { MarkerStyleName } from '$lib/tags/tagPill';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  // THE GM'S TAG VOCABULARY, by the same rule as `highlights` above (TAG-15): a player window has its
+  // own store instances, and for this store that means the SHIPPED DEFAULTS — every colour the GM
+  // customised would be wrong there. So it arrives as a prop off the broadcast, and falls back to the
+  // local store only on the GM's own screen, where the store IS the answer.
+  export let tagStyles: import('$lib/tags/tagCategories').TagCategory[] | null = null;
+  $: activeTagCategories = tagStyles ?? $tagCategories;
   import { systemVisualStars } from './systemStars';
   import { drawHud } from '$lib/catalogue/infoCard';
 
@@ -92,7 +98,7 @@
     id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0, z: s.position?.z ?? 0,
     stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd })),
     markers: activeHighlights.length
-      ? rollUpMarkers(s.system?.nodes ?? [], activeHighlights, $tagCategories, markerStyle)
+      ? rollUpMarkers(s.system?.nodes ?? [], activeHighlights, activeTagCategories, markerStyle)
       : []
   }));
   $: smRoutes = ((starmap?.routes ?? []) as any[]).map<SmRoute>((r) => ({ fromId: r.sourceSystemId, toId: r.targetSystemId, dashed: r.lineStyle === 'dashed', name: r.name }));

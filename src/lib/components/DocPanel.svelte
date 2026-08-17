@@ -8,6 +8,9 @@
   import { onMount, onDestroy } from 'svelte';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  // The GM's tag vocabulary, off the broadcast — see HoloView for why the local store is the wrong
+  // answer on a player's device (TAG-15). Null on the GM's own screens, where the store IS the answer.
+  export let tagStyles: import('$lib/tags/tagCategories').TagCategory[] | null = null;
   import type { System } from '$lib/types';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { renderDocument } from '$lib/catalogue/document/renderDocument';
@@ -98,7 +101,7 @@
     if (!canvas || w <= 0 || !system) return;
     const blocks = buildGuideDocument(system, selectedId, {
       panel: true, noHeading: !showHeading, units, tempUnit, imagery, tagStyle, photoFrame, rulePack, liveReadings,
-      highlights: activeHighlights, tagCategories: $tagCategories,
+      highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
       nowMs: nowMs ?? undefined, formatDate,
       image: loaded?.img ?? null, imageAspect: loaded?.aspect, imageFocus: loaded?.focus ?? null
     });

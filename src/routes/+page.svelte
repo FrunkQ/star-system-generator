@@ -16,6 +16,8 @@
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
+  import { tagStyleSnapshot } from '$lib/tags/tagStyleSync';
   import PlayerViewModal from '$lib/components/PlayerViewModal.svelte';
   import InterstellarTransitModal from '$lib/components/InterstellarTransitModal.svelte';
   import { brandingStore } from '$lib/catalogue/branding';
@@ -774,6 +776,7 @@
       // them — Follow GM et al. only rode the modal's own broadcasts, so late windows silently ignored
       // the GM. Re-state the running view + overrides on every join. (Never send null here: a player
       // opened directly by URL is valid without the GM "running" a view — null means hold screen.)
+      broadcastService.sendMessage({ type: 'SYNC_TAGSTYLES', payload: tagStyleSnapshot(get(tagCategories)) });
       const pid = get(runningPresetId);
       if (pid) broadcastService.sendMessage({ type: 'SYNC_PRESET', payload: { presetId: pid, overrides: get(liveOverrides) } });
     };
@@ -797,6 +800,24 @@
   // Push branding (company name + logo) to player views whenever the GM edits it.
   $: if (browser && $brandingStore) {
     broadcastService.sendIfChanged({ type: 'SYNC_BRANDING', payload: $brandingStore });
+  }
+  // THE TAG VOCABULARY, so a marker on a player's DEVICE is the colour the GM sees.
+  // `tagCategories` is a localStorage store, so a second window on this machine shares it and a
+  // player's phone does not — which is why every custom colour looked right in testing and arrived
+  // as a default in play. Only the presentation subset crosses (see TagStyleSnapshot).
+  $: if (browser && $tagCategories) {
+    broadcastService.sendIfChanged({ type: 'SYNC_TAGSTYLES', payload: tagStyleSnapshot($tagCategories) });
+  }
+  // THE LIVE HIGHLIGHT SELECTION. It used to be broadcast ONLY by the Player Views modal's own
+  // controls, and the place a GM actually picks highlights is Find by tag — which writes the store
+  // and says nothing. The GM's map updated instantly (it reads the store) and the players' did not
+  // change until the window was reopened and re-requested it. Broadcasting from HERE rather than from
+  // each call site is the point: the next surface that touches `liveOverrides` inherits it instead of
+  // reintroducing the same gap.
+  // Guarded on a running view for the same reason the join handler is: a null SYNC_PRESET means "hold
+  // screen", so a GM who has not opened a view must not accidentally push one.
+  $: if (browser && $liveOverrides && $runningPresetId) {
+    broadcastService.sendIfChanged({ type: 'SYNC_PRESET', payload: { presetId: $runningPresetId, overrides: $liveOverrides } });
   }
 
   // Keep the runtime display units in sync with the loaded starmap (source of truth).

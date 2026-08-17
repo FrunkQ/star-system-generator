@@ -18,6 +18,16 @@ export type TimeState = {
 };
 
 // Message Types
+/**
+ * Everything a receiving window needs to render a tag the way the GM sees it: the category's colour
+ * and name, and any per-tag override of either. Deliberately NOT the whole TagCategory — rules,
+ * provenance and appliesTo are authoring data and have no business on a player's device.
+ */
+export interface TagStyleSnapshot {
+  categories: { id: string; label: string; color: string; textColor?: string }[];
+  tags: { key: string; label?: string; color?: string; textColor?: string }[];
+}
+
 export type BroadcastMessage = 
   | { type: 'SYNC_SYSTEM'; payload: System }
   | { type: 'SYNC_RULEPACK'; payload: RulePack }
@@ -34,6 +44,13 @@ export type BroadcastMessage =
   | { type: 'SYNC_STARMAP'; payload: Starmap }
   | { type: 'REQUEST_STARMAP'; payload: string | null }
   | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } }
+  // THE GM'S TAG VOCABULARY — labels and colours, not the tags themselves.
+  // A player window resolves a marker's colour and name against its OWN `tagCategories`, which is a
+  // localStorage store and therefore the SHIPPED DEFAULTS on anyone else's device. So a faction the
+  // GM recoloured, a tag they renamed, or a category they invented reached the player as a default
+  // colour and a raw key — invisible on the GM's own machine, because there the two windows share one
+  // localStorage. Only what PRESENTATION needs crosses: no rules, no provenance, no `appliesTo`.
+  | { type: 'SYNC_TAGSTYLES'; payload: TagStyleSnapshot }
   // Unified player-view: the GM's Player Views modal drives the open player window — which preset is
   // live + the momentary overrides (hide labels / suspend filter / pause orbit / follow GM). A null
   // payload means "closed" (the player window shows a hold screen).
@@ -334,6 +351,7 @@ class BroadcastService {
   public onStarmapUpdate: ((map: Starmap) => void) | null = null;
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
+  public onTagStylesUpdate: ((t: TagStyleSnapshot) => void) | null = null;
   public onPresetUpdate: ((p: PresetBroadcast | null) => void) | null = null;
   public onFocusLevelUpdate: ((p: { id: string; level: number }) => void) | null = null;
   // G3 construct models (sender side answers, receiver side stores) - transport only, the model
@@ -403,6 +421,9 @@ class BroadcastService {
               break;
           case 'SYNC_BRANDING':
               if (!this.isSender && this.onBrandingUpdate) this.onBrandingUpdate(msg.payload);
+              break;
+          case 'SYNC_TAGSTYLES':
+              if (!this.isSender && this.onTagStylesUpdate) this.onTagStylesUpdate(msg.payload);
               break;
           case 'SYNC_PRESET':
               if (!this.isSender && this.onPresetUpdate) this.onPresetUpdate(msg.payload);

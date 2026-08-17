@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.715-beta - 17th Aug 2026
+
+- FIXED: your tag colours and names now reach your players' own devices. The vocabulary - which categories exist, what they are called, what colour they are - lived only in the browser it was set in, so a second window on your machine looked right and a player's phone got the shipped defaults. The GM now publishes it with the campaign.
+- FIXED: adding or removing a highlight in Find by tag now reaches an open player view straight away. It changed the GM's map instantly and the players' not at all until the window was reopened, because only the Player Views panel's own controls were telling anyone.
+- The preset editor gains an **Update** button beside Cancel and Save & close. It saves and keeps the editor open, and an open player view picks the change up on the next sync - so tuning a preset no longer costs a round trip through the modal each time.
+
 ## v2.1.712-beta - 17th Aug 2026
 
 - FIXED: a highlighted tag drew a GREY badge with a raw key for a name - "Life on the land" appeared as a grey "land-cover" pill on every map, GM's and players', while the same tag was green everywhere else in the app. Tag colours live in two places and the map was reading the wrong one: the GM-configurable categories, which hold nothing at all for the tags the physics derives. Engine tags now take the colour and the label the rest of the app already gives them, and a category you have recoloured yourself still wins.

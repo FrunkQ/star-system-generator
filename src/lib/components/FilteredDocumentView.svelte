@@ -8,6 +8,9 @@
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  // The GM's tag vocabulary, off the broadcast — see HoloView for why the local store is the wrong
+  // answer on a player's device (TAG-15). Null on the GM's own screens, where the store IS the answer.
+  export let tagStyles: import('$lib/tags/tagCategories').TagCategory[] | null = null;
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import type { FilteredCanvasController } from '$lib/holo/filteredCanvas';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
@@ -176,7 +179,7 @@
       ? buildStarmapDocument(starmap, { selectedId, layout: starmapLayout, colorful: accent === 'rainbow', fieldIcons: starmapFieldIcons })
       : (system ? buildGuideDocument(system, selectedId, {
           units, tempUnit, colorful, imagery, rulePack, liveReadings, nowMs: nowMs ?? undefined, formatDate,
-          highlights: activeHighlights, tagCategories: $tagCategories,
+          highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
           image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
         }) : []);
     // GENUINE header/footer: reserve a band for the tip banners (and the company/footer stamps) so the

@@ -4,7 +4,7 @@
   // right. The filter is deliberately LAST (set everything up clean, then costume it) with its own
   // cover/starmap/system preview buttons: the 3D view gets the true GLSL filter, DOM views get the
   // CSS approximation (FilterFrame). Edits a DRAFT; Save commits to the campaign.
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   // Grid depth was a checkbox before it was a slider; a preset saved then holds a boolean.
   // Read both rather than migrate — true becomes a full-depth curtain, false becomes flat.
   const gridDepthPct = (v: unknown): number => (typeof v === 'number' ? v : v ? 1 : 0);
@@ -312,9 +312,25 @@
   // Which overlay the current preview shows (cover's own image is inside CoverView).
   $: currentOverlay = previewLayer === 'starmap' ? draft.starmapOverlay : previewLayer === 'system' ? draft.systemOverlay : null;
 
-  function save() {
+  // APPLY WITHOUT LEAVING (owner, 2026-08-17: "easier for testing and tweaking"). Saving a preset
+  // updates it IN PLACE on the campaign, which rides the next SYNC_STARMAP — and the player window
+  // re-applies on CONTENT change, not just on an id change. So an Update lands in an open player view
+  // within a broadcast tick, and the whole edit-look-edit loop stops costing a modal round trip.
+  let updated = false;
+  let updatedTimer: ReturnType<typeof setTimeout> | null = null;
+  function apply() {
     updatePreset(draft);
+    // The dirty baseline MOVES with the apply. It cannot stay the `preset` prop: that is the object
+    // this editor was opened with, so after an Update every exit route would still claim unsaved
+    // changes and demand a confirmation for work that is already saved.
+    baseline = structuredClone(draft);
     dispatch('saved', draft);
+    updated = true;
+    if (updatedTimer) clearTimeout(updatedTimer);
+    updatedTimer = setTimeout(() => (updated = false), 1400);
+  }
+  function save() {
+    apply();
     dispatch('close');
   }
 
@@ -322,7 +338,9 @@
   // part of the screen and ANY click on the backdrop discarded silently. Now the editor takes the whole
   // screen (so there's barely a backdrop to hit), and every exit route — backdrop, Cancel, Escape —
   // checks for unsaved changes first. `dirty` compares the draft against the preset we opened.
-  $: dirty = JSON.stringify(draft) !== JSON.stringify(preset);
+  // Compared against the last APPLIED state rather than the opening one, so an Update clears it.
+  let baseline: PlayerPreset = structuredClone(preset);
+  $: dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
   function requestClose() {
     if (dirty && !confirm('You have unsaved changes to this preset. Discard them?')) return;
     dispatch('close');
@@ -330,6 +348,7 @@
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') { e.preventDefault(); requestClose(); }
   }
+  onDestroy(() => { if (updatedTimer) clearTimeout(updatedTimer); });
 </script>
 
 <svelte:window on:keydown={onKeydown} />
@@ -424,7 +443,9 @@
       </div>
       <div class="hbtns">
         <button on:click={requestClose}>Cancel</button>
-        <button class="primary" on:click={save}>Save</button>
+        <button class="apply" class:done={updated} disabled={!dirty && !updated} on:click={apply}
+          title="Save these settings and keep editing — an open player view picks them up on the next sync">{updated ? 'Updated ✓' : 'Update'}</button>
+        <button class="primary" on:click={save}>Save &amp; close</button>
       </div>
     </header>
 
@@ -1141,6 +1162,11 @@
   .tabs .step { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--border); font-size: 0.62rem; }
   .tabs button.on .step { background: var(--accent); color: #fff; }
   .hbtns { display: flex; gap: 0.5rem; }
+  /* Update sits between Cancel and Save: a real action, but not the one that ends the session — so it
+     is outlined in the accent rather than filled with it. */
+  .hbtns .apply { border-color: var(--accent); color: var(--accent); }
+  .hbtns .apply:disabled { border-color: var(--border); color: var(--text-faint); cursor: default; }
+  .hbtns .apply.done { color: #47d16a; border-color: #47d16a; }
   .body { display: grid; grid-template-columns: 330px 1fr; min-height: 0; flex: 1; }
   .controls { overflow-y: auto; padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 0.9rem; border-right: 1px solid var(--border); }
   /* A48: every group is a CollapsibleSection now, which carries its own box and head. The one thing

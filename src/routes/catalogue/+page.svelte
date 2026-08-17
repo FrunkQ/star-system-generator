@@ -14,6 +14,7 @@
   // The category list resolves a highlighted tag's colour and label. `mapHighlights` here comes off the
   // BROADCAST (see the SYNC_PRESET handler), not off a local store — this window may be the player's.
   import { tagCategories } from '$lib/tags/tagCategories';
+  import { applyTagStyles, tagCategoriesFromSnapshot } from '$lib/tags/tagStyleSync';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
@@ -347,6 +348,7 @@
   }
   // The GM's live highlight selection. The snapshot this view renders is already redacted, so a
   // secret tag cannot become a badge here however it is selected.
+  let hostTagCategories: import('$lib/tags/tagCategories').TagCategory[] | null = null;
   let mapHighlights: import('$lib/tags/mapHighlights').MapHighlights = [];
   let overrideFollowGM: boolean | null = null;
   // Following the GM = the override (if set) else the preset's own followGM flag.
@@ -654,7 +656,7 @@
           blocks: displaySystem ? buildGuideDocument(displaySystem, docSelectedId ?? selectedBody.id, {
             nowMs: docNowMs,
             panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack, liveReadings: !!activePreset?.liveReadings,
-            highlights: mapHighlights, tagCategories: $tagCategories
+            highlights: mapHighlights, tagCategories: hostTagCategories ?? $tagCategories
           }) : undefined,
           theme: activePreset ? makeDocTheme({
             font: presetFont, headingFont: activePreset.headingFont, fontScale: infoFontScale,
@@ -809,6 +811,15 @@
       connected = true;
     };
     broadcastService.onBrandingUpdate = (b) => { branding = b || { name: '', logo: null }; };
+    // The GM's tag vocabulary. Applied to the presentation registries (so the info block's chips and
+    // every describeTag consumer here read the GM's labels and colours) AND kept as categories for
+    // the map badges, which resolve through markersFor. Without it this window falls back to the
+    // SHIPPED DEFAULTS — right on the GM's own machine, where localStorage is shared, and wrong on
+    // every other device.
+    broadcastService.onTagStylesUpdate = (t) => {
+      applyTagStyles(t);
+      hostTagCategories = tagCategoriesFromSnapshot(t);
+    };
     // Live GM control (Player Views modal): switch preset, apply overrides, or hold (null).
     broadcastService.onPresetUpdate = (p) => {
       if (!p) { presetHold = true; return; }
@@ -886,7 +897,7 @@
             tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
             imagery={activePreset.bodyGfx} photoFrame={activePreset.photoFrame}
             bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
-            interactive={presetInteractive} {units} {tempUnit} />
+            interactive={presetInteractive} {units} {tempUnit} tagStyles={hostTagCategories} />
         {/if}
       </div>
     </aside>
@@ -956,7 +967,7 @@
           background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
           labelSize={activePreset.labelSize}
           highlights={mapHighlights} markerStyle={activePreset.markerStyle ?? 'label'}
-          markerSize={activePreset.markerSize} flagStaff={activePreset.flagStaff} pinText={activePreset.pinText}
+          markerSize={activePreset.markerSize} flagStaff={activePreset.flagStaff} pinText={activePreset.pinText} tagStyles={hostTagCategories}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} dropLines={activePreset.starmapDropLines !== false} mono={activePreset.starmapMono}
           overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} zExaggeration={activePreset.zExaggeration ?? 1}
@@ -977,14 +988,14 @@
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}
           companyName={activePreset.companyName} footerText={activePreset.footerText}
-          selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} />
+          selectable={presetInteractive} on:select={(e) => { pushNavStep(); selectedSystemId = e.detail; selectedBody = null; }} tagStyles={hostTagCategories} />
       {/if}
     </div>
   {:else if effectiveSystemTier === 'holo'}
     <!-- Live orbital map (the holo renderer, tilted for 3D or locked overhead for 2D) + tap-to-inspect -->
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
-        <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} markerSize={activePreset?.markerSize} flagStaff={activePreset?.flagStaff} pinText={activePreset?.pinText} on:focus={handleFocus} />
+        <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} markerSize={activePreset?.markerSize} flagStaff={activePreset?.flagStaff} pinText={activePreset?.pinText} tagStyles={hostTagCategories} on:focus={handleFocus} />
       {/if}
       {#if activePreset?.systemOverlay && !hudOverlayOn}
         <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
@@ -1065,7 +1076,7 @@
           companyName={activePreset.companyName} footerText={activePreset.footerText}
           transition={activePreset.transition} transitionParams={activePreset.transitionParams ?? {}}
           selectable={presetInteractive}
-          on:select={(e) => selectBodyById(e.detail)} />
+          on:select={(e) => selectBodyById(e.detail)} tagStyles={hostTagCategories} />
       {/if}
     </div>
   {:else if activePreset}
