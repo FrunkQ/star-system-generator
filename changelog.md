@@ -2,7 +2,10 @@
 
 All notable changes are listed here:
 
-## v2.1.753-beta - 17th Aug 2026
+## v2.1.755-beta - 17th Aug 2026
+
+- FIXED: Mercury was classified as an eyeball world - one face permanently sunward - while also carrying the 3:2 spin-orbit resonance that says the opposite. Being slowed by tides has two possible endings and the engine only recognised one of them: a permanent face, or a captured resonance where the whole surface still sees the star. Mercury has the second, and the Newton panel now says so instead of calling it a hot eyeball.
+- A world in a resonance no longer gets a sharp day/night terminator drawn on it, nor the crater pattern of a world that keeps one face forward. Both need a face to keep, and it does not have one.
 
 * VTT integration: the GM tab now hosts on the PeerJS broker as soon as a starmap has its persistent session id (this hunk was meant to ship in v2.1.749 and was left in the working copy). Without it a cross-site host app could not discover the session at all - verified against the broker on the deployed beta.
 

@@ -114,19 +114,20 @@ const DARK_FACE_RETENTION = 3e-4;
  */
 function solarDayHours(i: SurfaceTempInputs): number {
   const orbH = (i.orbitalPeriodHours ?? 0) > 0 ? (i.orbitalPeriodHours as number) : 0;
-  // A moon locked to its PLANET turns relative to the star once per orbit about that planet, so its
-  // month IS its solar day (Luna: 27.5 days here against a true 29.5 — the difference is Earth's own
-  // motion around the sun, which this deliberately does not chase).
-  if (i.tidallyLocked && !i.starTidallyLocked) return orbH || Math.abs(i.rotationHours || 24);
   const rot = i.rotationHours; // SIGNED — a retrograde spin shortens the solar day
-  if (i.starTidallyLocked) {
-    // The flag asserts synchronous rotation, so believe it unless the body's own numbers say
-    // otherwise: `lockedSpin` deliberately keeps a CAPTURED RESONANCE's measured period instead of
-    // claiming synchrony, and a resonance is not a permanent face.
-    if (!rot || !orbH) return Infinity;
-    const rel = Math.abs(1 / rot - 1 / orbH);
-    return rel > 0 ? 1 / rel : Infinity;
-  }
+  // THE TEST IS THE SPIN, NOT THE LOCK FLAG (inbox B69). Synchronous means the body turns once per
+  // orbit, and only then does keeping a face mean anything: a moon locked to its PLANET keeps that
+  // face and its month IS its solar day (Luna: 27.5 days here against a true 29.5 — the difference
+  // is Earth's own motion around the sun, which this deliberately does not chase), while a planet
+  // synchronous with its STAR has no solar day at all. A CAPTURED RESONANCE is neither: Mercury
+  // turns three times for every two orbits, so its sun rises every 176 days, and reading the lock
+  // flag rather than the periods would have handed it its 88-day YEAR as a day instead.
+  const synchronous = !!rot && orbH > 0 && Math.abs(Math.abs(rot) / orbH - 1) < 0.01;
+  if (i.tidallyLocked && synchronous) return i.starTidallyLocked ? Infinity : orbH;
+  // The flag with no periods to check it against is believed: since B69 it is set only for a body
+  // the engine resolved as SYNCHRONOUS, so it is a statement rather than an assumption. A caller
+  // that states neither period (the editor's live preview, a bare spec) has nothing to contradict.
+  if (i.starTidallyLocked && (!rot || !orbH)) return Infinity;
   if (!rot) return orbH || 24;
   if (!orbH) return Math.abs(rot);
   const relative = Math.abs(1 / rot - 1 / orbH);

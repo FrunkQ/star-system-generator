@@ -77,12 +77,6 @@
           "value": "3:2"
         },
         {
-          "key": "orbit/tidally-locked"
-        },
-        {
-          "key": "orbit/locked-star"
-        },
-        {
           "key": "magnetic/tenuous"
         },
         {
@@ -158,7 +152,7 @@
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
-      "starTidallyLocked": true,
+      "starTidallyLocked": false,
       "equilibriumTempK": 439.9916869168111,
       "albedoBreakdown": {
         "albedo": 0.088,
@@ -291,45 +285,27 @@
       },
       "apparentColorHex": "#8d7e52",
       "classification": {
-        "base": "planet/hot-eyeball",
-        "baseScore": 1.56,
+        "base": "planet/terrestrial",
+        "baseScore": 1.2,
         "bands": [
           {
-            "feature": "starTidallyLocked",
-            "value": 1,
-            "band": "1 – 1",
+            "feature": "radius_Re",
+            "value": 0.3829383142363836,
+            "band": "0.35 – 1.8",
             "fit": 1
           },
           {
-            "feature": "SurfaceTemp_K",
-            "value": 439.9916869211377,
-            "band": "320 – 1200",
+            "feature": "density",
+            "value": 5.400543717051585,
+            "band": "3 – 8.5",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/terrestrial",
+          "class": "planet/mesoplanet",
           "score": 1.2
         },
         "candidates": [
-          {
-            "class": "planet/hot-eyeball",
-            "score": 1.56,
-            "bands": [
-              {
-                "feature": "starTidallyLocked",
-                "value": 1,
-                "band": "1 – 1",
-                "fit": 1
-              },
-              {
-                "feature": "SurfaceTemp_K",
-                "value": 439.9916869211377,
-                "band": "320 – 1200",
-                "fit": 1
-              }
-            ]
-          },
           {
             "class": "planet/terrestrial",
             "score": 1.2,
@@ -391,7 +367,7 @@
             ]
           }
         ],
-        "borderline": false,
+        "borderline": true,
         "modifiers": [],
         "fallback": false
       },

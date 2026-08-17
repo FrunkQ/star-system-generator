@@ -234,3 +234,35 @@ describe('vegetation — READ, never derived', () => {
 		expect(a.vegetation).toBeNull();
 	});
 });
+
+// B69: an eyeball needs a permanent FACE, and despinning has two end states. Mercury is despun,
+// orbits a star and is not a moon — every clause of the old fallback said "eyeball" about a body
+// whose sun rises every 176 days.
+describe('deriveAppearance — a spin-orbit resonance is not an eyeball', () => {
+	const mercuryish = (over: any = {}) => mk({
+		roleHint: 'planet', tidallyLocked: true, rotation_period_hours: 1407.6, orbital_period_days: 87.97,
+		temperatureRangeK: { min: 70, max: 710 }, ...over
+	} as any);
+
+	it('refuses the eyeball when the periods say the spin is not synchronous', () => {
+		expect(deriveAppearance(mercuryish()).eyeball).toBeNull();
+	});
+
+	it('still draws one when the body states no periods to contradict the lock', () => {
+		// A gallery example or an editor preview: nothing to check the flag against, so it stands.
+		expect(deriveAppearance(mk({ roleHint: 'planet', tidallyLocked: true,
+			temperatureRangeK: { min: 110, max: 900 } } as any)).eyeball).toBeTruthy();
+	});
+
+	it('the explicit flag still wins over any of it', () => {
+		expect(deriveAppearance(mercuryish({ starTidallyLocked: true })).eyeball).toBeTruthy();
+		expect(deriveAppearance(mk({ roleHint: 'planet', tidallyLocked: true, starTidallyLocked: false,
+			temperatureRangeK: { min: 110, max: 900 } } as any)).eyeball).toBeNull();
+	});
+
+	it('a resonant body weathers evenly — no leading-face crater skew', () => {
+		const resonant = deriveAppearance(mercuryish({ tags: [{ key: 'orbit/spin-orbit-resonance', value: '3:2' }] } as any));
+		const synchronous = deriveAppearance(mercuryish({ rotation_period_hours: 87.97 * 24 }));
+		expect(resonant.farSideBias ?? 0).toBeLessThanOrEqual(synchronous.farSideBias ?? 0);
+	});
+});

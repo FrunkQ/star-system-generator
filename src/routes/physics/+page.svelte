@@ -1447,9 +1447,18 @@
       <p>Whether a world keeps one face toward its host is <strong>derived</strong>, not authored: the
         tidal despinning timescale <code>t ∝ ω·a⁶·m·Q / (M_host²·k₂·R³)</code> (Gladman/Peale) is compared
         to the system age — if it's shorter, the body has had time to lock. The steep <code>a⁶</code>
-        dependence means every regular moon, Mercury and close-in (hot-Jupiter-style) worlds lock, while
-        the AU-distance planets and the gas giants spin free. It's surfaced as <code>orbit/tidally-locked</code>
-        and re-derived every run; the body editor's checkbox pins it by hand and skips the assessment.</p>
+        dependence means every regular moon, Mercury and close-in (hot-Jupiter-style) worlds despin, while
+        the AU-distance planets and the gas giants spin free. It's re-derived every run; the body editor's
+        checkbox pins it by hand and skips the assessment.</p>
+      <p><strong>Despinning has TWO end states, and only one of them is a permanent face.</strong> The
+        usual one is synchronous rotation — one face toward the primary, tagged
+        <code>orbit/tidally-locked</code> with <code>orbit/locked-star</code> (a permanent sunward face,
+        so an eyeball world) or <code>orbit/locked-planet</code> (a moon, whose whole surface still
+        cycles through stellar day and night) saying which. The other is a <strong>captured spin-orbit
+        resonance</strong>, which an eccentric orbit can hold instead: Mercury turns three times for
+        every two orbits, so its day is its own number — 176 days — and its whole surface sees the Sun.
+        A resonant world is tagged <code>orbit/spin-orbit-resonance</code> and carries neither face tag,
+        because it has no face to keep. Getting this wrong made Mercury classify as a hot eyeball.</p>
 
       <h3>End-state vs evolving worlds</h3>
       <p>Aging is <strong>opt-in per body</strong>. A hand-authored, imported or hand-picked world carries the

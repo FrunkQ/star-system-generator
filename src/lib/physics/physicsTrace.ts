@@ -238,7 +238,15 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
           : 'negligible — too upright for a real season'
       });
     }
-    if ((body as any).tidallyLocked) spinOut.push({ label: 'Tidally locked', value: 'one face permanently toward its primary' });
+    // DESPUN HAS TWO END STATES AND THE TRACE MUST NOT STATE THE WRONG ONE (inbox B69). "One face
+    // permanently toward its primary" is false of a captured resonance — Mercury turns three times
+    // for every two orbits, so its whole surface sees the star.
+    if ((body as any).tidallyLocked) {
+      const res = ((body as any).tags ?? []).find((t: any) => t.key === 'orbit/spin-orbit-resonance')?.value;
+      spinOut.push(res
+        ? { label: 'Despun into a resonance', value: `${res} spin-orbit — no permanent face; the whole surface sees the star` }
+        : { label: 'Tidally locked', value: 'one face permanently toward its primary' });
+    }
     if (spinOut.length) {
       layers.push({
         id: 'spin', title: 'Spin axis & rotation', link: '/physics#spin',

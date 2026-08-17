@@ -298,7 +298,10 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const orb = (body as any).orbit;
 	let vKms = 0;
 	if (orb?.hostMu > 0 && orb?.elements?.a_AU > 0) vKms = Math.sqrt(orb.hostMu / (orb.elements.a_AU * 1.495978707e11)) / 1000;
-	const farSideBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked)
+	// A LEADING-FACE CRATER SKEW NEEDS A FACE TO LEAD WITH — synchronous rotation. A resonant body
+	// turns its whole surface through the stream, so it weathers evenly (B69).
+	const farSideBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked
+		&& !((body as any).tags ?? []).some((t: any) => t.key === 'orbit/spin-orbit-resonance'))
 		? (vKms > 0 ? clamp01(0.25 + vKms / (vKms + 10)) : 0.7) : 0;
 	// A few FRESH craters (bright ejecta rays) punched into an otherwise old, airless surface.
 	const craters: CraterSpec | null = craterDensity > 0.05
@@ -387,8 +390,16 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// Star-locked = a permanent substellar face → eyeball. Robustly: a body locked AND orbiting a star
 	// rather than a planet. roleHint 'moon' orbits a PLANET (locked to it, whole surface still sun-cycles
 	// → no eyeball); a planet/dwarf orbits the star. (Prefers the explicit flag/tag when present.)
-	const starLocked = (body as any).starTidallyLocked ?? (has('orbit/locked-star')
-		|| (!!(body as any).tidallyLocked && (body as any).roleHint !== 'moon'));
+	// THE FALLBACK MUST MEAN SYNCHRONOUS, NOT MERELY DESPUN (inbox B69). Despinning has two end
+	// states and only one of them is a permanent face: Mercury is despun, orbits a star and is not a
+	// moon, so every clause of the old fallback said "eyeball" about a body whose sun rises every 176
+	// days. Where the body states both periods, they decide; where it states neither — a gallery
+	// example, an editor preview — there is nothing to contradict the flag and it stands.
+	const rotH = Math.abs((body as any).rotation_period_hours ?? 0);
+	const orbH = ((body as any).orbital_period_days ?? 0) * 24;
+	const notSynchronous = rotH > 0 && orbH > 0 && Math.abs(rotH / orbH - 1) >= 0.01;
+	const starLocked = (body as any).starTidallyLocked ?? (!notSynchronous && (has('orbit/locked-star')
+		|| (!!(body as any).tidallyLocked && (body as any).roleHint !== 'moon')));
 	const eyeball: EyeballSpec | null = (solid && starLocked && hotK - coldK > 120)
 		? {
 			substellarK: hotK, antistellarK: coldK, molten: hotK > ROCK_MELT,

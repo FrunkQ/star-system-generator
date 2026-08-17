@@ -229,13 +229,26 @@ describe('Solar System Physics Baseline', () => {
         //     locks to its PLANET (whole surface still sun-cycles → no eyeball). Surfaced as tags +
         //     a field so the renderer can tell them apart. (Also guards the processor against the
         //     scope bug where a per-pass helper went undefined and process() threw, leaving stale data.)
+        // MERCURY IS THE BODY THAT PROVES "LOCKED" DOES NOT MEAN SYNCHRONOUS, AND THIS TEST USED TO
+        // ASSERT BOTH SIDES OF THE CONTRADICTION TWO LINES APART (inbox B69): `orbit/locked-star`,
+        // meaning a permanent substellar face, beside `orbit/spin-orbit-resonance 3:2`, meaning the
+        // whole surface sees the star. Despinning has two end states and the flag followed the
+        // despin VERDICT rather than the resolved SPIN, so the classifier's own record called Mercury
+        // a hot eyeball — score 1.56, beating terrestrial at 1.2, and shown in the Newton panel.
+        // The flag now follows the spin, so a resonant body gets the resonance tag and neither face
+        // tag; a synchronous one is unaffected.
         const mercury = processedSystem.nodes.find(n => n.name === 'Mercury') as CelestialBody;
-        expect(mercury.starTidallyLocked).toBe(true);
-        expect(mercury.tags?.some(t => t.key === 'orbit/locked-star')).toBe(true);
-        // …but "locked" does not mean synchronous everywhere, and Mercury is the body that proves it
-        // (inbox B7). Its eccentric orbit holds it in a 3:2 spin-orbit resonance, so its 1407.6 h day
-        // is MEASURED and must survive the lock-reconciliation that gives every other locked body its
-        // orbital period. A test of a value that must NOT move.
+        expect(mercury.tidallyLocked).toBe(true);                 // despun: still true, and still useful
+        expect(mercury.starTidallyLocked).toBe(false);            // but NOT a permanent face
+        expect(mercury.tags?.some(t => t.key === 'orbit/locked-star')).toBe(false);
+        expect(mercury.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(false);  // nor is it a moon
+        expect(mercury.tags?.some(t => t.key === 'orbit/tidally-locked')).toBe(false); // that tag states synchrony
+        expect(mercury.classification?.base).not.toBe('planet/hot-eyeball');
+        // A SYNCHRONOUS lock is untouched by any of it — Luna keeps its face tag and its flag.
+        expect(moon.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(true);
+        expect(moon.starTidallyLocked).toBeFalsy();
+        // Its 1407.6 h day is MEASURED and must survive the lock-reconciliation that gives every
+        // other locked body its orbital period. A test of a value that must NOT move.
         expect(mercury.rotation_period_hours).toBeCloseTo(1407.6, 3);
         expect(mercury.tags?.find(t => t.key === 'orbit/spin-orbit-resonance')?.value).toBe('3:2');
         // Every other locked body's sidereal day IS its orbital period, to the last decimal.

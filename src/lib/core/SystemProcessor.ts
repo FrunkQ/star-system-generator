@@ -629,7 +629,6 @@ export class SystemProcessor implements ISystemProcessor {
                 lockHostMass || 0, this.systemAgeGyr
             );
         }
-        body.starTidallyLocked = !!body.tidallyLocked && orbitsStar;
         body.tags = stripForReprocess(body.tags, ['orbit/tidally-locked', 'orbit/locked-star', 'orbit/locked-planet', 'orbit/spin-orbit-resonance']);
 
         // B7: reconcile the SPIN with the lock, so the two cannot contradict each other. A locked
@@ -640,20 +639,38 @@ export class SystemProcessor implements ISystemProcessor {
         // because the assessment above is DERIVED every pass, a hand-pinned lock reconciles too.
         // The exception is a captured spin-orbit resonance — Mercury's 3:2 — which keeps its own
         // measured period and says which resonance it is instead of claiming to be synchronous.
+        //
+        // AND THE SPIN IS RESOLVED BEFORE THE LOCK FLAG IS PUBLISHED, WHICH IS THE WHOLE OF B69.
+        // `predictTidalLock` answers "has this body despun", and despinning has TWO end states: a
+        // permanent face, or a captured resonance. The flag used to follow the DESPIN verdict, so
+        // Mercury — which the very next lines correctly resolve to 3:2 and 1407.6 h — was published
+        // as having a permanent substellar face, and the classifier's own record called it a HOT
+        // EYEBALL (score 1.56, beating terrestrial at 1.2). A resonance is the opposite of a
+        // permanent face: the whole surface still sees the star, which is why the temperature model
+        // already refused to believe the flag and derived Mercury's real 176-day solar day instead.
+        let spinKind: 'synchronous' | 'resonant' = 'synchronous';
         if (body.tidallyLocked && (body.orbital_period_days ?? 0) > 0) {
             const spin = lockedSpin(
                 (body.orbital_period_days as number) * 24,
                 body.rotation_period_hours,
                 body.orbit?.elements.e ?? 0
             );
+            spinKind = spin.kind;
             body.rotation_period_hours = spin.rotationHours;
             body.calculatedRotationPeriod_s = Math.abs(spin.rotationHours) * 3600;
             if (spin.kind === 'resonant') emit(body.tags, { key: 'orbit/spin-orbit-resonance', value: spin.ratio as string });
         }
+        body.starTidallyLocked = !!body.tidallyLocked && orbitsStar && spinKind === 'synchronous';
         // Surface the lock TARGET as its own tag (both are registered so they survive tag sanitising):
         // locked-star = a permanent substellar face (eyeball candidate); locked-planet = a moon whose
         // whole surface still cycles through stellar day/night.
-        if (body.tidallyLocked) {
+        //
+        // A RESONANT BODY GETS NEITHER, AND NOT `orbit/tidally-locked` EITHER. Both of those tags
+        // state synchrony in so many words — "one face permanently toward its host", "its day length
+        // is therefore its orbital period" — and neither is true of Mercury. `orbit/locked-planet`
+        // would be the worse of the two on a body that orbits a star. The resonance tag says what
+        // actually happened, and it is the only one that should.
+        if (body.tidallyLocked && spinKind === 'synchronous') {
             emit(body.tags, { key: 'orbit/tidally-locked' });
             emit(body.tags, { key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
         }

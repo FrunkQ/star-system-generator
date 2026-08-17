@@ -1117,7 +1117,10 @@
               const dx = primaryStarPos.x - pos.x, dy = primaryStarPos.y - pos.y;
               const len = Math.hypot(dx, dy) || 1;
               const ux = dx / len, uy = dy / len; // unit vector toward the star (screen Y not flipped)
-              const locked = !!(node as CelestialBody).tidallyLocked;
+              // A SHARP TERMINATOR NEEDS A PERMANENT FACE, which is `starTidallyLocked` and not the
+              // despin boolean (inbox B69): a moon locked to its PLANET and a planet in a spin-orbit
+              // RESONANCE both turn relative to the star, so both even their day/night out.
+              const locked = !!(node as CelestialBody).starTidallyLocked;
               ctx.save();
               ctx.setTransform(1, 0, 0, 1, 0, 0);
               ctx.beginPath(); ctx.arc(sx, sy, sR, 0, 2 * Math.PI); ctx.clip();
