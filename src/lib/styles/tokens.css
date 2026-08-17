@@ -162,3 +162,27 @@
   --data-fixed: #ff3e00; /* you typed this */
   --data-derived: #007bff; /* computed */
 }
+
+/* =============================================================================
+   A52 — ON A SMALL SCREEN, AN OPEN DIALOG GETS THE SCREEN TO ITSELF.
+
+   THE WHOLE RULE IS THESE FOUR LINES, and it is the only place either half is joined:
+     - a dialog marks itself with `use:foreground` (src/lib/ui/foreground.ts), which sets
+       `data-foreground` on <html>;
+     - persistent chrome marks itself with `use:chrome`, which adds `.sse-chrome`.
+   Neither side keeps a LIST. A dialog added next month is covered because it registers; a floating
+   control added next month is covered because it marks itself. Nothing has a condition to get right.
+
+   THERE IS NO BREAKPOINT HERE, DELIBERATELY. `data-app-mode` is the shell's OWN decision mirrored
+   onto <html> (AppShell.svelte), and it already folds width, pointer type and the ?mode= override
+   together. A media query beside it would be a 26th breakpoint value that disagrees the moment
+   someone forces phone on a wide screen. On a desktop nothing happens: there is room for both, and
+   the modal's own tier (--z-modal) orders it.
+
+   HIDDEN, NOT UNMOUNTED — deliberately. The bar carries the starmap description and the GM notes;
+   destroying it would throw away whatever it was holding, and "take over the screen" only ever meant
+   stop drawing it. It comes back untouched.
+   ============================================================================= */
+:root[data-foreground][data-app-mode='phone'] .sse-chrome {
+  display: none !important;
+}

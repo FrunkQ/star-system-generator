@@ -51,7 +51,7 @@
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   import { campaignUnit } from '$lib/map/distanceUnits';
-  import { foregroundOpen } from '$lib/ui/foreground';
+  import { chrome } from '$lib/ui/foreground';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
   // THE SELECTION IS PASSED IN, NEVER CLOSED OVER. `{@const hl = systemMarkers(systemNode)}` inside the
   // each-block only re-evaluates when a value it MENTIONS changes; a helper that reads `activeHighlights`
@@ -1636,8 +1636,8 @@
       unitIsPrefix={starmap.unitIsPrefix}
       isScaled={scaleBarVisible}
     />
-    {#if ensuredTemporal && !(mode === 'phone' && $foregroundOpen)}
-      <div class="time-overlay" class:phone={mode === 'phone'}>
+    {#if ensuredTemporal}
+      <div class="time-overlay" class:phone={mode === 'phone'} use:chrome>
         <TimeControls
           compact={mode === 'phone'}
           temporal={ensuredTemporal}
@@ -1654,12 +1654,11 @@
   <!-- Phone only: starmap Description + GM Notes in a bottom sheet (the draggable floating
        panel is desktop-only). Rendered directly (not via the AppShell detail slot) so the
        desktop right panel stays collapsed.
-       A52 — THIS IS THE BAR THE USER REPORTED, and being outside AppShell is exactly why the
-       shell's own yield rule does not reach it. It carries the ONLY phone route to the starmap
-       description and the GM notes, so it is never removed when idle (BottomSheet's own peek
-       collapse handles that); it is hidden only while a foreground UI is up, when it is
-       unreachable anyway. Any other chrome rendered outside the shell needs this same line. -->
-  {#if mode === 'phone' && !$foregroundOpen}
+       A52 — THIS IS THE BAR THE USER REPORTED. There is deliberately NO condition here: BottomSheet
+       marks itself `use:chrome`, so an open dialog on a small screen hides it through the one rule in
+       styles/tokens.css. It carries the only phone route to the starmap description and the GM notes,
+       so it is hidden rather than unmounted and comes back holding exactly what it held. -->
+  {#if mode === 'phone'}
     <BottomSheet title={starmap.name}>
       <div class="starmap-detail-mobile">
         <label class="sdm-field">

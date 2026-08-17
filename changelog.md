@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.766-beta - 17th Aug 2026
+
+- Reworked yesterday's mobile fix so it applies by rule rather than panel by panel. A dialog says it is a dialog, a bar or floating control says it is chrome, and one line decides the rest: on a phone, an open dialog gets the screen and everything else stops being drawn until it closes. Anything added later is covered without being remembered. The bar is hidden rather than torn down now, so it comes back holding whatever you had typed.
+
 ## v2.1.764-beta - 17th Aug 2026
 
 - Docs only. Your-own-map-behind-the-stars now includes the 3D map (as a plane in the map plane) and the text map (a graphic at the foot); three render faults from play captured with their code located (grid falloff deleting the system-map grid, lo-poly vertex dots not shrinking toward true scale, the Terminal Clear band running the wrong way); one more inbox id collision untangled.

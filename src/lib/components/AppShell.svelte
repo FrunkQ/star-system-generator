@@ -11,16 +11,7 @@
   import { browser } from '$app/environment';
   import BottomSheet from './BottomSheet.svelte';
   import { railCollapsed } from '$lib/railStore';
-  import { foregroundOpen } from '$lib/ui/foreground';
-
-  // A52 — persistent chrome YIELDS to an open foreground UI, as a rule rather than per panel.
-  // This shell already owns the phone/desktop decision, so it is the right place to apply it and there
-  // is no new breakpoint (the codebase already has 25 distinct max-width values; it does not need a 26th).
-  // On PHONE, yielding means GONE: while a dialog is up the bar, sheet and FABs are unreachable anyway,
-  // so collapsing them is a half-measure that still eats the screen the dialog needs. On DESKTOP there
-  // is room for both, so the chrome stays put and the modal's own tier (--z-modal) orders it.
-  // Restored automatically on dismiss, because the action releases when the modal unmounts.
-  $: chromeYields = mode === 'phone' && $foregroundOpen;
+  import { chrome } from '$lib/ui/foreground';
 
   export let forceMode: 'auto' | 'desktop' | 'phone' = 'auto';
   export let mode: 'desktop' | 'phone' = 'desktop';
@@ -75,6 +66,12 @@
 
   $: mode = override() === 'auto' ? (autoDesktop ? 'desktop' : 'phone') : (override() as 'desktop' | 'phone');
 
+  // A52: mirror the shell's OWN decision onto <html> so plain CSS can use it. This deliberately
+  // replaces a second media query: `mode` already folds width, pointer type AND the ?mode= override
+  // together, and a CSS breakpoint beside it would be a 26th value that disagrees the moment someone
+  // forces phone on a wide screen. One decision, one place, read from both languages.
+  $: if (browser) document.documentElement.setAttribute('data-app-mode', mode);
+
   onMount(() => {
     const mql = window.matchMedia('(min-width: 900px) and (pointer: fine)');
     // Re-check on both the media-query change AND window resize. matchMedia 'change'
@@ -113,8 +110,8 @@
   {:else}
     <main class="canvas-full"><slot name="canvas" /></main>
 
-    {#if $$slots.strip && !chromeYields}
-      <div class="phone-strip">
+    {#if $$slots.strip}
+      <div class="phone-strip" use:chrome>
         <div class="phone-strip-inner"><slot name="strip" /></div>
       </div>
     {/if}
@@ -131,11 +128,11 @@
       </div>
     {/if}
 
-    {#if $$slots.bar && !chromeYields}
-      <div class="phone-bar"><slot name="bar" /></div>
+    {#if $$slots.bar}
+      <div class="phone-bar" use:chrome><slot name="bar" /></div>
     {/if}
 
-    {#if $$slots.detail && !chromeYields}
+    {#if $$slots.detail}
       <BottomSheet bind:snap={sheetSnap} title={sheetTitle} bottomInset={$$slots.bar ? phoneBarH : 0}>
         <slot name="detail" />
       </BottomSheet>
@@ -143,12 +140,12 @@
 
     <!-- The + IS the mobile menu: opens the slide-in rail (nav, view, create, system,
          editors, settings). Replaces the old two hamburgers. -->
-    {#if $$slots.rail && !railOpen && !chromeYields}
-      <button class="menu-fab" aria-label="Open menu" style={$$slots.detail ? 'bottom: 98px;' : ''} on:click={() => (railOpen = true)}>+</button>
+    {#if $$slots.rail && !railOpen}
+      <button class="menu-fab" aria-label="Open menu" style={$$slots.detail ? 'bottom: 98px;' : ''} on:click={() => (railOpen = true)} use:chrome>+</button>
     {/if}
 
-    {#if $$slots.fab && !chromeYields}
-      <div class="fab-layer" style={$$slots.detail ? '--fab-bottom: 98px;' : ($$slots.bar ? `--fab-bottom: ${phoneBarH + 16}px;` : '')}><slot name="fab" /></div>
+    {#if $$slots.fab}
+      <div class="fab-layer" style={$$slots.detail ? '--fab-bottom: 98px;' : ($$slots.bar ? `--fab-bottom: ${phoneBarH + 16}px;` : '')} use:chrome><slot name="fab" /></div>
     {/if}
   {/if}
 </div>

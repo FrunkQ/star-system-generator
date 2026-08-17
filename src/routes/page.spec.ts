@@ -94,13 +94,6 @@ describe('+page.svelte', () => {
     starmapStore.set(null);
     systemStore.set(null);
     localStorage.clear();
-    // A52: mark the first-run welcome as already seen. These tests assert the starmap view rendered by
-    // finding its NAME, and under jsdom the shell resolves to PHONE mode (no `pointer: fine`), where the
-    // name lives only in the bottom sheet's title. That sheet now hides while a foreground UI is open —
-    // and the welcome modal IS one — so without this the tests were asserting on chrome that is
-    // correctly covered. Marking it seen is what a returning GM's browser looks like, which is the state
-    // "loads a saved starmap on mount" is actually about.
-    localStorage.setItem('sse_welcome_v3_seen', '1');
     skit.reset();
     vi.mocked(hasSavedStarmap).mockResolvedValue(false);
     vi.mocked(loadSavedStarmap).mockResolvedValue(null);

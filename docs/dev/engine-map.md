@@ -2125,37 +2125,41 @@ WHY: an owner decision — one colour to set, variation for free. A second requi
 considered and rejected; if per-faction control is ever wanted, the lever is pack DATA.
 BLAST: adding another colour field to a construct. Ask whether it can be derived first.
 
-### UI-C6 Persistent chrome yields to a foreground UI BY RULE, and the rule is breakpoint-dependent
-WHERE: `src/lib/ui/foreground.ts` (the `foreground` action + `foregroundOpen` store, pinned by
-`foreground.spec.ts`); consumed by `AppShell.svelte:chromeYields` and the two surfaces that render
-chrome OUTSIDE the shell - `Starmap.svelte` (the phone Description/GM-notes sheet, and the floating
-time control) and `SystemView.svelte` (the same time control).
-RULE: a modal registers itself with `use:foreground` on its BACKDROP; nothing keeps a list of modal
-names. Chrome then yields on one rule with two behaviours chosen by the breakpoint: **phone -> the
-chrome is REMOVED** while a foreground UI is open (it is unreachable anyway, so collapsing it is a
-half-measure that still eats the screen the dialog needs); **desktop -> the chrome STAYS** and the
-modal's own tier orders it, because there is room for both. With nothing in the foreground the chrome
-COLLAPSES and is never removed - on the starmap that bar is the ONLY phone route to the starmap
-description and the GM notes.
-WHY: A52, user-reported with a screenshot showing TWO overlaps at once - the bottom bar over the foot
-of the import dialog AND the floating time control across its middle. Fixing the reported one would
-have left the other, and the next dialog would have been reported separately, because nothing KNEW a
-dialog was open. The 26 modal components spell their backdrop TWELVE different ways
-(`modal-backdrop`, `modal-overlay`, `overlay`, `dialog-backdrop`, ...), so there is no CSS selector
-that catches them either - registration has to be something the modal DOES, not something a matcher
-guesses.
-BLAST: **CHROME RENDERED OUTSIDE `AppShell` DOES NOT GET THIS FOR FREE, and that is where the reported
-bar actually lived** - `Starmap.svelte` renders its phone BottomSheet directly rather than through the
-`detail` slot, so the shell's own gate never reached it. Any new floating control needs the gate written
-where it is rendered. **A floating control READS `foregroundOpen`; it must never REGISTER through the
-action** - registering would make the chrome hide itself whenever it was visible. G28's undo/redo pill
-is the next one and takes the read side. And the count is a COUNT, not a flag: modals stack (Settings
-opens the A43 unit confirmation), and it clamps at zero so a double destroy cannot leave the chrome
-hidden for ever - which would be worse than the bug, since two GM fields become unreachable.
+### UI-C6 On a small screen an open dialog gets the screen; BOTH SIDES declare themselves
+WHERE: `src/lib/ui/foreground.ts` (`foreground` and `chrome` actions, pinned by `foreground.spec.ts`),
+joined by ONE rule at the foot of `styles/tokens.css`. Chrome markers: `AppShell.svelte` (strip, bar,
+menu FAB, FAB layer), `BottomSheet.svelte` (so every use is covered at source), and the floating time
+control in `Starmap.svelte` / `SystemView.svelte`.
+RULE: a dialog marks its backdrop `use:foreground`, which sets `data-foreground` on `<html>`. Persistent
+chrome marks itself `use:chrome`, which adds `.sse-chrome`. One CSS rule joins them:
+`:root[data-foreground][data-app-mode='phone'] .sse-chrome { display: none }`. **NEITHER SIDE KEEPS A
+LIST** - not of modal names, and not of chrome names either. A dialog added next month is covered
+because it registers; a floating control added next month is covered because it marks itself.
+**IT HIDES, IT DOES NOT UNMOUNT.** The bar carries the starmap description and the GM notes; destroying
+it throws away whatever it was holding, and "take over the screen" only ever meant stop drawing it.
+WHY: A52, user-reported with a screenshot showing TWO overlaps at once - the bottom bar over the foot of
+the import dialog AND the floating time control across its middle. **THE FIRST FIX WROTE AN `{#if}` GATE
+INTO EACH PIECE OF CHROME AND THE OWNER REJECTED IT, CORRECTLY: that is a list of chrome by another
+name.** Every new floating control would have had to remember the condition, and it treated the time
+control as a special case when it is not special - his words, "it can move ... it is just allowing a
+modal to take over when it is more practical on mobile". The gates also UNMOUNTED the bar, which was
+never asked for. Same fault on both sides of one problem: the modal side had already been de-listed and
+the chrome side had not.
+BLAST: **`data-app-mode` IS THE SHELL'S OWN DECISION MIRRORED ONTO `<html>`, AND IT REPLACES A SECOND
+BREAKPOINT ON PURPOSE.** `AppShell.mode` already folds width, pointer type AND the `?mode=` override
+together; a CSS media query beside it would be a 26th breakpoint value that disagrees the moment someone
+forces phone on a wide screen - verified: forced phone at desktop width still yields, which a media query
+would have missed. **DO NOT reach for "just hide `.app-shell`"** - measured, and it fails: the reported bar
+and every modal are rendered OUTSIDE `<AppShell>` as siblings, so it would miss the one thing reported
+while risking the canvas-resize trap (RENDER-B1). **A floating control takes `use:chrome`, never
+`use:foreground`** - G28's undo/redo pill is the next one; registering it as foreground would make the
+chrome hide itself whenever it was visible. The foreground count is a COUNT, not a flag (modals stack -
+Settings opens the A43 unit confirmation) and it clamps at zero, because chrome stuck hidden is worse than
+the bug: two GM fields become unreachable.
 ALSO: the z-index ladder is now NAMED in `styles/tokens.css` (`--z-map` < `--z-chrome` < `--z-panel` <
-`--z-modal` < `--z-toast`). Components still carry raw values - measured at 1, 1400, 1500, 2000
-(nineteen of them), 2100, 2200, 2300, 3000, 5000 up to 99999 - and adopt the tokens as each surface is
-touched. Reach for the tier whose NAME fits; never invent a bigger number to win a fight.
+`--z-modal` < `--z-toast`). Components still carry raw values - measured at 1, 1400, 1500, 2000 (nineteen
+of them), 2100, 2200, 2300, 3000, 5000 up to 99999 - and adopt the tokens as each surface is touched.
+Reach for the tier whose NAME fits; never invent a bigger number to win a fight.
 
 ### UI-C5 A rule-pack override is a DELTA, and an editor must open on the EFFECTIVE list
 WHERE: `lib/rulepackDelta.ts` (`makeListDelta` / `applyListDelta`); `EditBiospheresModal`; the
