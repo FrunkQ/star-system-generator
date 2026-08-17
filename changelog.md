@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.743-beta - 17th Aug 2026
+
+- Docs only. Two inbox items found already solved before they were handed out (a pinch-as-tap fix present in code since v2.1.549; Jupiter's giant test now true because an absent makeup is inferred from mass and density), the 3D-starmap grid items re-anchored to their moved files, and undo/redo held until the current sessions land.
+
 ## v2.1.742-beta - 17th Aug 2026
 
 - Docs only. Five inbox items routed to the sessions that know their code (the player-view rebuild storm, the icy-moon albedo constant, Mercury's lock flag, and two player-view tidies), each re-checked against the tree before hand-out.
