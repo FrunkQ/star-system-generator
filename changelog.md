@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.747-beta - 17th Aug 2026
+
+- Docs only. Inbox roster brought up to the wave: the player-view session is reserved for the owner's own bug fixing; the rebuild-storm meters, the hide-all-constructs override and the starmap controller declaration are recorded shipped, with the runtime crash the last one exposed.
+
 ## v2.1.746-beta - 17th Aug 2026
 
 - Player-view rebuild storm (P2): the meters can now say WHY a scene rebuild fired, not just how often. Every rebuild carries a reason and lands in an always-on event ring; broadcast messages are counted on the receiving side too; `window.__ssePerf.events()` dumps the lot mid-fault. Instruments only - no behaviour change.
