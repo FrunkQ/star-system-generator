@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.709-beta - 17th Aug 2026
+
+- The System step of the player-preset editor is regrouped around what you are setting rather than which renderer owns it: Look & feel, Background, Scaling, Camera, then Labels & markers. "Flat / no lighting" becomes a two-option Lighting dropdown directly above Render, where it reads as the choice it is. The Starmap step now follows exactly the same shape, so learning one teaches the other.
+- Body size and Spread now default to 80% instead of 100% and 65%. They are the same trade - the left end of each is physical truth - so they are set together.
+
 ## v2.1.707-beta - 16th Aug 2026
 
 - FIXED: on the Surface view the sky changed colour across the seam — visibly so on EARTH, which is the one world where the two halves must be identical. The home side carried two hand-picked blues sitting next to a derived one. Home now runs through the same pipeline as everywhere else, so Earth against Earth has no seam, and if it ever gets one again a test says so.

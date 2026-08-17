@@ -81,8 +81,11 @@ export const DEFAULT_PRESET: PlayerPreset = {
   starmapMono: false,
   background: 'space',
   grid: 'plain',
-  compression: 0.65,
-  bodySize: 1,
+  // Owner's calibration, 2026-08-17: 80% is the readable default for BOTH dials. They are the same
+  // trade — 0% is physical truth (true distances, true radii) and 1 is the fully readable
+  // exaggeration — so they are set together and to the same number rather than drifting apart.
+  compression: 0.8,
+  bodySize: 0.8,
   beltDetail: 0.6,
   orbitSpeed: 0,
   lockRotation: true, // 2D views are fixed maps by default

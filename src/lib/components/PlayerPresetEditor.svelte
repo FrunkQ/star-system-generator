@@ -129,10 +129,11 @@
     // else on that step hangs off. Discovery still works; the wall does not.
     identity: true, behaviour: false, theme: false, graphics: false,
     'cover-page': true, 'cover-graphic': false,
-    'starmap-stage': true, 'starmap-document': false, 'starmap-grid': false,
-    'starmap-camera': false, 'starmap-graphic': false,
-    'system-stage': true, 'system-bodies': false, 'system-scale': false,
-    'system-scene': false, 'system-labels': false, 'system-info': false, 'system-graphic': false,
+    'starmap-stage': true, 'starmap-document': false, 'starmap-look': false,
+    'starmap-background': false, 'starmap-scale': false, 'starmap-camera': false,
+    'starmap-labels': false, 'starmap-graphic': false,
+    'system-stage': true, 'system-look': false, 'system-background': false, 'system-scale': false,
+    'system-camera': false, 'system-labels': false, 'system-info': false, 'system-graphic': false,
     transition: true,
     filter: true,
     // The per-slot palette inside the two document sections — one each, so tweaking the system's
@@ -463,19 +464,27 @@
 
           <!-- 2D and 3D starmap are the same engine (2D = overhead), so both get the look controls. -->
           {#if draft.starmapEnabled && (draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d')}
-            <CollapsibleSection label="Grid & routes" open={openSections['starmap-grid']}
-              on:toggle={(e) => setSection('starmap-grid', e.detail)}>
-              <label>Overlay
-                <select bind:value={draft.grid}>
-                  {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
-                </select>
-              </label>
+            <!-- Same skeleton as the System step, deliberately: look, then the ground it sits on,
+                 then scale, then camera, then what is written on it. A GM who has learnt one stage's
+                 shape should not have to learn the other's. -->
+            <CollapsibleSection label="Look &amp; feel" open={openSections['starmap-look']}
+              on:toggle={(e) => setSection('starmap-look', e.detail)}>
+              <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (bleach &mdash; for a tinting filter)</label>
               <label class="chk"><input type="checkbox" bind:checked={draft.starmapRouteGlow} /> Glowing routes</label>
               <!-- The stems tie each system to the reference plane and the rings mark where they
                    land, which is what makes an exaggerated depth readable — you cannot otherwise
                    tell above from below. On a map with real depth and a crowded field they are also
                    the loudest thing on it, so this is a trade rather than a tidy-up. -->
               <label class="chk" title="The vertical lines down to the plane and the rings at their feet. Off is cleaner; depth becomes harder to judge."><input type="checkbox" checked={draft.starmapDropLines !== false} on:change={(e) => (draft.starmapDropLines = e.currentTarget.checked)} /> Depth tethers</label>
+            </CollapsibleSection>
+
+            <CollapsibleSection label="Background" open={openSections['starmap-background']}
+              on:toggle={(e) => setSection('starmap-background', e.detail)}>
+              <label>Overlay
+                <select bind:value={draft.grid}>
+                  {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                </select>
+              </label>
               <!-- The z-axis curtain: each grid line at full intensity with a skirt fading away
                    BELOW it, which is what gives the lattice its dimensional look. 3D only — the 2D
                    starmap is this renderer locked overhead, where a curtain is edge-on and invisible.
@@ -488,25 +497,36 @@
               {#if draft.grid !== 'off'}
                 <label>Grid falloff <span>{Math.round((draft.starmapGridFalloff ?? 0.5) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.starmapGridFalloff} /></label>
               {/if}
-              <label class="chk"><input type="checkbox" bind:checked={draft.starmapMono} /> Monochrome (bleach — for a tinting filter)</label>
+              <p class="hint">The starfield and the space/greenscreen backdrop are set once on the System step &mdash; one campaign, one backdrop, both stages.</p>
             </CollapsibleSection>
 
-            <CollapsibleSection label="Depth, camera & labels" open={openSections['starmap-camera']}
-              on:toggle={(e) => setSection('starmap-camera', e.detail)}>
-              {#if draft.starmapView === 'holo3d'}
+            {#if draft.starmapView === 'holo3d'}
+              <CollapsibleSection label="Scaling" open={openSections['starmap-scale']}
+                on:toggle={(e) => setSection('starmap-scale', e.detail)}>
                 <!-- WS7: stretch DEPTH so it reads on screen. Visual only — journey distances are
                      unaffected (see lib/map/systemDistance.ts). 1x = true depth. -->
                 <label>Depth exaggeration <span>{(draft.zExaggeration ?? 1) === 1 ? 'true depth' : (draft.zExaggeration ?? 1) + '×'}</span>
                   <input type="range" min="1" max="20" step="0.5" value={draft.zExaggeration ?? 1}
                     on:input={(e) => (draft = { ...draft, zExaggeration: Number((e.currentTarget as HTMLInputElement).value) })} />
                 </label>
-                <p class="hint">Lifts systems off the map plane so their depth reads on a tilted view. Display only — journey distances never change. A map with real depth is already dramatic at 1x, so a little goes a long way; zoom out if you push it.</p>
+                <p class="hint">Lifts systems off the map plane so their depth reads on a tilted view. Display only &mdash; journey distances never change. A map with real depth is already dramatic at 1x, so a little goes a long way; zoom out if you push it.</p>
+              </CollapsibleSection>
+            {/if}
+
+            <CollapsibleSection label="Camera" open={openSections['starmap-camera']}
+              on:toggle={(e) => setSection('starmap-camera', e.detail)}>
+              {#if draft.starmapView === 'holo3d'}
                 <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} /></label>
               {:else}
                 <!-- 2D only: keeps the classic flat fixed starmap. Zoom + pan still work either way. -->
                 <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
               {/if}
+            </CollapsibleSection>
+
+            <CollapsibleSection label="Labels &amp; markers" open={openSections['starmap-labels']}
+              on:toggle={(e) => setSection('starmap-labels', e.detail)}>
               <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
+              <p class="hint">Marker SHAPE (chip / pin / flag) is one choice for both maps and is set on the System step.</p>
             </CollapsibleSection>
           {/if}
 
@@ -546,8 +566,8 @@
                    a section HEADER switch the preview, which is what you want when you open it. -->
               <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
               <div class="scene-sections" on:pointerdown={() => (infoPreview = false)} on:focusin={() => (infoPreview = false)}>
-                <CollapsibleSection label="Bodies & belts" open={openSections['system-bodies']}
-                  on:toggle={(e) => setSection('system-bodies', e.detail)}>
+                <CollapsibleSection label="Look &amp; feel" open={openSections['system-look']}
+                  on:toggle={(e) => setSection('system-look', e.detail)}>
                   <label>Colour
                     <select bind:value={draft.bodyStyle}>
                       <option value="textured">True colour</option>
@@ -555,6 +575,21 @@
                       <option value="white">Monochrome (for tinting filters)</option>
                     </select>
                   </label>
+                  {#if draft.systemView === 'holo3d'}
+                    <!-- Lighting and Render are ORTHOGONAL, which is why this is its own two-option
+                         dropdown above Render rather than a mode folded into it: seven render styles
+                         times two lighting states would be a fourteen-item list where two small ones
+                         say the same thing more clearly. 3D only — a 2D map is forced unlit
+                         (systemStageStyle), so offering the choice there would be a control that
+                         does nothing. -->
+                    <label>Lighting
+                      <select value={draft.unlit ? 'flat' : 'lit'}
+                        on:change={(e) => (draft = { ...draft, unlit: (e.currentTarget as HTMLSelectElement).value === 'flat' })}>
+                        <option value="lit">Lit — a star casts light and shadow</option>
+                        <option value="flat">Flat — no lighting (efficient 2D look)</option>
+                      </select>
+                    </label>
+                  {/if}
                   <label>Render
                     <select bind:value={draft.render}>
                       <option value="filled">Filled</option>
@@ -566,53 +601,20 @@
                       <option value="wire-flat-occ">Wireframe — flat (solid)</option>
                     </select>
                   </label>
-                  <!-- Shares a convention with Spread on the next section, and nothing on screen was
-                       saying it: the LEFT end is physical truth (body size "true" = true radii) and the
-                       right end is the readable exaggeration. The green pip marks the ACTUAL end, and
-                       the read-out turns green when the dial is on it. -->
-                  <label>Body size <span class:actual-on={draft.bodySize === 0}>{draft.bodySize === 0 ? 'actual size' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span>
-                    <div class="range-actual" title="Left end = actual (true) body sizes"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></div>
-                  </label>
                   <label>Belts &amp; rings
                     <select bind:value={draft.beltStyle}>
                       <option value="rocks">Rocks</option>
                       <option value="band">Grey bands (like the GM orrery)</option>
                     </select>
                   </label>
-                  {#if draft.beltStyle !== 'band'}
-                    <!-- Only the rock field has a particle budget; a band is one flat shape. -->
-                    <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
-                  {/if}
                   <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
                   {#if draft.systemView === 'holo3d'}
                     <label class="chk"><input type="checkbox" checked={draft.lensing !== false} on:change={(e) => draft.lensing = e.currentTarget.checked} /> Black-hole gravitational lensing</label>
                   {/if}
                 </CollapsibleSection>
 
-                <CollapsibleSection label="Scale & camera" open={openSections['system-scale']}
-                  on:toggle={(e) => setSection('system-scale', e.detail)}>
-                  <!-- Same convention as Body size: the LEFT end is physical truth (0% spread = true
-                       distances), the right end is the readable exaggeration. -->
-                  <label>Spread <span class:actual-on={draft.compression === 0}>{draft.compression === 0 ? 'actual distances' : Math.round(draft.compression * 100) + '%'}</span>
-                    <div class="range-actual" title="Left end = actual (true) distances"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></div>
-                  </label>
-                  {#if draft.systemView === 'holo3d'}
-                    <!-- 3D only: a flat map has no tilt to set, and no turntable to spin. -->
-                    <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
-                    <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
-                    <label class="chk"><input type="checkbox" bind:checked={draft.unlit} /> Flat / no lighting (efficient 2D map)</label>
-                    <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
-                  {:else}
-                    <!-- 2D only, in the turntable's place: a flat map stays fixed unless you say otherwise. -->
-                    <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
-                  {/if}
-                  <!-- Both: off = tapping a body zooms to it (GM-orrery style); on = a fixed whole-system
-                       plan view that never zooms. -->
-                  <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system (never zoom to a body)</label>
-                </CollapsibleSection>
-
-                <CollapsibleSection label="Scene & sky" open={openSections['system-scene']}
-                  on:toggle={(e) => setSection('system-scene', e.detail)}>
+                <CollapsibleSection label="Background" open={openSections['system-background']}
+                  on:toggle={(e) => setSection('system-background', e.detail)}>
                   <label>Background
                     <select bind:value={draft.background}>
                       <option value="space">Space</option>
@@ -658,6 +660,43 @@
                         <label>Name size <span>{(draft.constellationLabelSize ?? 11) > 0 ? `${draft.constellationLabelSize ?? 11} px` : 'Off'}</span><input type="range" min="0" max="28" step="1" bind:value={draft.constellationLabelSize} /></label>
                       {/if}
                     {/if}
+                  {/if}
+                </CollapsibleSection>
+
+                <CollapsibleSection label="Scaling" open={openSections['system-scale']}
+                  on:toggle={(e) => setSection('system-scale', e.detail)}>
+                  <!-- Both dials share a convention that nothing on screen was saying: the LEFT end is
+                       physical truth (0% spread = true distances; body size "true" = true radii) and the
+                       right end is the readable exaggeration. The green pip marks the ACTUAL end, and the
+                       read-out turns green when the dial is on it. -->
+                  <label>Body size <span class:actual-on={draft.bodySize === 0}>{draft.bodySize === 0 ? 'actual size' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span>
+                    <div class="range-actual" title="Left end = actual (true) body sizes"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></div>
+                  </label>
+                  <label>Spread <span class:actual-on={draft.compression === 0}>{draft.compression === 0 ? 'actual distances' : Math.round(draft.compression * 100) + '%'}</span>
+                    <div class="range-actual" title="Left end = actual (true) distances"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></div>
+                  </label>
+                  {#if draft.beltStyle !== 'band'}
+                    <!-- Only the rock field has a particle budget; a band is one flat shape. Its STYLE is
+                         a look and lives above; how many rocks it spends is a scale, and lives here. -->
+                    <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
+                  {/if}
+                </CollapsibleSection>
+
+                <CollapsibleSection label="Camera" open={openSections['system-camera']}
+                  on:toggle={(e) => setSection('system-camera', e.detail)}>
+                  {#if draft.systemView === 'holo3d'}
+                    <!-- 3D only: a flat map has no tilt to set, and no turntable to spin. -->
+                    <label>View angle <span>{Math.round(draft.angleDeg)}°</span><input type="range" min="0" max="80" step="1" bind:value={draft.angleDeg} disabled={draft.lockOverhead} /></label>
+                    <label class="chk"><input type="checkbox" bind:checked={draft.lockOverhead} /> Lock overhead (2D look)</label>
+                  {:else}
+                    <!-- 2D only, in the tilt's place: a flat map stays fixed unless you say otherwise. -->
+                    <label class="chk"><input type="checkbox" bind:checked={draft.lockRotation} /> Lock rotation (fixed flat map)</label>
+                  {/if}
+                  <!-- Both: off = tapping a body zooms to it (GM-orrery style); on = a fixed whole-system
+                       plan view that never zooms. -->
+                  <label class="chk"><input type="checkbox" bind:checked={draft.whole} /> Frame whole system (never zoom to a body)</label>
+                  {#if draft.systemView === 'holo3d'}
+                    <label>View orbit <span>{draft.orbitSpeed === 0 ? 'off' : Math.round(draft.orbitSpeed * 100) + '%'}</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitSpeed} /></label>
                   {/if}
                 </CollapsibleSection>
 
