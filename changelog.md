@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.724-beta - 17th Aug 2026
+
+* Internal: on a phone, background chrome should disappear entirely while a full-screen panel is open, rather than shrinking out of the way.
+
 ## v2.1.723-beta - 17th Aug 2026
 
 * Internal: recorded that on a phone the bottom bar and the time controls both cover the import dialog, and that the newer screens need a small-screen pass.
