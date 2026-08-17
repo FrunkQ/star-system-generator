@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.748-beta - 17th Aug 2026
+
+- Docs only. The unit-relabel fault and the mobile chrome pass routed to the session with room, both re-checked against the tree; the custom starmap background is unhomed again and says so.
+
 ## v2.1.747-beta - 17th Aug 2026
 
 - Docs only. Inbox roster brought up to the wave: the player-view session is reserved for the owner's own bug fixing; the rebuild-storm meters, the hide-all-constructs override and the starmap controller declaration are recorded shipped, with the runtime crash the last one exposed.
