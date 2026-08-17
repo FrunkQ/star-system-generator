@@ -1057,3 +1057,34 @@ liveness (LIVE→OFFLINE within ~15 s), guest re-dial on host loss and on
 pre-connection (share URL param, StarMapConfig, module settings); connection-
 failed in-fiction error state; banked self-host escape hatch. These stay in
 section 11 as the single list.
+
+## 15. Network layer: ONE system across both apps (2026-08-17)
+
+Owner's rule, same as filters and transitions: the network transport is one
+system that happens to live in two repositories. Every improvement lands in
+BOTH, kept as closely aligned as possible; the only permitted difference is
+naming (localStorage keys, the room-code word cloud). Shipped in lockstep
+today — SSE v2.1.725-beta and Mappadux v2.18.1-beta:
+
+| Piece | SSE | Mappadux | Must stay identical |
+|---|---|---|---|
+| ICE config module (parse/encode `?ice=`, textarea format, prepend-to-defaults, `DEFAULT_ICE` mirror of peerjs 1.5) | `src/lib/iceConfig.ts` | `src/p2p/iceConfig.ts` | YES — byte-identical except `STORAGE_KEY` |
+| Its unit tests | `src/lib/iceConfig.spec.ts` | `test/unit/iceConfig.test.ts` | YES |
+| Peer construction takes `{config:{iceServers}}` when custom, else library defaults | `broadcast.ts` host+guest | `Host.ts`, `Guest.ts` | YES |
+| Custom servers PREPENDED to defaults, never replacing | both | both | YES |
+| `?ice=` on every join link/QR the GM shares | share URL (PlayerViewModal) | `_buildPlayerUrl` (+ projector) | YES |
+| ICE-failed verdict from `RTCPeerConnection.connectionState` -> honest "blocked" state, redial continues | catalogue `linkBlocked` | Guest `onIceState` -> Player/Projector status | YES (wording may differ) |
+| Settings surface: textarea "one per line `turns:host:443|user|credential`" + summary line | Settings > Advanced | Settings > Connections | YES (same copy) |
+| Heartbeat liveness + guest re-dial | shipped 1D | Mappadux already had reconnect (`onReconnecting`) | align cadence when next touched |
+| STILL OPEN, both: Phase 0 real WAN test; connection-failed copy tuned after that test | — | — | do together |
+
+Verified facts behind the design (read from `node_modules/peerjs/dist`, both
+repos, 1.5.5): defaults = `stun:stun.l.google.com:19302` + TURN
+`turn:eu-0/us-0.turn.peerjs.com:3478` (UDP, user `peerjs`); broker
+`0.peerjs.com:443` WSS. So home/mobile/most firewalls work out of the box;
+the one real gap is UDP-blocking work networks, which need a `turns:443`
+relay — now a GM setting in both apps rather than a code change.
+
+When the third copy would appear (Foundry/Owlbear shims), the SAME module is
+copied again — or, better, the pair is extracted to a tiny shared package;
+that extraction is the trigger point, not before.
