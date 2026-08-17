@@ -1122,6 +1122,19 @@ there is PeerJS-with-a-known-sid ONLY, and first pairing is always the pasted
 link (or typed sid) — which is the "instruct the user" rule from section 14
 landing exactly where predicted. Nothing else in the contract changes.
 
+**VERIFIED on the deployed pair (2026-08-17, beta.mappadux.com v2.18.2 framing
+beta.starsystemx.com v2.1.758):** Add StarMap -> Beta origin -> "not found" +
+paste row -> pasted `.../catalogue?sid=local_neighbourhood-deuterium-naos-949&preset=holo`
+-> PeerJS discovery through the sid-keyed bridge frame -> "Connected: Local
+Neighbourhood", all six Player Views listed, Holo Table pre-ticked from the link
+-> Add -> `✦ Local Neighbourhood — Holo Table` minted -> activation discovered
+the session again over PeerJS, no banner, filters handed to SSE, GM preview
+frame = the deployed catalogue in embed mode. Broker probe (WSS to
+0.peerjs.com, ID-TAKEN = hosting) confirmed the deployed GM tab auto-hosts under
+its persistent id on load. Reminder for testers: both apps are PWAs — a tab
+open across a deploy keeps the OLD service-worker build until reloaded, which
+produced two false "not shipped" readings during this test.
+
 **Session-hygiene note (own fault, recorded):** the auto-host hunk in
 `+page.svelte` was left in the working copy by an autostash during a shared-tree
 version collision and did not ship in v2.1.749; caught by the broker probe on
