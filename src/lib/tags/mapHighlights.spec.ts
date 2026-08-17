@@ -54,6 +54,26 @@ describe('markersFor', () => {
     expect(m.find((x) => x.key === 'faction/plain')!.color).toBe('#333333');
   });
 
+  // The bug the owner photographed: "Life on the land" is green in Find by tag, in the info block and
+  // on the body panel — and drew a GREY pill reading "land-cover" on every map, GM's and players'.
+  // ENGINE namespaces have no TagCategory at all, and this function only ever consulted that list.
+  it('an ENGINE namespace keeps its own colour and label, not grey and not the raw key', () => {
+    const m = markersFor([{ key: 'biodiversity/land-cover' }], [{ ref: 'biodiversity/land-cover' }], cats);
+    expect(m).toHaveLength(1);
+    expect(m[0].color.toLowerCase()).not.toBe('#888888');
+    // The namespace's own colour, the same one describeTag hands the chips (Biosphere green).
+    expect(m[0].color.toLowerCase()).toBe('#4fa86a');
+    // …and a human label rather than the key's tail.
+    expect(m[0].label).not.toBe('land-cover');
+    expect(m[0].label.toLowerCase()).not.toContain('/');
+  });
+
+  it('a CONFIGURED category still wins over the presentation layer — the GM recoloured it on purpose', () => {
+    const m = markersFor([{ key: 'faction/red-syndicate' }], [{ ref: 'faction' }], cats);
+    expect(m[0].color).toBe('#ff0000');
+    expect(m[0].label).toBe('Red Syndicate');
+  });
+
   it('a category and a specific tag can be selected together', () => {
     const m = markersFor(
       [{ key: 'faction/red-syndicate' }, { key: 'frontier/refuelling' }],

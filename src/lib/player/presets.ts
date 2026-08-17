@@ -95,6 +95,9 @@ export const DEFAULT_PRESET: PlayerPreset = {
   whole: false,
   labelSize: 11,
   markerStyle: 'label', // the chip itself — the map and the panel agree by default
+  markerSize: 1,
+  flagStaff: 'silver',  // reads on the dark backdrop most player views use, and on a light document
+  pinText: 'initial',   // the shipped look
   hideInfoPanel: false,
   inspectorWidthPct: 0.26,
   infoFontScale: 1

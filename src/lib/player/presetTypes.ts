@@ -184,6 +184,18 @@ export interface PlayerPreset {
   //   'pin'   — a map pin with the tag's initials. Fewest pixels, best when a lot is highlighted.
   //   'flag'  — the chip flown from a short staff. Most readable at a glance; tallest.
   markerStyle: 'label' | 'pin' | 'flag';
+  // Marker size, as a MULTIPLE of the badge's natural size (0.6 x the body-name size). Its own dial
+  // rather than a share of `labelSize`, because a GM sizes names for reading and markers for
+  // spotting, and those two wants pull in opposite directions on a busy map. 1 = as drawn before.
+  markerSize: number;
+  // A flag's staff. It was the tag's colour, which doubled the coloured area and read as a fat tail;
+  // it was then black, which is invisible on the space backdrop most player views use. So it is a
+  // choice, because no fixed colour wins on every background. 'tag' restores the original look.
+  flagStaff: 'silver' | 'gold' | 'white' | 'black' | 'tag';
+  // What a PIN carries. 'initial' is the 1-2 letters on the head (the original); 'name' puts the full
+  // tag label to the RIGHT of the pin in the document's own text colour, leaving the head clean;
+  // 'none' is the shape alone, for a map where the colour key lives somewhere else.
+  pinText: 'none' | 'initial' | 'name';
   hideInfoPanel: boolean; // system page: never show the body info panel (a clean display; tap still frames)
   inspectorWidthPct: number; // desktop body info-panel width as a FRACTION of the viewport width (0..1).
                              // A proportion, not a pixel count: the GM authors on one screen and players

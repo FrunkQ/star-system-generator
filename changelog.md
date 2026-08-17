@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.712-beta - 17th Aug 2026
+
+- FIXED: a highlighted tag drew a GREY badge with a raw key for a name - "Life on the land" appeared as a grey "land-cover" pill on every map, GM's and players', while the same tag was green everywhere else in the app. Tag colours live in two places and the map was reading the wrong one: the GM-configurable categories, which hold nothing at all for the tags the physics derives. Engine tags now take the colour and the label the rest of the app already gives them, and a category you have recoloured yourself still wins.
+- Markers get their own size dial, separate from the body-name size. Names are sized for reading and markers for spotting, and on a busy map those pull in opposite directions.
+- A map pin can now carry initials (as before), its full name set to the right of the pin, or no text at all.
+- A flag's staff is selectable - silver, gold, white, black, or the tag's own colour - because it has to contrast with your background and no single colour wins on all of them. Silver by default: black vanished against the space backdrop most views use.
+- Marker shape and size are now on the Starmap step as well as the System step, editing the same setting, so you can tune the starmap without hopping between steps.
+- Starmap names and badges follow the same rule as the system map: on top of a system from far out, and clear of the star's own glow when you come in close.
+- Depth exaggeration flattens as well as stretches. True depth is now the MIDDLE of the dial, with twentyfold either way, so you can press a deep map flat.
+
 ## v2.1.710-beta - 17th Aug 2026
 
 - The preset editor now shows a TEST MARKER on the preview. Picking chip / pin / flag used to change nothing on screen, because the preview was never given a highlight selection to draw - so a GM chose a marker style blind. It now draws your live selection if you have one, and otherwise a real tag from your own categories, in its real colour, so the shape, colour and size you are choosing are the ones players get. The panel says which of the two you are looking at.

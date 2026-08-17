@@ -21,7 +21,7 @@ import { shipBurnAt } from '$lib/constructs/shipBurn';
 // chip (tags/tagPill.ts) — nothing here re-invents its padding, radius or proportions. markersFor is
 // audience-blind by design (TAG-13): the tags handed in are already the player's redacted snapshot.
 import { markersFor, capMarkers, type MapHighlights, type HighlightMarker } from '$lib/tags/mapHighlights';
-import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_STEM, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName } from '$lib/tags/tagPill';
+import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, pinAside, flagStaffColor, markerStackStep, TAG_PILL_STEM, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName, type PinTextMode, type FlagStaffColor } from '$lib/tags/tagPill';
 import type { TagCategory } from '$lib/tags/tagCategories';
 import { routeOf, routePointAt, routeStateAt, type CompactRoute } from '$lib/constructs/shipRoute';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -138,7 +138,7 @@ export interface HoloController {
   setLabelFont(font: string | null): void; // in-scene label font-family (theme font)
   setLabelsVisible(on: boolean): void; // momentary show/hide of in-scene labels (not saved)
   /** Highlight badges under each body's name. Tags must already be redacted for the audience (TAG-13). */
-  setHighlights(highlights: MapHighlights, categories: TagCategory[], style?: MarkerStyleName): void;
+  setHighlights(highlights: MapHighlights, categories: TagCategory[], style?: MarkerStyleName, opts?: MarkerOptions): void;
   setHud(canvas: HTMLCanvasElement | null): void; // static info-card overlay, composited INTO the filter
   // GPU post-processing filter (CRT, night-vision, thermal, …) from the ported Mappadux package.
   setFilter(id: string, params?: FilterParamValues): void;
@@ -174,6 +174,13 @@ interface LabelSprite {
   markers: HighlightMarker[];
   /** Fraction of the canvas height occupied by the name, so the name keeps its gap above the body. */
   nameFraction: number;
+}
+
+/** The badge-only knobs a preset carries: size multiplier, flag staff colour, pin text mode. */
+export interface MarkerOptions {
+  size?: number;
+  staff?: FlagStaffColor;
+  pinText?: PinTextMode;
 }
 
 interface BodyVisual {
@@ -873,22 +880,28 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let highlights: MapHighlights = [];
   let highlightCategories: TagCategory[] = [];
   let highlightStyle: MarkerStyleName = 'label';
+  // Size, staff colour and pin text ride together because all three only ever change the BADGE, and
+  // all three invalidate exactly the same thing: every label canvas. One object, one guard, one redraw.
+  let markerOpts: MarkerOptions = { size: 1, staff: 'silver', pinText: 'initial' };
   function markersForNode(node: any): HighlightMarker[] {
     if (!highlights.length) return [];
     return markersFor(node?.tags, highlights, highlightCategories, highlightStyle);
   }
-  function setHighlights(next: MapHighlights, categories: TagCategory[], style: MarkerStyleName = 'label') {
+  function setHighlights(next: MapHighlights, categories: TagCategory[], style: MarkerStyleName = 'label', opts?: MarkerOptions) {
+    const o: MarkerOptions = { size: opts?.size ?? 1, staff: opts?.staff ?? 'silver', pinText: opts?.pinText ?? 'initial' };
     // Cheap identity guard: this is fed from a reactive statement that fires on unrelated changes too,
     // and a needless redraw here rebuilds a canvas texture per body.
     const same =
       highlightCategories === categories &&
       highlightStyle === style &&
+      markerOpts.size === o.size && markerOpts.staff === o.staff && markerOpts.pinText === o.pinText &&
       highlights.length === next.length &&
       highlights.every((h, i) => h.ref === next[i].ref && h.style === next[i].style);
     if (same) return;
     highlights = next ?? [];
     highlightCategories = categories ?? [];
     highlightStyle = style;
+    markerOpts = o;
     const byId = new Map((currentSystem?.nodes ?? []).map((n: any) => [n.id, n]));
     for (const b of bodies) {
       if (!b.label) continue;
@@ -988,23 +1001,31 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // from the name they belong to and they inherit its position and visibility for free. Sized off the
     // label's own font so the hierarchy holds at every label size: a badge is smaller than the name.
     const { shown: capped, overflow } = capMarkers(ls.markers ?? []);
-    const pm = tagPillMetrics(fontPx * 0.6);
+    // 0.6 of the name is the badge's NATURAL size — small enough that the hierarchy holds at every
+    // label size. `markerOpts.size` is the GM's multiplier on top of it, because names are sized for
+    // reading and markers for spotting and those two wants pull apart on a busy map.
+    const pm = tagPillMetrics(fontPx * 0.6 * (markerOpts.size || 1));
+    const asideGap = pm.fontPx * 0.45;
     // Rings are drawn round the body by the caller, not in this canvas.
-    const badges: { text: string; style: string; color: string; textColor: string; step: number; width: number }[] =
+    const badges: { text: string; aside: string; style: string; color: string; textColor: string; step: number; width: number }[] =
       capped
         .filter((m) => m.style !== 'ring')
         .map((m) => {
-          const text = tagPillText(m);
+          const text = tagPillText(m, markerOpts.pinText);
+          const aside = pinAside(m, markerOpts.pinText);
+          // A pin is as wide as its head, PLUS whatever it sets beside itself; a flag adds its staff.
+          const asideW = aside ? asideGap + tagPillWidth(aside, pm, ctx) - pm.padX * 2 : 0;
           return {
-            text, style: m.style, color: m.color, textColor: m.textColor,
+            text, aside, style: m.style, color: m.color, textColor: m.textColor,
             step: markerStackStep(m.style as any, pm),
-            // A pin is as wide as its head; a flag adds its staff to the pill.
-            width: m.style === 'pin' ? pm.height : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
+            width: m.style === 'pin'
+              ? pm.height + asideW
+              : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
           };
         });
     if (overflow) {
       const text = `+${overflow}`;
-      badges.push({ text, style: 'label', color: TAG_PILL_OVERFLOW_BG, textColor: TAG_PILL_OVERFLOW_FG,
+      badges.push({ text, aside: '', style: 'label', color: TAG_PILL_OVERFLOW_BG, textColor: TAG_PILL_OVERFLOW_FG,
                     step: pm.rowStep, width: tagPillWidth(text, pm, ctx) });
     }
     const pillW = badges.length ? Math.max(...badges.map((b) => b.width)) : 0;
@@ -1034,9 +1055,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // A pin and a flag are anchored by their POINT/FOOT, which sits at the BOTTOM of the row —
         // pointing down the stack toward the body the sprite floats above. A pill is centred in it.
         if (b.style === 'pin') {
-          drawTagPin(ctx, b.text, cw / 2, top + b.step, pm, b.color, b.textColor);
+          // A pin with a name beside it is anchored by its POINT, so the head sits left of centre and
+          // the name runs to its right — the pair centred as one object, not the pin centred with the
+          // text hanging off. Owner, 2026-08-17: the name goes to the RIGHT of the marker.
+          const pinX = b.aside ? (cw - b.width) / 2 + pm.height / 2 : cw / 2;
+          drawTagPin(ctx, b.text, pinX, top + b.step, pm, b.color, b.textColor);
+          if (b.aside) {
+            ctx.font = pm.font;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            // The label beside a pin is CHROME, not part of the badge: it takes the surface's own
+            // text colour (the body name's), so it reads as an annotation rather than a second chip.
+            ctx.fillStyle = labelColor;
+            ctx.fillText(b.aside, pinX + pm.height / 2 + asideGap, top + b.step - pm.fontPx * TAG_PILL_STEM - pm.height * 0.175);
+            ctx.textAlign = 'center';
+          }
         } else if (b.style === 'flag') {
-          drawTagFlag(ctx, b.text, (cw - b.width) / 2, top + b.step, pm, b.color, b.textColor);
+          drawTagFlag(ctx, b.text, (cw - b.width) / 2, top + b.step, pm, b.color, b.textColor,
+                      flagStaffColor(markerOpts.staff, b.color));
         } else {
           drawTagPill(ctx, b.text, (cw - b.width) / 2, top + b.step / 2, pm, b.color, b.textColor);
         }

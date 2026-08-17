@@ -29,6 +29,10 @@
   export let highlights: MapHighlights | null = null;
   /** The GM's chosen look for this view; an individual highlight can still override it. */
   export let markerStyle: 'label' | 'pin' | 'flag' | undefined = undefined;
+  /** Badge-only knobs from the preset: size multiplier, flag staff colour, pin text mode. */
+  export let markerSize: number | undefined = undefined;
+  export let flagStaff: 'silver' | 'gold' | 'white' | 'black' | 'tag' | undefined = undefined;
+  export let pinText: 'none' | 'initial' | 'name' | undefined = undefined;
   export let filterBypass: boolean = false;
   export let orbitPaused: boolean = false; // momentarily stop the auto view-orbit turntable
   // A pre-rendered static info-card canvas composited INTO the scene so the GPU filter warps/tints it
@@ -155,7 +159,8 @@
   // value only ever arrives over the broadcast as a prop. Named in the expression, not closed over, or
   // the reactive statement would not re-run when the selection changes (TAG-17).
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
-  $: controller?.setHighlights(activeHighlights, $tagCategories, markerStyle ?? 'label');
+  $: controller?.setHighlights(activeHighlights, $tagCategories, markerStyle ?? 'label',
+                               { size: markerSize, staff: flagStaff, pinText });
 </script>
 
 <div class="holo-root" bind:this={container}>

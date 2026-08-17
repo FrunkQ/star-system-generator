@@ -48,6 +48,9 @@
   // window's stores are fresh empty instances (TAG-15).
   export let highlights: MapHighlights | null = null;
   export let markerStyle: MarkerStyleName = 'label';
+  export let markerSize: number | undefined = undefined;
+  export let flagStaff: 'silver' | 'gold' | 'white' | 'black' | 'tag' | undefined = undefined;
+  export let pinText: 'none' | 'initial' | 'name' | undefined = undefined;
   export let filter = 'none';
   export let filterParams: Record<string, number | boolean | string> | undefined = undefined;
   export let selectable = false; // live view: tapping a system fires `select`
@@ -112,6 +115,7 @@
     controller.setFlatOverhead(flat); // after setFraming: pins the tilt overhead
     controller.setLockRotation(lockRotation);
     controller.setLabelSize(labelSize);
+    controller.setMarkerOptions({ size: markerSize, staff: flagStaff, pinText });
     controller.setLabelFont(font);
     // Labels are in-scene sprites: theme accent, or grey in mono so a tint filter colours them.
     controller.setLabelColor(mono ? '#dfe6f0' : accentColor);

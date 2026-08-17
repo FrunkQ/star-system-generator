@@ -174,6 +174,17 @@
   let tab: TabId = 'general';
   $: tabIndex = TABS.findIndex((t) => t.id === tab);
 
+  // Depth-exaggeration dial <-> stored multiplier. Z_SPAN is the factor at each end: 20x stretched
+  // one way, 20x flattened the other. Rounded on the way in so the stored number stays readable in an
+  // exported preset (1.41, not 1.4142135…).
+  const Z_SPAN = 20;
+  const zToSlider = (z: number) => Math.log(Math.max(1 / Z_SPAN, Math.min(Z_SPAN, z || 1))) / Math.log(Z_SPAN);
+  const sliderToZ = (t: number) => Math.round(Math.pow(Z_SPAN, t) * 100) / 100;
+  function zDepthLabel(z: number): string {
+    if (Math.abs(z - 1) < 0.01) return 'true depth';
+    return z > 1 ? `${z}× stretched` : `${Math.round((1 / z) * 10) / 10}× flatter`;
+  }
+
   // ── A48: collapsible sections, per GM ───────────────────────────────────────
   // The tab strip above IS the top-level grouping the item asked for — Identity/Theme, Cover,
   // Starmap, System, Transitions, Filter — and it has been there since the wizard landed. What was
@@ -328,6 +339,48 @@
      its slots. `scope` says which document is being edited. Anything genuinely stage-specific (an
      arrangement, a body graphic) sits ABOVE them on its own step, so the important choice is nearest
      the top and the fiddly palette is where a reader has learned to expect it. -->
+<!-- The marker controls, rendered on the System step AND the Starmap step. They edit ONE set of
+     fields, because a tag badge is the same object on both maps and a player who has learnt what a
+     green flag means should not meet a green pin on the other screen — but a GM tuning the starmap
+     should not have to hop to the System step to change it, which is why it appears twice.
+     (`labelSize` already worked exactly this way, so this follows the precedent rather than setting
+     a new one.) -->
+{#snippet markerControls()}
+  <label>Marker shape
+    <select bind:value={draft.markerStyle}>
+      <option value="label">Tag chips &mdash; as they look in the panels</option>
+      <option value="pin">Map pins</option>
+      <option value="flag">Flags &mdash; a chip on a staff</option>
+    </select>
+  </label>
+  <label>Marker size <span>{Math.round((draft.markerSize ?? 1) * 100)}%</span>
+    <input type="range" min="0.5" max="3" step="0.1" value={draft.markerSize ?? 1}
+      on:input={(e) => (draft = { ...draft, markerSize: Number((e.currentTarget as HTMLInputElement).value) })} />
+  </label>
+  <p class="hint">Its own dial rather than a share of the label size: names are sized for reading and markers for spotting, and on a busy map those pull in opposite directions.</p>
+  {#if draft.markerStyle === 'pin'}
+    <label>Pin text
+      <select bind:value={draft.pinText}>
+        <option value="initial">Initials on the pin</option>
+        <option value="name">Full name, to the right</option>
+        <option value="none">None &mdash; the shape alone</option>
+      </select>
+    </label>
+  {/if}
+  {#if draft.markerStyle === 'flag'}
+    <label>Flag staff
+      <select bind:value={draft.flagStaff}>
+        <option value="silver">Silver</option>
+        <option value="gold">Gold</option>
+        <option value="white">White</option>
+        <option value="black">Black</option>
+        <option value="tag">The tag's own colour</option>
+      </select>
+    </label>
+    <p class="hint">The staff has to contrast with your <strong>background</strong>, not with the flag &mdash; black disappears against a space backdrop.</p>
+  {/if}
+{/snippet}
+
 {#snippet colouration(scope: ColourScope)}
   <!-- A documentStyle SEEDS the colours; the slots below then override individual ones. Layout is the
        same across styles — only the palette (and the fonts, set on General) changes. -->
@@ -568,9 +621,18 @@
                 on:toggle={(e) => setSection('starmap-scale', e.detail)}>
                 <!-- WS7: stretch DEPTH so it reads on screen. Visual only — journey distances are
                      unaffected (see lib/map/systemDistance.ts). 1x = true depth. -->
-                <label>Depth exaggeration <span>{(draft.zExaggeration ?? 1) === 1 ? 'true depth' : (draft.zExaggeration ?? 1) + '×'}</span>
-                  <input type="range" min="1" max="20" step="0.5" value={draft.zExaggeration ?? 1}
-                    on:input={(e) => (draft = { ...draft, zExaggeration: Number((e.currentTarget as HTMLInputElement).value) })} />
+                <!-- TRUE DEPTH IS THE MIDDLE OF THE DIAL, NOT ITS LEFT END (owner, 2026-08-17): the
+                     map should flatten as readily as it stretches. That cannot be a linear range —
+                     1 is nowhere near the midpoint of 0.05..20 — so the SLIDER carries an exponent
+                     and the preset still stores the plain multiplier: z = 20^t, t in [-1, +1]. The
+                     ends are exact reciprocals, so one notch left flattens by as much as one notch
+                     right stretches, and t = 0 is exactly 1x. -->
+                <label>Depth exaggeration <span class:actual-on={Math.abs((draft.zExaggeration ?? 1) - 1) < 0.01}>{zDepthLabel(draft.zExaggeration ?? 1)}</span>
+                  <div class="range-actual range-mid" title="Middle of the dial = true depth; left flattens, right stretches">
+                    <span class="actual-pip mid" aria-hidden="true"></span>
+                    <input type="range" min="-1" max="1" step="0.025" value={zToSlider(draft.zExaggeration ?? 1)}
+                      on:input={(e) => (draft = { ...draft, zExaggeration: sliderToZ(Number((e.currentTarget as HTMLInputElement).value)) })} />
+                  </div>
                 </label>
                 <p class="hint">Lifts systems off the map plane so their depth reads on a tilted view. Display only &mdash; journey distances never change. A map with real depth is already dramatic at 1x, so a little goes a long way; zoom out if you push it.</p>
               </CollapsibleSection>
@@ -589,7 +651,7 @@
             <CollapsibleSection label="Labels &amp; markers" open={openSections['starmap-labels']}
               on:toggle={(e) => setSection('starmap-labels', e.detail)}>
               <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="48" step="1" bind:value={draft.labelSize} /></label>
-              <p class="hint">Marker SHAPE (chip / pin / flag) is one choice for both maps and is set on the System step.</p>
+              {@render markerControls()}
             </CollapsibleSection>
           {/if}
 
@@ -766,16 +828,10 @@
                 <CollapsibleSection label="Labels & markers" open={openSections['system-labels']}
                   on:toggle={(e) => setSection('system-labels', e.detail)}>
                   <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="48" step="1" bind:value={draft.labelSize} /></label>
-                  <!-- ONE field, both maps. The colour is never chosen here: it always comes from the tag
-                       or its category, so a faction flies its own colour whichever shape is picked. -->
-                  <label>Highlighted tags
-                    <select bind:value={draft.markerStyle}>
-                      <option value="label">Tag chips — as they look in the panels</option>
-                      <option value="pin">Map pins — initials on a pin</option>
-                      <option value="flag">Flags — a chip on a staff</option>
-                    </select>
-                  </label>
-                  <p class="hint">How a tag you have highlighted appears on the players' system map and starmap. Every shape carries its text, so it still reads under a CRT or colour-blind filter. Choose what to highlight in <strong>Find by tag</strong>.</p>
+                  <!-- The colour is never chosen here: it always comes from the tag or its category,
+                       so a faction flies its own colour whichever shape is picked. -->
+                  {@render markerControls()}
+                  <p class="hint">How a tag you have highlighted appears on the players' system map and starmap. Choose what to highlight in <strong>Find by tag</strong>.</p>
                   {#if usingSampleMarker}
                     <p class="hint sample-note">Nothing is highlighted right now, so the preview is showing a <strong>test marker</strong> &mdash; a real tag in its real colour, on a few bodies, purely so you can see what you are choosing. Highlight something in <strong>Find by tag</strong> and the preview switches to your own selection.</p>
                   {/if}
@@ -978,7 +1034,7 @@
               <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} dropLines={draft.starmapDropLines !== false} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
                 flat={draft.starmapView === 'diagram2d'}
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
-                background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} markerStyle={draft.markerStyle} highlights={stageHighlights} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+                background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} markerStyle={draft.markerStyle} markerSize={draft.markerSize} flagStaff={draft.flagStaff} pinText={draft.pinText} highlights={stageHighlights} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <!-- D9: the starmap DOCUMENT — same engine + theme as the system document, real filter. -->
               <FilteredDocumentView stage="starmap" starmap={$starmapStore} {rulePack}
@@ -1006,7 +1062,7 @@
                      does now — `highlights` was missing until v2.1.710, which made this comment a
                      description of an intention rather than of the code.) -->
                 <HoloView system={stageSystem} {currentTime} style={systemPreviewStyle} skyStars={previewSkyStars}
-                  markerStyle={draft.markerStyle} highlights={stageHighlights}
+                  markerStyle={draft.markerStyle} markerSize={draft.markerSize} flagStaff={draft.flagStaff} pinText={draft.pinText} highlights={stageHighlights}
                   focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
                 {#if infoPreview && !draft.hideInfoPanel}
                   <!-- Info-block preview (D6): the SAME DocPanel players get, docked like the live view.
@@ -1099,6 +1155,8 @@
   .range-actual { position: relative; display: flex; align-items: center; }
   .range-actual input { flex: 1; }
   .actual-pip { position: absolute; left: 1px; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: #35c96b; box-shadow: 0 0 4px rgba(53, 201, 107, 0.8); pointer-events: none; z-index: 1; }
+  /* Same pip, at the CENTRE — for a dial whose physical-truth point is its midpoint rather than an end. */
+  .actual-pip.mid { left: 50%; transform: translate(-50%, -50%); }
   .actual-on { color: #35c96b !important; }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4; }
   /* The test-marker note is a statement about the PREVIEW, not about the setting — tinted so it is

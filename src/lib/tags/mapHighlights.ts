@@ -12,6 +12,7 @@
 // always comes from the tag or its category, which is why a per-tag colour override is the whole
 // mechanism behind one Faction category flying a different colour per faction.
 import { canonicalTagKey } from './tagLifecycle';
+import { describeTag } from './tagPresentation';
 import type { TagCategory } from './tagCategories';
 import type { Tag } from '../types';
 
@@ -81,14 +82,26 @@ export function markersFor(
 
     const cat = categories.find((c) => c.id === ns);
     const def = cat?.tags.find((x) => canonicalTagKey(x.key) === key);
-    const label = def?.label || key.split('/').slice(1).join(' ') || key;
+    // THERE ARE TWO REGISTRIES AND THIS FUNCTION USED ONLY ONE OF THEM.
+    // `categories` is the GM-CONFIGURABLE set — status, owner, purpose, resource, frontier — and it
+    // is the right first answer, because a GM who recolours a faction means it. But it holds NOTHING
+    // for the ENGINE namespaces: `biodiversity/*`, `geology/*`, `hazard/*`, `climate/*` and the rest
+    // are derived by the physics and have no TagCategory at all. Every one of them therefore fell to
+    // the `#888888` default and to a label rebuilt from the raw key — so highlighting "Life on the
+    // land" (green, `biodiversity/…`) drew a GREY pill reading "land-cover", while the same tag was
+    // green in Find by tag, green in the info block and green on the body panel.
+    // `describeTag` is what those three use. It is the presentation layer: registered PoI category,
+    // then per-tag override, then the built-in namespace map, then a neutral fallback. Deferring to
+    // it here removes the second answer rather than syncing it.
+    const pres = describeTag(key);
+    const label = def?.label || pres.label;
 
     seen.add(key);
     out.push({
       key,
       label,
-      color: def?.color || cat?.color || '#888888',
-      textColor: def?.textColor || cat?.textColor || '#ffffff',
+      color: def?.color || cat?.color || pres.color,
+      textColor: def?.textColor || cat?.textColor || pres.textColor || '#ffffff',
       style: hit.style ?? defaultStyle,
       monogram: monogramOf(label)
     });

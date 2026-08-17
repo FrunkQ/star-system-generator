@@ -202,9 +202,28 @@ export function tagPillSvg(text: string, x: number, y: number, m: TagPillMetrics
   };
 }
 
-/** What a marker actually prints: the PIN carries initials, everything else carries the label. */
-export function tagPillText(marker: { style: string; label: string; monogram: string }): string {
-  return marker.style === 'pin' ? marker.monogram : marker.label;
+/** What a PIN carries on its head, and what (if anything) is written beside it. */
+export type PinTextMode = 'none' | 'initial' | 'name';
+
+/**
+ * What a marker actually prints. A pin's head takes the initials, everything else takes the label —
+ * except that a pin can now be asked for no text at all, or for its full name set BESIDE it rather
+ * than squeezed onto the head (`pinAside` below), which is what the head returns empty for.
+ */
+export function tagPillText(
+  marker: { style: string; label: string; monogram: string },
+  pinText: PinTextMode = 'initial'
+): string {
+  if (marker.style !== 'pin') return marker.label;
+  return pinText === 'initial' ? marker.monogram : '';
+}
+
+/** The text a pin sets to its RIGHT, in the surface's own text colour. Empty for every other mode. */
+export function pinAside(
+  marker: { style: string; label: string },
+  pinText: PinTextMode = 'initial'
+): string {
+  return marker.style === 'pin' && pinText === 'name' ? marker.label : '';
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -221,13 +240,29 @@ export function tagPillText(marker: { style: string; label: string; monogram: st
 // ---------------------------------------------------------------------------------------------
 
 /**
- * A flag's STAFF is black, never the tag's colour (owner, 2026-08-17). The colour is the flag's job:
- * a staff painted the same hue doubles the coloured area and reads as a thick tail on the badge
- * rather than as a pole planted on the map. Black also gives the flag an outline against a bright
- * body, which is the case it exists for. Not pure black — a hair of lift so it still reads as a
- * drawn object under a bleaching filter.
+ * A flag's STAFF, and why it is a CHOICE rather than a constant.
+ *
+ * It was originally the tag's own colour, which doubled the coloured area and read as a fat tail on
+ * the badge rather than as a pole planted on the map. Black fixed that and immediately failed the
+ * commonest case — a black staff on the space backdrop nearly every player view uses is invisible,
+ * and the flag appears to float. No single colour wins: the staff has to contrast with the
+ * BACKGROUND, and the background is the GM's to pick. So the preset carries it.
+ *
+ * Silver is the default because it is the only one that reads on both a dark sky and a light
+ * document page. 'tag' restores the original look for anyone who preferred it.
  */
-export const TAG_FLAG_STAFF = '#111318';
+export type FlagStaffColor = 'silver' | 'gold' | 'white' | 'black' | 'tag';
+export const FLAG_STAFF_COLORS: Record<Exclude<FlagStaffColor, 'tag'>, string> = {
+  silver: '#c9ced6',
+  gold: '#d9ad3c',
+  white: '#ffffff',
+  // Not pure black — a hair of lift so it still reads as a drawn object under a bleaching filter.
+  black: '#111318'
+};
+export function flagStaffColor(choice: FlagStaffColor | undefined, tagColor: string): string {
+  if (choice === 'tag') return tagColor;
+  return FLAG_STAFF_COLORS[(choice ?? 'silver') as Exclude<FlagStaffColor, 'tag'>] ?? FLAG_STAFF_COLORS.silver;
+}
 
 /** Height of a flag's staff, and a pin's tail, as a multiple of the font size. */
 export const TAG_PILL_STEM = 1.35;
@@ -279,12 +314,13 @@ export function drawTagFlag(
   y: number,
   m: TagPillMetrics,
   bg: string,
-  fg: string
+  fg: string,
+  staffColor?: string
 ): number {
   const staff = m.fontPx * TAG_PILL_STEM + m.height;
   const staffW = Math.max(1, m.fontPx * 0.09);
 
-  ctx.fillStyle = TAG_FLAG_STAFF;
+  ctx.fillStyle = staffColor ?? FLAG_STAFF_COLORS.silver;
   ctx.fillRect(x - staffW / 2, y - staff, staffW, staff);
   return drawTagPill(ctx, text, x + staffW / 2, y - staff + m.height / 2, m, bg, fg);
 }

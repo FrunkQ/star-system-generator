@@ -44,7 +44,7 @@ import { isLattice as isLatticeMode, normaliseOverlay, isHexFamily, hasSubsector
 // Starmap ROLL-UP badges: a system flies the union of what everything inside it carries (design 9.4).
 // Same pill shape as the panel chip and the system view — see tags/tagPill.ts.
 import { capMarkers, type HighlightMarker } from '$lib/tags/mapHighlights';
-import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName } from '$lib/tags/tagPill';
+import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName, pinAside, flagStaffColor, type PinTextMode, type FlagStaffColor } from '$lib/tags/tagPill';
 import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
 import { niceSeries, formatNice } from '$lib/map/niceInterval';
 
@@ -56,6 +56,9 @@ interface LabelSprite {
   text: string;
   aspect: number;      // canvas width / height
   heightRatio: number; // canvas full height / text height — converts labelSizePx to sprite size
+  /** The NAME's share of the canvas height — the anchor is a fraction of the FULL height, so growing
+   *  the sprite downward with badges would otherwise lift the name away from the glyph. */
+  nameFraction: number;
   /** Roll-up badges drawn UNDER the system name, in the same canvas. */
   markers: HighlightMarker[];
   // Optional own colour, overriding the shared label colour. Route names use it so they read as
@@ -632,7 +635,16 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // --- Content: system stars + routes ---
   const content = new THREE.Group();
   scene.add(content);
-  interface Placed { id: string; name: string; center: THREE.Vector3; label?: LabelSprite }
+  // `glyphR` is the star glyph's radius in SCENE units — 0 for a route label, which marks a point on
+  // a line rather than an object. It is what the label offsets itself by so the badge stack clears
+  // the glyph instead of sitting inside it; see updateLabels.
+  // A star sprite's `scale` is its FULL size and the glow art fills roughly half of it, so the visible
+  // disc radius is about 1.6 x the layout radius R. Measured off the sprite, not guessed — the labels
+  // offset by this, and a wrong figure here either buries the badge or leaves it floating.
+  const GLYPH_VISUAL_R = 1.6;
+  // Badge-only knobs, carried by the preset. Same three the system map takes, so the two agree.
+  let markerOpts: { size: number; staff: FlagStaffColor; pinText: PinTextMode } = { size: 1, staff: 'silver', pinText: 'initial' };
+  interface Placed { id: string; name: string; center: THREE.Vector3; glyphR: number; label?: LabelSprite }
   let placed: Placed[] = [];
   let labelsVisible = true;
   let labelColor = '#d6e2f2';
@@ -641,6 +653,12 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   function redrawAllLabels() { for (const p of placed) if (p.label) drawLabel(p.label); }
   const setLabelColor = (hex: string | null) => { labelColor = hex || '#d6e2f2'; redrawAllLabels(); };
   // Clamp matches PlayerPresetEditor's slider range EXACTLY — see the note on holo/scene.setLabelSize.
+  const setMarkerOptions = (o: { size?: number; staff?: FlagStaffColor; pinText?: PinTextMode }) => {
+    const next = { size: o?.size ?? 1, staff: o?.staff ?? 'silver', pinText: o?.pinText ?? 'initial' } as typeof markerOpts;
+    if (next.size === markerOpts.size && next.staff === markerOpts.staff && next.pinText === markerOpts.pinText) return;
+    markerOpts = next;
+    for (const pl of placed) if (pl.label) drawLabel(pl.label);
+  };
   const setLabelSize = (px: number) => { labelSizePx = Math.max(6, Math.min(48, px)); }; // applied via sprite scale
   const setLabelFont = (f: string | null) => { labelFontFamily = f && f.trim() ? f : 'ui-monospace, SFMono-Regular, Menlo, monospace'; redrawAllLabels(); };
   const setLabelsVisible = (on: boolean) => { labelsVisible = on; };
@@ -654,7 +672,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     sprite.center.set(0.5, -0.35); // anchor below the text so it floats above the star glyph
     sprite.renderOrder = 999;
     sprite.visible = false;
-    const ls: LabelSprite = { sprite, canvas, text: name, aspect: 1, heightRatio: 1, color, markers };
+    const ls: LabelSprite = { sprite, canvas, text: name, aspect: 1, heightRatio: 1, nameFraction: 1, color, markers };
     drawLabel(ls);
     content.add(sprite);
     return ls;
@@ -672,20 +690,25 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // ROLL-UP BADGES under the system name, in this same canvas — one sprite, so a badge cannot drift
     // from the system it belongs to. Sized off the label's font, so the hierarchy holds at any scale.
     const { shown: capped, overflow } = capMarkers(ls.markers ?? []);
-    const pm = tagPillMetrics(fontPx * 0.55);
+    // 0.55 of the name is the badge's NATURAL size here (the starmap's names are the denser of the
+    // two surfaces); `markerOpts.size` is the GM's multiplier on top, the same dial the system map uses.
+    const pm = tagPillMetrics(fontPx * 0.55 * (markerOpts.size || 1));
+    const asideGap = pm.fontPx * 0.45;
     const badges = capped
       .filter((m) => m.style !== 'ring')
       .map((m) => {
-        const text = tagPillText(m);
+        const text = tagPillText(m, markerOpts.pinText);
+        const aside = pinAside(m, markerOpts.pinText);
+        const asideW = aside ? asideGap + tagPillWidth(aside, pm, ctx) - pm.padX * 2 : 0;
         return {
-          text, style: m.style, color: m.color, textColor: m.textColor,
+          text, aside, style: m.style, color: m.color, textColor: m.textColor,
           step: markerStackStep(m.style as MarkerStyleName, pm),
-          width: m.style === 'pin' ? pm.height : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
+          width: m.style === 'pin' ? pm.height + asideW : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
         };
       });
     if (overflow) {
       const text = `+${overflow}`;
-      badges.push({ text, style: 'label', color: TAG_PILL_OVERFLOW_BG, textColor: TAG_PILL_OVERFLOW_FG,
+      badges.push({ text, aside: '', style: 'label', color: TAG_PILL_OVERFLOW_BG, textColor: TAG_PILL_OVERFLOW_FG,
                     step: pm.rowStep, width: tagPillWidth(text, pm, ctx) });
     }
     const badgeW = badges.length ? Math.max(...badges.map((b) => b.width)) : 0;
@@ -709,8 +732,19 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       ctx.shadowBlur = 0;
       let top = nameH;
       for (const b of badges) {
-        if (b.style === 'pin') drawTagPin(ctx, b.text, cw / 2, top + b.step, pm, b.color, b.textColor);
-        else if (b.style === 'flag') drawTagFlag(ctx, b.text, (cw - b.width) / 2, top + b.step, pm, b.color, b.textColor);
+        if (b.style === 'pin') {
+          // Name-beside-pin: the pair is centred as ONE object, so the head sits left of centre and the
+          // name runs to its right (owner: the name goes to the RIGHT of the marker).
+          const pinX = b.aside ? (cw - b.width) / 2 + pm.height / 2 : cw / 2;
+          drawTagPin(ctx, b.text, pinX, top + b.step, pm, b.color, b.textColor);
+          if (b.aside) {
+            ctx.font = pm.font; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = ls.color ?? labelColor;   // chrome, not a second chip
+            ctx.fillText(b.aside, pinX + pm.height / 2 + asideGap, top + b.step - pm.fontPx * TAG_PILL_STEM - pm.height * 0.175);
+            ctx.textAlign = 'center';
+          }
+        }
+        else if (b.style === 'flag') drawTagFlag(ctx, b.text, (cw - b.width) / 2, top + b.step, pm, b.color, b.textColor, flagStaffColor(markerOpts.staff, b.color));
         else drawTagPill(ctx, b.text, (cw - b.width) / 2, top + b.step / 2, pm, b.color, b.textColor);
         top += b.step;
       }
@@ -718,8 +752,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
 
     ls.aspect = cw / ch;
     ls.heightRatio = ch / fontPx;
-    // Hold the NAME's gap above the glyph constant as the sprite grows downward with badges.
-    ls.sprite.center.set(0.5, -0.35 * (nameH / ch));
+    // Hold the NAME's gap above the glyph constant as the sprite grows downward with badges. The
+    // final anchor is set per frame in updateLabels, which adds the glyph's apparent radius on top.
+    ls.nameFraction = nameH / ch;
+    ls.sprite.center.set(0.5, -0.35 * ls.nameFraction);
     // RENDER-B1: GL texture storage is allocated ONCE, so uploading a canvas of a different pixel size
     // silently never lands and the quad keeps stretching the stale bitmap. This path was the one copy
     // of the pair that had never been fixed — latent only because a label's size never used to change.
@@ -806,7 +842,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         tick.position.set(foot.x, 0.012, foot.z);
         content.add(tick);
       }
-      placed.push({ id: sys.id, name: sys.name, center, label: makeLabelSprite(sys.name, undefined, sys.markers ?? []) });
+      placed.push({ id: sys.id, name: sys.name, center, glyphR: R * GLYPH_VISUAL_R, label: makeLabelSprite(sys.name, undefined, sys.markers ?? []) });
     }
     // Routes: an emissively-GLOWING filament — a soft additive halo quad + a bright additive core
     // line — so the link reads like a lit hyperlane in both the 2D (overhead) and 3D starmap.
@@ -845,7 +881,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         // two stars it joins, so in the star colour it reads as just another star name. Matching the
         // line ties it to the link instead. In mono `routeColor()` IS the mono grey, so the tint
         // filters still see one palette.
-        placed.push({ id: `route:${r.fromId}>${r.toId}`, name: r.name, center: mid, label: makeLabelSprite(r.name, hexOf(routeColor())) });
+        placed.push({ id: `route:${r.fromId}>${r.toId}`, name: r.name, center: mid, glyphR: 0, label: makeLabelSprite(r.name, hexOf(routeColor())) });
       }
       // Glow band (skipped when the glow is toggled off, or for dashed — the dash reads better plain).
       if (!r.dashed && routeGlowOn) {
@@ -929,6 +965,15 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       const pxToScale = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
       const hFull = labelSizePx * ls.heightRatio * pxToScale;
       ls.sprite.scale.set(hFull * ls.aspect, hFull, 1);
+      // SAME STRATEGY AS THE SYSTEM MAP (owner, 2026-08-17: "follow exactly the same strategy for
+      // name/tag placement"). The star glyph is a WORLD-sized sprite, so it grows as you zoom: a
+      // constant screen offset reads fine across the sector and buries the badge inside the glow when
+      // you come in on one system. Clear the glyph's own apparent radius instead, so the stack sits on
+      // its edge at every zoom, and the name still sits above the badge because that is the canvas order.
+      const dist = camera.position.distanceTo(p.center);
+      const glyphPxR = p.glyphR / Math.max(1e-9, pxToScale * dist);
+      const hPx = Math.max(1e-6, labelSizePx * ls.heightRatio);
+      ls.sprite.center.set(0.5, -(0.35 * ls.nameFraction + glyphPxR / hPx));
     }
   }
   function loop() {
@@ -1012,7 +1057,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setMarkerOptions, setFilter, setHud, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

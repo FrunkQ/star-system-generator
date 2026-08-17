@@ -956,6 +956,7 @@
           background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
           labelSize={activePreset.labelSize}
           highlights={mapHighlights} markerStyle={activePreset.markerStyle ?? 'label'}
+          markerSize={activePreset.markerSize} flagStaff={activePreset.flagStaff} pinText={activePreset.pinText}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} dropLines={activePreset.starmapDropLines !== false} mono={activePreset.starmapMono}
           overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} zExaggeration={activePreset.zExaggeration ?? 1}
@@ -983,7 +984,7 @@
     <!-- Live orbital map (the holo renderer, tilted for 3D or locked overhead for 2D) + tap-to-inspect -->
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
-        <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} on:focus={handleFocus} />
+        <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} markerSize={activePreset?.markerSize} flagStaff={activePreset?.flagStaff} pinText={activePreset?.pinText} on:focus={handleFocus} />
       {/if}
       {#if activePreset?.systemOverlay && !hudOverlayOn}
         <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
