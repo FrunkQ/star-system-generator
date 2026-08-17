@@ -667,6 +667,18 @@ human-habitability becomes the DEFAULT rather than the whole model.
 - **VTT integration** — last, by owner decision. [[G14]] (model binaries to remote players) rides with it.
 - **V4** — `docs/dev/v4-scope.md`. [[G17]] is shelved there and is NOT a separate design job.
 
+## BROWN DWARF DUAL EXISTENCE — the physics side CHECKED 2026-08-17, and it hangs together
+
+**The owner asked, at 85% coordinator context: is the ignite/douse handover clean, is radiation calculated properly, do both roles behave in their respective fields — "we may have fixed the visuals but have data/calc issues too."** **CHECKED IN THE TREE, and the answer is better than feared: the physics ALREADY treats a brown dwarf by MASS, not by role, in every place that matters.**
+
+**(1) LUMINOSITY AND FLUX — ONE SOURCE SET, BY MASS.** `substellar.ts:53` `isLuminousSource(n)` is `roleHint === 'star' || isSelfLuminous`, and **the processor's substellar pass sets `isSelfLuminous` from mass regardless of role** (v2.1.734, *"role is not the test; mass is"*). **Both `radiation.ts` (`:325`, `:362`) and `temperature.ts` (`:459`, `:488`) filter sources through that ONE function.** So a planet-role brown dwarf irradiates and warms its moons exactly as a star-role one does. **AND THE ONE DIVERGENCE THAT EXISTED IS ALREADY DELETED**: `SystemProcessor.ts:1579-1584` records that a second flux sum used `roleHint === 'star'` while radiation used `isLuminousSource`, *"so a moon of a brown dwarf was irradiated for its temperature and NOT for its atmosphere-retention check"* — removed, one function owns the source set.
+
+**(2) THE IGNITE/DOUSE HANDOVER — MADE STRUCTURALLY SAFE THIS MORNING (`5643377`).** The substellar cooling track and the star editor's Stefan-Boltzmann sync now call ONE `physics/luminosity.ts`; they used to agree *"by the luck of both being right"*, with no test on the seam at 80 M_Jup. Fixture byte-identical.
+
+**(3) THE BELT / MAGNETOSPHERE PATH — ROLE-BLIND BY CONSTRUCTION.** `radiation.ts:277-296` `beltParticleFlux` reads the HOST's `radiusKm`, `magneticField.strengthGauss` and `rotation_period_hours` and never asks its role. **So a planet-role brown dwarf with a field traps particles like Jupiter does, and a star-role one does too.** That is the "behave like a huge gas giant" requirement, already met.
+
+**WHAT IS STILL OPEN IS DATA, NOT CALCULATION — the two things this handover already names:** **[[B74]]** the L/T/Y mass bands (still `[0.06,0.08]`, `[0.03,0.06]`, `[0.01,0.03]`, so the implausible tags still fire on Luhman 16, WISE 0855, SCR 1845) and **[[B73]]** the classifier's `undefined > 10 → terrestrial` fallback plus the missing planet-side class. **HANDED TO THE BIOSPHERE/COLOUR SESSION per the owner ("hand the BD fixes to the Biosphere toolkit to finish") — it holds the substellar chain already, and the acceptance test is in B74.**
+
 ## SESSION STATE at handover, 2026-08-17 (outgoing coordinator) — READ THIS FIRST
 
 **Everything else in this file is durable. This is not: it is who exists, what is live, and what to pick up. It is the only thing a successor cannot reconstruct from the repo.**
