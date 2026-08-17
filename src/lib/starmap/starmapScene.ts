@@ -47,6 +47,7 @@ import { capMarkers, type HighlightMarker } from '$lib/tags/mapHighlights';
 import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_STEM, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName, pinAside, flagStaffColor, type PinTextMode, type FlagStaffColor } from '$lib/tags/tagPill';
 import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
 import { niceSeries, formatNice } from '$lib/map/niceInterval';
+import { gridFadeWindow } from '$lib/map/gridFade';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -258,20 +259,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // 1 = the near cells are bright and it is gone by the edge of the field. The numbers it maps to
   // live here rather than being sprinkled through the renderer, and the DIAL is preset data.
   let gridFalloff = 0.5;
-  // The fade window at a given strength: at 0 the grid never fades (fadeFrom past the field), at 1
-  // it starts a quarter of the way out. fadeTo trails fadeFrom so the dissolve stays gradual.
-  // WHERE THE TUNABLE PART LIVES, since G4 asks for constants in DATA: the DIAL is preset data
-  // (`starmapGridFalloff` / `gridFalloff`), and that is the thing a GM wants to change. The four
-  // numbers below are the SHAPE of the dial — the near radius shrinking with strength, the span
-  // tightening with it — not tuning. Threading a rule pack into this scene purely to host them was
-  // tried and backed out: the scene takes its options at CONSTRUCTION, so a pack swapped later would
-  // not reach it, and a knob that silently goes stale is worse than one that is honestly in code.
-  function fadeWindow(): { from: number; to: number } {
-    const f = Math.max(0, Math.min(1, gridFalloff));
-    if (f <= 0.001) return { from: GRID_RADIUS * 100, to: GRID_RADIUS * 200 };  // effectively none
-    const from = GRID_RADIUS * (1.6 - 1.35 * f);   // 1.6 R at the gentlest, 0.25 R at the hardest
-    return { from, to: from + GRID_RADIUS * (1.5 - 0.85 * f) };
-  }
+  // The fade window is SHARED with the system map (map/gridFade) — this scene's numbers were the
+  // working reference when the holo's copy was found to delete its grid instead of fading it (C14),
+  // so the shape moved there rather than being duplicated a third time.
+  const fadeWindow = () => gridFadeWindow(gridFalloff, GRID_RADIUS);
 
   function clearGroup(g: THREE.Object3D) {
     g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { x?.map?.dispose?.(); x?.dispose?.(); }); });

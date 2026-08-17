@@ -176,3 +176,37 @@ export function shipLengthScene(lengthM: number, ctx: ScaleContext): number {
 export function markerScale(bodySize: number): number {
 	return bodySize >= READABLE_DIAL ? 1 : Math.max(0.02, bodySize);
 }
+
+/** A wireframe/lo-poly vertex dot, as a fraction of the body it decorates. */
+export const WIRE_DOT_FRAC = 0.13;
+/**
+ * A dot may never exceed this fraction of its body's rendered radius. THIS IS THE FIX, not tuning:
+ * without a cap the dot has no relationship to the thing it is drawn on.
+ */
+export const WIRE_DOT_MAX_FRAC = 0.5;
+
+/**
+ * Size of a wireframe / lo-poly VERTEX DOT, in scene units.
+ *
+ * WHY IT IS A LAW AND NOT A `Math.max` AT THE CALL SITE (C15). The scene sized these as
+ * `max(0.02 * markerScale(dial), radius * 0.13)` — a floor in WORLD units, which is F2/F3's fault
+ * wearing new clothes. `markerScale` bottoms out at 0.02, so the floor bottoms out at 4e-4 scene
+ * units, while a body shrinks by FIVE orders of magnitude between the readable dial and true scale.
+ * Measured on the owner's screenshot case: Mars at true scale in a 30 AU system renders at 9.1e-6
+ * scene units, against a dot floor of 4e-4 — the dot is FORTY-FOUR TIMES the planet's radius, which
+ * is the "huge white pixelated blob with wireframe scribbles inside" that was reported.
+ *
+ * The floor is kept, because at the readable end it is what stops a small moon's dots vanishing —
+ * but it is now CLAMPED to the body's own radius, so a dot can never be bigger than the thing it
+ * decorates at any dial position. That clamp is the whole fix and it is what the test pins: the
+ * floor is a legitimate readable-end device and an absurdity at true scale, and the cap is what
+ * tells the two apart without needing a second branch.
+ *
+ * `markerScale` is still the right shrink for the floor itself — that is the shared sprite rule the
+ * belt rubble and ring particles use, and this stays consistent with them.
+ */
+export function wireDotSize(radiusScene: number, bodySize: number): number {
+	const r = Math.max(0, radiusScene);
+	const wanted = Math.max(r * WIRE_DOT_FRAC, 0.02 * markerScale(bodySize));
+	return Math.min(wanted, r * WIRE_DOT_MAX_FRAC);
+}

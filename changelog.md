@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.771-beta - 17th Aug 2026
+
+- **Fixed: the system map's grid-falloff dial DELETED the grid instead of fading it toward the edge.** The same dial on the starmap behaved, because the two maps each had their own copy of the numbers behind it -- and the system map's were set for a smaller area than it actually draws, so the fade had finished before it reached the outermost rings. At full strength four of the six distance rings and the whole rim were being drawn at zero. Both maps now share one set of numbers, the starmap's, so the dial reads the same on both and cannot drift apart again.
+- **Fixed: on the glowing-wireframe styles, a planet turned into a white blob as the size dial moved toward true scale.** The dots drawn at each corner of the wireframe had a minimum size fixed in world units, and a planet shrinks by about a hundred thousand times across that dial while the minimum did not -- so on Mars at true scale each dot was forty-four times the planet's own radius, and the planet vanished inside its own decoration. A dot can now never be larger than the body it belongs to.
+- **Fixed: the "Terminal Clear" transition ran backwards.** The bright flash sat ahead of the clearing edge and faded into the page still to be cleared; it now flashes as the edge reaches each character and fades out behind it, which is the way a terminal actually clears.
+
 ## v2.1.770-beta - 18th Aug 2026
 
 - **The Rarity dial is now a ladder rather than a gate, and it starts a quarter of the way along instead of in the middle.** It used to be a step: every type at or below the setting was equally likely and anything above it was cut off — so at the default an ordinary rocky world, a superhabitable one and an eyeball world all had the same chance, because "allowed" and "likely" were the same thing. Each type is now weighted by how exotic it is, on a curve the dial reshapes, so a common world is genuinely common and a legendary one genuinely rare — but nothing is ever ruled out, at any setting.

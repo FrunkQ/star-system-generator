@@ -13,8 +13,7 @@ import { AU_KM } from '$lib/constants';
 import {
 	GRID_RADIUS, STAR_RADIUS, dialBlend, readableBodyRadius, bodyRadiusScene,
 	starRadiusScene, readableShipLength, shipLengthScene, markerScale,
-	radiusKmOf, starRadiusKmOf, shipLengthMOf, trueScaleFactor, NUMERICAL_FLOOR
-} from './scaleLaw';
+	radiusKmOf, starRadiusKmOf, shipLengthMOf, trueScaleFactor, NUMERICAL_FLOOR, wireDotSize } from './scaleLaw';
 
 // --- the old closures, verbatim -----------------------------------------------------------------
 const legacyDialBlend = (trueScene: number, readable: number, bodySize: number) => {
@@ -166,5 +165,43 @@ describe('S2b: one numerical floor across kinds', () => {
 		expect(bodyRadiusScene(1, true, tiny)).toBe(NUMERICAL_FLOOR);
 		expect(starRadiusScene(1, tiny)).toBe(NUMERICAL_FLOOR);
 		expect(shipLengthScene(1, tiny)).toBe(NUMERICAL_FLOOR);
+	});
+});
+
+// C15: the lo-poly/wireframe VERTEX DOTS did not shrink toward true scale, so a planet became a
+// white blob with the wireframe scribbled inside it (owner screenshot: Mars, Phobos and Deimos).
+// The dot size carried a floor in WORLD units - F2/F3's fault on a new surface - and the floor
+// bottomed out five orders of magnitude above where the body did.
+describe('wireDotSize - a vertex dot belongs to its body (C15)', () => {
+	// Mars in a 30 AU system at the true-scale end, from the shipped law.
+	const MARS_TRUE = 9.1e-6;
+	const MARS_READABLE = 0.1;
+
+	it('NEVER exceeds its body, at any dial position - the fault, pinned', () => {
+		for (const bodySize of [0, 0.1, 0.25, 0.5, 0.75, 1]) {
+			for (const r of [MARS_TRUE, 1e-8, 1e-4, 0.01, MARS_READABLE, 0.5]) {
+				expect(wireDotSize(r, bodySize)).toBeLessThanOrEqual(r);
+			}
+		}
+	});
+
+	it('the OLD sizing did exceed it, by 44x on the reported case', () => {
+		const old = Math.max(0.02 * markerScale(0), MARS_TRUE * 0.13);
+		expect(old / MARS_TRUE).toBeGreaterThan(40); // the blob
+		expect(wireDotSize(MARS_TRUE, 0) / MARS_TRUE).toBeLessThanOrEqual(1);
+	});
+
+	it('shrinks with the body as the dial goes to true scale', () => {
+		expect(wireDotSize(MARS_TRUE, 0)).toBeLessThan(wireDotSize(MARS_READABLE, 1));
+	});
+
+	it('keeps a visible dot at the readable end, where the floor earns its place', () => {
+		// A small readable moon still gets a dot that is a real fraction of it, not a sliver.
+		expect(wireDotSize(0.02, 1)).toBeGreaterThan(0.02 * 0.1);
+	});
+
+	it('is never negative, and a size-less body gets no dot rather than a floor', () => {
+		expect(wireDotSize(0, 0)).toBe(0);
+		expect(wireDotSize(-1, 1)).toBe(0);
 	});
 });

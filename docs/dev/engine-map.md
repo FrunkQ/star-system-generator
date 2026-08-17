@@ -785,6 +785,30 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S24 A shared LOOK needs a shared CONSTANT, or the copies diverge into a bug
+WHERE: `src/lib/map/gridFade.ts` (`gridFadeWindow` / `gridFadeAlpha`, pinned in `gridFade.spec.ts`),
+bound by `holo/scene.ts:addGridLines` and `starmap/starmapScene.ts:fadeWindow`. Reported as C14.
+RULE: when two surfaces offer the SAME control, the numbers behind it live in one module and both
+bind it. A dial that reads identically in two preset editors and computes differently in two
+renderers is not a difference, it is a defect waiting to be reported.
+WHY: the grid's edge fade existed twice. On the starmap it faded; on the system map the same dial
+DELETED the grid. Measured on a real system (rMax 30 AU, the shipped 0.65 compression, the six
+`niceSeries` rings): at three-quarter dial the holo's outer rings sat at alpha 0.07/0.20/0.33 with
+the rim at 0.07, and at full dial FOUR OF SIX RINGS AND THE RIM WERE EXACTLY ZERO, while the
+starmap's window held the rim at 0.52 over the same range. Not a typo - a window calibrated for the
+wrong extent. `compressRadius` maps the outermost body to EXACTLY `gridRadius`, so a system map's
+content reaches the rim, and the holo's window had finished fading by 0.7 R, i.e. INSIDE the
+content. The starmap's constants already started beyond the field, which is why only one view broke.
+BLAST: THE OBVIOUS SUSPECT WAS WRONG AND COST THE FIRST PASS. The floating origin makes "is this
+coordinate star-relative?" the natural first question, and the answer here was yes - the rings are
+built by `ringPoints(compressScalar(au))` about the origin and `abs[]` is never rebased, exactly as
+its comment claims; the materials are `transparent: true` and per-vertex alpha does apply. Both were
+verified before the maths was touched. When a fade "deletes", COMPUTE THE ALPHA AT THE RADII THE
+CONTENT ACTUALLY OCCUPIES before reaching for a coordinate-space explanation - it is six lines of
+arithmetic and it names the fault outright. Also: a per-vertex fade on a full-width line judges the
+whole line by its endpoints, which is why the plate grid segments itself when the dial is on
+(inbox A37) - any new grid geometry needs the same treatment or it will fade in steps.
+
 ### RENDER-S23 A working MOUSE path is no evidence at all about TOUCH
 WHERE: `viewport/cameraRig.ts:ownsDistance` (exported, pinned in `cameraRig.spec.ts`), bound by the
 pointer/wheel listeners in `holo/scene.ts`. Reported as C10.

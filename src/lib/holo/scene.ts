@@ -36,6 +36,7 @@ import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRe
 import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
 import { gridLevels, niceSeries, formatNice } from '$lib/map/niceInterval';
+import { gridFadeWindow, gridFadeAlpha, GRID_FADE_OFF } from '$lib/map/gridFade';
 import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
@@ -72,7 +73,7 @@ import {
   GRID_RADIUS as SCALE_GRID_RADIUS, STAR_RADIUS as SCALE_STAR_RADIUS,
   dialBlend as scaleDialBlend, bodyRadiusScene as scaleBodyRadiusScene,
   starRadiusScene as scaleStarRadiusScene, shipLengthScene as scaleShipLengthScene,
-  markerScale as scaleMarkerScale, readableBodyRadius,
+  markerScale as scaleMarkerScale, readableBodyRadius, wireDotSize as scaleWireDotSize,
   radiusKmOf, starRadiusKmOf, shipLengthMOf
 } from '$lib/rendering/scaleLaw';
 import type { System } from '$lib/types';
@@ -769,6 +770,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // do nothing else. Do NOT reintroduce arithmetic here; it is the copy that goes stale.
   function markerScale(): number {
     return scaleMarkerScale(bodySize);
+  }
+  /** A wireframe/lo-poly vertex dot for a body of this rendered radius. Binding only (RENDER-S11). */
+  function wireDotSize(radiusScene: number): number {
+    return scaleWireDotSize(radiusScene, bodySize);
   }
   /** The live dial + system extent, as the pure law wants them. */
   function scaleCtx() {
@@ -1770,14 +1775,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(abs.length), 3));
     // G4 falloff. Per-vertex alpha from the ABSOLUTE position — computed once, never rebased, so the
     // fade stays anchored to the system while the floating origin moves the drawn coordinates.
-    if (gridFalloff > 0.001) {
-      const f = Math.min(1, gridFalloff);
-      const from = GRID_RADIUS * (1 - 0.85 * f);
-      const to = from + GRID_RADIUS * (1.1 - 0.55 * f);
+    if (gridFalloff > GRID_FADE_OFF) {
+      // ONE window for every map that draws a grid (map/gridFade). This used to be its own pair of
+      // constants and they were calibrated for a smaller extent than this scene actually fills:
+      // `compressRadius` maps the outermost body to EXACTLY GRID_RADIUS, so the content reaches the
+      // rim, and the old window had finished fading by 0.7 R - i.e. inside the content. Measured on
+      // a real system it put four of six rings and the rim at alpha ZERO, which is C14's "deletes
+      // the grid rather than highlighting it". The shared window is the starmap's, which the owner
+      // reports as correct on that view.
+      const win = gridFadeWindow(gridFalloff, GRID_RADIUS);
       const cols = new Float32Array(pts.length * 4);
       for (let i = 0; i < pts.length; i++) {
         const d = Math.hypot(abs[3 * i], abs[3 * i + 2]);
-        const a = d <= from ? 1 : Math.max(0, 1 - (d - from) / Math.max(1e-6, to - from));
+        const a = gridFadeAlpha(d, win);
         const c = (mat as THREE.LineBasicMaterial).color;
         cols[4 * i] = c.r; cols[4 * i + 1] = c.g; cols[4 * i + 2] = c.b;
         cols[4 * i + 3] = a * ((mat as THREE.LineBasicMaterial).opacity ?? 1);
@@ -1852,7 +1862,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // with the dial at 0, which is this view's default, `addGridLines` writes no colour attribute at
       // all and the pieces buy nothing. One run per line then, which is 65,000 vertices down to a few
       // hundred on the fine level.
-      const SEG = gridFalloff > 0.001 ? Math.max(0.25, R / 16) : Infinity;
+      const SEG = gridFalloff > GRID_FADE_OFF ? Math.max(0.25, R / 16) : Infinity;
       for (let a = -half; a < half - 1e-9; a += SEG) {
         const b = Math.min(half, a + SEG);
         pts.push(new THREE.Vector3(a, 0.01, o), new THREE.Vector3(b, 0.01, o));   // along x
@@ -3570,7 +3580,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // non-emissive polys, glow adds the emissive glowing vertices — same as the other bodies.
           const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
           const occluded = renderStyle === 'wire-glow-occ' || renderStyle === 'wire-flat-occ';
-          mesh = buildWireframeBody(starR, colorHex, glow, occluded, null, 0.02 * markerScale());
+          mesh = buildWireframeBody(starR, colorHex, glow, occluded, null, wireDotSize(starR));
         } else if (isBH) {
           // Black hole: a pure-black event horizon. A quiescent hole shows only a faint photon-ring
           // glow; a FEEDING hole (star/BH_active or accretionEddington>0) gets a bright, hot white-gold
@@ -3626,7 +3636,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
-            const dotMat = new THREE.PointsMaterial({ color: colorHex, size: Math.max(0.02 * markerScale(), starR * 0.13), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+            const dotMat = new THREE.PointsMaterial({ color: colorHex, size: wireDotSize(starR), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.Points(sphere.geometry, dotMat));
           }
           // Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
@@ -3678,7 +3688,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const glow = renderStyle === 'wire-glow' || renderStyle === 'wire-glow-occ';
           const occluded = renderStyle === 'wire-glow-occ' || renderStyle === 'wire-flat-occ';
           const terrain = bodyStyle === 'textured' ? wireTerrain(node) : null;
-          const wf = buildWireframeBody(radius, selHex, glow, occluded, terrain, 0.02 * markerScale());
+          const wf = buildWireframeBody(radius, selHex, glow, occluded, terrain, wireDotSize(radius));
           if (polF < 0.999) wf.scale.set(1, polF, 1);
           mesh = wf;
           // Wireframe aurora: don't light the whole body — just add a few flickering emissive polar arcs
@@ -3740,7 +3750,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: selHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
-            const dotMat = new THREE.PointsMaterial({ color: selHex, size: Math.max(0.02 * markerScale(), radius * 0.13), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+            const dotMat = new THREE.PointsMaterial({ color: selHex, size: wireDotSize(radius), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.Points(sphere.geometry, dotMat));
           }
           // Aurora: an additive emissive shell glowing at the (tilted) magnetic poles, flickering over
@@ -4916,7 +4926,7 @@ function buildLandPolys(geo: THREE.SphereGeometry, radius: number, t: WireTerrai
 // only. `occluded` adds an invisible depth-writing sphere so the far-side edges are hidden (a solid
 // vector globe) instead of see-through. `terrain` fills the land facets so worlds with coastlines show
 // rough continents. Returned as a Group so the caller can tilt/scale/spin it.
-function buildWireframeBody(radius: number, color: number, glow: boolean, occluded: boolean, terrain?: WireTerrain | null, dotFloor = 0.02): THREE.Group {
+function buildWireframeBody(radius: number, color: number, glow: boolean, occluded: boolean, terrain?: WireTerrain | null, dotSize?: number): THREE.Group {
   const g = new THREE.Group();
   const SEG_LON = 16, SEG_LAT = 10;
   const geo = new THREE.SphereGeometry(radius, SEG_LON, SEG_LAT); // low-poly for the faceted vector look
@@ -4937,7 +4947,9 @@ function buildWireframeBody(radius: number, color: number, glow: boolean, occlud
   g.add(new THREE.LineSegments(new THREE.WireframeGeometry(geo), lineMat));
   if (glow) {
     // Vertices brighter than lines — the vector-screen highlight. Flat modes omit these.
-    const dotMat = new THREE.PointsMaterial({ color, size: Math.max(dotFloor, radius * 0.16), sizeAttenuation: true, transparent: true, opacity: 1, blending, depthWrite: occluded });
+    // The size is the LAW's answer (scaleLaw.wireDotSize), passed in by the scene - see C15. The old
+    // `max(floor, radius * 0.16)` had a world-unit floor that outgrew the body it decorated.
+    const dotMat = new THREE.PointsMaterial({ color, size: dotSize ?? radius * 0.16, sizeAttenuation: true, transparent: true, opacity: 1, blending, depthWrite: occluded });
     g.add(new THREE.Points(geo, dotMat));
   }
   return g;
