@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.718-beta - 17th Aug 2026
+
+- On the GM starmap, a system's name, its depth cue and its tag badges now share one column to the right of the star, name at the top. They used to be placed independently and both to the right of the same point, so a long name and a badge landed on top of each other.
+- FIXED: labels drifted away from their star as you zoomed out. The offset was measured from the system's CENTRE and was a constant number of map units, so it grew on screen as the glyphs shrank. It is now measured from the edge of the star glyph itself - including the spread of a multiple star - and is a constant gap at every zoom.
+- Star names are a little smaller (11px from 12): at the old size one long name dominated a crowded sector.
+
 ## v2.1.715-beta - 17th Aug 2026
 
 - FIXED: your tag colours and names now reach your players' own devices. The vocabulary - which categories exist, what they are called, what colour they are - lived only in the browser it was set in, so a second window on your machine looked right and a player's phone got the shipped defaults. The GM now publishes it with the campaign.

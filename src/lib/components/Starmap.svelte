@@ -146,6 +146,10 @@
   // SCREEN size. (The 3D starmap gets the same result a different way: its labels are sprites with an
   // explicit size, which never inherit scene scale in the first place.)
   $: labelK = 1 / Math.max(0.05, zoom);
+  // Whether the depth cue is shown AT ALL for this campaign. Named here rather than computed inside a
+  // helper for the same reason as labelColumn's `k`: the badge stack sits below the cue, so its offset
+  // has to depend on this, and a dependency hidden in a function body is not a dependency (TAG-17).
+  $: zDepthOn = zCounts(starmap) && activeScale.pixelsPerUnit > 0;
 
   let lastMouseX = 0;
   let lastMouseY = 0;
@@ -636,6 +640,48 @@
       const root = system.nodes.find(n => n.parentId === null);
       if (root && root.kind === 'body') return [root as CelestialBody];
       return [];
+  }
+
+  // ── WHERE A SYSTEM'S WRITING GOES, and why it is measured off the GLYPH rather than the position ──
+  //
+  // The star glyphs are drawn at a fixed WORLD radius (r = 5, with a spread of up to 7 for a multiple),
+  // so they grow and shrink with the zoom. Every label beside them was offset by a constant SCREEN
+  // distance from the system's centre — 15 px — which is wrong at both ends of the dial and was
+  // reported at both: zoomed IN the glyph is far wider than 15 px so the name lands on top of it,
+  // zoomed OUT the glyph is a dot and the name floats 15 px from nothing, reading as detached.
+  //
+  // Both are the same fault as the one fixed on the two 3D surfaces: clear the object's own drawn
+  // extent, then add a constant gap. Here the arithmetic is easier because the offsets live in WORLD
+  // units inside the map transform — the glyph half-extent is already world, and the gap converts with
+  // labelK — so `halfW + gap * labelK` is a constant screen gap from the glyph's EDGE at every zoom.
+  //
+  // The extents are read off the circles below, not guessed: one star is r 5 at the centre; two are r 5
+  // at x ±5; three are (0,-6) and (±6,+5); four are (0,±6) and (±7,0).
+  function glyphHalf(n: number): { w: number; h: number } {
+    if (n <= 0) return { w: 3, h: 3 };   // the empty-system fallback dot
+    if (n === 1) return { w: 5, h: 5 };
+    if (n === 2) return { w: 10, h: 5 };
+    if (n === 3) return { w: 11, h: 11 };
+    return { w: 12, h: 11 };
+  }
+  /**
+   * The RIGHT-HAND COLUMN a system's writing occupies: name at the top, then the depth cue, then the
+   * tag badges, all sharing one left edge clear of the glyph. Keeping them in one column is what stops
+   * the name and the badges colliding — they used to be independently placed and both to the right.
+   */
+  // `k` IS PASSED IN, NOT CLOSED OVER — TAG-17, and it bit again while this was being written.
+  // A `{@const}` re-evaluates only when a value its OWN expression mentions changes. The first version
+  // of this read `labelK` from the component scope, so every column was computed once at mount, when
+  // labelK was 1, and frozen: the gap came out as 6 WORLD units instead of 6 screen px, which is the
+  // zoom-dependent offset this whole change exists to remove. Measured, not guessed — 6.00 against an
+  // expected 15.11 at zoom 0.397. Name the reactive value at the call site and the compiler tracks it.
+  const LABEL_GAP_PX = 6;
+  function labelColumn(systemNode: any, k: number): { x: number; topY: number } {
+    const half = glyphHalf(getVisualNodes(systemNode.system).length);
+    return {
+      x: systemNode.position.x + half.w + LABEL_GAP_PX * k,
+      topY: systemNode.position.y - half.h
+    };
   }
 
   // --- BodyPicker (starmap-scoped: pick a system by name, OR an interstellar ship) ---
@@ -1316,10 +1362,20 @@
           {#each starmap.systems as systemNode}
         {@const hl = systemMarkers(systemNode, activeHighlights, $tagCategories)}
         {#if hl.shown.length}
-          <g class="hl-markers" transform="translate({systemNode.position.x + 8 * labelK}, {systemNode.position.y - 10 * labelK}) scale({labelK})" pointer-events="none" style="font-size:{markerPill.fontPx}px; font-family:{markerPill.fontFamily}">
+          <!-- Same column as the name, starting below it — and below the depth cue when that is shown,
+               which is why this needs the same predicate rather than a guess. The group is SCALED by
+               labelK, so everything inside is in screen px: `off` is a pixel figure. -->
+          {@const col = labelColumn(systemNode, labelK)}
+          {@const off = zDepthOn && (systemNode.position.z ?? 0) !== 0 ? 20 : 9}
+          <g class="hl-markers" transform="translate({col.x}, {col.topY + off * labelK}) scale({labelK})" pointer-events="none" style="font-size:{markerPill.fontPx}px; font-family:{markerPill.fontFamily}">
             {#each hl.shown as m, i (m.key)}
               {#if m.style === 'ring' || m.style === 'both'}
-                <circle cx={-8} cy={10} r={9 + i * 2.5} fill="none" stroke={m.color} stroke-width="1.4" />
+                <!-- A ring encircles the STAR, so it has to undo the column offset. Inside this group
+                     one unit is one screen px, and the glyph's own half-extent is world — hence the
+                     zoom. Derived rather than the old hardcoded (-8, 10), which was tuned to the
+                     origin this transform used to have. -->
+                {@const half = glyphHalf(getVisualNodes(systemNode.system).length)}
+                <circle cx={-(half.w * zoom + LABEL_GAP_PX)} cy={half.h * zoom - off} r={9 + i * 2.5} fill="none" stroke={m.color} stroke-width="1.4" />
               {/if}
               {#if m.style !== 'ring'}
                 {@const p = tagPillSvg(tagPillText(m), 0, i * markerPill.rowStep, markerPill)}
@@ -1481,11 +1537,15 @@
               {/if}
           {/if}
         </g>
+        <!-- The name takes the TOP of the label column (owner, 2026-08-17), with the badges below it
+             rather than beside it, so the two can no longer collide. 11px rather than 12: at the old
+             size a long name dominated a crowded sector. -->
+        {@const col = labelColumn(systemNode, labelK)}
         <text
-          x={systemNode.position.x + 15 * labelK}
-          y={systemNode.position.y + 5 * labelK}
+          x={col.x}
+          y={col.topY}
           class="star-label"
-          style="font-size:{12 * labelK}px; stroke-width:{2 * labelK}px"
+          style="font-size:{11 * labelK}px; stroke-width:{2 * labelK}px"
         >
           {systemNode.name}
         </text>
@@ -1495,11 +1555,11 @@
              A12: hidden when the campaign has opted out of counting depth — an annotation of a number
              that no longer affects any distance is noise. Gated on `zCounts`, the one predicate for
              that flag, so this can never disagree with what the measure tool is actually doing. -->
-        {#if zCounts(starmap) && (systemNode.position.z ?? 0) !== 0 && activeScale.pixelsPerUnit > 0}
+        {#if zDepthOn && (systemNode.position.z ?? 0) !== 0}
           {@const dz = (systemNode.position.z ?? 0) / activeScale.pixelsPerUnit}
           <text
-            x={systemNode.position.x + 15 * labelK}
-            y={systemNode.position.y + 16 * labelK}
+            x={col.x}
+            y={col.topY + 11 * labelK}
             class="depth-label"
             style="font-size:{9 * labelK}px"
           >{dz > 0 ? '+' : ''}{Math.abs(dz) < 10 ? dz.toFixed(1) : Math.round(dz)} {activeScale.unit}</text>

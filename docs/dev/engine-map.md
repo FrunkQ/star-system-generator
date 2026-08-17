@@ -231,6 +231,13 @@ empty selection at mount and frozen there. The FADE worked throughout, because i
 `highlightsActive` directly — which is exactly what made it hard to see: the map visibly responded to a
 highlight (31 of 42 systems dimmed) while the thing the feature is FOR never appeared. Measured after the
 fix: 11 marker groups, 14 pills, matching the 42−31 that were not dimmed.
+SECOND INSTANCE, SAME FILE, 2026-08-17: `labelColumn(systemNode)` closed over `labelK` to offset a
+system's name past its star glyph. Every column was therefore computed once at mount, when `labelK` was
+1, and frozen — so a gap meant to be 6 SCREEN px came out as 6 WORLD units, which is the
+zoom-dependent offset the change existed to remove. Caught by MEASURING rather than by looking: 6.00
+against an expected 15.11 at zoom 0.397. Fixed by passing `k` as an argument. **The tell both times was
+a value that looked plausible at one zoom** — if a helper in this file reads anything reactive, check it
+at two zooms before believing it.
 BLAST: any `{@const}` calling a `const` helper in this file or another legacy-mode (`$:`) component — the
 same shape appears wherever a helper is defined once and used in a template. A continuous
 `requestAnimationFrame` renderer does NOT have this bug and is why the ORRERY was fine:
