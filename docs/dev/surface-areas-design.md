@@ -5,7 +5,17 @@ work in readable (sunward half, poles, equatorial belt, etc) terms and area — 
 of the planet at a bearing and distance and a size. They may represent tectonic plates, a city, a
 quadrant, a hemisphere, etc."*
 
-**THE POINT OF WRITING THIS NOW IS THE SEAM, NOT THE FEATURE.** Every derivation in the engine today
+> **STATUS: DESIGNED, AND DEFERRED WHOLE TO V4.** Owner, 2026-08-18: *"we don't need to implement this
+> now if it's going to make little difference but critical for V4 — we can put to bed. Push it all to
+> V4."* **Nothing in this document is scheduled.** The phases in §7 are the ORDER to take it in when
+> V4 picks it up, not a plan for now, and no part of it is waiting on anything today.
+>
+> It was written early on purpose and that purpose still holds: the record below is what V4's plate
+> drift needs, and settling its shape while the reasoning was fresh costs nothing now and saves the
+> rediscovery later. The measurements in §1 are the part with a shelf life — they were taken at
+> v2.1.764-beta and should be re-taken before anyone builds on them.
+
+**THE POINT OF WRITING THIS DOWN IS THE SEAM, NOT THE FEATURE.** Every derivation in the engine today
 assumes a body has ONE surface. That assumption is cheap to hold and expensive to unpick, and it is
 being written into more code every week. This document fixes the shape of the record that replaces
 it, and specifies the smallest change that puts the seam in place without moving a single number.
@@ -222,10 +232,11 @@ propagator rather than inside the derivation passes.
 
 ## 7. THE SPEC — what to build, in what order, with the blast area of each
 
-### Phase 1 — the seam. Build NOW. Blast area: ZERO behaviour change.
+### Phase 1 — the seam. Blast area: ZERO behaviour change.
 
 **Goal: the record exists, the maths exists, the aggregate is preserved, and no derived number
-moves.** The fixture being byte-identical is the acceptance test.
+moves.** The fixture being byte-identical is the acceptance test. It is written as a standalone step
+so that it CAN be taken on its own if V4 wants the seam before the rest — not because it should be.
 
 1. `src/lib/physics/surfaceAreas.ts` — the `AreaFrame` / `AreaShape` / `SurfaceArea` types from §2,
    plus `areaFraction(shape)` implementing §3 and `stackWeights(areas)` implementing §4.
@@ -257,8 +268,10 @@ the body's own vigor, so that two cryovolcanic moons of different vigor differ. 
 inversion is already continuous and stays.
 
 **Blast area: every one of the eleven readers above, and the fixture will churn heavily.** This is
-the risky phase, and it is risky because it is real. It also wants a decision the owner should make:
-whether the resurfacing rate produces a DISTRIBUTION of terrain ages (§1.4) or still one number.
+the risky phase, and it is risky because it is real. It also carries the one open design question, for
+whoever builds it rather than for now: does the resurfacing rate produce a DISTRIBUTION of terrain
+ages (§1.4), or still one number? Earth is the case that argues for a distribution — ocean floor
+under 0.2 Gyr against continental crust over 2, which a single figure flattens.
 
 ### Phase 3 — consumers mix over the stack.
 

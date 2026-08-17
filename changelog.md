@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.769-beta - 18th Aug 2026
+
+- Docs only. The surface-areas design - describing part of a world rather than all of it - is deferred whole to V4 and now has its own section in the V4 scope, so that work opens with the record already settled. The standing limitation it uncovered stays on the board: a world's surface age is currently its tectonic regime's constant, which is why the icy-moon work could not separate Ganymede from Callisto.
+
+
 ## v2.1.768-beta - 17th Aug 2026
 
 - Docs only. The design for describing PART of a world - a polar cap, the sunward half, a tectonic plate, a city - is written up ahead of V4's plate drift, along with the one measured reason the icy-moon work stopped where it did: a world's surface age is currently its tectonic regime's constant, so there are five distinct surface ages across the whole solar system and nothing keyed on it can say more than that.

@@ -385,6 +385,25 @@ not a preference, it is the V4 foundation.
 - **The rule-pack data pattern** — composition, liquids, cloud decks. The biosphere refresh should
   follow it rather than invent a fourth shape.
 
+## Surface areas — specified ahead of time, so V4 needs no design pass for them
+
+**DESIGNED IN FULL, AND DEFERRED HERE WHOLE.** Owner, 2026-08-18, after reading
+the design: *"we don't need to implement this now if it's going to make little difference but
+critical for V4 — we can put to bed. Push it all to V4."* So this is not a caution about work
+happening now: it is a piece of V4 that is already specified and needs no design pass when it opens.
+`docs/dev/surface-areas-design.md` holds it — a frame (`body` / `spin` / `stellar` / `primary` /
+`orbital`) plus one of three closed-form shapes (cap-or-ellipse, band, lune), stacked as ordered
+paint rather than nested, with the area fraction DERIVED from the geometry. **Plate drift is the
+driving case and needs one new field, `drift: { bearing, rate }`, plus a widening of `centre` from
+a static pair to a time-evolving one.**
+**Two things in it are measured rather than argued, and are worth reading before any V4 surface
+work:** the engine ALREADY carries the four frames, spelled separately in four places, so the
+vocabulary is a naming exercise rather than an invention — and a world's surface age is currently
+its tectonic REGIME'S CONSTANT, which gives five distinct surface ages across all 40 bundled bodies
+and caps what any surface law can express. That second one is why terrain alone would not have
+fixed Ganymede (0.153 against a measured 0.35), and it is the first thing to fix when V4 opens this
+area. **The measurements were taken at v2.1.764-beta and want re-taking before use.**
+
 ## Two warnings for whoever opens V4
 
 1. **THE GENERATION DUPLICATION PROBLEM IS THE MAIN RISK, and V4 is where it is either fixed or made
@@ -408,18 +427,5 @@ These are the only parts of this file that affect anything before V4, and they a
 - **GEN-1 is now load-bearing, not housekeeping.** Anyone tempted to prune the evolutionary/Accrete
   path is deleting the V4 foundation.
 - **G17 stays shelved and stays linked here.** It is not a separate design job.
-- **SURFACE AREAS — THE SEAM IS BEING PUT IN NOW, AND V4 DRIFT IS WHY.** Owner, 2026-08-17: V4 will
-  subdivide a world into areas for surface detail — tectonic plate drift being the driving case, which
-  is *a fraction, a bearing and a rate*. `docs/dev/surface-areas-design.md` fixes the record now:
-  a frame (`body` / `spin` / `stellar` / `primary` / `orbital`) plus one of three closed-form shapes
-  (cap-or-ellipse, band, lune), stacked as ordered paint rather than nested, with the area fraction
-  DERIVED from the geometry. **What V4 adds is one field — `drift: { bearing, rate }` — and a widening
-  of `centre` from a static pair to a time-evolving one.**
-  **The reason to do the record before V4 rather than with it:** every derivation in the engine today
-  assumes a body has ONE surface, that assumption is being written into more code every week, and it
-  is expensive to unpick afterwards. Phase 1 of that spec puts the seam in with ZERO behaviour change
-  — the fixture is byte-identical by construction — so it can land at any time and blocks nothing.
-  **The prerequisite for it to change any NUMBER is surface-age resolution** (an active world's
-  surface age is currently its regime's constant, giving five distinct ages across all 40 bundled
-  bodies), which is phase 2 of the same spec and wants an owner decision: does a resurfacing RATE
-  produce a distribution of terrain ages, or still one number?
+- **Surface areas were considered for NOW and ruled to V4** — see the section above. Nothing
+  about them blocks or shapes work before then.
