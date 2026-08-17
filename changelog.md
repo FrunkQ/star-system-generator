@@ -4,6 +4,9 @@ All notable changes are listed here:
 
 ## v2.1.758-beta - 17th Aug 2026
 
+* **A moon in the Uggi example is no longer cut off from its own system.** Cerebus Alpha pointed at a parent that was not in the file, so it had no temperature, no distance to its star and no place in the hierarchy at all. It now orbits Hades — the world its own description names — 43,739 km out, which is what makes it the molten, tide-racked place that description promises. Nothing was invented: the file already held every number, one of them written against the wrong object.
+* Internal: the question "does this world have solid ground" was answered by nine separate copies of one test that agreed only by luck. There is one now. No world changes; what changes is that a star can no longer be mistaken for somewhere to stand.
+
 - Changing a starmap between light years and parsecs now ASKS what you meant, showing both answers on a system from your own map: "TRAPPIST-1 is currently 40.66 pc from Sol - should it read 40.66 ly, or 133 ly?" Keeping the numbers (the unit was simply wrong) was previously impossible; every change converted, which is how a map loaded in Traveller mode ended up reading Alpha Centauri at 14.33 ly instead of 4.37. Neither answer moves anything on the map - depths included.
 
 ## v2.1.757-beta - 17th Aug 2026

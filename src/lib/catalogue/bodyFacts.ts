@@ -54,12 +54,14 @@ export function atmosphere(b: CelestialBody): string {
 // Same question the physics asks (inbox B18/B22): is there anywhere to stand? Reads the stored
 // makeup rather than re-deriving it, so the LABEL can never disagree with the model that produced
 // the number it labels.
-// hasSolidSurface and radiationPlace now live in physics/radiation.ts (inbox B11): the PROCESSOR
-// needs the same "does this figure describe a real place" answer to decide whether a body's dose
-// earns a hazard tag, and a second copy of that decision beside this one is the duplication the
-// standing rule exists to stop. Re-exported so every existing caller here and in the components
+// radiationPlace now lives in physics/radiation.ts (inbox B11): the PROCESSOR needs the same "does
+// this figure describe a real place" answer to decide whether a body's dose earns a hazard tag, and
+// a second copy of that decision beside this one is the duplication the standing rule exists to
+// stop. hasSolidSurface moved on again to physics/makeup.ts (inbox B36) — it is a composition
+// question, not a radiation one. Re-exported so every existing caller here and in the components
 // keeps working unchanged.
-export { hasSolidSurface, radiationPlace, orbitalRadiationPlace } from '$lib/physics/radiation';
+export { radiationPlace, orbitalRadiationPlace } from '$lib/physics/radiation';
+export { hasSolidSurface } from '$lib/physics/makeup';
 // …and imported locally too: `export { x } from` re-exports without creating a binding in this
 // module, and the fact builder below calls radiationPlace directly.
 import { radiationPlace, orbitalRadiationPlace } from '$lib/physics/radiation';

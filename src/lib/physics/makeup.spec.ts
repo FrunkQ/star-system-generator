@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bulkDensityFromMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, compressionFactor, inferMakeupFromDensity, makeupFractions, gasThermalInflationFactor, isFluidGiant, rendersAsGiant, reconcileGiantMakeup } from './makeup';
+import { bulkDensityFromMakeup, compressedDensityFromMakeup, radiusReFromMassMakeup, compressionFactor, inferMakeupFromDensity, makeupFractions, gasThermalInflationFactor, isFluidGiant, rendersAsGiant, reconcileGiantMakeup, hasSolidSurface, makeupHasSolidSurface, SOLID_SURFACE_MAX_GAS } from './makeup';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 import type { CelestialBody } from '$lib/types';
 
@@ -103,5 +103,54 @@ describe('fluid-giant detection (drives the giant render look)', () => {
     expect(reconcileGiantMakeup(b({ makeup: { gas: 0.8, ice: 0.2 }, massKg: 3e27, radiusKm: 60000 }))).toBeNull(); // already gassy
     expect(reconcileGiantMakeup(b({ makeup: { rock: 0.7, metal: 0.3 }, massKg: 6e24, radiusKm: 6371 }))).toBeNull(); // Earth — not a giant
     expect(reconcileGiantMakeup(b({ massKg: 3.2e27, radiusKm: 46600 }))).toBeNull(); // no explicit makeup → inference handles it
+  });
+});
+
+// B36 — the has-ground predicate's own pins, at its new home. It was previously in radiation.ts and
+// tested there as a side-effect of the dose LABEL; it is a composition question and belongs here.
+describe('hasSolidSurface — the has-ground question, and only that one', () => {
+  const b = (p: Partial<CelestialBody>): CelestialBody => ({ id: 'x', kind: 'body', roleHint: 'planet', ...p } as CelestialBody);
+
+  it('is the gas fraction against one named boundary', () => {
+    expect(SOLID_SURFACE_MAX_GAS).toBe(0.5);
+    expect(hasSolidSurface(b({ makeup: { gas: 0.49, rock: 0.51 } }))).toBe(true);
+    expect(hasSolidSurface(b({ makeup: { gas: 0.51, rock: 0.49 } }))).toBe(false);
+  });
+
+  it('reads the INFERRED makeup, not the stored field — which is absent on most bundled bodies', () => {
+    // DATA-R8: 107 of 226 non-star bundled bodies carry no `makeup`. Jupiter among them, so a test
+    // that went through the stored field would call the largest planet in the system solid ground.
+    const jupiterish = b({ massKg: 1.898e27, radiusKm: 69911 });   // no makeup authored
+    expect(jupiterish.makeup).toBeUndefined();
+    expect(hasSolidSurface(jupiterish)).toBe(false);
+    const earthish = b({ massKg: 5.972e24, radiusKm: 6371 });      // no makeup authored
+    expect(hasSolidSurface(earthish)).toBe(true);
+  });
+
+  it('excludes a star outright — a photosphere is not somewhere you stand', () => {
+    // And it must not depend on a star's inferred makeup: a DENSE remnant infers as rocky, so
+    // without the roleHint exclusion a white dwarf would report solid ground and be scored for
+    // habitability. Sirius B: 1.02 solar masses inside an Earth-sized ball.
+    const whiteDwarf = b({ roleHint: 'star', massKg: 2.03e30, radiusKm: 5850 });
+    expect(makeupFractions(whiteDwarf).gas).toBeLessThanOrEqual(0.5);  // infers rocky from density
+    expect(hasSolidSurface(whiteDwarf)).toBe(false);                   // ...and is excluded anyway
+  });
+
+  it('makeupHasSolidSurface answers the same question of a bare composition', () => {
+    // The body editor holds a preset's makeup with no node to infer from. Same boundary, by
+    // construction: hasSolidSurface is defined in terms of this.
+    expect(makeupHasSolidSurface({ gas: 0.49, rock: 0.51 })).toBe(true);
+    expect(makeupHasSolidSurface({ gas: 0.51, rock: 0.49 })).toBe(false);
+    expect(makeupHasSolidSurface({ rock: 1 })).toBe(true);   // gas absent = no envelope
+  });
+
+  it('is NOT the negation of rendersAsGiant — engine-map M1/M2 keep them apart', () => {
+    // An ice giant is the body the two could disagree about, and a GM-authored gas-poor makeup at
+    // giant mass is exactly where they do: it draws as a giant while its composition says ground.
+    const gasPoorGiant = b({ makeup: { rock: 0.5, ice: 0.5 }, massKg: 3.2e27, radiusKm: 67600 });
+    expect(rendersAsGiant(gasPoorGiant)).toBe(true);
+    expect(hasSolidSurface(gasPoorGiant)).toBe(true);
+    // Not a contradiction to fix here: SystemProcessor.reconcileGiantMakeup repairs the makeup
+    // before either helper is consulted (M1). This pins that they are separately defined.
   });
 });

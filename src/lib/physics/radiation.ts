@@ -2,7 +2,7 @@ import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
 import { AU_KM, SOLAR_RADIUS_KM, RADIATION_UNSHIELDED_DOSE_MSV_YR } from "$lib/constants";
 import { calculateDistanceRangeToStar, calculateDistanceToStar } from "./temperature";
 import { isLuminousSource } from "./substellar";
-import { makeupFractions } from "./makeup";
+import { makeupFractions, hasSolidSurface } from "./makeup";
 
 const FLARE_PARTICLE_WEIGHT = 0.5;   // how much a star's flare activity adds to the particle dose
 
@@ -15,27 +15,12 @@ const FLARE_PARTICLE_WEIGHT = 0.5;   // how much a star's flare activity adds to
 // charged component); times how long the surface has been exposed (surface age). Necessary but not
 // sufficient for tholins — the visual also needs the organic precursors (retained CH4/N2 ice).
 const GCR_FLOOR = 0.15;              // galactic cosmic-ray / solar-wind background, relative to Earth UV
-// IS THERE GROUND HERE? The same test B18 uses for habitability, B25 for the eyeball classes and
-// B33 for the surface resources — `makeupFractions(body).gas <= 0.5` — so all four now answer "does
-// this body have a surface" identically. Lives here rather than in the catalogue because it is a
-// physical question the processor and the info block must not disagree about.
-//
-// IT USED TO READ THE STORED `makeup.gas` AND A CLASS-NAME REGEX, AND BOTH WERE WRONG (inbox B11).
-// The stored field is usually absent — makeup is normally INFERRED from density, which is what
-// makeupFractions does — so the composition half almost never fired. And the regex listed
-// `gas-giant` but not `ice-giant`, so URANUS AND NEPTUNE read as having solid ground and their dose
-// has been labelled "Radiation (surface)" in the info block for as long as the label has existed:
-// exactly the category error B22 and B18 exist to prevent, inside the helper meant to enforce it.
-// The regex is gone rather than extended, because a derived CLASS is never a physics input
-// (standing rule) and B33 found bundled bodies carrying a giant class at gas 0.00.
-//
-// A STAR is excluded outright: a photosphere is not somewhere you stand, and the radiation model
-// does not compute a star's own dose at all, so without this Sol would carry a "background" hazard
-// tag derived from an undefined figure.
-export function hasSolidSurface(n: any): boolean {
-  if (n?.roleHint === 'star') return false;
-  return makeupFractions(n).gas <= 0.5;
-}
+// IS THERE GROUND HERE? MOVED TO `physics/makeup.ts` (inbox B36) — it is a question about
+// COMPOSITION, so asking the RADIATION module for it made every other caller (the cloud model, the
+// body editor, the habitability gate) depend on this file for no reason. Imported above and used
+// below; there is no re-export, so there is exactly one import path for it. Its history — a stored
+// field and a class regex, both wrong (inbox B11) — is recorded at the new home, along with the
+// engine-map M2 warning about which callers may and may not use it.
 
 // WHICH PLACE a body's primary radiation figure describes. One number cannot answer "what does the
 // ground take" and "what does a ship take", so B22 gave every body two figures and named them; this

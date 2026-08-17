@@ -6,7 +6,7 @@
 // packs STACK — their categories merge and their rules all run.
 import type { System, CelestialBody } from '../types';
 import { derived, get } from 'svelte/store';
-import { makeupFractions } from './makeup';
+import { makeupFractions, hasSolidSurface } from './makeup';
 import { EARTH_MASS_KG } from '../constants';
 import { stripRuleTags } from '../tags/tagLifecycle';
 import { tagCategories, tagRulesEnabled, normalizeTagCategories } from '../tags/tagCategories';
@@ -54,6 +54,9 @@ export const POI_FIELDS: PoIField[] = [
   { field: 'hydroCover', label: 'Liquid coverage', type: 'number', min: 0, max: 1, note: 'Fraction of surface under liquid.' },
   { field: 'ageGyr', label: 'System age (Gyr)', type: 'number', min: 0, max: 13, note: 'Age of the whole system.' },
   { field: 'isGiant', label: 'Is a giant', type: 'bool', note: 'Gas/ice giant (or gas fraction ≥ 0.4).' },
+  // NOT the negation of `isGiant`, and the two must not be swapped for one another: that one is
+  // classes-or-gas≥0.4, this is the physics helper `hasSolidSurface` (inbox B36, engine-map M2).
+  { field: 'hasSolidSurface', label: 'Has solid ground', type: 'bool', note: 'Somewhere to stand — not a giant envelope or a star.' },
   { field: 'hasAtmo', label: 'Has atmosphere', type: 'bool', note: 'Any atmosphere present.' },
   { field: 'hasO2', label: 'Free oxygen', type: 'bool', note: 'Oxidizing / breathable atmosphere (O₂ > 5%).' },
   { field: 'hasBio', label: 'Has biosphere', type: 'bool', note: 'Life or a habitability tier present.' },
@@ -219,6 +222,7 @@ function buildFeatures(b: CelestialBody, ageGyr: number, hasRemnant: boolean, ha
     hydroCover: b.hydrosphere?.coverage || 0,
     ageGyr,
     isGiant: classes.some((c) => c.includes('gas-giant') || c.includes('ice-giant')) || mk.gas >= 0.4,
+    hasSolidSurface: hasSolidSurface(b),
     hasAtmo: !!b.atmosphere && b.atmosphere.name !== 'None',
     hasO2: [...tags].some((k) => k === 'oxidizer' || k.startsWith('breathable-human')) || (b.atmosphere?.composition?.['O2'] ?? 0) > 0.05,
     hasNobleGas: (() => { const c = b.atmosphere?.composition || {}; return ((c['Ar'] ?? 0) + (c['Kr'] ?? 0) + (c['Xe'] ?? 0) + (c['Ne'] ?? 0)) > 0.001; })(),

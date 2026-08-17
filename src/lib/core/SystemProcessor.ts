@@ -26,7 +26,7 @@ export function effectiveOrbitEccentricity(body: any): number | undefined {
 const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
 const ASCENT_TAG = 'flight/ascent';
 import { classifyBody, explainClassification } from '../system/classification';
-import { makeupFractions, derivedPorosity, reconcileGiantMakeup } from '../physics/makeup';
+import { makeupFractions, derivedPorosity, reconcileGiantMakeup, hasSolidSurface } from '../physics/makeup';
 import { surfaceTempProfile, meanSurfaceTempK } from '../physics/surfaceTemperature';
 import { deriveFluidLayers } from '../physics/fluidLayers';
 import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, deriveOxidation, CLOUD_DECK_TAG, PRECIPITATION_TAG,
@@ -1143,7 +1143,7 @@ export class SystemProcessor implements ISystemProcessor {
         // Needs a solid, differentiated body: exclude gas/ice giants (no crust to vent through) and
         // sub-round lumps below the ~200 km limit (a tidally-shredded moonlet like Phobos can't cryovolcano).
         const cryoHeat = (body.tidalHeatK ?? 0) > 1 || (body.radiogenicHeatK ?? 0) > 2 || (body.internalHeatK ?? 0) > 4;
-        if (mk.ice > 0.2 && surfacePhase !== 'liquid' && cryoHeat && mk.gas <= 0.5 && (body.radiusKm ?? 0) >= HYDROSTATIC_MIN_RADIUS_KM) {
+        if (mk.ice > 0.2 && surfacePhase !== 'liquid' && cryoHeat && hasSolidSurface(body) && (body.radiusKm ?? 0) >= HYDROSTATIC_MIN_RADIUS_KM) {
             body.tags.push({ key: 'activity/cryovolcanism' });
         }
 
@@ -1159,7 +1159,7 @@ export class SystemProcessor implements ISystemProcessor {
         // geology/* tag and feeds habitability (carbonate–silicate climate regulation).
         body.tags = stripForReprocess(body.tags, ['geology/']);
         // Gas/ice giants have no solid surface → no tectonic regime; skip them.
-        if (mk.gas <= 0.5 && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
+        if (hasSolidSurface(body) && (body.roleHint === 'planet' || body.roleHint === 'moon')) {
             const hasLiquidSurfaceWater = fluidLayers.some(
                 (l) => l.location === 'surface' && /water/.test(l.liquid)
             );
@@ -1292,7 +1292,7 @@ export class SystemProcessor implements ISystemProcessor {
         // keys a body legitimately carries several times (one per species), so a GM's manual ice sits
         // ALONGSIDE the derived ones rather than suppressing them.
         body.tags = stripForReprocess(body.tags, ['volatiles/']);
-        if (mk.gas <= 0.5 && (body.roleHint === 'planet' || body.roleHint === 'moon') && body.massKg && body.radiusKm) {
+        if (hasSolidSurface(body) && (body.roleHint === 'planet' || body.roleHint === 'moon') && body.massKg && body.radiusKm) {
             body.volatiles = deriveVolatileRetention({
                 massKg: body.massKg,
                 radiusKm: body.radiusKm,
@@ -1378,7 +1378,7 @@ export class SystemProcessor implements ISystemProcessor {
             body.surfaceSpectrum = spectrum?.summary;
             spectrumCurves = spectrum?.curves;
         }
-        if (body.biosphere && mk.gas <= 0.5) {
+        if (body.biosphere && hasSolidSurface(body)) {
             // Seeded on the BODY ID, one stream per named purpose (DATA-G1) — the shared per-run rng
             // would move every saved seed's answer the moment anyone inserted a draw above it. The
             // draw itself is the MODEL, not a placeholder: without an evolutionary history a real
@@ -1462,7 +1462,7 @@ export class SystemProcessor implements ISystemProcessor {
         // is physically meaningless for classification. Zero those features so the terrestrial/habitable
         // fingerprints (swamp, jungle, ocean…) cannot match on stale surface data and mask the giant —
         // this is what lets a world recomposed to gas-dominated actually classify as a giant.
-        if (mk.gas > 0.5) {
+        if (!hasSolidSurface(body)) {
             features['hasBiosphere'] = 0;
             features['hydrosphere.coverage'] = 0;
             features['hydrosphere.composition'] = 'none';
@@ -1536,7 +1536,7 @@ export class SystemProcessor implements ISystemProcessor {
         // Solid surfaces only, for B18's reason: there is nothing to ascend FROM on a giant, and its
         // figure is measured from a notional 1-bar level.
         // Anchors: Luna 1.9 km/s trivial, Mars 4.1 moderate, Earth 10.4 hard, Venus 29.5 extreme.
-        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && makeupFractions(body).gas <= 0.5) {
+        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && hasSolidSurface(body)) {
             body.tags = stripForReprocess(body.tags, [ASCENT_TAG]);
             const dv = body.loDeltaVBudget_ms ?? 0;
             if (dv > 0 && !body.tags.some((t) => t.key === ASCENT_TAG)) {
@@ -1642,9 +1642,7 @@ export class SystemProcessor implements ISystemProcessor {
         //     hidden it. Whether a giant's ENVELOPE deserves an aerial niche of its own, the way the
         //     subsurface ocean has one, is a separate design question and deliberately not answered
         //     here. Same gas test the geology model already uses, so the two agree on what a surface is.
-        const habMakeup = makeupFractions(planet);
-        const hasSolidSurface = habMakeup.gas <= 0.5;
-        if (!hasSolidSurface) {
+        if (!hasSolidSurface(planet)) {
             planet.habitabilityScore = 0;
             emit(planet.tags, { key: 'habitability/none' });
             // The Bio tab still needs something to render, and "no surface to score" is a better

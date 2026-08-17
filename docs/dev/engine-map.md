@@ -1755,6 +1755,30 @@ BLAST: rolling ageing into classification puts the two in one room. If the loop 
 `src/lib/system/idempotence.test.ts` is the only thing that will tell you, and it will tell you late.
 Settle the direction before writing code, not after.
 
+### PHY-17 "Has ground" is `hasSolidSurface`, and it is the ONLY one of the four gas-threshold questions with a predicate
+WHERE: `physics/makeup.hasSolidSurface` / `makeupHasSolidSurface` / `SOLID_SURFACE_MAX_GAS`
+RULE: every site that asks "is there somewhere to stand" calls the helper — the habitability gate, the
+geology/volatiles/cryo/ascent branches, the classifier feature zeroing, the cloud saturation floor, the
+radiation place label, and the rule DSL via the `hasSolidSurface` FEATURE. A caller holding a bare
+`Makeup` with no node uses `makeupHasSolidSurface`; that is the only other entry point, and
+`hasSolidSurface` is defined in terms of it, so one comparison against 0.5 exists in the codebase.
+It lives in `makeup.ts` beside `rendersAsGiant` deliberately: M1 records that those two can disagree
+about an ice giant, and a reader comparing them needs both on one screen. It used to live in
+`physics/radiation.ts`, which made the cloud model and the body editor import the RADIATION module to
+ask a composition question.
+WHY: B36 — nine inline copies of `makeupFractions(x).gas <= 0.5`, agreeing only by luck. The version
+B11 replaced had been silently wrong for months. THE STAR EXCLUSION IS THE PART THAT MATTERS: a dense
+star infers as ROCKY, so measured across every bundled map and example, **103 of 141 stars passed the
+bare inline test as having solid ground** — including Sirius B and Proxima. None of them reaches those
+gates today, because each caller happens to check `roleHint` first. The helper turns that coincidence
+into a guarantee. Sol never showed it because the Sun is low-density enough to infer as a giant, which
+is why the derived baseline is byte-identical and proves nothing on its own.
+BLAST: **read M2 before adding a caller.** `makeup.gas` against 0.5 answers at least four questions —
+*has ground*, *is a giant*, *draws as a giant*, *has a surface to rust*. They share a boundary; they
+are not one question in four spellings. B36 closed the has-ground list ONLY; the other three are still
+inline on purpose. Do not route them here on the strength of the shared constant, and never substitute
+`isGiant` for this (different boundary, and B33 records what happens when the two are confused).
+
 ### DATA-R17 ONE spelling of "what is this star class", and 'B' is why it must be a SHAPE
 WHERE: `src/lib/system/starImage.ts` — `spectralLetterOf`, `resolveStarImage`; pinned by
 `starImage.spec.ts`. Callers: `BodyStarTab.updateImage`, `generation/star.ts` (both the portrait and

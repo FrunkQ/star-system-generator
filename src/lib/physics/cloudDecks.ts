@@ -10,7 +10,7 @@
 import type { CelestialBody, RulePack, Tag, GasCloud, LiquidDef } from '$lib/types';
 import { liquidDef, phaseAtP, saturationPressureBar } from './liquids';
 import { atmosphereProfile, MIN_ATM_BAR, type AtmosphereProfile } from './atmosphereProfile';
-import { makeupFractions } from './makeup';
+import { makeupFractions, hasSolidSurface } from './makeup';
 import { stripForReprocess } from '../tags/tagLifecycle';
 
 // ── The published vocabulary ─────────────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
   // saturation at the surface. Without this, a hundred parts per million of hydrogen cyanide — which
   // on Titan is solid everywhere, ground included — read as an overcast sky rather than the trace
   // frost it is. A giant has no such floor; its reservoir is the hot interior, so it is exempt.
-  const hasSurface = makeupFractions(body).gas <= 0.5;
+  const hasSurface = hasSolidSurface(body);
 
   const decks = new Map<string, CloudDeck>();
   for (const [gas, fracRaw] of Object.entries(comp)) {

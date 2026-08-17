@@ -220,7 +220,13 @@ let _rid = 0; const R = (tag: string, category: string, chance: number, when: Po
 //    the low end is Earth's, so no threshold excludes giants without excluding Earth too.
 // makeup.gas is what B18 and B25 already use, so habitability, classification and now the reasons
 // to visit all answer "does this body have a surface" the same way.
-const SURFACE = (when: PoIExpr): PoIExpr => ({ all: [{ lt: ['makeup.gas', 0.5] }, when] });
+//
+// B36: it no longer restates the threshold. `hasSolidSurface` is a feature the rule evaluator now
+// computes with the physics helper of the same name, so this rule pack and the engine cannot drift
+// apart — and a GM writing their own rule gets the same test from the field picker rather than
+// having to know the magic number. Do NOT substitute `isGiant`: that is a different question with a
+// different boundary (engine-map M2), and B33 records what happens when the two are confused.
+const SURFACE = (when: PoIExpr): PoIExpr => ({ all: [{ eq: ['hasSolidSurface', true] }, when] });
 const RS = (tag: string, category: string, chance: number, when: PoIExpr, appliesTo?: PoIRole[]): PoIRule =>
   R(tag, category, chance, SURFACE(when), appliesTo);
 export const DEFAULT_POI_PACK: PoIPack = {

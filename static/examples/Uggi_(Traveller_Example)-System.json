@@ -2394,7 +2394,7 @@
       "id": "id-1768857520080-9p2grqafx",
       "name": "Cerebus Alpha",
       "kind": "body",
-      "parentId": "bary-auto-id-1772140277289-oenm77xpo",
+      "parentId": "id-1768810736260-o7ivd9uff",
       "tags": [
         {
           "key": "tidal/hotspots"
@@ -2424,12 +2424,12 @@
       "massKg": 3.7701236e+24,
       "radiusKm": 4862,
       "orbit": {
-        "hostId": "bary-auto-id-1772140277289-oenm77xpo",
+        "hostId": "id-1768810736260-o7ivd9uff",
         "hostMu": 4839391005394800,
         "t0": 1801278950854,
-        "n_rad_per_s": 1.0975405576785588e-12,
+        "n_rad_per_s": 0.00024048566874946062,
         "elements": {
-          "a_AU": 100.73983621954578,
+          "a_AU": 0.00029237844940866624,
           "e": 0,
           "i_deg": 0,
           "omega_deg": 92.33183411498833,
@@ -6763,36 +6763,6 @@
         "n_rad_per_s": 0.00007654952859624252
       },
       "placement": "Surface"
-    },
-    {
-      "id": "bary-auto-id-1772140277289-oenm77xpo",
-      "kind": "barycenter",
-      "name": "Hades-Cerebus Alpha Barycenter",
-      "parentId": "bary-auto-id-1771108225594-0gusavqhj",
-      "memberIds": [
-        "id-1768810736260-o7ivd9uff",
-        "id-1768857520080-9p2grqafx"
-      ],
-      "effectiveMassKg": 7.25078436e+25,
-      "orbit": {
-        "hostId": "bary-auto-id-1771108225594-0gusavqhj",
-        "hostMu": 1492118655226000,
-        "t0": 2473951689094.0435,
-        "n_rad_per_s": 0.00013353512712437198,
-        "elements": {
-          "a_AU": 0.00029237844940866624,
-          "e": 0.01,
-          "i_deg": 0,
-          "omega_deg": 92.33183411498833,
-          "Omega_deg": 261.55053411308893,
-          "M0_rad": 2.9872507760543883
-        }
-      },
-      "tags": [
-        {
-          "key": "barycenter/auto"
-        }
-      ]
     }
   ],
   "rulePackId": "starter-sf-pack",

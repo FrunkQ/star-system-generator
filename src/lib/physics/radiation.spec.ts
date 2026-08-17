@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { photonParticleSplit, calculateStellarRadiationComponents, beltParticleFlux, selfBeltParticleFlux, beltInnerEdgeRadii, radiationPlace, hasSolidSurface, orbitalRadiationPlace } from './radiation';
+import { photonParticleSplit, calculateStellarRadiationComponents, beltParticleFlux, selfBeltParticleFlux, beltInnerEdgeRadii, radiationPlace, orbitalRadiationPlace } from './radiation';
+// B36: the has-ground predicate moved to physics/makeup.ts. These two cases stay HERE because what
+// they pin is the radiation labelling contract that depends on it; makeup.spec.ts owns the predicate.
+import { hasSolidSurface } from './makeup';
 import type { CelestialBody, RulePack } from '$lib/types';
 
 // Phase 04.4 — spectral-class photon/particle split. Cool dwarfs are wind/flare-dominated,

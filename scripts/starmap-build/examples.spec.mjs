@@ -15,7 +15,8 @@
 // Evidence that unguarded files drift exactly as D9 predicted — both found by this file's first run:
 //   - `Sol_Expanse` still carried Pluto and Charon with their BARYCENTRE's heliocentric elements,
 //     four months after C3 looked at that file and nine days after C7 swept it (D14). Fixed.
-//   - `Uggi` carries a barycentre whose parent is not in the file (see KNOWN_UNRESOLVED).
+//   - `Uggi` carried a barycentre whose parent was not in the file. Repaired (D23); the list below
+//     is empty again, and this test is what proves it.
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,22 +32,21 @@ const load = (f) => JSON.parse(readFileSync(join(examplesDir, f), 'utf-8'));
 const NEEDS_MASS_AND_RADIUS = (n) =>
 	n.kind === 'body' && !['belt', 'ring', 'station', 'construct'].includes(n.roleHint);
 
-// ONE KNOWN FAULT, RECORDED RATHER THAN SILENCED. The assertion below is `toEqual(KNOWN_UNRESOLVED)`,
-// not a filter, so this test goes red on a NEW break AND on this one being FIXED — which is what
-// stops an allowlist quietly becoming permanent.
+// EMPTY, AND IT MUST STAY THAT WAY. The assertion below is `toEqual(KNOWN_UNRESOLVED)`, not a
+// filter, so this test goes red on a NEW break AND on a listed one being FIXED — which is what
+// stops an allowlist quietly becoming permanent. It held exactly one entry, and holds none now.
 //
-// Uggi's "Hades-Cerebus Alpha Barycenter" points `parentId` and `orbit.hostId` at
-// `bary-auto-id-1771108225594-0gusavqhj`, which is not in the file — so `pathToRoot` DIES for
-// Cerebus Alpha and nothing downstream of it (distance to star, temperature, eclipses) can be
-// derived at all. It is wreckage from an incomplete barycentre re-parenting: the barycentre claims
-// Hades as a member while Hades still parents straight to Uggi A, and Cerebus Alpha's own `a_AU` is
-// 100.74 — as a MOON, of a planet orbiting at 5.53. Repairing it means choosing a parent, a
-// separation and an orbit, i.e. inventing four numbers in another session's example file, so it is
-// REPORTED rather than guessed at. Uggi is the Traveller importer's output (D6/D16/G11).
-const KNOWN_UNRESOLVED = [
-	'Uggi_(Traveller_Example)-System.json: "Hades-Cerebus Alpha Barycenter" (bary-auto-id-1772140277289-oenm77xpo) orbit.hostId -> bary-auto-id-1771108225594-0gusavqhj',
-	'Uggi_(Traveller_Example)-System.json: "Hades-Cerebus Alpha Barycenter" (bary-auto-id-1772140277289-oenm77xpo) parentId -> bary-auto-id-1771108225594-0gusavqhj'
-];
+// D23, REPAIRED v2.1.744-beta. Uggi's "Hades-Cerebus Alpha Barycenter" pointed `parentId` and
+// `orbit.hostId` at `bary-auto-id-1771108225594-0gusavqhj`, which was not in the file, so
+// `pathToRoot` DIED for Cerebus Alpha and nothing downstream of it — distance to star,
+// temperature, eclipses — could be derived at all. The engine half was fixed at v2.1.538
+// (`stripAutoBarycenters` no longer deletes a barycentre out from under a node that points at it);
+// this is the data half. The orphan barycentre is GONE and Cerebus Alpha now orbits Hades
+// directly, like its two siblings. Nothing was invented: the file names the host in Alpha's own
+// description ("its extremely close orbit to Hades"), and the separation is the barycentre's own
+// authored `a_AU` — 0.00029238 AU, which its `hostMu` and `n_rad_per_s` agree with, so it was a
+// Hades-scale orbit written to the wrong node rather than a number anyone has to guess.
+const KNOWN_UNRESOLVED = [];
 
 describe('the standalone examples are structurally sound', () => {
 	it('finds all twelve files', () => {
