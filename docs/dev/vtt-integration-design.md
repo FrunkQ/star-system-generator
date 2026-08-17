@@ -1164,3 +1164,14 @@ too). Mappadux v2.18.3 now reports this state as "cannot be reached for integrat
 Owner call: keep both apps on beta and add the bypass (recommended — a prod push of SSE
 would carry ~50 unrelated versions), test there, ship prod when the release is otherwise
 ready.
+
+**Refined 2026-08-18 from the Firewall log:** it is NOT a project-wide Attack Challenge
+Mode. The events are Vercel's automatic **System Rule → Challenge**, all against ONE IP
+(the tester's), in bursts of exactly 111 requests about every 20 minutes — the bot-mitigation
+heuristic reacting to the evening's probing (curls, broker probes, dozens of dialog retries)
+and the SSE tab's own re-dials from that IP. So: it clears on its own when the pattern
+stops, and normal tables (a handful of requests) will not trip it. But whenever an IP IS in
+the challenged state, third-party frames from it fail — so testing looks broken at random.
+The durable answer stays the same and is now the recommendation: a Firewall custom rule
+**path starts with `/bridge` OR `/catalogue` → Bypass**, which takes precedence over the
+system challenge for those two routes only. Do NOT loosen the challenge globally.
