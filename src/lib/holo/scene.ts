@@ -86,7 +86,16 @@ export type RenderStyle = 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-gl
 // shape) belongs to the INFO BLOCK — the per-body picture — and never to a system map. The scene once
 // carried a flat camera-facing-sprite path for it; it was cut so the map cannot draw one at all.
 // Belts & rings: individual tumbling rocks, or the GM orrery's flat translucent band.
-export type BeltStyle = 'rocks' | 'band';
+// How a belt or ring is DRAWN, as three independent looks rather than two plus a side effect:
+//   rocks  — lumpy textured rubble, the default
+//   points — plain vector dots, the 80s-display look
+//   band   — the GM orrery's flat grey annulus
+// `points` used to have no name of its own. It was what you got when the RENDER style was anything
+// other than `filled`, decided inside buildBeltBand from a `wire` flag — so the only way to a dotted
+// belt was to make every body a wireframe, and the only way to a wireframe scene was to accept dotted
+// belts. Two unrelated choices wired together; owner, 2026-08-17: "better coupled — more flex, less
+// confusing". Now the render style says nothing about the belts.
+export type BeltStyle = 'rocks' | 'points' | 'band';
 // GRID_RADIUS / STAR_RADIUS and the whole size law now live in `rendering/scaleLaw.ts` - pure,
 // testable, and the single copy (P1 of docs/dev/camera-framing-redesign.md). Re-exported here only
 // so the many existing references in this file keep reading naturally.
@@ -1050,7 +1059,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             text, aside, style: m.style, color: m.color, textColor: m.textColor,
             step: markerStackStep(m.style as any, pm),
             width: m.style === 'pin'
-              ? pm.height + asideW
+              ? pm.height + asideW * 2
               : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
           };
         });
@@ -1086,10 +1095,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // A pin and a flag are anchored by their POINT/FOOT, which sits at the BOTTOM of the row —
         // pointing down the stack toward the body the sprite floats above. A pill is centred in it.
         if (b.style === 'pin') {
-          // A pin with a name beside it is anchored by its POINT, so the head sits left of centre and
-          // the name runs to its right — the pair centred as one object, not the pin centred with the
-          // text hanging off. Owner, 2026-08-17: the name goes to the RIGHT of the marker.
-          const pinX = b.aside ? (cw - b.width) / 2 + pm.height / 2 : cw / 2;
+          // THE PIN STAYS OVER THE THING IT MARKS (owner, 2026-08-17). It used to centre the pin
+          // AND its name as one object, which slid the pin off the body by half the name's width —
+          // and a map pin that is not above what it points at is not a map pin. The pin therefore
+          // keeps the canvas centre, exactly as a nameless one does, and the name runs to its right.
+          //
+          // What pays for that is WIDTH: the badge reserves the name's room on BOTH sides (see
+          // `width` above), because the sprite is centred on the body, so anything added to one side
+          // only would shift the whole canvas and take the pin with it. Empty canvas is cheap; a
+          // marker pointing at the wrong place is not.
+          const pinX = cw / 2;
           drawTagPin(ctx, b.text, pinX, top + b.step, pm, b.color, b.textColor);
           if (b.aside) {
             ctx.font = pm.font;
@@ -3468,7 +3483,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (isBelt(node)) {
         const belt = beltStyle === 'band'
           ? buildBeltRing(node, positionToSceneAbs)
-          : buildBeltBand(node, positionToSceneAbs, beltDetail, timeMs, renderStyle !== 'filled', markerScale());
+          : buildBeltBand(node, positionToSceneAbs, beltDetail, timeMs, beltStyle === 'points', markerScale());
         if (belt) { contentGroup.add(belt.group); beltVisuals.push(belt); }
         continue;
       }
@@ -3478,7 +3493,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (parent) {
           const rv = beltStyle === 'band'
             ? buildPlanetRingBand(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)))
-            : buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs);
+            : buildPlanetRing(node, parent, bodyRadiusScene(parent, isSystemLevel(parent)), beltDetail, timeMs, beltStyle === 'points');
           if (rv) { contentGroup.add(rv.pivot); ringVisuals.push(rv); }
         }
         continue;
@@ -5041,7 +5056,7 @@ function buildBeltRing(node: any, project: Projector): BeltVisual | null {
   return { group, buckets: [], t0Sec: 0, id: node.id, outerScene, parentId: node.parentId ?? null };
 }
 
-function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number, wire: boolean, markerFloor = 1): BeltVisual | null {
+function buildBeltBand(node: any, project: Projector, detail: number, timeMs: number, asPoints: boolean, markerFloor = 1): BeltVisual | null {
   const period = orbitPeriodMs(node.orbit);
   if (period === 0) return null;
   const t0 = node.orbit.t0 || 0;
@@ -5084,8 +5099,10 @@ function buildBeltBand(node: any, project: Projector, detail: number, timeMs: nu
     const pos = new Float32Array(arr);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    // Wireframe modes simplify the lumpy rock silhouettes to plain small points (vector-display dots).
-    const mat = wire
+    // `points` drops the rock texture for plain small dots — the vector-display look. Half the size,
+    // because a textured rock reads as an object and a dot reads as a speck: matching their pixel
+    // sizes would make the dotted belt the heavier of the two.
+    const mat = asPoints
       ? new THREE.PointsMaterial({ color: tints[i], size: sizes[i] * 0.5, sizeAttenuation: true, transparent: true, opacity: beltOpacity })
       : new THREE.PointsMaterial({
           map: rocks[i], color: tints[i], size: sizes[i], sizeAttenuation: true,
@@ -5196,7 +5213,7 @@ function buildPlanetRingBand(node: any, parent: any, planetRenderedR: number): R
   };
 }
 
-function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number): RingVisual | null {
+function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail: number, timeMs: number, asPoints = false): RingVisual | null {
   const isAccretionDisc = isBlackHoleNode(parent);
   const planetKm = parent.physical_parameters?.radiusKm || parent.radiusKm || 60000;
   let innerScene: number;
@@ -5267,7 +5284,9 @@ function buildPlanetRing(node: any, parent: any, planetRenderedR: number, detail
   // of rocks. Proportional keeps the readable end identical (R*0.06 there is ~the old floor anyway)
   // and at true scale the rocks are simply small, which is what rocks are.
   const size = Math.max(1e-7, planetRenderedR * (isAccretionDisc ? 0.09 : 0.06));
-  const mat = new THREE.PointsMaterial({ map: getDotTexture(), vertexColors: true, size, sizeAttenuation: true, transparent: true,
+  // A ring follows the belt style, because the control is one control ("Belts & rings") and a system
+  // with dotted belts and textured rings would read as a bug. `points` simply drops the dot texture.
+  const mat = new THREE.PointsMaterial({ map: asPoints ? null : getDotTexture(), vertexColors: true, size: asPoints ? size * 0.6 : size, sizeAttenuation: true, transparent: true,
     opacity: isAccretionDisc ? Math.min(1, ringOpacity + 0.35) : ringOpacity, depthWrite: false,
     depthTest: !isAccretionDisc, // the disc draws OVER the horizon so its far half is in the buffer for the lens to wrap
     blending: isAccretionDisc ? THREE.AdditiveBlending : THREE.NormalBlending });

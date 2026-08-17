@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.767-beta - 17th Aug 2026
+
+- **The shipped six are the tuned six.** The built-in presets are now the ones you built and looked at, adopted from your export - covers, watermarks, transitions, a fully-dialled CRT, lo-poly and wireframe renders, charted stars and pin markers. Between them they exercise most of the tool rather than repeating one look, which is the other job they do.
+- Projection is rebuilt on the 3D table rather than the old flat overhead plate, and drifts slowly so it stays alive on a table nobody is touching. Background - Greenscreen still makes it OBS-ready.
+- **Belts & rings gains Points** - plain vector dots, alongside Rocks and Grey bands. It always existed but had no name: it was what you got when the RENDER style happened to be wireframe or lo-poly, so the only route to dotted belts was to make every body a wireframe. The two choices are now independent.
+- **"Lists" is now "Navigation lists", and the starmap has its own.** It governs the drill-in lists - a star's planets, a planet's moons and ships, the way back up, and the starmap's index of systems - and one setting under the System step was quietly restyling the starmap index too. The starmap now carries its own, falling back to the System step's when unset, so nothing existing changes. The options are also grouped: six change the bullet, Cards changes the shape.
+- A map pin stays over the thing it marks when it carries its name. It was centring the pin and its name together, which slid the pin off the body by half the name's width.
+
 ## v2.1.766-beta - 17th Aug 2026
 
 - Reworked yesterday's mobile fix so it applies by rule rather than panel by panel. A dialog says it is a dialog, a bar or floating control says it is chrome, and one line decides the rest: on a phone, an open dialog gets the screen and everything else stops being drawn until it closes. Anything added later is covered without being remembered. The bar is hidden rather than torn down now, so it comes back holding whatever you had typed.

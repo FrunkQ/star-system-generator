@@ -109,6 +109,15 @@ export interface PlayerPreset {
   // Unset = fall back to the system document's, so an existing preset is unchanged.
   starmapDocumentStyle?: DocumentStyle;
   starmapThemeColors?: DocColors;
+  // The starmap document's NAVIGATION LIST style, separate from the system document's.
+  //
+  // `listStyle` governs the drill-in lists the document engine draws — a star's planets, a planet's
+  // moons and rings, the ships at a body, the row back to the parent, and the starmap's own index of
+  // systems. One field drove both stages, and its only control sat under the SYSTEM step's Info Block
+  // Appearance, so changing "the list style of the info block" silently restyled the starmap index
+  // too (owner, 2026-08-17). Split the same way documentStyle and themeColors already are: unset
+  // falls back to the system's, so no existing preset changes.
+  starmapListStyle?: ListStyle;
   photoFrame?: 'letterbox' | 'full' | 'sliver'; // document: how a body photo is framed
   themeColors?: DocColors;
   // Per-screen overlays: each screen can place ANY uploaded image, independently (different image,
@@ -141,7 +150,9 @@ export interface PlayerPreset {
   // figures still cross the wire either way (see A29 — do not turn this into a snapshot strip).
   liveReadings: boolean;
   bodyGfx: 'sphere' | 'photo' | 'disc' | 'flat' | 'none'; // body picture: 3D sphere / photo / procedural disc / flat shape / none (a new option honoured across every info surface — 2D document, 3D holo, …)
-  beltStyle: 'rocks' | 'band'; // belts/rings: tumbling rocks, or the GM orrery's flat grey band
+  // Belts AND rings: tumbling textured rubble, plain vector dots, or the GM orrery's flat grey band.
+  // `points` was previously a side effect of picking a wireframe RENDER; it is its own choice now.
+  beltStyle: 'rocks' | 'points' | 'band';
   background: 'space' | 'green' | 'blue' | 'black';
   grid: import('$lib/map/mapOverlay').MapOverlay; // WS3: shared overlay vocabulary across every view
   // G9: the campaign's OWN charted systems drawn as real stars in the 3D system view's sky. An enum,

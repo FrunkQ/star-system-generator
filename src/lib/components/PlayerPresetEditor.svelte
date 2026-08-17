@@ -411,6 +411,37 @@
   </label>
 {/snippet}
 
+<!-- NAVIGATION LISTS — the drill-in lists the document engine draws: a star's planets, a planet's
+     moons and rings, the ships at a body, the row back up to the parent, and the starmap's index of
+     systems. NOT the fact rows in a stat block, which is what "Lists" used to sound like.
+     One control, rendered once per stage, because the two documents now carry their own choice —
+     changing the info block's lists used to restyle the starmap index with it. The options are split
+     because one of them is not like the others: six change the BULLET, `cards` changes the SHAPE into
+     a grid of pickable boxes, and that difference was invisible in a flat list. -->
+{#snippet navListStyle(scope: ColourScope)}
+  {@const current = scope === 'starmap' ? (draft.starmapListStyle ?? '') : (draft.listStyle ?? '')}
+  <label>Navigation lists
+    <select value={current}
+      on:change={(e) => { const v = ((e.currentTarget as HTMLSelectElement).value || undefined) as any;
+        draft = scope === 'starmap' ? { ...draft, starmapListStyle: v } : { ...draft, listStyle: v }; }}>
+      <option value="">From the colouration</option>
+      <optgroup label="Bullets">
+        <option value="plain">Plain bullets</option>
+        <option value="illustrated-bullets">Illustrated bullets</option>
+        <option value="numbered-dossier">Numbered</option>
+        <option value="terminal-log">Terminal log</option>
+        <option value="ledger">Ruled rows</option>
+        <option value="manifest">Manifest</option>
+      </optgroup>
+      <optgroup label="Shape">
+        <option value="cards">Pickable cards &mdash; a grid of boxes</option>
+      </optgroup>
+    </select>
+  </label>
+  <p class="hint">How the drill-in lists look &mdash; planets, moons, ships, and the way back up.
+    {#if scope === 'starmap'}Unset follows the System step's choice.{:else}<strong>Cards</strong> is the one that changes the shape rather than the bullet.{/if}</p>
+{/snippet}
+
 {#snippet colourSlots(scope: ColourScope)}
   <!-- A48: this was a bare <details>/<summary> — a SECOND collapsing idiom in the same editor, which
        is the duplication this codebase keeps finding. Same component as every other section now; its
@@ -593,6 +624,7 @@
                    picking it sets monochrome by itself (makeDocTheme) — one lever, not two that have
                    to agree. The 2D/3D map branch below keeps its checkbox, having no palette list. -->
               {@render colouration('starmap')}
+              {@render navListStyle('starmap')}
               {#if styleOf('starmap') !== 'greyscale'}
                 {@render colourSlots('starmap')}
               {/if}
@@ -749,7 +781,8 @@
                   </label>
                   <label>Belts &amp; rings
                     <select bind:value={draft.beltStyle}>
-                      <option value="rocks">Rocks</option>
+                      <option value="rocks">Rocks &mdash; tumbling rubble</option>
+                      <option value="points">Points &mdash; plain vector dots</option>
                       <option value="band">Grey bands (like the GM orrery)</option>
                     </select>
                   </label>
@@ -929,22 +962,7 @@
                     </select>
                   </label>
                 {/if}
-                <!-- The list GLYPHS are normally seeded by the colouration; this overrides them for both
-                     stages. 'cards' is the one that changes the shape rather than the bullet. -->
-                <label>Lists
-                  <select value={draft.listStyle ?? ''}
-                    on:change={(e) => { const v = (e.currentTarget as HTMLSelectElement).value;
-                      draft = { ...draft, listStyle: (v || undefined) as any }; }}>
-                    <option value="">From the colouration</option>
-                    <option value="plain">Plain bullets</option>
-                    <option value="illustrated-bullets">Illustrated bullets</option>
-                    <option value="numbered-dossier">Numbered</option>
-                    <option value="terminal-log">Terminal log</option>
-                    <option value="ledger">Ruled rows</option>
-                    <option value="manifest">Manifest</option>
-                    <option value="cards">Pickable cards</option>
-                  </select>
-                </label>
+                {@render navListStyle('system')}
                 <!-- A29: a star catalogue holds what a ship CAN carry; only an instrument knows what is in
                      the tanks now. Off = capacity alone, on = current-of-capacity. -->
                 <label class="chk"><input type="checkbox" bind:checked={draft.liveReadings} /> Live readings</label>
@@ -1060,7 +1078,7 @@
               <!-- D9: the starmap DOCUMENT — same engine + theme as the system document, real filter. -->
               <FilteredDocumentView stage="starmap" starmap={$starmapStore} {rulePack}
                 font={draft.font} headingFont={draft.headingFont} accent={draft.accentColor} mono={draft.starmapMono}
-                listStyle={draft.listStyle} navStyle={draft.navStyle}
+                listStyle={draft.starmapListStyle ?? draft.listStyle} navStyle={draft.navStyle}
                 documentStyle={draft.starmapDocumentStyle ?? draft.documentStyle}
                 themeColors={draft.starmapThemeColors ?? draft.themeColors}
                 starmapLayout={draft.starmapLayout} starmapFieldIcons={draft.starmapFieldIcons !== false}

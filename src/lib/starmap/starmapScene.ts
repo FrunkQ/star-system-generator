@@ -709,7 +709,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         return {
           text, aside, style: m.style, color: m.color, textColor: m.textColor,
           step: markerStackStep(m.style as MarkerStyleName, pm),
-          width: m.style === 'pin' ? pm.height + asideW : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
+          width: m.style === 'pin' ? pm.height + asideW * 2 : tagPillWidth(text, pm, ctx) + (m.style === 'flag' ? pm.fontPx * 0.09 : 0)
         };
       });
     if (overflow) {
@@ -739,9 +739,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       let top = nameH;
       for (const b of badges) {
         if (b.style === 'pin') {
-          // Name-beside-pin: the pair is centred as ONE object, so the head sits left of centre and the
-          // name runs to its right (owner: the name goes to the RIGHT of the marker).
-          const pinX = b.aside ? (cw - b.width) / 2 + pm.height / 2 : cw / 2;
+          // The pin keeps the canvas centre so it stays over the system it marks; the name runs to
+          // its right, and the badge reserves that width on BOTH sides so the sprite's centre does not
+          // move. Same rule as the system map — see holo/scene.ts for the full note.
+          const pinX = cw / 2;
           drawTagPin(ctx, b.text, pinX, top + b.step, pm, b.color, b.textColor);
           if (b.aside) {
             ctx.font = pm.font; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';

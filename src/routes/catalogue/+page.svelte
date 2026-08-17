@@ -1043,7 +1043,7 @@
              headers/footers) and the real GPU filter. Tap a system to enter. -->
         <FilteredDocumentView stage="starmap" {starmap}
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.starmapMono}
-          listStyle={activePreset.listStyle} navStyle={activePreset.navStyle}
+          listStyle={activePreset.starmapListStyle ?? activePreset.listStyle} navStyle={activePreset.navStyle}
           documentStyle={activePreset.starmapDocumentStyle ?? activePreset.documentStyle}
           themeColors={activePreset.starmapThemeColors ?? activePreset.themeColors}
           starmapLayout={activePreset.starmapLayout} starmapFieldIcons={activePreset.starmapFieldIcons !== false}
