@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.723-beta - 17th Aug 2026
+
+* Internal: recorded that on a phone the bottom bar and the time controls both cover the import dialog, and that the newer screens need a small-screen pass.
+
 ## v2.1.722-beta - 17th Aug 2026
 
 * VTT integration 1B-1D + bridge: the discovery contract a host app uses to find and connect to a campaign. The GM tab now answers REQUEST_HELLO with ANNOUNCE (session id, starmap id and name, Player View names, app version - identity only, never campaign content), honours REQUEST_REMOTE (starts PeerJS hosting, with a notice on the GM screen), and sends a heartbeat every 5 s. Player views turn back to GM OFFLINE when it stops (the LIVE flag used to latch forever) and remote players re-dial a host that restarts or starts hosting late. New /bridge route: a hidden discovery frame for host apps, origin-allowlisted postMessage in both directions, read-only. New ?embed=1 on the player view hides the device chrome and accepts setPreset/ping commands from an allowlisted parent.
