@@ -1,5 +1,16 @@
 {
   "generation_parameters": {
+    "orbital_spacing": {
+      "name": "Adjacent-planet spacing in mutual Hill radii. Observed separations: Weiss et al. 2018 (Kepler multis cluster near 20); stability floor: Pu & Wu 2015 (roughly 10 for gigayear survival). Replaces the Titius-Bode block, which was Sol's own orbits in absolute AU applied to every star.",
+      "separation_hill_radii": [10, 60],
+      "separation_gap_spread": 0.3,
+      "stability_floor_hill_radii": 10,
+      "inner_edge_frost_fraction": [0.02, 0.6],
+      "spacing_mass_earth_inside_frost": [0.05, 5],
+      "spacing_mass_earth_outside_frost": [1, 300],
+      "max_planet_mass_stellar_fraction": 0.001,
+      "peas_in_a_pod": 0.6
+    },
     "terrestrial_min_mass_for_atmosphere_earth": 0.1,
     "terrestrial_magnetic_field_chance": 0.8,
     "frost_line_base_au": 2.7,
@@ -401,27 +412,6 @@
           ]
         }
       ]
-    },
-    "titius_bode_law": {
-      "name": "Titius-Bode Law parameters for planet spacing",
-      "a": 0.4,
-      "b": 0.3,
-      "c": 2.0,
-      "sequence": [
-        -999,
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10
-      ],
-      "jitter": 0.1
     }
   }
 }

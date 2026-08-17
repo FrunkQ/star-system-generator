@@ -64,6 +64,13 @@
     // BETTER INSIDE THE NEW PHYSICS, which is exactly what has been happening continuously — it does
     // not claim the spacing is finished. B58/B59/G24 are named remaining faults, not evidence the
     // sentence is false, and a pending tag would have understated real work. Left unflagged.
+    // UPDATE v2.1.751: B58 has LANDED — planet spacing is now mutual-Hill-radius packing scaled by
+    // the star instead of Sol's Titius-Bode sequence in absolute AU, so a red dwarf's planets sit
+    // where a red dwarf's planets belong. B59's mass half is already done. Of the three named
+    // faults only G24 remains, and only in part: the disk-mass dial was freed by B58 and measures
+    // strongly now, while METALLICITY measures inert (it reaches about one body in seventy-four)
+    // and rarity saturates above the midpoint. The wording of the line itself is the owner's call
+    // once he has eyeballed a few generated systems.
     { title: 'Sharper generation', blurb: 'Procedural systems are retuned alongside the physics as it grows, so a generated system reflects what the engine currently knows rather than what it knew when the generator was written.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },

@@ -728,6 +728,34 @@ export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: b
 export interface TableSpec { name: string; entries: Array<{ weight: number; value: unknown }>; }
 export interface MetricDef { key: string; label: string; min: number; max: number; default?: number; }
 
+/**
+ * Planet spacing rules (`generation_parameters.orbital_spacing`), read by
+ * `generation/placement-strategy.ts`. Every value is in units of the STAR or of a zone the engine
+ * derives from it — never in absolute AU, which is the fault this block replaced (inbox B58).
+ */
+export interface OrbitalSpacingRules {
+  name?: string;
+  /**
+   * Separation between adjacent planets, in mutual Hill radii. Drawn ONCE PER SYSTEM: spacing is
+   * far more uniform within a system than between systems, and this band spans both observed
+   * populations — Kepler's compact multis near the bottom, Sol's own inner planets near the top.
+   */
+  separation_hill_radii: [number, number];
+  /** Per-gap multiplicative variation around the system's separation, e.g. 0.3 for +/-30%. */
+  separation_gap_spread?: number;
+  /** No pair may sit closer than this, whatever the draw: below it the chain is not gigayear-stable. */
+  stability_floor_hill_radii: number;
+  /** The innermost planet is drawn between the dust edge and this fraction of the FORMATION frost line. */
+  inner_edge_frost_fraction: [number, number];
+  /** Proxy masses (Earth masses) used ONLY to size gaps, inside and outside the formation frost line. */
+  spacing_mass_earth_inside_frost: [number, number];
+  spacing_mass_earth_outside_frost: [number, number];
+  /** Ceiling on a proxy mass as a fraction of the star's mass — an M dwarf cannot build a Jupiter. */
+  max_planet_mass_stellar_fraction: number;
+  /** "Peas in a pod": 0 = adjacent masses independent, 1 = every planet the mass of its neighbour. */
+  peas_in_a_pod: number;
+}
+
 export type LiquidFamily = 'water' | 'hydrocarbon' | 'cryo' | 'acid' | 'molten' | 'exotic' | 'internal';
 export interface LiquidDef {
     name: string;
@@ -907,6 +935,16 @@ export interface RulePack {
   viewPresets?: ViewPresetSpec;
   metrics?: Record<string, MetricDef>;
   classifier?: ClassifierSpec;
+  /**
+   * Loose grab-bag of pack scalars and rule blocks. It was already read in several places
+   * (`zones.ts`, `generation/planet.ts`) while being absent from this interface entirely, so those
+   * reads were untyped; `orbital_spacing` is named because placement depends on its shape.
+   */
+  generation_parameters?: {
+    orbital_spacing?: OrbitalSpacingRules;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
+  };
 }
 
 export type ViableOrbitResult = {

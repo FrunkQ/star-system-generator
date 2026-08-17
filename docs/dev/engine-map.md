@@ -1976,6 +1976,50 @@ callers. Note its data model is Accrete's own (`Planetismal`: axis / eccentricit
 `recalculatePlanetAgedState` on a hand-authored body. Related: `generation-duplication-map.md`
 (two live system generators — this is the second one).
 
+### GEN-2 THE MASSES THAT SET PLANET SPACING ARE A PROXY, AND NOTHING RECONCILES THEM WITH THE MASSES ACTUALLY ASSIGNED
+WHERE: `generation/placement-strategy.ts` (`drawSpacingMassEarth`, and the packing loop that uses it)
+vs the three callers that then create the bodies -- `generation/generateFromConfig.ts:352`,
+`generation/planet-generation.ts:44`, `traveller/importer.ts:435`.
+RULE: `calculateOrbitalSlots` sizes every gap in MUTUAL HILL RADII, which needs the masses of the two
+planets either side of it. Those planets do not exist yet: position is chosen first, then the caller
+draws a TYPE from the equilibrium temperature at that position and a mass from the type. So placement
+draws its own PROXY masses purely to size the gaps, and the body that actually lands there may be a
+hundred times heavier. DO NOT READ THE HILL SPACING AS A STABILITY GUARANTEE. It is a spacing MODEL,
+not a constraint on the finished system.
+WHY: measured over 200 seeds per anchor at v2.1.751, the closest adjacent pair in a generated system
+sits at 0.1 to 1.7 mutual Hill radii against a stated stability floor of 10 -- because a gas giant
+lands in a gap that was sized for a one-Earth-mass pair. THE SAME WAS TRUE BEFORE THIS CHANGE (0.8 to
+1.4 under Titius-Bode), so it is a long-standing property of the engine and NOT a regression B58
+introduced -- which is exactly why it is worth writing down: the new code LOOKS like it enforces
+stability and the old code did not, so the next reader is far more likely to assume a guarantee that
+was never there.
+BLAST: the honest fix is to make the slot carry its proxy mass and have the body generators honour it
+as a target -- which is also what "peas in a pod" wants, since it constrains what goes IN the slots as
+well as where they go. That touches all three body-creation routes, so it is scoped work, not a
+tidy-up. Until then, any plausibility tag or test asserting mutual-Hill stability on GENERATED systems
+will fail, and it will be right to. See [[B58]], `generation-duplication-map.md`.
+
+### GEN-3 PLANET SPACING IS DRAWN ONCE PER SYSTEM, NOT ONCE PER GAP -- AND DRAWING IT PER GAP SILENTLY DELETES GAS GIANTS
+WHERE: `generation/placement-strategy.ts`, `sysSeparation`; pack block
+`generation_parameters.orbital_spacing.separation_hill_radii` (+ `separation_gap_spread`).
+RULE: draw the separation scale ONCE for the whole system and vary each gap only modestly around it.
+It reads like an arbitrary implementation choice and it is not: it is the parameter that decides
+whether a system comes out TRAPPIST-1-shaped or Sol-shaped, and the band spans TWO REAL POPULATIONS
+that a per-gap draw averages into a third that matches neither. Kepler's compact multis sit near 10
+to 20 mutual Hill radii; Sol's own inner planets sit at 27 (Venus-Earth), 40 (Earth-Mars) and 63
+(Mercury-Venus).
+WHY: with the separation drawn independently per gap, every system converged on the mean and came out
+compact. Measured at the time: a Sun-like star produced a giant in 13% of systems at a MEDIAN of
+1.0 AU -- inside its own frost line at 4.97 AU -- because a short chain of typical gaps never reached
+the frost line, and giants are only drawn beyond it. Sol-shaped systems (rocky worlds inside 2 AU plus
+a giant beyond the frost line) were effectively ungenerable. Switching to one draw per system gave 19%
+with a giant at a median 2.13 AU and 17 Sol-shaped systems in 200 seeds, with the compact population
+still present.
+BLAST: anything that "simplifies" this back to a per-gap draw, or narrows the band toward its middle,
+will not fail a test loudly -- it will just quietly stop making gas giants around Sun-like stars. The
+guard is `placement-strategy.spec.ts` ("widening the pack band widens the system"), which is
+necessary but not sufficient; the giant-occurrence number is the real signal. See [[B58]].
+
 ### UI-*  (panels, editors, player views)
 _Unwritten. Candidates: which surfaces read the player snapshot; the four explanation surfaces that
 drift silently (physics page, Newton explainer, tags guide, classification doc)._

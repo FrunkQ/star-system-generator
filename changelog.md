@@ -2,6 +2,17 @@
 
 All notable changes are listed here:
 
+## v2.1.751-beta - 17th Aug 2026
+
+- Planets are now placed by the star they orbit, not by the Solar System. Spacing was the Titius-Bode law in absolute AU, so every star was handed Sol's own orbits (0.4, 0.7, 1.0, 1.6 AU...) and had the ones it could not reach filtered away — which is why planets never generated closer than about 0.5 AU whatever the star, and why brown-dwarf systems sprawled far outside anything the star could warm. Adjacent planets are now separated by a drawn number of mutual Hill radii, which contains the stellar mass and so scales with the star for free, and they PACK outward from the disc's inner edge instead of sampling nine fixed positions.
+
+- What that changes, measured over 200 seeds per star: a 0.09-solar-mass star now puts its innermost world near 0.01 AU rather than 0.42 AU (the real TRAPPIST-1 sits at 0.011), an L dwarf gets planets around its own habitable zone instead of a hundredfold outside it, and a Y dwarf gets planets at all — it previously produced an empty system every single time, silently. A Sun-like star still produces Sun-like systems, including rocky worlds inside 2 AU with a gas giant beyond the frost line, without reproducing Sol.
+
+- Systems are no longer capped at nine planets, and the "amount of material" dial is no longer clamped by that cap: across its travel it now moves a Sun-like system from 1.25 planets to 5.8, and the outermost orbit from 0.33 AU to 4.6 AU.
+
+- All the spacing numbers live in the rule pack (`generation_parameters.orbital_spacing`), so a GM can retune them; nothing about the Solar System is left in the code.
+
+- Docs: a moon-generation design note for sign-off (`docs/dev/moon-generation-design.md`), which found that the shared moon system already exists and only generated moons bypass it.
 ## v2.1.750-beta - 17th Aug 2026
 
 - Docs only. The brief for your own map behind the stars (`docs/dev/g16-starmap-background-handoff.md`): a map-fixed attachment mode extending the overlay graphic the player preset already has, the GM map brought onto the same type, credit following what is shown.
