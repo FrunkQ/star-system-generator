@@ -13,8 +13,18 @@ image travels in the save bundle with its credit; the About credit follows what 
 
 ## Owner decisions already taken — do not re-open
 
-- 2D GM map and 2D player map: YES. **3D: NO** — a flat image warps on a sphere; the 3D map keeps its
-  procedural starfield and the two views diverge deliberately.
+- 2D GM map and 2D player map: YES. **3D: YES, REVISED BY THE OWNER 2026-08-17 (supersedes the earlier
+  "no"):** on the 3D map the image is a PLANE — a flat quad lying in the map plane, so that from above it
+  frames exactly as the 2D map does. NOT wrapped on a sphere (that was the objection, and it stands);
+  the sky stays procedural. Owner's words: *"On the 3D map we need this as a plane on the player view —
+  so from above it frames right — effectively these are alternative and managed on Background & Overlay
+  on the 2D/3D maps."* So ONE "Background & Overlay" control group serves 2D and 3D, and the anchor
+  (map units, offset, rotation) is the SAME anchor on both — the plane in 3D is the map-fixed image by
+  construction, and the depth axis simply passes through it.
+- **TEXT maps (the starmap DOCUMENT): include the image as a graphic at the bottom of the starmap** —
+  *"a way for users to still include their diagram. If we can provide good layout tools for the user to
+  add it — great."* Owner, same message. So the document layout gains an image block for the map, and
+  the layout tools are the stretch goal, not the gate.
 - **MAP-FIXED mode is the main job, not the sliders.** "The stars stay in a constant position to the
   background — for sector maps and empire borders." Both modes wanted; a toggle; default screen-fixed
   (the Milky Way should not slide about as you pan).
@@ -87,14 +97,15 @@ family, opposite sign — labels stay screen-sized, the image scales.
 
 ## Scope
 
-IN: GM 2D map + player 2D map; upload (reuse the existing asset upload); mode toggle; screen-fixed
+IN: GM 2D map + player 2D map + the 3D map as a plane in the map plane + the starmap document as a
+bottom graphic; upload (reuse the existing asset upload); mode toggle; screen-fixed
 controls = size %, fade (today's `sizePct`/`opacity`); map-fixed controls = width in map units, offset
 X/Y in map units, rotation, fade; default Milky Way as the shipped example (its credit intact);
 round-trip through save/bundle/load; preset + broadcast carry the anchor; the About line follows the
 displayed image; the player-2D `user-select` check from [[A49]] while you are in that component (one
 CSS line if the drag selects labels).
 
-OUT: 3D (decided), hex registration (decided), image editing/cropping, multiple layers.
+OUT: hex registration (decided), image editing/cropping, multiple layers, wrapping the image on the 3D sky sphere (the 3D form is a PLANE, see above).
 
 ## Acceptance
 
@@ -114,6 +125,10 @@ OUT: 3D (decided), hex registration (decided), image editing/cropping, multiple 
   otherwise and said why.
 - Meter the preset broadcast with a 2 MB image; report `bc.SYNC_PRESET.bytes`.
 - Player 2D: drag across labels does not text-select them (A49's open half).
+- 3D map, looking straight down with the same asset and anchor: the same system sits on the same image
+  feature as on the 2D map; tilt the camera and the plane is seen edge-on, systems above and below it by
+  their depth. Screen-fixed mode on 3D = the same behaviour as today's procedural backdrop (no plane).
+- Starmap document: the image appears as a graphic at the foot of the starmap page, in the export too.
 
 ## Deliverables
 

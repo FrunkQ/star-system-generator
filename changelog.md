@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.764-beta - 17th Aug 2026
+
+- Docs only. Your-own-map-behind-the-stars now includes the 3D map (as a plane in the map plane) and the text map (a graphic at the foot); three render faults from play captured with their code located (grid falloff deleting the system-map grid, lo-poly vertex dots not shrinking toward true scale, the Terminal Clear band running the wrong way); one more inbox id collision untangled.
+
 ## v2.1.763-beta - 17th Aug 2026
 
 - **Audited every stellar zone across the whole catalogue, from an O supergiant to a Y dwarf — about ten orders of magnitude of starlight.** The six condensation lines (silicate, soot, formation frost, frost, CO2 ice, CO ice) all come out correct, correctly ordered and scaling exactly with the square root of the star's brightness at every point in that range, so the frost-line fault fixed in the last build was confined to generation's own private copy and never touched the zones themselves.
