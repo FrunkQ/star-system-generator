@@ -1,5 +1,10 @@
 <script lang="ts">
-  export let gridType: 'grid' | 'hex' | 'traveller-hex' | 'none' = 'none';
+  // A45: the SHARED overlay vocabulary (map/mapOverlay), narrowed to what this SVG snap grid can
+  // actually draw. A typed subset rather than a private union of its own, so a value added there can
+  // never silently fail to reach here — which is what kept `subsector-hex` out of the GM's own map
+  // for 300 versions after every player view could show it.
+  import { hasSubsectors, type SnapGridType } from '$lib/map/mapOverlay';
+  export let gridType: SnapGridType = 'off';
   export let gridSize: number = 50;
   export let panX: number = 0;
   export let panY: number = 0;
@@ -53,7 +58,7 @@
       hexPaths = '';
       subsectorPaths = '';
       hexLabels = [];
-    } else if (gridType === 'grid') {
+    } else if (gridType === 'square') {
       let paths = '';
       const startX = Math.floor((-panX / zoom - originX) / gridSize) * gridSize + originX;
       const endX = startX + viewWidth / zoom;
@@ -71,7 +76,7 @@
       hexPaths = '';
       subsectorPaths = '';
       hexLabels = [];
-    } else if (gridType === 'hex' || gridType === 'traveller-hex') {
+    } else if (gridType === 'hex' || hasSubsectors(gridType)) {
       gridPaths = '';
       let paths = '';
       let subPaths = '';
@@ -107,7 +112,10 @@
             L ${x + size/2} ${y - hexHeight/2}
             Z `;
 
-          if (gridType === 'traveller-hex') {
+          if (hasSubsectors(gridType)) {
+              // A45: BORDERS for the whole subsector family, NUMBERS for Traveller hex alone. The two
+              // were one branch, which is why "borders without numbering" could not be expressed even
+              // though every line of geometry it needs was already here.
               // Traveller Logic
               // Coordinate system: 1-based, Col-Row (CCRR)
               // We assume originX/Y corresponds to 0,0 in our internal grid space, which maps to hex 0101
@@ -151,7 +159,7 @@
                   }
               }
 
-              labels.push({
+              if (gridType === 'traveller-hex') labels.push({
                   x: x,
                   y: y - hexHeight * 0.3, // Top of hex
                   text: `${colStr}${rowStr}`,
@@ -212,15 +220,15 @@
   }
 </script>
 
-{#if gridType === 'grid'}
+{#if gridType === 'square'}
   <path d={gridPaths} stroke="#555" stroke-width={1 / zoom} />
 {/if}
 
-{#if gridType === 'hex' || gridType === 'traveller-hex'}
+{#if gridType === 'hex' || hasSubsectors(gridType)}
   <path d={hexPaths} stroke="#555" stroke-width={1 / zoom} fill="none" />
 {/if}
 
-{#if gridType === 'traveller-hex'}
+{#if hasSubsectors(gridType)}
   <path d={subsectorPaths} stroke="#888" stroke-width={3 / zoom} fill="none" />
   {#each hexLabels as label}
       <text 

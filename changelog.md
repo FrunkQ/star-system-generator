@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.749-beta - 17th Aug 2026
+
+- **"Subsector hex" is now offered on the GM's own snap grid.** Borders without the numbering -- the option every player view has had since v2.1.378, which the GM's map could not show because its grid list was written out by hand instead of reading the shared one. It reads the shared list now, so the next option added cannot go missing the same way.
+- Your saved grid choice carries over untouched, and the player broadcast is unchanged.
+
 ## v2.1.748-beta - 17th Aug 2026
 
 - Docs only. The unit-relabel fault and the mobile chrome pass routed to the session with room, both re-checked against the tree; the custom starmap background is unhomed again and says so.

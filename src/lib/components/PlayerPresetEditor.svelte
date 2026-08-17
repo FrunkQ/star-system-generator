@@ -21,7 +21,7 @@
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   // The GM's live snap-grid, so the preview shows the same grid the players will see.
-  $: previewMapGrid = { type: ($starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType) as 'grid' | 'hex' | 'traveller-hex' | 'none', size: 50 };
+  $: previewMapGrid = { type: toLegacyMapGridType($starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType), size: 50 };
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import HoloView from '$lib/holo/HoloView.svelte';
   import FilterParamControls from './FilterParamControls.svelte';
@@ -36,7 +36,7 @@
   import CollapsibleSection from './CollapsibleSection.svelte';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { starsOf } from '$lib/catalogue/document/systemTopology';
-  import { MAP_OVERLAY_OPTIONS, SYSTEM_OVERLAY_OPTIONS } from '$lib/map/mapOverlay';
+  import { MAP_OVERLAY_OPTIONS, SYSTEM_OVERLAY_OPTIONS, toLegacyMapGridType } from '$lib/map/mapOverlay';
   import { SKY_MODE_OPTIONS, skyStarsFor, magnitudeLimitFor } from '$lib/map/skyStars';
   import DocPanel from './DocPanel.svelte';
 

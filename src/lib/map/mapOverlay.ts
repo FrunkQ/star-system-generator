@@ -34,6 +34,33 @@ export const MAP_OVERLAY_OPTIONS: MapOverlayOption[] = [
 // one hex is a jump, and the Traveller numbering is sector/subsector addressing. Inside a single system
 // the meaningful overlays are a square grid or polar distance rings, so the system views offer those
 // only. Same vocabulary, filtered per scale — not a second enum.
+// A45 — THE GM'S 2D SNAP GRID draws a subset of the vocabulary: lattices only, no polar. `Grid.svelte`
+// is an SVG renderer with no concept of distance rings, so it is typed to what it can actually draw
+// rather than to the whole set, and a value it cannot honour is a type error rather than a silent
+// no-op. Same list, narrowed — never a second union. `subsector-hex` belongs here: the borders are
+// pure lattice geometry and the numbering is what makes the Traveller variant different.
+// A45 — THE PLAYER BROADCAST still speaks the LEGACY spellings, and deliberately so. `mapGrid.type`
+// crosses the wire to player windows and VTT shims that are already running older builds, and the
+// receiving end only ever tests it for "is there a grid at all" (`!== 'none'`). Renaming it would be a
+// protocol change for no gain. So the app has ONE internal vocabulary and this is the single place it
+// is translated on the way out — an adapter with a name, not a second enum with a life of its own.
+export type LegacyMapGridType = 'grid' | 'hex' | 'traveller-hex' | 'none';
+export function toLegacyMapGridType(v: MapOverlay): LegacyMapGridType {
+  if (v === 'square') return 'grid';
+  if (v === 'hex') return 'hex';
+  // A subsector lattice IS a hex lattice to a receiver that only draws hexes at the GM's cell size.
+  if (isHexFamily(v)) return v === 'traveller-hex' ? 'traveller-hex' : 'hex';
+  return 'none';
+}
+
+export type SnapGridType = Extract<MapOverlay, 'off' | 'square' | 'hex' | 'subsector-hex' | 'traveller-hex'>;
+const SNAP_GRID_SET: SnapGridType[] = ['off', 'square', 'hex', 'subsector-hex', 'traveller-hex'];
+export const SNAP_GRID_OPTIONS: MapOverlayOption[] =
+  MAP_OVERLAY_OPTIONS.filter((o) => (SNAP_GRID_SET as MapOverlay[]).includes(o.value));
+export function isSnapGridType(v: unknown): v is SnapGridType {
+  return (SNAP_GRID_SET as unknown[]).includes(v);
+}
+
 export const SYSTEM_OVERLAY_OPTIONS: MapOverlayOption[] =
   MAP_OVERLAY_OPTIONS.filter((o) => !isHexFamily(o.value));
 

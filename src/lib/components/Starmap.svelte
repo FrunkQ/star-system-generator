@@ -15,6 +15,7 @@
   import { railCollapsed } from '$lib/railStore';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import type { SnapGridType } from '$lib/map/mapOverlay';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import { stampForSave } from '$lib/map/provenance';
   import SaveSystemModal from './SaveSystemModal.svelte';
@@ -358,11 +359,13 @@
   // the numbered hex overlay. Choose "Hex" to see it; "None"/"Grid" hides it while Traveller data,
   // parsec scale and snapping keep working underneath.
   // WS3: picking "Traveller hex" explicitly shows the numbered overlay for ANY user, mode or not.
-  $: displayGridType = $starmapUiStore.gridType === 'traveller-hex'
+  // A45: typed as the shared subset now, so a value the SVG grid cannot draw is a compile error here
+  // rather than a silent blank. Traveller MODE still promotes a plain hex to the numbered one.
+  $: displayGridType = ($starmapUiStore.gridType === 'traveller-hex'
     ? 'traveller-hex'
     : $starmapUiStore.travellerMode
       ? ($starmapUiStore.gridType === 'hex' ? 'traveller-hex' : $starmapUiStore.gridType)
-      : $starmapUiStore.gridType;
+      : $starmapUiStore.gridType) as SnapGridType;
 
   // --- Active interstellar journeys: ships in flight along the starmap, driven by the game clock. ---
   $: journeyNowSec = Number(ensuredTemporal?.displayTimeSec ?? 0);
@@ -391,12 +394,12 @@
   }
 
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
-    if (effectiveGridType === 'none') return { x, y };
+    if (effectiveGridType === 'off') return { x, y };
 
     const originX = 0;
     const originY = 0;
 
-    if (effectiveGridType === 'grid') {
+    if (effectiveGridType === 'square') {
       const cellIndexX = Math.floor((x - originX) / gridSize);
       const cellIndexY = Math.floor((y - originY) / gridSize);
       return {

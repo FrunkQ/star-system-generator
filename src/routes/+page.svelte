@@ -15,6 +15,7 @@
   import { mintBroadcastId } from '$lib/broadcastId';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { toLegacyMapGridType } from '$lib/map/mapOverlay';
   import { runningPresetId, liveOverrides } from '$lib/player/liveOverrides';
   import { playerPresetList } from '$lib/player/presetStore';
   import type { AnnouncePayload } from '$lib/broadcast';
@@ -741,7 +742,7 @@
   // draws the identical grid — the grid shape is UI state, not saved on the map, so it's injected here.
   function starmapSnapshotForPlayers(map: import('$lib/types').Starmap) {
     const ui = get(starmapUiStore);
-    const type = (ui.travellerMode ? 'traveller-hex' : ui.gridType) as 'grid' | 'hex' | 'traveller-hex' | 'none';
+    const type = toLegacyMapGridType(ui.travellerMode ? 'traveller-hex' : ui.gridType);
     return { ...computePlayerStarmapSnapshot(map), mapGrid: { type, size: 50 } };
   }
   // VTT integration discovery payload: what a host app (Mappadux StarMap, a Foundry/Owlbear shim)

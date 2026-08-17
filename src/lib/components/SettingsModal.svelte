@@ -4,6 +4,8 @@
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  // A45: the one list, filtered to what the 2D snap grid can draw — never a hand-written copy.
+  import { SNAP_GRID_OPTIONS } from '$lib/map/mapOverlay';
   import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
@@ -362,11 +364,7 @@
           <div class="form-group">
             <label for="gridType">Snap grid</label>
             <select id="gridType" bind:value={$starmapUiStore.gridType}>
-              <option value="none">No Grid</option>
-              <option value="grid">Square</option>
-              <option value="hex">Hex</option>
-              <!-- WS3: the numbered Traveller hex is available to EVERY user now, not just Traveller mode. -->
-              <option value="traveller-hex">Traveller hex (numbered)</option>
+              {#each SNAP_GRID_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
             </select>
           </div>
           <div class="form-group">
