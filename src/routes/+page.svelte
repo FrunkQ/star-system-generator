@@ -782,6 +782,12 @@
   $: if (browser && $starmapStore?.broadcastId && $starmapStore.broadcastId !== broadcastSessionId) {
     broadcastSessionId = $starmapStore.broadcastId;
     broadcastService.initSender(broadcastSessionId);
+    // Host on the broker as soon as the map has its persistent id. A stable, saved sid is only
+    // worth anything if it can be DIALLED — and a cross-site host app (Mappadux on another domain)
+    // can no longer reach this tab over the same-machine channel (Chrome partitions BroadcastChannel
+    // in third-party iframes), so PeerJS is its only route to discover us. Cheap (one broker
+    // registration, no data until someone connects); the id-collision prompt covers a stale tab.
+    broadcastService.enableRemote();
   }
   onMount(() => {
     if (!browser) return;

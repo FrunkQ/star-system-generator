@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.753-beta - 17th Aug 2026
+
+* VTT integration: the GM tab now hosts on the PeerJS broker as soon as a starmap has its persistent session id (this hunk was meant to ship in v2.1.749 and was left in the working copy). Without it a cross-site host app could not discover the session at all - verified against the broker on the deployed beta.
+
 ## v2.1.752-beta - 17th Aug 2026
 
 - Docs only. The 3D-starmap grid items recorded shipped with the crash the first one exposed; the grids-and-sky session retired with its notes; two unseen visual checks captured for the owner; a leftover stash inspected and dropped; and the shared-tree rule written into the standing rules.
