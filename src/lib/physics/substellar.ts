@@ -10,9 +10,11 @@
 // structural model — good enough to be plausible (a young 70 M_jup dwarf ~2000 K, an old 13 M_jup one
 // ~300 K), documented as such on /physics.
 
+import { luminositySolarFromRT } from './luminosity';
+
 const JUPITER_MASS_KG = 1.898e27;
-const STEFAN_BOLTZMANN = 5.670374419e-8; // W·m⁻²·K⁻⁴
-const SOLAR_LUMINOSITY_W = 3.828e26;
+// (Stefan-Boltzmann and the solar luminosity used to live here as local constants, next to a second
+// copy of the same law in the star editor. Both moved to physics/luminosity.ts — one law, one place.)
 
 // Self-heating engages from the sub-brown-dwarf floor (~8 M_jup, where contraction/deuterium heat
 // starts to dominate a body's own budget) up to the hydrogen-burning limit (~80 M_jup). Below 8 M_jup
@@ -73,7 +75,11 @@ export function brownDwarfThermal(massKg: number, ageGyr: number, radiusKm: numb
   // hot start at the L-dwarf ceiling.
   const ageEff = Math.max(0.005, ageGyr || 0);
   const teffK = Math.min(TEFF_CAP_K, Math.max(TEFF_FLOOR_K, t0 * Math.pow(ageEff, -alpha)));
-  const rM = Math.max(1, radiusKm || 0) * 1000;
-  const lumW = 4 * Math.PI * rM * rM * STEFAN_BOLTZMANN * Math.pow(teffK, 4);
-  return { isSubstellar: true, teffK, luminositySolar: lumW / SOLAR_LUMINOSITY_W, mjup };
+  // ONE Stefan-Boltzmann, shared with the stellar side — see physics/luminosity.ts. A brown dwarf
+  // handing over to a star at 80 M_jup must not change brightness just because a different file
+  // computed it.
+  return {
+    isSubstellar: true, teffK, mjup,
+    luminositySolar: luminositySolarFromRT(Math.max(1, radiusKm || 0), teffK)
+  };
 }

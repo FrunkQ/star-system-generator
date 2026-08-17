@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.735-beta - 16th Aug 2026
+
+- Stefan-Boltzmann is now written once. How bright an object is for a given size and temperature was being worked out in two places — the brown-dwarf cooling track and the star editor — in different unit conventions, in different files. They agreed, but only by the luck of two correct implementations, and those two hand over to each other at the fusion limit: had either drifted, igniting a body would have changed its brightness for no physical reason and nothing would have caught it.
+- The alignment is now structural rather than tested. A test pinning that the two agreed has been replaced by there only being one of them.
+
 ## v2.1.732-beta - 16th Aug 2026
 
 - FIXED: igniting could make a body DARKER. The substellar cooling track stops dead at the fusion limit — 79.99 Jupiter masses derives 1947 K, 80.00 derives nothing — so a body nudged across that line kept its old brown-dwarf temperature, and with the new colour ramp taking anything under 2400 K toward black it would light up by going out. A fusing star is now held at or above 1900 K, which is where the coolest M dwarfs and the hottest L dwarfs genuinely overlap: crossing the limit is not a brightness cliff in nature and is no longer one here. It only ever raises a star already below the floor, so nothing with a sane temperature moves — no bundled starmap changes at all.

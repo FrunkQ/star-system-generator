@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { luminositySolarFromRT } from '$lib/physics/luminosity';
   import type { CelestialBody, StellarType } from '$lib/types';
   import { fmt } from '$lib/stores';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
@@ -341,7 +342,10 @@
   // independent (accretion/magnetospheric) radiation slider.
   function syncRadiationFromSB() {
       if (['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass)) return;
-      const L = (radiusSuns ** 2) * ((tempK / 5778) ** 4);
+      // The SHARED Stefan-Boltzmann, not a second copy of it. This and the brown-dwarf cooling track
+      // hand over to each other at the fusion limit, so if they disagreed about how bright a given
+      // radius and temperature are, igniting a body would change its brightness for no reason.
+      const L = luminositySolarFromRT(radiusSuns * SOLAR_RADIUS_KM, tempK);
       radiation = parseFloat(L.toPrecision(3));
       body.radiationOutput = radiation;
       radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, L))) - radLogMin) / (radLogMax - radLogMin);

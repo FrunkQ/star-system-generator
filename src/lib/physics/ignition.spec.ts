@@ -32,6 +32,22 @@ describe('crossing the fusion limit', () => {
     expect(brownDwarfThermal((SUBSTELLAR_MIN_MJUP - 0.01) * JUP, 4.6, RJ).luminositySolar).toBe(0);
   });
 
+  it('hands the LUMINOSITY over without a step, because both sides compute the same thing', () => {
+    // The substellar track does lumW = 4*pi*R^2*sigma*T^4 / L_sun. The star editor's
+    // `syncRadiationFromSB` does R_suns^2 * (T/5778)^4. That is the same Stefan-Boltzmann law in two
+    // unit conventions, so ignition needs no luminosity correction at all — it only needed the
+    // TEMPERATURE to carry across, which the processor's floor now guarantees.
+    //
+    // Pinned because the two live in different files and could drift apart silently: a change to
+    // either one would land here rather than in a campaign.
+    const SOLAR_RADIUS_KM = 696000;
+    const bd = brownDwarfThermal((SUBSTELLAR_MAX_MJUP - 0.01) * JUP, 4.6, RJ);
+    const rSuns = RJ / SOLAR_RADIUS_KM;
+    const stellarWay = rSuns ** 2 * (bd.teffK / 5778) ** 4;
+    expect(stellarWay).toBeGreaterThan(bd.luminositySolar * 0.98);
+    expect(stellarWay).toBeLessThan(bd.luminositySolar * 1.02);
+  });
+
   it('warms monotonically with mass across the whole substellar window', () => {
     let last = 0;
     for (const m of [8, 12, 20, 35, 50, 65, 79]) {
