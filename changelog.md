@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.752-beta - 17th Aug 2026
+
+- Docs only. The 3D-starmap grid items recorded shipped with the crash the first one exposed; the grids-and-sky session retired with its notes; two unseen visual checks captured for the owner; a leftover stash inspected and dropped; and the shared-tree rule written into the standing rules.
+
 ## v2.1.751-beta - 17th Aug 2026
 
 - Planets are now placed by the star they orbit, not by the Solar System. Spacing was the Titius-Bode law in absolute AU, so every star was handed Sol's own orbits (0.4, 0.7, 1.0, 1.6 AU...) and had the ones it could not reach filtered away — which is why planets never generated closer than about 0.5 AU whatever the star, and why brown-dwarf systems sprawled far outside anything the star could warm. Adjacent planets are now separated by a drawn number of mutual Hill radii, which contains the stellar mass and so scales with the star for free, and they PACK outward from the disc's inner edge instead of sampling nine fixed positions.
