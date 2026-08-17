@@ -1141,3 +1141,26 @@ version collision and did not ship in v2.1.749; caught by the broker probe on
 the deployed tab (explicit Player Views hosting worked, load-time did not).
 Shipped in v2.1.753. Lesson for the shared tree: after any `--autostash`, diff
 the working copy against origin before declaring a push complete.
+
+## 17. Deployment requirement: embeds must pass the firewall (found 2026-08-18)
+
+The second beta test failed with `bridge → 403`. Cause: **beta.starsystemx.com is behind
+Vercel's Security Checkpoint (Attack Challenge Mode)** — every route answers
+`X-Vercel-Mitigated: challenge` to a request without a solved-challenge cookie. A real
+browser tab solves it invisibly; a **third-party iframe cannot** (it cannot show the
+challenge and its cookies are partitioned), so Mappadux's hidden `/bridge` frame AND every
+player's `/catalogue` frame get 403 wherever Mappadux itself runs (beta, prod, localhost).
+Moving Mappadux to prod does not help — the block is on the SSE side. Deployment
+protection (password/SSO) is off; this is the firewall challenge, likely auto-armed after a
+burst of deploys and probes.
+
+**Requirement (Vercel project star-system-generator → Firewall):** either turn Attack
+Challenge Mode off for the beta domain, or keep it and add a **bypass rule for paths
+`/bridge` and `/catalogue`** — the two routes third-party embeds must reach; neither has a
+writable surface. This applies to ANY deployment that hosts the integration (prod later,
+too). Mappadux v2.18.3 now reports this state as "cannot be reached for integration
+(older than the integration, or a firewall/security challenge)" rather than "no session".
+
+Owner call: keep both apps on beta and add the bypass (recommended — a prod push of SSE
+would carry ~50 unrelated versions), test there, ship prod when the release is otherwise
+ready.
