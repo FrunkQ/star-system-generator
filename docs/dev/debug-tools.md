@@ -40,8 +40,19 @@ of growth is a finding, and you cannot see it in an instrument that only speaks 
   textures climb across `setSystem` cycles while the scene shows the same thing, something is
   surviving `clearContent`.
 - `perfStage(stage)` — stamp a load stage (see §2).
-- `window.__ssePerf.report()` — dump counters, heap, providers and the stage table on demand,
-  enabled or not.
+- `perfEvent(name, data)` — **record WHY something happened, not just how often.** One cheap row into
+  a bounded ring (300), timestamped. **ALWAYS RECORDING, enabled or not** — that is the whole design:
+  the faults this exists for are intermittent, and the refresh you would use to go and look destroys
+  the evidence. Keep rows cheap (numbers and short strings, never payload inspection); anything
+  expensive belongs behind an explicit opt-in in the caller.
+- `window.__ssePerf.events(n = 60, name?)` — **THE one action to run while a fault is happening.**
+  Dumps the last `n` rows as a table, newest last, with a `dt` column — even spacing reads as a
+  driver, bursts as a retrigger. Filter to one kind: `__ssePerf.events(60, 'holo.setSystem')`.
+- `window.__ssePerf.report()` — dump counters, heap, providers, the stage table and the event ring on
+  demand, enabled or not.
+- `window.__ssePerf.rxBytes = true` — opt in to sizing inbound broadcast payloads. Off by default and
+  **not implied by `?perf=1`**, because stringifying on the receive path is the cost class the
+  rebuild-storm hunt is chasing.
 
 **COUNTERS THAT EXIST AND WHAT THEY MEAN:**
 
@@ -51,10 +62,24 @@ of growth is a finding, and you cannot see it in an instrument that only speaks 
 | `holo.setSystem.new` | rebuilds because the system genuinely changed. A rebuild is the right answer here. |
 | `holo.setSystem.ms` | accumulated rebuild wall time. Average = `.ms / (.same + .new)`. |
 | `holo.ringRefineFrame` | frames on which a refined heliocentric ring re-propagated 1024 samples. Should be quiet when nothing is being refined. |
+| `holo.setSystem.by.<reason>` | which CALLER asked for each rebuild: `prop` / `mount` (HoloView — the player path) or `style:<dial>` (a dial rebuilding its own content). Paired with the event ring below, this is the WHY. |
 | `sync.starmap` | starmap snapshots pushed to players. |
-| `bc.<TYPE>.strMs` | time spent stringifying that message type. **Note this runs on EVERY reactive tick to fingerprint the payload, sent or not** — a cost that was invisible before it was counted. |
+| `bc.<TYPE>.strMs` | time spent stringifying that message type. **Note this runs on EVERY reactive tick to fingerprint the payload, sent or not** — a cost that was invisible before it was counted. **SENDER SIDE ONLY.** |
 | `bc.<TYPE>.bytes` | bytes actually sent. Average payload = `.bytes / .sent`. Relevant to the 16 KB DataChannel frame rule. |
 | `bc.<TYPE>.sent` / `.unchanged` | how often the change-gate let a payload through versus suppressed it. |
+| `rx.<TYPE>` | **inbound** messages, counted on a RECEIVER. The missing half of `bc.*`: without it, "the GM is SENDING more" and "this window REBUILDS more per message" look identical and have opposite fixes. `rx.<TYPE>.bytes` needs `__ssePerf.rxBytes = true`. |
+
+**THE EVENT RING — `holo.setSystem` rows.** `__ssePerf.events(60, 'holo.setSystem')` gives one row per
+rebuild: `reason`, `ms`, `nodes`, `dt`, and the two fields that decide the fix —
+
+| field | means, and what it rules out |
+|---|---|
+| `sameRef` | the incoming system is the **same object reference** already held. Nothing upstream re-cloned; this is a RE-FIRE (remount, or a Svelte statement invalidated by something other than `system`). **An upstream content gate cannot help this case.** |
+| `sameId` without `sameRef` | same system, **new object** — something upstream re-cloned it. A content gate IS the candidate fix. |
+
+`window.__rebuildDebug = true` adds `hash` / `sameHash` / `hashMs`: the only way to prove a re-cloned
+snapshot was byte-identical. **Opt-in on purpose** — hashing a several-hundred-KB system at 12 Hz is
+the cost class this hunt is about, and `hashMs` reports what the instrument itself spent.
 
 ## 2. `[sse-load]` — where a load got to, stage by stage
 
@@ -201,13 +226,18 @@ Honest gaps, so nobody assumes coverage that does not exist:
   scale bar, rulers and any future snap overlay share the shape and are unaudited. `Starmap.svelte`
   also passes Grid a hardcoded `viewWidth={800} viewHeight={600}` rather than the real viewport.
 - **A same-system PATCH path** does not exist; `holo.setSystem.same` measures the opportunity, not a
-  fix. **Deliberate — the owner ruled 2026-08-07 that the rebuild rate is not a problem yet.** Do not
-  build one speculatively; see engine-map RENDER-S22.
-- **WHY a rebuild fired is NOT recorded, and this is the one real gap in this area.** `setSystem`
-  counts tell you four rebuilds happened in five seconds; nothing tells you which upstream change
-  caused each. The camera work already paid for this lesson — `__camDebug` only became useful once it
-  recorded WHICH INPUT caused each change (that is what settled RENDER-S15). A reason label on the
-  `setSystem` counter is the first thing to add if this area ever needs chasing.
+  fix. Still deliberate: the 2026-08-07 ruling that the rebuild rate is not a problem yet has been
+  overtaken by inbox **P2** (it was SEEN — 146 wasted rebuilds of 148 in 20 s), but the instruction
+  not to build a patch path speculatively stands. **Read the event ring's `sameRef` first**: if the
+  storm is re-fires on one unchanged object, a patch path is not the fix and neither is a gate.
+- ~~WHY a rebuild fired is not recorded~~ — **CLOSED 2026-08-17 (P2).** `setSystem` takes a `reason`,
+  counts `holo.setSystem.by.<reason>`, and lands a row in the always-on event ring; dump it with
+  `__ssePerf.events(60, 'holo.setSystem')`. See §1.
+- **A PLAYER VIEW CANNOT PRODUCE A DIAGNOSTIC BUNDLE.** `buildDiagnosticBundle` is offered only from
+  the GM route (`routes/+page.svelte`); the catalogue has no equivalent. So the counters and the event
+  ring are reachable on a player view **only through a console** — which a phone does not have. A
+  player hitting the P2 rebuild storm on a tablet still has no way to report it, and that is the next
+  gap worth closing in this area.
 - **Baselines** — no captured before-column yet for the GM view, a player view idle, a player view
   with a ship in transit, or any phone. **Parked with the item above**, not abandoned: they belong to a
   dedicated performance-tuning pass rather than to a bug hunt (inbox **P1**).

@@ -12,6 +12,10 @@
 //   - load-stage stamps ([sse-load]) are printed as they land rather than only banked.
 // Counters and stage stamps are ALWAYS collected (they are a map write); only the console output is
 // gated. window.__ssePerf.report() dumps everything on demand, enabled or not.
+//
+// EVENT RING (P2, 2026-08-17): counters say how often, never WHY. perfEvent() records one cheap row
+// per occurrence into a bounded ring that is ALWAYS on, and window.__ssePerf.events() dumps it —
+// built for faults that are intermittent and cleared by the refresh you would use to go and look.
 export const perfCounters: Record<string, number> = {};
 export function perfCount(name: string, n = 1) {
   perfCounters[name] = (perfCounters[name] ?? 0) + n;
@@ -68,11 +72,39 @@ export function perfStage(stage: string) {
   }
 }
 
+// --- event ring: WHY something happened, not just how often ---------------------------------------
+// A counter says four rebuilds happened; it cannot say who asked for them. This is the bounded log
+// that answers that, and it is the shape __camDebug had to grow before it settled RENDER-S15:
+// one row per occurrence, one field per possible cause.
+//
+// THE RING IS ALWAYS RECORDING, and that is the whole point (P2): the fault it was built for is
+// INTERMITTENT and a hard refresh clears it, so an instrument you have to switch on beforehand
+// arrives too late every time. Keep rows CHEAP — a few numbers and short strings, no payload
+// inspection — so always-on costs nothing. Anything expensive belongs behind an explicit opt-in
+// inside the caller (see holo/scene.ts's __rebuildDebug content hash).
+const EVENT_RING_MAX = 300;
+const perfEvents: Record<string, unknown>[] = [];
+export function perfEvent(name: string, data: Record<string, unknown> = {}) {
+  if (typeof performance === 'undefined') return;
+  perfEvents.push({ t: Math.round(performance.now()), name, ...data });
+  if (perfEvents.length > EVENT_RING_MAX) perfEvents.shift();
+}
+/** Dump the ring, newest last. `name` filters to one event kind. THE one action to run mid-fault. */
+function events(n = 60, name?: string) {
+  const rows = (name ? perfEvents.filter((e) => e.name === name) : perfEvents).slice(-n);
+  if (!rows.length) { console.info('[sse-perf] no events recorded'); return rows; }
+  // Deltas are what make a storm legible: even spacing is a driver, bursts are a retrigger.
+  const withGap = rows.map((r, i) => ({ ...r, dt: i ? (r.t as number) - (rows[i - 1].t as number) : 0 }));
+  console.table(withGap);
+  return withGap;
+}
+
 function report() {
   const h = heapMB();
   console.info('[sse-perf] counters', JSON.stringify(perfCounters));
   console.info('[sse-perf] heap', h ? `${h.toFixed(0)}MB` : 'unavailable', readProviders());
   if (loadStages.length) console.table(loadStages);
+  if (perfEvents.length) events();
 }
 
 // --- frame watcher -------------------------------------------------------------------------------
@@ -99,8 +131,13 @@ if (typeof window !== 'undefined') {
   (window as unknown as Record<string, unknown>).__ssePerf = {
     counters: perfCounters,
     loadStages,
+    perfEvents,
+    // Opt-in, and deliberately NOT implied by ?perf=1: sizing an inbound payload means stringifying
+    // it on the receive path, which is the cost class the rebuild-storm hunt is chasing.
+    rxBytes: false,
     enable: () => setEnabled(true),
     disable: () => setEnabled(false),
-    report
+    report,
+    events
   };
 }

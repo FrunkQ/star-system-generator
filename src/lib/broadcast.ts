@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { peerConfigFor, loadStoredIce, type IceServerEntry } from '$lib/iceConfig';
-import { perfCount } from '$lib/perfTrace';
+import { perfCount, perfEvent } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
 import type { PanState } from '$lib/viewport/stores';
 
@@ -481,6 +481,25 @@ class BroadcastService {
           if (this.targetSessionId && senderId !== this.targetSessionId) {
               return; 
           }
+      }
+
+      // P2 RECEIVE-SIDE METERS. `bc.*` counts what the GM SENDS and lives only on the sender; a
+      // player window had no equivalent, so a rebuild storm could not be attributed: "the GM is
+      // sending more" and "the player rebuilds more per message received" have the same symptom and
+      // opposite fixes. `rx.<TYPE>` is that missing half, and the event row puts inbound messages on
+      // ONE TIMELINE with holo.setSystem rebuilds — which is what actually separates the two
+      // (rebuilds ≈ messages → the sender; rebuilds ≫ messages → this window is retriggering).
+      // Counting is free. SIZING IS NOT: stringifying a several-hundred-KB starmap on the receive
+      // path is the very cost class this item chases, so it stays behind an explicit opt-in
+      // (`__ssePerf.rxBytes = true`) rather than riding ?perf=1.
+      if (!this.isSender) {
+          perfCount(`rx.${msg.type}`);
+          let bytes: number | undefined;
+          if ((globalThis as any).__ssePerf?.rxBytes) {
+              try { bytes = JSON.stringify((msg as { payload?: unknown }).payload ?? null).length; } catch { /* unmeasurable */ }
+              if (bytes !== undefined) perfCount(`rx.${msg.type}.bytes`, bytes);
+          }
+          perfEvent('rx', { type: msg.type, ...(bytes !== undefined ? { bytes } : {}) });
       }
 
       switch (msg.type) {

@@ -127,7 +127,7 @@
       const { createHoloScene } = await import('$lib/holo/scene');
       if (cancelled || !canvas) return;
       controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id) });
-      controller.setSystem(system);
+      controller.setSystem(system, 'mount');
       controller.setTime(currentTime);
       controller.focusBody(focusedBodyId);
       applyStyle(style);
@@ -150,7 +150,10 @@
 
   // Reactive feeds (guarded until the scene has loaded). setCompression/setFilter short-circuit when
   // the value is unchanged, so re-applying the whole style on any tweak is cheap.
-  $: controller?.setSystem(system);
+  // P2: this fires on the PROP'S IDENTITY, so any upstream re-clone rebuilds the whole 3D scene even
+  // when nothing in the system changed. The reason label separates that from a remount and from a
+  // style rebuild in the event ring — `__ssePerf.events(60, 'holo.setSystem')`.
+  $: controller?.setSystem(system, 'prop');
   $: controller?.setShipCapability(shipAccel);
   $: controller?.setTransitMotion(transitMotion);
   $: controller?.setTime(currentTime);

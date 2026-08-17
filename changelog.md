@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.746-beta - 17th Aug 2026
+
+- Player-view rebuild storm (P2): the meters can now say WHY a scene rebuild fired, not just how often. Every rebuild carries a reason and lands in an always-on event ring; broadcast messages are counted on the receiving side too; `window.__ssePerf.events()` dumps the lot mid-fault. Instruments only - no behaviour change.
+
 ## v2.1.745-beta - 17th Aug 2026
 
 - Quick overrides gains **Hide all artificial constructs (stations, ships)** - one tick and every ship, station and gate drops out of the players' view. It sits with Hide labels and Suspend filter because that is what it is: the thing you reach for mid-scene, not a property of a preset. Unticked by default, and it never comes back on its own after a reload.

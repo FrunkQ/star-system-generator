@@ -807,17 +807,41 @@ this area, and the question each one actually answers:
   rebuild is not releasing what it replaced.
 - `bc.<TYPE>.strMs` / `.bytes` / `.sent` / `.unchanged` — the payload cost. Note `sendIfChanged`
   stringifies the whole payload on EVERY reactive tick to fingerprint it, sent or not.
+  **SENDER-SIDE ONLY.** The receive-side half is `rx.<TYPE>` (below); you need both, and confusing
+  one for the other is how "the GM sends more" and "this window rebuilds more per message" — two
+  different bugs with one symptom — stay indistinguishable.
+- `rx.<TYPE>` — inbound messages counted on a RECEIVER (`broadcast.handleMessage`). `rx.<TYPE>.bytes`
+  is opt-in via `__ssePerf.rxBytes = true`, deliberately NOT implied by `?perf=1`: sizing a payload
+  means stringifying it on the receive path, which is the cost class this area is chasing.
+- `holo.setSystem.by.<reason>` and the EVENT RING — see the BLAST line; this is the WHY.
 - `holo.ringRefineFrame` — should be quiet unless a ring is being refined.
 WHY: a live player view measured 10.4 then 2.0 fps with `holo.setSystem: 4` and `sync.starmap: 3`
-inside one 5-second window (inbox P1). **The owner has ruled this NOT A PROBLEM YET** — it has not been
-reported by a user — so the standing position is: leave behaviour alone, keep the meters good, and
-revisit only if it is actually seen or in a dedicated tuning pass. Do not "optimise" this path
-speculatively; a same-system PATCH path deliberately does not exist.
-BLAST: **The known metering gap, and it is the one thing to add if this ever needs chasing: nothing
-records WHY a rebuild fired.** You can see that four happened; you cannot see which upstream change
-caused each. That is the same lesson the camera work already paid for — counting events was not enough
-there either until `__camDebug` began recording WHICH INPUT caused each change, which is what settled
-RENDER-S15. Apply that shape to `setSystem` (a reason label on the counter) before theorising.
+inside one 5-second window (inbox P1). The owner ruled that NOT A PROBLEM YET, with the standing
+position "leave behaviour alone, keep the meters good, revisit only if it is actually SEEN or in a
+dedicated tuning pass". **THAT CLAUSE HAS SINCE FIRED (inbox P2, 2026-08-17): `holo.setSystem.same`
+= 146 of 148 in 20 s on a live player view, 23% of wall clock rebuilding an unchanged scene, GL
+counts FLAT (so not a leak — the fix is to stop the retriggering, not to fix teardown), and a hard
+refresh clears it.** The standing position otherwise holds: **still do not build a same-system PATCH
+path speculatively** — capture first, and let the ring name the trigger.
+BLAST: **THE METERING GAP THIS ENTRY USED TO NAME IS NOW CLOSED — `setSystem` records WHY.** Every
+call takes a `reason` and lands a row in the `[sse-perf]` event ring (`perfEvent` in `perfTrace.ts`).
+**Dump it with `window.__ssePerf.events(60, 'holo.setSystem')`** — the ring is ALWAYS recording, which
+is the point: this fault is intermittent and a refresh clears it, so an instrument you must switch on
+first arrives too late every time. Three fields separate the candidate causes and none costs anything:
+- `sameRef` — the incoming object is the SAME REFERENCE already held. Nothing upstream re-cloned, so
+  the trigger is a RE-FIRE (a remount, or a Svelte statement invalidated by something other than
+  `system`). **An upstream content gate cannot help this case** — do not reach for one before reading
+  this field.
+- `sameId` without `sameRef` — same system, new object: something upstream re-cloned. A gate IS the
+  candidate fix here.
+- `reason` — `prop` / `mount` (`HoloView.svelte`, the player path) versus `style:<dial>` (a dial
+  rebuilding its own content through `rebuildContent`). **These are different bugs and the counters
+  could not tell them apart**; all seven style setters are guarded by an equality check, so a
+  `style:*` row in a storm means a dial is being handed an alternating value.
+`window.__rebuildDebug = true` adds `hash` / `sameHash` — the only thing that can prove a re-cloned
+snapshot was byte-identical — and it is OPT-IN because hashing a several-hundred-KB system at 12 Hz
+is exactly the cost class being hunted. `hashMs` is printed beside it so the instrument's own cost is
+visible rather than smuggled into the measurement. **Never let a meter add the cost class it is for.**
 
 ### RENDER-S21 "The orbit line vibrates" was TWO mechanisms in one line, in two ring FAMILIES
 WHERE: `holo/scene.ts` - `emitOrbitRing` (A23, heliocentric) and `updateOrbitRings`' near path

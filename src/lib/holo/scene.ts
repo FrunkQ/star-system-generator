@@ -62,7 +62,7 @@ import {
 } from '$lib/viewport/cameraRig';
 import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
-import { perfCount, perfFrame, perfProvider } from '$lib/perfTrace';
+import { perfCount, perfEvent, perfFrame, perfProvider } from '$lib/perfTrace';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { deriveAurora, auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
@@ -104,7 +104,8 @@ const AU_M = 1.495978707e11;
 const STAR_RADIUS = SCALE_STAR_RADIUS; // scene-unit radius of a star photosphere sphere
 
 export interface HoloController {
-  setSystem(system: System | null): void;
+  /** `reason` is diagnostic only (P2): it labels the rebuild in the [sse-perf] event ring. */
+  setSystem(system: System | null, reason?: string): void;
   setTime(ms: number): void;
   focusBody(id: string | null): void;
   stepFocusUp(): boolean; // browser Back: out one ladder level; false = nothing left to step out of
@@ -638,7 +639,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const clamped = Math.max(0, Math.min(1, v));
     if (clamped === compression) return;
     compression = clamped;
-    rebuildContent();
+    rebuildContent('compression');
   }
 
   // GM belt-detail quality knob (0..1). Physics density (belt mass) sets each belt's RELATIVE
@@ -647,7 +648,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const clamped = Math.max(0, Math.min(1, v));
     if (clamped === beltDetail) return;
     beltDetail = clamped;
-    rebuildContent();
+    rebuildContent('beltDetail');
   }
 
   // Body COLOUR selection: 'textured' (procedural true colour), 'flat' (per-class swatch), 'white'
@@ -656,21 +657,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const m = mode === 'tint' ? 'white' : mode; // 'tint' is the legacy name for 'white'
     if (m === bodyStyle) return;
     bodyStyle = m;
-    rebuildContent();
+    rebuildContent('bodyStyle');
   }
 
   // Render style: filled spheres, or an 80s vector wireframe (glowing or flat points). Rebuilds bodies.
   function setRender(mode: RenderStyle) {
     if (mode === renderStyle) return;
     renderStyle = mode;
-    rebuildContent();
+    rebuildContent('render');
   }
 
   // Flat lighting: unlit bodies (no day/night terminator) for the "2D map" look + efficiency. Rebuilds.
   function setUnlit(on: boolean) {
     if (on === unlit) return;
     unlit = on;
-    rebuildContent();
+    rebuildContent('unlit');
   }
 
   // Aurora toggle: no rebuild — updateAuroras just stops modulating (opacity 0) when off.
@@ -681,7 +682,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function setBeltStyle(mode: BeltStyle) {
     if (mode === beltStyle) return;
     beltStyle = mode;
-    rebuildContent();
+    rebuildContent('beltStyle');
   }
 
   // Orbit-ring colour follows the body COLOUR selection: white → neutral grey, flat → class swatch,
@@ -716,7 +717,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (clamped === bodySize) return;
     bodySize = clamped;
     if (!focusedId) controls.minDistance = unfocusedMinDist(); // the zoom floor is scale-dependent
-    rebuildContent();
+    rebuildContent('bodySize');
   }
 
   // How far a SPRITE is allowed to shrink as the body-size dial leaves "readable". The scene draws a
@@ -760,9 +761,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return scaleStarRadiusScene(starRadiusKmOf(node), scaleCtx());
   }
 
-  function rebuildContent() {
+  // `reason` names the DIAL that asked, so a style rebuild is never mistaken for a snapshot rebuild
+  // in the P2 event ring — they are different bugs and the counters could not tell them apart. Note
+  // this path always re-passes the SAME object, so it is the one that legitimately reports sameRef.
+  function rebuildContent(reason: string) {
     const keepFocus = focusedId;
-    if (currentSystem) setSystem(currentSystem);
+    if (currentSystem) setSystem(currentSystem, `style:${reason}`);
     if (keepFocus) focusBody(keepFocus);
   }
 
@@ -3319,12 +3323,54 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // same-system PATCH path. `.same` counts rebuilds of the system already on screen (a patch could
   // have absorbed them); `.new` counts genuine system changes (a rebuild is the right answer).
   // `.ms` accumulates wall time, so avg cost = ms / (same + new).
-  function setSystem(system: System | null) {
+  //
+  // P2 (2026-08-17), and this is RENDER-S22's named gap being closed: `.same` = 146 of 148 told us the
+  // work was wasted and NOTHING about who asked for it. Every call now carries a REASON and lands one
+  // cheap row in the [sse-perf] event ring, always on, dumped with `__ssePerf.events(60,'holo.setSystem')`.
+  // The three fields that separate the candidate causes, and none of them costs anything:
+  //   sameRef — the incoming object is the SAME REFERENCE we already hold. Nothing upstream re-cloned;
+  //             the trigger is a re-fire (a remount, or a Svelte statement invalidated by something
+  //             other than `system`). An upstream content gate could NOT help this case.
+  //   sameId  — same system, new object: something upstream re-cloned. A gate is the candidate fix.
+  //   reason  — 'prop' / 'mount' (HoloView) vs 'style:*' (a dial rebuilding its own content). These are
+  //             different bugs and were indistinguishable in the counters.
+  // `window.__rebuildDebug = true` adds the payload hash, which is the only thing that can say a
+  // re-cloned snapshot was byte-identical — deliberately OPT-IN, because hashing a several-hundred-KB
+  // system at 12 Hz is the very cost class this item is chasing (never let the meter add it).
+  let _lastSysHash: string | null = null;
+  function setSystem(system: System | null, reason = 'unknown') {
     const t0 = performance.now();
-    perfCount(!!system && !!currentSystem && (system as any).id === (currentSystem as any).id
-      ? 'holo.setSystem.same' : 'holo.setSystem.new');
+    const sameRef = !!system && system === currentSystem;
+    const sameId = !!system && !!currentSystem && (system as any).id === (currentSystem as any).id;
+    perfCount(sameId ? 'holo.setSystem.same' : 'holo.setSystem.new');
+    perfCount(`holo.setSystem.by.${reason}`);
+    // Opt-in payload identity. FNV-1a over the stringified system; `hashMs` is printed beside it so
+    // the instrument's own cost is visible rather than smuggled into the measurement it perturbs.
+    let hash: string | undefined;
+    let hashMs: number | undefined;
+    let sameHash: boolean | undefined;
+    if ((window as any).__rebuildDebug && system) {
+      const h0 = performance.now();
+      try {
+        const json = JSON.stringify(system);
+        let h = 0x811c9dc5;
+        for (let i = 0; i < json.length; i++) { h ^= json.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+        hash = (h >>> 0).toString(16);
+        // UNDEFINED on the first hashed rebuild, never false: there is no baseline to differ from,
+        // and a `false` there reads as "the payload changed" — the opposite of what it knows.
+        sameHash = _lastSysHash === null ? undefined : _lastSysHash === hash;
+        _lastSysHash = hash;
+      } catch { /* a cyclic or huge payload must not break the render path */ }
+      hashMs = Math.round(performance.now() - h0);
+    }
     setSystemBuild(system);
-    perfCount('holo.setSystem.ms', Math.round(performance.now() - t0));
+    const ms = Math.round(performance.now() - t0);
+    perfCount('holo.setSystem.ms', ms);
+    perfEvent('holo.setSystem', {
+      reason, sameRef, sameId, ms,
+      nodes: system ? (system.nodes?.length ?? 0) : 0,
+      ...(hash !== undefined ? { hash, sameHash, hashMs } : {})
+    });
   }
 
   function setSystemBuild(system: System | null) {
