@@ -408,3 +408,18 @@ These are the only parts of this file that affect anything before V4, and they a
 - **GEN-1 is now load-bearing, not housekeeping.** Anyone tempted to prune the evolutionary/Accrete
   path is deleting the V4 foundation.
 - **G17 stays shelved and stays linked here.** It is not a separate design job.
+- **SURFACE AREAS — THE SEAM IS BEING PUT IN NOW, AND V4 DRIFT IS WHY.** Owner, 2026-08-17: V4 will
+  subdivide a world into areas for surface detail — tectonic plate drift being the driving case, which
+  is *a fraction, a bearing and a rate*. `docs/dev/surface-areas-design.md` fixes the record now:
+  a frame (`body` / `spin` / `stellar` / `primary` / `orbital`) plus one of three closed-form shapes
+  (cap-or-ellipse, band, lune), stacked as ordered paint rather than nested, with the area fraction
+  DERIVED from the geometry. **What V4 adds is one field — `drift: { bearing, rate }` — and a widening
+  of `centre` from a static pair to a time-evolving one.**
+  **The reason to do the record before V4 rather than with it:** every derivation in the engine today
+  assumes a body has ONE surface, that assumption is being written into more code every week, and it
+  is expensive to unpick afterwards. Phase 1 of that spec puts the seam in with ZERO behaviour change
+  — the fixture is byte-identical by construction — so it can land at any time and blocks nothing.
+  **The prerequisite for it to change any NUMBER is surface-age resolution** (an active world's
+  surface age is currently its regime's constant, giving five distinct ages across all 40 bundled
+  bodies), which is phase 2 of the same spec and wants an owner decision: does a resurfacing RATE
+  produce a distribution of terrain ages, or still one number?

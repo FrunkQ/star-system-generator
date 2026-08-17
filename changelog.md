@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.768-beta - 17th Aug 2026
+
+- Docs only. The design for describing PART of a world - a polar cap, the sunward half, a tectonic plate, a city - is written up ahead of V4's plate drift, along with the one measured reason the icy-moon work stopped where it did: a world's surface age is currently its tectonic regime's constant, so there are five distinct surface ages across the whole solar system and nothing keyed on it can say more than that.
+
 ## v2.1.767-beta - 17th Aug 2026
 
 - **The shipped six are the tuned six.** The built-in presets are now the ones you built and looked at, adopted from your export - covers, watermarks, transitions, a fully-dialled CRT, lo-poly and wireframe renders, charted stars and pin markers. Between them they exercise most of the tool rather than repeating one look, which is the other job they do.
