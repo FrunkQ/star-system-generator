@@ -39,6 +39,7 @@
       "particleRadiation": 0,
       "flareActivity": 0.05175165467708495,
       "calculatedGravity_ms2": 274.2814900104337,
+      "isSelfLuminous": false,
       "oblateness": 0,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
