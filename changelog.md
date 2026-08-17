@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.750-beta - 17th Aug 2026
+
+- Docs only. The brief for your own map behind the stars (`docs/dev/g16-starmap-background-handoff.md`): a map-fixed attachment mode extending the overlay graphic the player preset already has, the GM map brought onto the same type, credit following what is shown.
+
 ## v2.1.749-beta - 17th Aug 2026
 
 * VTT integration: discovery now works ACROSS SITES. Chrome partitions BroadcastChannel inside a third-party iframe, so a host on another domain (beta.mappadux.com framing beta.starsystemx.com) could not find the GM tab through /bridge - it passed testing only because localhost dev is one site. /bridge?sid= now discovers over PeerJS (not partitioned) when the host knows the session id, and the GM tab hosts on the broker as soon as a starmap has its persistent id, so that id can actually be dialled. Same-site hosts keep the instant local path.
