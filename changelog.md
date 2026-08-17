@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.728-beta - 16th Aug 2026
+
+- Hardened a trap introduced with the substellar colour ramp: a star carrying a temperature of zero would have rendered near-black rather than merely the wrong colour, because the old fallback only caught null and undefined. Sol itself stores no temperature, so that default is load-bearing.
+- Verified the planet/star handover: inside the substellar mass window a body now looks the same whether it is filed as a planet or as a star. That was the actual fault — the glow depended on the role rather than on the mass.
+
 ## v2.1.727-beta - 16th Aug 2026
 
 - FIXED: brown dwarfs rendered as small suns. A T dwarf filed as a star — which is how most of them are filed — never reached the self-luminosity pass at all, because that pass skipped anything with a star role. So it got no glow, and fell through to a stellar colour table whose coldest band was a bright orange handed identically to a 2399 K red dwarf and a 500 K methane dwarf. Epsilon Indi Bb, about as warm as an oven, was drawn as a little star with sunspots.

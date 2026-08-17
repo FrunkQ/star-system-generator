@@ -74,7 +74,10 @@ export function bdGlowColour(teff: number): string {
  * Jupiter's 124 K this returns near-black, so a giant correctly shows no visible glow.
  */
 export function starColorFromTempK(tempK?: number): RGB {
-  const t = tempK ?? 5778;
+  // UNKNOWN IS NOT COLD. `?? ` catches null and undefined but NOT zero, and now that the cold end
+  // goes to near-black rather than to orange, a body carrying 0 K would render invisible instead of
+  // merely wrong. Sol itself stores no temperature, so this default is load-bearing.
+  const t = tempK && tempK > 0 ? tempK : 5778;
   if (t < 2400) return hexToRgb(bdGlowColour(t));
   if (t >= 30000) return hexToRgb('#9bb0ff');
   if (t >= 10000) return hexToRgb('#aabfff');

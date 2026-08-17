@@ -28,6 +28,14 @@ describe('a brown dwarf is not a small sun', () => {
     expect(0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]).toBeLessThan(0.015);
   });
 
+  it('treats an unknown temperature as unknown, not as cold', () => {
+    // Sol itself stores no temperatureK, so the default is load-bearing — and `??` does not catch
+    // zero, which would now render a star invisible rather than merely the wrong orange.
+    for (const bad of [undefined, 0, -1, NaN]) {
+      expect(lum(starColorFromTempK(bad as any))).toBeGreaterThan(150);
+    }
+  });
+
   it('does not move a real star', () => {
     for (const k of [3000, 4000, 5778, 8000, 12000, 40000]) {
       expect(starColorFromTempK(k)).toEqual(starColorFromTempK(k));
