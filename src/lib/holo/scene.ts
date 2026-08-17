@@ -896,7 +896,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       drawLabel(b.label);
     }
   }
-  function setLabelSize(px: number) { labelSizePx = Math.max(6, Math.min(40, px)); } // applied via sprite scale
+  // Clamp matches PlayerPresetEditor's slider range EXACTLY. It used to stop at 40 against a slider
+  // that offered 24, which was harmless; raising the slider to 48 without raising this would have made
+  // the top of its travel move nothing on screen — the same fault A32/F10 already cost twice.
+  function setLabelSize(px: number) { labelSizePx = Math.max(6, Math.min(48, px)); } // applied via sprite scale
   function setLabelFont(font: string | null) { labelFontFamily = font && font.trim() ? font : 'ui-monospace, SFMono-Regular, Menlo, monospace'; redrawAllLabels(); }
   function setLabelsVisible(on: boolean) { labelsVisible = on; }
 
@@ -4013,6 +4016,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const pxToScale = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
       const hFull = labelSizePx * ls.heightRatio * pxToScale;
       ls.sprite.scale.set(hFull * ls.aspect, hFull, 1);
+      // CLEAR THE BODY, and do it PER FRAME because "the body" is a different size every frame.
+      // The sprite floats above the body's CENTRE by a constant screen gap, which is fine for a name
+      // — it is only ever a few px tall — and wrong for the badges hanging beneath it: on a framed
+      // world the disc is hundreds of px across, so the marker a GM chose specifically to be seen was
+      // drawn inside the planet. Push the whole sprite up by the body's own apparent RADIUS, so the
+      // bottom of the stack (a pin's point, a flag's foot) lands on the top edge of the disc and
+      // tracks it as you zoom.
+      //
+      // The radius is the one the renderer actually drew: `radiusScene` scaled by `screenK`, which is
+      // the true-scale floor that keeps a distant world visible as a minimum-size marker. Reading the
+      // unscaled radius would tuck the badge inside a floored body at exactly the range where the
+      // floor is doing the most work.
+      const dist = camera.position.distanceTo(labelWorld);
+      // A construct has no `radiusScene`; `shipLen` is what the framing solver uses in its place
+      // (see the focus ladder), so use the same one rather than leaving ships with no clearance.
+      const rScene = (b.isConstruct ? b.shipLen : b.radiusScene) ?? 0;
+      const bodyPxR = (rScene * (b.screenK ?? 1)) / Math.max(1e-9, pxToScale * dist);
+      const hPx = Math.max(1e-6, labelSizePx * ls.heightRatio);
+      ls.sprite.center.set(0.5, -(0.25 * ls.nameFraction + bodyPxR / hPx));
     }
   }
 

@@ -220,6 +220,15 @@ export function tagPillText(marker: { style: string; label: string; monogram: st
 // the GM's per-view choice, or the individual highlight's override.
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * A flag's STAFF is black, never the tag's colour (owner, 2026-08-17). The colour is the flag's job:
+ * a staff painted the same hue doubles the coloured area and reads as a thick tail on the badge
+ * rather than as a pole planted on the map. Black also gives the flag an outline against a bright
+ * body, which is the case it exists for. Not pure black — a hair of lift so it still reads as a
+ * drawn object under a bleaching filter.
+ */
+export const TAG_FLAG_STAFF = '#111318';
+
 /** Height of a flag's staff, and a pin's tail, as a multiple of the font size. */
 export const TAG_PILL_STEM = 1.35;
 
@@ -275,7 +284,7 @@ export function drawTagFlag(
   const staff = m.fontPx * TAG_PILL_STEM + m.height;
   const staffW = Math.max(1, m.fontPx * 0.09);
 
-  ctx.fillStyle = bg;
+  ctx.fillStyle = TAG_FLAG_STAFF;
   ctx.fillRect(x - staffW / 2, y - staff, staffW, staff);
   return drawTagPill(ctx, text, x + staffW / 2, y - staff + m.height / 2, m, bg, fg);
 }

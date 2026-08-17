@@ -640,7 +640,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   let labelFontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
   function redrawAllLabels() { for (const p of placed) if (p.label) drawLabel(p.label); }
   const setLabelColor = (hex: string | null) => { labelColor = hex || '#d6e2f2'; redrawAllLabels(); };
-  const setLabelSize = (px: number) => { labelSizePx = Math.max(6, Math.min(40, px)); }; // applied via sprite scale
+  // Clamp matches PlayerPresetEditor's slider range EXACTLY — see the note on holo/scene.setLabelSize.
+  const setLabelSize = (px: number) => { labelSizePx = Math.max(6, Math.min(48, px)); }; // applied via sprite scale
   const setLabelFont = (f: string | null) => { labelFontFamily = f && f.trim() ? f : 'ui-monospace, SFMono-Regular, Menlo, monospace'; redrawAllLabels(); };
   const setLabelsVisible = (on: boolean) => { labelsVisible = on; };
 

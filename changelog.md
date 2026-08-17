@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.710-beta - 17th Aug 2026
+
+- The preset editor now shows a TEST MARKER on the preview. Picking chip / pin / flag used to change nothing on screen, because the preview was never given a highlight selection to draw - so a GM chose a marker style blind. It now draws your live selection if you have one, and otherwise a real tag from your own categories, in its real colour, so the shape, colour and size you are choosing are the ones players get. The panel says which of the two you are looking at.
+- Markers no longer sit inside the world they mark. The badge stack floated a fixed distance above a body's CENTRE, which is fine for a distant speck and useless on a framed planet - the marker chosen to be seen was drawn on top of the disc. It now clears the body's own apparent radius and tracks it as you zoom, so a pin's point and a flag's foot land on the top edge.
+- A flag's staff is black rather than the tag's colour. The colour is the flag's job; a matching staff read as a fat tail on the badge and lost the flag against a bright body.
+- Label size goes up to 48px, from 24. Both scenes were already clamping at 40, so the top of the new travel would have moved nothing - the clamps now match the slider exactly.
+
 ## v2.1.709-beta - 17th Aug 2026
 
 - The System step of the player-preset editor is regrouped around what you are setting rather than which renderer owns it: Look & feel, Background, Scaling, Camera, then Labels & markers. "Flat / no lighting" becomes a two-option Lighting dropdown directly above Render, where it reads as the choice it is. The Starmap step now follows exactly the same shape, so learning one teaches the other.

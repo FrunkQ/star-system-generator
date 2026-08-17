@@ -18,6 +18,8 @@
   import { systemStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
   // The GM's live snap-grid, so the preview shows the same grid the players will see.
   $: previewMapGrid = { type: ($starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType) as 'grid' | 'hex' | 'traveller-hex' | 'none', size: 50 };
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
@@ -37,6 +39,67 @@
   import { MAP_OVERLAY_OPTIONS, SYSTEM_OVERLAY_OPTIONS } from '$lib/map/mapOverlay';
   import { SKY_MODE_OPTIONS, skyStarsFor, magnitudeLimitFor } from '$lib/map/skyStars';
   import DocPanel from './DocPanel.svelte';
+
+  // ── Markers in the preview, and the TEST MARKER that guarantees one ────────────────────────────
+  // The GM's live highlight selection, fed to BOTH previews. It used to be described here as already
+  // arriving and it never did: `highlights` was simply not passed, so `markersFor` had nothing to work
+  // on and the marker-shape control previewed an empty scene. A GM picking chip / pin / flag watched
+  // nothing change. Read from the same store the players' view reads through SYNC_PRESET, and muted
+  // by the same switch, so the preview cannot show a different set of badges from the live one.
+  $: previewHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
+
+  // A LIVE SELECTION IS THE EXCEPTION, NOT THE RULE (owner, 2026-08-17). Most of the time a GM opens
+  // this editor with nothing highlighted, so passing the real selection alone still leaves the marker
+  // controls demonstrating on an empty map. When there is nothing to show, the preview mounts a TEST
+  // MARKER: a real tag from the GM's OWN categories, hung on the previewed system's most prominent
+  // bodies, so the shape, the colour, the text and the size are all the ones players will get.
+  //
+  // It is a REAL tag rather than a fabricated one on purpose. A made-up key resolves to no category,
+  // and `markersFor` would fall back to grey #888 — which would show the shape and lie about the
+  // colour, on the very control where colour is the thing being judged.
+  $: sampleTagKey = (() => {
+    const cats = $tagCategories;
+    const usable = (key: string) => {
+      const c = cats.find((x) => x.id === key.split('/')[0]);
+      return !!c && c.enabled !== false;
+    };
+    // FIRST CHOICE: a tag the previewed system genuinely carries. That is the case a GM is really
+    // tuning for — a real world, a real badge — and it needs nothing fabricated at all.
+    for (const n of ((previewSystem?.nodes ?? []) as any[])) {
+      for (const t of (n.tags ?? [])) if (t?.key && !t.secret && usable(t.key)) return t.key as string;
+    }
+    // ELSE the first tag of the first enabled category that describes a PLACE. `status` is skipped
+    // deliberately: it is runtime state (in transit, adrift), it is the first category in the list,
+    // and its slate colour is the least informative thing to judge a colour control against.
+    for (const c of cats) {
+      if (c.enabled === false || c.id === 'status') continue;
+      const t = (c.tags ?? []).find((x) => x?.key);
+      if (t) return t.key;
+    }
+    return null;
+  })();
+  $: usingSampleMarker = !previewHighlights.length && !!sampleTagKey;
+  $: stageHighlights = usingSampleMarker ? [{ ref: sampleTagKey! }] : previewHighlights;
+  // The sample tag is hung on a COPY of the system, never on the campaign's own nodes. Three bodies at
+  // most: enough to read a stack and a fan without burying the map in badges.
+  $: stageSystem = (() => {
+    if (!previewSystem || !usingSampleMarker) return previewSystem;
+    // If the sample tag came off the system itself, it is already where it belongs — hanging three
+    // more copies of it would misrepresent the map the GM is looking at.
+    const alreadyThere = ((previewSystem.nodes ?? []) as any[])
+      .some((n) => (n.tags ?? []).some((t: any) => t?.key === sampleTagKey));
+    if (alreadyThere) return previewSystem;
+    const wanted = new Set<string>();
+    for (const n of previewSystem.nodes as any[]) {
+      if (wanted.size >= 3) break;
+      if (n.kind === 'body' && n.roleHint !== 'ring' && n.roleHint !== 'barycenter') wanted.add(n.id);
+    }
+    return {
+      ...previewSystem,
+      nodes: (previewSystem.nodes as any[]).map((n) =>
+        wanted.has(n.id) ? { ...n, tags: [...(n.tags ?? []), { key: sampleTagKey!, origin: 'manual' }] } : n)
+    } as System;
+  })();
 
   // D6: for the 2D/3D views the info-block preview APPEARS while you're tweaking Info Block controls
   // and hides while you're on the display (scene) controls, so each edit shows the thing it changes.
@@ -525,7 +588,7 @@
 
             <CollapsibleSection label="Labels &amp; markers" open={openSections['starmap-labels']}
               on:toggle={(e) => setSection('starmap-labels', e.detail)}>
-              <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
+              <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="48" step="1" bind:value={draft.labelSize} /></label>
               <p class="hint">Marker SHAPE (chip / pin / flag) is one choice for both maps and is set on the System step.</p>
             </CollapsibleSection>
           {/if}
@@ -702,7 +765,7 @@
 
                 <CollapsibleSection label="Labels & markers" open={openSections['system-labels']}
                   on:toggle={(e) => setSection('system-labels', e.detail)}>
-                  <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="24" step="1" bind:value={draft.labelSize} /></label>
+                  <label>Label size <span>{draft.labelSize}px</span><input type="range" min="8" max="48" step="1" bind:value={draft.labelSize} /></label>
                   <!-- ONE field, both maps. The colour is never chosen here: it always comes from the tag
                        or its category, so a faction flies its own colour whichever shape is picked. -->
                   <label>Highlighted tags
@@ -713,6 +776,9 @@
                     </select>
                   </label>
                   <p class="hint">How a tag you have highlighted appears on the players' system map and starmap. Every shape carries its text, so it still reads under a CRT or colour-blind filter. Choose what to highlight in <strong>Find by tag</strong>.</p>
+                  {#if usingSampleMarker}
+                    <p class="hint sample-note">Nothing is highlighted right now, so the preview is showing a <strong>test marker</strong> &mdash; a real tag in its real colour, on a few bodies, purely so you can see what you are choosing. Highlight something in <strong>Find by tag</strong> and the preview switches to your own selection.</p>
+                  {/if}
                 </CollapsibleSection>
               </div>
             {/if}
@@ -912,7 +978,7 @@
               <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} dropLines={draft.starmapDropLines !== false} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
                 flat={draft.starmapView === 'diagram2d'}
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
-                background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} markerStyle={draft.markerStyle} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
+                background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} markerStyle={draft.markerStyle} highlights={stageHighlights} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
             {:else}
               <!-- D9: the starmap DOCUMENT — same engine + theme as the system document, real filter. -->
               <FilteredDocumentView stage="starmap" starmap={$starmapStore} {rulePack}
@@ -936,9 +1002,11 @@
               <div class="holo-wrap">
                 <!-- markerStyle is previewed live: the GM is choosing a LOOK, so they have to see it.
                      The selection itself comes from the live overrides, exactly as the players' view
-                     will read it, so the preview cannot show a different set of badges. -->
-                <HoloView system={previewSystem} {currentTime} style={systemPreviewStyle} skyStars={previewSkyStars}
-                  markerStyle={draft.markerStyle}
+                     will read it, so the preview cannot show a different set of badges. (It really
+                     does now — `highlights` was missing until v2.1.710, which made this comment a
+                     description of an intention rather than of the code.) -->
+                <HoloView system={stageSystem} {currentTime} style={systemPreviewStyle} skyStars={previewSkyStars}
+                  markerStyle={draft.markerStyle} highlights={stageHighlights}
                   focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
                 {#if infoPreview && !draft.hideInfoPanel}
                   <!-- Info-block preview (D6): the SAME DocPanel players get, docked like the live view.
@@ -1033,6 +1101,9 @@
   .actual-pip { position: absolute; left: 1px; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: #35c96b; box-shadow: 0 0 4px rgba(53, 201, 107, 0.8); pointer-events: none; z-index: 1; }
   .actual-on { color: #35c96b !important; }
   .hint { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4; }
+  /* The test-marker note is a statement about the PREVIEW, not about the setting — tinted so it is
+     not mistaken for a description of what players will see. */
+  .hint.sample-note { color: #d3a85f; font-style: normal; }
   .filter-params { border-left: 2px solid var(--border); padding-left: 8px; margin: 2px 0; }
   .holo-wrap { position: relative; width: 100%; height: 100%; }
   .preview-insp {
