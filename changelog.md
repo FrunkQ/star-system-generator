@@ -4,6 +4,10 @@ All notable changes are listed here:
 
 ## v2.1.749-beta - 17th Aug 2026
 
+* VTT integration: discovery now works ACROSS SITES. Chrome partitions BroadcastChannel inside a third-party iframe, so a host on another domain (beta.mappadux.com framing beta.starsystemx.com) could not find the GM tab through /bridge - it passed testing only because localhost dev is one site. /bridge?sid= now discovers over PeerJS (not partitioned) when the host knows the session id, and the GM tab hosts on the broker as soon as a starmap has its persistent id, so that id can actually be dialled. Same-site hosts keep the instant local path.
+
+## v2.1.749-beta - 17th Aug 2026
+
 - **"Subsector hex" is now offered on the GM's own snap grid.** Borders without the numbering -- the option every player view has had since v2.1.378, which the GM's map could not show because its grid list was written out by hand instead of reading the shared one. It reads the shared list now, so the next option added cannot go missing the same way.
 - Your saved grid choice carries over untouched, and the player broadcast is unchanged.
 

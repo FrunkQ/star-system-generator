@@ -23,7 +23,9 @@
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
 
   const NS = 'sse2-bridge';
+  // Local channel answers in milliseconds; a PeerJS dial (broker handshake + ICE) needs longer.
   const HELLO_TIMEOUT_MS = 2500;
+  const HELLO_TIMEOUT_PEER_MS = 12000;
 
   let parentOrigin: string | null = null;      // learned from the first allowed inbound message
   let embedded = false;
@@ -54,12 +56,15 @@
     const requestId = typeof d.requestId === 'string' ? d.requestId : String(Date.now());
 
     if (d.cmd === 'hello') {
+      const viaPeer = !!new URLSearchParams(window.location.search).get('sid');
+      // Already heard the GM (peer path answers on connect, before any hello arrives)? Reply now.
+      if (lastAnnounce) { reply({ event: 'announce', requestId, payload: lastAnnounce }); return; }
       const timer = setTimeout(() => {
         pendingHellos.delete(requestId);
         reply({ event: 'gone', requestId });
-      }, HELLO_TIMEOUT_MS);
+      }, viaPeer ? HELLO_TIMEOUT_PEER_MS : HELLO_TIMEOUT_MS);
       pendingHellos.set(requestId, timer);
-      broadcastService.sendMessage({ type: 'REQUEST_HELLO', payload: null });
+      broadcastService.sendMessage({ type: 'REQUEST_HELLO', payload: viaPeer ? new URLSearchParams(window.location.search).get('sid') : null });
     } else if (d.cmd === 'ensureRemote') {
       const sid = typeof d.sessionId === 'string' ? d.sessionId : null;
       if (!sid) { reply({ event: 'error', requestId, message: 'ensureRemote needs sessionId' }); return; }
@@ -73,7 +78,14 @@
   onMount(() => {
     if (!browser) return;
     embedded = window.parent !== window;
-    broadcastService.initProbe(onAnnounce);
+    // CROSS-SITE hosts (a different site framing us) cannot use the same-machine channel:
+    // Chrome partitions BroadcastChannel in third-party iframes, so the SSE GM tab is
+    // unreachable that way. When the host already knows the sid (?sid=), discover over
+    // PeerJS instead — not partitioned, and exactly what every later session has to hand.
+    // Same-site hosts (dev on localhost) still get the instant local path.
+    const sid = new URLSearchParams(window.location.search).get('sid');
+    if (sid) broadcastService.probeViaPeer(sid, onAnnounce);
+    else broadcastService.initProbe(onAnnounce);
     window.addEventListener('message', onMessage);
     // Announce readiness to whoever framed us — but only to an allowed origin, which we learn
     // from THEIR first message. Until then, a generic 'ready' can only go to a parent whose origin

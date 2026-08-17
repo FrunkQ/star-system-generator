@@ -196,6 +196,10 @@ class BroadcastService {
         };
         watchIce();
         conn.on('open', () => {
+          if (this.probeOnly) {
+            conn.send({ sessionId: null, message: { type: 'REQUEST_HELLO', payload: sessionId } });
+            return;
+          }
           conn.send({ sessionId: null, message: { type: 'REQUEST_SYNC', payload: sessionId } });
           conn.send({ sessionId: null, message: { type: 'REQUEST_STARMAP', payload: sessionId } });
         });
@@ -341,6 +345,23 @@ class BroadcastService {
     this.targetSessionId = null;
     this.onAnnounce = onAnnounce;
   }
+
+  // CROSS-SITE discovery. Chrome partitions BroadcastChannel (and all storage) inside a
+  // third-party iframe, so a /bridge frame embedded by another SITE (beta.mappadux.com
+  // framing beta.starsystemx.com) cannot hear the SSE GM tab on the same-machine channel —
+  // it only works when host and SSE are the same site (localhost dev, which is how it
+  // passed testing). PeerJS is NOT partitioned: given the sid the host already knows
+  // (every StarMap map / share link carries it), dial the GM over WebRTC and ask HELLO
+  // there. Answers arrive through the normal receiver path (onAnnounce).
+  public probeViaPeer(sessionId: string, onAnnounce: (a: AnnouncePayload) => void) {
+    this.isSender = false;
+    this.targetSessionId = sessionId;
+    this.onAnnounce = onAnnounce;
+    this.probeOnly = true;
+    this.initPeerGuest(sessionId);
+  }
+  // A probe wants HELLO, not the whole campaign: skip the REQUEST_SYNC/STARMAP join burst.
+  private probeOnly = false;
   public onAnnounce: ((a: AnnouncePayload) => void) | null = null;
   public onHeartbeat: ((gmClockMs: number) => void) | null = null;
   // Sender-side answers, owned by the GM route.
