@@ -30,7 +30,11 @@
   let step: 1 | 2 = 1;
   let selectedStars: StarSeed[] = [];
   let ageGyr = 4.6;
-  let knobs: GenerationKnobs = { metallicity: 0.5, diskMass: 0.5, dynamicalHistory: 0.5, rarity:0.5 };
+  // RARITY DEFAULTS TO 0.25, NOT THE MIDDLE. The dial's useful travel is asymmetric: below the
+  // realistic mix a system only gets duller, so the default starts at the realistic point and the
+  // remaining three quarters is headroom for the strange. Keep this in step with the pack's
+  // `type_rarity_weighting.realistic_dial`.
+  let knobs: GenerationKnobs = { metallicity: 0.5, diskMass: 0.5, dynamicalHistory: 0.5, rarity:0.25 };
   let naming: 'catalogue' | 'scientific' | 'named' = 'scientific';  // lead with a plausible Bayer style
   let busy = false;
   let chosenExample = '';

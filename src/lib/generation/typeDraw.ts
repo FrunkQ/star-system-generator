@@ -73,12 +73,62 @@ function infoFor(cls: string, pack?: RulePack): TypeDrawInfo {
   return { rarity: 0.5 };
 }
 
-// The rarity gate: full weight (with a mild exotic BOOST at the top of the dial) when a type's rarity
-// is at/below the slider; a steep Gaussian falloff for types rarer than the current setting.
-export function rarityGate(typeRarity: number, dial: number): number {
-  if (typeRarity <= dial) return 1 + 0.6 * dial * typeRarity;
-  const over = typeRarity - dial;
-  return Math.exp(-(over * over) / (2 * 0.08 * 0.08)); // ~0 by +0.2 over the slider
+/**
+ * THE RARITY WEIGHTING — a LADDER, not a gate.
+ *
+ * This used to be a step function: every type at or below the dial got weight 1, and anything above
+ * it fell off a Gaussian cliff. So at the default dial of 0.5 an airless terrestrial (rarity 0.05),
+ * a superhabitable (0.5) and an eyeball (0.45) were all EQUALLY likely, and a hot-eyeball at 0.6 —
+ * only just over the line — still kept 46% weight. Measured at v2.1.763, that put `hot-eyeball` on
+ * 31% of every planet generated around a Sun-like star and `helium` on 13%: one exotic class taking
+ * a third of the population, because "allowed" and "likely" were the same thing.
+ *
+ * The replacement is the standard one-parameter family (exponential tempering, the Boltzmann
+ * "temperature" trick), expressed so the pack number means something a person can read:
+ *
+ *     w(r) = ratio ^ r
+ *
+ * where `r` is the type's rarity 0..1 and `ratio` is simply HOW LIKELY THE RAREST TYPE IS COMPARED
+ * WITH THE MOST COMMON ONE. ratio < 1 favours the mundane, ratio = 1 is a flat draw, ratio > 1
+ * inverts it so the exotica lead. `ln(ratio)` moves linearly with the dial, which keeps each step of
+ * the slider a constant multiplicative change rather than a lurch.
+ *
+ * NOTHING IS EVER EXCLUDED at any dial setting — a legendary world stays possible at rarity 0, just
+ * very unlikely, which is the "possible, just unlikely" the band vocabulary asks for ([[G24]]).
+ */
+export interface RarityWeighting {
+  /**
+   * WHERE THE REALISTIC MIX SITS ON THE DIAL — and it is deliberately NOT the middle.
+   * The useful travel is asymmetric: below the realistic point a system only gets duller, and few
+   * GMs will ever go there, while everything interesting lies above it. Putting the default at 0.25
+   * therefore buys three quarters of the slider for the fun and lets the realistic anchor be as
+   * steep as reality actually is, instead of compromising it to keep headroom. It is also the
+   * marker the banded slider ([[G24]]) needs: green sits here, amber and red above.
+   */
+  realistic_dial: number;
+  /** Weight of the rarest type (r=1) against the most common (r=0), at dial 0 / realistic / 1. */
+  exotic_ratio_at_min: number;
+  exotic_ratio_at_realistic: number;
+  exotic_ratio_at_max: number;
+}
+// Fallback only — the shipped pack carries these; a pack that declares none gets the same curve.
+const DEFAULT_RARITY_WEIGHTING: RarityWeighting = {
+  realistic_dial: 0.25,
+  exotic_ratio_at_min: 0.0005, exotic_ratio_at_realistic: 0.02, exotic_ratio_at_max: 5,
+};
+
+export function rarityGate(typeRarity: number, dial: number, weighting?: RarityWeighting): number {
+  const w = weighting ?? DEFAULT_RARITY_WEIGHTING;
+  const d = Math.max(0, Math.min(1, dial));
+  const anchor = Math.min(0.999, Math.max(0.001, w.realistic_dial ?? 0.25));
+  // Interpolate in LOG space: the dial should feel the same at every point of its travel.
+  const lnMin = Math.log(Math.max(1e-9, w.exotic_ratio_at_min));
+  const lnMid = Math.log(Math.max(1e-9, w.exotic_ratio_at_realistic));
+  const lnMax = Math.log(Math.max(1e-9, w.exotic_ratio_at_max));
+  const lnRatio = d <= anchor
+    ? lnMin + (lnMid - lnMin) * (d / anchor)
+    : lnMid + (lnMax - lnMid) * ((d - anchor) / (1 - anchor));
+  return Math.exp(lnRatio * Math.max(0, Math.min(1, typeRarity)));
 }
 
 // Pick one viable type, weighted by the rarity gate × star-class affinity. Null if nothing survives
@@ -87,10 +137,13 @@ export function drawTypeForSlot(
   viable: Fingerprint[], dial: number, starClass: string, rng: SeededRNG, pack?: RulePack
 ): Fingerprint | null {
   const sp = (starClass || '').split('/')[1]?.[0] ?? '';
+  const weighting = (pack as any)?.generation_parameters?.type_rarity_weighting as RarityWeighting | undefined;
   const weighted = viable
     .map((fp) => {
       const info = infoFor(fp.class, pack);
-      const w = rarityGate(info.rarity, dial) * (info.stars?.[sp] ?? 1);
+      // Star affinity is a separate, PHYSICAL term and stays multiplicative: eyeballs really are
+      // commoner around M dwarfs, whatever the rarity dial is set to.
+      const w = rarityGate(info.rarity, dial, weighting) * (info.stars?.[sp] ?? 1);
       return { fp, w };
     })
     .filter((x) => x.w > 1e-4);

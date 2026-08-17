@@ -17,7 +17,8 @@ import { calculateEquilibriumTemperature } from '../physics/temperature';
 import { makeSystemName, makeWorldName, namesWorlds, planetNameChance, type NamingStrategy } from './naming';
 import { ageStar, determineSpectralClass, type StarSeed, type StarPhase } from '../physics/stellar-evolution';
 import { stellarRotationHours } from '../physics/stellarRotation';
-import { G, AU_KM } from '../constants';
+import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM } from '../constants';
+import { predictTidalLock } from '../physics/tidalLock';
 
 // Physical "starting condition" knobs, each 0..1 (0.5 = neutral). Presets are just saved knob sets.
 export interface GenerationKnobs {
@@ -329,7 +330,13 @@ function spawnTypedSlot(opts: {
   const { host, hostMassKg, aAU, name, idx, nodes, pack, rng, ageGyr, rarity, starClass, role } = opts;
   const teq = teqAtSlot(host, hostMassKg, aAU, nodes);
   const fps = pack.classifier?.fingerprints ?? [];
-  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps, hostMassKg), rarity, starClass, rng, pack);
+  // Can this orbit actually despin a planet in the time available? Asked with an Earth-sized probe
+  // because the planet does not exist yet; the lock timescale's a^6 term dwarfs its dependence on the
+  // planet's own size. Without this the draw invents tidal locking and the classifier confirms it.
+  const canLock = role === 'planet'
+    ? predictTidalLock(aAU, EARTH_RADIUS_KM, EARTH_MASS_KG, hostMassKg, ageGyr)
+    : undefined;
+  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps, hostMassKg, { canTidallyLock: canLock }), rarity, starClass, rng, pack);
   const orbit = { hostId: host.id, hostMu: G * hostMassKg, t0: Date.now(),
     elements: { a_AU: aAU, e: randomFromRange(rng, 0.01, 0.12), i_deg: Math.pow(rng.nextFloat(), 3) * 12,
       omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) } };

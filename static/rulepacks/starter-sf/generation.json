@@ -1,5 +1,12 @@
 {
   "generation_parameters": {
+    "type_rarity_weighting": {
+      "name": "How the Rarity dial reweights the type draw. w(r) = ratio^r, where r is a type rarity 0..1 and ratio is how likely the RAREST type is compared with the MOST COMMON one. ln(ratio) moves linearly with the dial, so every step of the slider is the same multiplicative change. THE REALISTIC MIX SITS AT realistic_dial, NOT at the midpoint - below it a system only gets duller, so the default starts there and three quarters of the travel is left for the interesting end. Nothing is ever excluded at any setting: a legendary world stays possible at rarity 0, just very unlikely.",
+      "realistic_dial": 0.25,
+      "exotic_ratio_at_min": 0.0005,
+      "exotic_ratio_at_realistic": 0.02,
+      "exotic_ratio_at_max": 5
+    },
     "orbital_spacing": {
       "name": "Adjacent-planet spacing in mutual Hill radii. Observed separations: Weiss et al. 2018 (Kepler multis cluster near 20); stability floor: Pu & Wu 2015 (roughly 10 for gigayear survival). Replaces the Titius-Bode block, which was Sol's own orbits in absolute AU applied to every star.",
       "separation_hill_radii": [10, 60],

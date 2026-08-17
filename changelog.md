@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.770-beta - 18th Aug 2026
+
+- **The Rarity dial is now a ladder rather than a gate, and it starts a quarter of the way along instead of in the middle.** It used to be a step: every type at or below the setting was equally likely and anything above it was cut off — so at the default an ordinary rocky world, a superhabitable one and an eyeball world all had the same chance, because "allowed" and "likely" were the same thing. Each type is now weighted by how exotic it is, on a curve the dial reshapes, so a common world is genuinely common and a legendary one genuinely rare — but nothing is ever ruled out, at any setting.
+
+- **The dial's default sits at the realistic mix, with three quarters of its travel above that for the strange.** Below the default a system only gets more ordinary, which is rarely what anyone wants; above it, the weighting tips steadily until the rarest worlds are the likeliest. Every number behind this is in the rule pack.
+
+- **Generated worlds no longer invent tidal locking to justify their own type.** The eyeball classes require a world locked to its star, and choosing one used to MAKE the planet locked — with nothing asking whether its orbit could actually slow the planet down in the lifetime of the system. Generation now checks first. Adding an eyeball world by hand is unaffected: hand authoring stays hand authoring.
 ## v2.1.769-beta - 18th Aug 2026
 
 - Docs only. The surface-areas design - describing part of a world rather than all of it - is deferred whole to V4 and now has its own section in the V4 scope, so that work opens with the record already settled. The standing limitation it uncovered stays on the board: a world's surface age is currently its tectonic regime's constant, which is why the icy-moon work could not separate Ganymede from Callisto.

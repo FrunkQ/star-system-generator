@@ -94,7 +94,10 @@ const SUBSTANTIAL_MOON = /ocean|hycean|forest|jungle|swamp|terrestrial|earth-ana
 // T_eq band are always offered on temperature. Greenhouse types get extra COLD-edge slack. Moons also
 // exclude giants/eyeballs, and are MASS-GATED by the host: a terrestrial offers only small airless/icy
 // moons; a gas giant offers more (bigger, watery, atmosphered). hostMassKg 0 ⇒ no mass gate.
-export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[], hostMassKg = 0): Fingerprint[] {
+export function viableTypesAt(
+  teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[], hostMassKg = 0,
+  opts?: { canTidallyLock?: boolean }
+): Fingerprint[] {
   const SLACK = 0.12; // 12% — matches the classifier's soft edge
   const isMoon = role === 'moon';
   const hostMe = hostMassKg / EARTH_MASS_KG;
@@ -105,6 +108,9 @@ export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprint
     // A rogue planet is by definition UNBOUND — placing one in an orbit makes it not-rogue, so it's
     // never offered/drawn for a bound slot (the classifier still uses it for genuinely unbound bodies).
     if (/rogue/.test(fp.class)) return false;
+    // A type that REQUIRES tidal locking is only on the menu where the orbit can actually despin a
+    // planet in the time available. Omitted = allowed, so the manual picker is untouched.
+    if (opts?.canTidallyLock === false && requiresTidalLock(fp)) return false;
     // A moon can never be a member of the giant family (it orbits one) nor an eyeball (locked to its
     // planet, not the star). Covers gas/ice giants, neptunes, jupiters, helium & puffy giants, brown/
     // dwarf bodies. (The old filter missed ice-giant / helium / puffy, so moons could be gas giants.)
@@ -132,6 +138,29 @@ export function viableTypesAt(teqK: number, role: 'planet' | 'moon', fingerprint
     const pad = (hi - lo) * SLACK;
     return teqK >= lo - pad - greenhouseColdSlackK(fp.class) && teqK <= hi + pad;
   });
+}
+
+/**
+ * A TYPE MAY NOT REQUIRE A CIRCUMSTANCE THE ORBIT CANNOT PRODUCE.
+ *
+ * The eyeball classes match on `starTidallyLocked: [1,1]`, and building a body to a fingerprint SETS
+ * the fields that fingerprint declares — so drawing an eyeball MAKES the planet tidally locked, and
+ * the classifier then agrees with the thing the draw invented. Nothing in the chain ever asked
+ * whether the orbit could despin a planet in the time available. Measured at v2.1.763, that put
+ * `hot-eyeball` on 28% of every world generated around a Sun-like star, most of them near 0.6 AU
+ * where nothing locks in four and a half billion years.
+ *
+ * `opts.canTidallyLock` is the answer from `predictTidalLock`, asked ONCE per slot with an
+ * Earth-sized probe body — the planet does not exist yet, and the lock timescale's a^6 term dwarfs
+ * its dependence on the planet's own size, so "could an Earth lock here" is the honest question.
+ *
+ * OMITTED means ALLOWED. The manual "add by type" picker passes nothing and is unchanged: hand
+ * authoring is hand authoring, and the standing rule is to show the problem in tags rather than
+ * forbid the choice. This gate is for the GENERATOR, which should not be inventing the circumstance.
+ */
+export function requiresTidalLock(fp: Fingerprint): boolean {
+  const v = fp.match?.['starTidallyLocked'];
+  return Array.isArray(v) ? Number(v[0]) >= 1 : Number(v) >= 1;
 }
 
 // Build a body of the given type at an orbit. Returns the physical fields to merge onto a new body;
