@@ -1768,6 +1768,37 @@ have a pack DECLARE its files in the manifest so nothing speculative is fetched 
 a schema change, not a loader tweak. Same shape as PHY-9: **an absence deliberately tolerated is
 not a fault, but it must SAY it is deliberate somewhere a reader of the symptom will look.**
 
+### DATA-R15 A CLASS TEST ANCHORED AT THE END SILENTLY EXCLUDES EVERY SUBTYPE
+WHERE: `physics/starPlausibility.starImplausibilities` (`isSubstellar`), and anything else matching a
+class name with a regex.
+RULE: anchor a class test at the START — `/^star\/[LTY]/` — never at the end. Classes carry a SUBTYPE
+in real data (`star/L7.5`, `star/T6`, `star/Y4`, `star/M8.5V`) and `classes[0]` is the subtyped one;
+the bare `star/T` is `classes[1]`.
+WHY: `/star\/(L|T|Y)$/` required the name to stop at the letter, so it matched none of the brown
+dwarfs in the bundled map. Every one of them was then told it was "a brown dwarf rather than an L7.5
+star" — the fault the owner reported as "undermassed brown dwarfs, so they are either defined wrong or
+we are tagging wrong". The bands were also wrong (B74), but fixing them alone would have changed
+nothing: this law does not read the bands.
+BLAST: the sibling `isRemnant` on the next line is UNANCHORED and so was never affected — two tests
+one line apart, written to different rules. Check both when either changes.
+
+### DATA-R16 A BROWN DWARF HAS ONE DEFINITION, REACHABLE FROM BOTH ROLES
+WHERE: `physics/substellar.ts`, `physics/luminosity.ts`, `cloudDecks.spaceWeathering`, the
+`star/L,T,Y` bands in `rulepacks/*/stars.json`, the `planet/*-dwarf` fingerprints in
+`classification.json`.
+RULE: a brown dwarf may legitimately be filed as EITHER a star or a planet — the boundary is disputed
+and some definitions go by formation rather than mass — so every PHYSICAL quantity must key on mass
+and none on role. Presentation is the only thing allowed to differ.
+WHY: two definitions of one object is this codebase's most recurring fault, and a brown dwarf is the
+one thing that can arrive down either path. Pinned by `brownDwarfDualRole.spec.ts`, which files a
+35-M_Jup object at 1300 K both ways and requires Teff, luminosity and weathering to be identical.
+BLAST: mass bands are GENERATION bands as well as match bands in `statTemplates` (stars have no
+match/range split, planets do), so widening one widens the other. That is correct here — a brown
+dwarf's type genuinely does not follow from its mass — but it is not correct in general.
+BLAST: the PLANET side stops at ~20 M_Jup (6,400 M_E), the ceiling core accretion can build to.
+Heavier companions are `star/L,T,Y` however they are filed. Do not widen it back to the hydrogen
+limit: that would make the planet side claim objects that cannot have formed as planets.
+
 ### DATA-R14 EDIT A RULE PACK AS TEXT
 WHERE: `static/rulepacks/**/*.json`.
 RULE: load-and-re-dump rewrites the whole file to change one key. It reflows every line, so the diff

@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.738-beta - 17th Aug 2026
+
+- FIXED: every real brown dwarf in the bundled maps was flagged as a physically impossible star. The masses were right and the check was wrong — and wrong in a small, findable way: the test for "is this a substellar class" was anchored at the END of the name, so `star/L7.5`, `star/T6` and `star/Y4` — which is how brown dwarfs are actually classed — all failed it. Each was then told it was "a brown dwarf rather than an L7.5 star". All eleven low-mass stars in the Local Neighbourhood now come back clean, including Luhman 16, WISE 0855 and Epsilon Indi B.
+- The L, T and Y bands stop pretending mass decides type. A brown dwarf never reaches equilibrium — it cools forever — so its type is a temperature state depending on mass AND age. The shipped map proves it in one line: Epsilon Indi Ba at 67 Jupiter masses and Luhman 16 B at 29 are BOTH T dwarfs. Mass now spans the whole substellar range for all three, temperature does the classifying, and the temperature bands deliberately OVERLAP, because Luhman 16 A is an L7.5 at 1305 K while Epsilon Indi Ba is a T1 at 1312 K and no single boundary can separate them.
+- Y extends below 300 K. WISE 0855 at 276 K is the coldest brown dwarf known and was outside its own band at both ends.
+- The hydrogen-burning limit is 0.075 solar masses rather than a round 0.08. It moves with composition, and the rounder figure was calling SCR 1845-6357 A — a real M8.5V sitting exactly on the line — impossible.
+- A planet-role brown dwarf now stops at the mass a planet could actually have formed at. Core accretion cannot build past about 20 Jupiter masses, so a heavier companion formed by cloud collapse and belongs to the stellar classes — it is a companion rather than a planet, even though it never fuses hydrogen. Below that it classifies on the merits as `planet/brown-dwarf` or, if cold, `planet/ultra-cool-dwarf`.
+- FIXED: the classifier's last resort claimed ROCKY for a body whose mass it did not know. `undefined > 10` is false in JavaScript, so anything with a missing mass fell to the terrestrial branch and came back a confident rocky planet however massive it really was — a hand-entered brown dwarf became Earth's cousin. An unknown mass now says `planet/unclassified`, which is the true answer, and only a known mass earns a guess.
+- Both fallback sites now share one function, so the class a body carries and the explanation of why can no longer disagree.
+
 ## v2.1.735-beta - 16th Aug 2026
 
 - Stefan-Boltzmann is now written once. How bright an object is for a given size and temperature was being worked out in two places — the brown-dwarf cooling track and the star editor — in different unit conventions, in different files. They agreed, but only by the luck of two correct implementations, and those two hand over to each other at the fusion limit: had either drifted, igniting a body would have changed its brightness for no physical reason and nothing would have caught it.

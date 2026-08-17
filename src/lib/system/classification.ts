@@ -117,6 +117,28 @@ function compareBases(
 
 // Explain WHY a body classified as it did: the winning base type, the defining bands it matched
 // (with the body's value + fit), the runner-up it beat, and any stacked modifiers.
+/**
+ * THE LAST RESORT, and it has to be honest about being one.
+ *
+ * `(features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial'` looks like a
+ * threshold and behaves like a default: in JavaScript `undefined > 10` is FALSE, so a body whose mass
+ * is missing or NaN fell to the TERRESTRIAL branch and came back a confident rocky planet however
+ * massive it actually was. A brown dwarf entered by hand with no mass became Earth's cousin.
+ *
+ * A fallback is not wrong to exist — a classifier needs one — it is wrong to express it as a class
+ * the numbers never supported. So an unknown mass now says UNCLASSIFIED, which is the true answer,
+ * and only a KNOWN mass earns a guess. ("Absent is not typical" — the fourth instance of this shape,
+ * after an unknown star defaulting to M, a borrowed age, and unweathered-is-not-unmeasured.)
+ *
+ * Shared by both call sites deliberately: the explanation path must name the same winner the body
+ * actually carries, and two copies of a fallback is how they stop agreeing.
+ */
+export function fallbackBaseClass(features: Record<string, unknown>): string {
+  const m = features['mass_Me'];
+  if (typeof m !== 'number' || !Number.isFinite(m)) return 'planet/unclassified';
+  return m > 10 ? 'planet/gas-giant' : 'planet/terrestrial';
+}
+
 export function explainClassification(
   features: Record<string, number | string>,
   fingerprints: Fingerprint[]
@@ -132,7 +154,7 @@ export function explainClassification(
 
   if (!base) {
     return {
-      base: (features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial',
+      base: fallbackBaseClass(features),
       baseScore: 0, bands: [], candidates: [], borderline: false, modifiers: [], fallback: true
     };
   }
@@ -188,7 +210,7 @@ export function classifyByFingerprint(
   }
 
   if (out.length === 0) {
-    out.push((features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial');
+    out.push(fallbackBaseClass(features));
   }
   return out;
 }

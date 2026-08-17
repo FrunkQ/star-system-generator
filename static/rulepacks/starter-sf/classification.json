@@ -90,6 +90,7 @@
     "planet/supermassive-terrestrial",
     "planet/swamp",
     "planet/terrestrial",
+    "planet/unclassified",
     "planet/toroidal",
     "planet/ultra-cool-dwarf",
     "planet/ultra-hot-jupiter",
@@ -1843,11 +1844,11 @@
       {
         "class": "planet/brown-dwarf",
         "kind": "base",
-        "note": "Deuterium-burning, between planet and star.",
+        "note": "Deuterium-burning, and light enough to have formed as a planet. Above ~20 M_Jup core accretion cannot build one, so a heavier companion formed by cloud fragmentation and belongs to star/L, T or Y — it is a companion, not a planet, even though it never fuses hydrogen.",
         "match": {
           "mass_Me": [
             4100,
-            25000
+            6400
           ],
           "radius_Re": [
             9,
@@ -1858,7 +1859,7 @@
         "range": {
           "mass_Me": [
             4000,
-            26000
+            6400
           ],
           "radius_Re": [
             9,
@@ -1873,11 +1874,11 @@
       {
         "class": "planet/ultra-cool-dwarf",
         "kind": "base",
-        "note": "Coolest brown/sub-stellar dwarfs.",
+        "note": "Coolest brown/sub-stellar dwarfs, at planet-forming masses. Same ceiling as planet/brown-dwarf and for the same reason.",
         "match": {
           "mass_Me": [
             4000,
-            25000
+            6400
           ],
           "Teq_K": [
             0,

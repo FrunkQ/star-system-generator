@@ -26,7 +26,10 @@ import { SOLAR_TEMPERATURE_K } from './stellar-evolution';
 export const STAR_IMPLAUSIBLE_TAG = 'physics/implausible';
 
 /** The physical limits below. Real constants, not tuning knobs — each has a name and a reason. */
-export const HYDROGEN_BURNING_LIMIT_SOLAR = 0.08;   // below this, no sustained hydrogen fusion
+// 0.075, not 0.08. The limit is metallicity-dependent (roughly 0.072 to 0.080) and the round 0.08 was
+// flagging SCR 1845-6357 A — a real M8.5V at 0.0750 sitting exactly on the line — as an impossible
+// star. A body within a few percent of a boundary that itself moves with composition is not implausible.
+export const HYDROGEN_BURNING_LIMIT_SOLAR = 0.075;  // below this, no sustained hydrogen fusion
 export const DEUTERIUM_BURNING_LIMIT_SOLAR = 0.013; // below this, not even deuterium: a planemo
 export const TOV_LIMIT_SOLAR = 2.5;                 // most a neutron star's degeneracy pressure holds
 
@@ -55,12 +58,21 @@ export function starImplausibilities(body: CelestialBody, pack?: RulePack): Impl
 	const rSolar = (body.radiusKm ?? 0) / SOLAR_RADIUS_KM;
 	const tK = body.temperatureK ?? 0;
 	const isRemnant = /star\/(WD|NS|BH|BH_active|magnetar)/.test(cls);
-	const isSubstellar = /star\/(L|T|Y)$/.test(cls);
+	// ANCHORED AT THE START, NOT THE END. `/star\/(L|T|Y)$/` required the class to STOP at the letter,
+	// so `star/L7.5`, `star/T6` and `star/Y4` — which is how every real brown dwarf in the bundled map
+	// is actually classed — all read as NOT substellar. Every one of them was then told it was "a brown
+	// dwarf rather than an L7.5 star", which is the tag the owner reported. No other stellar class
+	// begins with L, T or Y, so leading-anchored is both correct and safe.
+	const isSubstellar = /^star\/[LTY]/.test(cls);
 
 	// (1) IS IT A STAR AT ALL? Fusion limits are the sharpest lines in stellar physics and the ones a
 	// mass slider crosses first. Remnants are exempt: a white dwarf is not fusing and never will be.
 	if (!isRemnant && mSolar > 0) {
-		if (mSolar < DEUTERIUM_BURNING_LIMIT_SOLAR) {
+		// The deuterium limit is the PLANET boundary, and it is disputed: formation-based definitions
+		// (core accretion versus cloud collapse) put the same object on either side of it. So it is not
+		// held against something that already calls itself a brown dwarf — WISE 0855 at 6 M_Jup is the
+		// coldest one known and is a Y dwarf by every catalogue that lists it.
+		if (!isSubstellar && mSolar < DEUTERIUM_BURNING_LIMIT_SOLAR) {
 			out.push({
 				law: 'no-fusion',
 				detail: `At ${mSolar.toFixed(3)} solar masses this is below the deuterium-burning limit of `
