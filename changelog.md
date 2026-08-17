@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.741-beta - 17th Aug 2026
+
+- Docs only. The generation-rebalance brief for a fresh session (`docs/dev/generation-rebalance-handoff.md`): Hill-radius spacing to replace the Solar System's Titius-Bode constants, the slider measurement, and the moon design note — with the finding that the "amount of material" slider is clamped by the nine-slot list it feeds.
+
 ## v2.1.740-beta - 17th Aug 2026
 
 - Docs only. The undo/redo brief is written for a fresh session (`docs/dev/g28-undo-redo-handoff.md`); the inbox gains a session roster with every open item routed to the session that knows the code; the brown-dwarf work is verified closed; and the canvas-cannot-render-headless measurement is folded into the standing rule it corrects.
