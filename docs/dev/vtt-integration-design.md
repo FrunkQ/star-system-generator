@@ -1088,3 +1088,43 @@ relay — now a GM setting in both apps rather than a code change.
 When the third copy would appear (Foundry/Owlbear shims), the SAME module is
 copied again — or, better, the pair is extracted to a tiny shared package;
 that extraction is the trigger point, not before.
+
+## 16. Cross-site discovery: BroadcastChannel is partitioned (found 2026-08-17 on the deployed pair)
+
+**The fault.** The first real test on the deployed pair (beta.mappadux.com framing
+beta.starsystemx.com) failed discovery: the bridge answered `gone` even with an
+SSE GM tab open and announcing. Cause: **Chrome partitions BroadcastChannel (and
+all storage) inside a third-party iframe** — a starsystemx.com frame embedded by
+another SITE gets a channel keyed on the top-level site and cannot hear the
+top-level starsystemx.com tab. The design's discovery hop assumed origin-scoped
+channels; that is only true when host and SSE are the SAME SITE. It passed
+testing because localhost:5180 and localhost:5199 are one site. Verified
+empirically: same-origin bridge frame -> `announce`; cross-site frame -> its
+REQUEST_HELLO never reaches the GM tab's channel (watched from the tab).
+
+**The fix (SSE v2.1.749/753 + Mappadux v2.18.2):**
+- `/bridge?sid=<id>`: when the host knows the sid, the frame discovers over
+  **PeerJS** (`probeViaPeer` — dial the GM, ask REQUEST_HELLO on the data
+  channel; not partitioned). Same-site hosts keep the instant local path.
+- The SSE GM tab **hosts on the broker as soon as a starmap has its persistent
+  id** (reactive `enableRemote()`), because a saved sid is only worth anything
+  if it can be dialled. Verified with a broker probe (ID-TAKEN = hosting).
+- Mappadux `Sse2Bridge.hello(origin, sid)`: sid-keyed frames, longer timeout for
+  the peer path; every StarMap map / activation passes its sid.
+- **First pairing** (no sid yet, cross-site): the Add StarMap dialog offers
+  "paste a player link from SSE (Player Views… > Copy link)"; the sid comes from
+  the URL, PeerJS discovery then confirms the campaign and lists ALL its views.
+  After that, StarMaps reconnect on their own. Address field became a dropdown
+  (production / beta / other).
+
+**Consequence for Foundry / Owlbear (they are always cross-site):** discovery
+there is PeerJS-with-a-known-sid ONLY, and first pairing is always the pasted
+link (or typed sid) — which is the "instruct the user" rule from section 14
+landing exactly where predicted. Nothing else in the contract changes.
+
+**Session-hygiene note (own fault, recorded):** the auto-host hunk in
+`+page.svelte` was left in the working copy by an autostash during a shared-tree
+version collision and did not ship in v2.1.749; caught by the broker probe on
+the deployed tab (explicit Player Views hosting worked, load-time did not).
+Shipped in v2.1.753. Lesson for the shared tree: after any `--autostash`, diff
+the working copy against origin before declaring a push complete.
