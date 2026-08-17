@@ -67,7 +67,8 @@
     { title: 'Sharper generation', blurb: 'Procedural systems are retuned alongside the physics as it grows, so a generated system reflects what the engine currently knows rather than what it knew when the generator was written.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
-    { title: 'Virtual tabletop integration', pending: 'in testing', blurb: 'Connect to your VTT — Mappadux, Owlbear Rodeo and Foundry are in testing.' },
+    { title: 'Undo and redo', pending: 'coming', blurb: 'Hallelujah.' },
+    { title: 'Virtual tabletop integration', pending: 'in testing', blurb: 'Full integration with Mappadux — free, and built alongside this. Owlbear Rodeo and Foundry are in testing, and we would love volunteers: if you run either, come and tell us what breaks and what you need.' },
     { title: 'Many improvements and fixes', blurb: 'Hundreds of smaller changes throughout — the changelog has every one, build by build.' }
   ];
 </script>
