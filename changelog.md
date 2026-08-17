@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.757-beta - 17th Aug 2026
+
+- **Fixed: opening a system cut off its outer edge — which you only notice in a binary, where the thing cut off is a STAR.** The opening view was a fixed camera position that took no account of the lens, and it sat close enough to show under three quarters of the system's radius. It is now fitted to what is actually being looked through, so the whole system is in frame on entry, and a narrow phone screen pulls further back rather than cropping the sides.
+- Switching to a different system now returns to that opening view. It had been keeping wherever the previous system was left, which on a system with a very different size read as arriving somewhere arbitrary.
+- **Fixed: selecting a planet's rings framed the planet alone, so the rings — the thing clicked — sat outside the shot.** A ring's size is its orbit, not a body radius, and its extent was never part of the calculation: rings reach several times the planet's drawn radius while a close-up frames just past the surface. Rings now count as something orbiting the planet, so a ringed world offers the wider "planet and what circles it" step even with no moons, and that step now takes the rings in.
+
 ## v2.1.756-beta - 17th Aug 2026
 
 - FIXED: every icy moon was exactly as bright as every other one. Enceladus, which reflects more light than anything else near us, and Callisto, one of the darkest things in the outer solar system, came out at the same number - a five-fold error on one of them. Ice ages: it is brilliant when it is fresh and filthy when it is old, because infall and radiation leave behind a dark residue that nothing removes and only resurfacing buries. So an icy world's brightness is a clock, and the engine already knew how long each surface had gone unrepaved.
@@ -13,9 +19,7 @@ All notable changes are listed here:
 - FIXED: Mercury was classified as an eyeball world - one face permanently sunward - while also carrying the 3:2 spin-orbit resonance that says the opposite. Being slowed by tides has two possible endings and the engine only recognised one of them: a permanent face, or a captured resonance where the whole surface still sees the star. Mercury has the second, and the Newton panel now says so instead of calling it a hot eyeball.
 - A world in a resonance no longer gets a sharp day/night terminator drawn on it, nor the crater pattern of a world that keeps one face forward. Both need a face to keep, and it does not have one.
 
-- **Fixed: opening a system cut off its outer edge — which you only notice in a binary, where the thing cut off is a STAR.** The opening view was a fixed camera position that took no account of the lens, and it sat close enough to show under three quarters of the system's radius. It is now fitted to what is actually being looked through, so the whole system is in frame on entry, and a narrow phone screen pulls further back rather than cropping the sides.
-- Switching to a different system now returns to that opening view. It had been keeping wherever the previous system was left, which on a system with a very different size read as arriving somewhere arbitrary.
-- **Fixed: selecting a planet's rings framed the planet alone, so the rings — the thing clicked — sat outside the shot.** A ring's size is its orbit, not a body radius, and its extent was never part of the calculation: rings reach several times the planet's drawn radius while a close-up frames just past the surface. Rings now count as something orbiting the planet, so a ringed world offers the wider "planet and what circles it" step even with no moons, and that step now takes the rings in.
+## v2.1.753-beta - 17th Aug 2026
 
 * VTT integration: the GM tab now hosts on the PeerJS broker as soon as a starmap has its persistent session id (this hunk was meant to ship in v2.1.749 and was left in the working copy). Without it a cross-site host app could not discover the session at all - verified against the broker on the deployed beta.
 
@@ -216,16 +220,13 @@ All notable changes are listed here:
 
 - A giant reads as "K III" in the star editor rather than "K-III". The hyphen is how the key is spelled in the data; it is not how anyone says it.
 
-
 ## v2.1.695-beta - 16th Aug 2026
 
 - FIXED: habitability was scored against the temperature a world RADIATES at rather than the one on its ground, and for an airless world those are not the same number. The Moon averages -59 C and was being scored as though it sat at -3; Mercury averages 37 C and was scored at 167. Landing budgets read the same wrong figure under a field called surface temperature.
 
-
 ## v2.1.694-beta - 16th Aug 2026
 
 - The star editor says what a star currently IS, under the type dropdown, and that it follows the numbers. A planet has an auto-classify switch and a star deliberately has none - a planet's type is a judgement about the parameters you authored, a star's designation is a readout of where it sits on the HR diagram - and the difference now says so rather than looking like a missing control.
-
 
 ## v2.1.693-beta - 16th Aug 2026
 
@@ -233,7 +234,6 @@ All notable changes are listed here:
 - Every star in a saved campaign is upgraded on load. A star you PICKED and left alone keeps the letter you chose and gains the digit its own temperature states - your K stays a K - while a star the engine made is read off its position on the HR diagram, which is what its designation has always been a readout of.
 - The bundled starmaps carry each real star's own catalogue designation, which is measured rather than derived: Proxima is M5.5V, Wolf 359 M6.5V, Betelgeuse M1Ia.
 - FIXED: a supergiant asked for its numbers or its portrait by full designation got the DWARF band of the same letter - a 10-solar-radius star handed a 1-radius template, and red dwarf art on a red supergiant.
-
 
 ## v2.1.692-beta - 16th Aug 2026
 
@@ -250,11 +250,9 @@ All notable changes are listed here:
 - A star built in the editor or rolled by generation now knows its full designation - the 2 in G2V, not just the G. It was already read and written correctly for stars imported from the real sky; what was missing was the one step that says which digit a temperature deserves, so two thirds of the stars in a campaign could not state one. Anchored on the measured main-sequence temperatures rather than by cutting each letter into ten equal slices, because the real sequence is uneven: G0 to G2 is 160 degrees and K5 to K7 is 340.
 - Dragging a star's temperature now updates its subclass with it, instead of dropping the digit and keeping only the letter.
 
-
 ## v2.1.686-beta - 16th Aug 2026
 
 - Picking a spectral type in the star editor now draws a star from that class's range instead of handing back the exact middle of it every time, so two G dwarfs in a campaign are two different G dwarfs rather than the same numbers twice. The draw is seeded from the star itself, so re-opening the panel never rerolls it under you, and it is the same draw system generation has always made - a hand-placed G2V and a generated one are now the same kind of object.
-
 
 ## v2.1.685-beta - 16th Aug 2026
 
@@ -674,7 +672,6 @@ All notable changes are listed here:
 * And a paired orbit no longer loses its shape when the pair is resolved into a barycentre. The two stars have to share one orbit shape between them, and the engine was copying it from whichever star was heavier — which, for an imported system, is the one that never had an orbit of its own. Its blank was overwriting the real one.
 * Alpha Centauri imports properly again. Proxima and its planets were being pulled out of place: Proxima Cen b appeared in a tight orbit around the main star instead of around Proxima, ten thousand astronomical units away, and Toliman went missing. The cause was two different things being given the same internal name — companion stars were numbered b, c, d and so were planets, so Proxima Cen *b* and Alpha Cen *B* collided. Nothing reported an error; the app simply picked the wrong one. Fixed, and a check now runs over every imported system to make sure no two objects can share a name again.
 
-
 ## v2.1.596-beta - 14th Aug 2026
 
 * Banked for the new generation engine: age will belong to a whole star cluster rather than to each star separately, which is how it really works — stars in a cluster form together and grow old together. That gives a map patches with a character of their own: a young region of hot blue stars with no time for life yet, an old one full of red giants.
@@ -710,7 +707,6 @@ All notable changes are listed here:
 * A star the catalogue gives no type for is now shown as unclassified, instead of quietly becoming a red dwarf. Six percent of the stars in a wide import had no spectral type and were being handed a red dwarf's mass, brightness, picture and flare rate. They now say plainly that the type is unknown and the figures are placeholders.
 * Both physics pages explain all of it, including why one star is squashed and another is not.
 
-
 ## v2.1.589-beta - 14th Aug 2026
 
 * The supergiant picture now reaches stars you create as well as stars you import. There are two separate lists of star artwork in the app - one used when importing, one when generating - and only the first had been updated, so a supergiant built by hand still showed a red dwarf.
@@ -734,7 +730,6 @@ All notable changes are listed here:
 * White dwarfs were already being imported correctly. Checked rather than assumed, and left alone.
 * Red giants and supergiants no longer flare like red dwarfs. Flares come from a fast-spinning, strongly magnetic star, which a hugely swollen one is not — and the flare dose reaching a planet was being calculated as though Betelgeuse behaved like Proxima Centauri. Black holes were flaring too, for a different and sillier reason.
 
-
 ## v2.1.584-beta - 14th Aug 2026
 
 * A clarification to yesterday's principle: describing things in human terms is not the problem, it is the point. "It would look blue to you", "about Earth gravity", "roughly a fortnight" are what make a figure mean anything at a table. The rule is only that our senses must not sneak into the sums — and that where a description depends on human eyes, it says so.
@@ -756,7 +751,6 @@ All notable changes are listed here:
 * A star search that misses now tries harder before giving up. Typing "Epsilon Eridani" or "61 Cygni" finds the star, where before only the catalogue's own shorthand did — the app translates and asks again.
 * Searching for a pair, like 61 Cygni, offers you its two stars to choose between. The pair itself has no distance of its own, so it could not be used as a map centre and the search simply failed.
 * A search too vague to answer now says so and suggests how to narrow it, rather than listing a hundred stars or reporting nothing found. "Epsilon" names a star in all 88 constellations, so it asks you to add one.
-
 
 ## v2.1.579-beta - 14th Aug 2026
 
@@ -1364,7 +1358,6 @@ All notable changes are listed here:
 ## v2.1.445-beta - 5th Aug 2026
 
 * Internal only: developer notes. Three findings banked for their owners, including a build-kit test that has started failing because a bundled starmap was edited by hand rather than through its generator. No change to the app.
-
 
 ## v2.1.444-beta - 5th Aug 2026
 
@@ -3292,8 +3285,6 @@ Navigating and editing:
 * **The body info block is now part of the actual filtered picture (3D view).** Instead of a CSS approximation, the info panel is drawn once to a canvas and composited into the holo render itself, so it warps, picture-rolls and tints through the *real* GPU shader exactly like the rest of the screen — no fake. It's a static, once-per-selection draw, so it's cheap. (The panel sits inside a small bezel margin so the CRT edge-warp doesn't wrap it.)
 * **Info-panel font-size slider** added to the 3D system settings, so you can scale the readout text.
 
-
-
 ## v2.1.59-beta - 11th Jul 2026
 
 * **The body info block now clearly takes the visual filter.** Its tint was too weak to reach the text, so only the image looked filtered — the tint now recolours the whole panel, so a selected body's data reads as part of the CRT / night-vision / thermal screen.
@@ -5158,8 +5149,6 @@ Field Guide look controls + panel polish (the look panel's full home will be the
   * Improved flyby math to correctly calculate zero Delta-V intercepts for unpowered flypasts.
   * Unified "About" dialogs into a single, maintainable component.
   * Easter Egg :)
-
-
 
 ## v1.9.2 - 24th Mar 2026
 
