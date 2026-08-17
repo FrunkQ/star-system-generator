@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.742-beta - 17th Aug 2026
+
+- Docs only. Five inbox items routed to the sessions that know their code (the player-view rebuild storm, the icy-moon albedo constant, Mercury's lock flag, and two player-view tidies), each re-checked against the tree before hand-out.
+
 ## v2.1.741-beta - 17th Aug 2026
 
 - Docs only. The generation-rebalance brief for a fresh session (`docs/dev/generation-rebalance-handoff.md`): Hill-radius spacing to replace the Solar System's Titius-Bode constants, the slider measurement, and the moon design note — with the finding that the "amount of material" slider is clamped by the nine-slot list it feeds.
