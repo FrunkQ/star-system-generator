@@ -51,7 +51,7 @@ describe('the highlight selection survives a reload', () => {
     const first = await freshStore();
     first.liveOverrides.update((o) => ({
       ...o, filterBypass: true, orbitPaused: true, labelsHidden: true, followGM: true,
-      mapHighlights: [{ ref: 'faction' }]
+      constructsHidden: true, mapHighlights: [{ ref: 'faction' }]
     }));
     const reloaded = await freshStore();
     const v = get(reloaded.liveOverrides);
@@ -59,6 +59,9 @@ describe('the highlight selection survives a reload', () => {
     expect(v.orbitPaused).toBe(false);
     expect(v.labelsHidden).toBe(false);
     expect(v.followGM).toBeNull();
+    // A53 belongs with these, not with the selection: coming back to a launch with the whole fleet
+    // silently missing is the surprise the split exists to avoid.
+    expect(v.constructsHidden).toBe(false);
     expect(v.mapHighlights).toHaveLength(1); // …while the selection beside them did come back
   });
 

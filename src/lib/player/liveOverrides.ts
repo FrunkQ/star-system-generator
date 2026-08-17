@@ -26,6 +26,11 @@ export interface LiveOverrides {
   filterBypass: boolean;    // temporarily drop the visual filter (readability)
   orbitPaused: boolean;     // temporarily stop the auto view-orbit turntable
   labelsHidden: boolean;    // temporarily hide in-scene labels
+  // Hide every artificial construct from the players' view — ships, stations, gates. Sits with the
+  // momentary nudges rather than with the highlight selection above, and therefore does NOT survive a
+  // reload: it is "don't show them that, right now", and coming back to a launch with the whole fleet
+  // silently missing is exactly the surprise the persistence split exists to avoid.
+  constructsHidden: boolean;
   // "Show them where the refuelling is." A live selection of categories and/or specific tags to
   // badge on the maps — the GM's own AND the players', from one value, so what you pick is what they
   // see. Momentary like the rest of this object: never saved into a preset.
@@ -39,7 +44,8 @@ export interface LiveOverrides {
 }
 
 export const DEFAULT_OVERRIDES: LiveOverrides = {
-  followGM: null, filterBypass: false, orbitPaused: false, labelsHidden: false, mapHighlights: [], highlightsMuted: false
+  followGM: null, filterBypass: false, orbitPaused: false, labelsHidden: false, constructsHidden: false,
+  mapHighlights: [], highlightsMuted: false
 };
 
 /** Only the two fields that are prep rather than a momentary nudge — see the header. */

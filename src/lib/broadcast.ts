@@ -91,6 +91,10 @@ export interface PresetOverrides {
   filterBypass: boolean;
   orbitPaused: boolean;
   labelsHidden: boolean;
+  // "Don't show them the fleet." Drops every construct from the players' view in one move — ships,
+  // stations, gates, the lot. Momentary like the rest of this block: it is the thing a GM reaches for
+  // mid-scene, not a property of the preset's design.
+  constructsHidden?: boolean;
   // What the GM is highlighting on the maps right now — category ids and/or exact tag keys. Rides
   // with the other momentary overrides so the players' map badges whatever the GM's does.
   // SAFE BY CONSTRUCTION: this is only a SELECTION. The tags themselves arrive via the player

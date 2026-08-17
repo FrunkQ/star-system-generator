@@ -320,6 +320,11 @@
                 on:change={(e) => setOverride({ orbitPaused: (e.currentTarget as HTMLInputElement).checked })} />
               Pause auto view-orbit
             </label>
+            <label class="chk">
+              <input type="checkbox" checked={$liveOverrides.constructsHidden} disabled={!$runningPresetId}
+                on:change={(e) => setOverride({ constructsHidden: (e.currentTarget as HTMLInputElement).checked })} />
+              Hide all artificial constructs (stations, ships)
+            </label>
 
             <!-- Highlights. Not gated on a running view: it badges the GM's own maps too, and seeing
                  it before pushing it is the point. -->

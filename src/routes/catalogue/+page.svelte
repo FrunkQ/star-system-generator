@@ -177,16 +177,27 @@
     : skyStarsFor(starmap, selectedSystemId,
         { magnitudeLimit: magnitudeLimitFor(activePreset!.constellations ?? 'off') });
 
+  // A53: the GM's live "hide every ship and station" switch (Quick overrides). Never persisted here
+  // either — it arrives with each SYNC_PRESET and a window that reconnects is told again.
+  let constructsHidden = false;
   // The system the view shows. Redaction has already happened at the source (computePlayerSnapshot);
-  // this is just the selection.
-  // (A42: an `includeConstructs` filter used to sit here, fed by the Field Guide launcher's
-  // "include artificial constructs" checkbox and its `?constructs=0` URL parameter. It could only
-  // ever be TRUE under a preset — `applyPlayerPreset` set it so on every application — so with a
-  // preset always in play it was a filter with one branch. NO PRESET FIELD REPLACES IT: hiding every
-  // construct from players in one move is a capability the Field Guide had and Player Views does not.
-  // Reported rather than reinvented here — it wants a preset field and a control, not a resurrected
-  // URL parameter.)
-  $: displaySystem = selectedSystemNode?.system ?? null;
+  // this is the selection, plus the one thing the GM can drop live.
+  //
+  // A53 — "DON'T SHOW THEM THE FLEET", restored as a LIVE OVERRIDE rather than as the preset field
+  // A42 removed. The Field Guide's version was an authoring checkbox and a `?constructs=0` URL
+  // parameter, and both were the wrong shape: the moment a GM actually wants this, it is mid-scene and
+  // about the next thirty seconds, not about how the view was designed. So it sits with Hide labels
+  // and Suspend filter in Quick overrides, rides the same SYNC_PRESET, and is momentary by design.
+  //
+  // Filtered HERE, at the one place every system surface reads from, rather than at each of them:
+  // the 3D scene, the 2D map, the document, the body picker and the ship-plume table all derive from
+  // `displaySystem`, so a construct dropped here is gone from all of them at once and none of them
+  // needs to know the override exists.
+  $: displaySystem = (() => {
+    const sys = selectedSystemNode?.system ?? null;
+    if (!sys || !constructsHidden) return sys;
+    return { ...sys, nodes: sys.nodes.filter((n) => n.kind !== 'construct') };
+  })();
 
   // G3: each modelled ship's drive data for the scene's plume - max accel (thrust reads as a
   // fraction of the ship's OWN capability) and the exhaust colour of its dominant engine
@@ -357,6 +368,7 @@
     holoLabelsOn = !ov.labelsHidden;
     holoFilterBypass = ov.filterBypass;
     holoOrbitPaused = ov.orbitPaused;
+    constructsHidden = ov.constructsHidden === true;
     overrideFollowGM = ov.followGM ?? null;
     mapHighlights = (ov.highlightsMuted ? [] : (ov.mapHighlights ?? [])) as any;
   }

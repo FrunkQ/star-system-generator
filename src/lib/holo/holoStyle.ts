@@ -1,8 +1,16 @@
-// Holo "look" presets. A HoloStyle bundles every look-and-feel knob of the 3D view — the GPU
-// filter, the toytown compression, the camera framing, the skybox — so a GM can pick one from a
-// single dropdown, tweak it live, and save it as a named preset shared across guides and the
-// projector. Persisted locally (like branding). See docs/dev/v2.2-3d-design.md §A10.
-import { writable } from 'svelte/store';
+// A HoloStyle bundles every look-and-feel knob of the 3D view — the GPU filter, the toytown
+// compression, the camera framing, the skybox — as ONE value the scene can be handed.
+//
+// IT IS NO LONGER A PRESET STORE. This file used to own a second one: seven STARTER_PRESETS, a
+// `holo-presets` localStorage slot, and save/delete/load around it, from when a look was a thing a GM
+// picked from a dropdown on the 3D view. Player Views absorbed all of that — a look is a PlayerPreset
+// now, saved with the campaign — and the only thing still reading that storage key is
+// `player/presets.migrateLocalHoloPresets`, which folds any old saved looks into the campaign once and
+// then removes it. Deleted at A54; two of the dead starters were even named `projector` and
+// `greenscreen`, the tools A42 removed.
+//
+// So what remains is a TYPE and a DEFAULT. If you are looking for where a look is stored, it is
+// `player/presetTypes.ts` and the starmap, not here.
 import type { FilterParamValues } from './filters/schema';
 
 export interface HoloStyle {
@@ -42,12 +50,6 @@ export interface HoloStyle {
   portraitFixed?: boolean; // portrait light is WORLD-fixed (tidally-locked body) rather than camera-relative
 }
 
-export interface HoloPreset extends HoloStyle {
-  id: string;
-  name: string;
-  builtIn?: boolean; // shipped starter (can't be deleted)
-}
-
 export const DEFAULT_STYLE: HoloStyle = {
   filter: 'none',
   compression: 0.65,
@@ -66,55 +68,3 @@ export const DEFAULT_STYLE: HoloStyle = {
   auroras: true,
   beltStyle: 'rocks'
 };
-
-// Shipped starter presets — enough to demo the range and skin the existing guides.
-export const STARTER_PRESETS: HoloPreset[] = [
-  { id: 'clean', name: 'Clean Hologram', builtIn: true, filter: 'none', compression: 0.65, angleDeg: 64, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1, grid: 'plain', orbitSpeed: 0 },
-  { id: 'crt-green', name: 'Green CRT Table', builtIn: true, filter: 'crt', filterParams: { phosphor: '#4dff88' }, compression: 0.7, angleDeg: 62, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1, grid: 'plain', orbitSpeed: 0 },
-  { id: 'crt-amber', name: 'Amber Terminal', builtIn: true, filter: 'crt', filterParams: { phosphor: '#ffb000' }, compression: 0.7, angleDeg: 62, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'textured', background: 'space', bodySize: 1, grid: 'plain', orbitSpeed: 0 },
-  { id: 'night-ops', name: 'Night Ops', builtIn: true, filter: 'night_vision', compression: 0.6, angleDeg: 55, whole: false, skybox: true, beltDetail: 0.5, bodyStyle: 'textured', background: 'space', bodySize: 1, grid: 'plain', orbitSpeed: 0 },
-  { id: 'blueprint', name: 'Blueprint (holo tint)', builtIn: true, filter: 'none', compression: 0.65, angleDeg: 64, whole: false, skybox: true, beltDetail: 0.6, bodyStyle: 'white', background: 'space', bodySize: 1, grid: 'scaled', orbitSpeed: 0 },
-  { id: 'projector', name: 'Projector (top-down, true scale)', builtIn: true, filter: 'none', compression: 0, angleDeg: 0, whole: true, skybox: false, beltDetail: 0.8, bodyStyle: 'textured', background: 'space', bodySize: 0.5, grid: 'scaled', orbitSpeed: 0 },
-  { id: 'greenscreen', name: 'Greenscreen (OBS)', builtIn: true, filter: 'none', compression: 0, angleDeg: 0, whole: true, skybox: false, beltDetail: 0.8, bodyStyle: 'textured', background: 'green', bodySize: 0.5, grid: 'off', orbitSpeed: 0 }
-];
-
-const KEY = 'holo-presets';
-
-function load(): HoloPreset[] {
-  if (typeof localStorage === 'undefined') return [...STARTER_PRESETS];
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY) || '[]') as HoloPreset[];
-    const custom = Array.isArray(saved) ? saved.filter((p) => p && !p.builtIn && p.id && p.name) : [];
-    return [...STARTER_PRESETS, ...custom];
-  } catch {
-    return [...STARTER_PRESETS];
-  }
-}
-
-export const holoPresets = writable<HoloPreset[]>(load());
-
-if (typeof window !== 'undefined') {
-  holoPresets.subscribe((list) => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(list.filter((p) => !p.builtIn)));
-    } catch { /* ignore quota / privacy-mode failures */ }
-  });
-}
-
-export function styleOf(preset: HoloPreset): HoloStyle {
-  return { filter: preset.filter, filterParams: preset.filterParams ? { ...preset.filterParams } : undefined, compression: preset.compression, angleDeg: preset.angleDeg, whole: preset.whole, skybox: preset.skybox, beltDetail: preset.beltDetail ?? 0.6, bodyStyle: preset.bodyStyle ?? 'textured', background: preset.background ?? 'space', bodySize: preset.bodySize ?? 1, grid: preset.grid ?? 'plain', orbitSpeed: preset.orbitSpeed ?? 0, labelSize: preset.labelSize ?? 11, font: preset.font, render: preset.render ?? 'filled', auroras: preset.auroras ?? true, beltStyle: preset.beltStyle ?? 'rocks' };
-}
-
-// Add a custom preset from the current live style. Id is derived from the name + a short suffix so
-// two presets with the same name don't collide.
-export function saveHoloPreset(name: string, style: HoloStyle): HoloPreset {
-  const clean = name.trim() || 'My Preset';
-  const id = 'p-' + clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + (clean.length + Math.round(style.angleDeg));
-  const preset: HoloPreset = { id, name: clean, ...style };
-  holoPresets.update((list) => [...list.filter((p) => p.id !== id), preset]);
-  return preset;
-}
-
-export function deleteHoloPreset(id: string): void {
-  holoPresets.update((list) => list.filter((p) => p.builtIn || p.id !== id));
-}
