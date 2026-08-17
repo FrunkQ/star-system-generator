@@ -42,9 +42,40 @@ const SURF = {
   ice: hexToRgb('#d8ecff'), gas: hexToRgb('#c9b89a')
 };
 
-// Star colour from photosphere temperature (compact blackbody-ish bands; G≈white-yellow, M≈red).
+export function bdGlowColour(teff: number): string {
+	const stops: [number, string][] = [
+		[250, '#3a0f06'], [600, '#6e1808'], [1000, '#a3320c'], [1400, '#c85614'],
+		[1800, '#e07d22'], [2300, '#f2a03e'], [2800, '#ffbf6e']
+	];
+	if (teff <= stops[0][0]) return stops[0][1];
+	for (let i = 1; i < stops.length; i++) {
+		if (teff <= stops[i][0]) {
+			const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
+			const f = (teff - t0) / (t1 - t0);
+			const a = hexToRgb(c0), b = hexToRgb(c1);
+			return rgbToHex([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f] as RGB);
+		}
+	}
+	return stops[stops.length - 1][1];
+}
+
+/**
+ * Star colour from photosphere temperature (compact blackbody-ish bands; G≈white-yellow, M≈red).
+ *
+ * BELOW ~2400 K THERE ARE NO STARS. Sustained hydrogen fusion gives out around 1800-2000 K, so
+ * everything colder is an L, T or Y dwarf — and this table used to bottom out at #ff8a4a, an orange
+ * handed identically to a 2399 K M dwarf and a 500 K T dwarf. It made Epsilon Indi Bb, a methane T6
+ * about as warm as an oven, render as a small sun.
+ *
+ * The cold end now falls through to `bdGlowColour`, the substellar ramp, which had the right answer
+ * sitting one branch away all along. The curves nearly meet at the crossover (#ffbf6e against
+ * #ffb56c) so nothing warm moves, and the sequence becomes continuous through mass instead of
+ * cliff-edged at a role boundary — which matters because giants radiate too, just far colder: at
+ * Jupiter's 124 K this returns near-black, so a giant correctly shows no visible glow.
+ */
 export function starColorFromTempK(tempK?: number): RGB {
   const t = tempK ?? 5778;
+  if (t < 2400) return hexToRgb(bdGlowColour(t));
   if (t >= 30000) return hexToRgb('#9bb0ff');
   if (t >= 10000) return hexToRgb('#aabfff');
   if (t >= 7500) return hexToRgb('#cad7ff');

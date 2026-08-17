@@ -16,7 +16,7 @@
 
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
 import { LIQUIDS } from '$lib/constants';
-import { starColorFromTempK } from './apparentColor';
+import { starColorFromTempK, bdGlowColour } from './apparentColor';
 import { oblatePolarFactor } from './bodyShape';
 import { auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
 import { spaceWeathering } from '$lib/physics/cloudDecks';
@@ -49,22 +49,10 @@ export function shade(hex: string, f: number): string {
 }
 /** Emission colour for a self-luminous brown dwarf by effective temperature (K): cool→deep red,
  *  hot young L-dwarf→amber. Never blue (brown dwarfs are cool). */
-export function bdGlowColour(teff: number): string {
-	const stops: [number, string][] = [
-		[250, '#3a0f06'], [600, '#6e1808'], [1000, '#a3320c'], [1400, '#c85614'],
-		[1800, '#e07d22'], [2300, '#f2a03e'], [2800, '#ffbf6e']
-	];
-	if (teff <= stops[0][0]) return stops[0][1];
-	for (let i = 1; i < stops.length; i++) {
-		if (teff <= stops[i][0]) {
-			const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
-			const f = (teff - t0) / (t1 - t0);
-			const a = hexToRgb(c0), b = hexToRgb(c1);
-			return rgbHex([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
-		}
-	}
-	return stops[stops.length - 1][1];
-}
+// bdGlowColour now lives in apparentColor.ts, the colour authority, and is re-exported here so
+// existing importers are unaffected. It had to move: `starColorFromTempK` needs it, and
+// planetAppearance already imports FROM apparentColor.
+export { bdGlowColour } from './apparentColor';
 
 // ── feature parameter shapes ────────────────────────────────────────────────────────────────────
 export interface MagmaSpec {
@@ -250,7 +238,13 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		: (body.apparentColorHex ?? body.apparentColor?.hex ?? '#8a8f99');
 
 	const palette = (body.apparentColor?.palette ?? []) as ApparentColorStop[];
-	const bandingRaw = (isStar || isBelt) ? 0 : (body.apparentColor?.banding ?? 0);
+	// A SUBSTELLAR OBJECT IS BANDED, NOT SPOTTED. Spots need a field tangled by rotation in a fusing
+	// photosphere; below about 2400 K the atmosphere is largely neutral, the field decouples, and what
+	// actually varies is CLOUD. That is why an L/T dwarf's variability is weather and why the artist's
+	// impression for one shows bands. Suppressing banding for anything star-role denied it to exactly
+	// those objects.
+	const substellar = !!(body as any).isSelfLuminous;
+	const bandingRaw = ((isStar && !substellar) || isBelt) ? 0 : (body.apparentColor?.banding ?? 0);
 
 	const atmPressureBar =
 		(body.atmosphere?.pressure_bar ?? (body.atmosphere as any)?.pressure_atm ?? 0) as number;
@@ -562,7 +556,10 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 
 	// Self-luminous brown dwarf (thermal/self-luminous, value = effective temperature).
 	const selfLumTag = (body.tags ?? []).find((t) => t.key === 'thermal/self-luminous');
-	const selfLumGlow: SelfLumSpec | null = (selfLumTag && !isStar && !isBelt)
+	// NOT gated on !isStar. A brown dwarf is filed as a star as often as not, and excluding those was
+	// excluding the very objects this glow describes — see the processor's substellar pass, which had
+	// the same backwards test. A belt still cannot glow: it is a population, not a body.
+	const selfLumGlow: SelfLumSpec | null = (selfLumTag && !isBelt)
 		? (() => { const teff = Number(selfLumTag.value) || 0; return { teff, colorHex: bdGlowColour(teff) }; })()
 		: null;
 

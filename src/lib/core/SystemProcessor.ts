@@ -133,7 +133,19 @@ export class SystemProcessor implements ISystemProcessor {
             // MAGNETIC ACTIVITY, bucketed — the one judgement behind everything a star's surface
             // shows: spot count and darkness, facular brightening, and how often it flares. Both
             // renderers read this tag rather than re-deriving from the raw number.
-            emit(s.tags, { key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
+            // …BUT ONLY WHERE THERE IS A FUSING PHOTOSPHERE TO SPOT. Below the fusion floor the
+            // atmosphere is largely neutral, the magnetic field decouples from it, and an L/T dwarf's
+            // variability is CLOUD rather than starspots. Emitting this on a T dwarf is what put
+            // sunspots on Epsilon Indi Bb.
+            //
+            // GATED ON MASS, NOT TEMPERATURE, and the idempotence test is why: this block runs BEFORE
+            // the substellar pass, which then overwrites `temperatureK` with the dwarf's Teff — so a
+            // temperature gate read one value on the first pass and another on the second, and the tag
+            // appeared then vanished. Mass and radius are INPUTS, so the same question gets the same
+            // answer whenever it is asked.
+            if (!brownDwarfThermal(s.massKg || 0, this.systemAgeGyr, s.radiusKm || 0).isSubstellar) {
+                emit(s.tags, { key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
+            }
 
             // WHY THIS STAR IS NOT A VALID STAR (owner, 2026-08-15). REFUSE TO PRODUCE, NEVER REFUSE
             // TO ACCEPT: the engine will not GENERATE an impossible star, but a GM may author one and
@@ -167,10 +179,14 @@ export class SystemProcessor implements ISystemProcessor {
         //     (contraction + deuterium burning), so it self-heats AND becomes a light/radiation source
         //     for its moons. Computed BEFORE the environment pass so a moon's temperature/radiation can
         //     see its luminous host. Idempotent: clears the flags on anything no longer substellar.
+        //     ROLE IS NOT THE TEST — MASS IS. A brown dwarf is filed as a star as often as not, and
+        //     skipping star-role bodies meant the one class of object this pass exists for never
+        //     reached it: Epsilon Indi Bb, a T6 dwarf, got no self-luminosity and no glow, and fell
+        //     through to the stellar colour table which bottomed out at bright orange. The else branch
+        //     below already protects a real star's radiationOutput, so running it over everything is
+        //     safe — anything outside the substellar window simply takes that branch.
         for (const node of allNodes) {
-            if (node.kind === 'body' && (node as CelestialBody).roleHint !== 'star') {
-                this.applySubstellarSelfLuminosity(node as CelestialBody);
-            }
+            if (node.kind === 'body') this.applySubstellarSelfLuminosity(node as CelestialBody);
         }
 
         // 2. Second Pass: Environment (Radiation, Temperature, Atmosphere Retention)

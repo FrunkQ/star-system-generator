@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.727-beta - 16th Aug 2026
+
+- FIXED: brown dwarfs rendered as small suns. A T dwarf filed as a star — which is how most of them are filed — never reached the self-luminosity pass at all, because that pass skipped anything with a star role. So it got no glow, and fell through to a stellar colour table whose coldest band was a bright orange handed identically to a 2399 K red dwarf and a 500 K methane dwarf. Epsilon Indi Bb, about as warm as an oven, was drawn as a little star with sunspots.
+- Role is no longer the test; MASS is. A brown dwarf is a star and a substellar self-luminous body at the same time — it is the overlap, not one or the other — so the pass now runs over everything and the mass window decides.
+- One colour authority: below the fusion floor the stellar table falls through to the substellar ramp, which had the right answer sitting one branch away. The sequence is now continuous through the whole mass range rather than cliff-edged at a role boundary, and that matters because GIANTS radiate too — Jupiter emits about 1.7 times the sunlight it absorbs. At its 124 K the ramp returns near-black, so a giant correctly shows no visible glow without needing a branch of its own.
+- Starspots need a fusing photosphere. Below the fusion floor the atmosphere is largely neutral, the magnetic field decouples from it, and an L or T dwarf's variability is CLOUD rather than spots — which is why the artist's impression for one shows bands. Substellar bodies now get their banding and lose the sunspots.
+
 ## v2.1.725-beta - 17th Aug 2026
 
 * Remote players on locked-down networks: bring-your-own STUN/TURN relay. Settings (Advanced) takes a list of servers (turns:host:443|user|credential); they are added ahead of the built-in public relay and ride in every player link and QR (?ice=), so a workplace network that blocks UDP can still connect through a TLS relay on 443. The player view now says SENSOR LINK BLOCKED when no direct or relayed path can be made, instead of waiting forever. Nothing changes for tables that never touch the setting.
