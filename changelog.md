@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.732-beta - 16th Aug 2026
+
+- FIXED: igniting could make a body DARKER. The substellar cooling track stops dead at the fusion limit — 79.99 Jupiter masses derives 1947 K, 80.00 derives nothing — so a body nudged across that line kept its old brown-dwarf temperature, and with the new colour ramp taking anything under 2400 K toward black it would light up by going out. A fusing star is now held at or above 1900 K, which is where the coolest M dwarfs and the hottest L dwarfs genuinely overlap: crossing the limit is not a brightness cliff in nature and is no longer one here. It only ever raises a star already below the floor, so nothing with a sane temperature moves — no bundled starmap changes at all.
+- The other boundary, at 8 Jupiter masses, is left alone deliberately and now says why in a test: the step there is from nothing to 6 parts in a hundred million of a solar luminosity, which is nothing a moon would ever feel. Only the stellar boundary earned a correction.
+
 ## v2.1.730-beta - 17th Aug 2026
 
 - FIXED: the highlight selection in Find by tag now survives a reload. It was treated as a momentary nudge and thrown away on refresh, which is wrong for what it actually is - prep, often built up tag by tag before a session. Saved per machine, not into the campaign, so it never travels inside a shared starmap file. The mute is remembered with it.

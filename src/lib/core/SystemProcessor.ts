@@ -50,6 +50,9 @@ import { applyActivityScatter, activityFromFieldExcess } from '../physics/ionisi
 import { starStatTemplate } from '../generation/star';
 import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
 import { brownDwarfThermal } from '../physics/substellar';
+import { HYDROGEN_BURNING_LIMIT_SOLAR } from '../physics/starPlausibility';
+/** The coolest a fusing star gets. The M/L overlap sits here — see the ignition note below. */
+const STELLAR_FLOOR_K = 1900;
 
 // Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
 // processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
@@ -520,6 +523,24 @@ export class SystemProcessor implements ISystemProcessor {
             delete (body as any).internalLuminositySolar;
             // Only stars keep a radiationOutput — a downgraded body must stop irradiating others.
             if (body.roleHint !== 'star') delete (body as any).radiationOutput;
+            // IGNITION MUST NOT MAKE A BODY COLDER OR DARKER.
+            //
+            // The substellar track stops dead at the fusion limit: 79.99 M_jup derives 1947 K, and
+            // 80.00 derives nothing at all. A body nudged across that line therefore KEPT its old
+            // brown-dwarf temperature — and since the colour ramp now takes anything under 2400 K to
+            // near-black, it would ignite and go DARKER, which is the one thing crossing that line
+            // cannot do.
+            //
+            // Physically the boundary is not a brightness cliff: an object at the hydrogen-burning
+            // limit sits around 1900-2100 K whether or not it has just started fusing, which is why
+            // the coolest M dwarfs and the hottest L dwarfs overlap. So a star is held at or above
+            // the floor. Only ever raises, and only ever a star that is below it, so nothing that
+            // already had a sane temperature moves.
+            if (body.roleHint === 'star' && (body.temperatureK ?? 0) > 0
+                && (body.temperatureK as number) < STELLAR_FLOOR_K
+                && (body.massKg || 0) >= HYDROGEN_BURNING_LIMIT_SOLAR * SOLAR_MASS_KG) {
+                body.temperatureK = STELLAR_FLOOR_K;
+            }
         }
     }
 
