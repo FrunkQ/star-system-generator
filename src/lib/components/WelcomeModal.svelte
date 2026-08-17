@@ -8,6 +8,7 @@
   // than a plain one, so nothing here claims more than the feature currently does.
   import { createEventDispatcher } from 'svelte';
   import { APP_VERSION } from '$lib/constants';
+  import { foreground } from '$lib/ui/foreground';
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
   const openHelp = () => dispatch('help');
@@ -80,7 +81,7 @@
   ];
 </script>
 
-<div class="modal-overlay" role="presentation" on:click={close}>
+<div class="modal-overlay" role="presentation" on:click={close} use:foreground>
   <div class="modal-card welcome-card" role="dialog" aria-label="Welcome to Star System Explorer 3" on:click|stopPropagation>
     <header class="w-head">
       <div>

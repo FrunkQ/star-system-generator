@@ -77,6 +77,7 @@
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
+  import { foreground } from '$lib/ui/foreground';
 
   let rulePacks: RulePack[] = [];
   let isLoading = true;
@@ -2048,7 +2049,7 @@
   {/if}
 
   {#if showAllBodies}
-    <div class="allbodies-overlay" role="presentation" on:click={() => (showAllBodies = false)}>
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showAllBodies = false)} use:foreground>
       <div class="allbodies-card" role="dialog" aria-label="Find a body" on:click|stopPropagation>
         <header class="allbodies-head">
           <span>All bodies &amp; constructs</span>
@@ -2088,7 +2089,7 @@
   {/if}
 
   {#if showTagFinder}
-    <div class="allbodies-overlay" role="presentation" on:click={() => (showTagFinder = false)}>
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showTagFinder = false)} use:foreground>
       <div class="allbodies-card" role="dialog" aria-label="Find by tag" on:click|stopPropagation>
         <header class="allbodies-head">
           <span>Find by tag</span>
@@ -2108,7 +2109,7 @@
   {/if}
 
   {#if showRoutes}
-    <div class="allbodies-overlay" role="presentation" on:click={() => (showRoutes = false)}>
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showRoutes = false)} use:foreground>
       <div class="allbodies-card" role="dialog" aria-label="Routes and journeys" on:click|stopPropagation>
         <header class="allbodies-head">
           <span>Routes &amp; journeys</span>
@@ -2206,7 +2207,7 @@
   {/if}
 
   {#if showAllShips}
-    <div class="allbodies-overlay" role="presentation" on:click={() => (showAllShips = false)}>
+    <div class="allbodies-overlay" role="presentation" on:click={() => (showAllShips = false)} use:foreground>
       <div class="allbodies-card" role="dialog" aria-label="Find a construct" on:click|stopPropagation>
         <header class="allbodies-head">
           <span>Constructs</span>

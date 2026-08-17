@@ -61,6 +61,7 @@
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay, BIG_BANG_TO_UNIX_EPOCH_T, unixMsToMasterSeconds } from '$lib/temporal/utre';
+  import { foregroundOpen } from '$lib/ui/foreground';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -2269,7 +2270,7 @@
                 on:backgroundContextMenu={handleBackgroundContextMenu}
             />
 
-            {#if ensuredTemporal}
+            {#if ensuredTemporal && !(mode === 'phone' && $foregroundOpen)}
               <div class="time-overlay" class:phone={mode === 'phone'}>
                 <TimeControls
                   compact={mode === 'phone'}

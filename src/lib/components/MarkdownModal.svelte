@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { foreground } from '$lib/ui/foreground';
 
   export let htmlContent: string;
 
@@ -10,7 +11,7 @@
   }
 </script>
 
-<div class="modal-overlay" on:click={closeModal}>
+<div class="modal-overlay" on:click={closeModal} use:foreground>
   <div class="modal-content" on:click|stopPropagation>
     <button class="close-button" on:click={closeModal}>&times;</button>
     <div class="markdown-body">{@html htmlContent}</div>

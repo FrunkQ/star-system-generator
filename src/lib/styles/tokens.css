@@ -14,6 +14,25 @@
    ============================================================================= */
 
 :root {
+  /* ---------- STACKING ORDER: five named tiers (A52) ----------
+     MEASURED before naming: the components were using 1, 1400, 1500, 2000 (nineteen of them), 2100,
+     2200, 2300, 3000, 5000 ... up to 99999 — an ad-hoc ladder where a number was picked to beat
+     whatever it happened to collide with that day. That is exactly how a floating control ends up on
+     top of a dialog, and every such overlap then reads as its own bug.
+
+     THE ORDER IS THE POINT, not the values: map < chrome < panel < modal < toast. Reach for the tier
+     whose NAME describes what you are placing. If two things in one tier fight, they are the same kind
+     of thing and the fix is ordering them within it (+1/+2), never inventing a bigger number.
+
+     Gaps of 1000 are deliberate: a tier has room for a scrim, its panel and a popover above it without
+     borrowing from the tier above. NOTE existing components still carry raw values; these are the
+     target, adopted as each surface is touched (A52 does the chrome and the modals it hides). */
+  --z-map: 0;        /* the canvas and anything drawn in world space */
+  --z-chrome: 1000;  /* persistent app furniture: bars, rails, FABs, floating controls */
+  --z-panel: 2000;   /* docked panels and sheets that sit over the chrome */
+  --z-modal: 3000;   /* foreground UI: dialogs, editors, their backdrops (see ui/foreground.ts) */
+  --z-toast: 4000;   /* transient notices, and the memory warning that must survive any screen */
+
   /* ---------- CHROME: surfaces (from the Phase-03 shell) ---------- */
   --bg-app: #08090d;
   --bg-panel: #14161c;

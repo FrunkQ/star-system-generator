@@ -14,6 +14,7 @@
   import { makeListDelta, applyListDelta } from '$lib/rulepackDelta';
   import { blackbodySpectrum, gridShare, GRID_NM } from '$lib/physics/spectrum';
   import SpectrumChart from '$lib/charts/SpectrumChart.svelte';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -146,7 +147,7 @@
 </script>
 
 {#if showModal}
-<div class="modal-backdrop" role="presentation" on:click={() => dispatch('close')}>
+<div class="modal-backdrop" role="presentation" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" role="dialog" aria-label="Biospheres" on:click|stopPropagation>
     <header>
       <h3>Biospheres</h3>

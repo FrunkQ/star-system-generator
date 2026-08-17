@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.762-beta - 17th Aug 2026
+
+- On a phone, the app furniture now gets out of the way of a dialog. Opening the import screen (or any other) hides the bottom "My Starmap" bar and the floating time control for as long as it is open, and puts them straight back when you close it - reported by a user whose import dialog was sandwiched between the two. Nothing becomes unreachable: with no dialog open the bar behaves exactly as before, and it is still the way to the starmap description and GM notes. On a desktop nothing changes, because there is room for both.
+
 ## v2.1.760-beta - 17th Aug 2026
 
 - **The frost line — the distance beyond which worlds form icy — was being worked out from the star's MASS rather than its BRIGHTNESS.** Those are not interchangeable: a star's light rises far faster than its mass, so the old sum put the ice line about thirteen times too far out around a small red dwarf, forty times too far around a brown dwarf, and ten times too close around a hot blue star. It came out very nearly right for the Sun, which is why it survived so long.

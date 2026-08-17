@@ -17,6 +17,7 @@
   import DualRangeSlider from './DualRangeSlider.svelte';
   import TransitStressGraph from './TransitStressGraph.svelte';
   import BodyPicker from './BodyPicker.svelte';
+  import { foreground } from '$lib/ui/foreground';
 
   function getTcmClass(g: number): string {
       if (g > 10.0) return 'tcm-critical';
@@ -876,7 +877,7 @@
     <h3>Transit Planner</h3>
 
     {#if showExecuteBlockedDialog}
-        <div class="dialog-backdrop" on:click={() => showExecuteBlockedDialog = false}>
+        <div class="dialog-backdrop" on:click={() => showExecuteBlockedDialog = false} use:foreground>
             <div class="dialog-card" on:click|stopPropagation>
                 <h4>{blockedExecuteReasonTitle}</h4>
                 <p>{blockedExecuteReasonDetail}</p>

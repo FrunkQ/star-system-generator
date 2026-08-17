@@ -3,6 +3,7 @@
   import type { Starmap, RulePack, SensorDefinition } from '$lib/types';
   import { AU_KM } from '$lib/constants';
   import { fmt } from '$lib/stores';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -110,7 +111,7 @@
 </script>
 
 {#if showModal}
-<div class="modal-backdrop" on:click={() => dispatch('close')}>
+<div class="modal-backdrop" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <div class="header">
         <h2>Edit Sensor Definitions</h2>

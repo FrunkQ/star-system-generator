@@ -3,6 +3,7 @@
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import DebugFooter from './DebugFooter.svelte';
   import type { RulePack } from '$lib/types';
+  import { foreground } from '$lib/ui/foreground';
 
   const dispatch = createEventDispatcher();
 
@@ -66,7 +67,7 @@ Built with <a href="https://kit.svelte.dev/" target="_blank" rel="noopener noref
   }
 </script>
 
-<div class="modal-overlay" role="presentation" on:click={close}>
+<div class="modal-overlay" role="presentation" on:click={close} use:foreground>
   <div class="modal-card about-card" role="dialog" aria-label="About" on:click|stopPropagation>
     <header class="about-head">
       <span>About</span>

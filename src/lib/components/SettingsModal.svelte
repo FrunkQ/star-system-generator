@@ -11,6 +11,7 @@
   import { clearAllData } from '$lib/starmapStorage';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
   import { loadStoredIce, saveStoredIce, parseIceText, iceToText } from '$lib/iceConfig';
+  import { foreground } from '$lib/ui/foreground';
 
   // BYO STUN/TURN for remote players (docs/dev/vtt-integration-design.md 11).
   let iceText = '';
@@ -314,7 +315,7 @@
 
 {#if showModal}
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="modal-backdrop" on:click={handleClose} role="button" tabindex="0" on:keydown={(e) => {if (e.key === 'Enter' || e.key === 'Space') handleClose()}}>
+<div class="modal-backdrop" on:click={handleClose} role="button" tabindex="0" on:keydown={(e) => {if (e.key === 'Enter' || e.key === 'Space') handleClose()}} use:foreground>
   <div class="modal settings-modal" class:drilled on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
     <div class="settings-head">
       <button class="settings-back" on:click={handleBack} aria-label="Back" title="Back">

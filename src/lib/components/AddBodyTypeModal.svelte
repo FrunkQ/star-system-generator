@@ -9,6 +9,7 @@
   import { thumbUrl } from '$lib/util/thumbs';
   import { fmt } from '$lib/stores';
   import { EARTH_MASS_KG } from '$lib/constants';
+  import { foreground } from '$lib/ui/foreground';
 
   export let rulePack: RulePack;
   export let teqK: number;
@@ -39,7 +40,7 @@
   ];
 </script>
 
-<div class="overlay" on:click|self={close} role="presentation">
+<div class="overlay" on:click|self={close} role="presentation" use:foreground>
   <div class="modal" role="dialog" aria-label="Add body by type">
     <header>
       <div>

@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack } from '$lib/types';
   import { allLiquids } from '$lib/physics/liquids';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -243,7 +244,7 @@
 </script>
 
 {#if showModal}
-<div class="modal-backdrop" on:click={() => dispatch('close')}>
+<div class="modal-backdrop" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <div class="header">
         <h2>Edit Atmospheres & Mixes</h2>

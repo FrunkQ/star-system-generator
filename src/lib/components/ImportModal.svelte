@@ -5,6 +5,7 @@
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { reviewToText, type ImportReview } from '$lib/import/shared/review';
   import type { ImportAdapter, ImportResultLike } from '$lib/import/adapters';
+  import { foreground } from '$lib/ui/foreground';
 
   export let bytes: Uint8Array;
   export let fileName = '';
@@ -116,7 +117,7 @@
   const bucketLabel = { aligned: 'aligned', explained: 'explained', unexplained: 'needs a look' } as const;
 </script>
 
-<div class="overlay" on:click|self={close} role="presentation">
+<div class="overlay" on:click|self={close} role="presentation" use:foreground>
   <div class="modal" role="dialog" aria-label="Import a system">
     <header>
       <div>

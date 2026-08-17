@@ -7,6 +7,7 @@
   // The in-app guides are bundled from their single source in docs/ (same as their tab buttons).
   import tagsGuide from '../../../docs/tags-guide.md?raw';
   import autopilotGuide from '../../../docs/autopilot-guide.md?raw';
+  import { foreground } from '$lib/ui/foreground';
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -16,7 +17,7 @@
   let inlineDoc: string | null = null;
 </script>
 
-<div class="modal-overlay" role="presentation" on:click={close}>
+<div class="modal-overlay" role="presentation" on:click={close} use:foreground>
   <div class="modal-card help-card" role="dialog" aria-label="Help" on:click|stopPropagation>
     <header class="help-head">
       <span>Help &amp; guides</span>

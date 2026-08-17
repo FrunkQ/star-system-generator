@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   
@@ -61,7 +62,7 @@
 </script>
 
 {#if showModal}
-<div class="modal-backdrop" on:click={close}>
+<div class="modal-backdrop" on:click={close} use:foreground>
   <div class="modal-content" on:click|stopPropagation>
       <h2>Add Traveller System</h2>
       <p class="subtitle">Manually create a system using Traveller UWP codes.</p>

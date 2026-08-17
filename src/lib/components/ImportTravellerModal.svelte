@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { TravellerAPI, type Sector } from '$lib/traveller/api';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   
@@ -108,7 +109,7 @@
 </script>
 
 {#if showModal}
-<div class="modal-backdrop" on:click={close}>
+<div class="modal-backdrop" on:click={close} use:foreground>
   <div class="modal-content" on:click|stopPropagation>
       <h2>Import Traveller Subsector</h2>
       

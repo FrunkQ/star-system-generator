@@ -10,6 +10,7 @@
   import ColourSwatch from '$lib/charts/ColourSwatch.svelte';
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
   import { absorptance, pigmentDef } from '$lib/physics/pigments';
+  import { foreground } from '$lib/ui/foreground';
   export let body: CelestialBody;
   export let system: StarSystem | null = null;
   // The cloud layer needs the gas data to show its working (which gases can condense, and where).
@@ -84,7 +85,7 @@
   })();
 </script>
 
-<div class="overlay" on:click|self={close} role="presentation">
+<div class="overlay" on:click|self={close} role="presentation" use:foreground>
   <div class="modal" role="dialog" aria-label="Physics working">
     <header>
       <div class="title">

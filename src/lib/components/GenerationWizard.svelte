@@ -17,6 +17,7 @@
   export let exampleSystems: string[] = [];
   import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
   import { explainStarClass, fullDesignation } from '$lib/system/starClassExplain';
+  import { foreground } from '$lib/ui/foreground';
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -241,7 +242,7 @@
 </script>
 
 <!-- Hide the wizard while the importer is open, so it doesn't sit on top and block it. -->
-<div class="overlay" class:hidden={!!importBytes} on:click|self={close} role="presentation">
+<div class="overlay" class:hidden={!!importBytes} on:click|self={close} role="presentation" use:foreground>
   <div class="modal" role="dialog" aria-label="Generate a new system">
     <header>
       <div>

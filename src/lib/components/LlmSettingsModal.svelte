@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { aiSettings } from '$lib/stores';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
 
@@ -84,7 +85,7 @@
 </script>
 
 {#if showModal}
-  <div class="modal-backdrop" on:click={handleClose}>
+  <div class="modal-backdrop" on:click={handleClose} use:foreground>
     <div class="modal" on:click|stopPropagation>
       <h2>LLM Settings</h2>
       <p>Connect a local OpenAI-compatible server (LM Studio, Ollama — no key needed) or a hosted

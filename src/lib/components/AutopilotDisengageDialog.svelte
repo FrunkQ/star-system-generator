@@ -2,6 +2,7 @@
   // Disengage-autopilot confirmation. Four choices on the usual risk scale (green→orange→red, neutral
   // cancel), coloured as accents on a dark dialog — never black-on-red. Emits 'choose' with the mode.
   import { createEventDispatcher } from 'svelte';
+  import { foreground } from '$lib/ui/foreground';
   export let shipName = 'this ship';
   export let inTransit = false; // only show drift/stop if it's actually under way
   const dispatch = createEventDispatcher();
@@ -9,7 +10,7 @@
   const cancel = () => dispatch('close');
 </script>
 
-<div class="overlay" on:click|self={cancel} role="presentation">
+<div class="overlay" on:click|self={cancel} role="presentation" use:foreground>
   <div class="dialog" role="dialog" aria-label="Disengage autopilot">
     <h3>Disengage autopilot</h3>
     <p class="sub">{shipName} — how should it stop?</p>
