@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.760-beta - 17th Aug 2026
+
+- **The frost line — the distance beyond which worlds form icy — was being worked out from the star's MASS rather than its BRIGHTNESS.** Those are not interchangeable: a star's light rises far faster than its mass, so the old sum put the ice line about thirteen times too far out around a small red dwarf, forty times too far around a brown dwarf, and ten times too close around a hot blue star. It came out very nearly right for the Sun, which is why it survived so long.
+
+- **Moons were worse.** A moon's ice line was being calculated from the mass of the planet it circles, then compared against its distance from that planet — so almost every moon counted as "inside" the line, and the moons of cold outer giants were essentially never icy. Both now ask the question of the star, at the world's real distance from it.
+
+- What you will see: icy worlds and icy moons now appear where the star's light says they should, which for dim stars means much closer in, and for bright stars much further out.
 ## v2.1.759-beta - 17th Aug 2026
 
 * **A moon in the Uggi example is no longer cut off from its own system.** Cerebus Alpha pointed at a parent that was not in the file, so it had no temperature, no distance to its star and no place in the hierarchy at all. It now orbits Hades — the world its own description names — 43,739 km out, which is what makes it the molten, tide-racked place that description promises. Nothing was invented: the file already held every number, one of them written against the wrong object.

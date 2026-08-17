@@ -281,6 +281,49 @@ function getSpectralAlpha(star: CelestialBody): number {
     }
 }
 
+/**
+ * THE STAR A BODY ULTIMATELY ORBITS, AND HOW FAR FROM IT THE BODY SITS.
+ *
+ * A frost line is a property of the STAR's radiation field, so "is this body beyond the frost line"
+ * has to be asked about the star and about the body's HELIOCENTRIC distance. For a moon both of
+ * those come from its PLANET: the moon's frost line is its star's, evaluated at the planet's orbit,
+ * because a moon sits essentially the same distance from the star as the world it circles.
+ *
+ * The generators used to get this wrong twice over (see GEN-4): they derived a frost line from
+ * whatever the immediate host happened to be — which for a moon is the PLANET, giving a "frost line"
+ * computed from Jupiter's mass — and then compared it against the moon's distance from that planet.
+ */
+export function stellarContextFor(
+    host: CelestialBody | Barycenter,
+    aAU: number,
+    allNodes?: (CelestialBody | Barycenter)[],
+    depth = 0
+): { star: CelestialBody | null; distanceAU: number } {
+    const nodes = allNodes ?? [];
+    // A corrupt parent chain can be cyclic; a hierarchy this deep is not real either way.
+    if (depth > 8) return { star: null, distanceAU: aAU };
+
+    if (host.kind === 'body' && (host as CelestialBody).roleHint === 'star') {
+        return { star: host as CelestialBody, distanceAU: aAU };
+    }
+    if (host.kind === 'barycenter') {
+        // Circumbinary: the pair's brightest member is the one that sets the zones.
+        const stars = nodes.filter(
+            (n): n is CelestialBody => n.kind === 'body' && (n as CelestialBody).roleHint === 'star' && n.parentId === host.id
+        );
+        const primary = stars.sort((a, b) => (b.massKg || 0) - (a.massKg || 0))[0] ?? null;
+        return { star: primary, distanceAU: aAU };
+    }
+
+    // The host is a planet or a moon, so the body being asked about is a satellite: step UP to the
+    // host's own orbit and ask again. Guard against a malformed parent chain rather than recursing
+    // forever on it.
+    const parent = nodes.find((n) => n.id === host.parentId);
+    const hostA = (host as CelestialBody).orbit?.elements?.a_AU;
+    if (!parent || typeof hostA !== 'number') return { star: null, distanceAU: aAU };
+    return stellarContextFor(parent, hostA, nodes, depth + 1);
+}
+
 export function calculateAllStellarZones(
     star: CelestialBody,
     pack?: RulePack,

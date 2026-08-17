@@ -6,6 +6,7 @@ import { weightedChoice, randomFromRange, drawFromBand, toRoman } from '../utils
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
+import { stellarContextFor, calculateAllStellarZones } from '../physics/zones';
 import { gasThermalInflationFactor } from '../physics/makeup';
 import { giantComposition, GIANT_ANCHOR_BAR } from '../physics/giantTraces';
 import { spinProvenanceTags } from './spinProvenance';
@@ -130,7 +131,20 @@ export function _generatePlanetaryBody(
     planet.id = planetId;
     planet.orbit = orbit;
 
-    const frostLineAU = (pack.generation_parameters?.frost_line_base_au || 2.7) * Math.sqrt((host.massKg || SOLAR_MASS_KG) / SOLAR_MASS_KG);
+    // FROST LINES COME FROM THE STAR'S LUMINOSITY, AND FROM THE HELIOCENTRIC DISTANCE — see GEN-4.
+    // This used to be `frost_line_base_au * sqrt(M_host / M_sun)`, which was wrong twice: it swapped
+    // MASS for LUMINOSITY (the real relation is d ∝ sqrt(L), and L ∝ M^3.5, so the mass form flattens
+    // the curve — 7x too far out for an M dwarf, an order of magnitude too close for a hot star), and
+    // for a MOON the "host" is the PLANET, so it derived a frost line from Jupiter's mass and then
+    // compared it against the moon's distance from Jupiter. `stellarContextFor` walks up to the star
+    // and returns the body's distance from IT, which is the planet's orbit in the moon case.
+    const stellar = stellarContextFor(host, orbit.elements.a_AU, allNodes);
+    const zonesForHost = stellar.star ? calculateAllStellarZones(stellar.star, pack, allNodes, age_Gyr) : null;
+    // FORMATION frost line (the ~170 K disc ice line) is the one that decides what a body could form
+    // AS; the current 125 K line is where ice is stable TODAY and is used for present-day iciness.
+    const formationFrostAU = zonesForHost ? zonesForHost.formationFrostLine : (pack.generation_parameters?.frost_line_base_au || 2.7);
+    const currentFrostAU = zonesForHost ? zonesForHost.currentFrostLine : (pack.generation_parameters?.frost_line_base_au || 2.7);
+    const distFromStarAU = stellar.distanceAU;
     const migrationChance = pack.generation_parameters?.planet_migration_chance || 0.1;
 
     let planetType = planetTypeOverride;
@@ -143,7 +157,7 @@ export function _generatePlanetaryBody(
                 planetType = 'planet/terrestrial';
             } else {
                 // Giant Parent: Standard moons are rocky or icy
-                if (orbit.elements.a_AU > frostLineAU) {
+                if (distFromStarAU > formationFrostAU) {
                     planetType = weightedChoice<string>(rng, { entries: [{ weight: 60, value: 'planet/ice-giant' }, { weight: 40, value: 'planet/terrestrial' }] });
                 } else {
                     planetType = 'planet/terrestrial';
@@ -158,7 +172,7 @@ export function _generatePlanetaryBody(
             }
         } else {
             // Planet Logic
-            if (orbit.elements.a_AU > frostLineAU) {
+            if (distFromStarAU > formationFrostAU) {
                 planetType = weightedChoice<string>(rng, { entries: [{ weight: 40, value: 'planet/gas-giant' }, { weight: 30, value: 'planet/ice-giant' }, { weight: 30, value: 'planet/terrestrial' }] });
             } else {
                 planetType = weightedChoice<string>(rng, { entries: [{ weight: 80, value: 'planet/terrestrial' }, { weight: 10, value: 'planet/gas-giant' }, { weight: 10, value: 'planet/ice-giant' }] });
@@ -454,7 +468,7 @@ export function _generatePlanetaryBody(
 
             // --- DERIVED RADIUS FROM DENSITY ---
             // If beyond frost line, use Icy density (~1800), else Rocky (~3500)
-            const isIcy = orbit.elements.a_AU > frostLineAU;
+            const isIcy = distFromStarAU > currentFrostAU;
             const density = isIcy ? 1800 : 3500;
             const volumeM3 = moonMass / density;
             const radiusM = Math.pow((3 * volumeM3) / (4 * Math.PI), 1/3);

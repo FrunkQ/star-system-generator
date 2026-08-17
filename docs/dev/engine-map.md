@@ -2066,6 +2066,29 @@ will not fail a test loudly -- it will just quietly stop making gas giants aroun
 guard is `placement-strategy.spec.ts` ("widening the pack band widens the system"), which is
 necessary but not sufficient; the giant-occurrence number is the real signal. See [[B58]].
 
+### GEN-4 A FROST LINE IS A PROPERTY OF THE STAR'S LUMINOSITY, ASKED AT A HELIOCENTRIC DISTANCE — AND THE LEGACY PATH GOT BOTH HALVES WRONG
+WHERE: `physics/zones.ts` (`stellarContextFor`, `calculateAllStellarZones`) is the single source.
+The faults were at `generation/planet.ts:133` and `generation/placement.ts:9`, both since routed.
+RULE: never derive a frost line from a MASS, and never ask the question of the immediate host.
+`d_frost ∝ sqrt(L)`; for main-sequence stars `L ∝ M^3.5`, so a `sqrt(M)` form is not a rough
+approximation of it — it is a different curve (`M^0.5` against `M^1.75`) and it is wrong in opposite
+directions at the two ends. Use `stellarContextFor(host, aAU, allNodes)`, which walks the parent
+chain to the STAR and returns the body's distance from IT.
+WHY: the legacy form was `frost_line_base_au * sqrt(M_host / M_sun)`. Measured against the
+luminosity-derived line: 12.9x TOO FAR OUT for an M8 dwarf, 42.6x for an L dwarf, 2.3x for a K5, and
+10x TOO CLOSE for a hot B star. Sol came out at 2.700 against a true 2.261 — 1.2x, near enough to
+look right, which is exactly why it survived: THE ONE STAR ANYBODY CHECKS IS THE ONE STAR THE BUG
+DOES NOT SHOW ON. The second fault compounded it: for a MOON the host is the PLANET, so the code
+derived a frost line from Jupiter's mass (0.083 AU) and compared it against the moon's distance from
+Jupiter (~0.003 AU) — so a moon was almost always "inside the frost line" and generated moons of cold
+giants were essentially never icy.
+BLAST: two frost lines exist by design and they are NOT interchangeable — `formationFrostLine`
+(~170 K, disc ice during formation) decides what a body could form AS and is what the type draws
+want; `currentFrostLine` (~125 K) is where ice is stable TODAY and is what present-day iciness wants.
+Sol's are 2.26 and 4.97 AU, so picking the wrong one moves the giants. Guard:
+`generation/frostLine.spec.ts`, whose load-bearing case is two stars of EQUAL MASS and different
+luminosity — identical under any mass-based form. See [[B80]], [[B58]].
+
 ### UI-*  (panels, editors, player views)
 _Unwritten. Candidates: which surfaces read the player snapshot; the four explanation surfaces that
 drift silently (physics page, Newton explainer, tags guide, classification doc)._
