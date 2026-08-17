@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.730-beta - 17th Aug 2026
+
+- FIXED: the highlight selection in Find by tag now survives a reload. It was treated as a momentary nudge and thrown away on refresh, which is wrong for what it actually is - prep, often built up tag by tag before a session. Saved per machine, not into the campaign, so it never travels inside a shared starmap file. The mute is remembered with it.
+- The momentary controls beside it - Follow GM, suspend filter, pause orbit, hide labels - deliberately still start clean each launch. Coming back to a suspended filter with nothing saying why is worse than losing it.
+- The highlight tray now says what it does: it badges your OWN maps as well as the players'. It always did, and only mentioned the players.
+
 ## v2.1.728-beta - 16th Aug 2026
 
 - Hardened a trap introduced with the substellar colour ramp: a star carrying a temperature of zero would have rendered near-black rather than merely the wrong colour, because the old fallback only caught null and undefined. Sol itself stores no temperature, so that default is load-bearing.

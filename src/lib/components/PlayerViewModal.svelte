@@ -342,7 +342,7 @@
                   <button class="hl-clear" on:click={() => setOverride({ mapHighlights: [] })}>clear</button>
                 </div>
               {/if}
-              <p class="hl-hint">Choose these in <strong>Find by tag</strong> on the rail — it knows what is actually on the map. This is the mute.</p>
+              <p class="hl-hint">Badged on your own maps as well as the players'. Choose them in <strong>Find by tag</strong> on the rail — it knows what is actually on the map. This is the mute, and it hides them on both.</p>
             </div>
           </div>
         </aside>

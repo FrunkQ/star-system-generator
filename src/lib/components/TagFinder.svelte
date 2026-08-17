@@ -184,7 +184,7 @@
       <button class="bubble" class:open={expanded === g} style="--c:{groupColor(g)}"
         draggable="true" on:dragstart={(e) => startDrag(e, groupRef(g))}
         on:click={() => (expanded = expanded === g ? null : g)}
-        title="Click to open. Drag onto the highlight tray to badge the whole category.">
+        title="Click to open. Drag onto the highlight tray to badge the whole category on every map, yours and the players'.">
         {g} <span class="bcnt">{grouped[g].length}</span>
       </button>
     {/each}
@@ -195,9 +195,9 @@
         <button class="chip" class:active={filters.includes(t.key)} style="background:{t.color}; color:{t.textColor}"
           draggable="true" on:dragstart={(e) => startDrag(e, t.key)}
           on:click={() => addFilter(t.key)} title="{t.key}
-Click to filter. Drag onto the highlight tray to badge it on the maps.">
+Click to filter. Drag onto the highlight tray to badge it on every map, yours and the players'.">
           {t.label} <span class="cnt">{t.count}</span>
-          <span class="tohl" role="button" tabindex="-1" title="Highlight on the player views"
+          <span class="tohl" role="button" tabindex="-1" title="Highlight it — on your maps and the players'"
             on:click|stopPropagation={() => addHighlight(t.key)}
             on:keydown|stopPropagation={(e) => { if (e.key === 'Enter') addHighlight(t.key); }}>+</span>
         </button>
@@ -222,11 +222,14 @@ Click to filter. Drag onto the highlight tray to badge it on the maps.">
 
   <!-- Highlight tray: what gets badged on the maps and the players' views. -->
   <div class="hl-tray" class:over={dragOver}
-    role="region" aria-label="Show highlight markers on player views"
+    role="region" aria-label="Show highlight markers on your maps and the players'"
     on:dragover|preventDefault={() => (dragOver = true)}
     on:dragleave={() => (dragOver = false)}
     on:drop|preventDefault={onDrop}>
-    <span class="hl-title">Show highlight markers on player views</span>
+    <!-- It says BOTH, because it does both and the old wording did not: these badges appear on the
+         GM's own starmap and orrery the moment they are chosen, which is the point — you see what you
+         are about to show before you show it. -->
+    <span class="hl-title">Show highlight markers &mdash; your maps and the players'</span>
     {#if $liveOverrides.mapHighlights.length}
       <div class="hl-list">
         {#each $liveOverrides.mapHighlights as h (h.ref)}
