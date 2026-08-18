@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.792-beta - 18th Aug 2026
+
+- Docs only. The band editor's range must follow the engine's grid (280-1400 nm today, near-UV to near-IR) rather than hard-code it, so the editors extend with the physics.
+
 ## v2.1.791-beta - 18th Aug 2026
 
 - **Universe Sandbox import: a star with a blank top-level category is no longer thrown away as a particle.** Universe Sandbox stores an object's category twice, and the top-level label can be empty on a real body; the importer read only that label, took blank to mean ring-fragment particle, and dropped the star before working out who orbits what. On the reported file that discarded a 1.68-solar-mass A star, made the largest gas giant the centre of the system, unbound thirty of thirty-four bodies against it, and fell back to a 4.6 billion year age because it could find no star to date the system by. It now reads the second category, the star flag, a stated luminosity and finally the mass before giving up. The same file now imports as built: 34 bodies, the A star at the centre, and the 0.37 billion year age its author set on it. Thank you to the user who reported it and sent the file.
