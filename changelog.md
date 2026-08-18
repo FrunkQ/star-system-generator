@@ -2,7 +2,7 @@
 
 All notable changes are listed here:
 
-## v2.1.795-beta - 18th Aug 2026
+## v2.1.797-beta - 18th Aug 2026
 
 - Docs only. Orbit-line opacity (and a momentary hide) is pulled into V3 on the owner's call after an imported 45-planet system made the map unreadable; routed.
 
