@@ -1,4 +1,5 @@
 import type { CelestialBody, Barycenter, RulePack, Orbit } from '../types';
+import { starFamilyOf } from './star';
 import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange } from '../utils';
 import { _generateStar } from './star';
@@ -34,15 +35,19 @@ export function setupStars(seed: string, pack: RulePack, rng: SeededRNG, generat
     }
 
     const starA = _generateStar(`${seed}-star-a`, null, pack, rng, starTypeOverride);
-    const starClass = starA.classes[0].split('/')[1]; 
+    // Compared the WHOLE class string before, so `G-III` matched nothing and a G giant took the
+    // low-mass binary odds. Family from the letter (star.ts starFamilyOf) instead. The A-star
+    // seam is kept where it was: A/F/G/K share the sun-like odds, O/B the massive ones.
+    const family = starFamilyOf(starA.classes[0]);
+    const letter = (starA.classes[0].split('/')[1] ?? '')[0];
 
     let isBinary = forceBinary ?? false;
-    if (forceBinary === undefined) { 
-        if (['O', 'B'].includes(starClass)) {
+    if (forceBinary === undefined) {
+        if (family === 'massive' && letter !== 'A') {
             isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_massive']);
-        } else if (['A', 'F', 'G', 'K'].includes(starClass)) {
+        } else if (family === 'massive' || family === 'sunlike') {
             isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_sunlike']);
-        } else { 
+        } else {
             isBinary = weightedChoice<boolean>(rng, pack.distributions['is_binary_chance_lowmass']);
         }
     }

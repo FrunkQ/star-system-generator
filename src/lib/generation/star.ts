@@ -21,6 +21,35 @@ import { stellarTypeForBand, starClassParts, bandKeyOf } from '../physics/starDe
 // body, so it resolves here rather than falling through to `star/default` and becoming a G dwarf.
 const LEGACY_CLASS_ALIAS: Record<string, string> = { 'star/red-giant': 'star/M-III' };
 
+/**
+ * A STAR CLASS'S FAMILY, for the generation lookups that key on it — planet-count table, binary
+ * odds. Read from the LETTER, never from the whole class string: `star/G-III` is a G, `star/M-I` is
+ * an M, and a comparison like `['A','F','G','K'].includes('G-III')` is false and falls to whatever
+ * the last branch happens to be (it put a G giant on the low-mass binary table). L, T and Y are
+ * BROWN DWARFS — not remnants, which is where they fell before because no branch named them.
+ */
+export type StarFamily = 'massive' | 'sunlike' | 'low_mass' | 'brown_dwarf' | 'remnant';
+export function starFamilyOf(classKey: string | undefined): StarFamily {
+    const cls = (classKey ?? '').split('/')[1] ?? '';
+    if (/^(WD|NS|BH|BH_active|magnetar)\b/.test(cls)) return 'remnant';
+    if (cls === 'red-giant') return 'sunlike';
+    const letter = cls[0];
+    if (letter === 'O' || letter === 'B' || letter === 'A') return 'massive';
+    if (letter === 'F' || letter === 'G' || letter === 'K') return 'sunlike';
+    if (letter === 'M') return 'low_mass';
+    if (letter === 'L' || letter === 'T' || letter === 'Y') return 'brown_dwarf';
+    return 'remnant';
+}
+/** The pack's planet-count table for a family. */
+export function planetCountTableKey(family: StarFamily): string {
+    switch (family) {
+        case 'massive': return 'planet_count_massive';
+        case 'sunlike': case 'low_mass': return 'planet_count_main_sequence';
+        case 'brown_dwarf': return 'planet_count_brown_dwarf';
+        default: return 'planet_count_remnant';
+    }
+}
+
 export function starStatTemplate(pack: RulePack, starClass: string): any | undefined {
     // Pack-safe, like `resolveStarImage`: the editor renders before a pack has loaded, and a lookup
     // that throws there takes the whole panel with it.

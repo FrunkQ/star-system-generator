@@ -345,6 +345,39 @@
         }
       ]
     },
+    "planet_count_brown_dwarf": {
+      "name": "Number of Planets (Brown dwarfs L, T, Y). Discs around brown dwarfs are observed and form rocky worlds - Earth-mass and below, close in - but a disc a few percent of a stellar one is not building ten of them. Not a remnant table (which is 95% empty) and not a main-sequence one.",
+      "entries": [
+        {
+          "weight": 15,
+          "value": 0
+        },
+        {
+          "weight": 25,
+          "value": 1
+        },
+        {
+          "weight": 25,
+          "value": 2
+        },
+        {
+          "weight": 18,
+          "value": 3
+        },
+        {
+          "weight": 10,
+          "value": 4
+        },
+        {
+          "weight": 5,
+          "value": 5
+        },
+        {
+          "weight": 2,
+          "value": 6
+        }
+      ]
+    },
     "planet_count_remnant": {
       "name": "Number of Planets (Remnant WD, NS, BH, Magnetar)",
       "entries": [

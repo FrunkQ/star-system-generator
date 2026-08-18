@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.785-beta - 18th Aug 2026
+
+- **Brown dwarfs can now be generated at all.** The letter-from-temperature ladder stopped at M and a stale 1,500 K temperature floor in stellar ageing promoted every T and Y dwarf to L — so an L-dwarf seed came out as an M dwarf, and a Y-dwarf seed as an L. The wizard could not make a brown dwarf from a seed, and every brown-dwarf figure quoted in the last few builds was in fact a red dwarf. Both fixed: the letter now reads the pack's own temperature anchors (L, T and Y included), and the floor is gone.
+
+- **The new star classes no longer fall through the generation lookups.** A G giant (`G-III`) was taking red-dwarf binary odds because the code compared the whole class string; brown dwarfs were taking the stellar-remnant planet-count table (95% empty) because no branch named them. Class-keyed lookups now go through one family helper that reads the letter, and brown dwarfs have their own count table — discs around them are real and form a few close-in rocky worlds, but not ten.
 ## v2.1.784-beta - 18th Aug 2026
 
 - What's new: undo and redo is no longer marked as coming — it shipped and has been seen working — and the virtual-tabletop line now says plainly that Mappadux works today and that we are looking for Owlbear Rodeo and Foundry testers. Inbox: a sanity check at 783 — what landed, what waits on the owner and where to answer, and what is left for V3 in agent-sized chunks.

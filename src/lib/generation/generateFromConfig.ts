@@ -7,7 +7,7 @@ import { SeededRNG } from '../rng';
 import { bodyFactory } from '../core/BodyFactory';
 import { systemProcessor } from '../core/SystemProcessor';
 import { _generatePlanetaryBody } from './planet';
-import { starFieldFromPack, starTiltFromPack } from './star';
+import { starFieldFromPack, starTiltFromPack, starFamilyOf, planetCountTableKey } from './star';
 import { resolveStarImage } from '../system/starImage';
 import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
 import { drawTypeForSlot, rarityOf, rarityTier } from './typeDraw';
@@ -93,7 +93,7 @@ function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, kn
 }
 
 // Spectral classes for a (possibly evolved) star seed → the engine's class array.
-function classesForPhase(seed: StarSeed, phase: StarPhase | undefined): string[] {
+function classesForPhase(seed: StarSeed, phase: StarPhase | undefined, pack?: RulePack): string[] {
   if (phase === 'white-dwarf') return ['star/WD'];
   if (phase === 'neutron-star') return ['star/NS'];
   if (phase === 'black-hole') return ['star/BH'];
@@ -101,24 +101,24 @@ function classesForPhase(seed: StarSeed, phase: StarPhase | undefined): string[]
   // one-size `star/red-giant` (inbox B46a). `determineSpectralClass` is already the ladder used two
   // lines down, so the evolved temperature decides the letter and the luminosity class says III.
   if (phase === 'giant' || phase === 'subgiant') {
-    const sp = determineSpectralClass(seed.temperatureK);
+    const sp = determineSpectralClass(seed.temperatureK, pack);
     return [`star/${sp}-III`, `star/${sp}`];
   }
-  const sp = determineSpectralClass(seed.temperatureK);
+  const sp = determineSpectralClass(seed.temperatureK, pack);
   return [`star/${sp}`];
 }
 function categoryForClass(cls: string): CelestialBody['starCategory'] {
   const sp = cls.split('/')[1];
   if (['O', 'B'].includes(sp)) return 'massive_star';
   if (['WD', 'NS', 'BH', 'magnetar'].includes(sp)) return 'star_remnant';
-  if (sp === 'M') return 'low_mass_star';
+  if (sp === 'M' || sp === 'L' || sp === 'T' || sp === 'Y') return 'low_mass_star';
   return 'main_sequence_star';
 }
 
 function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: string | null, ageGyr?: number): CelestialBody {
   const star = bodyFactory.createBody({ name: '', roleHint: 'star', parentId, seed: id, massKg: seed.massKg, radiusKm: seed.radiusKm });
   star.id = id;
-  const classes = classesForPhase(seed, (seed as any).phase);
+  const classes = classesForPhase(seed, (seed as any).phase, pack);
   star.classes = classes;
   star.starCategory = categoryForClass(classes[0]);
   star.temperatureK = seed.temperatureK;
@@ -284,12 +284,10 @@ function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number |
 // main-sequence F/G/K/M keep rich disks, remnants rarely retain anything. Same tables the single-
 // star path uses, so a multi-star system's per-star counts track each star's class.
 function planetCountForStar(star: CelestialBody, pack: RulePack, rng: SeededRNG): number {
-  const cls = star.classes?.[0]?.split('/')[1] ?? '';
-  const sp = cls[0];
-  let table;
-  if (['O', 'B', 'A'].includes(sp)) table = pack.distributions?.['planet_count_massive'];
-  else if (cls === 'red-giant' || ['F', 'G', 'K', 'M'].includes(sp)) table = pack.distributions?.['planet_count_main_sequence'];
-  else table = pack.distributions?.['planet_count_remnant'];
+  // Family from the LETTER (star.ts starFamilyOf), so `G-III` is a G and `L`/`T`/`Y` are brown
+  // dwarfs with their own table rather than falling to the remnants' 95%-empty one.
+  const table = pack.distributions?.[planetCountTableKey(starFamilyOf(star.classes?.[0]))]
+    ?? pack.distributions?.['planet_count_main_sequence'];
   return table ? weightedChoice<number>(rng, table) : rng.nextInt(0, 5);
 }
 

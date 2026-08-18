@@ -106,8 +106,13 @@ export function ageStar(star: StarSeed, ageYears: number): StarSeed & { isDead?:
         }
     }
 
-    const props = deriveStarFromHR(Math.max(1500, T), Math.max(1e-9, L), isDead, star.massKg);
-    // A quiescent black hole has no thermal surface — the HR clamp (≥1500 K, needed for the radius/class
+    // THE TEMPERATURE FLOOR WAS 1500 K, AND IT SILENTLY PROMOTED EVERY T AND Y DWARF TO L. It was
+    // written as a guard for the radius/class maths when nothing colder than an M dwarf existed; the
+    // pack now carries L (1300-2250 K), T (600-1250) and Y (250-450), and a 400 K Y-dwarf seed came
+    // out of ageing at 1500 K and classified as star/L. The radius formula is sqrt(L)/(T/Tsun)^2 and
+    // is fine at any POSITIVE temperature, so the guard only ever needed to exclude zero.
+    const props = deriveStarFromHR(Math.max(1, T), Math.max(1e-9, L), isDead, star.massKg);
+    // A quiescent black hole has no thermal surface — the HR clamp (>0, needed for the radius/class
     // math) must not leak into the displayed temperature. (Feeding raises it again via the editor.)
     if (phase === 'black-hole') { props.temperatureK = 0; props.luminositySolar = 1e-9; }
     return { ...star, ...props, isDead, phase };
@@ -382,10 +387,45 @@ export function deriveStarFromHR(temperatureK: number, luminositySolar: number, 
     };
 }
 
-export function determineSpectralClass(tempK: number): string {
-    if (tempK >= 30000) return 'O'; if (tempK >= 10000) return 'B'; if (tempK >= 7500) return 'A';
-    if (tempK >= 6000) return 'F'; if (tempK >= 5200) return 'G'; if (tempK >= 3700) return 'K';
-    return 'M';
+/**
+ * THE SPECTRAL LETTER FROM TEMPERATURE — and it now knows about every letter the pack carries.
+ *
+ * This used to be a hardcoded ladder that stopped at M, written before the pack grew L, T and Y
+ * dwarfs. So an L dwarf at 1600 K, a T at 900 K and a Y at 400 K all came out `star/M` — the
+ * wizard could not generate a brown dwarf from a seed AT ALL, and every generation measurement
+ * taken against an "L dwarf" anchor was in fact measuring an M dwarf (B58 and after; the results
+ * still stand for M, they were simply mislabelled below it). The letter's PLANET-COUNT lookup was
+ * wrong for the same reason in the other direction: L/T/Y fell through every branch to the
+ * REMNANT table, mean 0.06 planets.
+ *
+ * The pack's `stellarClassification.subclass_anchors` already declares each letter's temperature
+ * anchors, brown dwarfs included, so the letter is read from THAT when a pack is given: the
+ * hottest letter whose coldest anchor is at or below the temperature — same rule as before, now
+ * over the pack's letters rather than a fixed seven. Anchors are the MAIN-SEQUENCE branch, which is
+ * fine here because the letter is about temperature and the luminosity class comes separately.
+ * Without a pack the old ladder stands, extended so a brown-dwarf temperature at least gets the
+ * right letter rather than M.
+ */
+const LETTER_ORDER = ['O', 'B', 'A', 'F', 'G', 'K', 'M', 'L', 'T', 'Y'];
+const LADDER_FLOOR_K: Record<string, number> = { O: 30000, B: 10000, A: 7500, F: 6000, G: 5200, K: 3700, M: 2400, L: 1300, T: 600, Y: 0 };
+
+export function determineSpectralClass(tempK: number, pack?: RulePack | any): string {
+    const anchors = (pack as any)?.stellarClassification?.subclass_anchors as Record<string, Record<string, number>> | undefined;
+    if (anchors && tempK > 0) {
+        // The letter's FLOOR is its coldest anchor; walk hot to cold and take the first whose floor
+        // the temperature clears. A temperature colder than every floor is the coldest letter known.
+        let coldest = LETTER_ORDER[LETTER_ORDER.length - 1];
+        for (const letter of LETTER_ORDER) {
+            const a = anchors[letter];
+            if (!a) continue;
+            coldest = letter;
+            const floor = Math.min(...Object.values(a).map(Number).filter((v) => Number.isFinite(v)));
+            if (tempK >= floor) return letter;
+        }
+        return coldest;
+    }
+    for (const letter of LETTER_ORDER) if (tempK >= LADDER_FLOOR_K[letter]) return letter;
+    return 'Y';
 }
 
 export function initializeStellarNursery(stars: StarSeed[], clusterRadiusAU: number = 50): StarSeed[] {
