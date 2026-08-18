@@ -13,9 +13,12 @@ const STARMAP_UI_STORE_KEY = 'starmap-ui-store';
 // v2.1.378 and never reached the GM's own map, because nothing connected the two lists.
 import { isSnapGridType, normaliseOverlay, type SnapGridType } from '$lib/map/mapOverlay';
 type GridType = SnapGridType;
-type UiState = { gridType: GridType; travellerMode: boolean; showBackgroundImage: boolean };
+// G16: `showBackgroundImage` was retired here. The starmap's background is CAMPAIGN CONTENT now
+// (`Starmap.mapBackground`) rather than a local display preference, because a map-fixed sector map
+// has to travel with the save and out to every player window to stay in register.
+type UiState = { gridType: GridType; travellerMode: boolean };
 
-const DEFAULTS: UiState = { gridType: 'off', travellerMode: false, showBackgroundImage: true };
+const DEFAULTS: UiState = { gridType: 'off', travellerMode: false };
 
 
 
@@ -35,7 +38,10 @@ function migrate(parsed: any): UiState {
   const canonical = normaliseOverlay(out.gridType);
   out.gridType = isSnapGridType(canonical) ? canonical : 'off';
   if (typeof out.travellerMode !== 'boolean') out.travellerMode = false;
-  return out;
+  // Only the fields this store still owns. A browser that stored the retired `showBackgroundImage`
+  // would otherwise carry it forward for ever, and a dead key in a persisted store is how a future
+  // reader concludes the setting still exists (G16).
+  return { gridType: out.gridType, travellerMode: out.travellerMode };
 }
 
 const getInitialState = (): UiState => {

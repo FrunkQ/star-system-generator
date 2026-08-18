@@ -12,6 +12,11 @@
   import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
   import { loadStoredIce, saveStoredIce, parseIceText, iceToText } from '$lib/iceConfig';
   import { foreground } from '$lib/ui/foreground';
+  // G16: the picture behind the stars. Campaign content, so it saves with the rest of this dialog.
+  import MapBackgroundControls from './MapBackgroundControls.svelte';
+  import type { MapBackground } from '../types';
+  import { normaliseMapBackground } from '$lib/map/mapBackground';
+  import { BUILTIN_ASSETS } from '$lib/player/presets';
 
   // BYO STUN/TURN for remote players (docs/dev/vtt-integration-design.md 11).
   let iceText = '';
@@ -68,6 +73,7 @@
     if (initialSection) { activeSection = initialSection; drilled = true; }
     else drilled = false;
     invertDisplay = starmap.invertDisplay ?? false;   // sync ONCE per open (see note below)
+    mapBackground = normaliseMapBackground(starmap.mapBackground); // ...and for the same reason (G16)
   }
   $: if (!showModal && wasOpen) { wasOpen = false; }
 
@@ -89,6 +95,10 @@
   // dependency changed (e.g. toggling the background image), resetting the user's unsaved invert choice
   // and making the two checkboxes appear to fight / self-uncheck.
   let invertDisplay = starmap.invertDisplay ?? false;
+  // G16: the map background, on the same local-until-Save footing as invertDisplay above — it is
+  // campaign content and rides the same 'save' payload as the name, the unit and the scale.
+  let mapBackground: MapBackground = normaliseMapBackground(starmap.mapBackground);
+  $: backgroundAssets = [...BUILTIN_ASSETS, ...(starmap.playerAssets ?? [])];
 
 
   // Starmap settings. The unit choice doubles as the scaling mode (matches the New Starmap
@@ -244,6 +254,7 @@
         mapMode: diagrammatic ? 'diagrammatic' : 'scaled',
         generationEngine,
         invertDisplay,
+        mapBackground,
         ignoreZForDistances,
         measurementUnits,
         temperatureUnit,
@@ -397,9 +408,12 @@
           {/if}
 
           <h3>Map display</h3>
-          <div class="form-group">
-            <label><input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} /> Show background image</label>
-          </div>
+          <!-- G16 "Background &amp; Overlay": ONE group, serving the GM 2D map, the player 2D map, the
+               3D map's plane and the starmap document. It replaced a bare "Show background image"
+               checkbox, which is now the first choice in its picker. -->
+          <MapBackgroundControls {starmap} background={mapBackground} assets={backgroundAssets}
+            disabledReason={invertDisplay ? 'The print (inverted) display hides the background image.' : ''}
+            on:change={(e) => (mapBackground = e.detail)} />
           <div class="form-group">
             <label title="Print-friendly white background + dark labels (disables the background image)."><input type="checkbox" bind:checked={invertDisplay} /> Invert Starmap display (print)</label>
           </div>

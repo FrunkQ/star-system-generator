@@ -1142,6 +1142,34 @@ export interface TemporalState {
   playbackRateSecPerSec?: number;
 }
 
+/**
+ * G16 - "your own map behind the stars": the image a GM puts BEHIND the starmap.
+ *
+ * IT IS CAMPAIGN CONTENT, NOT CHROME, and that is the whole reason it lives on the Starmap rather
+ * than in a UI store. In map-fixed mode the picture is GEOREFERENCED - a sector map whose borders
+ * must line up with the systems - so its anchor has to travel with the campaign into the save
+ * bundle and out to every player window, or a player is looking at a WRONG map rather than a
+ * slightly different one. One anchor, one place, every surface reads it: GM 2D map, player 2D map,
+ * the 3D map's plane, and the starmap document. See $lib/map/mapBackground.ts for the geometry.
+ *
+ * The GM's old local "show background image" toggle became `source`: no image / the shipped Milky
+ * Way / an uploaded image. Absent = the shipped Milky Way, screen-fixed, opaque - exactly what
+ * every existing campaign already showed.
+ */
+export interface MapBackground {
+  /** none = plain space; default = the shipped ESO Milky Way; asset = one of `playerAssets`. */
+  source: 'none' | 'default' | 'asset';
+  assetId?: string;
+  /** screen = decoration fixed to the viewport (today's behaviour); map = georeferenced. */
+  attach: 'screen' | 'map';
+  opacity: number;      // fade, 0..1
+  sizePct: number;      // SCREEN-fixed only: width as a % of the viewport (100 = cover)
+  widthUnits: number;   // MAP-fixed: image width in the campaign's OWN unit (never ly by assumption)
+  offsetX: number;      // MAP-fixed: image CENTRE, in campaign units
+  offsetY: number;
+  rotationDeg: number;  // MAP-fixed: clockwise, about the centre
+}
+
 export interface Starmap {
   id: string;
   name: string;
@@ -1186,6 +1214,9 @@ export interface Starmap {
   // See $lib/player and docs/dev/unified-player-view-design.md. Optional: absent on old maps.
   playerPresets?: import('./player/presetTypes').PlayerPreset[];
   playerAssets?: import('./player/presetTypes').PlayerAsset[];
+
+  // G16: the picture behind the stars. CAMPAIGN CONTENT, not chrome - see MapBackground.
+  mapBackground?: MapBackground;
 
   temporal?: TemporalState;
   rulePackOverrides?: RulePackOverrides;

@@ -34,6 +34,18 @@ export interface PlayerAsset {
   id: string;
   name: string;
   dataUrl: string; // "data:image/png;base64,…" — mime carried in the URL
+  // Natural pixel size of the STORED bitmap, recorded at upload. Every surface can measure it by
+  // loading the image, and does when this is absent (older assets, and the built-in logos); having
+  // it up front is what stops a map-fixed background flashing at the wrong aspect ratio for a frame
+  // while the bitmap decodes.
+  w?: number;
+  h?: number;
+  // PROVENANCE (DATA-M4). A GM's uploaded sector map is precisely the case ATTRIBUTIONS.md exists
+  // for, and a CC-BY image with no credit is a licence breach rather than an untidy field. Carried
+  // here so the bundle can write it out and the About box can credit what is actually on screen.
+  credit?: string;
+  license?: string;
+  sourceUrl?: string;
 }
 
 // A placement of one asset. Rendered INSIDE the filtered layer, so the same visual filter (CRT etc.)
@@ -124,6 +136,12 @@ export interface PlayerPreset {
   // different position). The cover's own image lives in cover.graphic.
   starmapOverlay: GraphicPlacement | null;
   systemOverlay: GraphicPlacement | null;
+  // G16: show the CAMPAIGN's map background (Starmap.mapBackground) on this player view's starmap.
+  // A boolean rather than a second copy of the placement, deliberately: the map-fixed anchor is
+  // georeferenced content and a per-preset copy is a copy that can fall out of register with the
+  // GM's own map, which is a wrong map rather than a different look. Optional and defaulting to
+  // TRUE, so nothing already saved changes.
+  showMapBackground?: boolean;
   companyName: string;
   footerText: string;
   defaultRateIndex: number; // starting time rate (index into RATE_STEPS; default 2 = 1 s ≈ 1 h)

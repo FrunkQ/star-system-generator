@@ -74,6 +74,7 @@
   import { stampForSave } from '$lib/map/provenance';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import { unitKind, campaignUnit, normaliseCampaignUnit, applyUnitChange, type UnitChangeMode } from '$lib/map/distanceUnits';
+  import { rescaleMapBackgroundForRuler } from '$lib/map/mapBackground';
   import { shouldOfferUpgrade, dismissUpgrade, type UpgradeOffer } from '$lib/map/upgradeOffer';
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
@@ -1774,11 +1775,15 @@
         // Until A43 this ALWAYS converted, which is precisely how a map mis-stamped as parsecs turned
         // Alpha Centauri's 4.37 into 14.33. Default stays 'convert' for any caller that does not ask.
         if (merged.scale && unitKind(campaignUnit(starmap)) && unitKind(merged.scale.unit)) {
+          const rulerBefore = starmap.scale?.pixelsPerUnit ?? merged.scale.pixelsPerUnit;
           merged.scale = applyUnitChange(
-            { ...merged.scale, unit: campaignUnit(starmap), pixelsPerUnit: starmap.scale?.pixelsPerUnit ?? merged.scale.pixelsPerUnit },
+            { ...merged.scale, unit: campaignUnit(starmap), pixelsPerUnit: rulerBefore },
             merged.scale.unit,
             unitMode ?? 'convert'
           );
+          // G16: the map background's anchor is stored in UNITS, so it is one of the readings a
+          // convert relabels. Nothing on the map moved, so the picture must not move either.
+          merged.mapBackground = rescaleMapBackgroundForRuler(merged.mapBackground, rulerBefore, merged.scale.pixelsPerUnit);
         }
         // The two unit fields must never leave this function disagreeing (A43's second fault).
         Object.assign(merged, normaliseCampaignUnit(merged));

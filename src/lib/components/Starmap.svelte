@@ -51,6 +51,11 @@
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   import { campaignUnit } from '$lib/map/distanceUnits';
+  // G16 — the picture behind the stars. The geometry lives in ONE module because four surfaces draw
+  // it and a map-fixed image drawn even slightly differently on one of them is a WRONG map, not a
+  // different look. This surface supplies only its own world transform.
+  import { resolveMapBackground, backgroundRectMap, backgroundPixelsPerUnit } from '$lib/map/mapBackground';
+  import { BUILTIN_ASSETS } from '$lib/player/presets';
   import { chrome } from '$lib/ui/foreground';
   import UndoPill from './UndoPill.svelte';
   import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
@@ -222,9 +227,55 @@
   $: invertDisplay = starmap.invertDisplay ?? false;
   $: activeScale = starmap.scale ?? { unit: campaignUnit(starmap), pixelsPerUnit: 25, showScaleBar: true }; // A43
   $: scaleBarVisible = isScaled && (activeScale.showScaleBar ?? true);
-  $: if (invertDisplay && $starmapUiStore.showBackgroundImage) {
-    starmapUiStore.update((ui) => ({ ...ui, showBackgroundImage: false }));
+  // --- G16: the picture behind the stars -----------------------------------------------------
+  //
+  // TWO ATTACHMENTS, TWO MECHANISMS ON THIS SURFACE, and which is which is the whole feature:
+  //   screen-fixed — a CSS background on the <svg> ELEMENT, i.e. outside the world transform. That
+  //     is why it holds still while the stars move, and it is exactly what the shipped Milky Way
+  //     has always done.
+  //   map-fixed — an <image> INSIDE the `translate(pan) scale(zoom)` group at the foot of this
+  //     file, drawn before the grid, the routes and the systems. Registration with the stars is
+  //     then automatic and free: they share one transform, so nothing has to be kept in step.
+  //
+  // This is [[A4]] running in reverse. A4 had to DIVIDE zoom out of the label fonts because they
+  // sat inside the world transform; here we deliberately want to be inside it, so the picture
+  // scales with the map. Same trap family, opposite sign.
+  //
+  // INVERT (print) SUPPRESSES THE BACKGROUND RATHER THAN CLEARING IT. It used to write the toggle
+  // off, which was tolerable when the background was local chrome and is not now that it is
+  // campaign content: a print switch must not edit the GM's map.
+  $: bgAssets = [...BUILTIN_ASSETS, ...(starmap.playerAssets ?? [])];
+  $: resolvedBg = invertDisplay ? null : resolveMapBackground(starmap, bgAssets);
+  // Natural bitmap size. An uploaded asset records it, so the picture never flashes at the wrong
+  // aspect while it decodes; the shipped Milky Way and older uploads are measured once here.
+  let bgNatural: { url: string; w: number; h: number } | null = null;
+  function measureBackground(url: string) {
+    if (bgNatural?.url === url) return;
+    const im = new Image();
+    im.onload = () => { bgNatural = { url, w: im.naturalWidth, h: im.naturalHeight }; };
+    im.src = url;
   }
+  $: if (typeof window !== 'undefined' && resolvedBg?.attach === 'map' && !(resolvedBg.naturalW && resolvedBg.naturalH)) {
+    measureBackground(resolvedBg.url);
+  }
+  $: bgAspect = !resolvedBg ? 0
+    : resolvedBg.naturalW && resolvedBg.naturalH ? resolvedBg.naturalW / resolvedBg.naturalH
+    : bgNatural && bgNatural.url === resolvedBg.url && bgNatural.h > 0 ? bgNatural.w / bgNatural.h
+    : 0;
+  // MAP COORDINATES, straight from the shared module — the same rectangle the player 2D/3D scene and
+  // the starmap document ask for. This surface adds nothing but its own pan/zoom.
+  $: bgRect = resolvedBg && resolvedBg.attach === 'map' && bgAspect > 0
+    ? backgroundRectMap(resolvedBg.bg, bgAspect, backgroundPixelsPerUnit(starmap))
+    : null;
+  $: bgScreen = resolvedBg && resolvedBg.attach === 'screen' ? resolvedBg : null;
+  // Fade on a CSS background needs a scrim rather than `opacity`, which would fade the whole <svg>
+  // and take the stars with it. A black scrim over a black map IS the fade.
+  $: bgScreenStyle = bgScreen
+    ? `--sm-bg-layers: linear-gradient(rgba(0,0,0,${(1 - bgScreen.opacity).toFixed(3)}), rgba(0,0,0,${(1 - bgScreen.opacity).toFixed(3)})), url("${cssUrl(bgScreen.url)}"); ` +
+      `--sm-bg-size: 100% 100%, ${bgScreen.sizePct >= 100 ? 'cover' : `${bgScreen.sizePct}% auto`};`
+    : '';
+  /** A url() value is a string in a stylesheet: a quote or a backslash in it would break out of it. */
+  function cssUrl(u: string): string { return u.replace(/\\/g, '\\\\').replace(/"/g, '\\"'); }
 
 
   function roundDistance(value: number): number {
@@ -1229,15 +1280,33 @@
     <svg
       bind:this={svgElement}
       class="starmap"
-      class:with-background={$starmapUiStore.showBackgroundImage && !invertDisplay}
+      class:with-background={!!bgScreen}
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 800 600"
       use:gestures={starmapGestures}
       role="button"
       tabindex="0"
-      style="touch-action: none;"
+      style="touch-action: none; {bgScreenStyle}"
     >
       <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
+      <!-- G16 MAP-FIXED BACKGROUND. First child of the world transform, so it is BEHIND the grid,
+           the routes and every system, and holds registration with them at any pan or zoom for
+           free. `preserveAspectRatio="none"` is exact rather than lax: the height was derived from
+           the bitmap's own aspect ratio, so there is nothing left to fit. -->
+      {#if bgRect && resolvedBg}
+        <image
+          href={resolvedBg.url}
+          x={bgRect.cx - bgRect.w / 2}
+          y={bgRect.cy - bgRect.h / 2}
+          width={bgRect.w}
+          height={bgRect.h}
+          opacity={resolvedBg.opacity}
+          preserveAspectRatio="none"
+          transform={bgRect.rotationDeg ? `rotate(${bgRect.rotationDeg} ${bgRect.cx} ${bgRect.cy})` : undefined}
+          style="pointer-events: none;"
+          aria-hidden="true"
+        />
+      {/if}
       <Grid
         gridType={displayGridType}
         {gridSize} 
@@ -2097,12 +2166,16 @@
   }
 
   .starmap.with-background {
-    /* 
-      Image Credit: ESO/S. Brunier 
-      https://www.eso.org/public/images/eso0932a/
-    */
-    background-image: url('/images/ui/MilkyWay.jpg');
-    background-size: cover;
+    /* G16 SCREEN-FIXED BACKGROUND: a CSS background on the ELEMENT, outside the world transform —
+       which is precisely why it holds still while the stars move. The layers and the size are set
+       from the campaign's MapBackground (see bgScreenStyle above); the shipped default resolves to
+       the ESO Milky Way it has always been:
+         Image Credit: ESO/S. Brunier — https://www.eso.org/public/images/eso0932a/
+       The first layer is a black scrim carrying the fade, because `opacity` here would fade the
+       whole svg and take the stars with it. The MAP-FIXED case is an <image> inside the transform
+       group instead, and shares none of this. */
+    background-image: var(--sm-bg-layers, url('/images/ui/MilkyWay.jpg'));
+    background-size: var(--sm-bg-size, cover);
     background-position: center center;
     background-repeat: no-repeat;
   }
