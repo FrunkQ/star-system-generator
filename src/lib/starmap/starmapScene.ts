@@ -100,8 +100,27 @@ export interface StarmapController {
   setMarkerOptions(o: { size?: number; staff?: FlagStaffColor; pinText?: PinTextMode }): void;
   setFilter(id: string, params?: FilterParamValues): void;
   setHud(canvas: HTMLCanvasElement | null): void; // static overlay bitmap composited INTO the filter
+  // G16: the campaign's own picture behind the stars, as a FLAT QUAD LYING IN THE MAP PLANE. Not a
+  // sky sphere - the owner ruled that out and the sky stays procedural. Null = nothing.
+  setMapBackground(cfg: SceneMapBackground | null): void;
   resize(w: number, h: number): void;
   dispose(): void;
+}
+
+/**
+ * G16 - what this scene needs to draw the map-fixed background, in MAP COORDINATES.
+ *
+ * The rectangle is worked out by `$lib/map/mapBackground` and handed here already solved, exactly as
+ * the GM 2D map receives it. That is the point: two surfaces cannot disagree about where a
+ * georeferenced picture sits if neither of them decides. This scene adds only its own fit transform,
+ * the same `(mapPos - centre) * k` every system star goes through.
+ */
+export interface SceneMapBackground {
+  url: string;
+  cx: number; cy: number;      // centre, map coordinates
+  w: number; h: number;        // size, map coordinates
+  rotationDeg: number;         // clockwise in the map's own (y-down) sense
+  opacity: number;
 }
 
 // A soft round glow sprite texture (shared) — a system star.
@@ -548,6 +567,90 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     if (lastData) setData(lastData.systems, lastData.routes);
   }
   function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+
+  // --- G16: the map background, as a PLANE IN THE MAP PLANE -------------------------------------
+  //
+  // The owner's revision, 2026-08-17: "On the 3D map we need this as a plane on the player view - so
+  // from above it frames right." Looking straight down, this quad frames EXACTLY as the GM 2D map's
+  // <image> does, because both are the same rectangle in map coordinates and this scene applies only
+  // the same fit transform its system stars get. Tilt the camera and it is seen edge-on, with the
+  // systems standing above and below it by their depth - which is the honest picture of what a
+  // reference-plane chart is.
+  //
+  // NOT WRAPPED ON THE SKY SPHERE, deliberately and by owner decision: warping a flat sector map onto
+  // a sphere is the cost he judged not worth paying, and the procedural starfield stays.
+  //
+  // THE PLANE IS REBUILT FROM `rebuildMapBackground` WHENEVER THE FIT TRANSFORM CHANGES, which means
+  // after every `setData` - `mapCx`/`mapCy`/`mapK` are recomputed there from the systems' own spread,
+  // so a plane built before them would be positioned against a stale fit and drift off the stars the
+  // moment a system moved.
+  const bgGroup = new THREE.Group();
+  bgGroup.renderOrder = -1; // behind the grid, the routes and the stars
+  scene.add(bgGroup);
+  let mapBgCfg: SceneMapBackground | null = null;
+  let mapBgTex: THREE.Texture | null = null;
+  let mapBgTexUrl: string | null = null;
+
+  /** Like `clearGroup`, but it must NOT dispose the texture: that is cached across rebuilds, and a
+   *  rebuild happens on every `setData`. Disposing it here would blank the picture on the first
+   *  reframe and leave nothing to load it again. */
+  function clearBackgroundGroup() {
+    bgGroup.traverse((o) => {
+      const a = o as any;
+      a.geometry?.dispose?.();
+      const m = a.material;
+      (Array.isArray(m) ? m : [m]).forEach((x: any) => x?.dispose?.());
+    });
+    bgGroup.clear();
+  }
+
+  function rebuildMapBackground() {
+    clearBackgroundGroup();
+    if (!mapBgCfg || !mapBgTex || mapBgCfg.opacity <= 0) return;
+    const cfg = mapBgCfg;
+    const geo = new THREE.PlaneGeometry(cfg.w * mapK, cfg.h * mapK);
+    const mat = new THREE.MeshBasicMaterial({
+      map: mapBgTex,
+      transparent: true,
+      opacity: cfg.opacity,
+      // Never write depth: the stars are additive sprites drawn over it, and a background that
+      // occludes is a background that eats the map.
+      depthWrite: false,
+      side: THREE.DoubleSide, // seen from underneath on a low camera, and from below the plane in 3D
+      toneMapped: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    // ORIENTATION, derived once and stated because it is the part that is easy to get silently wrong.
+    // `toScene` sends map x -> world X and map y -> world Z, with world Y as height. A plane rotated
+    // -PI/2 about X puts its local +X on world +X and its local +Y on world -Z, so the bitmap's TOP
+    // edge lands at the SMALLER map y - which is the top of the GM's map, because map y runs downward.
+    // A clockwise turn of `t` in that y-down map frame is a rotation of MINUS t about world Y; the
+    // 'YXZ' order applies the Y term after the tilt, which is what makes that true.
+    const t = (cfg.rotationDeg * Math.PI) / 180;
+    mesh.rotation.set(-Math.PI / 2, -t, 0, 'YXZ');
+    // Just below the reference plane, so the grid, the drop-line ticks and the routes all read over it.
+    mesh.position.set((cfg.cx - mapCx) * mapK, -0.02, (cfg.cy - mapCy) * mapK);
+    mesh.renderOrder = -1;
+    bgGroup.add(mesh);
+  }
+
+  function setMapBackground(cfg: SceneMapBackground | null) {
+    mapBgCfg = cfg;
+    if (!cfg) { mapBgTexUrl = null; mapBgTex = null; rebuildMapBackground(); return; }
+    if (cfg.url === mapBgTexUrl) { rebuildMapBackground(); return; }
+    // A new bitmap: load, then rebuild. The texture is kept OUT of `bgGroup` disposal (clearGroup
+    // disposes the material's map) by cloning per rebuild - see below.
+    mapBgTexUrl = cfg.url;
+    mapBgTex?.dispose();
+    mapBgTex = null;
+    rebuildMapBackground(); // clear the old picture immediately rather than showing it under a new anchor
+    new THREE.TextureLoader().load(cfg.url, (tex) => {
+      if (disposed || mapBgTexUrl !== cfg.url) { tex.dispose(); return; }
+      tex.colorSpace = THREE.SRGBColorSpace;
+      mapBgTex = tex;
+      rebuildMapBackground();
+    });
+  }
   function setDistanceScale(v: number) {
     const n = Number.isFinite(v) && v > 0 ? v : 0;
     if (n === pixelsPerUnit) return;
@@ -921,6 +1024,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       seg.computeLineDistances(); content.add(seg);
     }
     rebuildGrid();
+    // G16: the fit transform (mapCx/mapCy/mapK) was just recomputed from these systems' own spread,
+    // so the background plane has to be re-placed against it. Skipping this is how a georeferenced
+    // picture drifts off the stars the moment a system is added or moved.
+    rebuildMapBackground();
   }
 
   // --- Tap-to-select (live view) — pick the nearest system to the pointer, ignoring orbit drags.
@@ -1049,13 +1156,14 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointerup', onPointerUp);
     controls.dispose(); clearContent(); clearGroup(gridGroup);
+    clearBackgroundGroup(); mapBgTex?.dispose(); mapBgTex = null;
     (starfield.geometry as any)?.dispose?.(); (starfield.material as any)?.dispose?.();
     if (filterPass) (filterPass.material as THREE.Material).dispose();
     composer.dispose(); renderer.dispose();
   }
 
   rebuildGrid();
-  return { setData, setGrid, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setMarkerOptions, setFilter, setHud, resize, dispose };
+  return { setData, setGrid, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setMarkerOptions, setFilter, setHud, setMapBackground, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {

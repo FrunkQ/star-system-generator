@@ -711,8 +711,19 @@
           {#if !draft.starmapEnabled}
             <p class="hint">Disabled: players skip straight to the system level; no back-to-systems navigation is shown.</p>
           {:else}
-            <CollapsibleSection label="Overlay graphic" open={openSections['starmap-graphic']}
+            <CollapsibleSection label="Background &amp; overlay" open={openSections['starmap-graphic']}
               on:toggle={(e) => setSection('starmap-graphic', e.detail)}>
+              <!-- G16. TWO DIFFERENT THINGS, and the section names both: the BACKGROUND is the
+                   campaign's own picture behind the stars (a sector map, empire borders), authored
+                   once in Settings so its georeferenced anchor cannot fall out of register between
+                   the GM's map and a player's; the OVERLAY is this preset's own graphic laid over
+                   the top (a watermark, a logo). Only the background's on/off switch belongs to a
+                   preset. -->
+              <label class="chk"><input type="checkbox" bind:checked={draft.showMapBackground} /> Show the campaign map background</label>
+              <p class="hint">
+                Set the picture and its placement in Settings &rarr; Map display. A map-fixed
+                background keeps the same registration with the systems here as on your own map.
+              </p>
               <GraphicPlacementControls placement={draft.starmapOverlay} assets={$playerAssetList} label="Overlay image"
                 on:change={(e) => (draft = { ...draft, starmapOverlay: e.detail })} />
             </CollapsibleSection>

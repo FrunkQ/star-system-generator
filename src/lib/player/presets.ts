@@ -57,6 +57,10 @@ export const DEFAULT_PRESET: PlayerPreset = {
   accentColor: '#6aa0ff',
   starmapOverlay: null,
   systemOverlay: null,
+  // G16: the campaign's map background shows on a player view unless the GM turns it off here. The
+  // ANCHOR is never copied onto a preset - a georeferenced picture with two anchors is a picture
+  // that can fall out of register with the GM's own map.
+  showMapBackground: true,
   companyName: '',
   footerText: '',
   defaultRateIndex: 2,

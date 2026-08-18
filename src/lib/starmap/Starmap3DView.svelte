@@ -4,7 +4,12 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import type { MapOverlay } from '$lib/map/mapOverlay';
   import type { Starmap } from '$lib/types';
-  import type { StarmapController, SmSystem, SmRoute } from './starmapScene';
+  import type { StarmapController, SmSystem, SmRoute, SceneMapBackground } from './starmapScene';
+  // G16: the campaign's own picture behind the stars. The RECTANGLE is solved in one shared module
+  // (map/mapBackground) and this wrapper only hands it on, so this scene and the GM 2D map cannot
+  // disagree about where a georeferenced image sits.
+  import { resolveMapBackground, backgroundRectMap, backgroundPixelsPerUnit } from '$lib/map/mapBackground';
+  import { BUILTIN_ASSETS } from '$lib/player/presets';
   import { rollUpMarkers, type MapHighlights } from '$lib/tags/mapHighlights';
   import type { MarkerStyleName } from '$lib/tags/tagPill';
   import { liveOverrides } from '$lib/player/liveOverrides';
@@ -64,6 +69,9 @@
   export let tipBottom = ''; // …and the bottom edge — drawn INTO the filtered render as a HUD quad
   export let tipMono = false;
   export let overlay: import('$lib/catalogue/infoCard').HudOverlay | null = null; // image overlay into the filter
+  // G16: show the campaign's map background on this view. The preset's opt-out; the anchor itself is
+  // campaign content and arrives on `starmap`, never as a second copy per preset.
+  export let mapBackground = true;
 
   const dispatch = createEventDispatcher<{ select: string }>();
 
@@ -103,6 +111,32 @@
   }));
   $: smRoutes = ((starmap?.routes ?? []) as any[]).map<SmRoute>((r) => ({ fromId: r.sourceSystemId, toId: r.targetSystemId, dashed: r.lineStyle === 'dashed', name: r.name }));
 
+  // G16. SCREEN-FIXED IS NOT A PLANE: on this surface it is the existing HUD overlay path (a
+  // full-frame quad composited into the filter), exactly as the procedural backdrop behaves today.
+  // Only MAP-FIXED becomes geometry, and only then does it need the fit transform.
+  $: bgAssets = [...BUILTIN_ASSETS, ...(starmap?.playerAssets ?? [])];
+  $: resolvedBg = mapBackground ? resolveMapBackground(starmap, bgAssets) : null;
+  // Natural bitmap size: recorded on an uploaded asset, measured once otherwise.
+  let bgNatural: { url: string; w: number; h: number } | null = null;
+  function measureBackground(url: string) {
+    if (bgNatural?.url === url) return;
+    const im = new Image();
+    im.onload = () => { bgNatural = { url, w: im.naturalWidth, h: im.naturalHeight }; };
+    im.src = url;
+  }
+  $: if (typeof window !== 'undefined' && resolvedBg?.attach === 'map' && !(resolvedBg.naturalW && resolvedBg.naturalH)) {
+    measureBackground(resolvedBg.url);
+  }
+  $: bgAspect = !resolvedBg ? 0
+    : resolvedBg.naturalW && resolvedBg.naturalH ? resolvedBg.naturalW / resolvedBg.naturalH
+    : bgNatural && bgNatural.url === resolvedBg.url && bgNatural.h > 0 ? bgNatural.w / bgNatural.h
+    : 0;
+  $: sceneBackground = ((): SceneMapBackground | null => {
+    if (!resolvedBg || resolvedBg.attach !== 'map' || bgAspect <= 0) return null;
+    const r = backgroundRectMap(resolvedBg.bg, bgAspect, backgroundPixelsPerUnit(starmap));
+    return { url: resolvedBg.url, cx: r.cx, cy: r.cy, w: r.w, h: r.h, rotationDeg: r.rotationDeg, opacity: resolvedBg.opacity };
+  })();
+
   function apply() {
     if (!controller) return;
     controller.setRouteGlow(routeGlow); // before setData so the rebuild picks it up
@@ -126,6 +160,8 @@
     // Labels are in-scene sprites: theme accent, or grey in mono so a tint filter colours them.
     controller.setLabelColor(mono ? '#dfe6f0' : accentColor);
     controller.setFilter(filter, filterParams);
+    // AFTER setData: setData recomputes the fit transform the plane is placed against.
+    controller.setMapBackground(sceneBackground);
   }
 
   onMount(() => {
@@ -150,6 +186,8 @@
   $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
+  // G16: re-place the plane on any anchor change. Named rather than closed over, per the note above.
+  $: if (controller) { controller.setMapBackground(sceneBackground); }
 </script>
 
 <div class="sm3d-root" bind:this={container}>
