@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.787-beta - 18th Aug 2026
+
+- Docs only. The import-refresh design note (`docs/dev/import-refresh-design.md`): every importer surveyed against the new stars, compositions and physics, and a plan for one shared infill with the same four dials as the wizard, one star-aware age guess with a reasonable band, and one star ladder in place of the four private copies. Also reads the Universe Sandbox report in the inbox properly: the 4.6 Gyr the user saw is a symptom of the importer not recognising their star, not the cause of the unbinding.
+
 ## v2.1.786-beta - 18th Aug 2026
 
 - **The Metallicity dial now does what its label says.** It was wired to nudge interior makeup and reached about one generated body in seventy — inert in practice. It now weights the type draw on the physics: giant occurrence rises steeply with metallicity because core accretion needs solids to build a core before the disc dissipates (Fischer & Valenti 2005), so a metal-poor system is a few small rocky worlds and hardly a giant, and a metal-rich one is dense iron and carbon worlds and many gas giants. There is a floor on giants even at the bottom — the disc can collapse into one directly, no core needed — so it is never "no giants ever". Measured across the dial around a Sun-like star: giants per system 0.7 to 4.2, gassy worlds 9% to 57%, icy 26% to 6%, median density 5.5 to 2.4 g/cc. The default sits a little above the middle, because the Sun is somewhat metal-rich against its neighbours.
