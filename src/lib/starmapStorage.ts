@@ -1,4 +1,5 @@
 import type { Starmap } from './types';
+import { stripUndoHistory } from './undo/historyKey';
 
 const LEGACY_STARMAP_KEY = 'stargen_saved_starmap';
 const DB_NAME = 'stargen_storage';
@@ -110,7 +111,13 @@ export async function saveStarmap(starmap: Starmap): Promise<void> {
     await idbSet(IDB_STARMAP_KEY, starmap);
   } catch (error) {
     console.warn('IndexedDB starmap save failed, using localStorage fallback.', error);
-    window.localStorage.setItem(LEGACY_STARMAP_KEY, JSON.stringify(starmap));
+    // THE FALLBACK HAS A ~5 MB CEILING AND THE UNDO HISTORY IS THE MOST EXPENDABLE THING IN THE
+    // CAMPAIGN, so it does not travel this road (G28). This path only runs when IndexedDB is
+    // unavailable - the emergency save must not be the thing that fails because a GM has twenty
+    // undo steps banked, and up to 4 MB of them would leave almost nothing for the campaign itself.
+    const lean = { ...starmap };
+    stripUndoHistory(lean);
+    window.localStorage.setItem(LEGACY_STARMAP_KEY, JSON.stringify(lean));
   }
 }
 

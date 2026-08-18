@@ -146,3 +146,31 @@ describe('and it still never leaves this browser', () => {
     expect(JSON.stringify(snap)).not.toContain(UNDO_HISTORY_KEY);
   });
 });
+
+describe('the emergency localStorage save', () => {
+  it('drops the history rather than risking the ~5 MB ceiling', async () => {
+    // The fallback only runs when IndexedDB is unavailable, and it is the campaign that must
+    // survive - not the undo log, which can be up to 4 MB of it.
+    const { saveStarmap } = await import('$lib/starmapStorage');
+    const map: any = get(starmapStore);
+    map[UNDO_HISTORY_KEY] = { version: 1, systemId: null, system: [{ data: 'x'.repeat(2000) }], starmap: [] };
+
+    const store: Record<string, string> = {};
+    vi.stubGlobal('localStorage', {
+      setItem: (k: string, v: string) => { store[k] = v; },
+      getItem: (k: string) => store[k] ?? null,
+      removeItem: (k: string) => { delete store[k]; }
+    });
+    // Force the IndexedDB path to fail so the fallback runs.
+    vi.stubGlobal('indexedDB', undefined);
+
+    await saveStarmap(map);
+    const written = Object.values(store).join('');
+    vi.unstubAllGlobals();
+    // NO CONDITIONAL ASSERTION: if the fallback did not run, this test proved nothing and must say so.
+    expect(written.length, 'the localStorage fallback did not run - this test is not exercising it').toBeGreaterThan(0);
+    expect(written).not.toContain(UNDO_HISTORY_KEY);
+    expect(written).toContain('Local Neighbourhood');           // the campaign itself DID survive
+    expect(map[UNDO_HISTORY_KEY]).toBeTruthy();                 // and the live one keeps its history
+  });
+});

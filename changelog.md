@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.783-beta - 18th Aug 2026
+
+- **The emergency save no longer carries the undo history.** If browser storage fails and the app falls back to the smaller, older store, the campaign is what has to fit - so the undo log is left behind rather than competing with your map for the last megabyte.
+
 ## v2.1.782-beta - 18th Aug 2026
 
 - **Fix: starmap undo now sees the edits the app actually makes.** Yesterday's campaign history only recorded a move, an add or a delete when the code that made it built a fresh copy of the map - and almost none of it does. Moving, adding and deleting a system all went unrecorded. It now compares what changed rather than which object arrived, so every route to a map edit is covered.
