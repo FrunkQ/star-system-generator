@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.791-beta - 18th Aug 2026
+
+- **Universe Sandbox import: a star with a blank top-level category is no longer thrown away as a particle.** Universe Sandbox stores an object's category twice, and the top-level label can be empty on a real body; the importer read only that label, took blank to mean ring-fragment particle, and dropped the star before working out who orbits what. On the reported file that discarded a 1.68-solar-mass A star, made the largest gas giant the centre of the system, unbound thirty of thirty-four bodies against it, and fell back to a 4.6 billion year age because it could find no star to date the system by. It now reads the second category, the star flag, a stated luminosity and finally the mass before giving up. The same file now imports as built: 34 bodies, the A star at the centre, and the 0.37 billion year age its author set on it. Thank you to the user who reported it and sent the file.
+
 ## v2.1.790-beta - 18th Aug 2026
 
 - **Groundwork for the import refresh: one infill and one age model, shared by every importer.** The real-sky catalogue's fill-out routine — which already did the right thing: seed the wizard's own generator from the star, never crowd an imported world, continue the letters, tag everything it adds — is generalised into a single `infillSystem` that takes the same four dials as the wizard, an age, more than one star, and a hard planet count for Traveller (which never counts moons). Real-sky now calls it. Nothing user-facing changes yet; the panel comes next.

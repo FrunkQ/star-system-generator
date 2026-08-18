@@ -10,47 +10,39 @@ about the tree below was checked at v2.1.786-beta.
 **This is a design note first, per the standing rule for anything that changes what generation IS.
 Nothing here is implemented.**
 
-## 1. The user's ubox report — read carefully, it is not an age bug
+## 1. The user's ubox report — the star WAS in the file, and we were not reading it
 
 *"Out of 34 objects, 30 unbound including the main star ... sets the age to 4.6 Gyr ... sets the
 system around one of the gas giants as a red dwarf while making its moons planets."*
 
-The user's own conclusion is that the 4.6 Gyr default is what prevents the system loading. **It is not,
-and the age is a symptom.** `ubox/convert.ts:300 resolveAge` is already star-aware: it takes the
-file's stored age if the primary has one, else `min(4.6, half the primary's lifespan)`. For an A star
-that is about 0.4 Gyr, not 4.6. The user saw 4.6 because the importer **found no star at all** — the
-"no star found to date the system" branch is the only one that returns a flat 4.6.
+**Corrected 2026-08-18 after the file arrived (`Hystrine System-2-2.ubox`).** An earlier draft of this
+note said the file contained no star. It does: `Hystrix`, 3.34e30 kg (**1.68 M☉**), luminosity
+2.97e27 W (**7.8 L☉**), `StarType: 1`, age 1.17e16 s (**0.37 Gyr** — the user gave their A star a
+young age, correctly). What it does NOT have is a top-level `Category: 'star'` — that field is the
+empty string. Universe Sandbox stores category twice: a top-level string, and a numeric `Category`
+on the Celestial component (observed: 2 = star, 3 = planet or moon; absent on ring/fragment
+particles, which have no Celestial component at all). Our importer read only the string, took blank
+to mean "particle" (`convert.ts` — `if (!e.Category) particles.push(e)`), and **dropped a
+1.68-solar-mass luminous star before hierarchy inference ran.**
 
-Everything else follows from that one miss, in this order:
+Everything the user saw follows from that one line, in order: (1) with the star gone, `hierarchy.ts`
+picks the most massive survivor as root — Gallabi, a 254 M⊕ giant; (2) the root is always tagged
+star, so its moons bind as *"planets"*; (3) everything else tries to bind to a 254 M⊕ host and fails
+— *"30 of 34 unbound"*; (4) no star-category root → `resolveAge(null)` → the flat **4.6**; (5) a
+root with a giant's temperature and no luminosity reads as *"a red dwarf"*. The user diagnosed it as
+an age bug; the age was the last domino.
 
-1. `ubox/hierarchy.ts:47` picks the root as the most massive body among candidates whose
-   `Category` is `'star'`, `'planet'` or `'blackhole'`, within 6,700 AU of the mass-weighted centroid.
-   The A star was either **not in that set** or **far-field**. Given "sets the system around one of the
-   gas giants", the most massive *surviving* candidate was a giant, so the star was excluded.
-2. With a giant as root, its moons bind to it as "planets" (`roleHint` is `parent.roleHint === 'star'
-   ? 'planet' : 'moon'`, and the root is always tagged star) — *"making its moons planets"*.
-3. Every other body tries to bind to the giant with `mu = G × (giant + body)`; most fail the bound test
-   against a host that light — *"30 of 34 unbound"*.
-4. `convert.ts:105` sets `rootStarEntity` only if `e.Category === 'star'`; a giant root fails that,
-   so `resolveAge` gets `null` → **4.6 Gyr**.
-5. A root with a giant's temperature and no luminosity classifies as the coldest thing the ladder knows
-   — *"a red dwarf"*.
+**Fixed at v2.1.791:** `resolveCategory(e)` in `ubox/convert.ts` reads the top-level string if
+non-blank, else the Celestial numeric category, else `StarType`, else a stated luminosity, else a
+stellar mass; a body with no Celestial component and no mass is a particle. All three reads route
+through it (the drop line, the two age-star checks) and so does the preview. Result on the user's
+file: **4 nodes → 34**, Hystrix root as `star/A`, age 0.37 Gyr as set, one genuinely hyperbolic body
+unbound. Fixture `tests/fixtures/ubox/hystrine-blank-category-star.json` (the simulation JSON trimmed
+to the fields the importer reads) guards it with four tests.
 
-So the single question for that file is: **what `Category` does Universe Sandbox write on the user's
-A star, and where does it sit relative to the rest?** Two likely answers, both fixable here:
-
-- The user made the star by editing a body up (a common US workflow) and it carries `Category:
-  'planet'` or something else. Fix: **infer stellarhood from physics when the file's label is
-  absent or contradicted** — a body above ~0.075 M☉ (or with a stated luminosity) is a star whatever
-  the file says. Today `Category` is read straight from the file with no fallback (`parse.ts`).
-- The star sits beyond 6,700 AU of the mass-weighted centroid — unlikely for a normal scene, but a
-  scene with a distant massive object could shift the centroid. Fix: **the root candidate should be
-  the most massive body, and the centroid should be re-derived after excluding nothing that is
-  stellar** — or simply, when exactly one body is stellar-mass, it is the root.
-
-Both belong in section 4 (ubox). Until the file is in hand, tell the user: *the age is downstream;
-the importer did not recognise your star as a star. Check its category in Universe Sandbox, and send
-the file.*
+The lesson for the other importers is the general one: **never treat a blank label as a
+classification.** Infer from physics when the label is absent — a body with mass, radius and
+luminosity is a star whatever the file forgot to say.
 
 ## 2. What exists today, importer by importer
 

@@ -37,6 +37,36 @@ function hash8(text: string): string {
   return h.toString(16).padStart(8, '0');
 }
 
+/**
+ * WHAT KIND OF THING IS THIS ENTITY — and the top-level `Category` string is not the whole answer.
+ *
+ * Universe Sandbox writes category TWICE: a top-level string, and a numeric `Category` on the
+ * Celestial component (observed: 2 = star, 3 = planet or moon; absent on ring/fragment particles,
+ * which have no Celestial component at all). The top-level string can be BLANK on a real body. The
+ * Hystrine file (inbox G32) carries a 1.68-solar-mass, 7.8-solar-luminosity A star with `Category: ""`
+ * at the top and `Category: 2`, `StarType: 1`, `Luminosity: 2.97e27` underneath — and this importer
+ * read only the string, took blank to mean particle, and DROPPED THE STAR before hierarchy inference
+ * ran. The largest gas giant then became root, its moons became planets, thirty of thirty-four
+ * bodies unbound against it, and the age fell to the no-star 4.6. The user diagnosed it as an age
+ * bug; it was this line.
+ *
+ * Order of evidence, most explicit first: the top-level string if non-blank; the Celestial numeric
+ * category; StarType; a stated luminosity; a stellar mass. A body with NO Celestial component and no
+ * mass is a particle. Everything else with mass but no label is a body of unknown category, kept and
+ * classified by mass so it is at least not thrown away.
+ */
+const STELLAR_MASS_KG = 0.075 * 1.989e30;   // the hydrogen-burning limit; a brown dwarf below it is still not a "particle"
+export function resolveCategory(e: UsEntity): 'star' | 'planet' | 'moon' | 'sso' | 'blackhole' | null {
+  const top = (e.Category ?? '').trim().toLowerCase();
+  if (top === 'star' || top === 'planet' || top === 'moon' || top === 'sso' || top === 'blackhole') return top;
+  const cel = e.Components?.find((c) => c.$type === 'Celestial');
+  if (!cel) return null;                                        // no Celestial component: a particle
+  if (cel.Category === 2 || (cel.StarType ?? 0) > 0 || (cel.Luminosity ?? 0) > 0) return 'star';
+  if (typeof e.Mass === 'number' && e.Mass >= STELLAR_MASS_KG) return 'star';   // luminous or not, that mass is a star
+  if (typeof e.Mass === 'number' && e.Mass > 0) return 'planet';                 // labelled or not, it is a body; hierarchy decides planet vs moon
+  return null;
+}
+
 function starClassFromTemp(tempK: number): string {
   if (tempK >= 30000) return 'star/O';
   if (tempK >= 10000) return 'star/B';
@@ -71,7 +101,8 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
   for (const e of entities) {
     const name = (e.Name ?? '').trim();
     if (name === 'dummy') { skipped.push({ name: name || '(dummy)', reason: 'dummy' }); continue; }
-    if (!e.Category) { particles.push(e); continue; }               // ring/fragment particles
+    const category = resolveCategory(e);
+    if (!category) { particles.push(e); continue; }                 // ring/fragment particles (no Celestial component)
     if (typeof e.Mass !== 'number' || !(e.Mass > 0)) { skipped.push({ name, reason: 'unparseable-entity' }); continue; }
     if (e.Mass < minMass) { belowThreshold++; continue; }
     let pos: V3, vel: V3;
@@ -79,7 +110,7 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     catch { skipped.push({ name, reason: 'unparseable-entity' }); continue; }
     const id = String(e.Id);
     entityById.set(id, e);
-    bodyInputs.push({ id, name, category: e.Category, mass: e.Mass, pos, vel });
+    bodyInputs.push({ id, name, category, mass: e.Mass, pos, vel });
   }
   if (belowThreshold > 0) skipped.push({ name: `${belowThreshold} small bodies below ${minMass.toExponential(1)} kg`, reason: 'below-mass-threshold' });
 
@@ -102,7 +133,7 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     if (p.roleHint === 'star') counts.stars++;
     else if (p.roleHint === 'planet') counts.planets++;
     else counts.moons++;
-    if (p.isRoot && e.Category === 'star') rootStarEntity = e;
+    if (p.isRoot && resolveCategory(e) === 'star') rootStarEntity = e;
   }
 
   if (!nodes.length) {
@@ -115,7 +146,7 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     for (const p of placements) {
       if (p.unbound) continue;
       const e = entityById.get(p.id)!;
-      if (e.Category === 'star' && (!best || (e.Mass ?? 0) > (best.Mass ?? 0))) best = e;
+      if (resolveCategory(e) === 'star' && (!best || (e.Mass ?? 0) > (best.Mass ?? 0))) best = e;
     }
     rootStarEntity = best;
   }

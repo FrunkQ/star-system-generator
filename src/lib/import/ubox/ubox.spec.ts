@@ -36,6 +36,9 @@ function parsedFixture(file: string): ParsedUbox {
 // moons.json        = whole-system save (moon hierarchy, rings, far-field guard)
 const solRealistic = () => parsedFixture('sol-realistic.json');
 const moonsFixture = () => parsedFixture('moons.json');
+// hystrine-blank-category-star.json = a user's whole-system save (inbox G32) whose 1.68-solar-mass A
+// star carries top-level Category '' and Celestial.Category 2. Trimmed to the fields the importer reads.
+const hystrineFixture = () => parsedFixture('hystrine-blank-category-star.json');
 const MU_SUN = G * SOLAR_MASS_KG;
 const node = (s: System, name: string) => s.nodes.find((n) => n.name === name) as CelestialBody;
 
@@ -290,5 +293,51 @@ describe('ubox review — audit', () => {
     const densities = review.comparisons.filter((c) => c.metric === 'density');
     expect(densities.length).toBeGreaterThan(0);
     expect(densities.every((c) => c.bucket === 'aligned')).toBe(true);
+  });
+});
+
+// ===========================================================================
+describe('ubox category — the top-level string is not the whole answer (inbox G32)', () => {
+  // A USER'S REPORT, and it was right: "30 of 34 objects unbound including the main star; the system
+  // is set around one of the gas giants as a red dwarf; the age is 4.6". The star was in the file. It
+  // carried Category '' at the top level and Category 2 / StarType 1 / Luminosity 2.97e27 on its
+  // Celestial component, and the importer read only the string, took blank to mean particle, and
+  // dropped a 1.68-solar-mass A star before hierarchy inference ran. Everything the user saw followed.
+  it('a star with a BLANK top-level Category is still a star, from its Celestial component', () => {
+    const result = convertUbox(hystrineFixture());
+    const sys = result.system as System;
+    const stars = sys.nodes.filter((n) => (n as CelestialBody).roleHint === 'star') as CelestialBody[];
+    expect(stars.length).toBe(1);
+    expect(stars[0].name).toBe('Hystrix');
+    expect(stars[0].massKg! / SOLAR_MASS_KG).toBeCloseTo(1.68, 2);
+    expect(stars[0].classes?.[0]).toBe('star/A');
+    expect(sys.nodes.filter((n) => !n.parentId).map((n) => n.name)).toEqual(['Hystrix']);   // it is the root
+  });
+
+  it('with the star found, the system binds: dozens of bodies, not four', () => {
+    // Before the fix: 4 nodes survived, 31 skipped as unbound, Gallabi (a 254 Me giant) was root.
+    const result = convertUbox(hystrineFixture());
+    const sys = result.system as System;
+    expect(sys.nodes.length).toBeGreaterThan(25);
+    const unbound = result.skipped.filter((s) => s.reason === 'unbound');
+    expect(unbound.length).toBeLessThan(5);
+    const gallabi = node(sys, 'Gallabi');
+    expect(gallabi.roleHint).toBe('planet');           // a planet again, not a star
+    expect(gallabi.parentId).toBe(node(sys, 'Hystrix').id);
+  });
+
+  it('and the age is the one the user SET on the star, not the no-star 4.6', () => {
+    // Hystrix.Age = 1.1676e16 s = 0.37 Gyr. The user gave their A star a young age, correctly; the
+    // importer had thrown the star away and reported 4.6 with "no star found to date the system".
+    const result = convertUbox(hystrineFixture());
+    expect(result.system.age_Gyr).toBeCloseTo(0.37, 2);
+    expect(result.assumptions.some((a) => /no star found/i.test(a))).toBe(false);
+  });
+
+  it('true particles — no Celestial component — are still particles', () => {
+    const result = convertUbox(hystrineFixture());
+    const particleLine = result.skipped.find((s) => s.reason === 'particle');
+    expect(particleLine).toBeDefined();
+    expect(particleLine!.name).toMatch(/^2 simulation particles/);
   });
 });
