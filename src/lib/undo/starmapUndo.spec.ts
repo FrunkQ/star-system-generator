@@ -176,6 +176,39 @@ describe('starmapUndo', () => {
     expect((node('node-sol')!.system.nodes.find((n: any) => n.name === 'Earth') as any).massKg).toBe(1.234e25);
   });
 
+  // THE WAY THE APP ACTUALLY WRITES. Audited: thirteen sites mutate the campaign in place and
+  // return the object they were handed - including adding and deleting a system. A recorder that
+  // skipped same-reference emissions saw none of them, and the tests above did not catch it because
+  // they all build `{ ...map }`. These three do it the app's way.
+  describe('in-place writes, which is what every real call site does', () => {
+    it('sees a MOVE made in place on the same object', () => {
+      starmapStore.update((m) => { m!.systems.find((s) => s.id === 'node-sirius')!.position.x = 99; return m; });
+      vi.advanceTimersByTime(300);
+      expect(status().undoDepth).toBe(1);
+      expect(status().undoLabel).toBe('Moved Sirius');
+      undoStarmap();
+      expect(node('node-sirius')!.position.x).toBe(40);
+    });
+
+    it("sees a system ADDED in place, the way the app's add-system path does", () => {
+      const extra = { id: 'node-new', name: 'New Home', position: { x: 5, y: 5 }, system: solSystem() };
+      starmapStore.update((m) => { m!.systems = [...m!.systems, extra as any]; return m; });
+      vi.advanceTimersByTime(300);
+      expect(status().undoLabel).toBe('Added New Home');
+      undoStarmap();
+      expect(get(starmapStore)!.systems.map((s) => s.id)).toEqual(['node-sol', 'node-sirius']);
+    });
+
+    it('sees a system DELETED in place, and brings it back whole', () => {
+      const bodies = node('node-sirius')!.system.nodes.length;
+      starmapStore.update((m) => { m!.systems = m!.systems.filter((s) => s.id !== 'node-sirius'); return m; });
+      vi.advanceTimersByTime(300);
+      expect(status().undoLabel).toBe('Deleted Sirius');
+      undoStarmap();
+      expect(node('node-sirius')!.system.nodes.length).toBe(bodies);
+    });
+  });
+
   it('records nothing for a write the app makes', () => {
     silentStarmapWrite(() => {
       starmapStore.update((m) => ({ ...m!, systems: m!.systems.map((s) => s.id === 'node-sirius' ? { ...s, position: { x: 7, y: 7 } } : s) }));

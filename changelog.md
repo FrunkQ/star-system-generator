@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.782-beta - 18th Aug 2026
+
+- **Fix: starmap undo now sees the edits the app actually makes.** Yesterday's campaign history only recorded a move, an add or a delete when the code that made it built a fresh copy of the map - and almost none of it does. Moving, adding and deleting a system all went unrecorded. It now compares what changed rather than which object arrived, so every route to a map edit is covered.
+
 ## v2.1.781-beta - 18th Aug 2026
 
 - **Your undo history now survives a reload.** The last twenty steps ride the campaign into browser storage with everything else, so closing the tab and coming back leaves them where you left them - for the system you were in, and for the starmap. It is GM-private and stays that way: it is stripped out of every save you export, every system you send to another GM, and everything the players ever receive. Capped by size as well as by count, so a very large system keeps fewer steps rather than bloating every autosave.

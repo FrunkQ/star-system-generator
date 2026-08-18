@@ -166,7 +166,14 @@ function resetTo(map: Starmap | null): void {
 
 function onStarmap(map: Starmap | null): void {
   if (!history) return;
-  if (map === lastSeen) return;
+  // NO REFERENCE SHORT-CUT HERE, AND THAT IS DELIBERATE - it is the opposite of `systemUndo`'s rule
+  // and the difference cost a shipped bug. THE CAMPAIGN STORE IS WRITTEN IN PLACE: audited, THIRTEEN
+  // sites in `+page.svelte` and `SystemView.svelte` mutate `starmap.systems` / `starmap.routes` and
+  // then `return starmap` - the same object they were handed, including the paths that ADD and
+  // DELETE a system. Skipping same-reference emissions here made every real map edit invisible while
+  // the tests passed, because the tests built `{ ...map }`. The SHELL is the gate instead: it is
+  // 0.03 ms, it compares CONTENT rather than identity, and it therefore cannot be fooled by how a
+  // call site chooses to return.
   lastSeen = map;
 
   if (history.applying || silentDepth > 0) {
