@@ -2,9 +2,11 @@
 
 All notable changes are listed here:
 
-## v2.1.799-beta - 18th Aug 2026
+## v2.1.800-beta - 18th Aug 2026
 
 - Internal: the constructs-and-camera session's retirement notes, written up the way the 3D-surfaces session wrote up its own. What the traps are, which reported diagnoses turned out to be leads rather than causes, and what is left open.
+
+## v2.1.799-beta - 18th Aug 2026
 
 - **After importing a system you can now fill it out, with the same four dials you use to create one from a star.** A new step in the import review adds plausible worlds where the import left gaps: imported worlds are never moved, re-typed or aged — a generated world that would crowd one is dropped, not the import — and the imported star is fed to the generator as it is now, not re-aged. It is always offered, starts on for a sparse import and off for one that already carries a system, and skipping it just loads the import exactly as it is.
 
