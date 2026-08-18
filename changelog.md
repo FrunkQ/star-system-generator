@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.784-beta - 18th Aug 2026
+
+- What's new: undo and redo is no longer marked as coming — it shipped and has been seen working — and the virtual-tabletop line now says plainly that Mappadux works today and that we are looking for Owlbear Rodeo and Foundry testers. Inbox: a sanity check at 783 — what landed, what waits on the owner and where to answer, and what is left for V3 in agent-sized chunks.
+
 ## v2.1.783-beta - 18th Aug 2026
 
 - **The emergency save no longer carries the undo history.** If browser storage fails and the app falls back to the smaller, older store, the campaign is what has to fit - so the undo log is left behind rather than competing with your map for the last megabyte.

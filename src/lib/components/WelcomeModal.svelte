@@ -75,8 +75,13 @@
     { title: 'Sharper generation', blurb: 'Procedural systems are retuned alongside the physics as it grows, so a generated system reflects what the engine currently knows rather than what it knew when the generator was written.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
-    { title: 'Undo and redo', pending: 'coming', blurb: 'Hallelujah.' },
-    { title: 'Virtual tabletop integration', pending: 'in testing', blurb: 'Full integration with Mappadux — free, and built alongside this. Owlbear Rodeo and Foundry are in testing, and we would love volunteers: if you run either, come and tell us what breaks and what you need.' },
+    // FLAG CLEARED 2026-08-18: shipped v2.1.774-783 (G28) and the owner has seen it work — every step
+    // is named ("Undo: Mass of Earth"), the campaign has its own history, the last twenty survive a
+    // reload, and nothing rides an export or a share.
+    { title: 'Undo and redo', blurb: 'Hallelujah. Every step is named, the last twenty survive a reload, and none of it leaves the room in a shared map.' },
+    // 2026-08-18, owner: "VTT integration is Mappadux working. Looking for testers for OR and Foundry."
+    // The line no longer carries a pending flag: the Mappadux half is a claim the build can make.
+    { title: 'Virtual tabletop integration', blurb: 'Mappadux — free, and built alongside this — works today: your starmap and systems on the table, live. Owlbear Rodeo and Foundry are next, and we are looking for testers: if you run either, come and tell us what breaks and what you need.' },
     { title: 'Many improvements and fixes', blurb: 'Hundreds of smaller changes throughout — the changelog has every one, build by build.' }
   ];
 </script>

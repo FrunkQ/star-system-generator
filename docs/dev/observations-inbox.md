@@ -728,6 +728,40 @@ human-habitability becomes the DEFAULT rather than the whole model.
 **THE RULE, so this is the last time: THE COORDINATOR OWNS NUMBERING. First claim wins between two coordinator claims. Between a coordinator claim and a worker claim the coordinator's wins, whichever was first — because the coordinator's ids are the ones that reach the owner (delivery buckets, handovers, open questions), and renumbering under the owner costs more than repointing a worker's row.** Every moved row carries a RENUMBERED note naming its old id. Every reference was classified by hand (68 in this file, 33 in `src/`, one in `biosphere-and-surface-light.md`) — the [[E10]] entry's own historical list of conflict-side ids is left as written, since it describes what was in the conflict, not what the ids mean now. **Commit messages naming the old ids are immutable and were not the deciding factor.** New highest ids: **A54, B79, C13, D25, E11, F11, G29, P2** (P4 exists only as a link).
 
 
+## SANITY CHECK at v2.1.783-beta — 2026-08-18, asked for by the owner ("a lot has landed… centre us")
+
+**Method: every `| ID | … | status |` row parsed (229 rows; 155 carry a resolved status), then the open ones read by hand against the commit log 753→783. Roster per the owner's sidebar, figure = % context used: G28 undo/redo 58 · generation rebalance 50 · surface temperature 83 · coordinator 40 · VTT (x3) 73 · Ship-model 2 80 · Player-view close 94 · perf & memory 48 · positions/eclipses 52 · Scene/grids/sky 73 (retired). The top two are still bug-fixing in the background.**
+
+**1. DELIVERED, COMPLETE AND WORKING (this wave, all rows self-marked or verified):** [[G28]] undo/redo 774-783 — owner has seen the pill; every step named, a second history for campaign-level edits, last twenty survive a reload, stripped from export/share AND the emergency save (783); [[B58]] 751 mutual-Hill spacing (Titius-Bode removed from code and pack); [[B80]] 760 + [[B81]] audit; viability model + mass BAND 777/779; [[A52]] 762 chrome yields by rule (UI-C6); [[A43]] 758 unit change asks; [[A51]] 757; [[B36]]+[[D23]] 758 (PHY-17); [[B68]] 756 / [[B69]] 755; [[A50]] 744 (crash found) + [[A45]] 749; [[A53]]+[[A54]] 745; [[P2]] capture machinery 746 (the STORM itself is not "fixed" — it is now diagnosable the next time it happens: `__ssePerf.events(60,'holo.setSystem')`, read `sameRef`); [[C14]] [[C15]] [[C16]] 770; [[B73]]+[[B74]] 738; VTT 749/753 + design docs 16/17 (cross-site discovery over PeerJS; Mappadux integration WORKING per the owner); [[G30]] surface-areas spec (pre-V4 groundwork, phases 1-2 schedulable); WelcomeModal: undo flag CLEARED and VTT reworded 2026-08-18 per the owner.
+
+**2. AWAITING THE OWNER — the query, and where to answer it:**
+| item | the question | answer where |
+|---|---|---|
+| [[G18]] | Moon design note delivered (`docs/dev/moon-generation-design.md` §5, FIVE questions: chiefly which slider feeds what, and whether the flat 30-moon cap is a display problem or a keeper — Jupiter has 95). No moon code until answered | the **generation rebalance** session (50%) — reply in it |
+| [[G24]] | Metallicity slider reaches ~1 body in 74 (the mixed-composition guard); two fixes offered — pick one. Part 2 (green/amber/red banded slider) is NOT started and was handed back: V3 or V3.1? | generation session for part 1; part 2 is a routing decision for the coordinator |
+| [[B58]] | A Y dwarf now GETS planets — the session calls that a decision about what generation is, not an accident. Confirm or overrule | generation session |
+| [[B80]] | A dead field recommended for deletion, not deleted unilaterally | generation session |
+| [[B81]] | Kill/danger zones are the only zones still multiplied from stored `radiation_output`; the fix hangs on [[B57]]'s decision (derive from luminosity / ionising output) | generation session, or the coordinator files it as V3 tail |
+| [[A55]] | Grid crossfade in motion; a boosted sky — 30 s each on the 3D starmap | your eyes; tell the coordinator |
+| [[C14]] [[C15]] [[C16]] | Falloff dial swept on a live SYSTEM map; Mars+Phobos+Deimos in lo-poly-lines at the true-scale end; the Terminal Clear direction | your eyes; tell Ship-model 2 (80%) or the coordinator |
+| [[A51]](b) | The entry shot into a BINARY on a live player view | your eyes |
+| [[G16]] | NOT STARTED. Brief current (3D plane + text-map graphic folded in). Perf session (48%) has it queued third but has not begun; fresh session is the alternative | tell the coordinator which |
+| VTT | Owlbear Rodeo + Foundry: looking for testers (WelcomeModal now says so). [[E12]] flaky `broadcastContract.spec` is the VTT session's own | VTT session (73%) |
+
+**3. STILL OUTSTANDING FOR V3, in agent-sized chunks (the welcome list is the scope statement; ONE pending line left — "Your own map behind the stars"):**
+| # | chunk | contents | who |
+|---|---|---|---|
+| 1 | **G16 your own map** | the last `coming` line: 2D GM + 2D player + 3D plane + document graphic; brief written and current | perf session (48%) or fresh |
+| 2 | **Moon build** | [[G18]] once the five questions are answered; then [[G24]] part 2 if V3 | generation session (50%) — but it is bug-fixing; a child if it tires |
+| 3 | **Save-fidelity tail** | [[B82]] `DERIVED_FIELDS` drifted: 8+ processor-written fields and the `hazard/*` prefix missing, so saves and bundled examples carry stale derived physics — engine work with real blast; wants suite-aware hands | positions/eclipses (52%) |
+| 4 | **Physics tails** | [[B67]]+[[D12]] (fifty unreachable classifier rules, one live fault), [[B37]] (belt ascent budget from a non-mass), [[B81]] after B57's call — routed to surface-temp, which is at 83% and did B68/B69 only | positions/eclipses or a fresh physics session; surface-temp should retire with notes |
+| 5 | **Traveller live faults** | [[D6]] (an "Earth-like" world freezes — the wiring is missing, not the bounds), [[D16]] (silly flat giants) — fix-the-fault-only, V4 rebuilds the importer | any session with physics room; small |
+| 6 | **Docs pass** | ~30 debt lines outstanding, `GettingStarted.md` ~230 versions stale, Stop-load / safe mode / Memory panel / diagnostic bundle undocumented, [[E6]] seven changelog inversions | the owner's own last step; a fresh docs session |
+| 7 | **Owner eyeballs** | [[A55]], [[C14]]-[[C16]], [[A51]](b), the one-drag-one-entry undo claim on a phone | you |
+| — | NOT V3, on purpose | [[G26]] star tails (V3.1), radiation arc [[B20]]/[[B21]]/[[B32]] (V3.1), [[G20]] galaxy scale (V3.1), [[B54]]/[[B66]]/[[B76]]/[[B77]] apparentColor retirement (pre-V4), [[G30]] surface areas (pre-V4 groundwork, spec done), [[G17]]/[[G27]] ageing + look-back (V4), [[G11]]/[[B39]] Traveller final form (V4), [[D25]] fiction marking (owner decision, V4) | — |
+
+**Sessions to RETIRE with notes when their bug-fixing ends:** Player-view close (94), surface temperature (83), Ship-model 2 (80), VTT (73) once OR/Foundry testers exist. Sessions with ROOM: perf & memory (48), positions/eclipses (52), generation (50, busy).
+
 ## SESSION ROSTER + ALLOCATION — 2026-08-17 (coordinator 4), context figures ARE THE OWNER'S
 
 **Supersedes the 2026-08-15 and 2026-08-16 roster blocks for WHO EXISTS. Everything else in them stands.** The owner's legend: `-X` = tapped out, `-N` = N0–N9% used. Agents cannot self-measure ([[E11]] asks them to self-LABEL instead, which is different and worth doing).
