@@ -1,10 +1,6 @@
 {
   "name": "star-system-generator",
-<<<<<<< HEAD
-  "version": "2.1.802-beta",
-=======
-  "version": "2.1.801-beta",
->>>>>>> 496c2ede (inbox: A57 - the broadcast-id collision dialog: retry loop, silent OK, dev previews hosting prod ids)
+  "version": "2.1.803-beta",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
