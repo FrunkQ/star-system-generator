@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.809-beta - 19th Aug 2026
+
+- Docs only. The broadcast-id collision narrowed by elimination to the tab colliding with its own registration; the VTT session is asked to record every host attempt in the event ring before fixing. Two rule-pack 404s on every load noted.
+
 ## v2.1.808-beta - 18th Aug 2026
 
 - Docs only. Adrian's green confirmed by eye and closed; the broadcast-id prompt did not recur on refresh, which fits the ghost diagnosis; the performance session's retirement recorded.
