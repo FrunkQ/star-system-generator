@@ -2069,26 +2069,34 @@ well as where they go. That touches all three body-creation routes, so it is sco
 tidy-up. Until then, any plausibility tag or test asserting mutual-Hill stability on GENERATED systems
 will fail, and it will be right to. See [[B58]], `generation-duplication-map.md`.
 
-### GEN-3 PLANET SPACING IS DRAWN ONCE PER SYSTEM, NOT ONCE PER GAP -- AND DRAWING IT PER GAP SILENTLY DELETES GAS GIANTS
-WHERE: `generation/placement-strategy.ts`, `sysSeparation`; pack block
-`generation_parameters.orbital_spacing.separation_hill_radii` (+ `separation_gap_spread`).
-RULE: draw the separation scale ONCE for the whole system and vary each gap only modestly around it.
-It reads like an arbitrary implementation choice and it is not: it is the parameter that decides
-whether a system comes out TRAPPIST-1-shaped or Sol-shaped, and the band spans TWO REAL POPULATIONS
-that a per-gap draw averages into a third that matches neither. Kepler's compact multis sit near 10
-to 20 mutual Hill radii; Sol's own inner planets sit at 27 (Venus-Earth), 40 (Earth-Mars) and 63
-(Mercury-Venus).
-WHY: with the separation drawn independently per gap, every system converged on the mean and came out
-compact. Measured at the time: a Sun-like star produced a giant in 13% of systems at a MEDIAN of
-1.0 AU -- inside its own frost line at 4.97 AU -- because a short chain of typical gaps never reached
-the frost line, and giants are only drawn beyond it. Sol-shaped systems (rocky worlds inside 2 AU plus
-a giant beyond the frost line) were effectively ungenerable. Switching to one draw per system gave 19%
-with a giant at a median 2.13 AU and 17 Sol-shaped systems in 200 seeds, with the compact population
-still present.
-BLAST: anything that "simplifies" this back to a per-gap draw, or narrows the band toward its middle,
-will not fail a test loudly -- it will just quietly stop making gas giants around Sun-like stars. The
-guard is `placement-strategy.spec.ts` ("widening the pack band widens the system"), which is
-necessary but not sufficient; the giant-occurrence number is the real signal. See [[B58]].
+### GEN-3 PLANET SPACING IS A RATIO DRAWN ONCE PER SYSTEM; MUTUAL HILL RADII ARE THE FLOOR UNDER IT, NOT THE RULE
+WHERE: `generation/placement-strategy.ts` (`sysRatio`, the floor block); pack
+`generation_parameters.orbital_spacing.spacing_ratio` + `stability_floor_hill_radii` (+ `separation_gap_spread`).
+RULE: the spacing rule is the RATIO of successive orbits, drawn ONCE per system and varied modestly per
+gap. The mutual Hill radius is kept only as a stability FLOOR: where the drawn ratio would put a pair
+closer than the pack's floor, the gap widens to it. Two things here look like arbitrary implementation
+choices and are not. (a) ONCE PER SYSTEM: spacing is far more uniform within a system than between
+systems, and a per-gap draw averages two real populations into a third that matches neither. (b) RATIO,
+NOT HILL SEPARATION: Sol's adjacent pairs run 8 (Jupiter-Saturn) to 63 (Mercury-Venus) mutual Hill radii
+because the Hill term contains the planet masses and Sol's span four orders of magnitude -- but Sol's
+successive orbit RATIOS are near-constant (1.85, 1.39, 1.52, 1.84, 1.86, 1.83, 2.02, 1.57, mean ~1.7),
+and so are TRAPPIST-1's (~1.32). One drawn ratio reproduces both anchors; one drawn Hill separation
+reproduces neither.
+WHY: this entry has been rewritten once already, and the history is the lesson. First cut (v2.1.751):
+constant mutual-Hill separation drawn per gap -- 13% of Sun-like systems had a giant, at a median 1.0 AU,
+INSIDE the frost line, because a chain of typical gaps never reached it. Second cut (v2.1.760s):
+separation drawn once per system -- 19% with a giant, but Sun-like systems still ended at a median
+1.14 AU against Sol's 30, because a single separation cannot serve giants and terrestrials at once (the
+giants blow the chain apart at k >= 1 while the terrestrials crowd). Third cut (v2.1.772): ratio with
+Hill floor -- median 7 planets, outermost 10.8 AU, 45% with a giant beyond the frost line, and both the
+compact and the Sol-shaped populations present. That is the version that stands, and it took three
+attempts because each earlier one LOOKED principled and passed its own tests.
+BLAST: anything that "simplifies" the ratio back to a Hill-radius spacing rule, or draws it per gap,
+will not fail loudly -- Sun-like systems will just quietly compact and stop reaching their frost line.
+`placement-strategy.spec.ts` guards the ratio band and the floor separately ("widening the pack band
+widens the system"; "the mutual-Hill FLOOR still holds the chain apart when the ratio would crowd it"),
+but the giant-occurrence and outermost-orbit numbers are the real signals. GEN-2 still applies: the
+floor uses PROXY masses. See [[B58]].
 
 ### GEN-4 A FROST LINE IS A PROPERTY OF THE STAR'S LUMINOSITY, ASKED AT A HELIOCENTRIC DISTANCE — AND THE LEGACY PATH GOT BOTH HALVES WRONG
 WHERE: `physics/zones.ts` (`stellarContextFor`, `calculateAllStellarZones`) is the single source.
@@ -2112,6 +2120,30 @@ want; `currentFrostLine` (~125 K) is where ice is stable TODAY and is what prese
 Sol's are 2.26 and 4.97 AU, so picking the wrong one moves the giants. Guard:
 `generation/frostLine.spec.ts`, whose load-bearing case is two stars of EQUAL MASS and different
 luminosity — identical under any mass-based form. See [[B80]], [[B58]].
+
+### GEN-5 THE STARS GREW ARMS AND LEGS; A CLASS-KEYED LOOKUP MUST READ THE LETTER, AND THE LETTER MUST COME FROM THE PACK
+WHERE: `generation/star.ts` `starFamilyOf()` + `planetCountTableKey()`; `physics/stellar-evolution.ts`
+`determineSpectralClass(tempK, pack)` and the temperature floor before `deriveStarFromHR`; consumers in
+`generateFromConfig.ts`, `planet-generation.ts`, `setupStars.ts`.
+RULE: the pack now carries `G-I`, `G-III`, `M-I` (luminosity-class suffixes) and `L`, `T`, `Y` (brown
+dwarfs) beside the seven old letters, and every one of the three shapes of class-keyed code that predate
+them was wrong in a different way. (1) A whole-string comparison -- `['A','F','G','K'].includes(cls)` --
+is false for `G-III`, so it falls to whatever the last branch is; a G GIANT took the low-mass binary
+odds. (2) A letter list with no branch for L/T/Y falls to the ELSE, which was the remnant table: brown
+dwarfs got 95% zero planets. (3) `determineSpectralClass` was a hardcoded ladder ending at M, so every
+brown-dwarf temperature came out `M`, and a `Math.max(1500, T)` floor in `ageStar` promoted every T and Y
+to L on top of that. Read the LETTER through `starFamilyOf`; derive the letter from the pack's
+`stellarClassification.subclass_anchors`, which already declared every letter's temperature range;
+never floor a temperature at anything but zero.
+WHY: none of it failed a test, because every existing test used a G, K or M seed. The wizard could
+not generate a brown dwarf from a seed AT ALL, and every "L dwarf" and "Y dwarf" measurement quoted in
+B58 and after was an M dwarf mislabelled -- the M results stand; the labels below M were wrong. Found
+only because the owner said "stars recently grew many arms and legs and may need a data fix".
+BLAST: the next new class -- a `D` white-dwarf subtype, an `S` or `C` carbon star, a Wolf-Rayet -- will
+hit the same three shapes again unless it enters `LETTER_ORDER` in stellar-evolution.ts, gets a family
+in `starFamilyOf`, and has anchors in the pack. `starFamily.spec.ts` pins the current set (L/T/Y from
+the pack; a brown-dwarf seed GENERATES as one; -I/-III resolve to their letter; remnants stay remnants);
+extend it when the pack grows. See [[B58]] (measurements to relabel).
 
 ### UI-*  (panels, editors, player views)
 _Unwritten. Candidates: which surfaces read the player snapshot; the four explanation surfaces that

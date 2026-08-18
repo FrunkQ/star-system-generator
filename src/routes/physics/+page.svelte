@@ -1406,10 +1406,60 @@
     <section id="generation">
       <h2>Auto-generation</h2>
       <p>When you generate a system, the stars come from the HR diagram (aged to the chosen age), and the
-        planets are placed <strong>physics-first</strong>: every orbit slot is offered only the types that are
-        actually <em>viable</em> there (the fingerprint's T_eq band fits the orbit), and the chosen type is then
-        <em>built to match</em> (makeup, atmosphere, hydrosphere, iron core…) so the classifier confirms it.
-        Nothing the generator produces is physically impossible for its orbit and star.</p>
+        planets are placed <strong>physics-first</strong> in three steps: <em>where</em> the orbits go is set by
+        the star; <em>what could be born</em> at each orbit is answered by the same viability model the
+        &ldquo;Add planet here&rdquo; picker uses; and <em>which</em> of those viable types is drawn is where the four
+        dials act. The chosen type is then <em>built to match</em> (makeup, atmosphere, hydrosphere, iron core&hellip;)
+        so the classifier confirms it. Nothing the generator produces is physically impossible for its orbit and
+        star; the dials only change how likely each kind of world is, never whether it could exist where it sits.</p>
+      <p><em>A note on what these dials are for.</em> They are broad inputs, set by hand to give a system its
+        flavour. A wider generator will one day set them automatically &mdash; a star cluster shares its metallicity,
+        an association its age &mdash; and the same four numbers will flow in from there.</p>
+
+      <h3>Where the orbits go &mdash; spacing that scales with the star</h3>
+      <p>Planet spacing used to be the Solar System&rsquo;s Titius&ndash;Bode sequence in <em>absolute AU</em>, so
+        every star &mdash; a red dwarf, a brown dwarf, a supergiant &mdash; was handed the Sun&rsquo;s own orbits
+        (0.4, 0.7, 1.0, 1.6, 2.8&nbsp;AU&hellip;) and had the ones outside its zones filtered off. That is why planets
+        never generated closer than about half an AU whatever the star, and why brown-dwarf systems sprawled far
+        outside anything the star could warm. TRAPPIST-1&rsquo;s seven real planets all sit between 0.011 and
+        0.062&nbsp;AU.</p>
+      <p>Spacing is now the <strong>ratio between successive orbits</strong>, drawn once per system and varied
+        slightly per gap. That is what is genuinely steady in real systems: the Sun&rsquo;s successive ratios average
+        about 1.7 (Venus/Mercury 1.85, Earth/Venus 1.39, Mars/Earth 1.52 &hellip; Neptune/Uranus 1.57), TRAPPIST-1&rsquo;s
+        about 1.32. A ratio is scale-free, so nothing about the Sun is carried to another star: the chain starts at a
+        zone derived from the star&rsquo;s own luminosity (between the dust-condensation edge and the formation frost
+        line, drawn log-uniformly because real innermost planets span more than a decade of orbits) and 1.7 means the
+        same thing around a brown dwarf as around a supergiant. It runs out at twice the star&rsquo;s CO ice line &mdash;
+        also derived, never a constant &mdash; so a K dwarf&rsquo;s system ends near 4&nbsp;AU, a G star&rsquo;s near
+        11, an F star&rsquo;s near 16, and their tails reach to 80&ndash;110.</p>
+      <p><strong>Mutual Hill radii are the floor under the ratio, not the rule.</strong> Two neighbours closer than a
+        few mutual Hill radii, <code>R<sub>H</sub> = ((m&#8321;+m&#8322;)/3M<sub>&#9737;</sub>)<sup>1/3</sup> &middot; (a&#8321;+a&#8322;)/2</code>,
+        do not survive a gigayear (Pu &amp; Wu 2015: roughly 10 or more). Where the drawn ratio would put a pair
+        closer than that, the gap widens to the floor. Because the planet masses are in the expression, the orbits
+        either side of a massive body stay clear without that being a special case &mdash; which is the physical reason
+        Jupiter&rsquo;s neighbourhood is empty. Every one of these numbers is in the rule pack
+        (<code>generation_parameters.orbital_spacing</code>).</p>
+
+      <h3>What could be born here &mdash; one viability model, shared with the picker</h3>
+      <p>&ldquo;Which types could exist at this orbit?&rdquo; is asked twice in the engine &mdash; by the generator
+        choosing a type for a slot, and by the &ldquo;Add planet/moon here&hellip;&rdquo; picker &mdash; and two places
+        answering one question will drift. So it is one function, judging every type&rsquo;s own declared bands against
+        the slot, gate by gate: <strong>temperature</strong> (the orbit&rsquo;s equilibrium temperature against the
+        type&rsquo;s band, with cold-edge slack for greenhouse types); <strong>mass</strong> (a primary orbit gets a
+        <em>planet</em> &mdash; not a pebble, and not a star: asteroids, comets and planetesimals sit below a
+        Mercury-ish floor, and brown dwarfs sit above the 13-Jupiter-mass deuterium line that every giant class
+        stops at; both edges are pack data); <strong>age</strong> (early formers and late formers &mdash; a
+        protoplanet is young, a stripped chthonian core or a helium remnant needs time; the window lives on the
+        type as a <em>formation</em> band); <strong>tidal lock</strong> (a type that requires a star-locked world is
+        only offered where the orbit can actually despin a planet in the time available &mdash; the eyeball classes
+        used to be drawn wherever the temperature fitted, and drawing one <em>made</em> the world locked); and for
+        moons, <strong>host fit</strong>.</p>
+      <p>The picker shows those gates at the top as switches, and you can turn any of them off to see the wider
+        menu <em>despite</em> the physics &mdash; hand authoring is hand authoring, and the tags will say what is
+        implausible about the result. The generator keeps every gate on. So the two can never disagree about what
+        is viable, only about whether you chose to override it. <strong>And the formation band is one-way:</strong>
+        it decides what a slot may be <em>given</em>, never what a body <em>is</em>. A hand-placed chthonian in a
+        million-year-old system still classifies as a chthonian.</p>
 
       <h3>Star hierarchy</h3>
       <p>Two or more stars are nested into a hierarchy of barycentres — paired bottom-up with each level's
@@ -1420,23 +1470,60 @@
         ~2.3× the separation). Tight pairs push their planets circumbinary; well-separated stars each keep their
         own little system.</p>
 
-      <h3>The four knobs</h3>
-      <p>Three of the four sliders shape <strong>standard</strong> worlds (the makeup/orbits the engine then derives
-        from); only <strong>Rarity</strong> reaches for the strange. They apply to planets/moons before the
-        processor re-derives everything.</p>
+      <h3>Which one is drawn &mdash; the four dials</h3>
+      <p>Among the types that survive the gates, the draw is a product of independent weights, each answering a
+        different question. Position has already decided <em>where</em> a giant is viable (beyond the frost line);
+        these decide how <em>likely</em> one is drawn there.</p>
       <table class="mini">
-        <thead><tr><th>Slider</th><th>Controls</th><th>How it acts</th></tr></thead>
+        <thead><tr><th>Dial</th><th>Question it answers</th><th>How it acts</th></tr></thead>
         <tbody>
-          <tr><td><strong>Rarity</strong></td><td>which type (eccentricity)</td><td>A gate on each type's rarity (0 mundane … 1 exotic): at 0 only basic rock survives; sliding up unlocks standard habitable, then uncommon, then the legendary exotica. These are the loot-box tiers (grey→gold) shown in the add-type picker. A mild boost favours the rare at the top. Star type nudges it (eyeballs around M dwarfs, life worlds around G/K).</td></tr>
-          <tr><td><strong>Disk mass</strong></td><td>how many worlds</td><td>Scales the per-star count drawn from the star-type tables by <code>0.4 + diskMass×1.6</code> — sparse (0.4×) to crowded (2×).</td></tr>
-          <tr><td><strong>Metallicity</strong></td><td>what they're made of</td><td>Biases interior makeup by ±0.3: high scales metal+rock up &amp; ice+gas down (low does the reverse). Because composition drives the classifier, a metal-rich slot tends to read iron/silicate/terrestrial, a metal-poor one ice/ocean/sub-neptune — always within the standard family.</td></tr>
-          <tr><td><strong>Dynamical history</strong></td><td>orbit shapes</td><td>Draws eccentricity up to <code>0.02 + dyn²×0.45</code> (calm near-circular → violent ~0.46), and past 0.7 starts flipping some worlds to retrograde — a quiet clockwork system vs an eccentric, migrated brawl.</td></tr>
+          <tr><td><strong>Metallicity</strong></td><td>did the disc have the material?</td><td>How much rock and metal
+            there was to build with. The physics is Fischer &amp; Valenti (2005): giant occurrence rises roughly as
+            <code>10<sup>2[Fe/H]</sup></code>, because core accretion must build a solid core fast enough to grab gas
+            before the disc dissipates, and a metal-poor disc starves it. So <em>low</em> metallicity means <em>fewer</em>
+            giants, not more &mdash; the gas is in every disc; what is missing is the solids to seed a core &mdash; and a
+            metal-poor system is a few small rocky worlds and little else. High metallicity gives dense iron and carbon
+            worlds and far more gas giants. There is a floor on giants even so: gravitational instability &mdash; the disc
+            collapsing directly, no core needed &mdash; is metallicity-blind, so the bottom of the dial is not
+            &ldquo;never a giant&rdquo;. Ice-dominated worlds move the other way, weakly. The Sun is somewhat metal-rich
+            against the local median, which is why the default sits above the middle. Measured across the dial around
+            a Sun-like star: giants per system 0.7 &rarr; 4.2, gassy worlds 9% &rarr; 57%, icy 26% &rarr; 6%, and the median
+            planet density falls from 5.5 to 2.4&nbsp;g/cc as the mix turns gassy.</td></tr>
+          <tr><td><strong>Disk mass</strong></td><td>how much was there in total?</td><td>Scales the planet count drawn
+            from the star-family table by <code>0.4 + diskMass&times;1.6</code> &mdash; sparse (0.4&times;) to massive
+            (2&times;). Because the spacing chain packs outward, more planets means the system <em>reaches further</em>:
+            a Sun-like star&rsquo;s outermost world moves from a median 0.7&nbsp;AU at the bottom of the dial to 38 at
+            the top. This dial changes the system&rsquo;s size, not what its worlds are made of.</td></tr>
+          <tr><td><strong>Dynamical history</strong></td><td>how rough was the past?</td><td>Three effects, all
+            quadratic in the dial so the top end bites hard. Eccentricity is drawn up to
+            <code>0.02 + dyn&sup2;&times;0.45</code> (calm near-circular, violent up to ~0.47). The star&rsquo;s spin
+            axis tilts by up to <code>4 + dyn&sup2;&times;60</code> degrees &mdash; a star and its planets condense from
+            one disc and stay aligned unless something moved them, so a tilt is evidence of a violent past, not
+            decoration. And with probability <code>dyn&sup2;&times;0.4</code> a world is captured spinning backwards
+            and tagged <em>origin/captured</em>. A quiet clockwork system against an eccentric, migrated brawl.</td></tr>
+          <tr><td><strong>Rarity</strong></td><td>how strange should this be?</td><td>A ladder over each type&rsquo;s
+            rarity (0 mundane &hellip; 1 exotic): <code>w(r) = ratio<sup>r</sup></code>, where <em>ratio</em> is simply
+            how likely the rarest type is against the most common one, and <code>ln(ratio)</code> moves linearly with
+            the dial so every step is the same multiplicative change. It used to be a step &mdash; everything at or
+            below the dial equally likely, everything above cut off &mdash; which made an airless rock and an eyeball
+            world equally probable at the default and put one exotic class on a third of every population. <strong>The
+            default sits at the realistic mix, a quarter of the way along, not in the middle:</strong> below it a
+            system only gets duller and few will go there, so three quarters of the travel is left for the strange,
+            and the realistic anchor can be as steep as reality is. Nothing is ever excluded at any setting &mdash;
+            a legendary world stays possible at the bottom, just very unlikely. Star type nudges it as a separate,
+            physical term (eyeballs really are commoner around M dwarfs).</td></tr>
         </tbody>
       </table>
+      <p>All three of the pack blocks behind this &mdash; <code>type_rarity_weighting</code>,
+        <code>type_metallicity_sensitivity</code>, <code>planet_mass_band_me</code> &mdash; are yours to retune without
+        touching code, and each records where its <em>realistic</em> point sits so a banded slider can colour it.</p>
 
       <h3>Star type &amp; age</h3>
       <p>Planet richness <strong>honours the star</strong>: massive O/B/A stars blow their disks away (few worlds),
-        F/G/K/M keep rich disks, remnants rarely retain anything. <strong>Age</strong> threads through the whole
+        F/G/K/M keep rich disks, brown dwarfs (L/T/Y) get their own table &mdash; discs around them are observed and
+        form a few close-in rocky worlds, but a disc a few percent of a stellar one is not building ten &mdash; and
+        remnants rarely retain anything. The lookup reads the star&rsquo;s <em>letter</em>, so a G giant is a G and a
+        red supergiant is an M. <strong>Age</strong> threads through the whole
         model — it evolves the stars (a newborn is briefly large, cool and over-luminous on the <em>pre-main-sequence</em>,
         contracting onto the main sequence over a time that's longer for lower mass, so a young M dwarf's habitable zone
         starts far out and migrates inward; then the slow main-sequence brightening; eventually red giant → white dwarf),

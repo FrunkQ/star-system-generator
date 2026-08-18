@@ -62,7 +62,11 @@ function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, kn
     }
     if (n.kind !== 'body' || (n.roleHint !== 'planet' && n.roleHint !== 'moon')) continue;
     const b = n as CelestialBody;
-    // Metallicity → makeup: high metallicity favours metal+rock, low favours ice+gas. Skip giants.
+    // Metallicity → makeup nudge: high favours metal+rock, low favours ice+gas. THIS IS THE MINOR
+    // HALF. It only reaches a body that has a makeup AND is compositionally mixed, which measured as
+    // one body in seventy-four (G24) — the dial's REAL effect is now in the type draw
+    // (typeDraw.ts metallicityFactor), where it decides how likely a giant or an iron world is drawn
+    // at all. This stays as a small second-order shading of the worlds that do get drawn.
     if ((met < 0.45 || met > 0.55) && b.makeup) {
       const shift = (met - 0.5) * 0.6; // ±0.3
       const mk: any = { ...b.makeup };
@@ -323,9 +327,9 @@ function teqAtSlot(host: CelestialBody | Barycenter, hostMassKg: number, aAU: nu
 function spawnTypedSlot(opts: {
   host: CelestialBody | Barycenter; hostMassKg: number; aAU: number; name: string; idx: number;
   nodes: (CelestialBody | Barycenter)[]; pack: RulePack; rng: SeededRNG; ageGyr: number;
-  rarity: number; starClass: string; role: 'planet' | 'moon';
+  rarity: number; starClass: string; role: 'planet' | 'moon'; metallicity?: number;
 }) {
-  const { host, hostMassKg, aAU, name, idx, nodes, pack, rng, ageGyr, rarity, starClass, role } = opts;
+  const { host, hostMassKg, aAU, name, idx, nodes, pack, rng, ageGyr, rarity, starClass, role, metallicity } = opts;
   const teq = teqAtSlot(host, hostMassKg, aAU, nodes);
   const fps = pack.classifier?.fingerprints ?? [];
   // Can this orbit actually despin a planet in the time available? Asked with an Earth-sized probe
@@ -334,7 +338,7 @@ function spawnTypedSlot(opts: {
   const canLock = role === 'planet'
     ? predictTidalLock(aAU, EARTH_RADIUS_KM, EARTH_MASS_KG, hostMassKg, ageGyr)
     : undefined;
-  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps, hostMassKg, { canTidallyLock: canLock, ageGyr, planetMassBandMe: pack.generation_parameters?.planet_mass_band_me }), rarity, starClass, rng, pack);
+  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps, hostMassKg, { canTidallyLock: canLock, ageGyr, planetMassBandMe: pack.generation_parameters?.planet_mass_band_me }), rarity, starClass, rng, pack, metallicity);
   const orbit = { hostId: host.id, hostMu: G * hostMassKg, t0: Date.now(),
     elements: { a_AU: aAU, e: randomFromRange(rng, 0.01, 0.12), i_deg: Math.pow(rng.nextFloat(), 3) * 12,
       omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) } };
@@ -350,19 +354,19 @@ function spawnTypedSlot(opts: {
 // Single star: an orbit-slot system around it, each slot a TYPED draw (rarity/star-weighted).
 function placePlanetsSingleTyped(
   star: CelestialBody, nodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG,
-  ageGyr: number, countMultiplier: number, rarity: number
+  ageGyr: number, countMultiplier: number, rarity: number, metallicity?: number
 ) {
   const count = Math.max(0, Math.min(12, Math.round(planetCountForStar(star, pack, rng) * countMultiplier)));
   const starClass = star.classes?.[0] ?? 'star/G';
   calculateOrbitalSlots(star, pack, rng, count).forEach((a, i) =>
-    spawnTypedSlot({ host: star, hostMassKg: star.massKg || SOLAR, aAU: a, name: `${star.name} ${String.fromCharCode(98 + i)}`, idx: i, nodes, pack, rng, ageGyr, rarity, starClass, role: 'planet' }));
+    spawnTypedSlot({ host: star, hostMassKg: star.massKg || SOLAR, aAU: a, name: `${star.name} ${String.fromCharCode(98 + i)}`, idx: i, nodes, pack, rng, ageGyr, rarity, starClass, role: 'planet', metallicity }));
 }
 
 // Multi-star: an S-type typed system around each leaf star (richness set by the star's TYPE), plus
 // P-type circumbinary typed planets around each tight barycentre.
 function placePlanetsHierarchical(
   starHosts: StarHost[], baryHosts: BaryHost[], nodes: (CelestialBody | Barycenter)[],
-  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number, rarity: number, systemName: string
+  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number, rarity: number, systemName: string, metallicity?: number
 ) {
   const primaryClass = starHosts[0]?.star.classes?.[0] ?? 'star/G';
   let idx = 0;
@@ -372,14 +376,14 @@ function placePlanetsHierarchical(
     const maxCount = Math.max(0, Math.min(8, Math.round(planetCountForStar(h.star, pack, rng) * countMultiplier)));
     const starClass = h.star.classes?.[0] ?? 'star/G';
     geomSlots(inner, outer, maxCount, rng).forEach((a, n) =>
-      spawnTypedSlot({ host: h.star, hostMassKg: h.star.massKg || SOLAR, aAU: a, name: `${h.star.name} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass, role: 'planet' }));
+      spawnTypedSlot({ host: h.star, hostMassKg: h.star.massKg || SOLAR, aAU: a, name: `${h.star.name} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass, role: 'planet', metallicity }));
   }
   for (const h of baryHosts) {
     if (h.innerAU > 50) continue; // a very wide pair has no close circumbinary disk
     const outer = Math.min(h.outerAU, h.innerAU * 3.5);
     const maxCount = Math.max(0, Math.min(4, Math.round(2 * countMultiplier)));
     geomSlots(h.innerAU, outer, maxCount, rng).forEach((a, n) =>
-      spawnTypedSlot({ host: h.bary, hostMassKg: h.bary.effectiveMassKg || SOLAR, aAU: a, name: `${systemName} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass: primaryClass, role: 'planet' }));
+      spawnTypedSlot({ host: h.bary, hostMassKg: h.bary.effectiveMassKg || SOLAR, aAU: a, name: `${systemName} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass: primaryClass, role: 'planet', metallicity }));
   }
 }
 
@@ -402,10 +406,10 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
     const age = config.ageGyr ?? 4.6;
     if (hierarchical) {
       // 2+ stars: a typed S-type system around each star + P-type circumbinary typed planets.
-      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, age, countMultiplier, rarity, systemName);
+      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, age, countMultiplier, rarity, systemName, config.knobs?.metallicity);
     } else {
       // Single star: typed slot-based placement.
-      placePlanetsSingleTyped(starA, nodes, pack, rng, age, countMultiplier, rarity);
+      placePlanetsSingleTyped(starA, nodes, pack, rng, age, countMultiplier, rarity, config.knobs?.metallicity);
     }
   }
 

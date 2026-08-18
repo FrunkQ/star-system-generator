@@ -34,7 +34,20 @@
   // realistic mix a system only gets duller, so the default starts at the realistic point and the
   // remaining three quarters is headroom for the strange. Keep this in step with the pack's
   // `type_rarity_weighting.realistic_dial`.
-  let knobs: GenerationKnobs = { metallicity: 0.5, diskMass: 0.5, dynamicalHistory: 0.5, rarity:0.25 };
+  // METALLICITY DEFAULTS TO 0.65: the Sun is somewhat metal-rich against the local median, and the
+  // dial's realistic point (pack `type_metallicity_sensitivity.realistic_dial`) sits there. Keep in step.
+  let knobs: GenerationKnobs = { metallicity: 0.65, diskMass: 0.5, dynamicalHistory: 0.5, rarity:0.25 };
+  // One line per dial: what it does, and why — the sliders should educate as they are used.
+  const KNOB_ROWS: Array<{ key: keyof GenerationKnobs; label: string; lo: string; hi: string; why: string }> = [
+    { key: 'metallicity', label: 'Metallicity', lo: 'metal-poor', hi: 'metal-rich',
+      why: 'How much rock and metal the disc had to build with. Poor: a few small rocky worlds and hardly a giant — the gas was there but not the solids to seed one. Rich: dense iron and carbon worlds, and far more gas giants. Our Sun sits a little above the middle.' },
+    { key: 'diskMass', label: 'Disk mass', lo: 'sparse', hi: 'massive',
+      why: 'How much material there was in total. Sparse gives a few worlds close in; massive gives many, and the system reaches further out because each new orbit sits beyond the last.' },
+    { key: 'dynamicalHistory', label: 'Dynamical history', lo: 'calm', hi: 'violent',
+      why: 'How rough the system\'s past was. Calm keeps orbits circular and the star upright, because everything condensed from one disc; violent stretches orbits, tips the star over, and captures worlds spinning backwards.' },
+    { key: 'rarity', label: 'Rarity', lo: 'ordinary', hi: 'legendary',
+      why: 'How strange the worlds are. The default is the realistic mix; push right and rarer types become steadily likelier until the legendary outnumbers the common. Nothing is ever ruled out at any setting — only made more or less likely.' },
+  ];
   let naming: 'catalogue' | 'scientific' | 'named' = 'scientific';  // lead with a plausible Bayer style
   let busy = false;
   let chosenExample = '';
@@ -383,14 +396,20 @@
 
         <section class="block">
           <h3>Physical character</h3>
-          {#each [['metallicity','Metallicity','metal-poor (icy/gassy)','metal-rich (rocky/iron)'],['diskMass','Disk mass','sparse','crowded'],['dynamicalHistory','Dynamical history','calm, circular','violent, eccentric'],['rarity','Rarity','common worlds','legendary exotica']] as [key, label, lo, hi]}
+          <!-- Each dial gets ONE line that says what it does and teaches why. These are broad
+               inputs a wider generator will one day set automatically (a cluster shares its
+               metallicity); set by hand here they give a system its flavour. Ends and explainers
+               are meant to be read together: the ends say which way, the line says what it means. -->
+          {#each KNOB_ROWS as k}
             <div class="knob">
-              <div class="knob-head"><span>{label}</span><span class="knob-val">{Math.round((knobs[key] ?? 0.5) * 100)}%</span></div>
-              <input type="range" min="0" max="1" step="0.01" bind:value={knobs[key]} class="slider" />
-              <div class="knob-ends"><span>{lo}</span><span>{hi}</span></div>
+              <div class="knob-head"><span>{k.label}</span><span class="knob-val">{Math.round((knobs[k.key] ?? 0.5) * 100)}%</span></div>
+              <input type="range" min="0" max="1" step="0.01" bind:value={knobs[k.key]} class="slider" />
+              <div class="knob-ends"><span>{k.lo}</span><span>{k.hi}</span></div>
+              <p class="knob-why">{k.why}</p>
             </div>
           {/each}
-          <p class="note">Rarity picks how eccentric the worlds are (the loot-box tiers in the add-type picker); metallicity, disk mass &amp; dynamical history shape standard worlds. All stay physically plausible.</p>
+          <p class="note">All four stay inside the physics: they change how likely each kind of world is, never whether it could exist where it sits.
+            <a href="/physics#generation" target="_blank" rel="noopener">How generation works</a>.</p>
         </section>
       {/if}
     </div>
@@ -500,7 +519,9 @@
   .knob-head { display: flex; justify-content: space-between; font-size: 0.85em; }
   .knob-val { color: var(--link); font-variant-numeric: tabular-nums; }
   .knob-ends { display: flex; justify-content: space-between; font-size: 0.72em; color: var(--text-faint); }
+  .knob-why { margin: 3px 0 0; font-size: 0.74em; line-height: 1.35; color: var(--text-muted, #cfcfcf); }
   .note { font-size: 0.76em; color: var(--text-faint); }
+  .note a { color: var(--link); }
   footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--border, #2a2d36); }
   .hint { font-size: 0.8em; color: var(--text-faint); }
   .actions { display: flex; gap: 8px; }

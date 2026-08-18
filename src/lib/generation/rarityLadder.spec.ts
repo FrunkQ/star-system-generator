@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rarityGate } from './typeDraw';
+import { rarityGate, metallicityFactor } from './typeDraw';
 import { requiresTidalLock, viableTypesAt } from './generateBodyOfType';
 import type { Fingerprint } from '$lib/types';
 
@@ -85,5 +85,40 @@ describe('a type may not require a circumstance the orbit cannot produce', () =>
     // than forbid the choice. Only the GENERATOR passes the flag.
     const out = viableTypesAt(500, 'planet', FPS, 0).map(f => f.class);
     expect(out).toContain('planet/hot-eyeball');
+  });
+});
+
+describe('the metallicity factor', () => {
+  // Fischer & Valenti: giant occurrence rises with metallicity because core accretion needs solids.
+  // Low metallicity means FEWER giants; the floor is the metallicity-blind instability channel.
+  const W = { realistic_dial: 0.65, decades_across_dial: 2.0, giant_floor: 0.05, sensitivity: {
+    'giant|jupiter|neptune|puff|helium': 1.0, 'iron|silicate|carbon': 0.5,
+    'terrestrial|desert|barren|earth': 0.25, 'ice|ocean|hycean|methane|ammonia|cold': -0.35 } };
+
+  it('is exactly 1 at the realistic point for every class — the default draw is undisturbed', () => {
+    for (const c of ['planet/gas-giant', 'planet/iron', 'planet/terrestrial', 'planet/ice'])
+      expect(metallicityFactor(c, 0.65, W)).toBeCloseTo(1, 6);
+  });
+
+  it('giants rise steeply with metallicity and fall toward a floor below it', () => {
+    expect(metallicityFactor('planet/gas-giant', 1, W)).toBeGreaterThan(3);
+    expect(metallicityFactor('planet/gas-giant', 0, W)).toBeLessThan(0.15);
+    expect(metallicityFactor('planet/gas-giant', 0, W)).toBeGreaterThan(0.04);   // the floor holds
+  });
+
+  it('never drives a giant to ZERO — the instability channel is metallicity-blind', () => {
+    expect(metallicityFactor('planet/gas-giant', 0, W)).toBeGreaterThan(0);
+  });
+
+  it('iron worlds rise, ice worlds fall, an unlisted class is untouched', () => {
+    expect(metallicityFactor('planet/iron', 1, W)).toBeGreaterThan(1);
+    expect(metallicityFactor('planet/ice', 1, W)).toBeLessThan(1);
+    expect(metallicityFactor('planet/ice', 0, W)).toBeGreaterThan(1);
+    expect(metallicityFactor('planet/coreless', 1, W)).toBe(1);
+  });
+
+  it('is monotonic across the dial for a giant', () => {
+    let prev = -1;
+    for (const d of [0, 0.25, 0.5, 0.65, 0.85, 1]) { const f = metallicityFactor('planet/gas-giant', d, W); expect(f).toBeGreaterThan(prev); prev = f; }
   });
 });

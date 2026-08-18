@@ -1,6 +1,18 @@
 {
   "generation_parameters": {
     "planet_mass_band_me": [0.03, 4130],
+    "type_metallicity_sensitivity": {
+      "name": "How the Metallicity dial reweights the type draw. Fischer & Valenti 2005: giant occurrence rises roughly as 10^(2 [Fe/H]) because core accretion needs solids to build a core before the disc dissipates - so LOW metallicity means FEWER giants, and a metal-poor system is small rocky worlds, few of them. giant_floor is the metallicity-blind share from gravitational instability, which is why the bottom of the dial is not zero giants. Iron and silicate worlds ride the same curve up, gently; ice-dominated worlds move the other way, weakly. The Sun is somewhat metal-rich against the local median, so realistic_dial sits above the middle. Factor = floor + (1-floor) * 10^(sensitivity * (dial - realistic_dial) * decades_across_dial); sensitivity keys are regexes on the class, first match wins.",
+      "realistic_dial": 0.65,
+      "decades_across_dial": 2.0,
+      "giant_floor": 0.05,
+      "sensitivity": {
+        "giant|jupiter|neptune|puff|helium": 1.0,
+        "iron|silicate|carbon|supermassive-terrestrial|mega-earth": 0.5,
+        "super-earth|terrestrial|desert|barren|crater|lava|earth": 0.25,
+        "ice|ocean|hycean|methane|ammonia|subsurface|cold": -0.35
+      }
+    },
     "type_rarity_weighting": {
       "name": "How the Rarity dial reweights the type draw. w(r) = ratio^r, where r is a type rarity 0..1 and ratio is how likely the RAREST type is compared with the MOST COMMON one. ln(ratio) moves linearly with the dial, so every step of the slider is the same multiplicative change. THE REALISTIC MIX SITS AT realistic_dial, NOT at the midpoint - below it a system only gets duller, so the default starts there and three quarters of the travel is left for the interesting end. Nothing is ever excluded at any setting: a legendary world stays possible at rarity 0, just very unlikely.",
       "realistic_dial": 0.25,

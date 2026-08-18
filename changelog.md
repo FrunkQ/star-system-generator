@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.786-beta - 18th Aug 2026
+
+- **The Metallicity dial now does what its label says.** It was wired to nudge interior makeup and reached about one generated body in seventy — inert in practice. It now weights the type draw on the physics: giant occurrence rises steeply with metallicity because core accretion needs solids to build a core before the disc dissipates (Fischer & Valenti 2005), so a metal-poor system is a few small rocky worlds and hardly a giant, and a metal-rich one is dense iron and carbon worlds and many gas giants. There is a floor on giants even at the bottom — the disc can collapse into one directly, no core needed — so it is never "no giants ever". Measured across the dial around a Sun-like star: giants per system 0.7 to 4.2, gassy worlds 9% to 57%, icy 26% to 6%, median density 5.5 to 2.4 g/cc. The default sits a little above the middle, because the Sun is somewhat metal-rich against its neighbours.
+
+- **Every generation dial now carries a one-line explainer that says what it does and why**, and a link to the physics page. The dials are meant as broad inputs a wider generator will one day set automatically (a cluster shares its metallicity); set by hand here they give a system its flavour.
+
+- **The physics page's Auto-generation section is rewritten** to explain what actually happens now: where the orbits go (a ratio that scales with the star, mutual Hill radii as the stability floor beneath it), what could be born at each orbit (one viability model shared with the "Add planet here" picker, its five gates and the one-way formation window), and which of the viable types is drawn (the four dials, each with the physics behind it and the measured effect).
+
 ## v2.1.785-beta - 18th Aug 2026
 
 - **Brown dwarfs can now be generated at all.** The letter-from-temperature ladder stopped at M and a stale 1,500 K temperature floor in stellar ageing promoted every T and Y dwarf to L — so an L-dwarf seed came out as an M dwarf, and a Y-dwarf seed as an L. The wizard could not make a brown dwarf from a seed, and every brown-dwarf figure quoted in the last few builds was in fact a red dwarf. Both fixed: the letter now reads the pack's own temperature anchors (L, T and Y included), and the floor is gone.

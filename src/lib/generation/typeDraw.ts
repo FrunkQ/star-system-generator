@@ -131,19 +131,85 @@ export function rarityGate(typeRarity: number, dial: number, weighting?: RarityW
   return Math.exp(lnRatio * Math.max(0, Math.min(1, typeRarity)));
 }
 
+/**
+ * METALLICITY — how much rock and metal the disc had to build with, 0..1 on the dial.
+ *
+ * The physics this rests on, in the order it matters:
+ *
+ *   1. GIANT OCCURRENCE IS STRONGLY METALLICITY-DEPENDENT. Fischer & Valenti (2005): P(giant) rises
+ *      roughly as 10^(2·[Fe/H]) — a star at three times solar metals is about ten times likelier to
+ *      host a giant than one at solar. Core accretion has to build a solid core fast enough to grab
+ *      gas before the disc dissipates, and a metal-poor disc starves it. So LOW metallicity means
+ *      FEWER giants, not more: the gas is there in every disc; what is missing is the solid material
+ *      to seed a core. A metal-poor system is small rocky worlds, few of them, and dull.
+ *   2. THERE IS A FLOOR ON GIANTS EVEN SO. Gravitational instability — the disc collapsing directly,
+ *      no core needed — is metallicity-blind, so even a metal-poor disc can throw a wide-orbit giant.
+ *      That is the pack's `giant_floor`, and it is why the bottom of the dial is not "no giants ever".
+ *   3. ROCK AND IRON WORLDS RIDE THE SAME CURVE UPWARD, more gently: more metals, denser and more
+ *      iron-rich small worlds. Ice-dominated worlds move the other way, weakly — an ice world needs
+ *      the disc's volatiles, which every disc has, and a metal-poor one has proportionally more.
+ *   4. THE SUN IS SOMEWHAT METAL-RICH against the local median, which is why the wizard's default
+ *      sits above the midpoint (`realistic_dial`, pack data) rather than on it.
+ *
+ * The factor is per CLASS SENSITIVITY declared in the pack (`type_metallicity_sensitivity`), applied
+ * as w × f where f = floor + (1 − floor) × 10^(sensitivity × (dial − anchor) × decades). Sensitivity
+ * +1 is a full giant-strength response, 0 is indifferent, negative favours the metal-poor end. It
+ * multiplies into the same draw the rarity ladder feeds — position (the frost line) has already
+ * decided WHERE a giant is viable; this decides how likely one is drawn there.
+ *
+ * These dials are meant as broad inputs a wider generator will one day set automatically (a cluster
+ * shares its metallicity); set by hand here they give a system its flavour.
+ */
+export interface MetallicityWeighting {
+  realistic_dial: number;                    // where solar-ish sits on the dial
+  decades_across_dial: number;               // how many decades of [Fe/H] the full travel spans
+  giant_floor: number;                       // the metallicity-blind (instability) share of giant weight
+  sensitivity: Record<string, number>;       // regex-key → sensitivity; first match wins
+}
+const DEFAULT_METALLICITY_WEIGHTING: MetallicityWeighting = {
+  realistic_dial: 0.65, decades_across_dial: 1.4, giant_floor: 0.12,
+  sensitivity: {
+    'giant|jupiter|neptune|puff|helium': 1.0,
+    'iron|silicate|carbon|supermassive-terrestrial|mega-earth': 0.5,
+    'super-earth|terrestrial|desert|barren|crater|lava|earth': 0.25,
+    'ice|ocean|hycean|methane|ammonia|subsurface|cold': -0.35,
+  },
+};
+export function metallicityFactor(cls: string, dial: number, weighting?: MetallicityWeighting): number {
+  const w = weighting ?? DEFAULT_METALLICITY_WEIGHTING;
+  const d = Math.max(0, Math.min(1, dial));
+  let sens = 0;
+  for (const [pattern, v] of Object.entries(w.sensitivity ?? {})) {
+    if (new RegExp(pattern).test(cls)) { sens = v; break; }
+  }
+  if (sens === 0) return 1;
+  // Decades of [Fe/H] away from the realistic point, signed; the response is 10^(sens × Δ).
+  const delta = (d - (w.realistic_dial ?? 0.65)) * (w.decades_across_dial ?? 1.4);
+  const response = Math.pow(10, sens * delta);
+  // Giants keep a metallicity-blind floor (gravitational instability); everything else scales fully.
+  const isGiant = /giant|jupiter|neptune|puff|helium/.test(cls);
+  const floor = isGiant ? Math.max(0, Math.min(1, w.giant_floor ?? 0)) : 0;
+  return floor + (1 - floor) * response;
+}
+
 // Pick one viable type, weighted by the rarity gate × star-class affinity. Null if nothing survives
 // (caller falls back to the basic broad-type generator).
 export function drawTypeForSlot(
-  viable: Fingerprint[], dial: number, starClass: string, rng: SeededRNG, pack?: RulePack
+  viable: Fingerprint[], dial: number, starClass: string, rng: SeededRNG, pack?: RulePack,
+  metallicity?: number
 ): Fingerprint | null {
   const sp = (starClass || '').split('/')[1]?.[0] ?? '';
   const weighting = (pack as any)?.generation_parameters?.type_rarity_weighting as RarityWeighting | undefined;
+  const metalW = (pack as any)?.generation_parameters?.type_metallicity_sensitivity as MetallicityWeighting | undefined;
   const weighted = viable
     .map((fp) => {
       const info = infoFor(fp.class, pack);
-      // Star affinity is a separate, PHYSICAL term and stays multiplicative: eyeballs really are
-      // commoner around M dwarfs, whatever the rarity dial is set to.
-      const w = rarityGate(info.rarity, dial, weighting) * (info.stars?.[sp] ?? 1);
+      // Three multiplicative terms, each a separate question. Rarity: how strange should this be.
+      // Star affinity: a PHYSICAL bias (eyeballs really are commoner round M dwarfs). Metallicity:
+      // did the disc have the material — giants and iron worlds need it, ice worlds do not.
+      const w = rarityGate(info.rarity, dial, weighting)
+        * (info.stars?.[sp] ?? 1)
+        * (typeof metallicity === 'number' ? metallicityFactor(fp.class, metallicity, metalW) : 1);
       return { fp, w };
     })
     .filter((x) => x.w > 1e-4);
