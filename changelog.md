@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.788-beta - 18th Aug 2026
+
+- Docs only. The owner's spectra question captured with the tree measured against it: one spectral vocabulary already exists and the light chain runs on it; the gas editor hides the absorption bands it derives from (a small item); species-parametrised vision is a presentation-only swap at the one human step; full EM is a second model, not a constants change.
+
 ## v2.1.787-beta - 18th Aug 2026
 
 - Docs only. The import-refresh design note (`docs/dev/import-refresh-design.md`): every importer surveyed against the new stars, compositions and physics, and a plan for one shared infill with the same four dials as the wizard, one star-aware age guess with a reasonable band, and one star ladder in place of the four private copies. Also reads the Universe Sandbox report in the inbox properly: the 4.6 Gyr the user saw is a symptom of the importer not recognising their star, not the cause of the unbinding.
