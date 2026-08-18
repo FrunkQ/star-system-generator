@@ -1088,6 +1088,7 @@
               <!-- BOTH map views are the same engine (2D = it locked flat) and run the real shader
                    themselves — mirroring the live player view exactly, so this preview can't drift. -->
               <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} dropLines={draft.starmapDropLines !== false} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
+                mapBackground={draft.showMapBackground !== false}
                 flat={draft.starmapView === 'diagram2d'}
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
                 background={draft.background} angleDeg={draft.starmapView === 'diagram2d' ? 0 : draft.angleDeg} labelSize={draft.labelSize} markerStyle={draft.markerStyle} markerSize={draft.markerSize} flagStaff={draft.flagStaff} pinText={draft.pinText} highlights={stageHighlights} filter={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams} />
@@ -1099,6 +1100,7 @@
                 documentStyle={draft.starmapDocumentStyle ?? draft.documentStyle}
                 themeColors={draft.starmapThemeColors ?? draft.themeColors}
                 starmapLayout={draft.starmapLayout} starmapFieldIcons={draft.starmapFieldIcons !== false}
+                mapBackground={draft.showMapBackground !== false}
                 fontScale={draft.starmapFontScale ?? draft.infoFontScale}
                 filterId={draft.filter} filterParams={draft.filterParams}
                 companyName={draft.companyName} footerText={draft.footerText}

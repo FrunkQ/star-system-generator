@@ -34,6 +34,15 @@ export interface StarmapDocOpts {
   // Dossier: a glyph before each field label. Same vocabulary as the rest of the guide (bodyGlyph) —
   // a star is a star and a moon is a moon wherever the reader meets one.
   fieldIcons?: boolean;
+  // G16 — THE CAMPAIGN'S OWN MAP PICTURE, at the foot of the page. Owner, 2026-08-17: "On text maps
+  // have it as an included graphic at the bottom of the starmap — a way for users to still include
+  // their diagram." A document has no pan, no zoom and no map coordinates, so there is nothing to
+  // georeference against and the two attachment modes collapse into one: the picture is simply
+  // PRINTED, once, under the index. Loaded by the caller (the block engine takes a decoded bitmap),
+  // and absent when the campaign has no background or the reader's preset has turned it off.
+  background?: CanvasImageSource | null;
+  backgroundAspect?: number;
+  backgroundCaption?: string; // credit line, when the image records one
 }
 
 // One glyph per dossier field. Text glyphs, not artwork: they inherit the font, the colouration and
@@ -83,6 +92,7 @@ export function buildStarmapDocument(starmap: Starmap | null, opts: StarmapDocOp
   blocks.push({ kind: 'rule' });
   if (!systems.length) {
     blocks.push({ kind: 'text', text: 'No systems charted.', italic: true, align: 'center' });
+    blocks.push(...backgroundFigure(opts)); // an uncharted map may still carry the GM's own diagram
     return blocks;
   }
 
@@ -106,8 +116,34 @@ export function buildStarmapDocument(starmap: Starmap | null, opts: StarmapDocOp
     }));
     blocks.push({ kind: 'list', items });
   }
+  blocks.push(...backgroundFigure(opts));
   blocks.push({ kind: 'spacer', h: 12 });
   return blocks;
+}
+
+// G16: the map picture as a figure at the FOOT of the index, after every system and before the tail
+// spacer. Foot rather than head deliberately — the systems are what the reader came for, and a
+// full-width picture at the top of a scrolling document pushes the whole index off the first screen.
+function backgroundFigure(opts: StarmapDocOpts): DocBlock[] {
+  if (!opts.background) return [];
+  const out: DocBlock[] = [];
+  out.push({ kind: 'spacer', h: 10 });
+  out.push({ kind: 'rule' });
+  out.push({ kind: 'spacer', h: 6 });
+  out.push({
+    kind: 'image',
+    img: opts.background,
+    aspect: opts.backgroundAspect && opts.backgroundAspect > 0 ? opts.backgroundAspect : 1.6,
+    // 'full' rather than the default letterbox band: a sector map cropped to a central strip is not
+    // a sector map. Half the view height is as much as a figure can take without becoming the page.
+    frame: 'full',
+    maxHFrac: 0.5
+  });
+  if (opts.backgroundCaption) {
+    out.push({ kind: 'spacer', h: 4 });
+    out.push({ kind: 'text', text: opts.backgroundCaption, italic: true, align: 'center' });
+  }
+  return out;
 }
 
 // The DOSSIER: a level-2 heading per system over a stack of labelled fields, closed by a rule. Zero new

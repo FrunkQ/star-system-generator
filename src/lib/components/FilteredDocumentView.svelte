@@ -22,6 +22,9 @@
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { buildStarmapDocument } from '$lib/catalogue/document/starmapDocument';
   import { loadBodyImage as loadBodyImageShared } from '$lib/catalogue/document/bodyImage';
+  // G16: the campaign's own picture, printed at the foot of the starmap index.
+  import { resolveMapBackground } from '$lib/map/mapBackground';
+  import { BUILTIN_ASSETS } from '$lib/player/presets';
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
   import { buildPortraitSystem } from '$lib/catalogue/document/portraitSystem';
   import { drawTipBanner, tipBannerHeight, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
@@ -45,6 +48,8 @@
   // G1: the starmap document's ARRANGEMENT (shape), composing with documentStyle and listStyle.
   export let starmapLayout: import('$lib/catalogue/document/starmapDocument').StarmapLayout | undefined = undefined;
   export let starmapFieldIcons = true;
+  // G16: show the campaign's map background as a figure under the systems index. The preset's opt-out.
+  export let mapBackground = true;
   export let tagStyle: import('$lib/catalogue/document/blocks').TagStyle | undefined = undefined;
   export let themeColors: DocColors | undefined = undefined;
   export let fontScale = 1;
@@ -137,6 +142,38 @@
     else { bodyImg = null; bodyImgFocus = null; imgForId = null; }
   }
 
+  // G16 - THE MAP PICTURE AS A FIGURE. A document has no map coordinates, so screen-fixed and
+  // map-fixed collapse to the same thing here: the picture is simply printed once, at the foot.
+  // Decoded here because the block engine takes a bitmap, not a URL - the same contract the body
+  // photo above already has.
+  let mapBgImg: CanvasImageSource | null = null;
+  let mapBgAspect = 1.6;
+  let mapBgCaption = '';
+  let mapBgFor: string | null = null;
+  $: resolvedMapBg = mapBackground && stage === 'starmap'
+    ? resolveMapBackground(starmap, [...BUILTIN_ASSETS, ...(starmap?.playerAssets ?? [])])
+    : null;
+  $: if (typeof window !== 'undefined' && (resolvedMapBg?.url ?? null) !== mapBgFor) {
+    loadMapBackground(resolvedMapBg?.url ?? null, resolvedMapBg?.credit ?? null);
+  }
+  function loadMapBackground(url: string | null, credit: string | null) {
+    mapBgFor = url;
+    mapBgImg = null;
+    mapBgCaption = credit ? `Map image: ${credit}` : '';
+    if (!url) { render(); return; }
+    const im = new Image();
+    im.onload = () => {
+      if (mapBgFor !== url) return; // a later choice won the race
+      mapBgImg = im;
+      mapBgAspect = im.naturalHeight > 0 ? im.naturalWidth / im.naturalHeight : 1.6;
+      render();
+    };
+    // Same-origin only, exactly as the body photo is: a cross-origin bitmap would taint the WebGL
+    // surface this canvas is uploaded to. Uploads are data URLs and the shipped image is local, so
+    // both cases already qualify.
+    im.src = url;
+  }
+
   function loadBodyImage(id: string) {
     imgForId = id; bodyImg = null; bodyImgFocus = null;
     // Shared loader (same-origin rule + auto-centre focus live in ONE place — bodyImage.ts).
@@ -176,7 +213,10 @@
 
     // One engine, two stages: the starmap document (systems index) or the system Guide document.
     const blocks = stage === 'starmap'
-      ? buildStarmapDocument(starmap, { selectedId, layout: starmapLayout, colorful: accent === 'rainbow', fieldIcons: starmapFieldIcons })
+      ? buildStarmapDocument(starmap, {
+          selectedId, layout: starmapLayout, colorful: accent === 'rainbow', fieldIcons: starmapFieldIcons,
+          background: mapBgImg, backgroundAspect: mapBgAspect, backgroundCaption: mapBgCaption
+        })
       : (system ? buildGuideDocument(system, selectedId, {
           units, tempUnit, colorful, imagery, rulePack, liveReadings, nowMs: nowMs ?? undefined, formatDate,
           highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
@@ -322,7 +362,7 @@
 
   // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
   // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
-  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; starmapLayout; starmapFieldIcons; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; nowMs; render(); }
+  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; starmapLayout; starmapFieldIcons; mapBgImg; mapBgCaption; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; nowMs; render(); }
   $: if (ctrl) handleSelection(selectedId);
   $: ctrl?.setFilter(filterId, filterParams);
 

@@ -1050,6 +1050,7 @@
           documentStyle={activePreset.starmapDocumentStyle ?? activePreset.documentStyle}
           themeColors={activePreset.starmapThemeColors ?? activePreset.themeColors}
           starmapLayout={activePreset.starmapLayout} starmapFieldIcons={activePreset.starmapFieldIcons !== false}
+          mapBackground={activePreset.showMapBackground !== false}
           fontScale={activePreset.starmapFontScale ?? infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={starmapOverlayHud}
