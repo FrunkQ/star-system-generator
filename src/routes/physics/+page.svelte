@@ -1518,6 +1518,25 @@
         <code>type_metallicity_sensitivity</code>, <code>planet_mass_band_me</code> &mdash; are yours to retune without
         touching code, and each records where its <em>realistic</em> point sits so a banded slider can colour it.</p>
 
+      <h3>Importing, and filling out what you imported</h3>
+      <p>Every importer &mdash; Universe Sandbox, SpaceEngine, Traveller, the real-sky catalogue &mdash; now
+        comes through the same three doors, so a system you bring in and a system you generate cannot drift apart.
+        <strong>The star&rsquo;s class</strong>: a stated designation is kept as written, luminosity class included
+        (a K giant stays a giant; it used to import as a K dwarf when only the letter was read); a bare letter has
+        its class <em>inferred</em> from temperature and radius when the file carries them, because that is what a
+        luminosity class physically is; and defaults to main sequence when it cannot &mdash; never a guessed G, and
+        nothing usable is left honestly unclassified. <strong>The system&rsquo;s age</strong>: guessed from the
+        primary star&rsquo;s own life &mdash; middle-aged for a dwarf, near the end for a giant, cooling age for a
+        white dwarf, honestly undated for a brown dwarf &mdash; unless the file states one the star can have; shown
+        with the range that star allows and marked <em>estimated</em>. <strong>Infill</strong>: after any import
+        the same four dials as above are offered, with an age control bound to the star&rsquo;s life (a flaring
+        marker at the young end, because a young flaring system is a real option). Imported worlds are truth
+        &mdash; never moved, re-typed or aged; a generated world that would crowd one is dropped, not the import.
+        The imported star is truth too &mdash; it is fed to the generator as it is now, not re-aged. Only the
+        worlds generated into the system are born into the chosen era. Traveller&rsquo;s <code>W</code> is a hard
+        count of primary planets that never includes moons, and its PBG belts and giants are honoured where the
+        star&rsquo;s zones allow.</p>
+
       <h3>Star type &amp; age</h3>
       <p>Planet richness <strong>honours the star</strong>: massive O/B/A stars blow their disks away (few worlds),
         F/G/K/M keep rich disks, brown dwarfs (L/T/Y) get their own table &mdash; discs around them are observed and

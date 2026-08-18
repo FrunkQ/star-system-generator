@@ -1,4 +1,5 @@
 import { TravellerDecoder } from './decoder';
+import { infillSystem } from '$lib/generation/infill';
 import { guessSystemAge } from '$lib/physics/systemAge';
 import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
 import { SeededRNG } from './rng';
@@ -10,7 +11,6 @@ import { G, AU_KM, EARTH_MASS_KG } from '$lib/constants';
 import { calculateOrbitalBoundaries, type PlanetData } from '$lib/physics/orbits';
 import type { System, StarSystemNode, RulePack, CelestialBody, Barycenter, Orbit, TableSpec } from '$lib/types';
 import { generateId, weightedChoice, randomFromRange, toRoman } from '$lib/utils';
-import { calculateOrbitalSlots } from '$lib/generation/placement-strategy';
 
 export class TravellerImporter {
     private decoder = new TravellerDecoder();
@@ -377,257 +377,30 @@ export class TravellerImporter {
 
         nodes.push(...generatedNodes);
 
-        // --- FULL SYSTEM GENERATION (Deck Building Method) ---
-        // 1. Calculate Required Extra Bodies
+        // --- FULL SYSTEM: the shared infill, with Traveller's numbers as hard targets ---
+        //
+        // This used to be 250 lines of private generation: its own slot list from calculateOrbitalSlots,
+        // an "emergency fill" that forced random orbits when the culls ran short, and a deck of types
+        // dealt onto slots with a Sol-shaped rule ("gas giants prefer > 1.5 AU"). It shared nothing with
+        // the wizard, so a Traveller system and a generated one could look nothing alike round the
+        // same star. Now: build the Main World and the stars here (they are Traveller's own data), then
+        // hand the system to generation/infill.ts infillSystem - the same routine every importer and the
+        // wizard use - with W as the HARD planet count and PBG's belts and giants as the composition.
+        //
+        // W IS A HARD COUNT AND IT NEVER INCLUDES MOONS (owner, G32). A "home world is a moon"
+        // designation (trade code Sa) is a planet-sized body round a giant; applySatelliteTradeCodeIfNeeded
+        // places it as an anchor BEFORE infill runs, so infill sees the giant it orbits as one of W and
+        // the moon as a moon.
+        //
+        // The dials come from the profile where it says something (a high-population, high-tech world
+        // suggests a settled, metal-rich system - but that is a taste call the GM makes in the infill
+        // step, so the defaults are used here and the panel lets them adjust). Age is the shared guess.
         const numBelts = parseInt(data.pbg[1] || '0');
         const numGasGiants = parseInt(data.pbg[2] || '0');
         const totalWorldsCount = parseInt(data.w || '0');
-        
-        // W includes Main World (1) + Belts + Gas Giants + Others.
-        // So Others = W - 1 - Belts - Gas Giants.
-        let numOtherWorlds = totalWorldsCount - 1 - numBelts - numGasGiants;
-        if (numOtherWorlds < 0) numOtherWorlds = 0; // Safety floor
-        
-        const totalExtraBodies = numBelts + numGasGiants + numOtherWorlds;
-        
-        let minStableAU = 0;
-        let maxStableAU = 99999;
 
-        // Determine stability limits
-        if (starEntries.length >= 2) {
-            if (isCloseBinary) {
-                const stars = nodes.filter(n => n.roleHint === 'star');
-                if (stars.length === 2) {
-                    const sep = (stars[0].orbit?.elements.a_AU || 0) + (stars[1].orbit?.elements.a_AU || 0);
-                    minStableAU = 1.6 * sep;
-                }
-            } else {
-                const starB = nodes.find(n => n.roleHint === 'star' && n.id !== primaryStar.id);
-                if (starB && starB.orbit) {
-                    maxStableAU = 0.4 * starB.orbit.elements.a_AU;
-                }
-            }
-        }
-
-        if (totalExtraBodies > 0) {
-            // 2. Generate Natural Slots (Standard Logic)
-            // Request ample buffer to account for Main World collisions and Binary Instability zones
-            let candidateSlots = calculateOrbitalSlots(primaryStar, rulePack, this.rng, (totalExtraBodies * 3) + 5);
-            
-            // 3. Filter Conflicts & Instability
-            // Maintain a list of reserved slots to prevent collisions (initially just Main World)
-            const reservedSlots: number[] = [orbitAU];
-
-            candidateSlots = candidateSlots.filter(au => {
-                // Main World Proximity Check (15% exclusion)
-                const diff = Math.abs(au - orbitAU);
-                const ratio = diff / orbitAU;
-                if (ratio <= 0.15) return false;
-
-                // Binary Stability Check
-                if (au < minStableAU) return false;
-                if (au > maxStableAU) return false;
-
-                return true;
-            });
-            
-            // Add surviving candidate slots to reserved list so Emergency Fill respects them
-            reservedSlots.push(...candidateSlots);
-            
-            // 3b. Emergency Fill: If stability/proximity culled too many, force random slots in the stable zone
-            // to ensure we meet the Traveller 'W' count.
-            let emergencyAttempts = 0;
-            const MAX_EMERGENCY_ATTEMPTS = 100;
-
-            while (candidateSlots.length < totalExtraBodies && emergencyAttempts < MAX_EMERGENCY_ATTEMPTS) {
-                emergencyAttempts++;
-                // Pick a random spot in the stable zone
-                // If minStable is 0 (single star), use 0.2 as floor.
-                // If maxStable is 99999, use 50 as ceiling.
-                const lower = Math.max(minStableAU, 0.2);
-                const upper = Math.min(maxStableAU, 80.0);
-                
-                if (upper > lower) {
-                    const randomAU = this.rng.range(lower, upper);
-                    
-                    // Check Collision with ALL reserved slots (Main World + Natural Slots + Previous Emergency Fills)
-                    let collision = false;
-                    for (const reserved of reservedSlots) {
-                        const diff = Math.abs(randomAU - reserved);
-                        if (diff / reserved <= 0.15) { // 15% clearance
-                            collision = true;
-                            break;
-                        }
-                    }
-
-                    if (!collision) {
-                        candidateSlots.push(randomAU);
-                        reservedSlots.push(randomAU);
-                    }
-                } else {
-                    // Extremely unlikely case: No stable zone exists?
-                    // Just push a "best effort" slot and let physics deal with it later
-                    // (Use ample offset from orbitAU)
-                    const fallback = orbitAU * (this.rng.nextFloat() > 0.5 ? 1.5 : 0.7);
-                    candidateSlots.push(fallback);
-                    reservedSlots.push(fallback);
-                }
-            }
-            
-            if (candidateSlots.length < totalExtraBodies) {
-                console.warn(`TravellerImporter: Could not find enough stable slots for ${data.name}. Wanted ${totalExtraBodies}, got ${candidateSlots.length}.`);
-            }
-
-            // Cap to needed amount
-            const finalSlots = candidateSlots.slice(0, totalExtraBodies);
-            
-            // 4. Create "Deck" of Body Types
-            const deck: Array<{ type: string, priority: number }> = [];
-            
-            for(let i=0; i<numGasGiants; i++) deck.push({ type: 'Gas Giant', priority: 10 });
-            for(let i=0; i<numBelts; i++) deck.push({ type: 'Belt', priority: 5 });
-            for(let i=0; i<numOtherWorlds; i++) deck.push({ type: 'Terrestrial', priority: 1 });
-            
-            // 5. Assign Bodies to Slots
-            // Strategy: 
-            // - Gas Giants prefer outer system (> 2.0 AU approx Frost Line)
-            // - Belts and Terrestrials fill the rest
-            
-            // Sort slots by distance
-            finalSlots.sort((a, b) => a - b);
-            
-            const assignments: Array<{ au: number, type: string }> = [];
-            const occupiedIndices = new Set<number>();
-            
-            // A. Place Gas Giants
-            const gasGiants = deck.filter(d => d.type === 'Gas Giant');
-            for (const gg of gasGiants) {
-                // Find first available slot > 2.0 AU, or just the furthest available
-                let bestIdx = -1;
-                
-                // Try to find furthest slot
-                for (let i = finalSlots.length - 1; i >= 0; i--) {
-                    if (!occupiedIndices.has(i)) {
-                        bestIdx = i;
-                        // If we found one > 1.5 AU, take it immediately (outer system preference)
-                        if (finalSlots[i] > 1.5) break; 
-                    }
-                }
-                
-                if (bestIdx !== -1) {
-                    occupiedIndices.add(bestIdx);
-                    assignments.push({ au: finalSlots[bestIdx], type: 'Gas Giant' });
-                }
-            }
-            
-            // B. Place Remaining
-            const others = deck.filter(d => d.type !== 'Gas Giant');
-            for (const item of others) {
-                // Find any available slot
-                let bestIdx = -1;
-                for (let i = 0; i < finalSlots.length; i++) {
-                    if (!occupiedIndices.has(i)) {
-                        bestIdx = i;
-                        break;
-                    }
-                }
-                
-                if (bestIdx !== -1) {
-                    occupiedIndices.add(bestIdx);
-                    assignments.push({ au: finalSlots[bestIdx], type: item.type });
-                }
-            }
-            
-            // 6. Generate Bodies
-            for (let i = 0; i < assignments.length; i++) {
-                const assign = assignments[i];
-                const slotOrbit: Orbit = {
-                    hostId: systemRootId,
-                    elements: {
-                        a_AU: assign.au,
-                        e: this.rng.range(0, 0.1),
-                        i_deg: this.rng.range(0, 5),
-                        Omega_deg: 0,
-                        omega_deg: 0,
-                        M0_rad: this.rng.next() * Math.PI * 2
-                    },
-                    t0: 0,
-                    hostMu: G * (primaryStar.massKg || 1.989e30)
-                };
-
-                const typeOverride = assign.type === 'Gas Giant' ? 'planet/gas-giant' : (assign.type === 'Belt' ? 'belt/asteroid' : 'planet/terrestrial');
-                const allowBelt = assign.type === 'Belt'; 
-                
-                const overrides: Partial<CelestialBody> = {};
-                if (assign.type === 'Belt') {
-                    // Restrict belt width to 15% of orbit to ensure it fits in the 15% collision buffer
-                    const widthAU = slotOrbit.elements.a_AU * 0.15;
-                    overrides.radiusInnerKm = (slotOrbit.elements.a_AU - widthAU/2) * AU_KM;
-                    overrides.radiusOuterKm = (slotOrbit.elements.a_AU + widthAU/2) * AU_KM;
-                }
-                
-                // Naming: e.g. "Sol I", "Sol II"... but skip Main World's index if possible?
-                // Actually, just append Roman numerals sequentially based on distance is standard,
-                // but Traveller Main World already has a name.
-                // Let's just use "Name [Outer I]" or similar to distinguish?
-                // Or just standard Roman numerals based on sort order?
-                // The Main World is already named "Name (Main World)".
-                // Let's just use sequential Roman numerals for the *extras* relative to star.
-                // To do this properly we'd need to sort ALL bodies (Main + Extras) and rename them.
-                // But for now, let's just name them "Name Companion I", etc?
-                // User said: "standard planet placement logic... looks teh same as everyone elses".
-                // Standard logic uses Roman numerals.
-                // Let's just use Roman numerals for these extras, skipping the Main World's likely slot?
-                // Actually, duplicate names like "Regina I" (Main) and "Regina I" (Inner) is confusing.
-                // Let's name them "Name [Distance]"? No, that's ugly.
-                // Let's stick to the Roman Numeral generator but maybe append 'b', 'c' etc?
-                // Standard naming in this app seems to be Roman Numerals.
-                
-                const newNodes = _generatePlanetaryBody(
-                    this.rng,
-                    rulePack,
-                    systemId,
-                    i + 10, // Offset index to avoid collision with Main World internals if any
-                    primaryStar,
-                    slotOrbit,
-                    `${data.name} ${toRoman(i + 1)}`, // Temporary naming
-                    nodes,
-                    2.0,
-                    typeOverride,
-                    true,
-                    overrides,
-                    allowBelt
-                );
-                
-                if (assign.type === 'Belt' && newNodes.length > 0) {
-                    newNodes[0].classes = ['belt/asteroid'];
-                    newNodes[0].roleHint = 'belt';
-                    newNodes[0].name = `${data.name} Belt ${toRoman(i + 1)}`;
-                }
-                
-                nodes.push(...newNodes);
-            }
-            
-            // Optional: Re-sort and rename all planets by distance?
-            // This is a nice-to-have for "Standard Look"
-            // Filter only direct children of the star
-            const planets = nodes.filter(n => n.parentId === systemRootId && (n.roleHint === 'planet' || n.roleHint === 'belt'));
-            planets.sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
-            
-            for(let i=0; i<planets.length; i++) {
-                const p = planets[i];
-                // Don't rename Main World completely, keep its identity
-                if (p.id === mainWorld.id) continue;
-                
-                if (p.roleHint === 'belt') {
-                    p.name = `${data.name} Belt ${toRoman(i+1)}`;
-                } else {
-                    p.name = `${data.name} ${toRoman(i+1)}`;
-                }
-            }
-        }
-
-        // Traveller trade code `Sa` = main world is a satellite of a larger world.
+        // Traveller trade code `Sa` = main world is a satellite of a larger world. Runs BEFORE infill so
+        // the giant it creates is an anchor and counts toward W.
         this.applySatelliteTradeCodeIfNeeded(nodes, mainWorld, data, systemRootId);
 
         // THE AGE WAS A RANDOM ROLL between 1 and 10 Gyr, whatever the star. An O star does not live 10
@@ -654,6 +427,28 @@ export class TravellerImporter {
 
         const processor = new SystemProcessor();
         processor.process(system, rulePack);
+
+        // Fill out to W with PBG's composition. Imported (Traveller-authored) bodies are anchors and are
+        // never moved; generated worlds take the free orbits the star's own zones allow.
+        if (totalWorldsCount > 0) {
+            const infill = infillSystem(system, rulePack, {
+                targetPlanetCount: totalWorldsCount,
+                composition: { giants: numGasGiants, belts: numBelts },
+                seed: `traveller-${seed}`,
+                ageGyr: system.age_Gyr,
+            });
+            if (infill.underTarget) {
+                console.warn(`TravellerImporter: ${data.name} asked for W=${totalWorldsCount} (PBG giants ${numGasGiants}, belts ${numBelts}); the star's zones and the count table gave ${infill.addedPlanets} extra planet(s)` +
+                    (infill.composition ? ` (giants ${infill.composition.giantsGot}/${infill.composition.giantsWanted}, belts ${infill.composition.beltsGot}/${infill.composition.beltsWanted})` : '') + '.');
+            }
+            // Traveller's own naming: Roman numerals outward from the star, Main World keeps its identity.
+            const bodies = system.nodes.filter((n) => n.parentId === systemRootId && ((n as CelestialBody).roleHint === 'planet' || (n as CelestialBody).roleHint === 'belt')) as CelestialBody[];
+            bodies.sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
+            bodies.forEach((p, i) => {
+                if (p.id === mainWorld.id) return;
+                p.name = p.roleHint === 'belt' ? `${data.name} Belt ${toRoman(i + 1)}` : `${data.name} ${toRoman(i + 1)}`;
+            });
+        }
 
         // M-Star Hazard Check
         if (specClass === 'M' && (mainWorld.surfaceRadiation || 0) > 100) { 

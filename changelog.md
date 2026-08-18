@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.799-beta - 18th Aug 2026
+
+- **After importing a system you can now fill it out, with the same four dials you use to create one from a star.** A new step in the import review adds plausible worlds where the import left gaps: imported worlds are never moved, re-typed or aged — a generated world that would crowd one is dropped, not the import — and the imported star is fed to the generator as it is now, not re-aged. It is always offered, starts on for a sparse import and off for one that already carries a system, and skipping it just loads the import exactly as it is.
+
+- **The age control is bound to the star's own life.** The slider runs from the youngest the star could plausibly be to just before it swells, explodes or collapses, on a log scale so a young age is not crammed into the first pixel; a shaded band at the young end marks where the star still flares hard, because a young flaring system is a real option; and the age is marked as estimated when it is a guess rather than something the file stated. Only worlds generated into the system are born into the chosen era.
+
+- **Traveller systems now come from the same generator as everything else.** The importer had its own two hundred and fifty lines of placement — its own orbit list, an "emergency fill" that forced random orbits when it ran short, and a rule that gas giants prefer beyond 1.5 AU whatever the star. Gone: the Main World and the stars are still built from the profile, and the shared infill takes it from there with W as a hard count of planets (moons never count; a "home world is a moon" system places the moon first, round its giant) and the PBG giants and belts as the mix to aim for. First importer-level tests for Traveller.
+
+- The dials themselves are now one component shared by the wizard and the import step, so their explainers are the same words in both places.
 ## v2.1.798-beta - 18th Aug 2026
 
 - **Orbit lines can now be dimmed, or switched off entirely.** A large imported system -- 45 planets and 25 moons -- buries its own map under seventy orbit lines, and there was no way to turn them down. There are three controls, deliberately separate: a dial on your own system map that is yours alone, a dial on a player preset's System step that travels to whoever is watching, and a momentary "Hide orbit lines" beside "Hide labels" for when you just need to see the map for half a minute. Nothing changes until one of them is moved -- every dial starts at the look the maps have always had.

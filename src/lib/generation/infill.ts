@@ -43,6 +43,13 @@ export interface InfillOptions {
    * place as an anchor before infilling. Absent = as many as the dials produce.
    */
   targetPlanetCount?: number;
+  /**
+   * A COMPOSITION target on top of the count — how many of the added worlds should be giants and how
+   * many belts (Traveller's PBG digits: P planetoid belts, G gas giants; the rest are "other worlds").
+   * Infill takes the generated giants nearest the frost line first, then belts, then the rest, and
+   * reports what it could not meet. Absent = whatever the dials produce.
+   */
+  composition?: { giants?: number; belts?: number };
   /** Deterministic seed; defaults to a stable derivation of the system seed. */
   seed?: string;
 }
@@ -55,6 +62,8 @@ export interface InfillResult {
   noStar: boolean;
   /** True when a targetPlanetCount was asked for and the dials could not reach it (the count table + spacing ran out). */
   underTarget?: boolean;
+  /** Composition asked for vs got, when a composition target was given. */
+  composition?: { giantsWanted: number; giantsGot: number; beltsWanted: number; beltsGot: number };
 }
 
 function mutualHillAU(a1: number, m1: number, a2: number, m2: number, hostMassKg: number): number {
@@ -163,8 +172,28 @@ export function infillSystem(system: System, pack: RulePack, opts: InfillOptions
 
   // Order by distance within each host, hand out free letters, respect the hard count.
   kept.sort((x, y) => (x.p.orbit?.elements.a_AU ?? 0) - (y.p.orbit?.elements.a_AU ?? 0));
-  const take = kept.slice(0, Number.isFinite(remaining) ? remaining : kept.length);
+  const isGiantP = (b: CelestialBody) => /giant|jupiter|neptune|puff|helium/.test(b.classes?.[0] ?? '') || (b.massKg ?? 0) > 95 * 5.972e24;
+  const isBeltP = (b: CelestialBody) => (b.classes?.[0] ?? '').startsWith('belt/') || b.roleHint === 'belt';
+  let take: typeof kept;
+  if (opts.composition) {
+    // COMPOSITION FIRST, then fill the count with the rest. Giants nearest the frost line come first
+    // among giants — that is where a giant is likeliest to be real; belts likewise; then others by
+    // distance. What is left of the count is filled by whatever remains, nearest first.
+    const wantG = Math.max(0, opts.composition.giants ?? 0), wantB = Math.max(0, opts.composition.belts ?? 0);
+    const giants = kept.filter((k) => isGiantP(k.p)).slice(0, wantG);
+    const belts = kept.filter((k) => isBeltP(k.p)).slice(0, wantB);
+    const chosen = new Set([...giants, ...belts]);
+    const others = kept.filter((k) => !chosen.has(k) && !isGiantP(k.p) && !isBeltP(k.p));
+    const budget = Number.isFinite(remaining) ? remaining : kept.length;
+    take = [...giants, ...belts, ...others].slice(0, budget);
+    result.composition = { giantsWanted: wantG, giantsGot: giants.length, beltsWanted: wantB, beltsGot: belts.length };
+    if (giants.length < wantG || belts.length < wantB) result.underTarget = true;
+  } else {
+    take = kept.slice(0, Number.isFinite(remaining) ? remaining : kept.length);
+  }
   if (Number.isFinite(remaining) && take.length < remaining) result.underTarget = true;
+  // Re-sort what we took by distance so lettering runs outward.
+  take.sort((x, y) => (x.p.orbit?.elements.a_AU ?? 0) - (y.p.orbit?.elements.a_AU ?? 0));
 
   const markGenerated = (node: AnyNode) => {
     const tags: Tag[] = (node.tags ?? []).filter((t) => t.key !== GENERATED_TAG);
