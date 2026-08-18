@@ -19,7 +19,7 @@
   import { trueColorMode } from '$lib/rendering/colorModeStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import UndoPill from './UndoPill.svelte';
-  import { attachSystemUndo, detachSystemUndo, silentSystemWrite } from '$lib/undo/systemUndo';
+  import { attachSystemUndo, detachSystemUndo, silentSystemWrite, setUndoFocus } from '$lib/undo/systemUndo';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
@@ -1260,6 +1260,9 @@
   // Reactive Focus Handling via SvelteKit Router State
   $: focusedBodyId = primaryMemberOf($page.state.focusId ?? ($systemStore?.nodes.find(n => !n.parentId)?.id || null));
   $: focusedBody = $systemStore?.nodes.find(n => n.id === focusedBodyId) as CelestialBody || null;
+  // G28: the selection NAMES an undo step when one edit moves several bodies (give Earth mass and
+  // tidally-locked Luna's rotation period follows). Naming only - it never decides what is recorded.
+  $: setUndoFocus(focusedBodyId);
   // For a construct, its *current* host is where its journeys have taken it (e.g. a
   // planet it's parked at), not its authored parentId (often the star it was first
   // placed around). Resolving this at the display time keeps land/takeoff + the specs

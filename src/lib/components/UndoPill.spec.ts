@@ -9,7 +9,7 @@ import { tick } from 'svelte';
 // a three-line store, because `writable` is not available that early either.
 const h = vi.hoisted(() => {
   const subs = new Set<(v: any) => void>();
-  let value = { canUndo: false, canRedo: false, undoDepth: 0, redoDepth: 0 };
+  let value = { canUndo: false, canRedo: false, undoDepth: 0, redoDepth: 0, undoLabel: '', redoLabel: '' };
   return {
     store: {
       subscribe(fn: (v: any) => void) {
@@ -46,7 +46,7 @@ function keydown(target: EventTarget, init: KeyboardEventInit) {
 beforeEach(() => {
   undo.mockClear();
   redo.mockClear();
-  state.set({ canUndo: false, canRedo: false, undoDepth: 0, redoDepth: 0 });
+  state.set({ canUndo: false, canRedo: false, undoDepth: 0, redoDepth: 0, undoLabel: '', redoLabel: '' });
 });
 
 describe('UndoPill', () => {
@@ -57,7 +57,7 @@ describe('UndoPill', () => {
 
   it('appears once there is something to wind back, and marks itself as CHROME (UI-C6)', async () => {
     const { container } = render(UndoPill, { props: { mode: 'desktop' } });
-    state.set({ canUndo: true, canRedo: false, undoDepth: 1, redoDepth: 0 });
+    state.set({ canUndo: true, canRedo: false, undoDepth: 1, redoDepth: 0, undoLabel: '', redoLabel: '' });
     await tick();
     const pill = container.querySelector('.undo-pill')!;
     expect(pill).toBeTruthy();
@@ -68,13 +68,13 @@ describe('UndoPill', () => {
 
   it('disables redo until there is a redo path, and enables it when there is', async () => {
     const { container } = render(UndoPill, { props: { mode: 'desktop' } });
-    state.set({ canUndo: true, canRedo: false, undoDepth: 1, redoDepth: 0 });
+    state.set({ canUndo: true, canRedo: false, undoDepth: 1, redoDepth: 0, undoLabel: '', redoLabel: '' });
     await tick();
     const [undoBtn, redoBtn] = Array.from(container.querySelectorAll('button')) as HTMLButtonElement[];
     expect(undoBtn.disabled).toBe(false);
     expect(redoBtn.disabled).toBe(true);
 
-    state.set({ canUndo: false, canRedo: true, undoDepth: 0, redoDepth: 1 });
+    state.set({ canUndo: false, canRedo: true, undoDepth: 0, redoDepth: 1, undoLabel: '', redoLabel: '' });
     await tick();
     expect((container.querySelectorAll('button')[0] as HTMLButtonElement).disabled).toBe(true);
     expect((container.querySelectorAll('button')[1] as HTMLButtonElement).disabled).toBe(false);
@@ -82,7 +82,7 @@ describe('UndoPill', () => {
 
   it('winds back on a click', async () => {
     const { container } = render(UndoPill, { props: { mode: 'desktop' } });
-    state.set({ canUndo: true, canRedo: true, undoDepth: 1, redoDepth: 1 });
+    state.set({ canUndo: true, canRedo: true, undoDepth: 1, redoDepth: 1, undoLabel: '', redoLabel: '' });
     await tick();
     const buttons = container.querySelectorAll('button');
     await fireEvent.click(buttons[0]);
@@ -147,9 +147,23 @@ describe('UndoPill', () => {
     expect(undo).toHaveBeenCalledTimes(2);
   });
 
+  it("puts the step's NAME on the buttons, and falls back to a phrase that is always true", async () => {
+    const { container } = render(UndoPill, { props: { mode: 'desktop' } });
+    state.set({ canUndo: true, canRedo: true, undoDepth: 1, redoDepth: 1, undoLabel: 'Mass of Earth', redoLabel: 'Deleted Luna' });
+    await tick();
+    const [u, r] = Array.from(container.querySelectorAll('button')) as HTMLButtonElement[];
+    expect(u.title).toBe('Undo: Mass of Earth (Ctrl+Z)');
+    expect(u.getAttribute('aria-label')).toBe('Undo: Mass of Earth');
+    expect(r.title).toBe('Redo: Deleted Luna (Ctrl+Shift+Z)');
+
+    state.set({ canUndo: true, canRedo: false, undoDepth: 1, redoDepth: 0, undoLabel: '', redoLabel: '' });
+    await tick();
+    expect((container.querySelectorAll('button')[0] as HTMLButtonElement).title).toBe('Undo the last edit (Ctrl+Z)');
+  });
+
   it('moves out of the clock\'s way on a phone', async () => {
     const { container } = render(UndoPill, { props: { mode: 'phone' } });
-    state.set({ canUndo: true, canRedo: false, undoDepth: 1, redoDepth: 0 });
+    state.set({ canUndo: true, canRedo: false, undoDepth: 1, redoDepth: 0, undoLabel: '', redoLabel: '' });
     await tick();
     expect(container.querySelector('.undo-pill')!.classList.contains('phone')).toBe(true);
   });

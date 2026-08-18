@@ -47,6 +47,7 @@ import { systemStore } from '$lib/stores';
 import { stripSystemForExport } from '$lib/system/importFixup';
 import { systemProcessor } from '$lib/core/SystemProcessor';
 import { IDLE_GAP_MS, UndoHistory } from './undoHistory';
+import { describeSystemChange } from './describeChange';
 import type { RulePack, System } from '$lib/types';
 
 /** A stack entry is the authored slice as JSON - immutable, and a deep clone by construction. */
@@ -84,9 +85,14 @@ export interface UndoStatus {
   canRedo: boolean;
   undoDepth: number;
   redoDepth: number;
+  /** What the next undo/redo would take back, named from the diff - "Mass of Earth". '' when the
+   *  change could not be named; the button then says "the last edit", which is always true. */
+  undoLabel: string;
+  redoLabel: string;
 }
 
-const status = writable<UndoStatus>({ canUndo: false, canRedo: false, undoDepth: 0, redoDepth: 0 });
+const EMPTY: UndoStatus = { canUndo: false, canRedo: false, undoDepth: 0, redoDepth: 0, undoLabel: '', redoLabel: '' };
+const status = writable<UndoStatus>({ ...EMPTY });
 /** What the pill reads. */
 export const undoStatus: Readable<UndoStatus> = { subscribe: status.subscribe };
 
@@ -113,6 +119,9 @@ let actionOpen = false;
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 /** Depth, not a flag: machine writes can nest (a clock tick inside a settle animation). */
 let silentDepth = 0;
+/** Which body the GM has selected - the CAUSE when one edit moves several bodies (see
+ *  `describeChange.ts`). Naming only, never used to decide what is recorded. */
+let focusId: string | null = null;
 
 /** The authored slice, as a fresh deep clone: `stripSystemForExport` clones and then deletes
  *  everything `process()` re-derives. ONE definition of "authored" in this app, not two. */
@@ -122,7 +131,14 @@ function authored(sys: System): System {
 
 function publish(): void {
   const d = history?.depth() ?? { undo: 0, redo: 0, bytes: 0 };
-  status.set({ canUndo: d.undo > 0, canRedo: d.redo > 0, undoDepth: d.undo, redoDepth: d.redo });
+  status.set({
+    canUndo: d.undo > 0,
+    canRedo: d.redo > 0,
+    undoDepth: d.undo,
+    redoDepth: d.redo,
+    undoLabel: history?.undoLabel() ?? '',
+    redoLabel: history?.redoLabel() ?? ''
+  });
 }
 
 function cancelTimer(): void {
@@ -135,9 +151,19 @@ function cancelTimer(): void {
  *  strip+stringify passes and not thirty. */
 function closeAction(): void {
   cancelTimer();
+  const wasOpen = actionOpen;
   actionOpen = false;
   const sys = get(systemStore);
-  if (sys && sys.id === shadowSystemId) shadow = authored(sys);
+  if (!sys || sys.id !== shadowSystemId) return;
+  const now = authored(sys);
+  // NAME THE STEP HERE, and only here: what an action DID is only knowable once it has ENDED. The
+  // before state is the shadow, the after state is what we were about to make the new shadow, so
+  // the name costs one diff of two objects that are already in hand and nothing at the call sites.
+  if (wasOpen && history) {
+    const label = describeSystemChange(shadow, now, focusId);
+    if (label) history.labelTop(label);
+  }
+  shadow = now;
 }
 
 function bumpTimer(): void {
@@ -264,6 +290,11 @@ export function endUndoAction(): void {
   queueMicrotask(() => {
     if (history) closeAction();
   });
+}
+
+/** The GM's current selection, for NAMING a step only. Set from the system view. */
+export function setUndoFocus(id: string | null): void {
+  focusId = id;
 }
 
 /**

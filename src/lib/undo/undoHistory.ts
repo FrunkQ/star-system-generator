@@ -65,9 +65,16 @@ export interface UndoOptions {
   maxBytes?: number;
 }
 
+interface Entry<S> {
+  data: S;
+  /** What this step will take back, in a GM's words - "Mass of Earth". Optional: a step with no
+   *  label reads as a plain "the last edit", which is always true. */
+  label?: string;
+}
+
 export class UndoHistory<S> {
-  private undoStack: S[] = [];
-  private redoStack: S[] = [];
+  private undoStack: Entry<S>[] = [];
+  private redoStack: Entry<S>[] = [];
   private cb: UndoCallbacks<S>;
   private maxEntries: number;
   private maxBytes: number;
@@ -91,20 +98,40 @@ export class UndoHistory<S> {
    * Start a new action: push the state from BEFORE it. Clears redo - any new action invalidates
    * the redo path. The caller owns "is this a new action" (see the header, difference 2).
    */
-  push(before: S): void {
-    this.undoStack.push(before);
+  push(before: S, label?: string): void {
+    this.undoStack.push({ data: before, label });
     this._trim();
     this.redoStack = [];
     this.cb.onChange?.();
   }
 
+  /** Name the newest step. The caller only knows what an action DID once the action has ENDED, so
+   *  the label arrives after the push rather than with it. */
+  labelTop(label: string): void {
+    const top = this.undoStack[this.undoStack.length - 1];
+    if (!top) return;
+    top.label = label;
+    this.cb.onChange?.();
+  }
+
+  /** What undo would take back, and what redo would put back. */
+  undoLabel(): string | undefined {
+    return this.undoStack[this.undoStack.length - 1]?.label;
+  }
+
+  redoLabel(): string | undefined {
+    return this.redoStack[this.redoStack.length - 1]?.label;
+  }
+
   undo(): void {
     if (this.undoStack.length === 0) return;
     const entry = this.undoStack.pop()!;
-    this.redoStack.push(this.cb.capture());
+    // The label travels with the TRANSITION, not with the state: the step being undone is the same
+    // step redo would put back, so it keeps its name in both directions.
+    this.redoStack.push({ data: this.cb.capture(), label: entry.label });
     this._applying = true;
     try {
-      this.cb.apply(entry);
+      this.cb.apply(entry.data);
     } finally {
       this._applying = false;
     }
@@ -114,11 +141,11 @@ export class UndoHistory<S> {
   redo(): void {
     if (this.redoStack.length === 0) return;
     const entry = this.redoStack.pop()!;
-    this.undoStack.push(this.cb.capture());
+    this.undoStack.push({ data: this.cb.capture(), label: entry.label });
     this._trim();
     this._applying = true;
     try {
-      this.cb.apply(entry);
+      this.cb.apply(entry.data);
     } finally {
       this._applying = false;
     }
@@ -152,8 +179,8 @@ export class UndoHistory<S> {
 
   private _bytes(): number {
     let total = 0;
-    for (const e of this.undoStack) total += this._sizeOf(e);
-    for (const e of this.redoStack) total += this._sizeOf(e);
+    for (const e of this.undoStack) total += this._sizeOf(e.data);
+    for (const e of this.redoStack) total += this._sizeOf(e.data);
     return total;
   }
 

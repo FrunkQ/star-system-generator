@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.778-beta - 18th Aug 2026
+
+- **The undo button now says what it will take back** - "Undo: Mass of Earth", "Undo: Deleted Luna", "Undo: GM notes of Earth" - read off a diff of the two authored states rather than declared by any editor, so every edit route gets it for free. Where one edit moves several bodies (give Earth mass and tidally-locked Luna's rotation period follows) the body you had SELECTED names the step, because that is the one you changed and the rest are consequences.
+
 ## v2.1.777-beta - 18th Aug 2026
 
 - **The "Add planet/moon here" picker and the generator now judge "what could be born here" from ONE model, with the physics filters shown at the top of the picker as switches.** Temperature, mass, age, tidal lock and host fit each start on; the GM can turn any of them off to see the wider menu despite the physics — hand authoring is hand authoring, and the tags will say what is implausible. The generator uses the same model with every filter on and then chooses among the survivors with the sliders. The picker and the generator can no longer disagree about what is viable, only about whether the GM chose to override it.
@@ -13,7 +17,6 @@ All notable changes are listed here:
 
 - Docs only. The surface-areas design gains a third dimension - depth, and height - so the one record describes a polar cap, an iron core, a subsurface ocean, a mantle plume and a beanstalk rather than only the outside of a world. It also moves from "deferred to V4" to groundwork that lands BEFORE it, since the advanced generation is meant to build on it.
 - Recorded with it: the magnetic-field model currently sizes a planet's core by the cube root of the whole body's mass, because it has no core radius to read - which is the concrete thing a depth-aware record fixes.
-
 
 ## v2.1.775-beta - 18th Aug 2026
 

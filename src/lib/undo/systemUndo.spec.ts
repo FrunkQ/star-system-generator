@@ -15,7 +15,7 @@ import { loadStarterPack } from '$lib/import/realsky/testPack';
 import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
 import {
   attachSystemUndo, detachSystemUndo, endUndoAction, silentSystemWrite,
-  undo, redo, undoStatus, resetUndoHistory
+  undo, redo, undoStatus, resetUndoHistory, setUndoFocus
 } from './systemUndo';
 import type { CelestialBody, System } from '$lib/types';
 
@@ -131,6 +131,56 @@ describe('systemUndo - recording', () => {
 
     undo();
     expect(get(systemStore)!.nodes.some((n) => n.id === 'luna-2')).toBe(false);
+  });
+});
+
+describe('systemUndo - naming the step', () => {
+  // The GM's selection names the CAUSE when one edit moves several bodies - giving Earth mass
+  // re-derives tidally-locked Luna's rotation period, so the raw diff sees two bodies.
+  beforeEach(() => setUndoFocus(bodyNamed('Earth').id));
+  afterEach(() => setUndoFocus(null));
+
+  it('names the action in the status the pill reads', () => {
+    commitEdit(() => { bodyNamed('Earth').massKg! *= 1.5; });
+    vi.advanceTimersByTime(300);              // the action closes, and THAT is when it is named
+    // "Edit to Earth" rather than "Mass of Earth": one mass drag also moves eight fields on Earth
+    // that the processor writes but `DERIVED_FIELDS` does not list, so they survive the strip and
+    // look authored. Reported as a finding; the label sharpens for free when that is fixed.
+    expect(status().undoLabel).toBe('Edit to Earth');
+    expect(status().redoLabel).toBe('');
+  });
+
+  it('carries the name across to redo, because it names the STEP not the state', () => {
+    commitEdit(() => { bodyNamed('Earth').massKg! *= 1.5; });
+    vi.advanceTimersByTime(300);
+    undo();
+    vi.advanceTimersByTime(300);
+    expect(status().redoLabel).toBe('Edit to Earth');
+    expect(status().undoLabel).toBe('');
+  });
+
+  it('names a whole drag ONCE, by what the drag ended up doing', () => {
+    const m0 = bodyNamed('Earth').massKg!;
+    for (let i = 1; i <= 10; i++) {
+      commitEdit(() => { bodyNamed('Earth').massKg = m0 * (1 + i * 0.05); });
+      vi.advanceTimersByTime(16);
+    }
+    vi.advanceTimersByTime(300);
+    expect(status().undoDepth).toBe(1);
+    expect(status().undoLabel).toBe('Edit to Earth');
+  });
+
+  it('names a field edit with no physical knock-on EXACTLY', () => {
+    commitEdit(() => { (bodyNamed('Earth') as any).gmNotes = 'the vault is under the ice'; });
+    vi.advanceTimersByTime(300);
+    expect(status().undoLabel).toBe('GM notes of Earth');
+  });
+
+  it('names a deletion', () => {
+    const sys = get(systemStore)!;
+    systemStore.set({ ...systemProcessor.process({ ...sys, nodes: sys.nodes.filter((n) => n.name !== 'Luna') }, pack), isManuallyEdited: true });
+    vi.advanceTimersByTime(300);
+    expect(status().undoLabel).toBe('Deleted Luna');
   });
 });
 

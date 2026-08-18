@@ -15,6 +15,11 @@
 
   export let mode: 'phone' | 'tablet' | 'desktop' = 'desktop';
 
+  // The step is NAMED where it can be: "Undo: Mass of Earth". A step the differ could not name
+  // falls back to "the last edit", which is never wrong.
+  $: undoTitle = $undoStatus.undoLabel ? `Undo: ${$undoStatus.undoLabel}` : 'Undo the last edit';
+  $: redoTitle = $undoStatus.redoLabel ? `Redo: ${$undoStatus.redoLabel}` : 'Redo';
+
   // TEXT ENTRY ONLY. A range, checkbox or colour input has no text undo of its own, and a GM who
   // has just released a slider still has it focused - swallowing Ctrl+Z there would make the
   // feature look broken exactly when it is most wanted.
@@ -50,8 +55,8 @@
   <div class="undo-pill" class:phone={mode === 'phone'} use:chrome>
     <button
       class="up-btn"
-      title="Undo the last edit (Ctrl+Z)"
-      aria-label="Undo the last edit"
+      title="{undoTitle} (Ctrl+Z)"
+      aria-label={undoTitle}
       aria-keyshortcuts="Control+Z"
       disabled={!$undoStatus.canUndo}
       on:click={undo}
@@ -64,8 +69,8 @@
     <span class="up-sep" aria-hidden="true"></span>
     <button
       class="up-btn"
-      title="Redo (Ctrl+Shift+Z)"
-      aria-label="Redo"
+      title="{redoTitle} (Ctrl+Shift+Z)"
+      aria-label={redoTitle}
       aria-keyshortcuts="Control+Shift+Z"
       disabled={!$undoStatus.canRedo}
       on:click={redo}
