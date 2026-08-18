@@ -29,6 +29,7 @@
   import { APP_VERSION } from '$lib/constants';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
   import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
+  import { attachStarmapUndo } from '$lib/undo/starmapUndo';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
@@ -792,6 +793,10 @@
   }
   onMount(() => {
     if (!browser) return;
+    // G28: the CAMPAIGN's undo history. Attached here rather than in `Starmap.svelte` so that
+    // entering a system and coming back does not throw away what the GM did to the map.
+    const detachMapUndo = attachStarmapUndo(() => selectedRulepack ?? null);
+    onDestroy(detachMapUndo);
     broadcastService.initSender(broadcastSessionId);
     // Hosting collided with a LIVE session on the same id (stale tab on another PC, or a copied
     // starmap file). Never silently regenerate — the owner chooses (vtt-integration-design 9.1/1A).

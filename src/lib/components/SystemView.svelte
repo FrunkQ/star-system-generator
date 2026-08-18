@@ -19,7 +19,7 @@
   import { trueColorMode } from '$lib/rendering/colorModeStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import UndoPill from './UndoPill.svelte';
-  import { attachSystemUndo, detachSystemUndo, silentSystemWrite, setUndoFocus } from '$lib/undo/systemUndo';
+  import { attachSystemUndo, detachSystemUndo, silentSystemWrite, setUndoFocus, undoStatus, undo as undoSystem, redo as redoSystem } from '$lib/undo/systemUndo';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
@@ -2221,7 +2221,7 @@
 
             <!-- G28: the floating undo/redo. Shows itself once there is something to wind back;
                  marks itself `use:chrome` so a dialog on a phone hides it (UI-C6). -->
-            <UndoPill {mode} />
+            <UndoPill {mode} status={undoStatus} undo={undoSystem} redo={redoSystem} />
 
             <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
                  frequently-used display toggles (per the wireframe). -->

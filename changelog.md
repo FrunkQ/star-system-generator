@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.780-beta - 18th Aug 2026
+
+- **Undo now covers the STARMAP as well: moving, renaming, adding and DELETING a system, the routes, and the map's own description and GM notes.** Same pill, in the starmap view - each view winds back what you are looking at. Deleting a system is the one it was built around: the whole system comes back, bodies and all, at the position it was in. An undo of a move or a rename does NOT wind back body edits made since - every surviving system keeps its current contents - and editing a body never puts a step on the map's history at all.
+
 ## v2.1.779-beta - 18th Aug 2026
 
 - **The planet mass filter is now a band with a ceiling as well as a floor.** A primary orbit gets a planet — not a pebble, and not a star. Brown dwarfs and ultra-cool dwarfs sit above the 13-Jupiter-mass deuterium line that every giant class stops at, and were being offered for planet slots. They stay available with the mass filter switched off, and as companions; they just do not take a headline orbit by default. Sub-Mercury worlds are now 0.1% of what a Sun-like star generates, down from a fifth two builds ago.

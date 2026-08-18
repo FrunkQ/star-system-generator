@@ -10,15 +10,25 @@
   // on a phone, where the orrery controls have moved out of that corner.
   //
   // The keys are bound here rather than in the view so they mount and unmount with the feature.
-  import { undoStatus, undo, redo } from '$lib/undo/systemUndo';
+  //
+  // ONE PILL, TWO HISTORIES, AND NO GLOBAL "WHICH ONE IS ACTIVE" STATE. The system view and the
+  // starmap view are never on screen together, so each mounts this component with ITS history
+  // passed in: inside a system Ctrl+Z winds back the body edits, on the starmap it winds back the
+  // map's layout. The component knows nothing about either.
   import { chrome } from '$lib/ui/foreground';
+  import type { Readable } from 'svelte/store';
+  import type { UndoStatus } from '$lib/undo/systemUndo';
 
   export let mode: 'phone' | 'tablet' | 'desktop' = 'desktop';
+  export let status: Readable<UndoStatus>;
+  export let undo: () => void;
+  export let redo: () => void;
+
 
   // The step is NAMED where it can be: "Undo: Mass of Earth". A step the differ could not name
   // falls back to "the last edit", which is never wrong.
-  $: undoTitle = $undoStatus.undoLabel ? `Undo: ${$undoStatus.undoLabel}` : 'Undo the last edit';
-  $: redoTitle = $undoStatus.redoLabel ? `Redo: ${$undoStatus.redoLabel}` : 'Redo';
+  $: undoTitle = $status.undoLabel ? `Undo: ${$status.undoLabel}` : 'Undo the last edit';
+  $: redoTitle = $status.redoLabel ? `Redo: ${$status.redoLabel}` : 'Redo';
 
   // TEXT ENTRY ONLY. A range, checkbox or colour input has no text undo of its own, and a GM who
   // has just released a slider still has it focused - swallowing Ctrl+Z there would make the
@@ -51,14 +61,14 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-{#if $undoStatus.canUndo || $undoStatus.canRedo}
+{#if $status.canUndo || $status.canRedo}
   <div class="undo-pill" class:phone={mode === 'phone'} use:chrome>
     <button
       class="up-btn"
       title="{undoTitle} (Ctrl+Z)"
       aria-label={undoTitle}
       aria-keyshortcuts="Control+Z"
-      disabled={!$undoStatus.canUndo}
+      disabled={!$status.canUndo}
       on:click={undo}
     >
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -72,7 +82,7 @@
       title="{redoTitle} (Ctrl+Shift+Z)"
       aria-label={redoTitle}
       aria-keyshortcuts="Control+Shift+Z"
-      disabled={!$undoStatus.canRedo}
+      disabled={!$status.canRedo}
       on:click={redo}
     >
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

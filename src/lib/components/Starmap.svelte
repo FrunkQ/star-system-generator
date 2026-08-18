@@ -52,6 +52,8 @@
   import { tagCategories } from '$lib/tags/tagCategories';
   import { campaignUnit } from '$lib/map/distanceUnits';
   import { chrome } from '$lib/ui/foreground';
+  import UndoPill from './UndoPill.svelte';
+  import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
   // THE SELECTION IS PASSED IN, NEVER CLOSED OVER. `{@const hl = systemMarkers(systemNode)}` inside the
   // each-block only re-evaluates when a value it MENTIONS changes; a helper that reads `activeHighlights`
@@ -1636,6 +1638,11 @@
       unitIsPrefix={starmap.unitIsPrefix}
       isScaled={scaleBarVisible}
     />
+    <!-- G28: the campaign's undo/redo. Same component as the system view's, handed the STARMAP
+         history instead - moving, renaming, adding and deleting systems, the routes, and the map's
+         own description and notes. The two views are never on screen together, so one pill each. -->
+    <UndoPill {mode} status={starmapUndoStatus} undo={undoStarmap} redo={redoStarmap} />
+
     {#if ensuredTemporal}
       <div class="time-overlay" class:phone={mode === 'phone'} use:chrome>
         <TimeControls

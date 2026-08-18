@@ -12,6 +12,7 @@
 // is handed two authored slices. A missing entry costs a clumsier word, never a wrong undo.
 
 import type { CelestialBody, System } from '$lib/types';
+import type { StarmapShell } from './starmapUndo';
 
 /** Only where the honest word differs from the field name. Everything else is humanised below. */
 const PHRASE: Record<string, string> = {
@@ -126,5 +127,50 @@ export function describeSystemChange(before: System | null, after: System | null
   ).filter((k) => k !== 'nodes' && k !== 'isManuallyEdited');
   if (systemFields.length === 1) return sentenceCase(`${humanise(systemFields[0])} of the system`);
   if (systemFields.length > 1) return `${systemFields.length} changes to the system`;
+  return '';
+}
+
+/**
+ * The same job for the CAMPAIGN's layout - moving, renaming, adding or deleting a system, the
+ * routes, the map's own description and notes. Same contract: '' when it cannot tell.
+ */
+export function describeStarmapChange(before: StarmapShell | null, after: StarmapShell | null): string {
+  if (!before || !after) return '';
+  const b = new Map(before.systems.map((s) => [s.id, s]));
+  const a = new Map(after.systems.map((s) => [s.id, s]));
+  const added = [...a.keys()].filter((id) => !b.has(id));
+  const removed = [...b.keys()].filter((id) => !a.has(id));
+
+  if (removed.length === 1 && !added.length) return `Deleted ${b.get(removed[0])!.name || 'a system'}`;
+  if (added.length === 1 && !removed.length) return `Added ${a.get(added[0])!.name || 'a system'}`;
+  if (removed.length > 1 && !added.length) return `Deleted ${removed.length} systems`;
+  if (added.length > 1 && !removed.length) return `Added ${added.length} systems`;
+  if (added.length || removed.length) return `Added ${added.length}, deleted ${removed.length}`;
+
+  const moved: string[] = [];
+  const renamed: string[] = [];
+  const resectored: string[] = [];
+  for (const [id, was] of b) {
+    const now = a.get(id)!;
+    if (JSON.stringify(was.position) !== JSON.stringify(now.position)) moved.push(now.name);
+    if (was.name !== now.name) renamed.push(now.name);
+    if (was.subsectorId !== now.subsectorId) resectored.push(now.name);
+  }
+  if (renamed.length === 1) return `Renamed ${renamed[0]}`;
+  if (renamed.length > 1) return `Renamed ${renamed.length} systems`;
+  if (moved.length === 1) return `Moved ${moved[0]}`;
+  if (moved.length > 1) return `Moved ${moved.length} systems`;
+  if (resectored.length === 1) return `Subsector of ${resectored[0]}`;
+  if (resectored.length > 1) return `Subsector of ${resectored.length} systems`;
+
+  if (JSON.stringify(before.routes) !== JSON.stringify(after.routes)) {
+    const d = (after.routes?.length ?? 0) - (before.routes?.length ?? 0);
+    if (d > 0) return d === 1 ? 'Added a route' : `Added ${d} routes`;
+    if (d < 0) return -d === 1 ? 'Deleted a route' : `Deleted ${-d} routes`;
+    return 'Edited a route';
+  }
+  if (before.name !== after.name) return 'Name of the starmap';
+  if (before.description !== after.description) return 'Description of the starmap';
+  if (before.gmNotes !== after.gmNotes) return 'GM notes of the starmap';
   return '';
 }
