@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.803-beta - 18th Aug 2026
+
+- Docs only. The broadcast-id collision dialog diagnosed as three faults (a retry loop on every system entry after a collision, no feedback when a new id is minted, and dev previews auto-hosting production ids on the public broker) and routed to the VTT session.
+
 ## v2.1.802-beta - 18th Aug 2026
 
 - The surface-light explorer on the physics page now draws the Sun at Earth's distance as a fixed reference line, so the star you have dialled up can be read against the one you have an intuition for. Turn the temperature down to a red dwarf and its curve drops far below Sol rather than merely changing colour - the intensity difference is the half that is easy to lose, and the visible-light strip along the bottom already showed which part of it you could see. Nothing is editable and no physics changed: both curves come from the same engine function.
