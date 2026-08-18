@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.808-beta - 18th Aug 2026
+
+- Docs only. Adrian's green confirmed by eye and closed; the broadcast-id prompt did not recur on refresh, which fits the ghost diagnosis; the performance session's retirement recorded.
+
 ## v2.1.807-beta - 18th Aug 2026
 
 - Docs only. The broadcast-id collision most likely collides with the ghost of the owner's own reloaded tab; the fix is to release the id on page hide and retry before prompting.
