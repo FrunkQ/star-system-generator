@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.795-beta - 18th Aug 2026
+
+- Docs only. Orbit-line opacity (and a momentary hide) is pulled into V3 on the owner's call after an imported 45-planet system made the map unreadable; routed.
+
 ## v2.1.796-beta - 18th Aug 2026
 
 - The Gas Physics editor now shows the ABSORPTION BANDS each gas already used. They were in the data and the engine has always read them - oxygen's 762 nm A-band, methane's six, and thirteen other gases - but nothing on screen ever said so. Each gas now lists its bands with a preview against a star of your choosing, so you can watch the notch move as you type. Rayleigh scattering was hidden in the same way and is now a field too.
