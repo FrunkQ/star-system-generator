@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.807-beta - 18th Aug 2026
+
+- Docs only. The broadcast-id collision most likely collides with the ghost of the owner's own reloaded tab; the fix is to release the id on page hide and retry before prompting.
+
 ## v2.1.806-beta - 18th Aug 2026
 
 - Docs only. The performance session writes up what it learned before retiring (`docs/dev/perf-and-chrome-notes.md`): what each meter answers, where the player-view rebuild storm was actually left - instrumented but NOT diagnosed, with the one field to read first - and the three items whose written-down diagnosis turned out to be backwards. Indexed from the debug-tools guide and the session roster.
