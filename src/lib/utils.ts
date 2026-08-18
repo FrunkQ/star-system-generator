@@ -122,12 +122,11 @@ export function validateStarmap(data: any): string[] {
             const innerSys = sysNode.system;
             if (!innerSys.id) errors.push(`${context}: Inner system missing "id".`);
             if (!innerSys.nodes || !Array.isArray(innerSys.nodes)) errors.push(`${context}: Missing or invalid "nodes" array.`);
-            if (!innerSys.rulePackId) errors.push(`${context}: Missing "rulePackId".`);
-            
-            // Check if rulePackId is potentially a mismatch (heuristic)
-            if (innerSys.rulePackId === 'starter-sf') {
-                 errors.push(`${context}: Warning - "rulePackId" is "starter-sf". Did you mean "starter-sf-pack"?`);
-            }
+            // `rulePackId` is a RECORD of which pack processed a system, not a load requirement: the
+            // loader re-processes with the current pack regardless, V2 exports and this app's own
+            // SpaceEngine/ubox imports write it blank, and a stale spelling ('starter-sf') is not a
+            // reason to refuse a whole campaign. Neither is an error any more; the load path stamps
+            // the current pack where the field is blank.
         }
     });
 

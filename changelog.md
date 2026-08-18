@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.794-beta - 18th Aug 2026
+
+- FIXED: a system file with a blank rule-pack id would not load - "Invalid system file. Missing system-specific properties" - and the app writes blank ones itself on ubox and SpaceEngine imports, so a system imported, saved and reopened was refused. The pack id was never needed to load: the file is processed with the current pack regardless. It is now stamped on load where blank, the message says what is actually required, and a starmap is no longer refused for an embedded system with a blank or stale pack id.
+
 ## v2.1.793-beta - 18th Aug 2026
 
 - **Every importer now classifies stars the same way, and a G giant is no longer a G dwarf.** Universe Sandbox, SpaceEngine and Traveller each had their own spectral-class ladder; all stopped at M, and SpaceEngine kept only the first letter of the full class it was handed — so "K3III" imported as a K dwarf — and defaulted anything it did not recognise to G. One resolver now serves all three: a stated designation is kept as written (its luminosity class included, folded to the pack's bands); a bare letter gets its class inferred from the star's temperature and radius when it has them — a K giant is forty times the radius of a K dwarf at the same temperature — and defaults to main sequence when it does not; with no stated type the letter comes from temperature through the pack, brown dwarfs included; nothing usable is left honestly unclassified rather than guessed. Where a stated class contradicts the physics, the stated one is kept and the disagreement is noted.

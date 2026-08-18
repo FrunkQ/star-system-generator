@@ -161,7 +161,7 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     ageEstimated: age.estimated,
     ageBandGyr: age.band,
     nodes,
-    rulePackId: '',           // filled by fixUpImportedSystem / processor defaults
+    rulePackId: '',           // NOT filled by fixUpImportedSystem (it never reads it) - the LOAD path stamps the current pack when this is blank; see SystemView.isLoadableSystem
     rulePackVersion: '',
     tags: []
   };

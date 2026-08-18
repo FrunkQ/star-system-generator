@@ -1334,6 +1334,18 @@
 
 
 
+  // ONE gate for both load paths (a file and a bundled example). `rulePackId` is deliberately NOT part of
+  // it: the loader processes with the app's CURRENT pack whatever the file says, so the field is a
+  // record, not a requirement - and a blank one is common. V2 exported systems without it, and this
+  // app still writes '' on SpaceEngine and ubox imports and portrait systems, so demanding it here
+  // refused real files with the message 'missing' for a field that was present and empty. A blank
+  // id is stamped with the current pack on load, so the file records what actually processed it.
+  function isLoadableSystem(doc: any): boolean {
+    if (!doc || typeof doc !== 'object' || !doc.id || !doc.name || !Array.isArray(doc.nodes)) return false;
+    if (!doc.rulePackId) { doc.rulePackId = rulePack?.id ?? ''; doc.rulePackVersion = doc.rulePackVersion || rulePack?.version || ''; }
+    return true;
+  }
+
   async function handleLoadExample(event: CustomEvent<string>) {
     const fileName = event.detail;
     if (!fileName) return;
@@ -1344,7 +1356,7 @@
         throw new Error(`Failed to fetch ${fileName}`);
       }
       let newSystem = await response.json();
-      if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
+      if (isLoadableSystem(newSystem)) {
         // Keep the old ID to preserve starmap link
         const oldId = $systemStore?.id;
         if (oldId) {
@@ -1355,7 +1367,7 @@
         currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
       } else {
-        alert('Invalid system file. Missing system-specific properties.');
+        alert('Invalid system file: it needs an id, a name and a nodes array.');
       }
     } catch (err) {
       alert('Failed to parse JSON file.');
@@ -1436,7 +1448,7 @@
         } else {
           newSystem = JSON.parse(new TextDecoder().decode(raw));
         }
-        if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
+        if (isLoadableSystem(newSystem)) {
           // Keep the old ID to preserve starmap link
           const oldId = $systemStore?.id;
           if (oldId) {
@@ -1450,7 +1462,7 @@
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;
         } else {
-          alert('Invalid system file. Missing system-specific properties.');
+          alert('Invalid system file: it needs an id, a name and a nodes array.');
         }
       } catch (err) {
         alert('Failed to parse JSON file.');
