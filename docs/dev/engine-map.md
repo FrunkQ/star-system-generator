@@ -2215,6 +2215,12 @@ undo until the next one.
 (4) **CLOCK-DRIVEN WRITES GO THROUGH `silentSystemWrite`** - `maybeTopUpAutopilot` and
 `syncScheduledJourneysAtDisplayTime` in `SystemView`. Time is out of undo's scope; without the wrap
 the stack fills while a system sits idle.
+(5) **AN EDITOR THAT SEEDS ITS FIELDS ONCE PER BODY MUST ALSO RE-SEED ON AN UNDO.** `BodyStarTab`
+deliberately reads the body into its local fields only when a DIFFERENT body is selected, so that
+typing a precise mass is not snapped back by the next store tick - and an undo, which replaces the
+model underneath the open panel, left it showing the pre-undo numbers over a correct model. It now
+also watches `undoEpoch`. Found by driving the real app; no unit test could have seen it. Any future
+editor with the same seed-once guard needs the same second reason to re-read.
 ALSO: the stack caps on entries (200, Mappadux's number) AND on BYTES (32 MB), because one SSE
 snapshot is 70.9 KB for Sol against a fog polygon set in Mappadux - 200 entries of a 400-node system
 would be 144 MB. And the action boundary is `BodyBasicsTab.finalizeEdit()`, the release the editor
