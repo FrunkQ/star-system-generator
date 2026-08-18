@@ -385,24 +385,38 @@ not a preference, it is the V4 foundation.
 - **The rule-pack data pattern** — composition, liquids, cloud decks. The biosphere refresh should
   follow it rather than invent a fourth shape.
 
-## Surface areas — specified ahead of time, so V4 needs no design pass for them
+## Surface areas — PRE-V4 GROUNDWORK that generation is meant to build on
 
-**DESIGNED IN FULL, AND DEFERRED HERE WHOLE.** Owner, 2026-08-18, after reading
-the design: *"we don't need to implement this now if it's going to make little difference but
-critical for V4 — we can put to bed. Push it all to V4."* So this is not a caution about work
-happening now: it is a piece of V4 that is already specified and needs no design pass when it opens.
-`docs/dev/surface-areas-design.md` holds it — a frame (`body` / `spin` / `stellar` / `primary` /
-`orbital`) plus one of three closed-form shapes (cap-or-ellipse, band, lune), stacked as ordered
-paint rather than nested, with the area fraction DERIVED from the geometry. **Plate drift is the
-driving case and needs one new field, `drift: { bearing, rate }`, plus a widening of `centre` from
-a static pair to a time-evolving one.**
-**Two things in it are measured rather than argued, and are worth reading before any V4 surface
-work:** the engine ALREADY carries the four frames, spelled separately in four places, so the
-vocabulary is a naming exercise rather than an invention — and a world's surface age is currently
-its tectonic REGIME'S CONSTANT, which gives five distinct surface ages across all 40 bundled bodies
-and caps what any surface law can express. That second one is why terrain alone would not have
-fixed Ganymede (0.153 against a measured 0.35), and it is the first thing to fix when V4 opens this
-area. **The measurements were taken at v2.1.764-beta and want re-taking before use.**
+**RECLASSIFIED 2026-08-18.** Owner: *"this is Pre-V4 work as it lays groundwork for the advanced
+generation to work off."* It was briefly filed as deferred-to-V4; it is not. The record lands BEFORE
+V4 so that generation has something to build on rather than a design to do first.
+
+`docs/dev/surface-areas-design.md` holds it in full. In short: a region is an ANGULAR extent (a frame
+— `body` / `spin` / `stellar` / `primary` / `orbital` — plus a cap-or-ellipse, band or lune) times
+an optional RADIAL extent in body radii, where absent means the surface. Volume separates exactly,
+`V = ∫∫∫ r² dr dΩ`, so a surface area is the degenerate radial case and the same angular maths serves
+both. Areas stack as ordered paint rather than nesting, and every fraction is DERIVED from the
+geometry — solid angle and volume as separate named measures, never one field called `fraction`.
+
+**What generation gets from it:** terrain fractions and ages for a world's surface, and INTERIOR
+CHUNKS for a body that formation never fully mixed — the owner's case. Plate drift adds one field
+(`drift: { bearing, rate }`) and widens `centre` from static to time-evolving.
+
+**Three things in it are measured rather than argued, and are the reason it was written before the
+code:**
+- The engine ALREADY carries the four surface frames, spelled separately in four places.
+- It ALREADY carries a radial vocabulary too — `FluidLocation` is `surface | subsurface | interior`,
+  read by the dynamo to find its conductive layer.
+- **The dynamo sizes a core it cannot see**: `magnetism.ts` uses `cbrt(massMe)` as a core-size proxy
+  and needed a `metal > 0.5` escape hatch for Mercury. A proxy plus a special case is a missing
+  datum, and a real core radius is what replaces both.
+
+**And the limitation that caps everything downstream:** a world's surface age is currently its
+tectonic REGIME'S CONSTANT, giving five distinct surface ages across all 40 bundled bodies. That is
+why terrain alone would not have fixed Ganymede (0.153 against a measured 0.35), and it is phase 2 of
+the spec — pre-V4, and it stands alone.
+
+Measurements taken at v2.1.764 and v2.1.775-beta; re-take rather than trust them if this sits.
 
 ## Two warnings for whoever opens V4
 
@@ -427,5 +441,5 @@ These are the only parts of this file that affect anything before V4, and they a
 - **GEN-1 is now load-bearing, not housekeeping.** Anyone tempted to prune the evolutionary/Accrete
   path is deleting the V4 foundation.
 - **G17 stays shelved and stays linked here.** It is not a separate design job.
-- **Surface areas were considered for NOW and ruled to V4** — see the section above. Nothing
-  about them blocks or shapes work before then.
+- **Surface areas are PRE-V4 GROUNDWORK, not a V4 feature** — see the section above. Phases 1 and 2
+  of that spec are schedulable now and are what the advanced generation is meant to build on.

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.776-beta - 18th Aug 2026
+
+- Docs only. The surface-areas design gains a third dimension - depth, and height - so the one record describes a polar cap, an iron core, a subsurface ocean, a mantle plume and a beanstalk rather than only the outside of a world. It also moves from "deferred to V4" to groundwork that lands BEFORE it, since the advanced generation is meant to build on it.
+- Recorded with it: the magnetic-field model currently sizes a planet's core by the cube root of the whole body's mass, because it has no core radius to read - which is the concrete thing a depth-aware record fixes.
+
+
 ## v2.1.775-beta - 18th Aug 2026
 
 - **Undo now refreshes the STAR editor too.** Verified in the running app: an undo restored the model correctly while the open star panel kept showing the old mass, because that panel deliberately seeds its fields once per body so typing is not snapped back. An undo is now the other event that re-seeds it. Also confirmed live: the pill sits at the top of the system view and appears only once there is something to wind back, Ctrl+Z inside a text field leaves the model alone, switching system clears the history, and an open dialog on a phone hides the pill through the shared chrome rule.

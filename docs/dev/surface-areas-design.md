@@ -1,19 +1,20 @@
-# Surface areas — one record for "part of a world", and the seam V4 drift needs
+# Surface areas — one record for "part of a world", inside and out
+
+*Pre-V4 groundwork: the seam V4's generation builds on, including the third dimension.*
 
 Owner, 2026-08-17: *"we want this to be simple and extensible... defaulting to whole surface but can
 work in readable (sunward half, poles, equatorial belt, etc) terms and area — so we can have an area
 of the planet at a bearing and distance and a size. They may represent tectonic plates, a city, a
 quadrant, a hemisphere, etc."*
 
-> **STATUS: DESIGNED, AND DEFERRED WHOLE TO V4.** Owner, 2026-08-18: *"we don't need to implement this
-> now if it's going to make little difference but critical for V4 — we can put to bed. Push it all to
-> V4."* **Nothing in this document is scheduled.** The phases in §7 are the ORDER to take it in when
-> V4 picks it up, not a plan for now, and no part of it is waiting on anything today.
+> **STATUS: PRE-V4 GROUNDWORK.** Owner, 2026-08-18: *"this is Pre-V4 work as it lays groundwork for
+> the advanced generation to work off."* Reclassified from the previous day's "deferred whole to V4"
+> — the record lands BEFORE V4 so that V4's generation has something to build on rather than a
+> design to do first. **Each phase in §8 carries its own verdict**: the record and its maths are
+> pre-V4 and schedulable; the consumers and the renderer are V4.
 >
-> It was written early on purpose and that purpose still holds: the record below is what V4's plate
-> drift needs, and settling its shape while the reasoning was fresh costs nothing now and saves the
-> rediscovery later. The measurements in §1 are the part with a shelf life — they were taken at
-> v2.1.764-beta and should be re-taken before anyone builds on them.
+> The measurements in §1 and §5.3 were taken at v2.1.764-beta and v2.1.775-beta and should be re-taken
+> rather than trusted if this sits for long.
 
 **THE POINT OF WRITING THIS DOWN IS THE SEAM, NOT THE FEATURE.** Every derivation in the engine today
 assumes a body has ONE surface. That assumption is cheap to hold and expensive to unpick, and it is
@@ -63,7 +64,7 @@ motivating case.** Splitting it 60% at 2 Gyr / 40% at 4.5 Gyr and running both t
 ice-lag curve gives **0.153** against a measured 0.35 — barely better than the 0.13 it gets now. The
 curve's half-age (0.22 Gyr) is forced short because the three young icy moons all sit at exactly
 0.05, and that makes 2 Gyr and 4.5 Gyr indistinguishable to it. **Adding a second sample of a
-five-valued quantity adds no information.** Age resolution is the prerequisite; see §7 phase 2.
+five-valued quantity adds no information.** Age resolution is the prerequisite; see §8 phase 2.
 
 ### 1.4 And the resurfacing RATE is already the thing terrains sample
 
@@ -121,7 +122,7 @@ are the ones a GM would place by hand anyway.
 classical primitives of spherical geometry, and anchoring a region to a named frame rather than to
 inertial coordinates is what planetary ephemeris toolkits (SPICE and its kin) do with body-fixed vs
 sun-fixed frames. Anything that is not a cap, band or lune is a spherical polygon, and a polygon is a
-content-authoring system rather than a datum — see the guards in §6.
+content-authoring system rather than a datum — see the guards in §7.
 
 ### 2.1 Why ellipses rather than triangles
 
@@ -195,7 +196,98 @@ only needs its own weight. Three flat lists, no tree.
 
 ---
 
-## 5. What V4 adds — the drift seam
+## 5. The third dimension — depth, and height
+
+Owner, 2026-08-18: *"if we had a z-axis we can define zones within the planet to be used on
+composition (iron core and layering — we could spin the core and get the mag field properly sized).
+We could leave large masses as chunks... which may feed well into V4 generation where planets may not
+be 'fully mixed' after formation. Not needed by default, but it appears this system could be
+optionally extensible to include depth (and height for beanstalks)."*
+
+**Yes — and it is ONE system rather than two, because the maths factorises.**
+
+### 5.1 A region is an ANGULAR extent times a RADIAL extent
+
+Volume separates exactly: `V = ∫∫∫ r² dr dΩ`, so the angular and radial parts never interact.
+
+```
+solidAngleFraction = f(angular)                          ← §3, today's surface case
+volumeFraction     = f(angular) × (r₂³ − r₁³)            ← the same angular term, reused
+```
+
+A surface area is the degenerate case `radial = [1, 1]` — a shell of zero thickness at the surface.
+That is why this is an extension rather than a second system: **the angular half is untouched, and
+the radial half multiplies it.**
+
+Checked numerically rather than asserted: a core at `{0, 0.55}` is 0.1664 of the volume and its
+mantle at `{0.55, 1}` is 0.8336, summing to exactly 1; a subsurface ocean at `{0.9, 0.98}` is 0.2122,
+which is the right order for an icy moon whose shell holds most of its water; and a 20° plume over
+`{0.5, 1}` is 0.0264, the angular and radial terms multiplying cleanly.
+
+```ts
+export interface SurfaceArea {
+  frame: AreaFrame;
+  shape: AreaShape;
+  /** In body radii: 0 = centre, 1 = surface, > 1 = above it. ABSENT = the surface. */
+  radial?: { fromR: number; toR: number };
+}
+```
+
+Absent means the surface, which is exactly today's meaning, so nothing that exists has to say anything.
+
+| thing | record |
+|---|---|
+| the surface | `radial` absent |
+| iron core | whole-sphere angular, `radial: { fromR: 0, toR: 0.55 }` |
+| mantle | whole-sphere, `{ fromR: 0.55, toR: 1 }` |
+| subsurface ocean | whole-sphere, `{ fromR: 0.9, toR: 0.98 }` |
+| a mantle plume under a hotspot | `body`-frame cap × `{ fromR: 0.5, toR: 1 }` |
+| a tidal bulge | `primary`-frame cap × a radial range |
+| a beanstalk | a tiny `body`-frame cap × `{ fromR: 1, toR: 6.6 }` |
+| an orbital ring | a `spin`-frame band × `{ fromR: 1, toR: 6.6 }` |
+
+### 5.2 The radial vocabulary ALREADY EXISTS, exactly as the frames did
+
+`types.ts:51` — `FluidLayer { liquid, location, ... }` where `FluidLocation` is
+`'surface' | 'subsurface' | 'interior'`. Three coarse shells, spelled once, informal, and read by
+`deriveMagnetism` to find its conductive layer. **This is the same finding as §1.1**: the concept is
+already in the engine as a one-off vocabulary, and the record NAMES it rather than inventing it.
+
+### 5.3 The evidence that it pays: the dynamo sizes a core it cannot see
+
+`physics/magnetism.ts:114`:
+
+```ts
+const sizeF = Math.min(1.4, Math.max(0.3, Math.cbrt(massMe))); // bigger core → stronger
+```
+
+**The core's size is proxied by the cube root of the whole body's mass**, because the model carries a
+bulk metal fraction and no core radius. And it needed an escape hatch to survive contact with
+Mercury: the iron-core branch only fires via `mk.metal > 0.5`, added because "the layer model calls
+the core solid". **A proxy plus a special case is the signature of a missing datum** — the same shape
+as B68's one constant standing for a whole class (PHY-20).
+
+A radial zone carrying a real core radius, with the rotation the engine already derives, replaces
+both with a scaling law. That is the owner's *"spin the core and get the mag field properly sized"*,
+and it is the strongest single argument for the radial extent.
+
+### 5.4 THREE measures, never one `fraction`
+
+Solid angle, volume and mass are three different questions about one region, and a field called
+`fraction` that means whichever the caller assumed is PHY-2 exactly — correct for its purpose,
+published as a lie. So: `solidAngleFraction()` and `volumeFraction()` as separate named functions,
+and **no mass measure until there is a density profile to compute it from**. Mass fraction is not
+volume fraction on any differentiated body, which is every body this feature is for.
+
+### 5.5 Chunk first, refine later — a property, not a plan
+
+Owner: *"we would do maths on basic chunks and chunk finer for detail over time."* That already
+falls out: a coarse chunk is a region with wide extents, refining it means splitting one record into
+several, and **no consumer changes**, because they all read derived fractions rather than counting
+regions. An unmixed post-formation body from V4 generation is simply a body whose chunks were never
+merged.
+
+## 6. What V4 adds — the drift seam
 
 A tectonic plate IS a terrain area with a velocity:
 
@@ -216,7 +308,7 @@ propagator rather than inside the derivation passes.
 
 ---
 
-## 6. Guards — the three ways this stops being cheap
+## 7. Guards — the ways this stops being cheap
 
 1. **AREAS ARE WEIGHTS UNTIL THE RENDERER SAYS OTHERWISE.** Every physics consumer (albedo,
    cratering, weathering) wants an area-weighted mix and never asks where. The geometry can be
@@ -227,22 +319,40 @@ propagator rather than inside the derivation passes.
    is this codebase's most recurring fault.
 3. **NO POLYGONS, NO NESTING, NO PARENTING.** Cap, band, lune. If something needs an arbitrary
    outline it is a content system and wants its own design, not a wider `AreaShape`.
+4. **DO NOT BUILD THE INTERIOR MODEL WITH THE RECORD.** Layered composition and a real dynamo
+   scaling are their own design with their own anchors — Earth's core at 0.55 R, Mercury's at ~0.83,
+   Ganymede's field, Venus's absence. The record is cheap; the physics needs calibrating, and a
+   generalised consumer with nothing to calibrate against is a framework rather than a model.
+5. **CONSTRUCTS REFERENCE REGIONS; THEY DO NOT BECOME THEM.** A beanstalk is a construct anchored to
+   a region, not a region that grew construct fields. There is already a constructs system, and the
+   two must not grow into each other.
+6. **`toR > 1` IS FOR THINGS ANCHORED TO THE BODY** — a beanstalk, a ring, a shell. Not for
+   free-flying things: those have orbits, which the engine already models properly.
+
+**And the general form of guards 4-6, because the owner raised it directly** (*"do one system to
+suit all future use cases"*): that instinct is right for the RECORD and wrong for the CONSUMERS.
+Generalising the datum now is nearly free and saves unpicking later. Generalising the consumers
+produces something nobody can check against anything. Add consumers one at a time, each with an
+anchor that says it works.
 
 ---
 
-## 7. THE SPEC — what to build, in what order, with the blast area of each
+## 8. THE SPEC — what to build, in what order, with the blast area of each
 
-### Phase 1 — the seam. Blast area: ZERO behaviour change.
+### Phase 1 — the seam. **PRE-V4.** Blast area: ZERO behaviour change.
 
 **Goal: the record exists, the maths exists, the aggregate is preserved, and no derived number
 moves.** The fixture being byte-identical is the acceptance test. It is written as a standalone step
 so that it CAN be taken on its own if V4 wants the seam before the rest — not because it should be.
 
-1. `src/lib/physics/surfaceAreas.ts` — the `AreaFrame` / `AreaShape` / `SurfaceArea` types from §2,
-   plus `areaFraction(shape)` implementing §3 and `stackWeights(areas)` implementing §4.
+1. `src/lib/physics/surfaceAreas.ts` — the `AreaFrame` / `AreaShape` / `SurfaceArea` types from §2
+   INCLUDING the optional `radial` extent from §5, plus `solidAngleFraction(shape)` implementing §3,
+   `volumeFraction(area)` implementing §5.1, and `stackWeights(areas)` implementing §4.
 2. `surfaceAreas.spec.ts` — the closed forms against the sanity values in §3 (hemisphere 0.5, whole
-   sphere 1, 30° cap 0.067, 90° lune 0.25), the paint-over rule, and the readable-term table in §2
-   round-tripping to the fractions it should.
+   sphere 1, 30° cap 0.067, ±23° band 0.391, 90° lune 0.25), the ellipse degenerating EXACTLY to the
+   cap when its axes match, the paint-over rule, the readable-term table in §2 round-tripping to the
+   fractions it should, and the radial factorisation of §5.1 — a whole-sphere shell of `{0, 0.55}` is
+   0.1664 of the volume and its complement 0.8336, and `radial` absent leaves every surface answer unchanged.
 3. `GeoActivity` gains `terrains?: Array<{ area: SurfaceArea; ageGyr: number }>` — OPTIONAL.
 4. `deriveSurfaceAgeGyr` unchanged. Where `terrains` is present, `surfaceAgeGyr` becomes the
    stack-weighted mean of the terrain ages; where it is absent — which is every body today — the
@@ -260,7 +370,7 @@ of them because the aggregate is preserved:
 - `core/SystemProcessor.ts:1190` — the `surface/age` tag
 - `physics/physicsTrace.ts:545,581` — the Newton explainer
 
-### Phase 2 — age resolution. The measured prerequisite for anything downstream.
+### Phase 2 — age resolution. **PRE-V4, and stands alone.** The measured prerequisite for anything downstream.
 
 Nothing in phase 3 changes a number until this lands (§1.3). The work: an ACTIVE world's surface age
 is currently its regime's constant; it should be **sampled from the regime's resurfacing RATE** and
@@ -273,7 +383,7 @@ whoever builds it rather than for now: does the resurfacing rate produce a DISTR
 ages (§1.4), or still one number? Earth is the case that argues for a distribution — ocean floor
 under 0.2 Gyr against continental crust over 2, which a single figure flattens.
 
-### Phase 3 — consumers mix over the stack.
+### Phase 3 — consumers mix over the stack. **V4.**
 
 Albedo, crater density and weathering weight per terrain instead of reading the aggregate. Roughly
 ten lines each. Ganymede is the acceptance case and only becomes reachable after phase 2.
@@ -282,19 +392,24 @@ ten lines each. Ganymede is the acceptance case and only becomes reachable after
 so no new coupling — but read the whole derived diff, because everything downstream of equilibrium
 temperature moves (B68 moved five bodies and four tags this way).
 
-### Phase 4 — the renderer, and generation.
+### Phase 4 — the renderer, the interior model, and generation. **V4.**
 
-The renderer paints the stack; generation derives terrain fractions from the history it already
-invents (a tidally heated moon resurfaces a fraction recently; an episodic-lid world is
+The renderer paints the stack; the interior model gives the dynamo a real core radius instead of
+`cbrt(massMe)` (§5.3); generation derives terrain fractions — and, for an unmixed body, interior
+chunks — from the history it already invents (a tidally heated moon resurfaces a fraction recently; an episodic-lid world is
 catastrophically bimodal, which is the two-terrain shape the engine already classifies ~24 bodies
 into). Scope deliberately: this is where the cost is, and it is separable from all of the above.
 
 ---
 
-## 8. What this does NOT do
+## 9. What this does NOT do
 
 - It does not fix Ganymede. Phase 2 does (§1.3).
 - It does not change any number on any body in phase 1, by construction.
+- It does not build the interior model, only the record that will hold one. The dynamo keeps sizing
+  its core with `cbrt(massMe)` until phase 4 (§5.3).
+- It does not give mass fractions. Volume and mass differ on any differentiated body, which is every
+  body this is for, and mass needs a density profile that does not exist yet (§5.4).
 - It does not model dust sources, E-ring coating or exogenous resurfacing — Mimas is the largest
   albedo error left in the Solar System (0.496 against a measured 0.96) and its cause is Enceladus's
   E-ring plating it, which is a whole-body coating rather than an area. Iapetus (0.531 against 0.20)
