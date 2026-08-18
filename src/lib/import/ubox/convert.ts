@@ -1,6 +1,7 @@
 // Universe Sandbox (.ubox) import — entities → SSG System (authored inputs only). Design §7.
 import { G, AU_KM } from '$lib/constants';
-import { getStarLifespanGyr } from '$lib/physics/stellar-evolution';
+import { guessSystemAge } from '$lib/physics/systemAge';
+import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
 import type { System, CelestialBody } from '$lib/types';
 import { parseVec3, parseQuat, cleanHorizonId } from './parse';
 import { obliquityDeg, rotationHoursFromAngularVelocity, type V3 } from './kepler';
@@ -67,15 +68,6 @@ export function resolveCategory(e: UsEntity): 'star' | 'planet' | 'moon' | 'sso'
   return null;
 }
 
-function starClassFromTemp(tempK: number): string {
-  if (tempK >= 30000) return 'star/O';
-  if (tempK >= 10000) return 'star/B';
-  if (tempK >= 7500) return 'star/A';
-  if (tempK >= 6000) return 'star/F';
-  if (tempK >= 5200) return 'star/G';
-  if (tempK >= 3700) return 'star/K';
-  return 'star/M';
-}
 
 function percentile(sorted: number[], p: number): number {
   if (!sorted.length) return 0;
@@ -152,7 +144,8 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
   }
 
   // --- System age (design §7.4) ---
-  const age_Gyr = resolveAge(rootStarEntity, assumptions);
+  const age = resolveAge(rootStarEntity, assumptions);
+  const age_Gyr = age.ageGyr;
 
   // --- Ring aggregation (design §7.6) ---
   aggregateRings(particles, entityById, placementById, nodeId, nodes, counts, skipped, assumptions);
@@ -165,6 +158,8 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     seed: `us-${simHash}`,
     epochT0: nowMs,
     age_Gyr,
+    ageEstimated: age.estimated,
+    ageBandGyr: age.band,
     nodes,
     rulePackId: '',           // filled by fixUpImportedSystem / processor defaults
     rulePackVersion: '',
@@ -226,10 +221,19 @@ function buildNode(
     } else {
       const tempK = heat?.SurfaceTemperature ?? 5778;
       node.temperatureK = tempK;
-      node.classes = [starClassFromTemp(tempK)];
       if (typeof cel?.Luminosity === 'number' && cel.Luminosity > 0) {
         (node as CelestialBody & { radiationOutput?: number }).radiationOutput = cel.Luminosity / L_SUN;
       }
+      // ONE classifier for every importer (physics/importedStarClass.ts). Universe Sandbox states no
+      // spectral type, so this is the pure inference path. The converter has no rule pack, so it
+      // emits the honest BAND KEY (letter from temperature, L/T/Y aware; luminosity class from
+      // temperature+radius where the fallback ladder can say, else main sequence) and leaves
+      // `autoClassify` on; `importFixup.resolveLegacyStarClass`, which has the pack, then resolves the
+      // full designation against the pack's own bands. Replaces a private ladder that stopped at M.
+      const cls = resolveImportedStarClass({ temperatureK: tempK, radiusKm: node.radiusKm, massKg,
+        luminositySolar: (node as any).radiationOutput });
+      node.classes = [cls.bandKey];
+      (node as any).autoClassify = true;
     }
   } else {
     // Planets/moons: makeup, atmosphere, hydrosphere from depots
@@ -328,24 +332,23 @@ function hydrosphereFromWater(waterMass: number, radiusM: number): import('$lib/
   return { composition: 'water', coverage: +coverage.toFixed(3) };
 }
 
-function resolveAge(rootStar: UsEntity | null, assumptions: string[]): number {
+function resolveAge(rootStar: UsEntity | null, assumptions: string[]): { ageGyr: number; estimated: boolean; band: [number, number] } {
+  // ONE age model for every importer (physics/systemAge guessSystemAge). Universe Sandbox stores an
+  // age on the star, so a stated age wins when the star can be that old; else the guess is from the
+  // primary's own life with the band it makes reasonable. Both are surfaced to the GM.
   if (!rootStar || !(rootStar.Mass ?? 0 > 0)) {
-    assumptions.push('System age assumed 4.6 Gyr (no star found to date the system) — set it in System Settings.');
-    return 4.6;
+    assumptions.push('NO STAR FOUND in this simulation, so nothing dates the system and nothing anchors the planets. If your scene has a star, check its Category in Universe Sandbox; otherwise add one in the infill step. The galactic-median age is used meanwhile.');
+    const g = guessSystemAge(null);
+    return { ageGyr: g.ageGyr, estimated: true, band: g.bandGyr };
   }
-  const lifespan = getStarLifespanGyr(rootStar.Mass!);
   const storedAge = typeof rootStar.Age === 'number' && rootStar.Age > 0 ? rootStar.Age / GYR_S : null;
-  if (storedAge !== null) {
-    if (storedAge > lifespan) {
-      const capped = Math.min(4.6, 0.5 * lifespan);
-      assumptions.push(`System age ${storedAge.toFixed(2)} Gyr exceeds the primary star's ~${lifespan.toFixed(2)} Gyr lifespan; clamped to ${capped.toFixed(3)} Gyr. Set it in System Settings.`);
-      return capped;
-    }
-    return +storedAge.toFixed(3);
-  }
-  const fallback = Math.min(4.6, 0.5 * lifespan);
-  assumptions.push(`System age assumed ${fallback.toFixed(3)} Gyr from the primary's stellar type — set it in System Settings.`);
-  return fallback;
+  const heat = component(rootStar, 'HeatComponent');
+  const g = guessSystemAge({
+    massKg: rootStar.Mass!, temperatureK: heat?.SurfaceTemperature,
+    classes: [], statedAgeGyr: storedAge,
+  });
+  if (g.source === 'stated-clamped' || g.estimated) assumptions.push(`System age: ${g.note} Set it in System Settings.`);
+  return { ageGyr: g.ageGyr, estimated: g.estimated, band: g.bandGyr };
 }
 
 function aggregateRings(

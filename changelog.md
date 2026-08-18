@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.793-beta - 18th Aug 2026
+
+- **Every importer now classifies stars the same way, and a G giant is no longer a G dwarf.** Universe Sandbox, SpaceEngine and Traveller each had their own spectral-class ladder; all stopped at M, and SpaceEngine kept only the first letter of the full class it was handed — so "K3III" imported as a K dwarf — and defaulted anything it did not recognise to G. One resolver now serves all three: a stated designation is kept as written (its luminosity class included, folded to the pack's bands); a bare letter gets its class inferred from the star's temperature and radius when it has them — a K giant is forty times the radius of a K dwarf at the same temperature — and defaults to main sequence when it does not; with no stated type the letter comes from temperature through the pack, brown dwarfs included; nothing usable is left honestly unclassified rather than guessed. Where a stated class contradicts the physics, the stated one is kept and the disagreement is noted.
+
+- **Every importer now dates a system the same way too.** Universe Sandbox and SpaceEngine used a flat 4.6 billion years when nothing better was to hand; Traveller rolled a random age between 1 and 10 whatever the star. All three now use the shared star-aware guess with its reasonable band, marked as estimated so you know it is one. Where the source states an age it wins if the star can be that old.
+
+- Universe Sandbox: an import with no star now says so plainly and points at the fix, instead of quietly reporting 4.6 billion years.
 ## v2.1.792-beta - 18th Aug 2026
 
 - Docs only. The band editor's range must follow the engine's grid (280-1400 nm today, near-UV to near-IR) rather than hard-code it, so the editors extend with the physics.

@@ -1,4 +1,6 @@
 import { TravellerDecoder } from './decoder';
+import { guessSystemAge } from '$lib/physics/systemAge';
+import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
 import { SeededRNG } from './rng';
 import { bodyFactory } from '$lib/core/BodyFactory';
 import { _generateStar } from '$lib/generation/star';
@@ -145,38 +147,16 @@ export class TravellerImporter {
         while (i < tokens.length) {
             const token = tokens[i];
             
-            // 1. Standalone Types
-            if (token === 'BD') { starEntries.push('star/L'); i++; continue; }
-            if (token === 'D') { starEntries.push('star/WD'); i++; continue; } // Generic White Dwarf
-            if (token === 'NS' || token === 'PSR') { starEntries.push('star/NS'); i++; continue; }
-            if (token === 'BH') { starEntries.push('star/BH'); i++; continue; }
-            
-            // 2. Standard Spectral Type (e.g. F7, M0, G2)
+            // ONE classifier for every importer (physics/importedStarClass.ts). Traveller states its
+            // stars fully — "F7 V", "K2 III", "M1 Ib", "D", "BD", "NS" — and this parser always kept the
+            // luminosity class; what it lacked was the shared normalisation (a bare "G" defaults to
+            // MAIN SEQUENCE, never a guessed giant; Ia/Ib/II fold to the supergiant band, IV to the
+            // dwarf band; an unrecognised token is star/unknown, never pushed through as-is).
             const nextToken = tokens[i+1];
-            
-            if (nextToken && luminosityRegex.test(nextToken)) {
-                // Explicit Luminosity Class found (e.g. "F7" + "V")
-                // Handle special case where 'D' is luminosity class for White Dwarf (e.g. "A0 D")
-                if (nextToken === 'D') {
-                    starEntries.push('star/WD'); // Map to generic WD or keep spectral? 
-                    // Traveller often uses just "D" for the star, or "A0 D".
-                    // Our system uses 'star/WD'. Let's stick to that for simplicity.
-                } else {
-                    starEntries.push(`star/${token}${nextToken}`);
-                }
-                i += 2;
-            } else {
-                // No luminosity class found. 
-                // Implicit "V" (Main Sequence) or just a single token type?
-                // If it looks like a spectral type (Letter + Number), assume V.
-                if (/^[OBAFGKMLT][0-9]?$/.test(token)) {
-                    starEntries.push(`star/${token}V`);
-                } else {
-                    // Unknown token? Just push it as is, maybe it's a custom type.
-                    starEntries.push(`star/${token}`);
-                }
-                i++;
-            }
+            const stated = (nextToken && luminosityRegex.test(nextToken)) ? `${token} ${nextToken}` : token;
+            const cls = resolveImportedStarClass({ stated }, rulePack);
+            starEntries.push(cls.classKey);
+            i += (stated === token) ? 1 : 2;
         }
 
         const nodes: (CelestialBody | Barycenter)[] = [];
@@ -650,12 +630,19 @@ export class TravellerImporter {
         // Traveller trade code `Sa` = main world is a satellite of a larger world.
         this.applySatelliteTradeCodeIfNeeded(nodes, mainWorld, data, systemRootId);
 
+        // THE AGE WAS A RANDOM ROLL between 1 and 10 Gyr, whatever the star. An O star does not live 10
+        // Gyr; an M dwarf is not typically 1. One age model for every importer now (physics/systemAge):
+        // guessed from the PRIMARY star's own life, with the band it makes reasonable, and marked
+        // estimated so the GM knows it is a guess. Traveller states no age, so it is always a guess.
+        const ageGuess = guessSystemAge(primaryStar ? { massKg: primaryStar.massKg, temperatureK: primaryStar.temperatureK, classes: primaryStar.classes } : null);
         const system: System = {
             id: systemId,
             name: data.name,
             seed: seed,
             epochT0: 0,
-            age_Gyr: this.rng.range(1, 10),
+            age_Gyr: ageGuess.ageGyr,
+            ageEstimated: ageGuess.estimated,
+            ageBandGyr: ageGuess.bandGyr,
             nodes: nodes,
             rulePackId: rulePack.id,
             rulePackVersion: rulePack.version,

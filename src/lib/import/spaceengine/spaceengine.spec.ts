@@ -36,10 +36,12 @@ describe('spaceengine convert — Sol fixture', () => {
   const result = convertSc([solMini()]);
   const sys = result.system;
 
-  it('Sun is the root star (G class, 5778 K, no orbit)', () => {
+  it('Sun is the root star (G2V as SpaceEngine states it, 5778 K, no orbit)', () => {
     const sun = node(sys, 'Sun');
     expect(sun.roleHint).toBe('star');
-    expect(sun.classes).toEqual(['star/G']);
+    // SpaceEngine states the FULL class ("G2V"); the importer used to keep only the letter, so a K
+    // giant imported as a K dwarf. The designation is now kept as written, with its band beside it.
+    expect(sun.classes).toEqual(['star/G2V', 'star/G']);
     expect(sun.temperatureK).toBe(5778);
     expect(sun.orbit).toBeUndefined();
     expect(sun.parentId).toBeNull();

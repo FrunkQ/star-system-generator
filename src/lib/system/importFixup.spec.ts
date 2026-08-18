@@ -236,7 +236,11 @@ describe('resolving a legacy star class', () => {
 
   it('reclassifies a star the ENGINE made, because that is a readout of its physics', () => {
     // autoClassify is the same flag SystemProcessor uses to decide whose data a class is.
-    expect(run(starAt(['star/K'], 5260, 696000, { autoClassify: true }))[0]).toMatch(/^star\/G\dV$/);
+    // 5500 K is a G8 by the pack's own anchors (G9 = 5340, K0 = 5280). This used to say 5260 K, which
+    // the OLD hardcoded ladder called G (its boundary was 5200) and the pack calls K0 — the pack is
+    // right (a real K0V is ~5240-5280 K), and the letter now comes from the pack, so the fixture moved
+    // off the boundary it was accidentally testing.
+    expect(run(starAt(['star/K'], 5500, 696000, { autoClassify: true }))[0]).toMatch(/^star\/G\dV$/);
   });
 
   it('promotes a bare letter to a GIANT when the radius says so, on an engine-made star', () => {

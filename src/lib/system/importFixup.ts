@@ -265,7 +265,8 @@ function resolveLegacyStarClass(body: CelestialBody, pack?: RulePack): void {
   const band = authored
     ? (parts.band ?? 'V')
     : (luminosityClassFromPosition(pack, { temperatureK: tempK, radiusSolar }) ?? parts.band ?? 'V');
-  const letter = authored ? parts.letter : (starClassParts(`star/${determineSpectralClass(tempK)}`).letter ?? parts.letter);
+  // The pack's anchors carry L/T/Y; without them the ladder ends at M and a brown dwarf reads as one.
+  const letter = authored ? parts.letter : (starClassParts(`star/${determineSpectralClass(tempK, pack)}`).letter ?? parts.letter);
   const key = starClassKeyFor({ letter, tempK, band }, pack);
   if (key === held) return;
   body.classes = [key, ...(body.classes ?? []).slice(1).filter((c) => c !== key)];
