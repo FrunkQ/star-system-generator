@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.789-beta - 18th Aug 2026
+
+- Docs only. The spectra decision recorded (gas-editor bands now; species vision and reflectance specified now for 3.1; full EM before V4), the gas-editor item routed, and the owner's own generation-and-importer work noted so nothing is routed under it.
+
 ## v2.1.788-beta - 18th Aug 2026
 
 - Docs only. The owner's spectra question captured with the tree measured against it: one spectral vocabulary already exists and the light chain runs on it; the gas editor hides the absorption bands it derives from (a small item); species-parametrised vision is a presentation-only swap at the one human step; full EM is a second model, not a constants change.
