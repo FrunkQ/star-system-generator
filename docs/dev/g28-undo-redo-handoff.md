@@ -1,7 +1,7 @@
 # G28 — Undo/redo: handoff for a fresh session
 
 Written 2026-08-17 by the coordinator, from inbox [[G28]] with every claim below re-verified in the
-tree at v2.1.739-beta on the same day. This is the whole brief; the inbox entry is the history.
+tree at v2.1.739-beta, and re-checked at v2.1.772-beta on 2026-08-17 (line numbers below are the 772 ones). This is the whole brief; the inbox entry is the history.
 
 **One sentence:** a floating undo/redo that winds back a GM's authored edits and lets `process()`
 re-derive everything else — built by copying Mappadux's `CanvasUndoManager`, taking the "before" from a
@@ -9,7 +9,7 @@ shadow copy because SSE has no setter layer, using the slider-release boundary t
 has, and STRIPPING the history on export, share and broadcast.
 
 Owner decisions already taken (do not re-open): V3, in the welcome list as `coming`
-(`src/lib/components/WelcomeModal.svelte:70`, blurb "Hallelujah." — his, keep it); "we only need to
+(`src/lib/components/WelcomeModal.svelte:78`, blurb "Hallelujah." — his, keep it); "we only need to
 revert a value and recalculate — a list of changed values since last save; maybe keep the last 20 in the
 save file"; "look at mappadux — worked great there"; "IDLE_GAP_MS = 250 needs us to just store the
 value once the user has moved on as 1 value."
@@ -28,7 +28,7 @@ value once the user has moved on as 1 value."
 
 ## What is true in the tree today (verified 2026-08-17)
 
-**There is no undo anywhere.** `grep -rli undo src` hits only prose ("This can't be undone", a ring
+**There is no GENERAL undo anywhere.** ONE specific, single-shot undo exists and is NOT yours: `src/lib/starmapStorage.ts:127-136` (`savePreUpgradeStarmap` / `loadPreUpgradeStarmap`) restores the pre-upgrade campaign snapshot from Settings, and its own comment says *"a single, specific undo for a single, specific action."* Leave it exactly as it is; do not absorb it into the history and do not reuse its storage key. `src/lib/ui/foreground.ts:44` already names your pill: *"A NEW FLOATING CONTROL (G28's undo/redo pill is the next one) takes `use:chrome`, NOT `use:foreground`."* `grep -rli undo src` hits only prose ("This can't be undone", a ring
 "has to undo the column offset"). No `<svelte:window on:keydown>` in `src/routes/+page.svelte` or
 `SystemView.svelte` — check `AppShell.svelte` and the modals before adding a global key handler.
 
@@ -36,9 +36,9 @@ value once the user has moved on as 1 value."
 `dispatch('update')` sites in the components funnel through a handful of consumers in
 `src/lib/components/SystemView.svelte`:
 
-- `:911 handleBodyUpdate` — receives the (already mutated) body, splices it in, calls
-  `systemProcessor.process(...)` at `:944`, and sets the store with `isManuallyEdited: true`.
-- `:804 handleConstructUpdate` — same shape for constructs.
+- `:912 handleBodyUpdate` — receives the (already mutated) body, splices it in, calls
+  `systemProcessor.process(...)` at `:945`, and sets the store with `isManuallyEdited: true`.
+- `:805 handleConstructUpdate` — same shape for constructs.
 - add / delete / other structural edits set the store at `:614`, `:1306`, `:1311`, `:1337`, `:1432`,
   `:1451`, `:1177`.
 - Load, switch and rename set it from `src/routes/+page.svelte:436`, `:1103`, `:1113`, `:1598`,
@@ -66,8 +66,8 @@ authored inputs). Diff `stripBody(before)` against `stripBody(after)`, or the eq
 derived churn is invisible to the log for free. Do not write a second list of authored fields.
 
 **Export has ONE strip function and the history must go through it.** `stripStarmapForExport`
-(`importFixup.ts:309`) is what `+page.svelte:1640` calls before packing a starmap; the system save at
-`SystemView.svelte:1378` builds `systemToSave` and calls `packBundle('system', ...)`. Both are the place
+(`importFixup.ts:309`) is what `+page.svelte:1654` calls before packing a starmap; the system save at
+`SystemView.svelte:1379` builds `systemToSave` and calls `packBundle('system', ...)`. Both are the place
 to drop the history. `src/lib/io/bundle.spec.ts` is the round-trip test to extend.
 
 **Persistence is the campaign object in IndexedDB**: `src/lib/starmapStorage.ts:106 saveStarmap`. If
@@ -111,10 +111,7 @@ focus is in an input, textarea or contenteditable so the browser's own text undo
 OUT, stated in the module header the way Mappadux does: starmap-level edits (`starmapStore`),
 player-view presets, settings, time. Add later if the user finds the gap.
 
-**Placement warning.** [[A52]] (unbuilt) will make the persistent chrome COLLAPSE when idle and HIDE
-when a foreground UI is open on mobile, defined by a shared wrapper. Do not add a third floating thing
-with its own hide logic; put the pill where that wrapper can take it and say so in the entry. If A52
-lands first, use its wrapper.
+**Placement — A52 IS BUILT (v2.1.762, engine-map UI-C6), so this is now a one-liner:** `src/lib/ui/foreground.ts` exports two Svelte actions. A dialog marks its backdrop `use:foreground`; persistent chrome marks itself `use:chrome`, and one CSS rule at the foot of `styles/tokens.css` hides `.sse-chrome` when a foreground UI is open on a phone. NEITHER SIDE KEEPS A LIST. So the undo pill marks itself `use:chrome` and is covered — hidden under an open dialog on a phone, present otherwise. Do not write any hide logic of your own. See `foreground.spec.ts` for the pattern, and the floating time control in `SystemView.svelte` for a sibling that already does this.
 
 ## Acceptance
 
@@ -144,7 +141,7 @@ lands first, use its wrapper.
    share and broadcast` — WHERE / RULE / WHY / BLAST, the file's format), same commit as the code.
 5. Changelog line prepended AFTER "All notable changes are listed here:", version bumped, build green,
    push beta.
-6. `WelcomeModal.svelte:70`: remove `pending: 'coming'` ONLY when the owner has seen it work.
+6. `WelcomeModal.svelte:78`: remove `pending: 'coming'` ONLY when the owner has seen it work.
 7. Documentation-debt line in the inbox naming which user doc needs the feature described, and the
    [[G28]] status cell updated with the version.
 

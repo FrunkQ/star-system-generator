@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.773-beta - 17th Aug 2026
+
+- Docs only. The undo/redo brief re-checked against the tree at 772 and released to a fresh session: the pill registers through the chrome action A52 built, and the one existing single-shot undo (the pre-upgrade snapshot) is named so it is left alone.
+
 ## v2.1.772-beta - 18th Aug 2026
 
 - **Default generation now aims at a Solar-System-shaped result.** With every slider left alone a Sun-like star produces a median of seven planets (commonly four to ten), the innermost near 0.28 AU, three of them inside the habitable zone's inner edge, and an outermost around 11 AU. Four systems in five contain a world in the habitable zone, and about half carry a gas giant beyond the frost line. The mix runs roughly half rocky, a third icy and the rest gassy.
