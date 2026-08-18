@@ -2181,6 +2181,34 @@ WHY: an owner decision — one colour to set, variation for free. A second requi
 considered and rejected; if per-faction control is ever wanted, the lever is pack DATA.
 BLAST: adding another colour field to a construct. Ask whether it can be derived first.
 
+### UI-C8 Lifting a control OUT of the component that owns the data breaks two things silently
+WHERE: `components/AbsorptionBandsEditor.svelte` (+ its spec), used by `EditBiospheresModal` (pigment
+bands) and `EditAtmospheresModal` (per-gas `absorptionBands`). Both traps are pinned by tests.
+RULE: a shared editor bound to a list must (1) RE-ASSIGN on every edit, never mutate a member, and
+(2) tell the parent it changed. Mutating `bands[i].centreNm` in place does not propagate out through
+`bind:bands`, so the number in the box changes while everything derived from it goes stale; and a
+parent whose reactivity keys off a CONTAINER (`pigments`, `gases`) has to nudge that container itself,
+because only it knows what the container is. The inline version had neither problem — its bindings
+reached the parent's own array directly — which is exactly why extracting it is where they appear.
+WHY: A56. The pigment swatch and score stopped recomputing while a band was edited; the same shape
+would have left the gas preview curve frozen. **AND A SECOND, WORSE ONE THAT REACHED THE SAVED DATA:**
+`bind:bands` on a gas with NO authored bands wrote the editor's `[]` default into the record, and `[]`
+is not the same JSON as an ABSENT key — so `handleSave`'s diff-against-the-pack judged 17 of 33 gases
+changed and wrote overrides for every one of them. **A GM who merely OPENED the editor and pressed
+save got a campaign pinned to today's pack for gases they never touched**, which is precisely what the
+delta design exists to prevent (UI-C5). Nothing reported it: the build was green and the UI looked
+right. It was found by reading the SAVED CAMPAIGN after a save, which is the only place it shows.
+BLAST: any editor that binds to an optional list. Give the component a default of `[]` if you like,
+but STRIP THE EMPTY LIST BEFORE DIFFING or absent and empty become two states of one thing. Check a
+save by reading storage, not by looking at the screen. And when extracting a control, the STYLES must
+travel with it — Svelte scopes per component, so markup lifted out of a parent loses the parent's CSS
+silently and the acceptance test 'unchanged' quietly fails.
+ALSO: **ONE CHART AT A TIME.** The gas cards are all expanded at once (no accordion, unlike the pigment
+list), so a `SpectrumChart` per card renders 33 plots on open. The band ROWS are cheap; the plot is not.
+The component takes its `absorbed` series as a PROP and derives nothing — same rule `SpectrumChart`
+states for itself — which is also what lets the pigment curve keep its flat baseline term while the
+gas curve, which has no such term, does not.
+
 ### UI-C6 On a small screen an open dialog gets the screen; BOTH SIDES declare themselves
 WHERE: `src/lib/ui/foreground.ts` (`foreground` and `chrome` actions, pinned by `foreground.spec.ts`),
 joined by ONE rule at the foot of `styles/tokens.css`. Chrome markers: `AppShell.svelte` (strip, bar,

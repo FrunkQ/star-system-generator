@@ -218,6 +218,7 @@ export function deriveVegetation(
       // settlement's lights as well as shrinking them, and a 10% world came out invisible. A city is
       // as bright as a city whatever share of the planet it covers.
       light,
+      lightHex: def.lightHex,
       waterReach: Math.max(0, Math.min(1, def.waterReach ?? 0.1))
     });
   }

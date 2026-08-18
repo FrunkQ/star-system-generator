@@ -3,6 +3,9 @@
   import type { Starmap, RulePack } from '$lib/types';
   import { allLiquids } from '$lib/physics/liquids';
   import { foreground } from '$lib/ui/foreground';
+  import AbsorptionBandsEditor from './AbsorptionBandsEditor.svelte';
+  import { blackbodySpectrum, gridShare, GRID_NM } from '$lib/physics/spectrum';
+  import { bandAbsorbance } from '$lib/physics/surfaceSpectrum';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -21,6 +24,27 @@
   let defaultCompositions = new Set<string>();
   const greenhouseFactorHelp = 'Relative warming potency for this gas. Higher values add more greenhouse heating at the same partial pressure. This is a model coefficient, not direct Kelvin.';
   const shieldingFactorHelp = 'Radiation blocking strength per bar for this gas. Used in transmission = exp(-(factor x pressure_bar)). Higher values block more incoming radiation.';
+  const rayleighHelp = 'Rayleigh scattering cross-section RELATIVE TO N2 — the visible-light analogue of shielding, which is the ionising one. Blank = 1, i.e. treat it like nitrogen. CO2 scatters about 2.4x as hard, H2 about 0.2x, which is why a thick CO2 sky is not simply a thicker blue one.';
+
+  // A56 — THE BAND PREVIEW. Same idea as the pigment editor's preview star: the chart is drawn by
+  // the ENGINE's own band maths from whatever is in the boxes right now, so moving a centre and
+  // watching the notch move is the fastest way to understand what the numbers mean.
+  //
+  // ONE CHART AT A TIME, and that is not cosmetic: every gas card is expanded at once (there is no
+  // accordion here, unlike the pigment list), so binding a chart to each would render 33 of them on
+  // open. The rows are cheap; the plot is not.
+  let previewTempK = 5778;
+  let previewGas: string | null = null;
+  $: previewLight = blackbodySpectrum(previewTempK, 1361 * gridShare(previewTempK));
+  // Absorbed fraction at ONE EARTH-LIKE COLUMN of this gas, which is the unit the pack's strengths are
+  // authored in (`surfaceSpectrum` multiplies by the real column ratio x mixing fraction). Same
+  // transmittance law as the engine, exp(-tau), so the notch depth here is the notch depth there.
+  $: previewAbsorbed = (() => {
+    if (!previewGas) return null;
+    const bands = gases[previewGas]?.absorptionBands;
+    if (!bands?.length) return null;
+    return GRID_NM.map((nm, i) => previewLight[i] * (1 - Math.exp(-bandAbsorbance(nm, bands))));
+  })();
 
   onMount(() => {
     // Load Defaults
@@ -50,6 +74,16 @@
     }
   });
 
+  // A56. `bind:bands` on a gas with no authored bands writes the editor's `[]` default back into the
+  // record, and `[]` is not the same JSON as an ABSENT key — so without this every band-less gas
+  // (17 of 33) compared unequal to the pack and was written out as an override the GM never made.
+  // An empty list means "no bands", which is exactly what absent already meant: drop it before diffing.
+  function withoutEmptyBands(val: any) {
+    if (!val || !Array.isArray(val.absorptionBands) || val.absorptionBands.length) return val;
+    const { absorptionBands, ...rest } = val;
+    return rest;
+  }
+
   function handleSave() {
     const overrides: any = {};
     
@@ -57,7 +91,8 @@
     const gasOverrides: Record<string, any> = {};
     let hasGasOverrides = false;
     
-    Object.entries(gases).forEach(([key, val]) => {
+    Object.entries(gases).forEach(([key, raw]) => {
+        const val = withoutEmptyBands(raw);
         const defaultVal = rulePack.gasPhysics?.[key];
         if (!defaultVal || JSON.stringify(defaultVal) !== JSON.stringify(val)) {
             gasOverrides[key] = val;
@@ -269,6 +304,10 @@
                             {/if}
                         </div>
                         <div class="item-body">
+                            <!-- A56: two headings, so a GM can tell what the engine COMPUTES FROM from what it
+                                 merely draws with. No fields were moved between meanings; cloud formation sits
+                                 with derivation because it gates whether a deck forms at all. -->
+                            <h4 class="group-head" title="The engine reads these to work out what the sky does to light, heat and radiation.">Derivation &mdash; what the physics reads</h4>
                             <div class="field">
                                 <label>Molar Mass (kg/mol)</label>
                                 <input type="number" step="0.001" bind:value={gas.molarMass} />
@@ -297,6 +336,68 @@
                                 <label title="Radiative cooling coefficient (model term)">Radiative Cooling</label>
                                 <input type="number" step="0.01" bind:value={gas.radiativeCooling} />
                             </div>
+
+                            <div class="field">
+                                <label title={rayleighHelp}>Rayleigh (relative to N&#8322;)</label>
+                                <input type="number" step="0.1" min="0" placeholder="1"
+                                       value={gas.rayleigh ?? ''}
+                                       on:input={(e) => { gas.rayleigh = e.currentTarget.value === '' ? undefined : +e.currentTarget.value; gases = { ...gases }; }} />
+                            </div>
+                            <div class="field bands-field">
+                                <label title="Where this gas EATS the incoming spectrum, as Gaussian notches. This is what the surface-light chain actually reads.">Absorption Bands</label>
+                                <p class="aurora-help">
+                                    Where this gas <strong>eats</strong> the incoming spectrum. These feed the surface-light
+                                    chain directly &mdash; the ground spectrum, what a plant has to live on, and what the sky
+                                    looks like from below. Blank means the gas takes only its Rayleigh share, which is the
+                                    honest answer for N&#8322;, O&#8322; and Ar.
+                                </p>
+                                <AbsorptionBandsEditor
+                                    bind:bands={gas.absorptionBands}
+                                    label="Bands (centre / width / strength)"
+                                    emptyNote="No bands &mdash; this gas only scatters."
+                                    newBand={{ centreNm: 760, widthNm: 20, strength: 0.5 }}
+                                    previewLight={previewGas === key ? previewLight : null}
+                                    absorbed={previewGas === key ? previewAbsorbed : null}
+                                    absorbedLabel={`what ${key} takes`}
+                                    onChange={() => (gases = { ...gases })} />
+                                <div class="preview-row">
+                                    <button class="mini-add" on:click={() => (previewGas = previewGas === key ? null : key)}>
+                                        {previewGas === key ? 'Hide preview' : 'Preview against a star'}
+                                    </button>
+                                    {#if previewGas === key}
+                                        <label class="inline-lbl" title="Preview star surface temperature. The Sun is 5778 K; an M dwarf about 3200 K; an A star about 9000 K.">star {previewTempK} K</label>
+                                        <input type="range" min="2400" max="12000" step="100" bind:value={previewTempK} />
+                                        <small class="muted">absorbed at one Earth-like column of this gas</small>
+                                    {/if}
+                                </div>
+                            </div>
+                            <div class="field aurora-field">
+                                <label title="Whether this gas condenses into cloud, and what it condenses into.">Cloud Formation</label>
+                                <p class="aurora-help">Tick this and the gas can form a <strong>cloud deck</strong> wherever the physics says it condenses. What the deck LOOKS like — its colour and how opaquely it veils the ground — comes from the liquid it condenses into, in the Liquids editor.</p>
+                                <div class="colour-row">
+                                    <input type="checkbox" checked={!!gas.cloud} on:change={(e) => toggleGasCloud(gas, e.currentTarget.checked)} />
+                                    {#if gas.cloud}
+                                        <label class="inline-lbl" title="The liquid this gas condenses into — it carries the deck's colour and opacity.">condenses to</label>
+                                        <!-- Explicit value + on:change, NOT bind:value: a two-way binding on a
+                                             select whose options are rebuilt each render re-syncs itself, writing
+                                             the state it just read — an infinite effect loop that hung the whole
+                                             settings modal. -->
+                                        <select value={gas.cloud.condensesTo}
+                                                on:change={(e) => { gas.cloud.condensesTo = e.currentTarget.value; gases = { ...gases }; }}>
+                                            {#each liquidNames as ln}
+                                                <option value={ln}>{ln}</option>
+                                            {/each}
+                                        </select>
+                                        <label class="inline-lbl" title="Below this fraction of the atmosphere the deck is too thin to see. A visibility floor, not a bulk-abundance one — Jupiter's real ammonia is 0.026%.">min fraction</label>
+                                        <input type="number" class="band-num" step="0.0001" min="0" max="1"
+                                               value={gas.cloud.minFraction ?? 0.001}
+                                               on:input={(e) => { gas.cloud.minFraction = +e.currentTarget.value; gases = { ...gases }; }} />
+                                    {:else}
+                                        <span class="muted">does not form cloud</span>
+                                    {/if}
+                                </div>
+                            </div>
+                            <h4 class="group-head" title="These decide how the gas is DRAWN. Nothing here feeds the physics — the surface-light chain deliberately never reads a gas colour.">Presentation &mdash; how it is drawn</h4>
                             <div class="field">
                                 <label title="Intrinsic tint of the gas. Colourless gases (N₂/O₂/CO₂) have none.">Gas Colour</label>
                                 <div class="colour-row">
@@ -338,32 +439,6 @@
                                     <span class="muted">none (does not fluoresce)</span>
                                 {/if}
                                 <button class="mini-add" on:click={() => addAuroraBand(gas)}>+ Band</button>
-                            </div>
-                            <div class="field aurora-field">
-                                <label title="Whether this gas condenses into cloud, and what it condenses into.">Cloud Formation</label>
-                                <p class="aurora-help">Tick this and the gas can form a <strong>cloud deck</strong> wherever the physics says it condenses. What the deck LOOKS like — its colour and how opaquely it veils the ground — comes from the liquid it condenses into, in the Liquids editor.</p>
-                                <div class="colour-row">
-                                    <input type="checkbox" checked={!!gas.cloud} on:change={(e) => toggleGasCloud(gas, e.currentTarget.checked)} />
-                                    {#if gas.cloud}
-                                        <label class="inline-lbl" title="The liquid this gas condenses into — it carries the deck's colour and opacity.">condenses to</label>
-                                        <!-- Explicit value + on:change, NOT bind:value: a two-way binding on a
-                                             select whose options are rebuilt each render re-syncs itself, writing
-                                             the state it just read — an infinite effect loop that hung the whole
-                                             settings modal. -->
-                                        <select value={gas.cloud.condensesTo}
-                                                on:change={(e) => { gas.cloud.condensesTo = e.currentTarget.value; gases = { ...gases }; }}>
-                                            {#each liquidNames as ln}
-                                                <option value={ln}>{ln}</option>
-                                            {/each}
-                                        </select>
-                                        <label class="inline-lbl" title="Below this fraction of the atmosphere the deck is too thin to see. A visibility floor, not a bulk-abundance one — Jupiter's real ammonia is 0.026%.">min fraction</label>
-                                        <input type="number" class="band-num" step="0.0001" min="0" max="1"
-                                               value={gas.cloud.minFraction ?? 0.001}
-                                               on:input={(e) => { gas.cloud.minFraction = +e.currentTarget.value; gases = { ...gases }; }} />
-                                    {:else}
-                                        <span class="muted">does not form cloud</span>
-                                    {/if}
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -604,6 +679,18 @@
   .colour-row { display: flex; align-items: center; gap: 6px; }
   .muted { font-size: 0.8em; color: var(--text-faint); font-style: italic; }
   .aurora-field { flex-basis: 100%; }
+  /* A56 group headings + band preview row. */
+  .group-head {
+    grid-column: 1 / -1; margin: 10px 0 2px; font-size: 0.72em; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-faint, #8a8f9a);
+    border-bottom: 1px solid var(--border-soft, #1c1f27); padding-bottom: 4px;
+  }
+  .group-head:first-child { margin-top: 0; }
+  .bands-field { grid-column: 1 / -1; }
+  .preview-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .preview-row input[type='range'] { flex: 1 1 140px; max-width: 220px; }
+  .preview-row .muted { font-size: 0.72em; }
   .aurora-help { margin: 2px 0 6px; font-size: 0.75em; color: var(--text-faint); line-height: 1.35; }
   .aurora-help strong { color: var(--text-muted); }
   .aurora-head { display: flex; align-items: center; gap: 5px; margin-top: 2px; }

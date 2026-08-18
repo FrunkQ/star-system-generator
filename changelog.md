@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.796-beta - 18th Aug 2026
+
+- The Gas Physics editor now shows the ABSORPTION BANDS each gas already used. They were in the data and the engine has always read them - oxygen's 762 nm A-band, methane's six, and thirteen other gases - but nothing on screen ever said so. Each gas now lists its bands with a preview against a star of your choosing, so you can watch the notch move as you type. Rayleigh scattering was hidden in the same way and is now a field too.
+- The gas card is split into what the physics READS and what it merely DRAWS with, because a GM had no way to tell the difference: a gas colour never touches the light calculation, and an absorption band decides the whole thing.
+- A world's night-side lights can now be any colour - bioluminescence, city amber, somebody's purple arc-light - chosen per morphology in the Biospheres editor. Left alone, they stay the sodium amber they have always been.
+
+
 ## v2.1.794-beta - 18th Aug 2026
 
 - FIXED: a system file with a blank rule-pack id would not load - "Invalid system file. Missing system-specific properties" - and the app writes blank ones itself on ubox and SpaceEngine imports, so a system imported, saved and reopened was refused. The pack id was never needed to load: the file is processed with the current pack regardless. It is now stamped on load where blank, the message says what is actually required, and a starmap is no longer refused for an embedded system with a blank or stale pack id.

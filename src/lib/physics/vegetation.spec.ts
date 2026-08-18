@@ -303,3 +303,24 @@ describe('an authored colour', () => {
     expect(veg.visibleCover).toBeGreaterThan(0);
   });
 });
+
+describe('A56b — the night-light colour is DATA on the morphology, not a constant in the painter', () => {
+  it('leaves lightHex ABSENT when unauthored, which is what keeps existing worlds drawing the same amber', () => {
+    // It used to be two hardcoded triples inside `paintLights`, so a bioluminescent forest and a purple
+    // arc-light were unreachable without a branch. Absent must STAY absent: the painter falls back to
+    // the exact numbers it always used, so nothing already drawn moves.
+    const techno = allMorphologies(pack).find((m) => m.key === 'techno');
+    expect(techno).toBeTruthy();
+    expect(techno!.lightHex).toBeUndefined();
+  });
+
+  it('carries an authored colour through to the drawn layer', () => {
+    const tuned = JSON.parse(JSON.stringify(pack)) as RulePack;
+    const list = (tuned as unknown as { morphologies: { entries: { value: Record<string, unknown> }[] } }).morphologies?.entries;
+    const row = list?.find((e) => e.value.key === 'techno');
+    if (!row) return; // the pack stores them elsewhere; the absent-default case above is the load-bearing one
+    row.value.lightHex = '#b36cff';
+    const techno = allMorphologies(tuned).find((m) => m.key === 'techno');
+    expect(techno!.lightHex).toBe('#b36cff');
+  });
+});

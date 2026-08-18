@@ -246,6 +246,14 @@ export interface MorphologyDef {
   pigmentDriven: number;            // 0..1 how far the derived pigment colour replaces the tint
   opacity: number;                  // how completely this layer hides what is beneath it
   light: { min: number; max: number }; // night-side emission, 0..1; an EMPTY range means no lights
+  /** What the night side GLOWS, as a hex. Absent = the sodium-amber a human city reads as from
+   *  orbit, which is the honest default for `techno` and what this always drew.
+   *
+   *  IT IS DATA BECAUSE THE ALTERNATIVES ARE NOT VARIANTS OF A CITY: a bioluminescent forest, a
+   *  methane-flare industry and somebody's purple arc-light are the same MODEL with a different
+   *  number, and the moment the colour lives in the painter they need branches instead. The painter
+   *  derives its dimmer arterial tone from this one colour, so a GM picks one swatch, not two. */
+  lightHex?: string;
   /** How far past ORDINARY DRY GROUND this morphology can hold, as a fraction of the world's water.
    *
    *  0 = strictly dry land. Plants get a little, because a shallow shelf is lit to the bottom and
@@ -325,6 +333,7 @@ export interface VegetationLayerSpec {
   opacity: number;
   colorHex: string | null;   // null = this morphology contributes no colour (empty tints, no pigment drive)
   light: number;             // 0..1 night-side emission
+  lightHex?: string;         // what it glows; absent = the default amber (see MorphologyDef)
   waterReach: number;        // how much of the world's WATER this morphology can take (see MorphologyDef)
 }
 export interface Vegetation {

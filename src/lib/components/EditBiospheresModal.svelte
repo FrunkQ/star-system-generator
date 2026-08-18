@@ -13,7 +13,7 @@
   import { allPigments, pigmentModel, absorptance, scorePigments } from '$lib/physics/pigments';
   import { makeListDelta, applyListDelta } from '$lib/rulepackDelta';
   import { blackbodySpectrum, gridShare, GRID_NM } from '$lib/physics/spectrum';
-  import SpectrumChart from '$lib/charts/SpectrumChart.svelte';
+  import AbsorptionBandsEditor from './AbsorptionBandsEditor.svelte';
   import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
@@ -45,6 +45,9 @@
   const baseModel: PigmentModelConfig = pigmentModel(rulePack);
   let pigments: PigmentDef[] = [];
   let model: PigmentModelConfig = { ...baseModel };
+  // The amber `paintLights` has always used, so ticking the box starts from what is already drawn
+  // rather than from an arbitrary swatch. Unticking clears the field, which restores the default.
+  const DEFAULT_LIGHT_HEX = '#ffd696';
   let previewTempK = 5778;
   let openPigment: string | null = null;
 
@@ -79,14 +82,6 @@
   function resetPigment(i: number) {
     const base = basePigments.find((b) => b.key === pigments[i]?.key);
     if (base) { pigments[i] = JSON.parse(JSON.stringify(base)); pigments = [...pigments]; }
-  }
-  function addBand(i: number) {
-    pigments[i].bands = [...pigments[i].bands, { centreNm: 600, widthNm: 30, strength: 0.7 }];
-    pigments = [...pigments];
-  }
-  function removeBand(i: number, b: number) {
-    pigments[i].bands = pigments[i].bands.filter((_, k) => k !== b);
-    pigments = [...pigments];
   }
 
   function handleSave() {
@@ -212,6 +207,20 @@
               </div>
               <small>night-side emission; an empty range means no lights</small>
             </label>
+            <label>
+              <span>Light colour</span>
+              <div class="pair light-colour">
+                <input type="checkbox" checked={!!m.lightHex} aria-label="Use a custom light colour"
+                       on:change={(e) => { morphs[i].lightHex = e.currentTarget.checked ? (morphs[i].lightHex ?? DEFAULT_LIGHT_HEX) : undefined; morphs = [...morphs]; }} />
+                {#if m.lightHex}
+                  <input type="color" bind:value={m.lightHex} aria-label="Light colour" />
+                  <code class="key">{m.lightHex}</code>
+                {:else}
+                  <span class="muted-inline">city amber</span>
+                {/if}
+              </div>
+              <small>what the night side glows &mdash; bioluminescence, city lights, somebody&rsquo;s purple arc-light. The dimmer arterial tone is derived from it.</small>
+            </label>
           </div>
           {#if m.note}<p class="note">{m.note}</p>{/if}
         </div>
@@ -264,27 +273,16 @@
                 </label>
               </div>
 
-              <div class="bands">
-                <div class="bands-head"><span>Absorption bands</span><button class="mini" on:click={() => addBand(i)}>+ band</button></div>
-                {#each pg.bands as bd, bi}
-                  <div class="band-row">
-                    <label><small>centre</small>
-                      <input type="number" min="280" max="1400" step="1" bind:value={bd.centreNm} /><small>nm</small></label>
-                    <label><small>width</small>
-                      <input type="number" min="2" max="400" step="1" bind:value={bd.widthNm} /><small>nm</small></label>
-                    <label><small>strength</small>
-                      <input type="number" min="0" max="1" step="0.01" bind:value={bd.strength} /></label>
-                    <button class="mini danger" on:click={() => removeBand(i, bi)}>×</button>
-                  </div>
-                {/each}
-                {#if !pg.bands.length}<p class="note">No bands — this pigment absorbs evenly at whatever the flat figure says.</p>{/if}
-              </div>
-
-              {#if shownAbsorbed}
-                <SpectrumChart surface={previewLight} absorbed={shownAbsorbed}
-                  absorbedLabel={`what ${pg.label} takes`} surfaceLabel="light from the preview star"
-                  topOfAtmosphere={null} yLabel="W&#183;m&#8315;&#178;&#183;nm&#8315;&#185;" />
-              {/if}
+              <!-- A56: the same control the Gas Physics card uses. `shownAbsorbed` still includes the
+                   flat baseline term, which is this editor's business and not the component's. -->
+              <AbsorptionBandsEditor
+                bind:bands={pg.bands}
+                emptyNote="No bands &mdash; this pigment absorbs evenly at whatever the flat figure says."
+                newBand={{ centreNm: 600, widthNm: 30, strength: 0.7 }}
+                previewLight={shownAbsorbed ? previewLight : null}
+                absorbed={shownAbsorbed}
+                absorbedLabel={`what ${pg.label} takes`}
+                onChange={() => (pigments = [...pigments])} />
               {#if pg.note}<p class="note">{pg.note}</p>{/if}
             {/if}
           </div>
@@ -406,6 +404,9 @@
   .tint-row { display: flex; align-items: center; gap: 4px; min-height: 16px; }
   .chip { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border, #2a2d36); }
   .empty { color: var(--text-faint, #8a8f9a); font-size: 0.95em; }
+  .light-colour { align-items: center; gap: 8px; }
+  .light-colour input[type='color'] { width: 34px; height: 22px; padding: 0; }
+  .muted-inline { font-size: 0.8em; color: var(--text-faint, #8a8f9a); }
   .note { font-size: 0.75em; color: var(--text-faint, #8a8f9a); margin: 8px 0 0; line-height: 1.5; }
   .add {
     align-self: flex-start; font-size: 0.8em; padding: 4px 10px; border-radius: 999px; cursor: pointer;

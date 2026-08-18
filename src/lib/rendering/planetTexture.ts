@@ -183,6 +183,13 @@ function rgbOf(hex: string): [number, number, number] {
 }
 
 /** Shade a hex toward white (f>0) or black (f<0), returning a hex. */
+/** '#rrggbb' -> [r,g,b]. Falls back to mid-grey rather than NaN, which would paint nothing at all. */
+function hexToTriple(hex: string): number[] {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return [128, 128, 128];
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
 function toneHex(hex: string, f: number): string {
   const [r, g, b] = rgbOf(hex);
   const ch = (x: number) => Math.max(0, Math.min(255, Math.round(f >= 0 ? x + (255 - x) * f : x * (1 + f))));
@@ -241,8 +248,15 @@ function paintLights(
   const img = ctx.createImageData(w, h);
   const px = img.data;
   // Warm amber: sodium- and filament-lit cities read orange from orbit, which is what every night
-  // photograph of Earth and every artist's ecumenopolis has in common.
-  const CORE = [255, 214, 150], ARTERY = [255, 176, 74];
+  // photograph of Earth and every artist's ecumenopolis has in common. THAT IS A DEFAULT, NOT A LAW —
+  // a morphology may author `lightHex` and glow however it likes (bioluminescence, arc-light, a
+  // methane flare). Absent, these exact numbers still run, so nothing already drawn moves.
+  const DEFAULT_CORE = [255, 214, 150], DEFAULT_ARTERY = [255, 176, 74];
+  // The arterial tone is DERIVED from the core rather than authored: one swatch is a colour a GM can
+  // pick, two are a palette they have to get right, and the depth cue is the same either way.
+  const lit0 = bands.find((b) => b.lightHex)?.lightHex;
+  const CORE = lit0 ? hexToTriple(lit0) : DEFAULT_CORE;
+  const ARTERY = lit0 ? hexToTriple(toneHex(lit0, -0.28)) : DEFAULT_ARTERY;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const hit = at(x, y);
@@ -278,6 +292,8 @@ function paintLights(
 /** One painted band of the elevation field: a morphology's colour between two thresholds. */
 interface SurfaceBand {
   low: number; high: number; hex: string; opacity: number; light: number; morphology: string;
+  /** What this band's night lights GLOW. Absent = the default amber. */
+  lightHex?: string;
   /** How much of the world's water — and, by the same claim, its ice — this one can hold. */
   waterReach: number;
 }
@@ -312,7 +328,7 @@ function surfacePaint(body: CelestialBody, landHex: string, seaHex: string, seaC
   const bands: SurfaceBand[] = (a.vegetation?.layers ?? []).map((l) => {
     const band = vegetationBand(field, l.coverage, l.waterReach);
     return { low: band.low, high: band.high, hex: l.colorHex, opacity: l.opacity, light: l.light,
-             morphology: l.morphology, waterReach: l.waterReach };
+             lightHex: l.lightHex, morphology: l.morphology, waterReach: l.waterReach };
   }).filter((b) => b.high > b.low);
   const ice: IcePaint | null = a.polarIce && Math.min(a.polarIceLatDeg.north, a.polarIceLatDeg.south) < 89
     ? { north: a.polarIceLatDeg.north, south: a.polarIceLatDeg.south, ragged: 10, feather: 4, highlandReach: 16, seaSpread: 7 }
