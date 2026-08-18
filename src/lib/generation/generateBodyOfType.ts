@@ -126,25 +126,35 @@ export interface SlotContext {
   hostMassKg?: number;      // the direct host (star for a planet, planet for a moon)
   ageGyr?: number;          // the system's age; the age gate needs it
   canTidallyLock?: boolean; // from predictTidalLock at this orbit; the lock gate needs it
-  planetMassFloorMe?: number; // pack override of PLANET_MASS_FLOOR_ME (generation_parameters.planet_mass_floor_me)
+  planetMassBandMe?: [number, number]; // pack override of PLANET_MASS_BAND_ME (generation_parameters.planet_mass_band_me)
 }
 
 /**
- * THE PLANET MASS FLOOR — a primary orbital slot gets a PLANET.
+ * THE PLANET MASS BAND — a primary orbital slot gets a PLANET: not a pebble, and not a star.
  *
- * Asteroids, comets, planetesimals and mesoplanets all carry base fingerprints, so before this they
- * competed for planet slots on equal terms with terrestrials — and being rated Common, the rarity
- * ladder FAVOURED them. Measured at v2.1.772: 21% of every "planet" a Sun-like star generated was
- * below Mercury's mass and 13% below Ceres', 18% of those literally asteroids and comets. Then the
- * catch-all classes (`terrestrial`, `desert`, `barren`, `crater`, `ice`) — which declare NO mass band
- * — relabelled the wreckage, so 30% of "terrestrials" were smaller than Mercury.
+ * THE FLOOR. Asteroids, comets, planetesimals and mesoplanets all carry base fingerprints, so before
+ * this they competed for planet slots on equal terms with terrestrials — and being rated Common, the
+ * rarity ladder FAVOURED them. Measured at v2.1.772: 21% of every "planet" a Sun-like star generated
+ * was below Mercury's mass and 13% below Ceres', 18% of those literally asteroids and comets. Then
+ * the catch-all classes (`terrestrial`, `desert`, `barren`, `crater`, `ice`) — which declare NO mass
+ * band — relabelled the wreckage, so 30% of "terrestrials" were smaller than Mercury. The floor is
+ * Mercury-ish. It is also the owner's answer to "too many boring lumps of rock": realistic, perhaps,
+ * but nobody plays on them, and it is a slider's job to add them back deliberately, not a default's
+ * job to sprinkle them everywhere.
  *
- * The floor is Mercury-ish and it is a gate on the type's DECLARED band: a class whose entire mass
- * band sits under the floor is not a planet-slot candidate. Sub-planetary bodies stay in the world —
- * as moons, as belt members, and in the picker when the GM turns the gate off — they just do not take
- * a headline orbit by default. Sol has Pluto; it does not have Pluto at 1 AU.
+ * THE CEILING. `brown-dwarf` and `ultra-cool-dwarf` (4100–6400 M⊕) are base fingerprints too, and
+ * they sit ABOVE the 13 M_J deuterium-burning line (~4130 M⊕) — the engine's own boundary between a
+ * planet and a star. Every giant class tops out at 4000 M⊕ for exactly that reason. So without a
+ * ceiling a planet slot could be handed a star, and the ceiling is where the two halves of the band
+ * agree with each other. It is not a hard cosmic law (a 13 M_J super-Jupiter and a 13 M_J brown
+ * dwarf are the same object with two names), which is why it is pack data and switchable.
+ *
+ * Both edges are gates on the type's DECLARED band, judged at its geometric midpoint. Bodies either
+ * side stay in the world — as moons, belt members, or companions — and in the picker when the GM
+ * turns the gate off; they just do not take a headline orbit by default. Sol has Pluto; it does not
+ * have Pluto at 1 AU.
  */
-export const PLANET_MASS_FLOOR_ME = 0.03;
+export const PLANET_MASS_BAND_ME: [number, number] = [0.03, 4130];
 
 export interface GateVerdict { fp: Fingerprint; ok: boolean; failed: Array<keyof ViabilityGates> }
 
@@ -154,7 +164,7 @@ export interface GateVerdict { fp: Fingerprint; ok: boolean; failed: Array<keyof
  */
 export function judgeTypesAt(
   ctx: SlotContext, fingerprints: Fingerprint[], gates: ViabilityGates = ALL_GATES,
-  massFloorMe: number = ctx.planetMassFloorMe ?? PLANET_MASS_FLOOR_ME
+  massBandMe: [number, number] = ctx.planetMassBandMe ?? PLANET_MASS_BAND_ME
 ): GateVerdict[] {
   const SLACK = 0.12; // 12% — matches the classifier's soft edge
   const g = { ...ALL_GATES, ...gates };
@@ -190,14 +200,15 @@ export function judgeTypesAt(
         // A moon must fit under its host: drop any type whose characteristic mass exceeds the cap.
         if (hostMe > 0 && massBand && massBand[0] > maxMoonMe) failed.push('mass');
       } else {
-        // A planet slot gets a planet. Asteroids and belts never are; and a type is judged on the
-        // GEOMETRIC MIDPOINT of its declared band, not its top edge — dwarf-planet [0.0005, 0.05]
-        // and mesoplanet [0.002, 0.1] both poke a whisker over the floor at the top and then draw
-        // near the bottom, which is how a 'planet' came out lighter than Ceres.
+        // A planet slot gets a planet: not a pebble, and not a star. Asteroids and belts never are;
+        // otherwise a type is judged on the GEOMETRIC MIDPOINT of its declared band, not its edges —
+        // dwarf-planet [0.0005, 0.05] pokes a whisker over the floor at the top and then draws near
+        // the bottom, which is how a 'planet' came out lighter than Ceres.
         if (fp.class.startsWith('asteroid/') || fp.class.startsWith('belt/')) failed.push('mass');
         else if (massBand) {
           const lo = Math.max(1e-9, massBand[0]), hi = Math.max(lo, massBand[1]);
-          if (Math.sqrt(lo * hi) < massFloorMe) failed.push('mass');
+          const mid = Math.sqrt(lo * hi);
+          if (mid < massBandMe[0] || mid > massBandMe[1]) failed.push('mass');
         }
       }
     }
@@ -247,10 +258,10 @@ export function judgeTypesAt(
 // reduced to the survivors. Callers that want to explain a hidden type use judgeTypesAt directly.
 export function viableTypesAt(
   teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[], hostMassKg = 0,
-  opts?: { canTidallyLock?: boolean; ageGyr?: number; gates?: ViabilityGates; planetMassFloorMe?: number }
+  opts?: { canTidallyLock?: boolean; ageGyr?: number; gates?: ViabilityGates; planetMassBandMe?: [number, number] }
 ): Fingerprint[] {
   return judgeTypesAt(
-    { role, teqK, hostMassKg, ageGyr: opts?.ageGyr, canTidallyLock: opts?.canTidallyLock, planetMassFloorMe: opts?.planetMassFloorMe },
+    { role, teqK, hostMassKg, ageGyr: opts?.ageGyr, canTidallyLock: opts?.canTidallyLock, planetMassBandMe: opts?.planetMassBandMe },
     fingerprints, opts?.gates ?? ALL_GATES
   ).filter((v) => v.ok).map((v) => v.fp);
 }

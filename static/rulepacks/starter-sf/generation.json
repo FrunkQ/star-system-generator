@@ -1,6 +1,6 @@
 {
   "generation_parameters": {
-    "planet_mass_floor_me": 0.03,
+    "planet_mass_band_me": [0.03, 4130],
     "type_rarity_weighting": {
       "name": "How the Rarity dial reweights the type draw. w(r) = ratio^r, where r is a type rarity 0..1 and ratio is how likely the RAREST type is compared with the MOST COMMON one. ln(ratio) moves linearly with the dial, so every step of the slider is the same multiplicative change. THE REALISTIC MIX SITS AT realistic_dial, NOT at the midpoint - below it a system only gets duller, so the default starts there and three quarters of the travel is left for the interesting end. Nothing is ever excluded at any setting: a legendary world stays possible at rarity 0, just very unlikely.",
       "realistic_dial": 0.25,

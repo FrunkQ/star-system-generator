@@ -29,7 +29,7 @@
   let gates: ViabilityGates = { ...ALL_GATES };
   const GATE_LABELS: Array<{ key: keyof ViabilityGates; label: string; hint: string; needs?: () => boolean }> = [
     { key: 'temperature', label: 'Temperature', hint: 'Only types whose temperature band contains this orbit.' },
-    { key: 'mass', label: 'Mass', hint: role === 'moon' ? 'Only types small enough to be a satellite of this host.' : 'Only planet-mass types — asteroids, comets and planetesimals stay off a primary orbit.' },
+    { key: 'mass', label: 'Mass', hint: role === 'moon' ? 'Only types small enough to be a satellite of this host.' : 'Only planet-mass types — asteroids, comets and planetesimals stay off a primary orbit at the bottom, and brown dwarfs (stars, by the deuterium line) at the top.' },
     { key: 'age', label: 'Age', hint: 'Only types that can have formed by this system\'s age — protoplanets are young, stripped and cratered worlds are old.', needs: () => typeof ageGyr === 'number' },
     { key: 'tidalLock', label: 'Tidal lock', hint: 'Types that need a star-locked world, only where this orbit can produce one.', needs: () => typeof canTidallyLock === 'boolean' },
     { key: 'hostFit', label: 'Host', hint: 'A moon cannot be a giant; a substantial moon needs a giant host.', needs: () => role === 'moon' },

@@ -58,10 +58,22 @@ describe('the mass floor: a planet slot gets a planet', () => {
   });
 
   it('is pack data: a lower floor admits smaller worlds', () => {
-    const strict = classes(viableTypesAt(280, 'planet', fps(), 0, { planetMassFloorMe: 0.03 }));
-    const loose = classes(viableTypesAt(280, 'planet', fps(), 0, { planetMassFloorMe: 0.001 }));
+    const strict = classes(viableTypesAt(280, 'planet', fps(), 0, { planetMassBandMe: [0.03, 4130] }));
+    const loose = classes(viableTypesAt(280, 'planet', fps(), 0, { planetMassBandMe: [0.001, 4130] }));
     expect(loose.length).toBeGreaterThan(strict.length);
     expect(loose).toContain('planet/mesoplanet');
+  });
+
+  it('has a CEILING too: a planet slot is never handed a star', () => {
+    // brown-dwarf and ultra-cool-dwarf (4100-6400 Me) sit above the 13 Mjup deuterium line that
+    // every giant class stops at. They stay available to the picker with the mass gate off, and as
+    // companions - just not as a default planet.
+    const v = classes(viableTypesAt(300, 'planet', fps(), 0));
+    expect(v).not.toContain('planet/brown-dwarf');
+    expect(v).not.toContain('planet/ultra-cool-dwarf');
+    expect(v).toContain('planet/gas-giant');   // the giants themselves are fine
+    const off = classes(viableTypesAt(300, 'planet', fps(), 0, { gates: { ...ALL_GATES, mass: false } }));
+    expect(off).toContain('planet/brown-dwarf');
   });
 
   it('does not touch moons — a moon slot may still be small', () => {
@@ -97,11 +109,18 @@ describe('the age gate: late formers and early formers', () => {
 });
 
 describe('formation bands are ONE-WAY: they gate birth, never classification', () => {
-  it('no fingerprint carries age_Gyr in its classifier match block', () => {
+  it('no LATE-FORMER carries age_Gyr in its classifier match block', () => {
     // A hand-authored chthonian in a million-year-old system is still a chthonian. The classifier
-    // works on what it sees; the formation band only decides what a slot may be GIVEN. So the age
-    // band must live under `formation`, which the classifier never reads — never under `match`.
+    // works on what it sees; the formation band only decides what a slot may be GIVEN. So a birth
+    // window lives under `formation`, which the classifier never reads — never under `match`.
+    //
+    // THE ONE EXCEPTION IS NOT AN EXCEPTION TO THE RULE. `protoplanet` keeps age_Gyr in match
+    // because there it is not a birth window, it is the DEFINITION: "very young, still accreting".
+    // With it removed the class matched on mass alone and relabelled 4% of an old system's rocky
+    // worlds as protoplanets, which is the classifier being wrong about what it sees, not right.
+    const DEFINED_BY_YOUTH = new Set(['planet/protoplanet']);
     for (const fp of fps()) {
+      if (DEFINED_BY_YOUTH.has(fp.class)) continue;
       expect((fp.match as any)['age_Gyr'], `${fp.class} has age_Gyr in match`).toBeUndefined();
       expect((fp.gate as any)?.['age_Gyr'], `${fp.class} has age_Gyr in gate`).toBeUndefined();
     }

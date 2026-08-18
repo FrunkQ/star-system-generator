@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.779-beta - 18th Aug 2026
+
+- **The planet mass filter is now a band with a ceiling as well as a floor.** A primary orbit gets a planet — not a pebble, and not a star. Brown dwarfs and ultra-cool dwarfs sit above the 13-Jupiter-mass deuterium line that every giant class stops at, and were being offered for planet slots. They stay available with the mass filter switched off, and as companions; they just do not take a headline orbit by default. Sub-Mercury worlds are now 0.1% of what a Sun-like star generates, down from a fifth two builds ago.
+
+- Protoplanets had started appearing in old systems, because moving the age band off the classifier left them defined by mass alone. Restored: for a protoplanet, youth IS the definition, not a birth window.
 ## v2.1.778-beta - 18th Aug 2026
 
 - **The undo button now says what it will take back** - "Undo: Mass of Earth", "Undo: Deleted Luna", "Undo: GM notes of Earth" - read off a diff of the two authored states rather than declared by any editor, so every edit route gets it for free. Where one edit moves several bodies (give Earth mass and tidally-locked Luna's rotation period follows) the body you had SELECTED names the step, because that is the one you changed and the rest are consequences.
