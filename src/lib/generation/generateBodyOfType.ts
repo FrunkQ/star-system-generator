@@ -89,40 +89,136 @@ const GIANT_HOST_ME = 15;
 // desert) stays available to any host, so a terrestrial's moon defaults to airless rock.
 const SUBSTANTIAL_MOON = /ocean|hycean|forest|jungle|swamp|terrestrial|earth-analogue|earth-like|superhabitable|methane|ammonia|phosphorus|chlorine|fluorine|sulfur/;
 
-// Which base types could exist at a given equilibrium temperature (and role) around a host of a given
-// mass. A type is viable when the orbit's T_eq falls inside its T_eq band (with slack); types without a
-// T_eq band are always offered on temperature. Greenhouse types get extra COLD-edge slack. Moons also
-// exclude giants/eyeballs, and are MASS-GATED by the host: a terrestrial offers only small airless/icy
-// moons; a gas giant offers more (bigger, watery, atmosphered). hostMassKg 0 ⇒ no mass gate.
-export function viableTypesAt(
-  teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[], hostMassKg = 0,
-  opts?: { canTidallyLock?: boolean }
-): Fingerprint[] {
+/**
+ * ONE VIABILITY MODEL FOR BOTH THE MANUAL PICKER AND THE GENERATOR.
+ *
+ * "Which types could exist HERE" is asked twice in this codebase — by the "Add planet/moon here…"
+ * picker and by the generator choosing a type for a slot — and the standing rule is that two
+ * places answering one question will drift. So this is the single answer, and the two callers
+ * differ only in what they do with it:
+ *
+ *   - THE PICKER shows the gates at the top and lets the GM switch any of them OFF to see the wider
+ *     menu DESPITE the physics. Hand authoring is hand authoring; the gates are guidance, and the
+ *     tags will say what is implausible about the result.
+ *   - THE GENERATOR keeps every gate ON and then SELECTS within the viable set using the knobs —
+ *     rarity, metallicity, star affinity. Physics decides what CAN be here; the knobs decide which
+ *     of those actually IS.
+ *
+ * Every gate reads a band the TYPE DECLARES (its classifier fingerprint) — temperature, mass, age —
+ * so a type's own definition carries where it can be born. Adding a gate means adding a band to the
+ * vocabulary, not a special case to a function.
+ */
+
+/** Which physical gates to apply. Every field defaults to ON; the picker exposes them as toggles. */
+export interface ViabilityGates {
+  temperature?: boolean;   // the orbit's T_eq against the type's Teq_K / SurfaceTemp_K band
+  mass?: boolean;          // for a moon: fits under its host; for a planet: is a PLANET, not a pebble
+  age?: boolean;           // the system's age against the type's age_Gyr band
+  tidalLock?: boolean;     // a type that requires locking, only where the orbit can produce it
+  hostFit?: boolean;       // moons: no giants; substantial moons need a giant host
+}
+export const ALL_GATES: Required<ViabilityGates> = { temperature: true, mass: true, age: true, tidalLock: true, hostFit: true };
+
+/** Everything the viability question needs. Missing fields switch the gates that need them off. */
+export interface SlotContext {
+  role: 'planet' | 'moon';
+  teqK: number;
+  hostMassKg?: number;      // the direct host (star for a planet, planet for a moon)
+  ageGyr?: number;          // the system's age; the age gate needs it
+  canTidallyLock?: boolean; // from predictTidalLock at this orbit; the lock gate needs it
+  planetMassFloorMe?: number; // pack override of PLANET_MASS_FLOOR_ME (generation_parameters.planet_mass_floor_me)
+}
+
+/**
+ * THE PLANET MASS FLOOR — a primary orbital slot gets a PLANET.
+ *
+ * Asteroids, comets, planetesimals and mesoplanets all carry base fingerprints, so before this they
+ * competed for planet slots on equal terms with terrestrials — and being rated Common, the rarity
+ * ladder FAVOURED them. Measured at v2.1.772: 21% of every "planet" a Sun-like star generated was
+ * below Mercury's mass and 13% below Ceres', 18% of those literally asteroids and comets. Then the
+ * catch-all classes (`terrestrial`, `desert`, `barren`, `crater`, `ice`) — which declare NO mass band
+ * — relabelled the wreckage, so 30% of "terrestrials" were smaller than Mercury.
+ *
+ * The floor is Mercury-ish and it is a gate on the type's DECLARED band: a class whose entire mass
+ * band sits under the floor is not a planet-slot candidate. Sub-planetary bodies stay in the world —
+ * as moons, as belt members, and in the picker when the GM turns the gate off — they just do not take
+ * a headline orbit by default. Sol has Pluto; it does not have Pluto at 1 AU.
+ */
+export const PLANET_MASS_FLOOR_ME = 0.03;
+
+export interface GateVerdict { fp: Fingerprint; ok: boolean; failed: Array<keyof ViabilityGates> }
+
+/**
+ * Judge every base fingerprint against the context, gate by gate. Returns a verdict per type with
+ * WHICH gates it failed, so the picker can say "hidden by the age gate" rather than just hiding it.
+ */
+export function judgeTypesAt(
+  ctx: SlotContext, fingerprints: Fingerprint[], gates: ViabilityGates = ALL_GATES,
+  massFloorMe: number = ctx.planetMassFloorMe ?? PLANET_MASS_FLOOR_ME
+): GateVerdict[] {
   const SLACK = 0.12; // 12% — matches the classifier's soft edge
-  const isMoon = role === 'moon';
-  const hostMe = hostMassKg / EARTH_MASS_KG;
+  const g = { ...ALL_GATES, ...gates };
+  const isMoon = ctx.role === 'moon';
+  const hostMe = (ctx.hostMassKg ?? 0) / EARTH_MASS_KG;
   const hostIsGiant = hostMe >= GIANT_HOST_ME;
   const maxMoonMe = hostMe * MOON_MASS_CAP;
-  return fingerprints.filter((fp) => {
-    if (fp.kind !== 'base') return false;
-    // A rogue planet is by definition UNBOUND — placing one in an orbit makes it not-rogue, so it's
-    // never offered/drawn for a bound slot (the classifier still uses it for genuinely unbound bodies).
-    if (/rogue/.test(fp.class)) return false;
-    // A type that REQUIRES tidal locking is only on the menu where the orbit can actually despin a
-    // planet in the time available. Omitted = allowed, so the manual picker is untouched.
-    if (opts?.canTidallyLock === false && requiresTidalLock(fp)) return false;
-    // A moon can never be a member of the giant family (it orbits one) nor an eyeball (locked to its
-    // planet, not the star). Covers gas/ice giants, neptunes, jupiters, helium & puffy giants, brown/
-    // dwarf bodies. (The old filter missed ice-giant / helium / puffy, so moons could be gas giants.)
-    if (isMoon && /giant|neptune|jupiter|helium|puff|brown|dwarf|eyeball/.test(fp.class)) return false;
-    if (isMoon && hostMe > 0) {
-      // A moon must fit under its host: drop any type whose characteristic mass exceeds the moon cap.
-      const mb = fp.match['mass_Me'];
-      if (Array.isArray(mb) && typeof mb[0] === 'number' && mb[0] > maxMoonMe) return false;
-      // Around a terrestrial-scale host, only simple airless/icy/rocky moons are plausible — the
+
+  const out: GateVerdict[] = [];
+  for (const fp of fingerprints) {
+    if (fp.kind !== 'base') continue;
+    // A rogue planet is by definition UNBOUND — placing one in an orbit makes it not-rogue, so it is
+    // never offered/drawn for a bound slot. Not a gate: there is no setting under which it makes sense.
+    if (/rogue/.test(fp.class)) continue;
+
+    const failed: Array<keyof ViabilityGates> = [];
+    const mb = fp.match['mass_Me'];
+    const massBand = Array.isArray(mb) && typeof mb[0] === 'number' ? (mb as [number, number]) : null;
+
+    // --- hostFit: what a MOON may be at all ---
+    if (g.hostFit && isMoon) {
+      // A moon can never be a member of the giant family (it orbits one) nor an eyeball (locked to
+      // its planet, not the star).
+      if (/giant|neptune|jupiter|helium|puff|brown|dwarf|eyeball/.test(fp.class)) failed.push('hostFit');
+      // Around a terrestrial-scale host only simple airless/icy/rocky moons are plausible — the
       // substantial atmosphere/ocean/biosphere worlds need a giant host.
-      if (!hostIsGiant && SUBSTANTIAL_MOON.test(fp.class)) return false;
+      else if (hostMe > 0 && !hostIsGiant && SUBSTANTIAL_MOON.test(fp.class)) failed.push('hostFit');
     }
+
+    // --- mass ---
+    if (g.mass) {
+      if (isMoon) {
+        // A moon must fit under its host: drop any type whose characteristic mass exceeds the cap.
+        if (hostMe > 0 && massBand && massBand[0] > maxMoonMe) failed.push('mass');
+      } else {
+        // A planet slot gets a planet. Asteroids and belts never are; and a type is judged on the
+        // GEOMETRIC MIDPOINT of its declared band, not its top edge — dwarf-planet [0.0005, 0.05]
+        // and mesoplanet [0.002, 0.1] both poke a whisker over the floor at the top and then draw
+        // near the bottom, which is how a 'planet' came out lighter than Ceres.
+        if (fp.class.startsWith('asteroid/') || fp.class.startsWith('belt/')) failed.push('mass');
+        else if (massBand) {
+          const lo = Math.max(1e-9, massBand[0]), hi = Math.max(lo, massBand[1]);
+          if (Math.sqrt(lo * hi) < massFloorMe) failed.push('mass');
+        }
+      }
+    }
+
+    // --- age: late formers and early formers ---
+    // A type that declares a FORMATION age band can only be BORN inside it. Protoplanets are young;
+    // a chthonian needs time to be stripped; a cratered world needs time to accumulate the record.
+    // Read from `fp.formation`, NOT `fp.match`: the classifier reads match, and this is one-way — a
+    // body that exists classifies as what it is regardless of whether it could have formed yet.
+    if (g.age && typeof ctx.ageGyr === 'number') {
+      const ab = fp.formation?.['age_Gyr'];
+      if (Array.isArray(ab) && typeof ab[0] === 'number') {
+        const [lo, hi] = ab as [number, number];
+        if (ctx.ageGyr < lo || ctx.ageGyr > hi) failed.push('age');
+      }
+    }
+
+    // --- tidalLock: a type may not require a circumstance the orbit cannot produce ---
+    if (g.tidalLock && ctx.canTidallyLock === false && requiresTidalLock(fp)) failed.push('tidalLock');
+
+    // --- temperature ---
     // WHICHEVER temperature band the type declares. Most surface-describing types key on
     // SurfaceTemp_K (inbox B3, then B6) because that is what their note is about — but this menu is
     // choosing a type for a body that does not exist yet, so a surface temperature is not available
@@ -130,14 +226,33 @@ export function viableTypesAt(
     // either way keeps the menu constrained; the cold slack below is exactly the allowance for the
     // greenhouse that will close the gap, and it was written for this. Without this fallback a
     // SurfaceTemp_K type falls through as "no temperature constraint" and lava is offered in the
-    // Goldilocks zone — which is what happened to the three eyeball classes at v2.1.283, unnoticed
-    // because nothing covered them.
-    const band = fp.match['Teq_K'] ?? fp.match['SurfaceTemp_K'];
-    if (!Array.isArray(band) || typeof band[0] !== 'number') return true; // no temp constraint
-    const [lo, hi] = band as [number, number];
-    const pad = (hi - lo) * SLACK;
-    return teqK >= lo - pad - greenhouseColdSlackK(fp.class) && teqK <= hi + pad;
-  });
+    // Goldilocks zone — which is what happened to the three eyeball classes at v2.1.283.
+    if (g.temperature) {
+      const band = fp.match['Teq_K'] ?? fp.match['SurfaceTemp_K'];
+      if (Array.isArray(band) && typeof band[0] === 'number') {
+        const [lo, hi] = band as [number, number];
+        const pad = (hi - lo) * SLACK;
+        const okT = ctx.teqK >= lo - pad - greenhouseColdSlackK(fp.class) && ctx.teqK <= hi + pad;
+        if (!okT) failed.push('temperature');
+      }
+    }
+
+    out.push({ fp, ok: failed.length === 0, failed });
+  }
+  return out;
+}
+
+// Which base types could exist at a given equilibrium temperature (and role) around a host of a given
+// mass. Kept as the simple entry point — it is judgeTypesAt with every gate on and the verdicts
+// reduced to the survivors. Callers that want to explain a hidden type use judgeTypesAt directly.
+export function viableTypesAt(
+  teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[], hostMassKg = 0,
+  opts?: { canTidallyLock?: boolean; ageGyr?: number; gates?: ViabilityGates; planetMassFloorMe?: number }
+): Fingerprint[] {
+  return judgeTypesAt(
+    { role, teqK, hostMassKg, ageGyr: opts?.ageGyr, canTidallyLock: opts?.canTidallyLock, planetMassFloorMe: opts?.planetMassFloorMe },
+    fingerprints, opts?.gates ?? ALL_GATES
+  ).filter((v) => v.ok).map((v) => v.fp);
 }
 
 /**

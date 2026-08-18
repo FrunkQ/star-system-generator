@@ -48,7 +48,8 @@
   import ImportModal from './ImportModal.svelte';
   import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
   import { generateId, toRoman } from '$lib/utils';
-  import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
+  import { AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
+  import { predictTidalLock } from '$lib/physics/tidalLock';
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
   import FocusHeader from './FocusHeader.svelte';
@@ -328,7 +329,7 @@
 
   // §4c add-by-viable-type picker
   let showAddTypeModal = false;
-  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number } | null = null;
+  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number; ageGyr?: number; canTidallyLock?: boolean } | null = null;
 
   // Create Construct (Background) Modal State
   let showCreateConstructModal = false;
@@ -419,7 +420,14 @@
           const probe = { id: 'probe', kind: 'body', roleHint: 'planet', parentId: host.id,
               orbit: { hostId: host.id, elements: { a_AU: Math.max(distAU, 1e-6), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as unknown as CelestialBody;
           const teqK = calculateEquilibriumTemperature(probe, $systemStore.nodes, 0.3);
-          pendingAdd = { distAU, startAngle, hostId: host.id, hostMassKg, role, teqK };
+          // The picker's physics filters want the system's age and whether this orbit can lock a
+          // planet in that time; both are answered here so the picker and the generator judge
+          // viability from the same context.
+          const ageGyr: number | undefined = ($systemStore as any)?.age_Gyr;
+          const canTidallyLock = role === 'planet' && hostMassKg > 0
+              ? predictTidalLock(distAU, EARTH_RADIUS_KM, EARTH_MASS_KG, hostMassKg, ageGyr ?? 4.6)
+              : undefined;
+          pendingAdd = { distAU, startAngle, hostId: host.id, hostMassKg, role, teqK, ageGyr, canTidallyLock };
           showAddTypeModal = true;
           return;
       }
@@ -2489,6 +2497,7 @@
 
     {#if showAddTypeModal && pendingAdd}
         <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role} hostMassKg={pendingAdd.hostMassKg}
+            ageGyr={pendingAdd.ageGyr} canTidallyLock={pendingAdd.canTidallyLock}
             on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
     {/if}
 

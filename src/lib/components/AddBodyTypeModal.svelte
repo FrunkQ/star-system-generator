@@ -4,7 +4,7 @@
   // and a hot orbit offers lava. Pick one → a body with matching randomised params is dropped in.
   import { createEventDispatcher } from 'svelte';
   import type { Fingerprint, RulePack } from '$lib/types';
-  import { viableTypesAt } from '$lib/generation/generateBodyOfType';
+  import { judgeTypesAt, ALL_GATES, type ViabilityGates } from '$lib/generation/generateBodyOfType';
   import { rarityOf, rarityTier } from '$lib/generation/typeDraw';
   import { thumbUrl } from '$lib/util/thumbs';
   import { fmt } from '$lib/stores';
@@ -15,15 +15,34 @@
   export let teqK: number;
   export let role: 'planet' | 'moon';
   export let hostMassKg: number = 0; // host body's mass — moons are mass-gated by it (few for a terrestrial, more for a giant)
+  export let ageGyr: number | undefined = undefined; // the system's age — late formers and early formers gate on it
+  export let canTidallyLock: boolean | undefined = undefined; // can this orbit despin a planet in the time available?
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
 
+  // THE GATES ARE THE GM'S TO SWITCH OFF. Each is physics guidance on where a type can be born; all
+  // start ON, and turning one off widens the menu DESPITE the physics — hand authoring is hand
+  // authoring, and the tags will say what is implausible about the result. The generator uses the
+  // very same model with every gate on, so the picker and the generator can never disagree about
+  // what is viable, only about whether the GM chose to override it.
+  let gates: ViabilityGates = { ...ALL_GATES };
+  const GATE_LABELS: Array<{ key: keyof ViabilityGates; label: string; hint: string; needs?: () => boolean }> = [
+    { key: 'temperature', label: 'Temperature', hint: 'Only types whose temperature band contains this orbit.' },
+    { key: 'mass', label: 'Mass', hint: role === 'moon' ? 'Only types small enough to be a satellite of this host.' : 'Only planet-mass types — asteroids, comets and planetesimals stay off a primary orbit.' },
+    { key: 'age', label: 'Age', hint: 'Only types that can have formed by this system\'s age — protoplanets are young, stripped and cratered worlds are old.', needs: () => typeof ageGyr === 'number' },
+    { key: 'tidalLock', label: 'Tidal lock', hint: 'Types that need a star-locked world, only where this orbit can produce one.', needs: () => typeof canTidallyLock === 'boolean' },
+    { key: 'hostFit', label: 'Host', hint: 'A moon cannot be a giant; a substantial moon needs a giant host.', needs: () => role === 'moon' },
+  ];
+  $: shownGates = GATE_LABELS.filter((g) => !g.needs || g.needs());
+
   $: fingerprints = (rulePack.classifier?.fingerprints ?? []) as Fingerprint[];
   $: images = (rulePack.classifier as any)?.planetImages ?? {};
-  $: viable = viableTypesAt(teqK, role, fingerprints, hostMassKg)
+  $: verdicts = judgeTypesAt({ role, teqK, hostMassKg, ageGyr, canTidallyLock }, fingerprints, gates);
+  $: viable = verdicts.filter((v) => v.ok).map((v) => v.fp)
     .slice()
     .sort((a, b) => a.class.localeCompare(b.class));
+  $: hiddenCount = verdicts.length - viable.length;
 
   // Moons are ALSO gated by the host's mass (a terrestrial can only hold small airless/icy moons; a
   // giant can hold larger, icy, atmosphered ones). Surface that second gate in the header.
@@ -53,6 +72,16 @@
         <div class="legend">
           {#each LEGEND as l}<span class="leg"><span class="dot" style="background:{l.color}"></span>{l.label}</span>{/each}
         </div>
+        <div class="gates" role="group" aria-label="Physics filters">
+          <span class="gates-label">Filters</span>
+          {#each shownGates as g}
+            <label class="gate" class:off={!gates[g.key]} title={g.hint}>
+              <input type="checkbox" bind:checked={gates[g.key]} />
+              {g.label}
+            </label>
+          {/each}
+          {#if hiddenCount > 0}<span class="hidden-note">{hiddenCount} hidden by the filters</span>{/if}
+        </div>
       </div>
       <button class="close" on:click={close} aria-label="Close">×</button>
     </header>
@@ -70,7 +99,7 @@
         </button>
       {/each}
       {#if viable.length === 0}
-        <p class="empty">No catalogued types are viable at this temperature{massGated ? " and host mass" : ""}.</p>
+        <p class="empty">No catalogued types pass the filters here{hiddenCount > 0 ? ' — switch one off above to widen the menu' : ''}.</p>
       {/if}
     </div>
   </div>
@@ -85,6 +114,13 @@
   .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
   .leg { display: flex; align-items: center; gap: 4px; font-size: 0.68rem; color: var(--text-faint, #8a8a8a); text-transform: uppercase; letter-spacing: 0.04em; }
   .leg .dot { width: 9px; height: 9px; border-radius: 50%; }
+  /* The physics filters. Each starts ON; an OFF one dims and the menu widens despite the physics. */
+  .gates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
+  .gates-label { font-size: 0.68rem; color: var(--text-faint, #8a8a8a); text-transform: uppercase; letter-spacing: 0.04em; }
+  .gate { display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; color: var(--text-muted, #cfcfcf); cursor: pointer; padding: 2px 8px; border: 1px solid var(--border, #2a2d36); border-radius: 999px; user-select: none; }
+  .gate input { margin: 0; accent-color: var(--accent, #ff5a1f); }
+  .gate.off { color: var(--text-faint, #8a8a8a); border-style: dashed; }
+  .hidden-note { font-size: 0.7rem; color: var(--text-faint, #8a8a8a); font-style: italic; }
   .close { background: none; border: none; color: var(--text-muted, #cfcfcf); font-size: 1.6rem; line-height: 1; cursor: pointer; }
   .close:hover { color: var(--text, #fff); }
   .grid { overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }

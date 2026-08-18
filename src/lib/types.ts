@@ -710,6 +710,12 @@ export interface Fingerprint {
   // lifting a 0.11-fit match by 37% while lifting a perfect one by only 8%. It rewards the worst
   // matches most, which is how a 289 K world briefly classified as a cold eyeball (B25).
   gate?: Record<string, FingerprintBand>;
+  // WHERE THE TYPE CAN BE BORN — read ONLY by the viability model (the "add here" picker and the
+  // generator), NEVER by the classifier. The classifier works on what it sees: a hand-authored
+  // chthonian in a million-year-old system still classifies as a chthonian, however implausible its
+  // presence, and the tags say so. `formation` is the one-way half of that bargain — it decides
+  // what a slot may be GIVEN, not what a body IS. Bands: age_Gyr (early / late formers).
+  formation?: Record<string, FingerprintBand>;
   weight?: number;                       // optional score multiplier (default 1)
   note?: string;                         // human note on the type's defining traits
 }

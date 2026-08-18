@@ -336,7 +336,7 @@ function spawnTypedSlot(opts: {
   const canLock = role === 'planet'
     ? predictTidalLock(aAU, EARTH_RADIUS_KM, EARTH_MASS_KG, hostMassKg, ageGyr)
     : undefined;
-  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps, hostMassKg, { canTidallyLock: canLock }), rarity, starClass, rng, pack);
+  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps, hostMassKg, { canTidallyLock: canLock, ageGyr, planetMassFloorMe: pack.generation_parameters?.planet_mass_floor_me }), rarity, starClass, rng, pack);
   const orbit = { hostId: host.id, hostMu: G * hostMassKg, t0: Date.now(),
     elements: { a_AU: aAU, e: randomFromRange(rng, 0.01, 0.12), i_deg: Math.pow(rng.nextFloat(), 3) * 12,
       omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) } };

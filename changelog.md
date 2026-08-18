@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.777-beta - 18th Aug 2026
+
+- **The "Add planet/moon here" picker and the generator now judge "what could be born here" from ONE model, with the physics filters shown at the top of the picker as switches.** Temperature, mass, age, tidal lock and host fit each start on; the GM can turn any of them off to see the wider menu despite the physics — hand authoring is hand authoring, and the tags will say what is implausible. The generator uses the same model with every filter on and then chooses among the survivors with the sliders. The picker and the generator can no longer disagree about what is viable, only about whether the GM chose to override it.
+
+- **A planet slot now gets a planet.** Asteroids, comets, planetesimals and dwarf planets were competing for primary orbits on equal terms with real worlds — and, being common, the rarity ladder favoured them. A fifth of every generated "planet" around a Sun-like star was lighter than Mercury and one in eight lighter than Ceres. A mass floor (pack data, Mercury-ish) keeps them off a headline orbit by default; they stay in the world as moons and belt members, and in the picker when the filter is switched off. Sub-Ceres worlds and asteroids-as-planets: gone. Sub-Mercury: halved, the rest being honest small worlds.
+
+- **Types now carry a formation window — early formers and late formers.** A protoplanet is young; a stripped chthonian core or a helium remnant needs time. That band gates what a slot may be GIVEN and nothing else: it is deliberately one-way, so a hand-placed chthonian in a million-year-old system still classifies as exactly what it is. Two pre-existing age bands that were sitting on the classifier side (protoplanet, crater) have been moved to the formation side, where they belonged.
 ## v2.1.776-beta - 18th Aug 2026
 
 - Docs only. The surface-areas design gains a third dimension - depth, and height - so the one record describes a polar cap, an iron core, a subsurface ocean, a mantle plume and a beanstalk rather than only the outside of a world. It also moves from "deferred to V4" to groundwork that lands BEFORE it, since the advanced generation is meant to build on it.
