@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.805-beta - 18th Aug 2026
+
+- The gas-giant gallery will now hand you the recipe. Every giant in the derived rows gets a **Copy recipe** button that puts its composition, pressure and temperatures on the clipboard, ready to paste into a body's atmosphere - so if you see a colour you want, you can have the world that makes it. It copies the INPUTS, never the colour: paste it and the engine derives the same giant, which is the point the gallery has been making all along.
+- The four hand-painted giants further down deliberately have no button, and now say so - their palettes were chosen by hand, so there is no recipe behind them to give you.
+
 ## v2.1.804-beta - 18th Aug 2026
 
 - Docs only. Your-own-map-behind-the-stars handed to a fresh session.

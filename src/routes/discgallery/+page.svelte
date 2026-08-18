@@ -11,6 +11,7 @@
   import { decksFromTags, PRECIPITATION_TAG } from '$lib/physics/cloudDecks';
   import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST,
     GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL, buildGiantLab,
+    giantRecipeJson,
     GALLERY_COVERAGE, GALLERY_PIGMENTS, GALLERY_STACK, GALLERY_TECHNO } from '$lib/catalogue/galleryExamples';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
@@ -183,6 +184,27 @@
       solError = e?.message ?? String(e);
     }
   });
+
+  // G7 — hand the reader the recipe behind a colour. INPUTS ONLY (see `giantRecipe`): the deck list
+  // is already beside it in the caption, and copying a derived value would freeze an answer next to
+  // its question. Only the LAB row gets this; the authored giants below have no recipe to give.
+  let copiedId: string | null = null;
+  let copyTimer: ReturnType<typeof setTimeout> | null = null;
+  async function copyRecipe(b: CelestialBody) {
+    const json = giantRecipeJson(b);
+    if (!json) return;
+    try {
+      await navigator.clipboard.writeText(json);
+    } catch {
+      // A denied clipboard must not look like a copy that worked. Fall back to a prompt so the text
+      // is still obtainable, and say nothing was copied if even that is refused.
+      window.prompt('Copy this recipe:', json);
+      return;
+    }
+    copiedId = b.id ?? null;
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => (copiedId = null), 1600);
+  }
 
   const giants = [
     mk({ name: 'Jupiter-like · fast spin · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3, makeup: { gas: 0.9, ice: 0.1 } as any,
@@ -442,6 +464,9 @@
   </div>
 
   <h2>Gas &amp; ice giants — banding from spin, tilted by the axis</h2>
+  <p class="lead authored-note">These four are an <strong>authored look</strong> &mdash; literal palettes chosen by hand to show
+    banding and tilt. There is no recipe behind them, which is why they carry no copy control; the derived
+    giants above are the ones built from composition and temperature.</p>
   <div class="gallery">
     {#each giants as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
@@ -513,6 +538,10 @@
             {:else}
               <span class="weather dim">clear</span>
             {/if}
+            <button class="recipe" on:click={() => copyRecipe(b)}
+                    title="Copy the composition, pressure and temperatures that produced this colour — paste into a body's atmosphere block">
+              {copiedId === b.id ? 'Copied' : 'Copy recipe'}
+            </button>
           </figcaption>
         </figure>
       {/each}
@@ -527,6 +556,13 @@
   .lead { color: #8a97a6; margin: 0 0 18px; font-size: 0.85rem; }
   h2 { color: #8aa8bc; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin: 26px 0 4px; }
   .gallery { display: flex; flex-wrap: wrap; gap: 28px; padding: 12px 0; }
+
+  .recipe {
+    display: block; margin: 6px auto 0; font-size: 0.72rem; padding: 2px 8px; border-radius: 999px;
+    cursor: pointer; background: #161c26; border: 1px solid #2a3340; color: #9fb2c4;
+  }
+  .recipe:hover { border-color: #6cb6ff; color: #cfe0ea; }
+  .authored-note { margin-top: 2px; }
   figure { margin: 0; text-align: center; font-size: 0.78rem; width: 168px; }
   figcaption { margin-top: 8px; color: #b8c2cc; }
   .err { color: #e08a6a; }
