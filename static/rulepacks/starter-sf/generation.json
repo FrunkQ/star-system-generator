@@ -1,6 +1,7 @@
 {
   "generation_parameters": {
     "planet_mass_band_me": [0.03, 4130],
+    "infill_anchor_exclusion_hill_radii": 3.5,
     "type_metallicity_sensitivity": {
       "name": "How the Metallicity dial reweights the type draw. Fischer & Valenti 2005: giant occurrence rises roughly as 10^(2 [Fe/H]) because core accretion needs solids to build a core before the disc dissipates - so LOW metallicity means FEWER giants, and a metal-poor system is small rocky worlds, few of them. giant_floor is the metallicity-blind share from gravitational instability, which is why the bottom of the dial is not zero giants. Iron and silicate worlds ride the same curve up, gently; ice-dominated worlds move the other way, weakly. The Sun is somewhat metal-rich against the local median, so realistic_dial sits above the middle. Factor = floor + (1-floor) * 10^(sensitivity * (dial - realistic_dial) * decades_across_dial); sensitivity keys are regexes on the class, first match wins.",
       "realistic_dial": 0.65,

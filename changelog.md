@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v2.1.790-beta - 18th Aug 2026
+
+- **Groundwork for the import refresh: one infill and one age model, shared by every importer.** The real-sky catalogue's fill-out routine — which already did the right thing: seed the wizard's own generator from the star, never crowd an imported world, continue the letters, tag everything it adds — is generalised into a single `infillSystem` that takes the same four dials as the wizard, an age, more than one star, and a hard planet count for Traveller (which never counts moons). Real-sky now calls it. Nothing user-facing changes yet; the panel comes next.
+
+- **`guessSystemAge`: a star-aware guess with a reasonable band, replacing three different policies** (star-aware, flat 4.6 Gyr, and — in Traveller — a random roll). Middle-aged for a main-sequence star, near the end for a giant, cooling age for a white dwarf, honestly undated for a brown dwarf; a stated age wins if the star can be that old and is refused with a reason if it cannot. The band is the star's own life, so the age control can be bound to it.
+
+- Two owner rules recorded in code: an imported world is truth (never moved, re-typed or aged by infill), and an imported star is truth (fed to the generator as it is now, not re-aged).
 ## v2.1.789-beta - 18th Aug 2026
 
 - Docs only. The spectra decision recorded (gas-editor bands now; species vision and reflectance specified now for 3.1; full EM before V4), the gas-editor item routed, and the owner's own generation-and-importer work noted so nothing is routed under it.

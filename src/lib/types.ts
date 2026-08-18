@@ -673,6 +673,13 @@ export interface Barycenter extends NodeBase {
 
 export interface System {
   id: ID; name: string; seed: string; epochT0: number; age_Gyr: number;
+  // WHERE THE AGE CAME FROM. `ageEstimated` was set by the real-sky importer for years without being
+  // declared here (via `as any`); it now has a home, and every importer sets it through
+  // `guessSystemAge`. An estimated age is a GUESS from the primary's stellar type, not a measurement,
+  // and the UI says so; `ageBandGyr` is the range the star's own life makes reasonable, shown under the
+  // age control so the GM can move it knowingly. Neither is written by generation, which chose its age.
+  ageEstimated?: boolean;
+  ageBandGyr?: [number, number];
   nodes: Array<CelestialBody | Barycenter>;
   rulePackId: string; rulePackVersion: string;
   tags: Tag[]; notes?: string; gmNotes?: string;

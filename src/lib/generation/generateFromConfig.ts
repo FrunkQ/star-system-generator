@@ -30,6 +30,13 @@ export interface GenerationKnobs {
 export interface GenerationConfig {
   seeds?: StarSeed[];          // explicit stars (HR / preset); omit for legacy random
   ageGyr?: number;             // system age — evolves the stars + drives planet physics
+  /**
+   * The seeds describe stars AS THEY ARE NOW, not at birth — do not run them through ageStar. Set by
+   * infill on an imported system: the imported star is already at its current state, and ageing it
+   * again to `ageGyr` would shift every zone the new worlds are placed against. `ageGyr` still dates
+   * the PLANETS (birth windows, escape, cratering, tidal lock), which is what it is for there.
+   */
+  starsAreCurrentState?: boolean;
   emptyPlanets?: boolean;      // create the star(s) only (GM adds planets via §4c)
   name?: string;
   knobs?: GenerationKnobs;
@@ -238,13 +245,14 @@ export function planStarHierarchy(seeds: StarSeed[]): StarPlanNode | null {
 
 // Walk a planned hierarchy into actual star bodies + nested barycentres, collecting the S-type and
 // P-type host bounds for the planet placer. (The processor reconciles barycentre dynamics afterwards.)
-function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number | undefined, baseName: string) {
+function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number | undefined, baseName: string, starsAreCurrentState = false) {
+  const evolve = (seed: StarSeed) => (ageGyr && !starsAreCurrentState) ? ageStar(seed, ageGyr * 1e9) : seed;
   const nodes: (CelestialBody | Barycenter)[] = [];
   const LETTERS = 'ABCDEFGHIJKLMNOP';
   const massOf = (n: CelestialBody | Barycenter) => n.kind === 'barycenter' ? (n.effectiveMassKg || 0) : ((n as CelestialBody).massKg || 0);
 
   if (seeds.length === 1) {
-    const star = starSeedToBody(ageGyr ? ageStar(seeds[0], ageGyr * 1e9) : seeds[0], pack, `${baseName}-star-a`, null, ageGyr);
+    const star = starSeedToBody(evolve(seeds[0]), pack, `${baseName}-star-a`, null, ageGyr);
     star.name = baseName;
     nodes.push(star);
     return { nodes, systemRoot: star, systemName: star.name, isBinary: false, hierarchical: false,
@@ -260,7 +268,7 @@ function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number |
   // which sets the node's OUTER stability bound (~0.37× the parent separation).
   const build = (node: StarPlanNode, parentIdForStar: string | null, parentSepAU: number): CelestialBody | Barycenter => {
     if (node.kind === 'star') {
-      const body = starSeedToBody(ageGyr ? ageStar(node.seed, ageGyr * 1e9) : node.seed, pack, `${baseName}-star-${node.index}`, parentIdForStar, ageGyr);
+      const body = starSeedToBody(evolve(node.seed), pack, `${baseName}-star-${node.index}`, parentIdForStar, ageGyr);
       body.name = `${baseName} ${LETTERS[node.index] ?? node.index + 1}`;
       nodes.push(body);
       starHosts.push({ star: body, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });
@@ -394,7 +402,7 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
   if (!config.seeds || config.seeds.length === 0) {
     throw new Error('generateSystemFromConfig requires at least one star seed (use generateSystem for fully random).');
   }
-  const setup = setupStarsFromSeeds(config.seeds, pack, config.ageGyr, baseName);
+  const setup = setupStarsFromSeeds(config.seeds, pack, config.ageGyr, baseName, config.starsAreCurrentState);
   const { nodes, systemRoot, systemName, isBinary, starA, starB, hierarchical, starHosts, baryHosts } = setup;
 
   // Planets — unless the GM chose stars-only. Disk-mass knob scales the count.

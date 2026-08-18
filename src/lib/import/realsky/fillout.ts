@@ -22,135 +22,23 @@
 // App-side only (TypeScript, $lib imports) — the plain-node build kit never
 // fills out; the bundled REAL map is confirmed-only by policy.
 
-import type { RulePack, System, CelestialBody, Barycenter, Tag } from '$lib/types';
-import type { StarSeed } from '$lib/physics/stellar-evolution';
-import { generateSystemFromConfig } from '$lib/generation/generateFromConfig';
-import { EPOCH } from './constants.mjs';
-import { formatStellarType } from './stars.mjs';
+import type { RulePack, System } from '$lib/types';
 
-export const GENERATED_TAG = 'origin/generated';
-const MUTUAL_HILL_EXCLUSION = 3.5;
+// ONE COPY, and it is not here any more. The infill that used to live in this file is now
+// `generation/infill.ts infillSystem` — the same seed-from-star, anchor-respecting, letter-continuing,
+// origin/generated-tagging routine, generalised to every importer, given the wizard's four dials, an
+// age, more than one star, and a hard count for Traveller. This file keeps its name and its two
+// exports so the real-sky callers and their tests do not move; both are thin.
+export { GENERATED_TAG } from '$lib/generation/infill';
+import { infillSystem, type InfillResult } from '$lib/generation/infill';
 
-type AnyNode = CelestialBody | Barycenter;
+export type FillOutResult = Pick<InfillResult, 'addedPlanets' | 'addedMoons' | 'droppedNearAnchors'>;
 
-function mutualHillAU(a1: number, m1: number, a2: number, m2: number, starMassKg: number): number {
-  return Math.cbrt((m1 + m2) / (3 * starMassKg)) * ((a1 + a2) / 2);
-}
-
-// Continue the planet letter sequence after the confirmed ones: confirmed
-// worlds keep their catalogue letters (b, c, ...); generated ones take the
-// next free letters in order of semi-major axis.
-function nextLetters(usedNames: string[], count: number): string[] {
-  const used = new Set(usedNames.map((n) => n.trim().split(/\s+/).pop()?.toLowerCase()));
-  const out: string[] = [];
-  for (let c = 98; out.length < count && c < 123; c++) { // 'b'..'z'
-    const letter = String.fromCharCode(c);
-    if (!used.has(letter)) out.push(letter);
-  }
-  return out;
-}
-
-export interface FillOutResult {
-  addedPlanets: number;
-  addedMoons: number;
-  droppedNearAnchors: number;
-}
-
-// Fill out ONE imported single-star system in place. Returns what happened so
-// the UI can report it. Systems whose star the converter skipped, or with a
-// structure fill-out does not understand (no star), are left untouched.
+// Fill out ONE imported single-star system in place. Returns what happened so the UI can report it.
+// Deterministic per catalogue slug, exactly as before.
 export function fillOutSystem(system: System, rulePack: RulePack): FillOutResult {
-  const none: FillOutResult = { addedPlanets: 0, addedMoons: 0, droppedNearAnchors: 0 };
-  const star = system.nodes.find((n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'star') as CelestialBody | undefined;
-  if (!star || star.massKg == null || star.radiusKm == null) return none;
-
-  const anchors = system.nodes.filter(
-    (n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'planet'
-  ) as CelestialBody[];
-
-  const seedStr = `realsky-fill-${system.seed}`; // deterministic per catalogue slug
-  const starSeed: StarSeed = {
-    id: star.id,
-    temperatureK: star.temperatureK ?? 5000,
-    luminositySolar: star.radiationOutput ?? 0.05,
-    massKg: star.massKg,
-    radiusKm: star.radiusKm,
-    // The full designation, rebuilt from the structured classification rather than fished out of
-    // the class array by string length. Falls back to the old read for a body that predates the
-    // field (a saved starmap), then to 'M'.
-    spectralClass: (star.stellarType ? formatStellarType(star.stellarType) : '')
-      || (star.classes ?? []).map((c) => c.split('/')[1]).find((c) => c && c.length > 1) || 'M',
-    category: '',
-    // Was hard-coded 'V', which made every filled-out star a dwarf by declaration (D19). The star
-    // carries its classification as structured data now, parsed once at import, so this READS it.
-    // 'V' stays the fallback when the catalogue stated no class, which is the common case and the
-    // right guess: the galaxy is mostly dwarfs.
-    luminosityClass: star.stellarType?.luminosity ?? 'V',
-    isRemnant: (star.classes ?? []).some((c) => /WD|NS|BH/.test(c)),
-    pos: { x: 0, y: 0, z: 0 },
-    vel: { x: 0, y: 0, z: 0 }
-  };
-
-  const generated = generateSystemFromConfig(seedStr, rulePack, {
-    seeds: [starSeed],
-    ageGyr: system.age_Gyr,
-    name: system.name,
-    naming: 'scientific'
-  });
-
-  const genStar = generated.nodes.find((n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'star');
-  if (!genStar) return none;
-
-  // Generated planets, checked against the anchors; their moons/rings follow
-  // their planet's fate.
-  const genPlanets = generated.nodes.filter(
-    (n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'planet' && n.parentId === genStar.id
-  ) as CelestialBody[];
-  const childrenOf = (id: string) => generated.nodes.filter((n) => n.parentId === id);
-
-  const result: FillOutResult = { addedPlanets: 0, addedMoons: 0, droppedNearAnchors: 0 };
-  const kept: CelestialBody[] = [];
-  for (const p of genPlanets) {
-    const aGen = p.orbit?.elements.a_AU;
-    if (aGen == null) { result.droppedNearAnchors++; continue; }
-    const tooClose = anchors.some((anchor) => {
-      const aConf = anchor.orbit?.elements.a_AU;
-      if (aConf == null) return false;
-      const rh = mutualHillAU(aGen, p.massKg ?? 0, aConf, anchor.massKg ?? 0, star.massKg!);
-      return Math.abs(aGen - aConf) < MUTUAL_HILL_EXCLUSION * rh;
-    });
-    if (tooClose) { result.droppedNearAnchors++; continue; }
-    kept.push(p);
-  }
-
-  // Order by distance and hand out the letters the catalogue has not used.
-  kept.sort((a, b) => (a.orbit?.elements.a_AU ?? 0) - (b.orbit?.elements.a_AU ?? 0));
-  const letters = nextLetters(anchors.map((a) => a.name), kept.length);
-
-  const markGenerated = (node: AnyNode) => {
-    const tags: Tag[] = (node.tags ?? []).filter((t) => t.key !== GENERATED_TAG);
-    tags.push({ key: GENERATED_TAG });
-    node.tags = tags;
-    const body = node as CelestialBody;
-    if (body.orbit) body.orbit.t0 = EPOCH; // determinism: never Date.now()
-  };
-
-  kept.forEach((p, idx) => {
-    p.parentId = star.id;
-    if (p.orbit) p.orbit.hostId = star.id;
-    if (letters[idx]) p.name = `${system.name} ${letters[idx]}`;
-    markGenerated(p);
-    p.description = `A plausible world generated around the real star (seeded from the catalogue, so every import agrees). Not a detection: no planet has been confirmed here.${p.description ? '\n\n' + p.description : ''}`;
-    system.nodes.push(p);
-    result.addedPlanets++;
-    for (const child of childrenOf(p.id)) {
-      markGenerated(child);
-      system.nodes.push(child);
-      if ((child as CelestialBody).roleHint === 'moon') result.addedMoons++;
-    }
-  });
-
-  return result;
+  const r = infillSystem(system, rulePack, { seed: `realsky-fill-${system.seed}` });
+  return { addedPlanets: r.addedPlanets, addedMoons: r.addedMoons, droppedNearAnchors: r.droppedNearAnchors };
 }
 
 // Fill out every system of an imported batch (the converter's output). Mutates
