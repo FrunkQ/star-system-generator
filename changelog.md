@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.802-beta - 18th Aug 2026
+
+- The surface-light explorer on the physics page now draws the Sun at Earth's distance as a fixed reference line, so the star you have dialled up can be read against the one you have an intuition for. Turn the temperature down to a red dwarf and its curve drops far below Sol rather than merely changing colour - the intensity difference is the half that is easy to lose, and the visible-light strip along the bottom already showed which part of it you could see. Nothing is editable and no physics changed: both curves come from the same engine function.
+
 ## v2.1.800-beta - 18th Aug 2026
 
 - Internal: the constructs-and-camera session's retirement notes, written up the way the 3D-surfaces session wrote up its own. What the traps are, which reported diagnoses turned out to be leads rather than causes, and what is left open.

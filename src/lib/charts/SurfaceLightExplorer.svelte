@@ -8,6 +8,7 @@
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
   import { scorePigments, absorptance, pigmentDef, pigmentModel } from '$lib/physics/pigments';
   import { wienPeakNm } from '$lib/physics/spectrum';
+  import { topOfAtmosphereSpectrum } from '$lib/physics/surfaceSpectrum';
   import SpectrumChart from './SpectrumChart.svelte';
   import ColourSwatch from './ColourSwatch.svelte';
 
@@ -26,6 +27,13 @@
   let distAU = $state(1);
   let atmKey = $state('earth');
   let focusPigment = $state<string | null>(null);
+
+  // SOL AT EARTH'S DISTANCE — the fixed line every other curve is read against. Computed by the
+  // SAME function that produces the star's own arriving light, so the comparison is like for like
+  // rather than a drawn approximation of one (G23: a diagram that recomputes what it draws is a
+  // second authority on it). It is a constant, not `$derived`: a yardstick that moved with the
+  // controls would not be a yardstick.
+  const SOL_AT_EARTH = topOfAtmosphereSpectrum(5778, 1, 1);
 
   const atm = $derived(ATMOSPHERES[atmKey]);
   const body = $derived({
@@ -88,6 +96,8 @@
     <SpectrumChart
       surface={curves.surface}
       topOfAtmosphere={curves.topOfAtmosphere}
+      reference={SOL_AT_EARTH}
+      referenceLabel="the Sun, at Earth"
       absorbed={shownAbsorbed}
       peakNm={spec.peakSurfaceNm}
       peakLabel="ground peak"

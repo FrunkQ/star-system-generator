@@ -14,6 +14,8 @@
     surface,
     topOfAtmosphere = null,
     absorbed = null,
+    reference = null,
+    referenceLabel = 'Sol at 1 AU',
     peakNm = null,
     peakLabel = 'peak',
     absorbedLabel = 'pigment absorption',
@@ -26,6 +28,9 @@
     surface: number[];
     topOfAtmosphere?: number[] | null;
     absorbed?: number[] | null;
+    /** A fixed curve to judge the others against (the Sun at Earth's distance). */
+    reference?: number[] | null;
+    referenceLabel?: string;
     peakNm?: number | null;
     peakLabel?: string;
     absorbedLabel?: string;
@@ -36,7 +41,12 @@
     title?: string;
   } = $props();
 
-  const yMax = $derived(niceMax([...(topOfAtmosphere ?? []), ...surface]));
+  // THE REFERENCE IS INSIDE THE Y-SCALE ON PURPOSE. Scaling it away would draw a dim red dwarf and
+  // the Sun at the same height and quietly answer the wrong question — the whole point of a
+  // comparison line is that INTENSITY is half of what differs. So a 3200 K star sits visibly low
+  // against Sol, which is the fact, and the shape is still readable because the ribbon and the peak
+  // marker carry the colour half.
+  const yMax = $derived(niceMax([...(topOfAtmosphere ?? []), ...(reference ?? []), ...surface]));
   const sx = $derived(xScale(box, GRID_NM[0], GRID_NM[GRID_NM.length - 1]));
   const sy = $derived(yScale(box, 0, yMax));
   // NOTE what `absorbed` is, because the obvious alternative is a quiet lie in picture form. It is
@@ -66,6 +76,13 @@
     <PlotAxes {box} {sx} {sy} xLabel="wavelength" xUnit="nm" {yLabel}
       yFormat={(v) => (yMax >= 100 ? String(Math.round(v)) : v.toPrecision(2))} />
 
+    <!-- THE REFERENCE, drawn first so everything else sits over it: what the Sun delivers at Earth's
+         distance. Fixed — it does not move when the controls do, because a yardstick that moved with
+         the thing it measures would not be one. -->
+    {#if reference}
+      <polyline class="reference" points={polyline(GRID_NM, reference, sx, sy)} />
+    {/if}
+
     <!-- Above the atmosphere: the star as it arrives, before the sky takes its cut. -->
     {#if topOfAtmosphere}
       <polyline class="top" points={polyline(GRID_NM, topOfAtmosphere, sx, sy)} />
@@ -92,6 +109,7 @@
   </svg>
 
   <div class="legend">
+    {#if reference}<span class="key reference-key">{referenceLabel}</span>{/if}
     {#if topOfAtmosphere}<span class="key top-key">{topLabel}</span>{/if}
     <span class="key surface-key">{surfaceLabel}</span>
     {#if absorbed}<span class="key absorb-key">{absorbedLabel}</span>{/if}
@@ -103,6 +121,7 @@
   figcaption { font-size: 0.85em; color: var(--text-muted, #cfcfcf); margin-bottom: 4px; }
   svg { width: 100%; height: auto; display: block; }
   .top { fill: none; stroke: var(--text-faint, #8a8f9a); stroke-width: 1.2; stroke-dasharray: 4 3; }
+  .reference { fill: none; stroke: #e8b17a; stroke-opacity: 0.65; stroke-width: 1.2; stroke-dasharray: 1 3; }
   .surface { fill: none; stroke: var(--link, #6cb6ff); stroke-width: 1.6; }
   .surface-fill { fill: var(--link, #6cb6ff); fill-opacity: 0.16; }
   .absorb { fill: #7ad07a; fill-opacity: 0.22; stroke: #7ad07a; stroke-opacity: 0.6; stroke-width: 1; }
@@ -112,6 +131,7 @@
   .key::before {
     content: ''; display: inline-block; width: 14px; height: 3px; margin-right: 5px; vertical-align: middle;
   }
+  .reference-key::before { background: #e8b17a; }
   .top-key::before { background: var(--text-faint, #8a8f9a); }
   .surface-key::before { background: var(--link, #6cb6ff); }
   .absorb-key::before { background: #7ad07a; }
