@@ -12,6 +12,10 @@
 //   starmap.json | system.json     the data, with asset references in place of inline bytes
 //   assets/models/<sha256>.glb     ship models, content-addressed (shared hulls stored once)
 //   assets/images/<nodeId>.<ext>   body/construct pictures, one per node that has one
+//   assets/images/player/<assetId>.<ext>  player-view graphics: logos, overlays, and the map
+//                                         background (G16) - a GM's sector map is often the single
+//                                         biggest asset in a campaign, and base64 inside the JSON is
+//                                         exactly what DATA-M3 exists to stop
 //
 // COMPATIBILITY IS NOT OPTIONAL: plain .json saves still load, and a bundle is only produced when
 // there is actually an asset to carry. `sniffBundle` decides by the zip magic number, never by the
@@ -23,6 +27,11 @@ import { buildAttributionsFile } from './attributions';
 export const BUNDLE_EXT = '.sse.zip';
 const MODELS_DIR = 'assets/models/';
 const IMAGES_DIR = 'assets/images/';
+// Player-view graphics live in their own subfolder of the image directory. A subfolder rather than a
+// prefix so that a GM opening the zip can see at a glance which pictures are body photos and which
+// are their own artwork - and note that 'player/' starts with the image dir, so anything matching on
+// IMAGES_DIR must exclude it explicitly rather than claiming every player asset.
+const PLAYER_IMAGES_DIR = 'assets/images/player/';
 
 export type BundleKind = 'starmap' | 'system';
 const DOC_NAME: Record<BundleKind, string> = { starmap: 'starmap.json', system: 'system.json' };
@@ -124,6 +133,20 @@ export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): 
     assets++;
   }
 
+  // G16: player-view graphics (cover art, overlays, the map background). Same rule as a node photo -
+  // only a data: URL is extracted, because the built-in starters are same-origin static paths that
+  // must survive untouched.
+  for (const a of out.playerAssets ?? []) {
+    const url: unknown = a?.dataUrl;
+    if (typeof url !== 'string' || !url.startsWith('data:')) continue;
+    const parsed = dataUrlToBytes(url);
+    if (!parsed) continue;
+    const name = `${PLAYER_IMAGES_DIR}${safeName(a.id)}.${parsed.ext}`;
+    files[name] = parsed.bytes;
+    a.dataUrl = name;
+    assets++;
+  }
+
   if (!assets) return null; // nothing to carry: plain JSON is the better file
 
   files[DOC_NAME[kind]] = strToU8(JSON.stringify(out, null, 2));
@@ -137,6 +160,7 @@ export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): 
     `${DOC_NAME[kind]} is the data - edit it in any text editor.\n` +
     `assets/models/*.glb are ship models, named by content hash.\n` +
     `assets/images/*   are uploaded pictures, named by the node they belong to.\n` +
+    `assets/images/player/* are player-view graphics: logos, overlays and the map background.\n` +
     `ATTRIBUTIONS.md   who made the art and under what licence - read it before sharing.\n\n` +
     `Replace an asset by overwriting the file, keeping its name. Re-zip with these paths intact.\n` +
     `A plain .json save (no assets) still loads, and always will.\n`
@@ -194,9 +218,20 @@ export function unpackBundle(bytes: Uint8Array): UnpackedBundle {
     const i = name.indexOf(IMAGES_DIR);
     if (i >= 0) byPath.set(name.slice(i), members[name]);
   }
+  // G16: player-view graphics back to data URLs. Their paths sit UNDER the node image directory, so
+  // the node loop below excludes them explicitly rather than by luck.
+  for (const a of doc.playerAssets ?? []) {
+    const ref: unknown = a?.dataUrl;
+    if (typeof ref !== 'string' || !ref.startsWith(PLAYER_IMAGES_DIR)) continue;
+    const bytes4 = byPath.get(ref);
+    if (!bytes4) continue; // referenced but absent: leave the path, so the loss is visible not silent
+    const ext = ref.split('.').pop()?.toLowerCase() ?? '';
+    a.dataUrl = bytesToDataUrl(bytes4, MIME_BY_EXT[ext] ?? 'application/octet-stream');
+  }
+
   for (const node of allNodes(doc)) {
     const ref: unknown = node?.image?.url;
-    if (typeof ref !== 'string' || !ref.startsWith(IMAGES_DIR)) continue;
+    if (typeof ref !== 'string' || !ref.startsWith(IMAGES_DIR) || ref.startsWith(PLAYER_IMAGES_DIR)) continue;
     const bytes3 = byPath.get(ref);
     if (!bytes3) { delete node.image; continue; } // referenced but absent: honest blank, not a broken img
     const ext = ref.split('.').pop()?.toLowerCase() ?? '';

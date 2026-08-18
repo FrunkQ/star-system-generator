@@ -43,10 +43,12 @@ const label = (node: any, systemName: string) => {
 export function collectAttributions(
   doc: any,
   modelMeta: Record<string, Partial<ModelRef>> = {},
-  paths: { models: string; images: string } = { models: 'assets/models/', images: 'assets/images/' }
+  paths: { models: string; images: string; playerImages?: string } =
+    { models: 'assets/models/', images: 'assets/images/', playerImages: 'assets/images/player/' }
 ): AttributionEntry[] {
   const models = new Map<string, AttributionEntry>();
   const images: AttributionEntry[] = [];
+  const playerDir = paths.playerImages ?? 'assets/images/player/';
 
   for (const { node, systemName } of nodesWithSystem(doc)) {
     const who = label(node, systemName);
@@ -70,7 +72,7 @@ export function collectAttributions(
     const url: unknown = node?.image?.url;
     // Only assets the bundle actually carries. A remote url is someone else's hosting and is not
     // ours to credit; a data: url means packing has not run yet (collect is called after).
-    if (typeof url === 'string' && url.startsWith(paths.images)) {
+    if (typeof url === 'string' && url.startsWith(paths.images) && !url.startsWith(playerDir)) {
       const img = node.image;
       images.push({
         path: url, kind: 'image', usedBy: [who],
@@ -79,7 +81,32 @@ export function collectAttributions(
     }
   }
 
+  // G16 / DATA-M4: PLAYER-VIEW GRAPHICS ARE ASSETS TOO, and the map background is the one this rule
+  // was written for. A GM's uploaded sector map is exactly the case ATTRIBUTIONS.md exists to cover:
+  // it gets handed to players and posted publicly, and CC-BY without a name is a breach rather than
+  // an untidy field. `usedBy` names the surfaces it can appear on, because a player asset is not
+  // attached to a node and "used by nothing" would read as dead weight a GM could delete.
+  for (const a of doc?.playerAssets ?? []) {
+    const url: unknown = a?.dataUrl;
+    if (typeof url !== 'string' || !url.startsWith(playerDir)) continue;
+    images.push({
+      path: url, kind: 'image', usedBy: [playerAssetUse(doc, a.id, a.name)],
+      title: a.name, credit: a.credit, license: a.license, sourceUrl: a.sourceUrl
+    });
+  }
+
   return [...models.values(), ...images];
+}
+
+/** What a player-view graphic is doing in this campaign - map background, or which presets place it. */
+function playerAssetUse(doc: any, id: string, name: string): string {
+  const uses: string[] = [];
+  if (doc?.mapBackground?.source === 'asset' && doc.mapBackground.assetId === id) uses.push('map background');
+  for (const p of doc?.playerPresets ?? []) {
+    const slots = [p?.cover?.graphic, p?.starmapOverlay, p?.systemOverlay];
+    if (slots.some((g: any) => g?.assetId === id)) uses.push(`player view "${p?.name ?? p?.id}"`);
+  }
+  return uses.length ? `${name} (${uses.join(', ')})` : `${name} (uploaded, not currently placed)`;
 }
 
 const isBlank = (e: AttributionEntry) => !e.credit && !e.license && !e.sourceUrl;

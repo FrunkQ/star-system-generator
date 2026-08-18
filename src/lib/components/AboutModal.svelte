@@ -4,8 +4,30 @@
   import DebugFooter from './DebugFooter.svelte';
   import type { RulePack } from '$lib/types';
   import { foreground } from '$lib/ui/foreground';
+  // G16 - ATTRIBUTION FOLLOWS WHAT IS ON SCREEN, and here that is a licence condition rather than
+  // tidiness. The starmap background used to be one hardcoded sentence crediting ESO's Milky Way.
+  // The moment a GM puts their own sector map behind the stars that sentence is FALSE, and the
+  // moment the shipped image is back it must be true again - CC BY 4.0 requires the author be named
+  // while the work is in use, and requires that we not claim it when it is not.
+  import { starmapStore } from '$lib/starmapStore';
+  import { resolveMapBackground } from '$lib/map/mapBackground';
+  import { BUILTIN_ASSETS } from '$lib/player/presets';
 
   const dispatch = createEventDispatcher();
+
+  $: shownBackground = resolveMapBackground($starmapStore, [...BUILTIN_ASSETS, ...($starmapStore?.playerAssets ?? [])]);
+  // Three states, three honest sentences. The middle one is the case that did not exist before and
+  // is the whole reason this is dynamic: a GM's own image, credited or explicitly uncredited.
+  $: backgroundCredit = !shownBackground
+    ? 'Starmap Background: none shown.'
+    : shownBackground.isDefault
+      ? null // the ESO sentence below already covers it, unchanged
+      : shownBackground.credit
+        ? `Starmap Background: &ldquo;${escapeHtml(shownBackground.name ?? 'uploaded image')}&rdquo;, supplied by the GM. Credit: ${escapeHtml(shownBackground.credit)}${shownBackground.sourceUrl ? `. Source: ${escapeHtml(shownBackground.sourceUrl)}` : ''}.`
+        : `Starmap Background: &ldquo;${escapeHtml(shownBackground.name ?? 'uploaded image')}&rdquo;, uploaded by the GM; no credit given.`;
+  $: showEsoBackground = !!shownBackground?.isDefault;
+  const escapeHtml = (t: string) =>
+    t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   // When a system is open, the parent passes its rulePack so the Debug tools
   // (Show JSON / Rebuild Hierarchy / Update & Repair) appear here. null → hidden.
@@ -13,7 +35,7 @@
 
   let showDebug = false;
 
-  const aboutContent = `
+  $: aboutContent = `
 <h2>Star System Explorer</h2>
 
 <p><strong>Version:</strong> ${APP_VERSION}<br>
@@ -50,7 +72,9 @@ Built with <a href="https://kit.svelte.dev/" target="_blank" rel="noopener noref
 <p><strong>Image Attributions:</strong></p>
 <p>Planet Images: Courtesy of Pablo Carlos Budassi, used under a <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> license. Source: <a href="https://pablocarlosbudassi.com/2021/02/planet-types.html" target="_blank" rel="noopener noreferrer">pablocarlosbudassi.com</a>.</p>
 <p>Star Images: Sourced from the <a href="https://beyond-universe.fandom.com/wiki/" target="_blank" rel="noopener noreferrer">Beyond Universe Wiki</a> on Fandom, used under a <a href="https://creativecommons.org/licenses/by-sa/3.0/us/" target="_blank" rel="noopener noreferrer">CC-BY-SA</a> license.</p>
-<p>Magnetar Image &amp; Starmap Background: Courtesy of ESO/L. Calçada &amp; S. Brunier, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license. Sources: <a href="https://www.eso.org/public/images/eso1415a/" target="_blank" rel="noopener noreferrer">ESO Magnetar</a>, <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">ESO Milky Way</a>. Red supergiant: an artist&rsquo;s reconstruction of <a href="https://www.eso.org/public/images/eso2417a/" target="_blank" rel="noopener noreferrer">WOH&nbsp;G64</a>, ESO / L. Cal&ccedil;ada.</p>
+<p>Magnetar Image: Courtesy of ESO/L. Calçada, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license. Source: <a href="https://www.eso.org/public/images/eso1415a/" target="_blank" rel="noopener noreferrer">ESO Magnetar</a>. Red supergiant: an artist&rsquo;s reconstruction of <a href="https://www.eso.org/public/images/eso2417a/" target="_blank" rel="noopener noreferrer">WOH&nbsp;G64</a>, ESO / L. Cal&ccedil;ada.</p>
+${showEsoBackground ? `<p>Starmap Background: Courtesy of ESO/S. Brunier, used under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> license. Source: <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">ESO Milky Way</a>.</p>` : ''}
+${backgroundCredit ? `<p>${backgroundCredit}</p>` : ''}
 <p>Star-type illustrations: orange giant (Arcturus) by Pablo Carlos Budassi, Wikimedia Commons, used under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Red giant by <a href="https://science.nasa.gov/universe/stars/types/" target="_blank" rel="noopener noreferrer">NASA&rsquo;s Goddard Space Flight Center</a> / Chris Smith (KBRwyle).</p>
 <p>Black Hole Accretion Disk Image: Courtesy of NASA’s Goddard Space Flight Center/Jeremy Schnittman, used under a <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">Public Domain</a> license. Source: <a href="https://svs.gsfc.nasa.gov/13232" target="_blank" rel="noopener noreferrer">NASA SVS</a>.</p>
 <p>Starter Spacecraft Models (ISS, Hubble, Cassini-Huygens, Juno, Voyager, Mars Reconnaissance Orbiter): Courtesy of NASA, public domain. Source: <a href="https://github.com/nasa/NASA-3D-Resources" target="_blank" rel="noopener noreferrer">NASA 3D Resources</a>. Textured models resampled for bundle size; the protected NASA insignia is not used.</p>

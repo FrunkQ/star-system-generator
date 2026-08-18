@@ -14,7 +14,7 @@
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { holoStyleOf, systemStageStyle, FONT_STACKS, isRainbow, RAINBOW, RAINBOW_GRADIENT, accentSolid } from '$lib/player/presets';
   import { RATE_STEPS } from '$lib/player/timeRates';
-  import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset } from '$lib/player/presetStore';
+  import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset, updateAssetProvenance, ASSET_MAX_PX, BACKGROUND_MAX_PX } from '$lib/player/presetStore';
   import { systemStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -289,10 +289,29 @@
 
   // ── Assets (General tab) ────────────────────────────────────────────────────
   let fileInput: HTMLInputElement;
+  // G16: a map background is kept at four times the linear resolution of a logo, because a GM zooms
+  // into a sector map to read it. Asked rather than guessed: nothing about the file itself says
+  // whether it is a watermark or a chart, and storing every logo at 2048px would put megabytes into
+  // the broadcast for no gain.
+  let uploadFullRes = false;
   function onAssetPick(e: Event) {
     const f = (e.target as HTMLInputElement).files?.[0];
-    if (f) addAssetFromFile(f, f.name.replace(/\.[a-z0-9]+$/i, ''), () => { /* list is reactive */ });
+    if (f) {
+      addAssetFromFile(f, f.name.replace(/\.[a-z0-9]+$/i, ''), () => { /* list is reactive */ },
+        uploadFullRes ? BACKGROUND_MAX_PX : ASSET_MAX_PX);
+    }
     (e.target as HTMLInputElement).value = '';
+  }
+  // Provenance (DATA-M4): which asset's fields are open for editing, and their working values.
+  let creditingId: string | null = null;
+  let creditDraft = { credit: '', license: '', sourceUrl: '' };
+  function openCredits(a: import('$lib/player/presetTypes').PlayerAsset) {
+    creditingId = a.id;
+    creditDraft = { credit: a.credit ?? '', license: a.license ?? '', sourceUrl: a.sourceUrl ?? '' };
+  }
+  function saveCredits() {
+    if (creditingId) updateAssetProvenance(creditingId, creditDraft);
+    creditingId = null;
   }
 
   // The preview's click focus. HoloView deliberately owns no focus state — a tap dispatches 'focus' and
@@ -537,14 +556,30 @@
                   <img src={a.dataUrl} alt={a.name} />
                   <span class="a-name">{a.name}</span>
                   {#if !a.id.startsWith('builtin-')}
+                    <button class="a-cred" class:has={!!a.credit} title={a.credit ? `Credit: ${a.credit}` : 'No credit recorded — add one'}
+                      on:click={() => openCredits(a)}>&copy;</button>
                     <button class="a-del" title="Remove" on:click={() => deleteAsset(a.id)}>×</button>
                   {/if}
                 </div>
               {/each}
             </div>
+            {#if creditingId}
+              <!-- DATA-M4: provenance travels WITH the art. The save bundle writes these into
+                   ATTRIBUTIONS.md, and calls out CC-BY with no credit as a breach rather than a gap. -->
+              <div class="a-credits">
+                <label>Credit <input type="text" bind:value={creditDraft.credit} placeholder="Who made it" /></label>
+                <label>Licence <input type="text" bind:value={creditDraft.license} placeholder="e.g. CC BY 4.0" /></label>
+                <label>Source <input type="text" bind:value={creditDraft.sourceUrl} placeholder="https://…" /></label>
+                <div class="a-credit-btns">
+                  <button on:click={saveCredits}>Save</button>
+                  <button on:click={() => (creditingId = null)}>Cancel</button>
+                </div>
+              </div>
+            {/if}
+            <label class="chk"><input type="checkbox" bind:checked={uploadFullRes} /> Full resolution (for a map background)</label>
             <button on:click={() => fileInput?.click()}>Upload image…</button>
             <input type="file" accept="image/*" bind:this={fileInput} on:change={onAssetPick} style="display:none" />
-            <p class="hint">PNG keeps transparency. Auto-shrunk; saved with the campaign. Upload here, then place any of them on the Cover, Starmap and System stages — different images and positions per screen.</p>
+            <p class="hint">PNG keeps transparency. Shrunk to {uploadFullRes ? BACKGROUND_MAX_PX : ASSET_MAX_PX}px on the long edge and saved with the campaign — full resolution is for a sector map you will zoom into, and costs far more to send to players. Upload here, then place any of them on the Cover, Starmap and System stages, or choose one as the map background in Settings &rarr; Map display.</p>
           </CollapsibleSection>
         {:else if tab === 'cover'}
           <CollapsibleSection label="Cover page" open={openSections['cover-page']}
@@ -1240,6 +1275,12 @@
   .asset img { width: 44px; height: 28px; object-fit: contain; background: repeating-conic-gradient(#2a2d36 0 25%, #1b1e26 0 50%) 0 0/12px 12px; border-radius: 3px; }
   .a-name { flex: 1; font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .a-del { background: none; border: none; color: #ff8080; cursor: pointer; font-size: 1rem; }
+  /* G16/DATA-M4: the credit handle. Dim when nothing is recorded, so an unattributed upload is
+     visible at a glance rather than needing to be opened one at a time. */
+  .a-cred { background: none; border: none; color: #8899aa; cursor: pointer; font-size: 0.95rem; opacity: 0.55; }
+  .a-cred.has { color: #7fd18a; opacity: 1; }
+  .a-credits { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+  .a-credit-btns { display: flex; gap: 6px; }
   .wiz-nav { display: flex; justify-content: space-between; margin-top: auto; padding-top: 0.4rem; }
   .preview-col { display: flex; flex-direction: column; min-height: 0; }
   .preview-tabs { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); }
