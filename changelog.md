@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.810-beta - 19th Aug 2026
+
+- Docs only. The broadcast-id prompt is now user-reported on beta and goes to the front of the VTT session's queue.
+
 ## v2.1.809-beta - 19th Aug 2026
 
 - Docs only. The broadcast-id collision narrowed by elimination to the tab colliding with its own registration; the VTT session is asked to record every host attempt in the event ring before fixing. Two rule-pack 404s on every load noted.
