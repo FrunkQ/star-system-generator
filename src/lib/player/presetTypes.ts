@@ -177,6 +177,7 @@ export interface PlayerPreset {
   starmapGridDepth?: number; // 3D starmap: how far each grid line drops a curtain, 0 (flat) .. 1
   starmapGridFalloff?: number; // starmap grid: distance fade, 0 (even) .. 1 (bright near, gone by the edge)
   gridFalloff?: number; // SYSTEM-stage ground grid: same dial, defaulted 0 so that view is unchanged unless asked
+  orbitOpacity?: number; // G5: orbit-line strength 0..1, multiplying each line's designed opacity. 1 = unchanged
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1
   bodySize: number;    // 1 readable .. 0 true scale

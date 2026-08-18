@@ -26,6 +26,7 @@ export interface LiveOverrides {
   filterBypass: boolean;    // temporarily drop the visual filter (readability)
   orbitPaused: boolean;     // temporarily stop the auto view-orbit turntable
   labelsHidden: boolean;    // temporarily hide in-scene labels
+  orbitLinesHidden: boolean; // G5: temporarily hide every orbit line (a dense import buries its map)
   // Hide every artificial construct from the players' view — ships, stations, gates. Sits with the
   // momentary nudges rather than with the highlight selection above, and therefore does NOT survive a
   // reload: it is "don't show them that, right now", and coming back to a launch with the whole fleet
@@ -44,7 +45,7 @@ export interface LiveOverrides {
 }
 
 export const DEFAULT_OVERRIDES: LiveOverrides = {
-  followGM: null, filterBypass: false, orbitPaused: false, labelsHidden: false, constructsHidden: false,
+  followGM: null, filterBypass: false, orbitPaused: false, labelsHidden: false, orbitLinesHidden: false, constructsHidden: false,
   mapHighlights: [], highlightsMuted: false
 };
 

@@ -91,6 +91,7 @@ export interface PresetOverrides {
   filterBypass: boolean;
   orbitPaused: boolean;
   labelsHidden: boolean;
+  orbitLinesHidden: boolean;
   // "Don't show them the fleet." Drops every construct from the players' view in one move — ships,
   // stations, gates, the lot. Momentary like the rest of this block: it is the thing a GM reaches for
   // mid-scene, not a property of the preset's design.

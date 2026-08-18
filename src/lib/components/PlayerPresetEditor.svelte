@@ -814,6 +814,12 @@
                   {#if draft.grid !== 'off'}
                     <label>Grid falloff <span>{Math.round((draft.gridFalloff ?? 0) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.gridFalloff} /></label>
                   {/if}
+                  <!-- G5: orbit-line strength. On the PRESET, so it travels to the player window with
+                       the rest of the look - the GM's own dial is a separate LOCAL preference for
+                       their screen ([[A29]]/[[F10]]'s split; wiring a player view to a GM-local store
+                       is the fault recorded twice as A10/A3). 100% is the look this view has always
+                       had, so an untouched preset is unchanged. -->
+                  <label>Orbit lines <span>{Math.round((draft.orbitOpacity ?? 1) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.orbitOpacity} /></label>
                   <label class="chk"><input type="checkbox" bind:checked={draft.skybox} /> Starfield</label>
                   <!-- G9: the campaign's OWN charted systems, drawn into that starfield at their true
                        direction, brightness and colour. An enum rather than a tickbox because the third

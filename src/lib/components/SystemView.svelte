@@ -38,6 +38,7 @@
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
   import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { systemUiStore } from '$lib/systemUiStore';
   import { SYSTEM_OVERLAY_OPTIONS, type MapOverlay } from '$lib/map/mapOverlay';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
@@ -2259,6 +2260,13 @@
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
                     {/if}
                     <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
+                    <!-- G5: the GM's OWN orbit-line strength. Local to this browser (systemUiStore),
+                         NOT campaign data and NOT the player's - a player view takes its value from
+                         the preset, and joining the two is the A10/A3 fault. 100% is unchanged. -->
+                    <label class="ov-slider" title="How strongly orbit lines are drawn on your map. A dense import can bury its own bodies under them.">
+                      <span>Orbit lines</span>
+                      <input type="range" min="0" max="1" step="0.05" bind:value={$systemUiStore.orbitOpacity} />
+                    </label>
                     <label title="Show each body's derived true colour vs broad per-class colours"><input type="checkbox" bind:checked={$trueColorMode} /> True colour</label>
                     <div class="ov-seg" role="group" aria-label="Orbit scale">
                       <button class:active={toytownOn} on:click={() => setScaleMode(true)} title="Compressed spacing so the whole system fits one screen">Toytown</button>
@@ -2280,6 +2288,7 @@
             </div>
 
             <SystemVisualizer
+                orbitOpacity={$systemUiStore.orbitOpacity}
                 bind:this={visualizer}
                 bind:cameraMode
                 bind:userZoomOverride

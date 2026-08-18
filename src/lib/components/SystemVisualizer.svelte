@@ -38,6 +38,10 @@
   export let showTravellerZones: boolean = false;
   export let showSensors: boolean = false;
   export let showVectors: boolean = false;
+  // G5: orbit-line strength on the GM's own map, 0..1 (1 = the look it has always had). A LOCAL
+  // preference, passed in by the host from `systemUiStore` - the player side has its own value on
+  // the preset, and the two are deliberately not one store (A10/A3).
+  export let orbitOpacity: number = 1;
   export let showHillSpheres: boolean = false;
   // WS3 — the shared overlay vocabulary. The 2D system view had no grid of any kind; it now offers the
   // same set as every other spatial view (lattices in AU, or polar rings about the primary).
@@ -881,7 +885,9 @@
           // and freeze the canvas — skip this orbit line instead.
           if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(b) || b <= 0) continue;
           const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
-          ctx.strokeStyle = "#333"; ctx.lineWidth = 1 / zoom;
+          // The designed grey, scaled by the dial. Drawn as rgba rather than via globalAlpha so it
+          // cannot leak into the fills that follow in this pass.
+          ctx.strokeStyle = `rgba(51,51,51,${Math.max(0, Math.min(1, orbitOpacity))})`; ctx.lineWidth = 1 / zoom;
           ctx.save();
           ctx.translate(parentPos.x - renderPan.x, parentPos.y - renderPan.y);
           ctx.rotate(omega_rad);

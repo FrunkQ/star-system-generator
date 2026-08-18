@@ -108,6 +108,12 @@ const GRID_RADIUS = SCALE_GRID_RADIUS; // scene units the outermost data maps to
 // planet visibly floats OFF its own orbit line, and appears to drift on and off it as it moves. 1024
 // brings the error under ~0.1 true radii (the line passes through the planet's disc at any framing).
 const ORBIT_SAMPLES = 1024;
+// G5 ORBIT-LINE OPACITY. The DESIGNED weights: a system-level ring reads slightly stronger than a
+// moon's local one. The dial scales both, so their relationship is a property of these two numbers
+// and not of the control. NB these are the ORBIT lines - the GRID's rings and spokes are a separate
+// thing with their own dial (gridFalloff, RENDER-S24) and are deliberately untouched by this one.
+const ORBIT_OPACITY_HELIO = 0.45;
+const ORBIT_OPACITY_LOCAL = 0.4;
 const R0_AU = 0.35; // log-compression softening radius
 const DEFAULT_COMPRESSION = 0.65; // 0 = true scale, 1 = fully log-compressed (GM slider later)
 const AU_M = 1.495978707e11;
@@ -148,6 +154,10 @@ export interface HoloController {
   setLabelSize(px: number): void; // in-scene label font size
   setLabelFont(font: string | null): void; // in-scene label font-family (theme font)
   setLabelsVisible(on: boolean): void; // momentary show/hide of in-scene labels (not saved)
+  /** G5: orbit-line strength 0..1, a multiplier of each line's designed opacity. 1 = today's look. */
+  setOrbitOpacity(v: number): void;
+  /** G5: momentary hide of every orbit line (the A53 pattern) - not part of the style, not saved. */
+  setOrbitLinesVisible(on: boolean): void;
   /** Highlight badges under each body's name. Tags must already be redacted for the audience (TAG-13). */
   setHighlights(highlights: MapHighlights, categories: TagCategory[], style?: MarkerStyleName, opts?: MarkerOptions): void;
   setHud(canvas: HTMLCanvasElement | null): void; // static info-card overlay, composited INTO the filter
@@ -478,6 +488,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // safe under the floating origin: rebasing moves the drawn coordinates, never the absolute ones,
   // so the fade stays pinned to the system rather than sliding with the camera focus.
   let gridFalloff = 0;
+  // G5: how strongly orbit lines are drawn, 0..1, as a MULTIPLIER of each line's designed opacity.
+  // 1 is today's look exactly. A 45-planet import buries its own map under 70 orbit lines, which is
+  // what this exists for. `orbitLinesVisible` is the MOMENTARY companion (the A53 pattern): not part
+  // of the style, not persisted, and gone on reload.
+  let orbitOpacity = 1;
+  let orbitLinesVisible = true;
+  function setOrbitOpacity(v: number) {
+    const clamped = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
+    if (clamped === orbitOpacity) return;
+    orbitOpacity = clamped;
+    updateOrbitRings(); // takes effect now, not at the next clock tick (the clock may be paused)
+  }
+  function setOrbitLinesVisible(on: boolean) {
+    if (on === orbitLinesVisible) return;
+    orbitLinesVisible = on;
+    updateOrbitRings();
+  }
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
   // Absolute float64 masters for the grid's lines and its AU tick labels, so a floating-origin rebase
@@ -4051,7 +4078,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const r of orbitRings) {
       // A construct glued to a surface is not on its orbit, so it must not draw one. The lock is live
       // (updatePositions clears it the moment the thing rises above the globe), so the test is too.
-      r.obj.visible = visibleSet.has(r.id) && !bodyById.get(r.id)?.surfaceLock;
+      // G5: the dial and the momentary hide join the name rule. At 0 the line is not drawn at all
+      // rather than drawn transparent - 70 invisible LineLoops is still 70 draw calls, and "hides
+      // every orbit line" should mean it.
+      const orbitsOn = orbitLinesVisible && orbitOpacity > 0;
+      r.obj.visible = orbitsOn && visibleSet.has(r.id) && !bodyById.get(r.id)?.surfaceLock;
+      if (r.obj.visible) {
+        // Scale each line's OWN designed opacity, so the weights between ring kinds survive the dial.
+        const m = (r.obj as any).material as THREE.LineBasicMaterial | undefined;
+        if (m) {
+          const base = (m.userData?.baseOpacity ?? ORBIT_OPACITY_HELIO) as number;
+          const want = base * orbitOpacity;
+          if (m.opacity !== want) { m.opacity = want; m.needsUpdate = true; }
+        }
+      }
       if (r.obj.visible && r.trackParentId) {
         const p = bodyById.get(r.trackParentId);
         if (p) _ringParent.copy(p.mesh.position);
@@ -4591,7 +4631,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
 }
 
 // ---- helpers ----
@@ -4650,7 +4690,11 @@ function buildOrbitRing(node: any, project: Projector, color: number): { loop: T
   }
   // depthWrite OFF: a transparent ring must not write depth, or a body sitting ON its own orbit (which is
   // coincident in depth) loses the test along the line and the orbit cuts straight through the disc.
-  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45, depthWrite: false });
+  // G5: the DESIGNED opacity, kept on the material so the dial is a MULTIPLIER of it rather than a
+  // replacement - that is what keeps a heliocentric ring brighter than a moon's and the spokes dimmer
+  // than both, at every dial position, without the scene restating the weights.
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: ORBIT_OPACITY_HELIO, depthWrite: false });
+  mat.userData.baseOpacity = ORBIT_OPACITY_HELIO;
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ORBIT_SAMPLES * 3), 3));
   return { loop: new THREE.LineLoop(geo, mat), abs };
@@ -4769,7 +4813,8 @@ function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor:
     const k = distFor(off) / off;
     out.set(r.x * k, r.z * k, r.y * k); // physics(x,y,z) -> scene(x,z,y), as the master
   };
-  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false }); // see buildOrbitRing
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: ORBIT_OPACITY_LOCAL, depthWrite: false }); // see buildOrbitRing
+  mat.userData.baseOpacity = ORBIT_OPACITY_LOCAL;
   return { loop: new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat), local, sample };
 }
 

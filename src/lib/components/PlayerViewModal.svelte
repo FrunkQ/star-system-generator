@@ -310,6 +310,14 @@
                 on:change={(e) => setOverride({ labelsHidden: (e.currentTarget as HTMLInputElement).checked })} />
               Hide labels
             </label>
+            <!-- G5: beside Hide labels because it is the same kind of thing - a momentary "let me see
+                 the map for thirty seconds", not a saved look. A dense import (45 planets, 25 moons)
+                 hides its own bodies under their orbit lines. -->
+            <label class="chk">
+              <input type="checkbox" checked={$liveOverrides.orbitLinesHidden} disabled={!$runningPresetId}
+                on:change={(e) => setOverride({ orbitLinesHidden: (e.currentTarget as HTMLInputElement).checked })} />
+              Hide orbit lines
+            </label>
             <label class="chk">
               <input type="checkbox" checked={$liveOverrides.filterBypass} disabled={!$runningPresetId}
                 on:change={(e) => setOverride({ filterBypass: (e.currentTarget as HTMLInputElement).checked })} />

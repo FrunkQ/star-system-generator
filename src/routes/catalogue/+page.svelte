@@ -77,6 +77,7 @@
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
+  let holoOrbitLinesOn = true; // G5 momentary override; never persisted (A53)
   let holoFilterBypass = false;
   let holoOrbitPaused = false;
   // Collapse a popover when the user interacts anywhere outside it.
@@ -366,6 +367,7 @@
   }
   function applyOverrides(ov: import('$lib/broadcast').PresetOverrides) {
     holoLabelsOn = !ov.labelsHidden;
+    holoOrbitLinesOn = !ov.orbitLinesHidden;
     holoFilterBypass = ov.filterBypass;
     holoOrbitPaused = ov.orbitPaused;
     constructsHidden = ov.constructsHidden === true;
@@ -1058,7 +1060,7 @@
     <!-- Live orbital map (the holo renderer, tilted for 3D or locked overhead for 2D) + tap-to-inspect -->
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
-        <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} markerSize={activePreset?.markerSize} flagStaff={activePreset?.flagStaff} pinText={activePreset?.pinText} tagStyles={hostTagCategories} on:focus={handleFocus} />
+        <HoloView bind:this={holoView} system={displaySystem} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} orbitLinesVisible={holoOrbitLinesOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} markerSize={activePreset?.markerSize} flagStaff={activePreset?.flagStaff} pinText={activePreset?.pinText} tagStyles={hostTagCategories} on:focus={handleFocus} />
       {/if}
       {#if activePreset?.systemOverlay && !hudOverlayOn}
         <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>

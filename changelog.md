@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.798-beta - 18th Aug 2026
+
+- **Orbit lines can now be dimmed, or switched off entirely.** A large imported system -- 45 planets and 25 moons -- buries its own map under seventy orbit lines, and there was no way to turn them down. There are three controls, deliberately separate: a dial on your own system map that is yours alone, a dial on a player preset's System step that travels to whoever is watching, and a momentary "Hide orbit lines" beside "Hide labels" for when you just need to see the map for half a minute. Nothing changes until one of them is moved -- every dial starts at the look the maps have always had.
+- The dial scales each line's own strength rather than replacing it, so the relationship between a planet's orbit and a moon's is kept at every setting, and it reaches the flat 2D map and the 3D view alike. The distance-ring grid has its own separate falloff control and is untouched by this one.
+
 ## v2.1.797-beta - 18th Aug 2026
 
 - Docs only. Orbit-line opacity (and a momentary hide) is pulled into V3 on the owner's call after an imported 45-planet system made the map unreadable; routed.

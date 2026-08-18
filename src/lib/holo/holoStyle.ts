@@ -40,6 +40,10 @@ export interface HoloStyle {
   constellationBoost?: number;      // 0 true brightness .. 1 backdrop faded, charted stars oversaturated
   constellationLabelSize?: number;  // name size in screen px; 0 = spikes without names
   orbitSpeed: number; // auto view-orbit: how fast the camera slowly circles the focused object (0 = static)
+  // G5: orbit-line strength, 0..1, as a multiplier of each line's designed opacity. 1 is the look
+  // this view has always had, so nothing moves until someone asks. Its reason is import-scale: a
+  // 45-planet, 25-moon system buries its own map under 70 orbit lines.
+  orbitOpacity?: number;
   labelSize?: number; // in-scene body-label font size in px (default 11)
   font?: string; // in-scene label font-family — inherited from the preset theme when set
   portrait?: string | null; // isolated-body key light in this star colour at a 3/4 angle (null = normal star lighting)
@@ -63,6 +67,7 @@ export const DEFAULT_STYLE: HoloStyle = {
   grid: 'plain',
   gridFalloff: 0,
   orbitSpeed: 0,
+  orbitOpacity: 1,
   labelSize: 11,
   render: 'filled',
   auroras: true,

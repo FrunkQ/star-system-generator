@@ -28,6 +28,8 @@
   // Momentary GM overrides (NOT part of the saved style): quick label show/hide and a filter bypass
   // to briefly drop the visual filter if it's hard to read.
   export let labelsVisible: boolean = true;
+  // G5 momentary: hide every orbit line for a moment without touching the saved style (A53 pattern).
+  export let orbitLinesVisible: boolean = true;
   // MAP HIGHLIGHTS. `system` is already the audience's snapshot (the player window receives it
   // redacted), so the badges cannot leak a secret tag — markersFor is deliberately audience-blind.
   // A player window has its OWN store instances (TAG-15), so this arrives as a PROP and falls back to
@@ -84,6 +86,10 @@
     controller?.setGrid(s.grid);
     controller?.setGridFalloff(s.gridFalloff ?? 0);
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);
+    // G5: the style carries the dial; `orbitLinesVisible` is the momentary override on top of it,
+    // exactly as labelsVisible sits on top of the label settings.
+    controller?.setOrbitOpacity(s.orbitOpacity ?? 1);
+    controller?.setOrbitLinesVisible(orbitLinesVisible);
     controller?.setLabelSize(s.labelSize ?? 11);
     controller?.setLabelFont(s.font ?? null);
     // Labels are in-scene sprites now, so the shader tints them under CRT automatically — keep them a
@@ -163,7 +169,7 @@
   $: controller?.setUserSpin(userSpin);
   $: controller?.setViewInset(viewInsetRight);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
-  $: if (controller) { labelsVisible; filterBypass; orbitPaused; skyStars; applyStyle(style); }
+  $: if (controller) { labelsVisible; orbitLinesVisible; filterBypass; orbitPaused; skyStars; applyStyle(style); }
   // Prop first, store second (TAG-15): in a player window every store is a fresh empty instance, so the
   // value only ever arrives over the broadcast as a prop. Named in the expression, not closed over, or
   // the reactive statement would not re-run when the selection changes (TAG-17).
