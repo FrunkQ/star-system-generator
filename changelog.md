@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.804-beta - 18th Aug 2026
+
+- Docs only. Your-own-map-behind-the-stars handed to a fresh session.
+
 ## v2.1.803-beta - 18th Aug 2026
 
 - Docs only. The broadcast-id collision dialog diagnosed as three faults (a retry loop on every system entry after a collision, no feedback when a new id is minted, and dev previews auto-hosting production ids on the public broker) and routed to the VTT session.
