@@ -1,10 +1,6 @@
 {
   "name": "star-system-generator",
-<<<<<<< HEAD
   "version": "2.1.788-beta",
-=======
-  "version": "2.1.788-beta",
->>>>>>> d0dd7bd1 (v2.1.785-beta - inbox: G31 spectral unification (design investigation, measured), A56 the gas editor hides its absorption bands)
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
