@@ -157,3 +157,107 @@ describe('sniffBundle', () => {
     expect(BUNDLE_EXT).toBe('.sse.zip');
   });
 });
+
+// G16 - THE MAP BACKGROUND MUST SURVIVE A SAVE, and "survive" means three things at once: the
+// PICTURE (as a real file, not base64 in the JSON), the ANCHOR (which is what makes it a map rather
+// than a decoration), and the CREDIT (which for a CC-BY image is a licence condition). Losing any
+// one of them loses GM work or breaks an obligation, so all three are pinned here.
+function starmapWithBackground(over: any = {}) {
+  return {
+    name: 'Border Reach',
+    scale: { unit: 'ly', pixelsPerUnit: 10, showScaleBar: true },
+    systems: [{ name: 'Sol', system: { id: 'sol', nodes: [{ id: 'sol-a', name: 'Sol', kind: 'body' }] } }],
+    playerAssets: [
+      { id: 'asset-sector-map', name: 'Sector map', dataUrl: 'data:image/png;base64,' + b64('PNGBYTES'),
+        w: 2048, h: 1280, credit: 'A Cartographer', license: 'CC BY 4.0', sourceUrl: 'https://example.test/map' }
+    ],
+    playerPresets: [
+      { id: 'p1', name: 'Table view', starmapOverlay: null, systemOverlay: null, cover: { graphic: null } }
+    ],
+    mapBackground: {
+      source: 'asset', assetId: 'asset-sector-map', attach: 'map',
+      opacity: 0.8, sizePct: 100, widthUnits: 40, offsetX: 3, offsetY: -2, rotationDeg: 15,
+      ...over
+    }
+  };
+}
+
+describe('G16: the map background rides the save bundle', () => {
+  it('extracts the picture to a real file and takes the base64 out of the JSON', () => {
+    const zip = packBundle('starmap', starmapWithBackground())!;
+    expect(zip).toBeTruthy();
+    const members = readZipMembers(zip, ['.json', '.png', '.md', '.txt']);
+    const names = Object.keys(members);
+    expect(names.some((n) => n.includes('assets/images/player/asset-sector-map.png'))).toBe(true);
+    const json = strFromU8(members[names.find((n) => n.endsWith('starmap.json'))!]);
+    expect(json).not.toContain(b64('PNGBYTES'));
+    expect(json).toContain('assets/images/player/asset-sector-map.png');
+  });
+
+  it('a campaign whose ONLY asset is the background still becomes a bundle', () => {
+    // The picture is the only thing to carry, so `packBundle` must not decide there is nothing.
+    expect(packBundle('starmap', starmapWithBackground())).not.toBeNull();
+  });
+
+  it('round-trips picture, anchor and credit together', () => {
+    const zip = packBundle('starmap', starmapWithBackground())!;
+    const { doc } = unpackBundle(zip);
+    const asset = doc.playerAssets[0];
+    expect(asset.dataUrl.startsWith('data:image/png;base64,')).toBe(true);
+    expect(strFromU8(new Uint8Array([...atob(asset.dataUrl.split(',')[1])].map((c) => c.charCodeAt(0))))).toBe('PNGBYTES');
+    // THE ANCHOR. Without these numbers the picture is decoration, not a map.
+    expect(doc.mapBackground).toEqual({
+      source: 'asset', assetId: 'asset-sector-map', attach: 'map',
+      opacity: 0.8, sizePct: 100, widthUnits: 40, offsetX: 3, offsetY: -2, rotationDeg: 15
+    });
+    // THE CREDIT, and the recorded bitmap size with it.
+    expect(asset.credit).toBe('A Cartographer');
+    expect(asset.license).toBe('CC BY 4.0');
+    expect(asset.sourceUrl).toBe('https://example.test/map');
+    expect(asset.w).toBe(2048);
+  });
+
+  it('ATTRIBUTIONS.md names the background, what it is used for, and its licence', () => {
+    const zip = packBundle('starmap', starmapWithBackground())!;
+    const members = readZipMembers(zip, ['.json', '.png', '.md']);
+    const md = strFromU8(members[Object.keys(members).find((n) => n.endsWith('ATTRIBUTIONS.md'))!]);
+    expect(md).toContain('assets/images/player/asset-sector-map.png');
+    expect(md).toContain('map background');
+    expect(md).toContain('A Cartographer');
+    expect(md).toContain('CC BY 4.0');
+  });
+
+  it('CC-BY WITH NO CREDIT is reported as a breach, not as a tidy gap', () => {
+    const map: any = starmapWithBackground();
+    delete map.playerAssets[0].credit;
+    const zip = packBundle('starmap', map)!;
+    const members = readZipMembers(zip, ['.json', '.png', '.md']);
+    const md = strFromU8(members[Object.keys(members).find((n) => n.endsWith('ATTRIBUTIONS.md'))!]);
+    expect(md).toContain('CC-BY requires naming the author');
+  });
+
+  it('a built-in starter graphic is NOT extracted - it is a static path, not an upload', () => {
+    const map: any = starmapWithBackground();
+    map.playerAssets.push({ id: 'builtin-sse-logo', name: 'SSE2', dataUrl: '/images/logo/SSE.png' });
+    const zip = packBundle('starmap', map)!;
+    const members = readZipMembers(zip, ['.json', '.png', '.md']);
+    expect(Object.keys(members).some((n) => n.includes('builtin-sse-logo'))).toBe(false);
+    const json = strFromU8(members[Object.keys(members).find((n) => n.endsWith('starmap.json'))!]);
+    expect(json).toContain('/images/logo/SSE.png'); // survives exactly as authored
+  });
+
+  it('a body photo and a player graphic do not claim each other, despite the shared prefix', () => {
+    const map: any = starmapWithBackground();
+    map.systems[0].system.nodes[0].image = { url: 'data:image/jpeg;base64,' + b64('BODYJPEG'), credit: 'Someone else' };
+    const { doc } = unpackBundle(packBundle('starmap', map)!);
+    expect(doc.systems[0].system.nodes[0].image.url.startsWith('data:image/jpeg')).toBe(true);
+    expect(doc.playerAssets[0].dataUrl.startsWith('data:image/png')).toBe(true);
+    expect(doc.playerAssets[0].credit).toBe('A Cartographer'); // not "Someone else"
+  });
+
+  it('a campaign with a background but no image chosen stays plain JSON', () => {
+    const map: any = starmapWithBackground({ source: 'default', assetId: undefined });
+    delete map.playerAssets;
+    expect(packBundle('starmap', map)).toBeNull();
+  });
+});
