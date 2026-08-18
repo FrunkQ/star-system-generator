@@ -2185,6 +2185,42 @@ ALSO: the z-index ladder is now NAMED in `styles/tokens.css` (`--z-map` < `--z-c
 of them), 2100, 2200, 2300, 3000, 5000 up to 99999 - and adopt the tokens as each surface is touched.
 Reach for the tier whose NAME fits; never invent a bigger number to win a fight.
 
+### UI-C7 The undo history is GM-PRIVATE: it stays in memory, and every path out strips it
+WHERE: `lib/undo/` - `undoHistory.ts` (the stack, copied from Mappadux's `CanvasUndoManager`),
+`systemUndo.ts` (the binding to `systemStore`), `historyKey.ts` (the ONE name and the ONE strip);
+`components/UndoPill.svelte`. The strip is called from `system/importFixup.stripSystemForExport` and
+`stripStarmapForExport` (both save paths) and from `system/utils.computePlayerSnapshot` and
+`computePlayerStarmapSnapshot` (the player redaction, [[TAG-9]]). Pinned by
+`undo/historyStrip.spec.ts` and a case in `io/bundle.spec.ts`.
+RULE: an undo log is a record of what a GM CHANGED, including what they deliberately DELETED. A save
+in this product is a SHARED ARTEFACT and the project itself ships bundled example starmaps, so the
+history is treated exactly as `gmNotes` is: V1 never writes it into the campaign object at all, and
+the four outbound paths strip `undoHistory` anyway so that persisting it later cannot reopen a leak
+one path at a time. If you add a fifth outbound path, call `stripUndoHistory`.
+WHY: G28. The owner's sketch was "keep the last 20 in the save file"; the cost of getting that wrong
+is publishing the very edits a GM backed out, in a file they hand to another GM. Measured second
+reason for memory-only: the campaign object is autosaved to IndexedDB on every change, and twenty
+authored slices is 1.4 MB for Sol and 14 MB for a 400-node system, rewritten on every edit.
+BLAST: four traps, each of which cost real time to find.
+(1) **A SNAPSHOT IS THE AUTHORED SLICE, DEFINED BY `stripSystemForExport` AND NOWHERE ELSE**
+(`DERIVED_FIELDS` + `stripBody`, [[PHY-1]]) - `process()` is the redo function, so nothing derived is
+ever stored. Do not write a second list of authored fields.
+(2) **COMPARE THE SLICE WITH A DEEP EQUAL, NEVER WITH ITS JSON TEXT.** `process()` deletes and
+re-adds fields, so an identical authored state serialises with its keys in a different ORDER; string
+comparison recorded an undo entry for a re-process that changed nothing.
+(3) **A STORE WRITE THAT RETURNS ITS ARGUMENT UNCHANGED EMITS THE SAME OBJECT**, and the recorder
+uses exactly that (reference equality) to ignore the clock's several-per-second no-op writes. Every
+write site in the app returns a fresh object; if you add one that does not, its edit is invisible to
+undo until the next one.
+(4) **CLOCK-DRIVEN WRITES GO THROUGH `silentSystemWrite`** - `maybeTopUpAutopilot` and
+`syncScheduledJourneysAtDisplayTime` in `SystemView`. Time is out of undo's scope; without the wrap
+the stack fills while a system sits idle.
+ALSO: the stack caps on entries (200, Mappadux's number) AND on BYTES (32 MB), because one SSE
+snapshot is 70.9 KB for Sol against a fog polygon set in Mappadux - 200 entries of a 400-node system
+would be 144 MB. And the action boundary is `BodyBasicsTab.finalizeEdit()`, the release the editor
+ALREADY had for autoClassify: one question, one answer, so an undo step always lines up with the
+type change the GM watched commit. The 250 ms idle gap is the fallback for controls with no release.
+
 ### UI-C5 A rule-pack override is a DELTA, and an editor must open on the EFFECTIVE list
 WHERE: `lib/rulepackDelta.ts` (`makeListDelta` / `applyListDelta`); `EditBiospheresModal`; the
 override merge in `routes/+page.svelte`.

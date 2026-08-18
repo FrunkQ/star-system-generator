@@ -156,7 +156,10 @@
         system.nodes.push(newConstruct);
         system.isManuallyEdited = true; // Mark as edited
       }
-      return system;
+      // A FRESH REFERENCE, as every other write to this store returns (G28): a subscriber cannot
+      // tell an in-place change from a no-op if the object it is handed is the same one it saw
+      // last, and the undo recorder uses exactly that test to ignore the clock's no-op writes.
+      return system ? { ...system } : system;
     });
 
     dispatch('create', newConstruct);

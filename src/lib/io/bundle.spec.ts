@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { packBundle, unpackBundle, sniffBundle, BUNDLE_EXT } from './bundle';
 import { strFromU8, strToU8, zipSync } from 'fflate';
 import { readZipMembers } from '$lib/import/shared/zip';
+import { stripSystemForExport, stripStarmapForExport } from '$lib/system/importFixup';
 
 const b64 = (s: string) => btoa(s);
 
@@ -107,6 +108,46 @@ describe('unpackBundle', () => {
   it('refuses a zip that is not one of ours, with a message a GM can act on', () => {
     const notOurs = zipSync({ 'notes.txt': strToU8('hello') }, { level: 0 });
     expect(() => unpackBundle(notOurs)).toThrow(/Star System Explorer save/);
+  });
+});
+
+// G28. A save is a shared artefact - a GM sends a campaign to another GM, and this project ships
+// bundled example starmaps - so the GM's undo history must not be inside one, in EITHER format.
+// The strip lives in `stripSystemForExport` / `stripStarmapForExport`, which both save paths call
+// before packing; these assert the promise at the file itself, where a reader can check it.
+describe('a save never carries the GM undo history', () => {
+  const SECRET = 'the ambassador is a construct';
+
+  function mapWithHistory() {
+    const map: any = starmapWith(null, 'abc123');
+    map.undoHistory = [{ at: 1, authored: { gmNotes: SECRET } }];
+    map.systems[0].system.undoHistory = [{ at: 2, authored: { name: SECRET } }];
+    return map;
+  }
+
+  it('as a BUNDLE: the starmap.json inside the zip has none', () => {
+    const lean = stripStarmapForExport(mapWithHistory());
+    const zip = packBundle('starmap', lean, { models: { abc123: { b64: b64('G'), meta: {} } } })!;
+    const members = readZipMembers(zip, ['.json']);
+    const json = strFromU8(members[Object.keys(members).find((n) => n.endsWith('starmap.json'))!]);
+    expect(json).not.toContain(SECRET);
+    expect(json).not.toContain('undoHistory');
+  });
+
+  it('as PLAIN JSON: the no-assets path drops it too', () => {
+    const lean = stripStarmapForExport(mapWithHistory());
+    expect(packBundle('starmap', lean)).toBeNull();          // nothing to extract -> plain .json
+    const json = JSON.stringify(lean, null, 2);              // what the download would write
+    expect(json).not.toContain(SECRET);
+    expect(json).not.toContain('undoHistory');
+  });
+
+  it('and a SINGLE-SYSTEM save, in both formats', () => {
+    const sys: any = { id: 'sol', name: 'Sol', nodes: [{ id: 'earth', kind: 'body', name: 'Earth' }] };
+    sys.undoHistory = [{ at: 1, authored: { gmNotes: SECRET } }];
+    const lean = stripSystemForExport(sys);
+    expect(JSON.stringify(lean)).not.toContain(SECRET);
+    expect(packBundle('system', lean)).toBeNull();
   });
 });
 

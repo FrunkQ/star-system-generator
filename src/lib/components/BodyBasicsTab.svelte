@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
   import { fmt } from '$lib/stores';
+  import { endUndoAction } from '$lib/undo/systemUndo';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, G } from '$lib/constants';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
   import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
@@ -231,6 +232,12 @@
   // cleared when the edit is finalised. finalizeEdit() runs on slider release / number-input edits.
   let pendingFlowThrough = false;
   function finalizeEdit() {
+      // G28: THE SAME BOUNDARY ANSWERS BOTH QUESTIONS. "When is the edit finished?" was already
+      // answered here for autoClassify; the undo recorder reuses that answer rather than inventing
+      // a second one, so an undo step always lines up with the type change a GM just watched
+      // commit. Called BEFORE the early return - the drag is over either way. (It defers itself by
+      // a microtask, so the dispatch below still belongs to the action that is ending.)
+      endUndoAction();
       if (!pendingFlowThrough) return;
       pendingFlowThrough = false;
       body.autoClassify = true; // hand the type to the physics ONCE — the announced morph commits

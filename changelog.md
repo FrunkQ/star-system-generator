@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.774-beta - 18th Aug 2026
+
+- **Undo/redo (G28).** A floating pill at the top of the system view, plus Ctrl/Cmd+Z and Ctrl+Shift+Z / Ctrl+Y, winds back the GM's edits - body and construct changes from every tab, adding and deleting bodies, tags, GM notes, descriptions. One drag of a slider is ONE step, not two hundred: the recorder coalesces on the release the body editor already had, with a 250 ms idle gap as the fallback. An undo restores only the AUTHORED values and lets the processor re-derive the rest, so temperature, class and tags all follow. Keys stay out of the way inside a text field, so the browser's own text undo still works. The history is GM-private and never enters a save, a shared campaign or a player broadcast.
+
 ## v2.1.773-beta - 17th Aug 2026
 
 - Docs only. The undo/redo brief re-checked against the tree at 772 and released to a fresh session: the pill registers through the chrome action A52 built, and the one existing single-shot undo (the pre-upgrade snapshot) is named so it is left alone.

@@ -18,6 +18,8 @@
   import { railCollapsed } from '$lib/railStore';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
+  import UndoPill from './UndoPill.svelte';
+  import { attachSystemUndo, detachSystemUndo, silentSystemWrite } from '$lib/undo/systemUndo';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
@@ -1271,7 +1273,10 @@
       : null;
   $: if (!focusedBody || focusedBody.kind !== 'construct') isShipLogOpen = false;
   // Keep autopilot routes extended ahead of the display clock as the GM scrubs/plays.
-  $: maybeTopUpAutopilot(currentTime);
+  // G28: the CLOCK writes here, not the GM. Wrapped so the undo recorder adopts the result
+  // silently instead of filling its stack while a system sits idle with time running (this fires
+  // several times a second). Time is out of undo's V1 scope; this is where that is enforced.
+  $: silentSystemWrite(() => maybeTopUpAutopilot(currentTime));
 
   // Handle Back to Starmap if systemId is lost from state
   $: if (browser && !$page.state.systemId) {
@@ -1509,6 +1514,12 @@
     });
 
     document.addEventListener('click', handleClickOutside);
+
+    // G28: start recording the GM's authored edits. Attached LAST, after the initial
+    // `systemStore.set` above, so the state the view opens on is the baseline rather than the first
+    // undo entry. `rulePack` is passed as a GETTER because `process()` - which IS the redo function
+    // - has to run against whichever pack is live when the undo happens.
+    attachSystemUndo(() => rulePack);
   });
 
   // Reactive Broadcasts for View Settings
@@ -1545,6 +1556,7 @@
         unsubscribeZoomStore();
     }
     document.removeEventListener('click', handleClickOutside);
+    detachSystemUndo();
   });
 
   $: if ($starmapStore) {
@@ -1759,13 +1771,14 @@
     if (now - lastSyncWallMs >= SYNC_THROTTLE_MS) {
       lastSyncWallMs = now;
       if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; }
-      syncScheduledJourneysAtDisplayTime(timeMs);
+      // G28: clock-driven, like the autopilot top-up above - never an undo entry.
+      silentSystemWrite(() => syncScheduledJourneysAtDisplayTime(timeMs));
     } else {
       if (settleTimer) clearTimeout(settleTimer);
       settleTimer = setTimeout(() => {
         settleTimer = null;
         lastSyncWallMs = (typeof performance !== 'undefined' ? performance.now() : 0);
-        syncScheduledJourneysAtDisplayTime(settleTime);   // exact at the resting time
+        silentSystemWrite(() => syncScheduledJourneysAtDisplayTime(settleTime));   // exact at the resting time
       }, SYNC_THROTTLE_MS);
     }
   }
@@ -2194,6 +2207,10 @@
                 top={mode === 'phone' ? 64 : 56}
                 on:select={(e) => updateFocus(e.detail)}
             />
+
+            <!-- G28: the floating undo/redo. Shows itself once there is something to wind back;
+                 marks itself `use:chrome` so a dialog on a phone hides it (UI-C6). -->
+            <UndoPill {mode} />
 
             <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
                  frequently-used display toggles (per the wireframe). -->

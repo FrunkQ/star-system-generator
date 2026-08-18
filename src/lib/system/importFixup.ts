@@ -17,6 +17,7 @@ import { starClassParts, starClassKeyFor, isBandKey } from '$lib/physics/starDes
 import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
 import { determineSpectralClass } from '$lib/physics/stellar-evolution';
 import { SOLAR_RADIUS_KM } from '$lib/constants';
+import { stripUndoHistory } from '$lib/undo/historyKey';
 
 // Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
 // so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
@@ -298,6 +299,7 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
 // stay small and never ship stale derived physics.
 export function stripSystemForExport(system: System, pack?: RulePack): System {
   const clone = JSON.parse(JSON.stringify(system)) as System;
+  stripUndoHistory(clone);   // GM-private, never leaves this browser (G28)
   const classNames = classNamesFromPack(pack);
   for (const node of clone.nodes ?? []) {
     if (node.kind === 'body') stripBody(node as CelestialBody, classNames);
@@ -311,6 +313,7 @@ export function stripStarmapForExport<T extends { systems?: Array<{ system?: Sys
   pack?: RulePack
 ): T {
   const clone = JSON.parse(JSON.stringify(starmap)) as T;
+  stripUndoHistory(clone);   // GM-private, never leaves this browser (G28)
   const classNames = classNamesFromPack(pack);
   for (const node of clone.systems ?? []) {
     for (const body of node?.system?.nodes ?? []) {

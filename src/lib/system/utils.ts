@@ -8,6 +8,7 @@ import { systemProcessor } from '../core/SystemProcessor';
 import { get } from 'svelte/store';
 import { redactTagsForPlayers } from '../tags/tagLifecycle';
 import { tagCategories } from '../tags/tagCategories';
+import { stripUndoHistory } from '$lib/undo/historyKey';
 
 /**
  * Recursively calculates a node's average orbital distance (semi-major axis) from the root star in AU.
@@ -105,6 +106,7 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
 
   // Also filter from the top-level system object
   delete (playerSystem as any).gmNotes;
+  stripUndoHistory(playerSystem);   // an undo log records what the GM deleted (G28)
 
   return playerSystem;
 }
@@ -118,6 +120,7 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
 export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
   const clone: any = JSON.parse(JSON.stringify(map));
   delete clone.gmNotes;
+  stripUndoHistory(clone);   // an undo log records what the GM deleted (G28)
 
   // A system is hidden when its ROOT node is player-hidden: the top barycenter for a multi-star
   // system, or the lone star for a single. Hiding an underlying star just hides that star (handled
