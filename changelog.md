@@ -2,6 +2,17 @@
 
 All notable changes are listed here:
 
+## v2.1.811-beta - 19th Aug 2026
+
+- Your own map behind the stars. Put your own image behind the starmap - a sector map, empire
+  borders, a hand-drawn chart - either fixed to the screen like the shipped Milky Way, or FIXED TO
+  THE MAP so a system stays on the same point of the picture however you pan and zoom. Set the
+  width in your own distance units, the centre, the rotation and the fade in Settings > Map
+  display. It shows on your map, on the player 2D and 3D maps (as a flat plane in the map plane)
+  and as a figure at the foot of the starmap document, and it travels in the save bundle with its
+  credit. Upload at full resolution for a map you will zoom into. The About box now credits
+  whichever image is actually on screen.
+
 ## v2.1.810-beta - 19th Aug 2026
 
 - Docs only. The broadcast-id prompt is now user-reported on beta and goes to the front of the VTT session's queue.
