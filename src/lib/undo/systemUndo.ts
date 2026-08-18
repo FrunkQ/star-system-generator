@@ -90,6 +90,16 @@ const status = writable<UndoStatus>({ canUndo: false, canRedo: false, undoDepth:
 /** What the pill reads. */
 export const undoStatus: Readable<UndoStatus> = { subscribe: status.subscribe };
 
+const epoch = writable(0);
+/**
+ * BUMPED ON EVERY APPLIED UNDO/REDO. An editor that deliberately seeds its local fields ONCE per
+ * body - `BodyStarTab` does, so that typing a precise mass is not snapped back by the next store
+ * tick - would otherwise keep showing the pre-undo numbers over a model that has changed underneath
+ * it. Reading this makes an undo the ONE other event that re-seeds. Found in the browser: the model
+ * was correct and the open star panel still read 1.68 solar masses.
+ */
+export const undoEpoch: Readable<number> = { subscribe: epoch.subscribe };
+
 let history: UndoHistory<Snapshot> | null = null;
 let getPack: () => RulePack | null = () => null;
 let unsubscribe: (() => void) | null = null;
@@ -218,6 +228,7 @@ export function attachSystemUndo(getRulePack: () => RulePack | null): () => void
       const sys = JSON.parse(snapshot) as System;
       // `process()` IS the redo function: authored fields go back, everything else is re-derived.
       systemStore.set(systemProcessor.process(sys, pack));
+      epoch.update((n) => n + 1);
     },
     onChange: publish
   });

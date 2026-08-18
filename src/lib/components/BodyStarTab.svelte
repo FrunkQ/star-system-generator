@@ -3,6 +3,7 @@
   import { luminositySolarFromRT } from '$lib/physics/luminosity';
   import type { CelestialBody, StellarType } from '$lib/types';
   import { fmt } from '$lib/stores';
+  import { undoEpoch } from '$lib/undo/systemUndo';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
   import CustomImageBlock from './CustomImageBlock.svelte';
@@ -64,6 +65,7 @@
   // (the body proxy re-resolves as the clock ticks), so we only pull values FROM the body when a different
   // body is selected — otherwise it clobbers a half-typed value (the "can't type a precise mass" bug).
   let lastSyncedBodyId: string | null = null;
+  let lastSyncedUndoEpoch = -1;
 
   // --- Radius Slider Config ---
   const radiusMin = 0.01;
@@ -364,8 +366,12 @@
       // sync each time would overwrite a value you're mid-way through typing — type or paste a precise mass
       // and it snaps back to the stored one. Same-body edits (sliders, number inputs, spectral type) set
       // these locals in their own handlers, so this is purely the on-load seed.
-      if (body.id === lastSyncedBodyId) return;
+      // ...and after an UNDO, which is the other time the model legitimately changes underneath the
+      // panel rather than because of it (G28). Without this the fields keep the pre-undo numbers
+      // until you select another body and come back.
+      if (body.id === lastSyncedBodyId && $undoEpoch === lastSyncedUndoEpoch) return;
       lastSyncedBodyId = body.id;
+      lastSyncedUndoEpoch = $undoEpoch;
 
       if (body.massKg) {
           const m = body.massKg / SOLAR_MASS_KG;

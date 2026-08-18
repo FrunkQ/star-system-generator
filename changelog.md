@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.775-beta - 18th Aug 2026
+
+- **Undo now refreshes the STAR editor too.** Verified in the running app: an undo restored the model correctly while the open star panel kept showing the old mass, because that panel deliberately seeds its fields once per body so typing is not snapped back. An undo is now the other event that re-seeds it. Also confirmed live: the pill sits at the top of the system view and appears only once there is something to wind back, Ctrl+Z inside a text field leaves the model alone, switching system clears the history, and an open dialog on a phone hides the pill through the shared chrome rule.
+
 ## v2.1.774-beta - 18th Aug 2026
 
 - **Undo/redo (G28).** A floating pill at the top of the system view, plus Ctrl/Cmd+Z and Ctrl+Shift+Z / Ctrl+Y, winds back the GM's edits - body and construct changes from every tab, adding and deleting bodies, tags, GM notes, descriptions. One drag of a slider is ONE step, not two hundred: the recorder coalesces on the release the body editor already had, with a 250 ms idle gap as the fallback. An undo restores only the AUTHORED values and lets the processor re-derive the rest, so temperature, class and tags all follow. Keys stay out of the way inside a text field, so the browser's own text undo still works. The history is GM-private and never enters a save, a shared campaign or a player broadcast.
