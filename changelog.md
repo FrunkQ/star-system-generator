@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.781-beta - 18th Aug 2026
+
+- **Your undo history now survives a reload.** The last twenty steps ride the campaign into browser storage with everything else, so closing the tab and coming back leaves them where you left them - for the system you were in, and for the starmap. It is GM-private and stays that way: it is stripped out of every save you export, every system you send to another GM, and everything the players ever receive. Capped by size as well as by count, so a very large system keeps fewer steps rather than bloating every autosave.
+
 ## v2.1.780-beta - 18th Aug 2026
 
 - **Undo now covers the STARMAP as well: moving, renaming, adding and DELETING a system, the routes, and the map's own description and GM notes.** Same pill, in the starmap view - each view winds back what you are looking at. Deleting a system is the one it was built around: the whole system comes back, bodies and all, at the position it was in. An undo of a move or a rename does NOT wind back body edits made since - every surviving system keeps its current contents - and editing a body never puts a step on the map's history at all.

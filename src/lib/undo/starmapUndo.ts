@@ -36,6 +36,7 @@ import { stripSystemForExport } from '$lib/system/importFixup';
 import { systemProcessor } from '$lib/core/SystemProcessor';
 import { IDLE_GAP_MS, UndoHistory } from './undoHistory';
 import { describeStarmapChange } from './describeChange';
+import { readCampaignHistory, writeCampaignHistory } from './campaignHistory';
 import type { RulePack, Starmap, System } from '$lib/types';
 import type { UndoStatus } from './systemUndo';
 
@@ -141,6 +142,7 @@ function closeAction(): void {
   if (wasOpen && history) {
     const label = describeStarmapChange(shadowShell, now);
     if (label) history.labelTop(label);
+    writeCampaignHistory('starmap', history.exportEntries());
   }
   refreshShadow(map);
 }
@@ -254,6 +256,8 @@ export function attachStarmapUndo(getRulePack: () => RulePack | null): () => voi
   const current = get(starmapStore);
   lastSeen = current;
   resetTo(current);
+  const saved = readCampaignHistory();
+  if (current && saved?.starmap.length) history.importEntries(saved.starmap);
   publish();
   unsubscribe = starmapStore.subscribe(onStarmap);
   return detachStarmapUndo;
@@ -288,6 +292,7 @@ export function undoStarmap(): void {
   cancelTimer();
   actionOpen = false;
   history.undo();
+  writeCampaignHistory('starmap', history.exportEntries());
 }
 
 export function redoStarmap(): void {
@@ -295,6 +300,7 @@ export function redoStarmap(): void {
   cancelTimer();
   actionOpen = false;
   history.redo();
+  writeCampaignHistory('starmap', history.exportEntries());
 }
 
 /** Test hatch. */

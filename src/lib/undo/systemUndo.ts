@@ -28,16 +28,14 @@
 // undo steps line up exactly with the type changes a GM sees. The 250 ms idle gap (Mappadux's
 // number, in `undoHistory.ts`) is the FALLBACK for every control that has no release event.
 //
-// PERSISTENCE - DECIDED HERE, 2026-08-18, and the owner can reverse it in an afternoon.
-// The history is kept IN MEMORY ONLY. The owner's sketch was "maybe keep the last 20 in the save
-// file"; the brief's acceptance allows either. Two measured reasons for in-memory:
-//   (a) THE LEAK. A save is a shared artefact and the project ships bundled example starmaps. An
-//       undo log records what a GM deleted. Never putting it in the campaign object is a stronger
-//       guarantee than remembering to strip it on four outbound paths.
-//   (b) THE COST. The campaign object is autosaved to IndexedDB on every change; twenty authored
-//       slices is 1.4 MB for Sol and 14 MB for a 400-node system, rewritten on every edit.
-// The strip is implemented and tested ANYWAY (`undo/historyKey.ts`) so that the day it is
-// persisted, export, single-system save and the player redaction are already closed.
+// PERSISTENCE - the owner's "keep the last 20 undos in the save file", built at v2.1.781 and living
+// in `campaignHistory.ts`. It shipped memory-only first and was persisted second, on purpose: the
+// strip on all four outbound paths (`undo/historyKey.ts`) was already in place and tested before a
+// single entry was written, because a save is a shared artefact and an undo log records what a GM
+// DELETED. Two things that shape it and are enforced there: the stack is written to the campaign
+// object IN PLACE with no store emission (an emission recomputes the redacted player snapshot), and
+// it is capped by BYTES as well as by the owner's twenty (20 slices is 1.4 MB for Sol but 14.8 MB
+// for a 400-node system).
 //
 // OUT OF SCOPE, V1: `starmapStore` (system positions, depth, the starmap's own description),
 // player-view presets, settings, the clock.
@@ -48,6 +46,7 @@ import { stripSystemForExport } from '$lib/system/importFixup';
 import { systemProcessor } from '$lib/core/SystemProcessor';
 import { IDLE_GAP_MS, UndoHistory } from './undoHistory';
 import { describeSystemChange } from './describeChange';
+import { readCampaignHistory, writeCampaignHistory } from './campaignHistory';
 import type { RulePack, System } from '$lib/types';
 
 /** A stack entry is the authored slice as JSON - immutable, and a deep clone by construction. */
@@ -162,6 +161,9 @@ function closeAction(): void {
   if (wasOpen && history) {
     const label = describeSystemChange(shadow, now, focusId);
     if (label) history.labelTop(label);
+    // The step is complete and named, so this is the moment to save it. Once per action, not once
+    // per store set - and it writes onto the campaign object in place rather than emitting.
+    writeCampaignHistory('system', history.exportEntries(), shadowSystemId);
   }
   shadow = now;
 }
@@ -261,6 +263,11 @@ export function attachSystemUndo(getRulePack: () => RulePack | null): () => void
   const current = get(systemStore);
   lastSeen = current;
   resetTo(current);
+  // A history saved with the campaign is only meaningful against the system it was recorded on.
+  const saved = readCampaignHistory();
+  if (current && saved && saved.systemId === current.id && saved.system.length) {
+    history.importEntries(saved.system);
+  }
   publish();
   unsubscribe = systemStore.subscribe(onSystem);
   return detachSystemUndo;
@@ -317,6 +324,7 @@ export function undo(): void {
   cancelTimer();
   actionOpen = false;
   history.undo();
+  writeCampaignHistory('system', history.exportEntries(), shadowSystemId);
 }
 
 export function redo(): void {
@@ -324,6 +332,7 @@ export function redo(): void {
   cancelTimer();
   actionOpen = false;
   history.redo();
+  writeCampaignHistory('system', history.exportEntries(), shadowSystemId);
 }
 
 /** Test hatch and the explicit reset for a load that keeps the same system id. */

@@ -26,11 +26,14 @@
 // string, which is a deep clone by construction - Mappadux's explicit `_deepClone` step is
 // therefore already done by the time a snapshot arrives.
 //
-// SCOPE, V1, stated here the way Mappadux states its own: everything that flows through
-// `systemStore` - body and construct edits from every editor tab, add/delete body, tag edits, GM
-// notes, description. NOT COVERED: starmap-level edits (`starmapStore` - system positions, depth,
-// the starmap's own description), player-view presets, settings, and the clock. Add later if the
-// user finds the gap.
+// SCOPE, stated here the way Mappadux states its own. TWO histories use this class, one each for
+// the two stores a GM edits, and the pill binds to whichever view is on screen:
+//   - `systemUndo` - everything through `systemStore`: body and construct edits from every tab,
+//     add/delete body, tag edits, GM notes, description.
+//   - `starmapUndo` - the campaign's layout through `starmapStore`: moving, renaming, adding and
+//     deleting a SYSTEM, the routes, the map's own description and notes.
+// NOT COVERED by either: player-view presets, campaign settings (units, scale, grid), the camera,
+// and the clock. Add later if the user finds the gap.
 
 /** Rapid changes closer together than this collapse into ONE undo entry. Mappadux's number. */
 export const IDLE_GAP_MS = 250;
@@ -162,6 +165,21 @@ export class UndoHistory<S> {
 
   depth(): { undo: number; redo: number; bytes: number } {
     return { undo: this.undoStack.length, redo: this.redoStack.length, bytes: this._bytes() };
+  }
+
+  /** The undo stack, oldest first, for saving. The redo stack is deliberately NOT included: the
+   *  owner asked for "the last 20 undos", and a redo path that survives a reload but whose undo
+   *  entries have been trimmed under it is a trap rather than a feature. */
+  exportEntries(): Array<{ data: S; label?: string }> {
+    return this.undoStack.map((e) => ({ data: e.data, label: e.label }));
+  }
+
+  /** Seed the undo stack from a save. Replaces whatever is there; redo starts empty. */
+  importEntries(entries: Array<{ data: S; label?: string }>): void {
+    this.undoStack = entries.map((e) => ({ data: e.data, label: e.label }));
+    this.redoStack = [];
+    this._trim();
+    this.cb.onChange?.();
   }
 
   /** Tear both stacks down - called when a different system loads, so an undo can never land on

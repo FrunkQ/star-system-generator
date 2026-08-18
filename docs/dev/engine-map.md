@@ -2185,22 +2185,26 @@ ALSO: the z-index ladder is now NAMED in `styles/tokens.css` (`--z-map` < `--z-c
 of them), 2100, 2200, 2300, 3000, 5000 up to 99999 - and adopt the tokens as each surface is touched.
 Reach for the tier whose NAME fits; never invent a bigger number to win a fight.
 
-### UI-C7 The undo history is GM-PRIVATE: it stays in memory, and every path out strips it
+### UI-C7 The undo history is GM-PRIVATE: it lives in the local autosave, and every path OUT strips it
 WHERE: `lib/undo/` - `undoHistory.ts` (the stack, copied from Mappadux's `CanvasUndoManager`),
-`systemUndo.ts` (the binding to `systemStore`), `historyKey.ts` (the ONE name and the ONE strip);
+`systemUndo.ts` and `starmapUndo.ts` (the two bindings), `campaignHistory.ts` (persistence),
+`describeChange.ts` (the labels), `historyKey.ts` (the ONE name and the ONE strip);
 `components/UndoPill.svelte`. The strip is called from `system/importFixup.stripSystemForExport` and
 `stripStarmapForExport` (both save paths) and from `system/utils.computePlayerSnapshot` and
 `computePlayerStarmapSnapshot` (the player redaction, [[TAG-9]]). Pinned by
-`undo/historyStrip.spec.ts` and a case in `io/bundle.spec.ts`.
+`undo/historyStrip.spec.ts`, `undo/campaignHistory.spec.ts` and a case in `io/bundle.spec.ts`.
 RULE: an undo log is a record of what a GM CHANGED, including what they deliberately DELETED. A save
 in this product is a SHARED ARTEFACT and the project itself ships bundled example starmaps, so the
-history is treated exactly as `gmNotes` is: V1 never writes it into the campaign object at all, and
-the four outbound paths strip `undoHistory` anyway so that persisting it later cannot reopen a leak
-one path at a time. If you add a fifth outbound path, call `stripUndoHistory`.
-WHY: G28. The owner's sketch was "keep the last 20 in the save file"; the cost of getting that wrong
-is publishing the very edits a GM backed out, in a file they hand to another GM. Measured second
-reason for memory-only: the campaign object is autosaved to IndexedDB on every change, and twenty
-authored slices is 1.4 MB for Sol and 14 MB for a 400-node system, rewritten on every edit.
+history is treated exactly as `gmNotes` is: it rides the campaign object into IndexedDB (the owner's
+"last 20 undos in the save file") and the four outbound paths strip `undoHistory` before anything
+leaves the browser. If you add a fifth outbound path, call `stripUndoHistory`.
+**IT SHIPPED MEMORY-ONLY FIRST AND WAS PERSISTED SECOND, DELIBERATELY** - every strip was in place
+and tested before the first entry was ever written, which is the only order that cannot leak.
+WHY: G28. The cost of getting it wrong is publishing the very edits a GM backed out, in a file they
+hand to another GM. Two measured consequences shape the persistence: it is written onto the campaign
+object IN PLACE with no store emission (every starmap emission recomputes the whole redacted player
+snapshot), and it caps on BYTES as well as on the owner's twenty - 20 authored slices is 1.4 MB for
+Sol but 14.8 MB for a 400-node system, rewritten on every autosave.
 BLAST: four traps, each of which cost real time to find.
 (1) **A SNAPSHOT IS THE AUTHORED SLICE, DEFINED BY `stripSystemForExport` AND NOWHERE ELSE**
 (`DERIVED_FIELDS` + `stripBody`, [[PHY-1]]) - `process()` is the redo function, so nothing derived is
@@ -2215,6 +2219,15 @@ undo until the next one.
 (4) **CLOCK-DRIVEN WRITES GO THROUGH `silentSystemWrite`** - `maybeTopUpAutopilot` and
 `syncScheduledJourneysAtDisplayTime` in `SystemView`. Time is out of undo's scope; without the wrap
 the stack fills while a system sits idle.
+(4b) **THE CAMPAIGN HISTORY'S GATE IS A SHELL, NOT THE CAMPAIGN.** `starmapStore` ticks with EVERY
+`systemStore` emission, so its gate runs on every step of every slider drag inside a system.
+Measured on the bundled 42-system map: the authored campaign is 227 KB and 7.5 ms, the shell (the
+same map with every `systems[].system` removed) is 7.66 KB and 0.03 ms. The shell is also BLIND to
+system contents by construction, so a body edit cannot produce a map entry however hard it churns.
+The one thing a shell cannot carry is a DELETED system's bodies, so the shadow holds a reference to
+each live system and clones just that one into the entry when an id disappears; everything else is
+read from the LIVE map at apply time, which is what stops an undo of a move from also winding back
+body edits made since.
 (5) **AN EDITOR THAT SEEDS ITS FIELDS ONCE PER BODY MUST ALSO RE-SEED ON AN UNDO.** `BodyStarTab`
 deliberately reads the body into its local fields only when a DIFFERENT body is selected, so that
 typing a precise mass is not snapped back by the next store tick - and an undo, which replaces the

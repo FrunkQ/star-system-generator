@@ -5,12 +5,15 @@
 // a constant that lived next to the binding would close a cycle (the TAG-10 lesson: a shared
 // registry that can cycle eventually does).
 //
-// WHY A STRIP AT ALL WHEN V1 KEEPS THE HISTORY IN MEMORY ONLY (see `systemUndo.ts` for that
-// decision): an undo log is a record of what a GM CHANGED, including what they deliberately
-// DELETED - a name they redacted, a secret they thought better of. A save in this product is a
-// SHARED ARTEFACT (a GM sends a campaign to another GM) and the project itself ships bundled
-// example starmaps built by someone. The day anyone persists the stack, every outbound path is
-// already closed and a test says so; the alternative is remembering to close four of them at once.
+// WHY THE STRIP EXISTS, and why it was built BEFORE anything was persisted: an undo log is a record
+// of what a GM CHANGED, including what they deliberately DELETED - a name they redacted, a secret
+// they thought better of. A save in this product is a SHARED ARTEFACT (a GM sends a campaign to
+// another GM) and the project itself ships bundled example starmaps built by someone.
+//
+// THE HISTORY IS NOW PERSISTED (the owner's "keep the last 20 undos in the save file", built at
+// v2.1.781) - it rides the campaign object into IndexedDB, see `campaignHistory.ts`. That is exactly
+// the day this strip was written for: the local autosave is the only place it exists, and all four
+// outbound paths were already closed and tested before the first entry was ever written.
 //
 // Treat it exactly as `gmNotes` is treated - the strips sit on the same lines.
 

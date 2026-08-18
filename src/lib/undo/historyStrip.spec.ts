@@ -2,9 +2,10 @@
 // because the failure mode is silent: a GM sends a campaign to another GM, or the project ships a
 // bundled example starmap, and the file contains a record of everything its author deleted.
 //
-// V1 keeps the history in memory only (see `systemUndo.ts`), so today these tests guard a key that
-// is never written. That is deliberate: the day it IS persisted, every path is already closed and
-// these tests fail the moment one of them is reopened.
+// These were written while the history was still memory-only, deliberately: the day it WAS
+// persisted (v2.1.781, `campaignHistory.ts`) every path was already closed and pinned. They now
+// guard a key that really is in the autosave - `campaignHistory.spec.ts` proves the same two
+// promises again with a REAL persisted history rather than a hand-built one.
 import { describe, it, expect } from 'vitest';
 import { loadStarterPack } from '$lib/import/realsky/testPack';
 import { systemProcessor } from '$lib/core/SystemProcessor';

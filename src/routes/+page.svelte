@@ -30,6 +30,7 @@
   import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
   import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
   import { attachStarmapUndo } from '$lib/undo/starmapUndo';
+  import { setUndoPersist } from '$lib/undo/campaignHistory';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
@@ -795,6 +796,11 @@
     if (!browser) return;
     // G28: the CAMPAIGN's undo history. Attached here rather than in `Starmap.svelte` so that
     // entering a system and coming back does not throw away what the GM did to the map.
+    // G28 persistence: the undo history rides the campaign object into IndexedDB, so the recorders
+    // need the app's ONE autosave. They attach it in place and call this; they never set the store,
+    // because every starmap emission recomputes the redacted player snapshot.
+    setUndoPersist(() => { const m = get(starmapStore); if (m) enqueueStarmapPersist(m); });
+    onDestroy(() => setUndoPersist(null));
     const detachMapUndo = attachStarmapUndo(() => selectedRulepack ?? null);
     onDestroy(detachMapUndo);
     broadcastService.initSender(broadcastSessionId);
