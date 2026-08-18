@@ -215,6 +215,13 @@ strong enough to act on, obtained without ever hanging anything.
 
 ---
 
+## Session notes: what the meters were built FOR
+
+`docs/dev/perf-and-chrome-notes.md` — the retiring performance session's notes. Not a design doc:
+the short form of each meter, where the P2 rebuild storm was actually left (instrumented, NOT
+diagnosed, and `sameRef` is the field to read first), and the faults whose inbox diagnosis was
+backwards before it was right. Read it before chasing anything in this area.
+
 ## What is NOT instrumented yet
 
 Honest gaps, so nobody assumes coverage that does not exist:

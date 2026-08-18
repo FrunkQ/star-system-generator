@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.806-beta - 18th Aug 2026
+
+- Docs only. The performance session writes up what it learned before retiring (`docs/dev/perf-and-chrome-notes.md`): what each meter answers, where the player-view rebuild storm was actually left - instrumented but NOT diagnosed, with the one field to read first - and the three items whose written-down diagnosis turned out to be backwards. Indexed from the debug-tools guide and the session roster.
+
 ## v2.1.805-beta - 18th Aug 2026
 
 - The gas-giant gallery will now hand you the recipe. Every giant in the derived rows gets a **Copy recipe** button that puts its composition, pressure and temperatures on the clipboard, ready to paste into a body's atmosphere - so if you see a colour you want, you can have the world that makes it. It copies the INPUTS, never the colour: paste it and the engine derives the same giant, which is the point the gallery has been making all along.

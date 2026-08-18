@@ -1020,7 +1020,10 @@ what to pick up. **It is the only thing a successor cannot reconstruct from the 
 - **"Tags: provenance, control and surfacing"** — **OWNER-DRIVEN. Assign it nothing through this
   board.** Shipped highlights to player views and the tag-pill unification. Open: pill-identity
   markers, the three player-view tag surfaces, and the physics page's GM-overrides section.
-- **"SSE V2 performance and memory analysis"** — retired; [[P1]] closed, meters documented in
+- **"SSE V2 performance and memory analysis"** — RETIRED AGAIN 2026-08-18 at v2.1.806-beta after
+  [[P2]] (capture machinery), [[A43]], [[A52]], [[A56]] and [[G7]]. **Its notes are
+  `docs/dev/perf-and-chrome-notes.md`** — read that before chasing anything in this area, and note P2 is
+  INSTRUMENTED but NOT DIAGNOSED. Earlier: [[P1]] closed, meters documented in
   RENDER-S22.
 - **RETIRED TODAY: "Astronomy data 2"** (the D-batch, [[D18]], and `type-vocabulary-prev4.md`) and
   **"Astro 3"** (spectral classification, star naming, fuzzy search, [[B44]], compact objects,
