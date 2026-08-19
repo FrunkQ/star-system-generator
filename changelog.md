@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.849-beta - 19th Aug 2026
+
+- Engine map: RENDER-S25 rewritten and RENDER-S26 added. S25 had recorded the grid-dimming report against the opacity fault found first; that fault was real but lived only on the metric lattice, and the owner's grid was polar. It now records both faults, names the colour squaring as the reported one, and states the lesson that cost the first pass: a dial can be the trigger without being the cause, so compute what the control actually does at the reported setting before fixing anything in its code path. S26 records that a ring drawn as a LineLoop can carry nothing per-edge.
+
 ## v2.1.848-beta - 19th Aug 2026
 
 - **The system lattice's cell can be pinned to a real distance.** New "Grid scale" on the System step: Automatic (the decade ladder, unchanged and still the default) or a fixed cell off the 1/2/5 ladder from 0.1 to 100 AU. G10 made this grid a scale rather than decoration, but an automatic cell resizes as the view zooms, so "these are 1 AU squares" stopped being true the moment somebody scrolled. A pinned cell draws one level and the per-frame crossfade stands down entirely.

@@ -785,28 +785,48 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
-### RENDER-S25 A LEVEL'S OPACITY BELONGS TO ONE CHANNEL — BAKE IT INTO VERTEX ALPHA AS WELL AND IT LANDS TWICE
-WHERE: `holo/scene.ts:addGridLines` (the colour attribute) against `updateGridLevels` (the coarse/
-fine crossfade). Reported by the owner as "turn falloff up at all and all the lines go super dim".
-RULE: three.js multiplies VERTEX ALPHA by MATERIAL OPACITY. Each contribution to a final alpha gets
-exactly one of those channels and no code may write both. A per-frame updater owns the material
-outright: anything a builder bakes in there is overwritten on the next frame anyway, and anything it
-copies into vertex alpha is composed a second time forever.
-WHY: the builder wrote `cols[..] = a * mat.opacity` and then set `mat.opacity = 1`, which is a
-consistent pair for exactly ONE frame. `updateGridLevels` then reassigns `mat.opacity = peak * t`
-every frame to crossfade the two grid levels, so the level opacity was in the vertex alpha AND back
-on the material: the grid rendered at its SQUARE. A 0.42 coarse level came out at 0.18; a fine level
-halfway through a crossfade went 0.15 to 0.02. Note what the symptom was NOT — the fade itself was
-correct, the near lines dimmed as hard as the far ones, and the whole grid went down together. That
-is the signature of a factor applied globally, not of a bad fade curve, and it is what pointed at
-the material rather than at `gridFade`.
-BLAST: the fault was INVISIBLE at rest, because the branch that writes the colour attribute at all
-is gated on `gridFalloff > GRID_FADE_OFF`. The dial's default is 0, so the grid was correct until a
-GM touched the control and then wrong at every setting — a control whose FIRST STEP is the bug, in
-the family of A32/F10 (a dial whose top of travel does nothing). Anything else that grows a
-per-frame material updater over geometry a builder has already coloured inherits this exactly:
-`gridSkirtMats` is the live example, and it deliberately carries NO opacity of its own — it copies
-its line's, once per frame, in the same updater.
+### RENDER-S25 EVERY FACTOR IN A FINAL PIXEL GETS EXACTLY ONE CHANNEL — MATERIAL OR VERTEX, NEVER BOTH
+WHERE: `map/gridGeometry.ts` (`buildLattice`, pinned in `gridGeometry.spec.ts`), bound by
+`starmap/starmapScene.ts:addLattice` and `holo/scene.ts:addGridEdges`. Reported by the owner as "turn
+falloff up at all and all the lines go super dim".
+RULE: three.js multiplies the material by the vertex attribute — `diffuseColor *= vColor` in
+`color_fragment`, colour AND alpha. So a grid material that uses vertex colours carries WHITE and the
+attribute carries the colour; a per-frame updater may own `opacity` and then nothing else may write
+it. Two writers to one channel is not a style difference, it is a multiplication nobody asked for.
+WHY: TWO faults, one shape, and the SECOND is the one the owner saw — worth stating because the first
+one was found, fixed, shipped and did not touch the symptom.
+  (1) OPACITY. The builder wrote `cols[..] = a * mat.opacity` then set `mat.opacity = 1`, a consistent
+  pair for exactly ONE frame: `updateGridLevels` reassigns that opacity every frame to crossfade the
+  two lattice levels, so the level landed twice and the grid rendered at its square (0.42 to 0.18).
+  Real, but it lives only on the metric lattice — the owner's grid was POLAR, where there is no
+  crossfade and `updateGridLevels` returns immediately.
+  (2) COLOUR. The material carried `base * 0.4` and the vertex attribute carried the SAME value, so
+  the colour squared to 0.16 and the whole grid dropped to a sixth of its intensity. That is the
+  reported fault. The starmap never had it because its grid materials specify no `color` at all.
+BLAST: WHAT MADE THIS EXPENSIVE WAS BELIEVING THE DIAL. The symptom arrived attached to "Grid
+falloff", the fade is the falloff's whole job, and there was a genuine bug in the falloff branch — so
+the first pass fixed that and reported it. The arithmetic that would have killed the story in one
+line was never run: `gridFadeWindow(0.1, 12)` starts at 17.58 on a grid of radius 12, so AT THE
+SETTING IN THE SCREENSHOT NOTHING FADES AT ALL. A dial can be the trigger without being the cause —
+it gates the branch, and the fault is anything else that branch also switches on. COMPUTE WHAT THE
+CONTROL ACTUALLY DOES AT THE REPORTED SETTING BEFORE FIXING ANYTHING IN ITS CODE PATH; it is the same
+lesson RENDER-S24 records one level down, where the obvious suspect also cost the first pass.
+Corollary, and the reason the fix was a rewrite rather than a patch: the two grids already shared
+their CONSTANTS (S24) and still looked different, because they emitted the geometry separately and
+one of them emitted it wrongly. Sharing the numbers under two emitters buys nothing.
+
+### RENDER-S26 A RING DRAWN AS A `LineLoop` CAN CARRY NOTHING PER-EDGE
+WHERE: `map/gridGeometry.ts:ringEdges`, bound by both scenes' polar grids.
+RULE: build a ring as EDGES unless you are certain nothing will ever hang off its segments. A
+`LineLoop` is a vertex ring with no pair structure, so any per-edge decoration — a curtain, a ribbon,
+a per-segment cull — has nowhere to attach and silently does not happen.
+WHY: "Grid depth" on the system map reached the 24 radial spokes and none of the 6 rings, because the
+spokes were `LineSegments` and the rings were loops. The GM saw a glow where the spokes converge and
+nothing anywhere else, and reported the dial as doing nothing. The starmap had always built its rings
+as edges, which is the whole of why the same dial worked there.
+BLAST: the spokes deliberately get NO curtain on either view now — 24 curtains meeting at the origin
+is a solid cone, not a depth cue, and that cone was the "glow at the centre". Any future grid
+primitive gets the same question asked of it before it is drawn as a loop.
 
 ### RENDER-S24 A shared LOOK needs a shared CONSTANT, or the copies diverge into a bug
 WHERE: `src/lib/map/gridFade.ts` (`gridFadeWindow` / `gridFadeAlpha`, pinned in `gridFade.spec.ts`),
