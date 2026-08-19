@@ -74,7 +74,8 @@
     // once he has eyeballed a few generated systems.
     { title: 'Sharper generation', blurb: 'Procedural systems are retuned alongside the physics as it grows, so a generated system reflects what the engine currently knows rather than what it knew when the generator was written.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
-    { title: 'Your own map behind the stars', pending: 'coming', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
+    // FLAG CLEARED 2026-08-19: G16 shipped v2.1.811-813 and the owner has seen it ("1 looks good for me").
+    { title: 'Your own map behind the stars', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
     // FLAG CLEARED 2026-08-18: shipped v2.1.774-783 (G28) and the owner has seen it work — every step
     // is named ("Undo: Mass of Earth"), the campaign has its own history, the last twenty survive a
     // reload, and nothing rides an export or a share.

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.843-beta - 19th Aug 2026
+
+- What's new: "Your own map behind the stars" is no longer marked as coming - it shipped and the owner has seen it. Every line in the list is now a claim the build makes. Inbox: grouped systems drifting apart on the 3D starmap captured and folded into the star-renderer chunk.
+
 ## v2.1.842-beta - 19th Aug 2026
 
 - Engine map: RENDER-S25 — a level's opacity belongs to ONE channel. Three.js multiplies vertex alpha by material opacity, so a builder that bakes a per-frame value into the vertex alpha composes it twice and the geometry renders at its square. Cross-referenced onto RENDER-S24/C14, which now also records that the depth curtain was bound to shared constants pre-emptively, while only one map had it.
