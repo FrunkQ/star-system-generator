@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.845-beta - 19th Aug 2026
+
+- Docs only. From the owner's diagnostic bundle: a playing clock re-broadcasts the whole campaign every tick (989 MB in one sitting, memory to 3.8 GB) - located and routed; a multi-star Traveller import lays its stars out with the importer's own code instead of the generator's hierarchy planner; the time scrub snaps to zero while playing.
+
 ## v2.1.844-beta - 19th Aug 2026
 
 - Docs only. The starmap-stars brief for a fresh session (sharper glyphs, size bands on 2D and 3D, compact grouped systems at every zoom, tag-driven jets and flares); the Traveller faults re-checked after the import unification (the frozen Earth-like world is still pack data; the flat giants have probably gone with the importer's own giant code); follow-GM starmap level re-routed to the G16 session.
