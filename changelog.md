@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.846-beta - 19th Aug 2026
+
+- Upload a map background without leaving Settings. The background picker now has its own
+  **Upload...** button beside it, into the same graphics library Player Views uses, kept at full
+  resolution; choosing "Your own image" with nothing uploaded yet opens the file picker instead of
+  being a dead option. The whole group was also tightened - it was inheriting nothing from the
+  dialog around it, so every field sat at browser-default size with full paragraph spacing.
+
 ## v2.1.845-beta - 19th Aug 2026
 
 - Docs only. From the owner's diagnostic bundle: a playing clock re-broadcasts the whole campaign every tick (989 MB in one sitting, memory to 3.8 GB) - located and routed; a multi-star Traveller import lays its stars out with the importer's own code instead of the generator's hierarchy planner; the time scrub snaps to zero while playing.
