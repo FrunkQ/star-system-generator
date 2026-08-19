@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.822-beta - 17th Aug 2026
+
+- FIXED: the Surface view rebuilt a world's light assuming every star is as bright as the Sun. Around Sol that is exactly right, which is why it went unnoticed — but around an M dwarf at a hundredth of a solar luminosity the "% of an Earth noon" figure came out a hundred times too high. The stored summary already records how much light arrived, and the derivation is linear in it, so rescaling to match is exact and needs nothing new stored.
+- Checked and NOT a fault, since it looked like one: moving a planet nearer its own star changes how bright the Surface view is and does not change its tint. Distance scales the flux; it does not reshape the light. The spectral chain is re-derived per body and the identical colour is the correct answer, not a skipped step.
+
 ## v2.1.820-beta - 19th Aug 2026
 
 - Importing a gas-giant recipe now tells you WHERE those colours are brightest, and it is advice rather than a warning. Put a 700 K recipe on a cold world and it still works - you get the decks that world's temperature allows - so instead of objecting, it says which orbit would light it up: "these colours are brightest near 700 K; this world runs about 112 K where it is - bring it to roughly 0.6 AU and they come alive." Move it in and the sodium and potassium do exactly that.

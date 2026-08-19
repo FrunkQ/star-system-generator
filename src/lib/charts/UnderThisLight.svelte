@@ -74,8 +74,20 @@
     if (light) return light;
     const s0 = body?.surfaceSpectrum;
     if (!s0) return null;
+    // THE STORED SUMMARY ALREADY KNOWS HOW BRIGHT IT WAS, so use it rather than assuming.
+    //
+    // The processor derives this with `luminositySolar: hostStar.radiationOutput`; re-deriving with a
+    // hardcoded 1 quietly assumes every star is as bright as the Sun. Around Sol that is right, which
+    // is exactly why it survived — but around an M dwarf at 0.01 solar luminosities the "% of an Earth
+    // noon" figure came out a hundred times too high.
+    //
+    // The summary carries `totalTopWm2`, which already encodes L/d^2, and the derivation is LINEAR in
+    // the incident flux — so rescaling to match restores the true absolute level exactly, with no
+    // schema change and no second copy of the luminosity.
     const r = deriveSurfaceSpectrum(body!, { starTempK: s0.starTempK, luminositySolar: 1, distanceAU: s0.distanceAU }, pack);
-    return r?.curves.surface ?? null;
+    if (!r) return null;
+    const k = r.summary.totalTopWm2 > 0 && s0.totalTopWm2 > 0 ? s0.totalTopWm2 / r.summary.totalTopWm2 : 1;
+    return k === 1 ? r.curves.surface : r.curves.surface.map((v) => v * k);
   });
 
   // What that star looks like on its own, for the slider's swatch — the colour being chosen.
