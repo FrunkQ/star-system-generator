@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.864-beta - 19th Aug 2026
+
+- The grid legend adds the real distance in brackets once a cell is too small to picture in AU — "1 square = 0.01 AU (1,495,979 km)" — in km or miles per **Measurement units (in-system)**. It switches at `ORBIT_KM_BELOW_AU`, the 0.05 AU that `units.ts`, `bodyFacts` and `curate` had already agreed on, rather than adding a fifth threshold; that comfortably covers the 0.01 AU case. The AU figure stays, because the cell was chosen off a picker labelled in AU and dropping it would break the link to the control that set it.
+
 ## v2.1.863-beta - 19th Aug 2026
 
 - **Scrubbing time while it is playing now seeks instead of stopping the clock (A60).** Jogging the shuttle used to pause playback outright - and it wrote that pause into the campaign, so it outlived the drag and even the tab. Now the transport keeps playing, the jog takes the clock wherever you push it, and letting go carries straight on from the new time. A paused transport still stays paused: the jog is not a play button.

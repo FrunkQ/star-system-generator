@@ -8,8 +8,20 @@
 // three copies of it would disagree about the hex the first time anyone touched one.
 
 
+import { formatDistanceAu, ORBIT_KM_BELOW_AU, type MeasurementUnits } from '$lib/units';
+
 /** Which shape the lattice is drawing. `null` = no lattice, so there is nothing to say. */
 export type GridCellKind = 'square' | 'hex' | null;
+
+// WHY THIS THRESHOLD AND NOT A NEW ONE. `units.ts` already answers "below what AU figure does a reader
+// stop being able to picture the distance?" — and its comment records that 0.05 was NOT invented there
+// either: `bodyFacts` and `ai/curate` had both landed on it independently, and the constant exists to
+// promote that answer rather than add a fifth. A grid cell is the same question about the same reader,
+// so it gets the same number. It also comfortably covers the 0.01 AU the owner asked about.
+//
+// The DIFFERENCE from `formatOrbitRadiusAu` is presentation, not judgement: that one REPLACES the AU
+// figure with km, while the legend must keep it — the cell was chosen in AU, off a picker labelled in
+// AU, so dropping the AU would leave a GM unable to connect the caption to the control they set.
 
 /**
  * The legend for a cell of `au` astronomical units.
@@ -22,10 +34,14 @@ export type GridCellKind = 'square' | 'hex' | null;
  *
  * Returns null when there is nothing to caption, so a view can render it or not on one test.
  */
-export function gridLegend(au: number | null, kind: GridCellKind): string | null {
+export function gridLegend(au: number | null, kind: GridCellKind, units: MeasurementUnits = 'metric'): string | null {
 	if (kind === null || au === null || !Number.isFinite(au) || au <= 0) return null;
 	const n = fmtAu(au);
-	return kind === 'hex' ? `1 hex = ${n} AU corner to corner` : `1 square = ${n} AU`;
+	const head = kind === 'hex' ? `1 hex = ${n} AU corner to corner` : `1 square = ${n} AU`;
+	// Below the threshold an AU figure stops meaning anything to a reader — "0.005 AU" is a number, not
+	// a distance — so the km (or miles) goes in brackets ALONGSIDE it rather than instead of it.
+	if (au >= ORBIT_KM_BELOW_AU) return head;
+	return `${head} (${formatDistanceAu(au, units)})`;
 }
 
 /**

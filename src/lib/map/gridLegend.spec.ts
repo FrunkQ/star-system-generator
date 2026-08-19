@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { gridLegend, hexAcrossFlats } from './gridLegend';
 import { normalizePreset, DEFAULT_PRESET } from '$lib/player/presets';
 import { gridLevelOpacity } from './niceInterval';
+import { ORBIT_KM_BELOW_AU } from '$lib/units';
+import { AU_KM } from '$lib/constants';
 
 describe('gridLegend', () => {
 	it('states a square by its side, which is unambiguous', () => {
@@ -109,5 +111,54 @@ describe('the caption names the level the crossfade is actually showing', () => 
 			if (byMidpoint !== dominant(t)) disagreements.push(t);
 		}
 		expect(disagreements.length).toBeGreaterThan(0);
+	});
+});
+
+// Below the threshold an AU figure stops being a distance a reader can picture, so the km (or miles)
+// goes in brackets ALONGSIDE the AU rather than instead of it — the cell was chosen in AU, off a
+// picker labelled in AU, and dropping it would break the link to the control that set it.
+describe('small cells say the distance in brackets', () => {
+	it('leaves a readable cell alone', () => {
+		for (const au of [0.25, 0.5, 1, 2, 5, 10]) {
+			expect(gridLegend(au, 'square')).not.toContain('(');
+		}
+	});
+
+	it('brackets the km at the cell the owner asked about', () => {
+		const s = gridLegend(0.01, 'square', 'metric')!;
+		expect(s).toContain('0.01 AU');
+		expect(s).toContain('km');
+		expect(s.startsWith('1 square = 0.01 AU (')).toBe(true);
+	});
+
+	it('follows the in-system measurement setting', () => {
+		expect(gridLegend(0.01, 'square', 'metric')).toContain('km');
+		expect(gridLegend(0.01, 'square', 'imperial')).toContain('mi');
+		expect(gridLegend(0.01, 'square', 'imperial')).not.toContain('km');
+	});
+
+	it('keeps the AU as well as the distance — the picker is labelled in AU', () => {
+		const s = gridLegend(0.001, 'square', 'metric')!;
+		expect(s).toContain('0.001 AU');
+		expect(s).toMatch(/\(.*\)/);
+	});
+
+	it('brackets a hex too, without losing the corner-to-corner qualifier', () => {
+		const s = gridLegend(0.01, 'hex', 'metric')!;
+		expect(s).toContain('corner to corner');
+		expect(s).toContain('km');
+	});
+
+	// Reusing units.ts's constant rather than inventing a fifth threshold, per that file's own note.
+	it('switches at the threshold the codebase had already agreed on', () => {
+		expect(ORBIT_KM_BELOW_AU).toBe(0.05);
+		expect(gridLegend(ORBIT_KM_BELOW_AU, 'square')).not.toContain('(');
+		expect(gridLegend(ORBIT_KM_BELOW_AU - 0.001, 'square')).toContain('(');
+	});
+
+	it('the bracketed figure is the real conversion, not a rounded story', () => {
+		const s = gridLegend(0.01, 'square', 'metric')!;
+		const km = Number(s.match(/\(([\d,]+)/)![1].replace(/,/g, ''));
+		expect(km).toBeCloseTo(0.01 * AU_KM, -1);
 	});
 });

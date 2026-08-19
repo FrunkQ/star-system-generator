@@ -7,6 +7,7 @@
   import type { System } from '$lib/types';
   import type { HoloController } from '$lib/holo/scene';
   import { gridLegend } from '$lib/map/gridLegend';
+  import { measurementUnit } from '$lib/stores';
   import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
@@ -44,7 +45,10 @@
   // here would be a second model, free to disagree the first time either moved.
   let gridCellAu: number | null = null;
   let gridCellKind: import('$lib/map/gridLegend').GridCellKind = null;
-  $: legend = showGridLegend ? gridLegend(gridCellAu, gridCellKind) : null;
+  // km or miles from the RUNTIME unit store, not a prop: that store exists precisely so display code
+  // has one reactive value on the GM's screen, the player window and the projector alike — on the last
+  // two it arrives by broadcast, with no starmap loaded to read it off.
+  $: legend = showGridLegend ? gridLegend(gridCellAu, gridCellKind, $measurementUnit) : null;
   // Off by default so no existing surface grows a caption it never asked for; the player views opt in.
   export let showGridLegend: boolean = false;
   /** Badge-only knobs from the preset: size multiplier, flag staff colour, pin text mode. */
