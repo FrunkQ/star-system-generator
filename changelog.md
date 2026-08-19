@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.833-beta - 19th Aug 2026
+
+- Fixed: in the Gas Physics editor the absorption bands were penned into a narrow column with the preview chart squeezed inside it, and the DERIVATION heading sat beside Molar Mass instead of spanning above it. Both now run the full width of the card, so the star preview has room to be a chart.
+
 ## v2.1.832-beta - 19th Aug 2026
 
 - The night-lights range in the Biospheres editor is a proper two-thumb slider now, instead of two boxes asking for four decimal places of a number nobody tunes past 5%. The band is lit between the thumbs, so "somewhere between dim and blazing" reads at a glance.

@@ -682,14 +682,19 @@
   .muted { font-size: 0.8em; color: var(--text-faint); font-style: italic; }
   .aurora-field { flex-basis: 100%; }
   /* A56 group headings + band preview row. */
+  /* THIS CONTAINER IS FLEX, NOT GRID (.item-body above), so `grid-column: 1 / -1` was silently inert —
+     the heading sat beside Molar Mass instead of spanning above it, and the bands column was squeezed
+     to `min-width: 180px` with the chart inside it. The file already had the right idiom: `.full`.
+     Reported live; a green build says nothing about a property the layout model ignores. */
   .group-head {
-    grid-column: 1 / -1; margin: 10px 0 2px; font-size: 0.72em; font-weight: 600;
+    flex-basis: 100%; margin: 10px 0 2px; font-size: 0.72em; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--text-faint, #8a8f9a);
     border-bottom: 1px solid var(--border-soft, #1c1f27); padding-bottom: 4px;
   }
   .group-head:first-child { margin-top: 0; }
-  .bands-field { grid-column: 1 / -1; }
+  /* Full width so the preview chart has room to be a chart. */
+  .bands-field { flex-basis: 100%; }
   .preview-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .preview-row input[type='range'] { flex: 1 1 140px; max-width: 220px; }
   .preview-row .muted { font-size: 0.72em; }
