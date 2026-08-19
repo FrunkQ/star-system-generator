@@ -2477,8 +2477,15 @@ and `SystemView` calls `initSender` on every system entry, so the same id was re
 prompt came back on every click. Two users on beta saw it inside a day. The id scheme itself was
 never wrong (crypto-random, unique by construction) — the collision was always with oneself, or a
 dev preview holding a bundled map's id on the PUBLIC broker.
+RULE (amended v2.1.817 - the actual root cause): `initPeerHost` is ASYNC and awaits the lazy PeerJS
+import before `this.peer` exists, so it is RE-ENTRANT - every same-tick caller (reactive
+enableRemote, onMount initSender, SystemView initSender) opened its own socket for the SAME id and the
+broker refused the later ones as `unavailable-id`. A fresh id collided with itself on every load.
+Guard the AWAIT (`hostInFlight`: one registration per id), not only the outcome; an id change cancels
+the old id's retry ladder; a collision reported for a superseded id never prompts.
 BLAST: `initSender` is called from many places (route, `SystemView`, `PlayerViewModal`) — none may
-be allowed to re-host a collided id, or the loop returns. The prompt handler must never mint on
+be allowed to re-host a collided id, or the loop returns; and none may start a SECOND registration
+while one is mid-await, or the id collides with itself. The prompt handler must never mint on
 Cancel. A future SECOND transport (self-hosted broker) keeps this state machine; only the broker
 address changes.
 

@@ -1162,6 +1162,12 @@ day. Fix (SSE v2.1.814-beta), all in `broadcast.ts` unless noted:
 - every host attempt/outcome is recorded via `perfEvent('peer', …)`; `__ssePerf.events(60,'peer')`
   answers the next occurrence.
 Engine-map entry TRANSPORT-1. The id scheme (section 9.1) is unchanged.
+**v2.1.817 - the actual root cause** (found from the owner's network tab: one socket per FRESH
+id, 101, then rejected): `initPeerHost` is async and re-entrant across its `await import('peerjs')`,
+so the same-tick callers on every load each registered the same id and the broker refused the
+later ones - the tab collided with ITSELF, consistently, ghost or no ghost. Fixed with a
+one-in-flight guard per id; the 814 defences stay for the genuine reload-ghost and second-GM cases.
+Owner confirmed it stopped on 817.
 
 ## 17. Deployment requirement: embeds must pass the firewall (found 2026-08-18)
 
