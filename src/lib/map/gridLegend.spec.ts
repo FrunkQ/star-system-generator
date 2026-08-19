@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { gridLegend, hexAcrossFlats } from './gridLegend';
 import { normalizePreset, DEFAULT_PRESET } from '$lib/player/presets';
+import { gridLevelOpacity } from './niceInterval';
 
 describe('gridLegend', () => {
 	it('states a square by its side, which is unambiguous', () => {
@@ -70,5 +71,43 @@ describe('the two stages own their grid type separately', () => {
 		const p = normalizePreset(bare);
 		expect(p.starmapGrid).toBe(DEFAULT_PRESET.grid);
 		expect(p.starmapGrid).toBeDefined();
+	});
+});
+
+// Which cell the caption names, through a decade handover. The scene asks the CROSSFADE rather than
+// testing `t` against a midpoint of its own — a hardcoded 0.5 was wrong within a day, because A55's
+// second pass moved the crossfade into the last 40% of a decade and made `t < 0.5` a region where the
+// coarse level always wins. This pins the rule that killed it: the dominant level is the one the
+// opacity law says is brighter, at every t.
+describe('the caption names the level the crossfade is actually showing', () => {
+	const dominant = (t: number) =>
+		gridLevelOpacity('fine', t) > gridLevelOpacity('coarse', t) ? 'fine' : 'coarse';
+
+	it('names the coarse level for the whole run-up, including past the halfway mark', () => {
+		for (const t of [0, 0.2, 0.4, 0.5]) expect(dominant(t)).toBe('coarse');
+	});
+
+	it('hands over to the fine level before the decade ends', () => {
+		expect(dominant(1)).toBe('fine');
+	});
+
+	it('flips exactly once, so the caption never flickers between two cells', () => {
+		let flips = 0, prev = dominant(0);
+		for (let i = 1; i <= 200; i++) {
+			const d = dominant(i / 200);
+			if (d !== prev) flips++;
+			prev = d;
+		}
+		expect(flips).toBe(1);
+	});
+
+	it('a midpoint test would have disagreed with the crossfade — the bug, as arithmetic', () => {
+		const disagreements = [];
+		for (let i = 0; i <= 100; i++) {
+			const t = i / 100;
+			const byMidpoint = t < 0.5 ? 'coarse' : 'fine';
+			if (byMidpoint !== dominant(t)) disagreements.push(t);
+		}
+		expect(disagreements.length).toBeGreaterThan(0);
 	});
 });

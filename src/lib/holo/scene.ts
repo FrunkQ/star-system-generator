@@ -504,6 +504,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // and a caption re-rendering every frame would be a needless reactive storm.
   let onGridCell: ((au: number | null, kind: 'square' | 'hex' | null) => void) | null = null;
   let reportedCell: number | null = null;
+  /**
+   * The level a reader would actually count. Both are drawn through the handover, so "the cell" is
+   * whichever one is currently winning — and that is decided by ASKING THE CROSSFADE, not by a
+   * threshold of our own. A hardcoded midpoint was wrong within a day: A55's second pass moved the
+   * crossfade into the last 40% of a decade (`CROSSFADE_START`), so `t < 0.5` became a region where
+   * the coarse level always wins and the caption would have gone on naming it long after the fine
+   * level had taken the map. One law, one answer.
+   */
+  function dominantCell(lv: { coarse: number; fine: number; t: number }): number {
+    return gridLevelOpacity('fine', lv.t) > gridLevelOpacity('coarse', lv.t) ? lv.fine : lv.coarse;
+  }
+
   function reportGridCell(au: number | null) {
     if (au === reportedCell) return;
     reportedCell = au;
@@ -2035,10 +2047,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!mat) continue;
       gridLevelMats.push({ mat, coarse });
     }
-    // The level a reader would actually count. Both are drawn through the handover, so "the cell" is
-    // whichever one is winning — it flips once, at the midpoint, which is also where the two are
-    // equally legible and the caption's exact wording matters least.
-    reportGridCell(lv.t < 0.5 ? lv.coarse : lv.fine);
+    reportGridCell(dominantCell(lv));
   }
 
   /**
@@ -2062,7 +2071,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const g of gridLevelMats) g.mat.opacity = gridLevelOpacity(g.coarse ? 'coarse' : 'fine', lv.t);
     // The curtains ride their own line's opacity, so a level fading out takes its depth with it.
     for (const g of gridSkirtMats) g.skirt.opacity = g.line.opacity;
-    reportGridCell(lv.t < 0.5 ? lv.coarse : lv.fine);
+    reportGridCell(dominantCell(lv));
   }
 
   function rebuildGrid() {
