@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.837-beta - 18th Aug 2026
+
+- FIXED: the balloon view showed a violet cloud deck on a world the globe painted gold. Both were faithful to the data, and the data was wrong: the potassium condensate was authored `#ee82ee`, a lilac — its FLAME colour, the chemistry-class answer — and sodium `#ffd700`, its flame's gold. Condensed, both are silvery metals, and every other liquid in the set is authored as the condensate looks rather than as it burns. Recoloured as pale metallic greys. The globe and the balloon now agree: the same pale warm grey from both directions.
+- Why the two views disagreed so loudly on one bad datum: the globe weights a giant's decks by depth in the stack, so the deeper sodium dominated and the violet was a tint; the balloon looks straight down onto the TOP deck and showed it at full strength. Two renderers, two weightings, one datum — the disagreement was the data being found out.
+
 ## v2.1.836-beta - 18th Aug 2026
 
 - FIXED: a hot gas giant's balloon view painted a dark room where reality is a furnace. The dry adiabat takes a close-in giant to incandescence a few bar down — 831 K at its 1 bar level, 1,600 K by 10 bar — and a scene lit by starlight alone had nothing to show once the decks blocked the star. That is the brown-dwarf lesson again: a hot gas is a light source, whatever it is filed as. The air's own glow is now painted at the local temperature, dull red through orange to yellow-white, and it is not dimmed by "midday brightness" because it is not daylight. Jupiter, at 159 K, still glows not at all.
