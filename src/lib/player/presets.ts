@@ -83,6 +83,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   starmapGridFalloff: 0.5,
   gridFalloff: 0,
   gridDepth: 0,
+  gridScaleAu: 0,      // automatic — the decade ladder, as it has always been
   orbitOpacity: 1,
   starmapMono: false,
   background: 'space',
@@ -311,6 +312,10 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     grid: p.grid,
     gridFalloff: p.gridFalloff ?? 0,
     gridDepth: p.gridDepth ?? 0,
+    // Sanitised HERE, not only in the scene: a cell is a DISTANCE, so NaN or Infinity is not a
+    // value the rest of the app should ever see. `?? 0` would pass both through, and every later
+    // reader would have to re-check. 0 means automatic, which is the safe reading of nonsense.
+    gridScaleAu: Number.isFinite(p.gridScaleAu) && (p.gridScaleAu as number) > 0 ? (p.gridScaleAu as number) : 0,
     // G5: travels with the preset, so a player window gets the GM's chosen strength for THIS view.
     orbitOpacity: p.orbitOpacity ?? 1,
     constellations: p.constellations ?? 'off', // G9

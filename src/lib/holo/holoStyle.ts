@@ -34,6 +34,7 @@ export interface HoloStyle {
   grid: 'off' | 'plain' | 'scaled' | 'hex'; // ground reference: none / polar rings / scale rings / hex (hex is starmap-only; the system view treats it as plain)
   gridFalloff?: number; // G4: ground-grid distance fade, 0 (even, the default) .. 1 (bright centre, gone by the edge)
   gridDepth?: number;   // ground-grid depth curtain, 0 (flat, the default) .. 1 — the starmap's twin
+  gridScaleAu?: number; // lattice cell in AU; 0/undefined = automatic decade ladder
   // G9: how the campaign's OWN charted systems are shown in this view's sky — 'off' (generic starfield
   // alone), 'true' (real direction/magnitude/colour), 'marked' (the same, with diffraction spikes and
   // names). The STAR LIST is data and arrives separately; only the choice is part of the look.
@@ -68,6 +69,7 @@ export const DEFAULT_STYLE: HoloStyle = {
   grid: 'plain',
   gridFalloff: 0,
   gridDepth: 0,
+  gridScaleAu: 0,
   orbitSpeed: 0,
   orbitOpacity: 1,
   labelSize: 11,

@@ -199,6 +199,10 @@ export interface PlayerPreset {
   // Defaulted 0 (flat) so an existing preset is unchanged, and 3D-only: on a locked-overhead map the
   // curtain is edge-on and invisible, which is why the starmap gates its own the same way.
   gridDepth?: number;
+  // The system lattice's CELL, in AU. Undefined/0 = automatic, which crossfades a decade ladder as
+  // the view zooms. A fixed cell is what makes the grid a scale a GM can read off the map ("these
+  // are 1 AU squares") rather than a decoration that silently resizes under them.
+  gridScaleAu?: number;
   orbitOpacity?: number; // G5: orbit-line strength 0..1, multiplying each line's designed opacity. 1 = unchanged
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1

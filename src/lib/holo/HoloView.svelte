@@ -86,6 +86,7 @@
     controller?.setGrid(s.grid);
     controller?.setGridFalloff(s.gridFalloff ?? 0);
     controller?.setGridDepth(s.gridDepth ?? 0);
+    controller?.setGridScale(s.gridScaleAu ?? 0);
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);
     // G5: the style carries the dial; `orbitLinesVisible` is the momentary override on top of it,
     // exactly as labelsVisible sits on top of the label settings.

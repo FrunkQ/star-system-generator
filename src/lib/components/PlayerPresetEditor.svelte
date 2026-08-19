@@ -854,6 +854,22 @@
                       {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                     </select>
                   </label>
+                  <!-- The system grid is a SCALE, not decoration (G10) — its cell is a real number of AU.
+                       Automatic runs the decade ladder, which subdivides by ten as the view tightens and
+                       is right for browsing; a pinned cell is what a GM wants when the grid has to MEAN
+                       something ("these are 1 AU squares") and must not resize under a table mid-scene.
+                       Only offered for the lattice overlays: the polar rings already carry their own AU
+                       labels, so a cell size would be answering a question that view does not ask. -->
+                  {#if draft.grid === 'square'}
+                    <label>Grid scale
+                      <select value={draft.gridScaleAu ?? 0} on:change={(e) => (draft = { ...draft, gridScaleAu: Number((e.currentTarget as HTMLSelectElement).value) })}>
+                        <option value={0}>Automatic (by zoom)</option>
+                        {#each [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100] as au}
+                          <option value={au}>{au} AU squares</option>
+                        {/each}
+                      </select>
+                    </label>
+                  {/if}
                   <!-- Identical to the Starmap step's, deliberately: same dial, same range, same
                        shared curtain constants (map/gridFade), same 3D-only gate. It was missing here
                        entirely, so the system map had a fade dial and no depth dial while the starmap

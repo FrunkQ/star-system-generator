@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.848-beta - 19th Aug 2026
+
+- **The system lattice's cell can be pinned to a real distance.** New "Grid scale" on the System step: Automatic (the decade ladder, unchanged and still the default) or a fixed cell off the 1/2/5 ladder from 0.1 to 100 AU. G10 made this grid a scale rather than decoration, but an automatic cell resizes as the view zooms, so "these are 1 AU squares" stopped being true the moment somebody scrolled. A pinned cell draws one level and the per-frame crossfade stands down entirely.
+- A cell is a distance, so a non-finite one is now folded to Automatic where the preset becomes a holo style, rather than every later reader having to re-check it.
+
 ## v2.1.847-beta - 19th Aug 2026
 
 - **FIXED: the 3D system map's grid was drawing its own colour SQUARED.** Three.js multiplies the material's colour by the vertex colour; the starmap's grid material carries no colour at all and lets the vertex attribute do it, while the system map set both to the same value — so 0.4 rendered as 0.16 and the whole grid dropped to a sixth of its intensity. It appeared the instant Grid falloff left zero because that is what switched the attribute on, which is why it read as a fade fault. It was not: at a 10% dial the fade window starts at 17.6 units on a grid of radius 12, so nothing was fading at all.

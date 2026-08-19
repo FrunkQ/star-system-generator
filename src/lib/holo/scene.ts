@@ -151,6 +151,7 @@ export interface HoloController {
   setGrid(mode: MapOverlay): void; // ground reference overlay (shared vocabulary, lib/map/mapOverlay.ts)
   setGridFalloff(v: number): void; // G4: 0 = even brightness, 1 = bright near the centre and gone by the edge
   setGridDepth(v: number): void;   // 0 flat .. 1 a full depth curtain under each grid line (3D only)
+  setGridScale(v: number): void;   // lattice cell in AU; 0 = automatic decade ladder
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
   setLabelColor(hex: string | null): void; // in-scene label colour (null = default); matched to CRT phosphor
   setLabelSize(px: number): void; // in-scene label font size
@@ -492,6 +493,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let gridFalloff = 0;
   // The system map's "Grid depth" — the same curtain dial the starmap has. 0 = flat.
   let gridDepth = 0;
+  // The lattice CELL in AU. 0 = automatic (the decade ladder below); anything else pins the grid to a
+  // real distance, which is what lets a GM read "one square is 1 AU" off the map instead of watching
+  // the cell resize under them as they zoom.
+  let gridScaleAu = 0;
   // Curtain materials paired with the line material they hang from, so the coarse/fine crossfade in
   // updateGridLevels moves both. A curtain outliving its faded-out line is the fault this prevents.
   let gridSkirtMats: { line: THREE.LineBasicMaterial; skirt: THREE.MeshBasicMaterial }[] = [];
@@ -1918,6 +1923,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function buildMetricGrid(base: THREE.Color) {
     gridLevelMats = [];
     gridSkirtMats = [];
+    // A PINNED cell draws one level and nothing crossfades: the whole point of the ladder is that the
+    // cell tracks the zoom, and the whole point of pinning it is that it does not. `gridBuiltFor` is
+    // parked on the pinned value so `updateGridLevels` sees no decade change and never rebuilds.
+    if (gridScaleAu > 0) {
+      const span = Math.min(rMax * 1.2, Math.max(visibleAu() * 2.5, gridScaleAu * 2));
+      gridBuiltFor = { coarse: -gridScaleAu, span };
+      const edges = metricLines(gridScaleAu, span);
+      if (!edges.length) return;
+      const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), gridScaleAu, { alpha: 1, opacity: 0.42 });
+      if (mat) gridLevelMats.push({ mat, coarse: true, peak: 0.42 });
+      return;
+    }
     const lv = gridLevels(visibleAu(), 6);
     if (!lv) return;
     // Cover a bit more than the view so a pan does not run off the grid, but never the whole system at
@@ -1946,6 +1963,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    */
   function updateGridLevels() {
     if (!isLattice(gridMode) || gridMode === 'off' || !gridLevelMats.length) return;
+    // A pinned cell has no ladder to slide along and no second level to cross into. Returning here is
+    // what stops the per-frame updater from recomputing a decade the GM has explicitly overridden.
+    if (gridScaleAu > 0) return;
     const lv = gridLevels(visibleAu(), 6);
     if (!lv) return;
     if (lv.coarse !== gridBuiltFor.coarse) { rebuildGrid(); return; }
@@ -2001,6 +2021,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     addGridEdges(spokeEdges(24, GRID_RADIUS, 24), base.clone().multiplyScalar(0.22), cell, { alpha: 0.5, skirt: false });
   }
 
+  function setGridScale(v: number) {
+    const n = Number.isFinite(v) && v > 0 ? v : 0;
+    if (n === gridScaleAu) return;
+    gridScaleAu = n;
+    rebuildGrid();
+  }
   function setGridDepth(v: number) {
     const n = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
     if (n === gridDepth) return;
@@ -4657,7 +4683,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
 }
 
 // ---- helpers ----
