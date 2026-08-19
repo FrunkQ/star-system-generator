@@ -39,7 +39,7 @@
   import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { systemUiStore } from '$lib/systemUiStore';
-  import { SYSTEM_OVERLAY_OPTIONS, type MapOverlay } from '$lib/map/mapOverlay';
+  import { SYSTEM_OVERLAY_OPTIONS, isLattice, type MapOverlay } from '$lib/map/mapOverlay';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
@@ -233,6 +233,10 @@
   let showHillSpheres = false;
   // WS3: the 2D system view's spatial overlay (shared vocabulary — see lib/map/mapOverlay.ts).
   let systemOverlay: MapOverlay = 'off';
+  // The lattice cell in AU. 0 = the automatic 1/2/5 ladder that sizes cells by zoom. Pinning it is what
+  // makes the grid a measure a table can rely on — the same choice the player preset offers, because a
+  // GM and their players looking at the same system should not disagree about what one cell is.
+  let systemGridScaleAu = 0;
   let showZoneKeyPanel = false; // Controls display of ZoneKey in the right panel
   let showLPoints = false;
   let showTravellerZones = false;
@@ -2256,6 +2260,14 @@
                         {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                       </select>
                     </label>
+                    {#if isLattice(systemOverlay)}
+                      <label class="ov-select" title="How much space one cell covers. Automatic sizes cells by zoom; a fixed cell keeps its meaning while you scroll.">Cell
+                        <select bind:value={systemGridScaleAu}>
+                          <option value={0}>Automatic</option>
+                          {#each [0.25, 0.5, 1, 2, 5, 10] as au}<option value={au}>{au} AU</option>{/each}
+                        </select>
+                      </label>
+                    {/if}
                     {#if $starmapUiStore.travellerMode}
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
                     {/if}
@@ -2301,6 +2313,7 @@
                 {showZones}
                 {showHillSpheres}
                 overlay={systemOverlay}
+                gridScaleAu={systemGridScaleAu}
                 {showLPoints}
                 {showTravellerZones}
                 {showSensors}

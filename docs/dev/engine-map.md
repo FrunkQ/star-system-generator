@@ -2675,15 +2675,21 @@ THIS: **B28's own closing note describes a five-word set (`background/elevated/h
 that no longer exists** — the vocabulary has already turned over once since the entry was written, so
 trust `radiation.ts:126`, not the inbox. B20/B29 own the settlement.
 
-### M4 One preset field, `draft.grid`, is bound by TWO pickers offering different option sets
-`components/PlayerPresetEditor.svelte:411` renders `MAP_OVERLAY_OPTIONS` (7 options, hexes included),
-`:513` renders `SYSTEM_OVERLAY_OPTIONS` (4, hexes filtered out) — both `bind:value={draft.grid}`.
-HOLDS at RENDER time because `mapOverlay.forSystemScale` folds a hex value to `square` for the system
-views (`SystemVisualizer:46`, `holo/scene:1752`), so a stray hex grid never draws inside a system.
-BREAKS IF: the EDITOR is where it is lossy, not the renderer. Choose Traveller hex for the starmap,
-then open the system tab: that `<select>` has no matching option, and touching it writes the system's
-choice back over the starmap's. A37 recorded this unnumbered and it was never picked up. The fix is
-two fields or one filtered writer, not a third option list.
+### M4 CLOSED (v2.1.854) One preset field, `draft.grid`, bound by two pickers offering different sets
+WAS: `PlayerPresetEditor` rendered `MAP_OVERLAY_OPTIONS` (7, hexes included) for the starmap and
+`SYSTEM_OVERLAY_OPTIONS` (4, hexes filtered) for the system, both `bind:value={draft.grid}`. It held
+at RENDER time because `forSystemScale` folded a hex to `square`, and broke in the EDITOR: choose
+Traveller hex for the starmap, open the system tab, and that `<select>` had no matching option — so
+touching it wrote the system's choice back over the starmap's. A37 recorded it unnumbered.
+FIXED by the answer the entry did not consider: make the two sets THE SAME. The system view now draws
+every hex variant from `latticeFor` at a cell measured in AU, so the filter had nothing left to
+justify it — the fold existed because nothing here drew hexes, not because a hex could not be drawn.
+`SYSTEM_OVERLAY_OPTIONS === MAP_OVERLAY_OPTIONS`, one field, one option set, nothing lossy.
+NOTE the entry's own prescription was "two fields or one filtered writer, not a third option list",
+and both would have been more code than deleting the filter. WHEN ONE FIELD IS BOUND BY TWO NARROWER
+PICKERS, ASK WHETHER THE NARROWING IS STILL EARNED BEFORE SPLITTING THE FIELD. The CCRR numbering,
+which is the half of the rule that was always sound, stays starmap-only: sector addressing is
+meaningless inside one system, and that is a statement about the LABELS, not the shape.
 
 ### M5 Three generation paths seed an rng from `Date.now()`, inside a codebase built on reproducibility
 `system/modifiers.ts:55`, `:215`, `:429` — `new SeededRNG(sys.seed + Date.now())`, with the comment

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.855-beta - 19th Aug 2026
+
+- The AU cell reaches the other two surfaces that draw a system lattice. The GM's system view gains a **Cell** picker beside its Overlay one, and the 2D renderer honours a pinned cell instead of always sizing by zoom — a GM and their players looking at the same system should not disagree about what one cell is.
+- FIXED in passing: the 2D system view's hex branch tested two of the three hex kinds, so subsector-hex would have fallen through to the polar rings. Harmless until this release, because the fold meant no hex ever reached it.
+- Engine map: **M4 closed.** One preset field bound by two pickers with different option sets, lossy in the editor rather than the renderer. Fixed by making the sets the same — the narrowing existed because nothing drew hexes at system scale, not because a hex could not be drawn.
+
 ## v2.1.854-beta - 19th Aug 2026
 
 - **Hexes work at system scale, and there is now one lattice in the codebase.** The system view used to strip the hex family and fold it to squares, on the grounds that a hex is a jump and a jump is interstellar — true of what a hex MEANS on a starmap, and beside the point for a GM who wants hexagonal cells over an orrery. Square and every hex variant now come from `latticeFor`, the same generator the starmap and the GM's snap grid use. Traveller CCRR numbering stays starmap-only: sector addressing is meaningless inside one system, which is a statement about the labels, not the shape.

@@ -44,7 +44,10 @@
   export let showHillSpheres: boolean = false;
   // WS3 — the shared overlay vocabulary. The 2D system view had no grid of any kind; it now offers the
   // same set as every other spatial view (lattices in AU, or polar rings about the primary).
+  import { isHexFamily } from '$lib/map/mapOverlay';
   export let overlay: import('$lib/map/mapOverlay').MapOverlay = 'off';
+  // Lattice cell in AU; 0 = the automatic 1/2/5 ladder below.
+  export let gridScaleAu: number = 0;
   // Every lattice this codebase draws is available at system scale; the cell is measured in AU.
   $: effOverlay = overlay;
   export let toytownFactor: number = 0;
@@ -465,7 +468,10 @@
     // This view had the right idea first and kept it to itself — the ladder was inlined here and
     // nowhere else, so when G10 needed the same answer for the 3D system grid and both starmaps'
     // scale rings it would have become a second copy. It is the same arithmetic; only the home moved.
-    const step = niceStepBelow(90 / zoom);
+    // A PINNED cell wins over the ladder here exactly as it does on the 3D view — the whole point of
+    // choosing "1 AU hexes" is that both renderings of the same system agree about what a cell is.
+    // This map is linear (no radial compression at 2D), so the AU cell is the cell.
+    const step = gridScaleAu > 0 ? gridScaleAu : niceStepBelow(90 / zoom);
     const line = 1 / zoom;
     ctx.save();
     ctx.lineWidth = line;
@@ -476,7 +482,7 @@
       for (let x = Math.ceil((cx + x0) / step) * step; x <= cx + x1; x += step) { const c = x - cx; ctx.moveTo(c, y0); ctx.lineTo(c, y1); }
       for (let y = Math.ceil((cy + y0) / step) * step; y <= cy + y1; y += step) { const c = y - cy; ctx.moveTo(x0, c); ctx.lineTo(x1, c); }
       ctx.stroke();
-    } else if (effOverlay === 'hex' || effOverlay === 'traveller-hex') {
+    } else if (isHexFamily(effOverlay)) {
       // Flat-topped hex lattice with circumradius = step; CCRR numbering is a starmap-scale idea, so the
       // system view draws the Traveller choice as the plain lattice.
       const s = step, dx = s * Math.sqrt(3), dy = s * 1.5;
