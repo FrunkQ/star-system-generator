@@ -156,6 +156,22 @@ reads under a CRT or colour-blind filter.
 The selection is momentary — it is never saved into a preset — and secret tags can never appear, so
 leaving a faction highlighted is safe.
 
+### Three tags that draw themselves
+
+A few physics tags on a STAR are not badges but part of the star's own picture, on the GM starmap, the
+player starmaps and the system view alike:
+
+- `stellar/activity` — the magnetic-activity bucket. An *active* or *flare-star* star shows flares
+  licking off its limb; a *quiet* one does not.
+- `stellar/jets` — a pair of collimated beams along the magnetic axis: a fed black hole, a neutron star
+  or a magnetar. *moderate* or *strong*.
+- `stellar/shedding` — a shed shell of wind around an evolved star: *wind* on a giant, *shell* on a
+  supergiant or a heavy-loss hot star.
+
+They are derived, so they cannot be switched on from the renderer; the way to remove a mark is to
+remove the tag (the Tags tab), and the way to earn one is to change the numbers that derive it — feed
+the hole, or swell the star.
+
 ## Finding things
 
 **Find by tag** searches every body or construct carrying the tags you pick. Switch between bodies

@@ -16,9 +16,13 @@ type GridType = SnapGridType;
 // G16: `showBackgroundImage` was retired here. The starmap's background is CAMPAIGN CONTENT now
 // (`Starmap.mapBackground`) rather than a local display preference, because a map-fixed sector map
 // has to travel with the save and out to every player window to stay in register.
-type UiState = { gridType: GridType; travellerMode: boolean };
+// G26: `starScale` is the GM's OWN star-glyph size scaler for the 2D map on this screen — 0 = every
+// star the same size (the map as it was), 1 = the four luminosity-class bands fully separated. A
+// LOCAL preference, like the snap grid: the player views carry their own in the preset
+// (`starmapStarScale`), per G5's split — never wire a player view to this store (A10/A3).
+type UiState = { gridType: GridType; travellerMode: boolean; starScale: number };
 
-const DEFAULTS: UiState = { gridType: 'off', travellerMode: false };
+const DEFAULTS: UiState = { gridType: 'off', travellerMode: false, starScale: 0 };
 
 
 
@@ -38,10 +42,11 @@ function migrate(parsed: any): UiState {
   const canonical = normaliseOverlay(out.gridType);
   out.gridType = isSnapGridType(canonical) ? canonical : 'off';
   if (typeof out.travellerMode !== 'boolean') out.travellerMode = false;
+  const starScale = typeof out.starScale === 'number' && Number.isFinite(out.starScale) ? Math.max(0, Math.min(1, out.starScale)) : 0;
   // Only the fields this store still owns. A browser that stored the retired `showBackgroundImage`
   // would otherwise carry it forward for ever, and a dead key in a persisted store is how a future
   // reader concludes the setting still exists (G16).
-  return { gridType: out.gridType, travellerMode: out.travellerMode };
+  return { gridType: out.gridType, travellerMode: out.travellerMode, starScale };
 }
 
 const getInitialState = (): UiState => {

@@ -49,7 +49,7 @@ import { lightningStrength } from '$lib/physics/cloudDecks'; // shared feature m
 import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack,
-  applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, updateLightning, buildLightning, type LightningVisual, accretionColor,
+  applyLimbDarkening, buildStarLook, updateStarLook, makeStarSurfaceTexture, type StarLookVisual, updateMagma, updatePlumes, updateLightning, buildLightning, type LightningVisual, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
@@ -1217,7 +1217,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // Cloud decks: a translucent shell per cloudy body, drifted in longitude each frame so it floats over
   // the surface (its own spin, on top of the parent sphere's).
   let cloudVisuals: { mesh: THREE.Object3D; drift: number }[] = [];
-  let starFlareVisuals: FlareVisual[] = [];
   // Auto-generated black-hole accretion discs, by BH node id — the lens exempts each disc's projected
   // band so its near side shows in front of the shadow (see lensingShader).
   const bhDiscInfo = new Map<string, { pivot: THREE.Group; inner: number; outer: number }>();
@@ -1228,7 +1227,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // master copy rather than left where it was. See rebaseStaticGeometry.
   let orbitRings: { id: string; obj: THREE.Object3D; trackParentId?: string; abs?: Float64Array; node?: any; refined?: boolean; local?: Float64Array; absMode?: boolean; sample?: (u: number, out: THREE.Vector3) => void }[] = [];
   let starLights: { id: string; light: THREE.PointLight }[] = [];
-  let starVisuals: { corona: THREE.Sprite; coronaScale: number; activity: number }[] = [];
+  // G26: the corona + flares + tag decorations, built by the SHARED builder (bodyFeatures.buildStarLook)
+  // the 3D starmap also uses — one look, sized by a radius argument; no second copy of it here.
+  let starVisuals: StarLookVisual[] = [];
   let rMax = 1; // largest heliocentric distance in the system (AU), for the compression normaliser
   let compression = DEFAULT_COMPRESSION;
   let beltDetail = 0.6; // GM quality knob: scales belt particle budget (performance), not physics
@@ -3458,7 +3459,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     lightningVisuals = [];
     plumeVisuals = [];
     cloudVisuals = [];
-    starFlareVisuals = [];
     bhDiscInfo.clear();
   }
 
@@ -3703,14 +3703,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           if (!isLopolyStar) applyLimbDarkening(starMat, 0.55);
           const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, isLopolyStar ? 16 : 32, isLopolyStar ? 10 : 24), starMat);
           mesh = sphere;
-          // Flares — only for stars whose magnetic activity actually earns them, so a quiet sun
-          // adds nothing to the frame.
-          if (!isLopolyStar && flaresVisibly(node.tags)) {
-            let fseed = 0; for (const ch of String(node.id)) fseed = (fseed + ch.charCodeAt(0) * 13) % 2147483647;
-            const fl = buildStellarFlares(starR, `#${colorHex.toString(16).padStart(6, '0')}`, activity, fseed || 1, glowTexture);
-            sphere.add(fl.group);
-            starFlareVisuals.push(...fl.flares);
-          }
+          // Corona + flares: the SHARED star look (bodyFeatures.buildStarLook), parented to the sphere
+          // so it tracks position; the corona billboard ignores the sphere's spin, the flares sit on
+          // its limb. Flares only for stars whose magnetic activity earns them (a quiet sun adds
+          // nothing to the frame), and only outside the lo-poly styles. The outflow decorations
+          // (jets, shed shell) are NOT passed here: the holo's own star look is out of G26's scope.
+          let fseed = 0; for (const ch of String(node.id)) fseed = (fseed + ch.charCodeAt(0) * 13) % 2147483647;
+          const look = buildStarLook(starR, colorHex, activity, fseed || 1, glowTexture, { flares: !isLopolyStar && flaresVisibly(node.tags) });
+          sphere.add(look.group);
+          starVisuals.push(look);
           // Lo-poly LINES: glowing vector edges + vertices over the faceted star, matching the planets.
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -3718,15 +3719,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             const dotMat = new THREE.PointsMaterial({ color: colorHex, size: wireDotSize(starR), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.Points(sphere.geometry, dotMat));
           }
-          // Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
-          // pulsing (flaring) over time in updateStarFx. Parented to the sphere so it tracks position;
-          // the billboard ignores the sphere's spin.
-          const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
-          const corona = new THREE.Sprite(coronaMat);
-          const coronaScale = starR * (5 + activity * 4);
-          corona.scale.setScalar(coronaScale);
-          sphere.add(corona);
-          starVisuals.push({ corona, coronaScale, activity });
         }
         // The star casts light regardless of render style: a point light co-located with it gives the
         // planets a real terminator. decay 0 so the compressed distances don't dim the outer planets.
@@ -4367,13 +4359,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   // Flaring: an active star's corona pulses (and flickers brighter) over time; a quiet star is steady.
+  // The pulse and the flare timing live in the shared animator (bodyFeatures.updateStarLook).
   function updateStarFx(nowSec: number) {
-    for (const s of starVisuals) {
-      if (s.activity <= 0.01) continue;
-      const pulse = 1 + s.activity * (0.1 * Math.sin(nowSec * 2.3) + 0.06 * Math.sin(nowSec * 6.1));
-      s.corona.scale.setScalar(s.coronaScale * pulse);
-      (s.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.85 + s.activity * 0.15 * (0.5 + 0.5 * Math.sin(nowSec * 9.3)));
-    }
+    for (const s of starVisuals) updateStarLook(s, nowSec);
   }
 
   // Aurora shimmer: modulate each shell's opacity around its strength-based base with a couple of
@@ -4595,7 +4583,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     updateMagma(magmaVisuals, nowSec);
     updateLightning(lightningVisuals, nowSec);
     updatePlumes(plumeVisuals, nowSec);
-    updateStellarFlares(starFlareVisuals, nowSec);
     for (const c of cloudVisuals) c.mesh.rotation.y = nowSec * c.drift; // clouds drift over the surface
     updateConstructs();
     updateTrueScaleFloor();

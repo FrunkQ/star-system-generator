@@ -48,6 +48,10 @@
   export let mapGrid: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null = null;
   // WS7: DISPLAY-ONLY depth stretch. 1 = true depth. Never reaches the distance maths.
   export let zExaggeration = 1;
+  // G26: the GM SIZE SCALER for the star glyphs. 0 = every star the same size (the map as it was),
+  // 1 = the four luminosity-class bands fully separated. Rides the PRESET (starmapStarScale), so a
+  // player window gets the GM's choice for this view — the GM's own 2D map has its own local dial.
+  export let starScale = 0;
   export let flat = false;         // 2D starmap: tilt pinned top-down — never becomes a 3D view
   export let lockRotation = false; // fix the heading (no spin by drag); independent of the tilt
   export let background: 'space' | 'green' | 'blue' | 'black' = 'space';
@@ -104,7 +108,9 @@
   // badges would be computed once and frozen — the fault TAG-17 records on the 2D starmap.
   $: smSystems = ((starmap?.systems ?? []) as any[]).map<SmSystem>((s) => ({
     id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0, z: s.position?.z ?? 0,
-    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd })),
+    // Everything a glyph draws is resolved by systemVisualStars from the star's classes and TAGS
+    // (band, activity/flares, jets, shedding) — the scene reads it and decides nothing (G26).
+    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd, band: v.band, activity: v.activity, flares: v.flares, jets: v.jets, shedding: v.shedding })),
     markers: activeHighlights.length
       ? rollUpMarkers(s.system?.nodes ?? [], activeHighlights, activeTagCategories, markerStyle)
       : []
@@ -150,6 +156,7 @@
     controller.setGridSkirt(flat ? 0 : gridDepth);
     controller.setGridFalloff(gridFalloff);
     controller.setZExaggeration(zExaggeration); // display-only depth stretch
+    controller.setStarScale(starScale);          // G26: glyph size bands, a screen quantity
     controller.setBackground(background);
     controller.setFraming(angleDeg);
     controller.setFlatOverhead(flat); // after setFraming: pins the tilt overhead
@@ -183,7 +190,7 @@
   onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; starScale; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
   // G16: re-place the plane on any anchor change. Named rather than closed over, per the note above.

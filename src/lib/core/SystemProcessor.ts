@@ -45,6 +45,7 @@ import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } f
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity, photosphereTempK } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
+import { STELLAR_JETS_TAG, STELLAR_SHEDDING_TAG, starJetBucket, starSheddingBucket } from '../physics/stellarOutflows';
 import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlausibility';
 import { applyActivityScatter, activityFromFieldExcess } from '../physics/ionisingOutput';
 import { starStatTemplate } from '../generation/star';
@@ -149,6 +150,18 @@ export class SystemProcessor implements ISystemProcessor {
             if (!brownDwarfThermal(s.massKg || 0, this.systemAgeGyr, s.radiusKm || 0).isSubstellar) {
                 emit(s.tags, { key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
             }
+            // WHAT THE STAR THROWS OFF (inbox G26): jets and a shed wind, derived in
+            // physics/stellarOutflows from mass, radius, field, feed and luminosity — all INPUTS at this
+            // point, none written by a later pass, so the answer is the same on every run. Both
+            // starmaps and the system view draw what these tags say and nothing else; a renderer
+            // deciding for itself which star jets is the fault the architecture rule exists to stop.
+            // This pass OWNS both keys and clears them first (TAG-6), so a star edited out of a jet
+            // loses its mark.
+            s.tags = stripForReprocess(s.tags, [STELLAR_JETS_TAG, STELLAR_SHEDDING_TAG]);
+            const jets = starJetBucket(s as any);
+            if (jets) emit(s.tags, { key: STELLAR_JETS_TAG, value: jets });
+            const shed = starSheddingBucket(s as any);
+            if (shed) emit(s.tags, { key: STELLAR_SHEDDING_TAG, value: shed });
 
             // WHY THIS STAR IS NOT A VALID STAR (owner, 2026-08-15). REFUSE TO PRODUCE, NEVER REFUSE
             // TO ACCEPT: the engine will not GENERATE an impossible star, but a GM may author one and

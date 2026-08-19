@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.852-beta - 19th Aug 2026
+
+- Starmap stars as stars (G26(a) + C17). On the 3D starmap, the player 2D starmap and the GM 2D map a star glyph is a SCREEN size and a grouped system's members sit at SCREEN offsets, so Alpha Centauri is the same compact cluster at every zoom and no star is light-years of fuzz up close. The glyph is a sharp photosphere disc inside the system view's own corona and flares, built by ONE shared builder (`bodyFeatures.buildStarLook`) the holo scene now uses too. Four luminosity-class size bands (remnant/sub-dwarf, V, III/II, I, from the MK class) behind a "Star size by class" scaler — 0 = all equal as before, 1 = fully separated; on the GM map under Settings (local), on the player starmaps per preset. New physics tags `stellar/jets` (a relativistic well + an ordered field + infall or a magnetosphere: a fed black hole, a neutron star, a magnetar) and `stellar/shedding` (Reimers L*R/M: giants wind, supergiants shell) drawn by both maps as jets and a shed shell; the flare band (`stellar/activity`) drawn as limb flares. Remove the tag and the mark goes. Black holes keep their schematic glyph.
+
 ## v2.1.851-beta - 18th Aug 2026
 
 * **Saved files stopped carrying physics that is thrown away the moment you load them.** Sixteen derived fields had crept back in over the last few months, so every save and every bundled example shipped figures nobody re-reads - and anyone opening one of those files to check something read a number from an older build and believed it. Files are a third to a half smaller: the bundled Sol Expanse went 84 KB to 49 KB, Alpha Centauri 68 to 33.

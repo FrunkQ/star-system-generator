@@ -186,6 +186,11 @@ export interface PlayerPreset {
   // WS7: 3D starmap DEPTH stretch, display-only (1 = true depth). True interstellar depth is tiny next
   // to the map's spread, so this exaggerates it for clarity. Never affects distances.
   zExaggeration?: number;
+  // G26: the star glyph SIZE SCALER on the 2D/3D starmaps. 0 = every star the same size (the map as
+  // it was, and the default so nothing saved changes), 1 = the four luminosity-class bands — remnant/
+  // sub-dwarf, V, III/II, I — fully separated. Rides the preset, like the other starmap dials; the
+  // GM's own 2D map has its own local dial (starmapUiStore), per G5's split.
+  starmapStarScale?: number;
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
   // 3D starmap: the vertical stems from each system down to the reference plane, and the rings that
   // mark where they land. Optional and defaulting to TRUE, so nothing already saved changes — they

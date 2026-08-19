@@ -32,6 +32,7 @@
     ['radiation', 'Surface radiation'],
     ['radiation-split', 'Spectral photon/particle split'],
     ['ionising-output', 'Ionising output & the corona'],
+    ['stellar-outflows', 'Jets and shed winds'],
     ['star-designations', 'Reading a star designation'],
     ['belts', 'Trapped belts & the giants'],
     ['fluids', 'Fluid layers'],
@@ -475,6 +476,28 @@
         is true and nowhere else.</p>
       <p class="note">A gas giant is a radiation source too, by a third mechanism again: trapped
         particles in its magnetic field, with no light involved. See <a href="#belts">trapped belts</a>.</p>
+    </section>
+
+    <section id="stellar-outflows">
+      <h2>Jets and shed winds <span class="phase">04.7</span></h2>
+      <p><strong>Two things a star throws off are drawn on the maps, and both are derived rather than
+        decided.</strong> A <em>jet</em> needs three things at once: a relativistic well to launch from,
+        measured as the body's Schwarzschild radius over its own radius (one at a horizon, about a
+        third for a neutron star, a ten-thousandth for a white dwarf, a millionth for the Sun); an
+        ordered magnetic field to collimate along, from a megagauss up to a pulsar's teragauss; and
+        energy to tap &mdash; matter falling in, as the Eddington fraction of a fed black hole, or the
+        magnetosphere of a neutron star or magnetar. The well gates everything: a magnetic white dwarf
+        has the field and no well, a quiescent black hole has the well and neither power source, and
+        neither jets. A star's <strong>stellar/jets</strong> tag carries the result as <em>moderate</em> or
+        <em>strong</em>; a known spin multiplies it up and an unknown one is left out rather than guessed.</p>
+      <p>The <em>shed wind</em> is Reimers' relation: mass loss proportional to luminosity times radius
+        over mass, from the star's own three numbers. The Sun comes out at a few times 10<sup>-13</sup>
+        solar masses a year and shows nothing; an Arcturus-like K giant reaches a billionth and earns
+        <em>wind</em>; a red supergiant reaches a millionth and earns <em>shell</em>. An O star's
+        line-driven wind falls out of the same law because it is bright and large for its mass. The
+        <strong>stellar/shedding</strong> tag carries the bucket, and the maps draw the shell from it.</p>
+      <p class="note">Nothing in either derivation asks what class a star is. Remove the tag and the
+        mark is gone; change the numbers and it comes back on its own.</p>
     </section>
 
     <section id="radiation-split">

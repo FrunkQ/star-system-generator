@@ -681,6 +681,10 @@
                    tell above from below. On a map with real depth and a crowded field they are also
                    the loudest thing on it, so this is a trade rather than a tidy-up. -->
               <label class="chk" title="The vertical lines down to the plane and the rings at their feet. Off is cleaner; depth becomes harder to judge."><input type="checkbox" checked={draft.starmapDropLines !== false} on:change={(e) => (draft.starmapDropLines = e.currentTarget.checked)} /> Depth tethers</label>
+              <!-- G26: the four luminosity-class size bands, from all-equal to fully separated. A
+                   presentation choice, so it is a dial and defaults to 0; the BAND comes from the
+                   classifier (the MK class), never from a size table. Black holes keep their glyph. -->
+              <label title="Spread the star glyphs by luminosity class: remnants and sub-dwarfs smallest, then dwarfs, giants, supergiants. 0% = all the same size; black holes keep their own glyph.">Star size by class <span>{(draft.starmapStarScale ?? 0) <= 0 ? 'All equal' : `${Math.round((draft.starmapStarScale ?? 0) * 100)}%`}</span><input type="range" min="0" max="1" step="0.05" value={draft.starmapStarScale ?? 0} on:input={(e) => (draft.starmapStarScale = +e.currentTarget.value)} /></label>
             </CollapsibleSection>
 
             <CollapsibleSection label="Background" open={openSections['starmap-background']}
@@ -1157,7 +1161,7 @@
             {:else if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
               <!-- BOTH map views are the same engine (2D = it locked flat) and run the real shader
                    themselves — mirroring the live player view exactly, so this preview can't drift. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} dropLines={draft.starmapDropLines !== false} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1}
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} dropLines={draft.starmapDropLines !== false} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1} starScale={draft.starmapStarScale ?? 0}
                 mapBackground={draft.showMapBackground !== false}
                 flat={draft.starmapView === 'diagram2d'}
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}

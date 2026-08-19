@@ -2,12 +2,16 @@
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { constructIconPath, constructIconShape } from '$lib/constructs/constructIcon';
   import { gestures } from '$lib/input/gestures';
-  import { getPlanetColor as getStarColor } from '$lib/rendering/colors';
+  // G26/C17: the glyph is a SCREEN quantity — its size, its members' spread and its band scale come
+  // from the shared glyph law, and WHAT it draws (band, activity, jets, shedding) from the shared
+  // systemVisualStars — one reader for this map and the 3D starmap, so they cannot disagree.
+  import { systemVisualStars } from '$lib/starmap/systemStars';
+  import { clusterLayout, clusterHalfExtent } from '$lib/starmap/starGlyphLaw';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
   import BodyPicker from './BodyPicker.svelte';
   import FullscreenButton from './FullscreenButton.svelte';
-  import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
+  import type { Starmap, System, RulePack, Barycenter } from '$lib/types';
   import { constructDisplayPlacement, flybyTurn, interstellarConstructIds } from '$lib/transit/interstellar';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   import BottomSheet from './BottomSheet.svelte';
@@ -685,8 +689,8 @@
     }
   }
 
-      // getStarColor is now the canonical getPlanetColor (aliased on import) so a star is
-      // the SAME colour here, in the orrery, and on summary cards — all token-driven.
+  // Star colour comes through systemVisualStars -> getPlanetColor, so a star is the SAME colour
+  // here, in the orrery, on summary cards and on the 3D starmap — all token-driven.
   // A system is hidden from the players' field guide when its ROOT node is player-hidden — for a
   // multi-star system that's the top barycenter, for a single star it's the star itself. Hiding an
   // underlying star only hides that star (not the whole system). Flagged on the GM map with a
@@ -697,39 +701,25 @@
       return !!root && !!(root as any).object_playerhidden;
   }
 
-  function getVisualNodes(system: System): CelestialBody[] {
-      const stars = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
-      if (stars.length > 0) {
-          // Sort by mass descending so primary is first
-          return stars.sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
-      }
-      // No stars? Return root node if it's a body
-      const root = system.nodes.find(n => n.parentId === null);
-      if (root && root.kind === 'body') return [root as CelestialBody];
-      return [];
-  }
+  // The system's visible stars — the SHARED reader (starmap/systemStars), which this map used to
+  // duplicate as `getVisualNodes` + `getBlackHoleType`. Same mass order, same root-body fallback.
+  const getVisualStars = (system: System) => systemVisualStars(system);
 
   // ── WHERE A SYSTEM'S WRITING GOES, and why it is measured off the GLYPH rather than the position ──
   //
-  // The star glyphs are drawn at a fixed WORLD radius (r = 5, with a spread of up to 7 for a multiple),
-  // so they grow and shrink with the zoom. Every label beside them was offset by a constant SCREEN
-  // distance from the system's centre — 15 px — which is wrong at both ends of the dial and was
-  // reported at both: zoomed IN the glyph is far wider than 15 px so the name lands on top of it,
-  // zoomed OUT the glyph is a dot and the name floats 15 px from nothing, reading as detached.
+  // The star glyphs are a SCREEN size now (G26/C17): `STAR_R` viewBox units at zoom 1, divided by the
+  // zoom like the labels (A4), so a star is the same size on screen at every zoom and a triple stays
+  // the same compact cluster. They used to be r = 5 in WORLD units inside the map transform, growing
+  // with the zoom — which put the name on top of the glyph zoomed in and left it floating zoomed out.
   //
-  // Both are the same fault as the one fixed on the two 3D surfaces: clear the object's own drawn
-  // extent, then add a constant gap. Here the arithmetic is easier because the offsets live in WORLD
-  // units inside the map transform — the glyph half-extent is already world, and the gap converts with
-  // labelK — so `halfW + gap * labelK` is a constant screen gap from the glyph's EDGE at every zoom.
-  //
-  // The extents are read off the circles below, not guessed: one star is r 5 at the centre; two are r 5
-  // at x ±5; three are (0,-6) and (±6,+5); four are (0,±6) and (±7,0).
-  function glyphHalf(n: number): { w: number; h: number } {
-    if (n <= 0) return { w: 3, h: 3 };   // the empty-system fallback dot
-    if (n === 1) return { w: 5, h: 5 };
-    if (n === 2) return { w: 10, h: 5 };
-    if (n === 3) return { w: 11, h: 11 };
-    return { w: 12, h: 11 };
+  // Clear the object's own drawn extent, then add a constant gap. Everything here is in screen px
+  // times labelK: the glyph half-extent from the shared law, the gap, the member offsets.
+  const STAR_R = 5;   // the glyph's layout radius in viewBox units at zoom 1 — today's r = 5, kept
+  // `starScale` passed in, not closed over — TAG-17 (see labelColumn).
+  function glyphHalf(systemNode: any, k: number, starScale: number): { w: number; h: number } {
+    const vs = getVisualStars(systemNode.system);
+    const half = clusterHalfExtent(clusterLayout(vs.map((v) => v.band), starScale, vs.map((v) => !!v.bh)));
+    return { w: half.w * STAR_R * k, h: half.h * STAR_R * k };
   }
   /**
    * The RIGHT-HAND COLUMN a system's writing occupies: name at the top, then the depth cue, then the
@@ -743,11 +733,14 @@
   // zoom-dependent offset this whole change exists to remove. Measured, not guessed — 6.00 against an
   // expected 15.11 at zoom 0.397. Name the reactive value at the call site and the compiler tracks it.
   const LABEL_GAP_PX = 6;
-  function labelColumn(systemNode: any, k: number): { x: number; topY: number } {
-    const half = glyphHalf(getVisualNodes(systemNode.system).length);
+  function labelColumn(systemNode: any, k: number, starScale: number): { x: number; topY: number } {
+    // `starScale` is PASSED IN for the same TAG-17 reason as `k`: the {@const} that calls this must
+    // name every reactive value it depends on, or the column freezes at the scaler's mount value.
+    const vs = getVisualStars(systemNode.system);
+    const half = clusterHalfExtent(clusterLayout(vs.map((v) => v.band), starScale, vs.map((v) => !!v.bh)));
     return {
-      x: systemNode.position.x + half.w + LABEL_GAP_PX * k,
-      topY: systemNode.position.y - half.h
+      x: systemNode.position.x + (half.w * STAR_R + LABEL_GAP_PX) * k,
+      topY: systemNode.position.y - half.h * STAR_R * k
     };
   }
 
@@ -773,8 +766,8 @@
   const systemPickerCategorize = (n: any) => n?.kind === 'construct' ? ['Constructs'] : ['Systems'];
   function systemPickerColor(sysNode: any): string {
       if (sysNode?.kind === 'construct') return sysNode.icon_color || '#ffd23f';
-      const vis = getVisualNodes(sysNode.system);
-      return vis.length ? getStarColor(vis[0]) : '#888';
+      const vis = getVisualStars(sysNode.system);
+      return vis.length ? vis[0].color : '#888';
   }
   function countNodes(n: any[]) {
       let stars = 0, planets = 0, moons = 0, constructs = 0;
@@ -811,12 +804,6 @@
       const ship = interstellarPickerNodes.find((n) => n.id === e.detail);
       if (ship) { if (ship.__journeyId) dispatch('openship', { journeyId: ship.__journeyId }); return; }
       dispatch('systemclick', e.detail);
-  }
-
-  function getBlackHoleType(body: CelestialBody): 'none' | 'BH' | 'BH_active' {
-      if (body.classes.includes('star/BH_active') || body.classes.includes('BH_active')) return 'BH_active';
-      if (body.classes.includes('star/BH') || body.classes.includes('BH')) return 'BH';
-      return 'none';
   }
 
   // --- Measure tool (scaled maps only): tap two targets — any stars or interstellar ships — to read the
@@ -1450,16 +1437,17 @@
           <!-- Same column as the name, starting below it — and below the depth cue when that is shown,
                which is why this needs the same predicate rather than a guess. The group is SCALED by
                labelK, so everything inside is in screen px: `off` is a pixel figure. -->
-          {@const col = labelColumn(systemNode, labelK)}
+          {@const col = labelColumn(systemNode, labelK, $starmapUiStore.starScale)}
           {@const off = zDepthOn && (systemNode.position.z ?? 0) !== 0 ? 20 : 9}
           <g class="hl-markers" transform="translate({col.x}, {col.topY + off * labelK}) scale({labelK})" pointer-events="none" style="font-size:{markerPill.fontPx}px; font-family:{markerPill.fontFamily}">
             {#each hl.shown as m, i (m.key)}
               {#if m.style === 'ring' || m.style === 'both'}
                 <!-- A ring encircles the STAR, so it has to undo the column offset. Inside this group
-                     one unit is one screen px, and the glyph's own half-extent is world — hence the
-                     zoom. Derived rather than the old hardcoded (-8, 10), which was tuned to the
-                     origin this transform used to have. -->
-                {@const half = glyphHalf(getVisualNodes(systemNode.system).length)}
+                     one unit is one screen px, and the glyph's half-extent is a screen figure too now
+                     (glyphHalf returns world = px * labelK, so times zoom is px again). Derived rather
+                     than the old hardcoded (-8, 10), which was tuned to the origin this transform used
+                     to have. -->
+                {@const half = glyphHalf(systemNode, labelK, $starmapUiStore.starScale)}
                 <circle cx={-(half.w * zoom + LABEL_GAP_PX)} cy={half.h * zoom - off} r={9 + i * 2.5} fill="none" stroke={m.color} stroke-width="1.4" />
               {/if}
               {#if m.style !== 'ring'}
@@ -1475,7 +1463,8 @@
             {/if}
           </g>
         {/if}
-        {@const visualNodes = getVisualNodes(systemNode.system)}
+        {@const visualStars = getVisualStars(systemNode.system)}
+        {@const slots = clusterLayout(visualStars.map((v) => v.band), $starmapUiStore.starScale, visualStars.map((v) => !!v.bh))}
         <g
           role="button"
           tabindex="0"
@@ -1496,127 +1485,50 @@
               <line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.2" />
             </g>
           {/if}
-          {#if visualNodes.length === 0}
+          {#if visualStars.length === 0}
               <!-- Fallback for empty/invalid system -->
-              <circle cx={systemNode.position.x} cy={systemNode.position.y} r={3} fill="#555" />
-          {:else if visualNodes.length === 1}
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-          {:else if visualNodes.length === 2}
-              <circle
-                cx={systemNode.position.x - 5}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-              <circle
-                cx={systemNode.position.x + 5}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[1])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
-              />
-          {:else if visualNodes.length === 3}
-              <!-- 3 Stars: Pyramid layout (Primary Top, others below) -->
-              <!-- Primary (Top Center) -->
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y - 6}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-              <!-- Second (Bottom Left) -->
-              <circle
-                cx={systemNode.position.x - 6}
-                cy={systemNode.position.y + 5}
-                r={5}
-                style="fill: {getStarColor(visualNodes[1])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
-              />
-              <!-- Third (Bottom Right) -->
-              <circle
-                cx={systemNode.position.x + 6}
-                cy={systemNode.position.y + 5}
-                r={5}
-                style="fill: {getStarColor(visualNodes[2])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
-              />
+              <circle cx={systemNode.position.x} cy={systemNode.position.y} r={3 * labelK} fill="#555" />
           {:else}
-              <!-- 4+ Stars: Diamond Layout -->
-              <!-- Primary (Top) -->
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y - 6}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-              <!-- Second (Bottom) -->
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y + 6}
-                r={5}
-                style="fill: {getStarColor(visualNodes[1])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
-              />
-              <!-- Third (Left) -->
-              <circle
-                cx={systemNode.position.x - 7}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[2])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
-              />
-              <!-- Fourth (Right) -->
-              <circle
-                cx={systemNode.position.x + 7}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[3])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[3]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[3]) === 'BH'}
-              />
-              {#if visualNodes.length > 4}
+              <!-- G26/C17: ONE loop over the shared layout — the old hand-written 1/2/3/4+ branches
+                   drew the same arrangement with r = 5 WORLD units. Every figure here is screen px
+                   times labelK: the member offset, the radius (its band at the GM scaler) and the
+                   decorations, which are the star's TAGS drawn as marks — the shed shell under the
+                   disc, the jet through it, the flare sparks on its limb. Same tags the 3D map reads. -->
+              {#each visualStars as s, i (s.id)}
+                {@const slot = slots[i] ?? { dx: 0, dy: 0, scale: 1 }}
+                {@const r = STAR_R * slot.scale * labelK}
+                {@const sx = systemNode.position.x + slot.dx * STAR_R * labelK}
+                {@const sy = systemNode.position.y + slot.dy * STAR_R * labelK}
+                {#if s.shedding}
+                  <circle class="star-shell" cx={sx} cy={sy} r={r * (s.shedding >= 2 ? 2.6 : 2)} style="stroke:{s.color}; stroke-width:{r * (s.shedding >= 2 ? 0.5 : 0.32)}px; opacity:{s.shedding >= 2 ? 0.42 : 0.28}" />
+                {/if}
+                {#if s.jets}
+                  <line class="star-jet" x1={sx} y1={sy - r * (s.jets >= 2 ? 4.6 : 3.2)} x2={sx} y2={sy + r * (s.jets >= 2 ? 4.6 : 3.2)} style="stroke-width:{r * (s.jets >= 2 ? 0.45 : 0.3)}px" />
+                {/if}
+                <circle
+                  cx={sx}
+                  cy={sy}
+                  r={r}
+                  style="fill: {s.color};"
+                  class="star"
+                  class:selected={systemNode.id === selectedSystemForLink}
+                  class:bh-active={s.bh === 'active'}
+                  class:bh-quiescent={s.bh === 'quiescent'}
+                />
+                {#if s.flares && !s.bh}
+                  <g class="star-flares" style="stroke:{s.color}; stroke-width:{r * 0.26}px">
+                    {#each [0.785, 2.356, 3.927, 5.498] as a}
+                      <line x1={sx + Math.cos(a) * r * 1.2} y1={sy + Math.sin(a) * r * 1.2} x2={sx + Math.cos(a) * r * 1.75} y2={sy + Math.sin(a) * r * 1.75} />
+                    {/each}
+                  </g>
+                {/if}
+              {/each}
+              {#if visualStars.length > 4}
                   <text
                     x={systemNode.position.x}
-                    y={systemNode.position.y + 15}
+                    y={systemNode.position.y + 15 * labelK}
                     class="plus-indicator"
+                    style="font-size:{14 * labelK}px; stroke-width:{2 * labelK}px"
                     text-anchor="middle"
                   >+</text>
               {/if}
@@ -1625,7 +1537,7 @@
         <!-- The name takes the TOP of the label column (owner, 2026-08-17), with the badges below it
              rather than beside it, so the two can no longer collide. 11px rather than 12: at the old
              size a long name dominated a crowded sector. -->
-        {@const col = labelColumn(systemNode, labelK)}
+        {@const col = labelColumn(systemNode, labelK, $starmapUiStore.starScale)}
         <text
           x={col.x}
           y={col.topY}
@@ -2219,6 +2131,11 @@
     stroke: #444444;
     stroke-width: 1px;
   }
+  /* G26: tag-driven glyph marks. Stroke colour and width are inline (the star's own colour, sized
+     to its radius); these hold what does not change. */
+  .star-shell { fill: none; pointer-events: none; }
+  .star-jet { stroke: #cfe4ff; stroke-linecap: round; opacity: 0.9; pointer-events: none; }
+  .star-flares line { stroke-linecap: round; opacity: 0.85; pointer-events: none; }
 
   .star-label {
     fill: #fff;

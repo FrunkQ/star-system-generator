@@ -14,7 +14,10 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { filterRegistry } from '$lib/holo/filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from '$lib/holo/filters/shaderMaterial';
 import type { FilterParamValues } from '$lib/holo/filters/schema';
-import { starClusterOffsets } from './systemStars';
+import { clusterLayout, clusterHalfExtent, type SizeBand, type GlyphSlot } from './starGlyphLaw';
+// G26: the star LOOK is the holo's — corona, flares and the tag-driven decorations — from the ONE
+// shared builder, sized here to a screen radius. Not a copy of it.
+import { buildStarLook, updateStarLook, makeGlowTexture, type StarLookVisual } from '$lib/holo/bodyFeatures';
 
 const GRID_RADIUS = 12; // scene units the map's extent maps to
 const HOLO_TINT = 0x63b3ff;
@@ -25,7 +28,12 @@ const hexOf = (n: number) => '#' + (n >>> 0).toString(16).padStart(6, '0');
 // scene height, multiplied by the DISPLAY-ONLY exaggeration — which never touches distance maths.
 export interface SmSystem {
   id: string; name: string; x: number; y: number; z?: number;
-  stars: { color: string; bh?: 'quiescent' | 'active'; edd?: number }[];
+  // What a glyph DRAWS, resolved upstream by systemVisualStars (the band from the luminosity class,
+  // the decorations from the star's TAGS). The scene reads these and decides nothing itself.
+  stars: {
+    color: string; bh?: 'quiescent' | 'active'; edd?: number;
+    band?: SizeBand; activity?: number; flares?: boolean; jets?: 0 | 1 | 2; shedding?: 0 | 1 | 2;
+  }[];
   /**
    * Roll-up highlight badges for this system, ALREADY RESOLVED by the caller (design 9.4). Resolved
    * outside the scene deliberately: markersFor/rollUpMarkers are audience-blind (TAG-13), so whoever
@@ -87,6 +95,9 @@ export interface StarmapController {
   setGridSkirt(v: number): void;   // 0 flat .. 1 a full depth curtain under each grid line (3D only)
   setGridFalloff(v: number): void; // 0 even .. 1 bright near the focus, gone by the edge
   setZExaggeration(v: number): void; // DISPLAY ONLY — stretches depth for clarity, never distances
+  // G26: the GM size scaler. 0 = every star the same size (the old map), 1 = the four luminosity-
+  // class bands fully separated. Glyph SIZE and member SPREAD are screen quantities — see starGlyphLaw.
+  setStarScale(v: number): void;
   setRouteGlow(on: boolean): void; // emissive glow on routes (vs plain lines)
   setMono(on: boolean): void; // monochrome palette for tinting filters
   setMapGrid(cfg: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number } | null): void; // GM's snap-grid
@@ -124,21 +135,27 @@ export interface SceneMapBackground {
   opacity: number;
 }
 
-// A soft round glow sprite texture (shared) — a system star.
-let glowTex: THREE.Texture | null = null;
-function starGlow(): THREE.Texture {
-  if (glowTex) return glowTex;
+// The PHOTOSPHERE as a sharp disc sprite (shared) — the starmap's stand-in for the holo's textured
+// sphere: tinted by the star's colour, darkened toward the limb the way the sphere's material is, a
+// one-texel soft edge. The old glyph was ONE soft radial glow (bright centre fading over its whole
+// width), which is what read as fuzz up close; the disc is the substance and the shared corona +
+// flares around it are the look.
+let discTex: THREE.Texture | null = null;
+function starDisc(): THREE.Texture {
+  if (discTex) return discTex;
   const s = 64, c = document.createElement('canvas'); c.width = c.height = s;
   const ctx = c.getContext('2d')!;
   const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
   g.addColorStop(0, 'rgba(255,255,255,1)');
-  g.addColorStop(0.25, 'rgba(255,255,255,0.85)');
-  g.addColorStop(0.55, 'rgba(255,255,255,0.28)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
+  g.addColorStop(0.6, 'rgba(246,246,246,1)');
+  g.addColorStop(0.88, 'rgba(205,205,205,1)');   // limb darkening, as the sphere's material does
+  g.addColorStop(0.95, 'rgba(170,170,170,1)');
+  g.addColorStop(1, 'rgba(150,150,150,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
-  glowTex = new THREE.CanvasTexture(c); glowTex.colorSpace = THREE.SRGBColorSpace;
-  return glowTex;
+  discTex = new THREE.CanvasTexture(c); discTex.colorSpace = THREE.SRGBColorSpace;
+  return discTex;
 }
+// The corona halo the holo uses — ONE texture instance per scene, created lazily in the controller.
 
 // The black-hole glyph, drawn PROCEDURALLY to match the reference gallery: a black event horizon inside
 // a bright photon ring; a FEEDING hole adds the edge-on particle blaze — a fuzzy hot-white→orange disc
@@ -698,16 +715,29 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // --- Content: system stars + routes ---
   const content = new THREE.Group();
   scene.add(content);
-  // `glyphR` is the star glyph's radius in SCENE units — 0 for a route label, which marks a point on
-  // a line rather than an object. It is what the label offsets itself by so the badge stack clears
-  // the glyph instead of sitting inside it; see updateLabels.
-  // A star sprite's `scale` is its FULL size and the glow art fills roughly half of it, so the visible
-  // disc radius is about 1.6 x the layout radius R. Measured off the sprite, not guessed — the labels
-  // offset by this, and a wrong figure here either buries the badge or leaves it floating.
-  const GLYPH_VISUAL_R = 1.6;
+  // `glyphPx` is the system's glyph reach in SCREEN PIXELS — 0 for a route label, which marks a point
+  // on a line rather than an object. It is what the label offsets itself by so the badge stack clears
+  // the glyph instead of sitting inside it; see updateLabels. A pixel figure because the glyph IS a
+  // pixel figure now (G26/C17): it used to be a scene radius converted per frame.
+  //
+  // GLYPH_PX is the LAYOUT RADIUS R in screen px — the unit the cluster offsets and the member sizes
+  // are stated in (starGlyphLaw). 9 px is the old `R = 0.22` scene units seen from the whole-map
+  // framing at a ~800 px tall view, so at scaler 0 the default view is the same size it was. The disc
+  // is half of it; the corona reaches to about 1.25-2.25 R, hence the margin the label clears.
+  const GLYPH_PX = 9;
+  const GLYPH_CORONA_MARGIN = 0.6;
+  // G26: the GM size scaler, 0 = equal sizes (the old map) .. 1 = the four bands fully separated.
+  let starScale = 0;
+  // The shared corona halo — one texture per scene, the holo's makeGlowTexture, made on first use.
+  let glowTexShared: THREE.Texture | null = null;
+  const coronaTexture = () => (glowTexShared ??= makeGlowTexture());
+  const seedOf = (id: string, i: number) => { let h = 2166136261 ^ (i * 977); for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) || 1; };
+  // One record per drawn STAR (a system has one per member): positioned and scaled per frame.
+  interface PlacedStar { group: THREE.Group; center: THREE.Vector3; slot: GlyphSlot; look?: StarLookVisual; sysId: string; index: number }
+  let placedStars: PlacedStar[] = [];
   // Badge-only knobs, carried by the preset. Same three the system map takes, so the two agree.
   let markerOpts: { size: number; staff: FlagStaffColor; pinText: PinTextMode } = { size: 1, staff: 'silver', pinText: 'initial' };
-  interface Placed { id: string; name: string; center: THREE.Vector3; glyphR: number; label?: LabelSprite }
+  interface Placed { id: string; name: string; center: THREE.Vector3; glyphPx: number; label?: LabelSprite }
   let placed: Placed[] = [];
   let labelsVisible = true;
   let labelColor = '#d6e2f2';
@@ -835,6 +865,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
 
   function clearContent() {
     clearGroup(content);
+    placedStars = [];
     for (const p of placed) {
       if (!p.label) continue;
       content.remove(p.label.sprite);
@@ -869,25 +900,59 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       new THREE.Vector3((x - cx) * k, z * k * effZ, (y - cy) * k);
 
     const centers = new Map<string, THREE.Vector3>();
-    const glow = starGlow();
+    placedStars = [];
     for (const sys of systems) {
       const center = toScene(sys.x, sys.y, sys.z ?? 0);
       centers.set(sys.id, center);
-      const stars = sys.stars.length ? sys.stars : [{ color: '#8899aa' }];
-      const offs = starClusterOffsets(stars.length);
-      const R = 0.22; // star glyph radius in scene units
+      const stars: SmSystem['stars'] = sys.stars.length ? sys.stars : [{ color: '#8899aa' }];
+      // C17 / G26: glyph size and member spread are SCREEN quantities. Each member is a GROUP built
+      // at unit layout radius (the disc at 0.5, the corona/flares/decorations about it from the shared
+      // builder) and positioned + scaled EVERY FRAME in `updateStars` from the camera distance, so a
+      // star is the same pixels wide at every zoom and a triple is the same compact cluster. The old
+      // sprite was `R = 0.22` SCENE units with offsets `dx * R` in the same units — light-years of
+      // fuzz up close, and Alpha Centauri's three stars as far apart as Sol at a tight zoom.
+      const bands = stars.map((st) => st.band ?? 'dwarf');
+      const slots = clusterLayout(bands, starScale, stars.map((st) => !!st.bh));   // a hole's glyph never shrinks
       stars.forEach((st, i) => {
-        // A black hole is drawn as its schematic glyph (normal-blended, so black reads as black) rather
-        // than an additive colour-tinted glow that would vanish on the dark map — the disc blaze sized
-        // by the accretion level when feeding, the bare ringed hole when quiescent.
-        const mat = st.bh
-          ? new THREE.SpriteMaterial({ map: bhGlyph(st.bh === 'active', st.edd), color: monoOn ? new THREE.Color(MONO_HEX) : 0xffffff, transparent: true, depthWrite: false })
-          : new THREE.SpriteMaterial({ map: glow, color: monoOn ? new THREE.Color(MONO_HEX) : new THREE.Color(st.color), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-        const sp = new THREE.Sprite(mat);
-        sp.position.copy(center).add(new THREE.Vector3((offs[i]?.dx ?? 0) * R, 0.0, (offs[i]?.dy ?? 0) * R));
-        sp.scale.setScalar(!st.bh ? R * 3.2 : st.bh === 'active' ? R * (3.6 + Math.min(1, st.edd ?? 0.6) * 1.2) : R * 3.4);
-        content.add(sp);
+        const group = new THREE.Group();
+        let look: StarLookVisual | undefined;
+        if (st.bh) {
+          // A black hole is drawn as its schematic glyph (normal-blended, so black reads as black) rather
+          // than a colour-tinted star that would vanish on the dark map — the disc blaze sized by the
+          // accretion level when feeding, the bare ringed hole when quiescent. It keeps this glyph at
+          // every scaler position: a hole must still read as a hole (owner, 2026-08-16).
+          const mat = new THREE.SpriteMaterial({ map: bhGlyph(st.bh === 'active', st.edd), color: monoOn ? new THREE.Color(MONO_HEX) : 0xffffff, transparent: true, depthWrite: false });
+          const sp = new THREE.Sprite(mat);
+          sp.scale.setScalar(st.bh === 'active' ? 3.6 + Math.min(1, st.edd ?? 0.6) * 1.2 : 3.4);
+          sp.renderOrder = 2;
+          group.add(sp);
+          // A FED hole jets (the tag says so — physics/stellarOutflows); a quiescent one carries no
+          // tag and gets nothing. Built with no corona: the glyph's blaze is its light.
+          if (st.jets) {
+            look = buildStarLook(0.5, 0xffffff, 0, seedOf(sys.id, i), coronaTexture(), { jets: st.jets });
+            look.corona.visible = false;
+            group.add(look.group);
+          }
+        } else {
+          const colorHex = monoOn ? MONO_HEX : new THREE.Color(st.color).getHex();
+          // The photosphere: a sharp tinted disc at half the layout radius.
+          const disc = new THREE.Sprite(new THREE.SpriteMaterial({ map: starDisc(), color: colorHex, transparent: true, depthWrite: false }));
+          disc.scale.setScalar(1.0);
+          disc.renderOrder = 2;
+          group.add(disc);
+          // THE INHERITED LOOK: corona sized by activity, timed flares for an active star, the jet and
+          // the shed shell when the star's tags carry them. Same builder, same numbers as the holo.
+          look = buildStarLook(0.5, colorHex, st.activity ?? 0.22, seedOf(sys.id, i), coronaTexture(), {
+            flares: !!st.flares, jets: st.jets ?? 0, shedding: st.shedding ?? 0
+          });
+          group.add(look.group);
+        }
+        const slot = slots[i] ?? { dx: 0, dy: 0, scale: 1 };
+        group.position.copy(center);
+        content.add(group);
+        placedStars.push({ group, center, slot, look, sysId: sys.id, index: i });
       });
+      const half = clusterHalfExtent(slots);
       // DROP-LINE: without a tether to the reference plane, exaggerated depth is unreadable — you cannot
       // tell above from below, or by how much. Fades out as it descends, and a small tick marks the spot
       // on the plane directly beneath, so the system's 2D position stays legible.
@@ -906,7 +971,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         tick.position.set(foot.x, 0.012, foot.z);
         content.add(tick);
       }
-      placed.push({ id: sys.id, name: sys.name, center, glyphR: R * GLYPH_VISUAL_R, label: makeLabelSprite(sys.name, undefined, sys.markers ?? []) });
+      // The label clears the CLUSTER's drawn reach (its top edge plus the corona's margin), in px.
+      placed.push({ id: sys.id, name: sys.name, center, glyphPx: (half.h + GLYPH_CORONA_MARGIN) * GLYPH_PX, label: makeLabelSprite(sys.name, undefined, sys.markers ?? []) });
     }
     // Routes: an emissively-GLOWING filament — a soft additive halo quad + a bright additive core
     // line — so the link reads like a lit hyperlane in both the 2D (overhead) and 3D starmap.
@@ -945,7 +1011,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
         // two stars it joins, so in the star colour it reads as just another star name. Matching the
         // line ties it to the link instead. In mono `routeColor()` IS the mono grey, so the tint
         // filters still see one palette.
-        placed.push({ id: `route:${r.fromId}>${r.toId}`, name: r.name, center: mid, glyphR: 0, label: makeLabelSprite(r.name, hexOf(routeColor())) });
+        placed.push({ id: `route:${r.fromId}>${r.toId}`, name: r.name, center: mid, glyphPx: 0, label: makeLabelSprite(r.name, hexOf(routeColor())) });
       }
       // Glow band (skipped when the glow is toggled off, or for dashed — the dash reads better plain).
       if (!r.dashed && routeGlowOn) {
@@ -1034,20 +1100,67 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       const hFull = labelSizePx * ls.heightRatio * pxToScale;
       ls.sprite.scale.set(hFull * ls.aspect, hFull, 1);
       // SAME STRATEGY AS THE SYSTEM MAP (owner, 2026-08-17: "follow exactly the same strategy for
-      // name/tag placement"). The star glyph is a WORLD-sized sprite, so it grows as you zoom: a
-      // constant screen offset reads fine across the sector and buries the badge inside the glow when
-      // you come in on one system. Clear the glyph's own apparent radius instead, so the stack sits on
-      // its edge at every zoom, and the name still sits above the badge because that is the canvas order.
-      const dist = camera.position.distanceTo(p.center);
-      const glyphPxR = p.glyphR / Math.max(1e-9, pxToScale * dist);
+      // name/tag placement"): clear the glyph's own drawn reach so the stack sits on its edge, and the
+      // name still sits above the badge because that is the canvas order. The glyph is a SCREEN size
+      // now (G26/C17), so the clearance is a pixel figure and needs no per-frame conversion — it used
+      // to be a world radius divided by the distance, because the sprite grew as you zoomed.
       const hPx = Math.max(1e-6, labelSizePx * ls.heightRatio);
-      ls.sprite.center.set(0.5, -(0.35 * ls.nameFraction + glyphPxR / hPx));
+      ls.sprite.center.set(0.5, -(0.35 * ls.nameFraction + p.glyphPx / hPx));
     }
+  }
+  // C17 / G26 — THE FRAME STEP FOR STARS. A member's world position is its system's centre plus its
+  // layout offset in SCREEN-ALIGNED units (the camera's right and up), and its group is scaled so the
+  // unit layout radius is GLYPH_PX pixels at this star's DEPTH: world-per-px at camera-space depth z
+  // is z * 2 tan(fov/2) / viewH. So every star is the same size on screen at every zoom, a triple is
+  // the same compact cluster, and the cluster keeps its shape whatever the tilt. Then the shared
+  // animator runs the corona pulse, the flares, the jet flicker and the shell's breath.
+  //
+  // DEPTH, NOT DISTANCE. A perspective projection scales by the point's z in CAMERA space; the
+  // Euclidean distance exceeds it by 1/cos(off-axis angle), which at this fov is 15% in the screen's
+  // corners and far more on a star the camera is not looking at — measured: a triple the camera had
+  // swung off-axis came out 2.4x its on-axis spread before this was a depth. Screen-aligned offsets at
+  // one depth project EXACTLY to dx * GLYPH_PX pixels, wherever the star sits in the frame.
+  const camRight = new THREE.Vector3(), camUp = new THREE.Vector3(), camFwd = new THREE.Vector3(), viewP = new THREE.Vector3();
+  function updateStars(nowSec: number) {
+    if (!placedStars.length) return;
+    const pxToScale = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
+    camera.updateMatrixWorld();   // this frame's camera, not the last render's
+    camera.matrixWorld.extractBasis(camRight, camUp, camFwd);
+    for (const ps of placedStars) {
+      const depth = -viewP.copy(ps.center).applyMatrix4(camera.matrixWorldInverse).z;
+      if (depth <= 1e-6) { ps.group.visible = false; continue; }   // behind the camera
+      ps.group.visible = true;
+      const rW = GLYPH_PX * pxToScale * depth;   // the layout radius R, in scene units at this depth
+      ps.group.position.copy(ps.center)
+        .addScaledVector(camRight, ps.slot.dx * rW)
+        .addScaledVector(camUp, -ps.slot.dy * rW);   // layout y runs DOWN the screen, as the 2D map's does
+      ps.group.scale.setScalar(rW * ps.slot.scale);
+      if (ps.look) updateStarLook(ps.look, nowSec);
+    }
+  }
+  // G26: the scaler moves the layout only — the bands are fixed per star, so no rebuild is needed.
+  function setStarScale(v: number) {
+    const n = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
+    if (n === starScale) return;
+    starScale = n;
+    if (!lastData) return;
+    const byId = new Map(lastData.systems.map((sy) => [sy.id, sy] as const));
+    const halves = new Map<string, number>();
+    for (const ps of placedStars) {
+      const sy = byId.get(ps.sysId);
+      if (!sy) continue;
+      const stars = sy.stars.length ? sy.stars : [{ color: '#8899aa' }];
+      const slots = clusterLayout(stars.map((st) => st.band ?? 'dwarf'), starScale, stars.map((st) => !!st.bh));
+      ps.slot = slots[ps.index] ?? ps.slot;
+      halves.set(sy.id, clusterHalfExtent(slots).h);
+    }
+    for (const p of placed) { const h = halves.get(p.id); if (h != null) p.glyphPx = (h + GLYPH_CORONA_MARGIN) * GLYPH_PX; }
   }
   function loop() {
     if (disposed) return;
     const t = clock.getElapsedTime();
     controls.update();
+    updateStars(t);  // size + place the star glyphs for THIS camera, before the labels measure them
     updateLabels(); // position/size the in-scene label sprites BEFORE rendering so the filter warps them
     if (filterPass) { filterPass.uniforms.time.value = t; composer.render(); } else renderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
@@ -1121,12 +1234,13 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     controls.dispose(); clearContent(); clearGroup(gridGroup);
     clearBackgroundGroup(); mapBgTex?.dispose(); mapBgTex = null;
     (starfield.geometry as any)?.dispose?.(); (starfield.material as any)?.dispose?.();
+    glowTexShared?.dispose(); glowTexShared = null;
     if (filterPass) (filterPass.material as THREE.Material).dispose();
     composer.dispose(); renderer.dispose();
   }
 
   rebuildGrid();
-  return { setData, setGrid, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setMarkerOptions, setFilter, setHud, setMapBackground, resize, dispose };
+  return { setData, setGrid, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setStarScale, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setMarkerOptions, setFilter, setHud, setMapBackground, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {
