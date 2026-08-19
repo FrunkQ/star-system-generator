@@ -138,13 +138,20 @@ export function gridLevels(extent: number, targetDivisions = 6): GridLevels | nu
  * brightness pop on every surviving line, in both zoom directions. "It should fade, not pop" is the
  * whole requirement, so fine(t = 1) must equal coarse(t = 0) exactly.
  *
- * The fine level still reads as a ghost for most of the decade — it rises as t squared, so it is at
- * the old 0.30 around t = 0.85 and only arrives at the coarse peak at the very moment it takes over.
+ * THE CROSSFADE IS THE LAST PART OF THE DECADE, NOT ALL OF IT (owner, 2026-08-19: "it brings in the
+ * grid decade below too soon... back off new decade for a bit longer"). For the first
+ * CROSSFADE_START of a decade only the dominant level draws, at full strength; over the rest the
+ * fine level comes up and the coarse goes down along one smoothstep, so their sum stays about
+ * constant and the surviving lines never jump. The fine level therefore appears only once its cells
+ * are big enough to read (about 6 px at 2.5 divisions) rather than as a sub-pixel haze.
  */
 export const GRID_LEVEL_PEAK = 0.42;
+export const CROSSFADE_START = 0.6;
 export function gridLevelOpacity(level: 'coarse' | 'fine', t: number): number {
   const u = Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0));
-  return level === 'coarse' ? GRID_LEVEL_PEAK * (1 - u) : GRID_LEVEL_PEAK * u * u;
+  const w = Math.max(0, Math.min(1, (u - CROSSFADE_START) / (1 - CROSSFADE_START)));
+  const s = w * w * (3 - 2 * w);   // smoothstep: zero slope at both ends, so nothing kinks
+  return level === 'coarse' ? GRID_LEVEL_PEAK * (1 - s) : GRID_LEVEL_PEAK * s;
 }
 
 /**

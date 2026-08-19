@@ -3,7 +3,7 @@
 // every ring a whole multiple of its step — rather than about particular values.
 import { describe, it, expect } from 'vitest';
 import {
-  niceStepBelow, nextNiceStep, prevNiceStep, niceStep, niceSeries, gridLevels, formatNice, gridLevelOpacity, GRID_LEVEL_PEAK } from './niceInterval';
+  niceStepBelow, nextNiceStep, prevNiceStep, niceStep, niceSeries, gridLevels, formatNice, gridLevelOpacity, GRID_LEVEL_PEAK, CROSSFADE_START } from './niceInterval';
 
 /** Is this a 1, 2 or 5 times a power of ten? The property every step here must have. */
 function isNice(v: number): boolean {
@@ -167,9 +167,12 @@ describe('the level opacity is ONE law and it is continuous across the handover'
     expect(gridLevelOpacity('fine', 0)).toBe(0);
     expect(gridLevelOpacity('coarse', 1)).toBe(0);
   });
-  it('the fine level is still a ghost for most of the decade (about the old 0.30 near t = 0.85)', () => {
-    expect(gridLevelOpacity('fine', 0.5)).toBeLessThan(GRID_LEVEL_PEAK * 0.3);
-    expect(gridLevelOpacity('fine', 0.85)).toBeCloseTo(0.30, 1);
+  it('the fine level is ABSENT for the first part of the decade and the coarse holds full strength there', () => {
+    for (const t of [0, 0.2, 0.4, CROSSFADE_START]) { expect(gridLevelOpacity('fine', t)).toBe(0); expect(gridLevelOpacity('coarse', t)).toBe(GRID_LEVEL_PEAK); }
+    expect(gridLevelOpacity('fine', 0.8)).toBeGreaterThan(0.15);
+    expect(gridLevelOpacity('fine', 0.8)).toBeLessThan(GRID_LEVEL_PEAK);
+    // The two always sum to the peak: the surviving lines (drawn by both levels) never dim mid-fade.
+    for (let i = 0; i <= 20; i++) { const t = i / 20; expect(gridLevelOpacity('fine', t) + gridLevelOpacity('coarse', t)).toBeCloseTo(GRID_LEVEL_PEAK, 9); }
   });
   it('monotone: the fine rises and the coarse falls across the decade, and the dial is clamped', () => {
     let f = -1, c = 2;

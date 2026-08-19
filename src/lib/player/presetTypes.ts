@@ -191,6 +191,9 @@ export interface PlayerPreset {
   // sub-dwarf, V, III/II, I — fully separated. Rides the preset, like the other starmap dials; the
   // GM's own 2D map has its own local dial (starmapUiStore), per G5's split.
   starmapStarScale?: number;
+  // The BASE glyph size on the 2D/3D starmaps, a multiplier 0.5..2 on the unit every star glyph is
+  // drawn in (1 = as shipped, and the default so nothing saved changes). The owner's second dial.
+  starmapStarSize?: number;
   starmapRouteGlow: boolean; // 2D/3D starmap: glowing transit lines (vs plain lines)
   // 3D starmap: the vertical stems from each system down to the reference plane, and the rings that
   // mark where they land. Optional and defaulting to TRUE, so nothing already saved changes — they

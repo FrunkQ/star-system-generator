@@ -6,7 +6,7 @@
   // from the shared glyph law, and WHAT it draws (band, activity, jets, shedding) from the shared
   // systemVisualStars — one reader for this map and the 3D starmap, so they cannot disagree.
   import { systemVisualStars } from '$lib/starmap/systemStars';
-  import { clusterLayout, clusterHalfExtent } from '$lib/starmap/starGlyphLaw';
+  import { clusterLayout, clusterHalfExtent, type GlyphMember } from '$lib/starmap/starGlyphLaw';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
   import BodyPicker from './BodyPicker.svelte';
@@ -714,12 +714,15 @@
   //
   // Clear the object's own drawn extent, then add a constant gap. Everything here is in screen px
   // times labelK: the glyph half-extent from the shared law, the gap, the member offsets.
-  const STAR_R = 5;   // the glyph's layout radius in viewBox units at zoom 1 — today's r = 5, kept
-  // `starScale` passed in, not closed over — TAG-17 (see labelColumn).
-  function glyphHalf(systemNode: any, k: number, starScale: number): { w: number; h: number } {
+  const STAR_R_BASE = 5;   // the glyph's layout radius in viewBox units at zoom 1 and base size 1 — the r = 5 the map shipped with
+  // The base size multiplier (GM-local, 0.5..2) scales the unit everything below is stated in.
+  $: STAR_R = STAR_R_BASE * ($starmapUiStore.starSize ?? 1);
+  const membersOf = (vs: { band: any; letter?: string; bh?: string }[]): GlyphMember[] => vs.map((v) => ({ band: v.band, letter: v.letter, fixed: !!v.bh }));
+  // `starScale` and the unit `r` are passed in, not closed over — TAG-17 (see labelColumn).
+  function glyphHalf(systemNode: any, k: number, starScale: number, r: number): { w: number; h: number } {
     const vs = getVisualStars(systemNode.system);
-    const half = clusterHalfExtent(clusterLayout(vs.map((v) => v.band), starScale, vs.map((v) => !!v.bh)));
-    return { w: half.w * STAR_R * k, h: half.h * STAR_R * k };
+    const half = clusterHalfExtent(clusterLayout(membersOf(vs), starScale));
+    return { w: half.w * r * k, h: half.h * r * k };
   }
   /**
    * The RIGHT-HAND COLUMN a system's writing occupies: name at the top, then the depth cue, then the
@@ -733,14 +736,14 @@
   // zoom-dependent offset this whole change exists to remove. Measured, not guessed — 6.00 against an
   // expected 15.11 at zoom 0.397. Name the reactive value at the call site and the compiler tracks it.
   const LABEL_GAP_PX = 6;
-  function labelColumn(systemNode: any, k: number, starScale: number): { x: number; topY: number } {
-    // `starScale` is PASSED IN for the same TAG-17 reason as `k`: the {@const} that calls this must
-    // name every reactive value it depends on, or the column freezes at the scaler's mount value.
+  function labelColumn(systemNode: any, k: number, starScale: number, r: number): { x: number; topY: number } {
+    // `starScale` and `r` are PASSED IN for the same TAG-17 reason as `k`: the {@const} that calls
+    // this must name every reactive value it depends on, or the column freezes at the mount values.
     const vs = getVisualStars(systemNode.system);
-    const half = clusterHalfExtent(clusterLayout(vs.map((v) => v.band), starScale, vs.map((v) => !!v.bh)));
+    const half = clusterHalfExtent(clusterLayout(membersOf(vs), starScale));
     return {
-      x: systemNode.position.x + (half.w * STAR_R + LABEL_GAP_PX) * k,
-      topY: systemNode.position.y - half.h * STAR_R * k
+      x: systemNode.position.x + (half.w * r + LABEL_GAP_PX) * k,
+      topY: systemNode.position.y - half.h * r * k
     };
   }
 
@@ -1437,7 +1440,7 @@
           <!-- Same column as the name, starting below it — and below the depth cue when that is shown,
                which is why this needs the same predicate rather than a guess. The group is SCALED by
                labelK, so everything inside is in screen px: `off` is a pixel figure. -->
-          {@const col = labelColumn(systemNode, labelK, $starmapUiStore.starScale)}
+          {@const col = labelColumn(systemNode, labelK, $starmapUiStore.starScale, STAR_R)}
           {@const off = zDepthOn && (systemNode.position.z ?? 0) !== 0 ? 20 : 9}
           <g class="hl-markers" transform="translate({col.x}, {col.topY + off * labelK}) scale({labelK})" pointer-events="none" style="font-size:{markerPill.fontPx}px; font-family:{markerPill.fontFamily}">
             {#each hl.shown as m, i (m.key)}
@@ -1447,7 +1450,7 @@
                      (glyphHalf returns world = px * labelK, so times zoom is px again). Derived rather
                      than the old hardcoded (-8, 10), which was tuned to the origin this transform used
                      to have. -->
-                {@const half = glyphHalf(systemNode, labelK, $starmapUiStore.starScale)}
+                {@const half = glyphHalf(systemNode, labelK, $starmapUiStore.starScale, STAR_R)}
                 <circle cx={-(half.w * zoom + LABEL_GAP_PX)} cy={half.h * zoom - off} r={9 + i * 2.5} fill="none" stroke={m.color} stroke-width="1.4" />
               {/if}
               {#if m.style !== 'ring'}
@@ -1464,7 +1467,7 @@
           </g>
         {/if}
         {@const visualStars = getVisualStars(systemNode.system)}
-        {@const slots = clusterLayout(visualStars.map((v) => v.band), $starmapUiStore.starScale, visualStars.map((v) => !!v.bh))}
+        {@const slots = clusterLayout(membersOf(visualStars), $starmapUiStore.starScale)}
         <g
           role="button"
           tabindex="0"
@@ -1503,7 +1506,11 @@
                   <circle class="star-shell" cx={sx} cy={sy} r={r * (s.shedding >= 2 ? 2.6 : 2)} style="stroke:{s.color}; stroke-width:{r * (s.shedding >= 2 ? 0.5 : 0.32)}px; opacity:{s.shedding >= 2 ? 0.42 : 0.28}" />
                 {/if}
                 {#if s.jets}
-                  <line class="star-jet" x1={sx} y1={sy - r * (s.jets >= 2 ? 4.6 : 3.2)} x2={sx} y2={sy + r * (s.jets >= 2 ? 4.6 : 3.2)} style="stroke-width:{r * (s.jets >= 2 ? 0.45 : 0.3)}px" />
+                  <!-- A jet is a hard bright spine inside a soft blue sheath — two strokes, as the
+                       3D map's texture draws it; one thin line read as a hairline. -->
+                  {@const jl = r * (s.jets >= 2 ? 5.5 : 4)}
+                  <line class="star-jet-sheath" x1={sx} y1={sy - jl} x2={sx} y2={sy + jl} style="stroke-width:{r * (s.jets >= 2 ? 1.1 : 0.85)}px" />
+                  <line class="star-jet" x1={sx} y1={sy - jl} x2={sx} y2={sy + jl} style="stroke-width:{r * (s.jets >= 2 ? 0.36 : 0.28)}px" />
                 {/if}
                 <circle
                   cx={sx}
@@ -1537,7 +1544,7 @@
         <!-- The name takes the TOP of the label column (owner, 2026-08-17), with the badges below it
              rather than beside it, so the two can no longer collide. 11px rather than 12: at the old
              size a long name dominated a crowded sector. -->
-        {@const col = labelColumn(systemNode, labelK, $starmapUiStore.starScale)}
+        {@const col = labelColumn(systemNode, labelK, $starmapUiStore.starScale, STAR_R)}
         <text
           x={col.x}
           y={col.topY}
@@ -2134,7 +2141,8 @@
   /* G26: tag-driven glyph marks. Stroke colour and width are inline (the star's own colour, sized
      to its radius); these hold what does not change. */
   .star-shell { fill: none; pointer-events: none; }
-  .star-jet { stroke: #cfe4ff; stroke-linecap: round; opacity: 0.9; pointer-events: none; }
+  .star-jet-sheath { stroke: #8cb8ff; stroke-linecap: round; opacity: 0.38; pointer-events: none; }
+  .star-jet { stroke: #eef5ff; stroke-linecap: round; opacity: 0.95; pointer-events: none; }
   .star-flares line { stroke-linecap: round; opacity: 0.85; pointer-events: none; }
 
   .star-label {

@@ -73,12 +73,27 @@ export function jetFieldTerm(fieldGauss: number | undefined): number {
  * already applies to it, so the two derivations cannot disagree about what "fed, level unstated"
  * means. This is the one place the class is consulted, and only to read a default the class name
  * itself states.
+ *
+ * AN AUTHORED-ACTIVE HOLE IS FED BY DEFINITION, however small the stored fraction (owner's Kouchash,
+ * 2026-08-19: `BH Active`, a drawn disc, and no jet because its fraction was under the gate). The
+ * class is the GM's statement that it feeds; the number says how hard. So the fraction floors at
+ * ACTIVE_HOLE_FEED_FLOOR for such a hole — the same floor the black-hole glyph has always used for
+ * the width of its blaze, so a hole drawn feeding always derives as feeding.
  */
+export const ACTIVE_HOLE_FEED_FLOOR = 0.15;
 export function accretionFraction(body: { accretionEddington?: number; classes?: string[] } | null | undefined): number {
 	if (!body) return 0;
+	const authoredActive = (body.classes ?? []).some((c) => /BH_active$/.test(String(c)));
 	const e = body.accretionEddington;
-	if (typeof e === 'number' && e >= 0) return Math.min(1, e);
-	return (body.classes ?? []).some((c) => /BH_active$/.test(String(c))) ? 0.5 : 0;
+	if (typeof e === 'number' && e >= 0) return Math.min(1, authoredActive ? Math.max(ACTIVE_HOLE_FEED_FLOOR, e) : e);
+	return authoredActive ? 0.5 : 0;
+}
+
+/** The feed's share of the jet power: any feed at all launches a jet (the hard-state picture — a
+ *  low-rate flow is the jetted one), climbing with the rate. 0 with no feed. */
+export function jetFeedTerm(feed: number): number {
+	if (!(feed > 0)) return 0;
+	return Math.min(1, 0.25 + feed);
 }
 
 /** Spin as a fraction of breakup, 0 when the body carries no period (remnants usually do not — see
@@ -92,7 +107,7 @@ export function spinFractionOf(massKg: number | undefined, radiusKm: number | un
 }
 
 /**
- * Jet index 0..1: well * max(feed, field) * (1 + spin/2), clamped.
+ * Jet index 0..1: well * max(feedTerm, fieldTerm) * (1 + spin/2), clamped.
  *
  * Feed and field are the two POWER sources and either suffices — an X-ray binary jets on infall with
  * a modest disc field, a radio pulsar beams on its magnetosphere with nothing falling in. Spin, when
@@ -103,7 +118,7 @@ export function jetIndex(p: {
 }): number {
 	const well = jetWellTerm(compactness(p.massKg, p.radiusKm));
 	if (well <= 0) return 0;
-	const power = Math.max(Math.max(0, Math.min(1, p.accretion ?? 0)), jetFieldTerm(p.fieldGauss));
+	const power = Math.max(jetFeedTerm(Math.max(0, Math.min(1, p.accretion ?? 0))), jetFieldTerm(p.fieldGauss));
 	const spin = spinFractionOf(p.massKg, p.radiusKm, p.rotationHours);
 	return Math.max(0, Math.min(1, well * power * (1 + spin / 2)));
 }

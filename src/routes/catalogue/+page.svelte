@@ -1065,7 +1065,7 @@
           markerSize={activePreset.markerSize} flagStaff={activePreset.flagStaff} pinText={activePreset.pinText} tagStyles={hostTagCategories}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}
           tipTop={tipTop} tipBottom={tipBottom} tipMono={tipMono} routeGlow={activePreset.starmapRouteGlow} dropLines={activePreset.starmapDropLines !== false} mono={activePreset.starmapMono}
-          overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} zExaggeration={activePreset.zExaggeration ?? 1} starScale={activePreset.starmapStarScale ?? 0}
+          overlay={starmapOverlayHud} mapGrid={starmap?.mapGrid ?? null} zExaggeration={activePreset.zExaggeration ?? 1} starScale={activePreset.starmapStarScale ?? 0} starSize={activePreset.starmapStarSize ?? 1}
           mapBackground={activePreset.showMapBackground !== false}
           flat={activePreset.starmapView === 'diagram2d'}
           lockRotation={activePreset.starmapView === 'diagram2d' && activePreset.lockRotation !== false}

@@ -34,6 +34,28 @@ export function bandScale(band: SizeBand, spread: number): number {
 }
 
 /**
+ * WITHIN THE DWARF BAND, THE SPECTRAL LETTER TILTS THE SIZE a little at full spread — an O dwarf is
+ * ten solar radii and an M dwarf a fifth of one, and 98% of a generated map is class V (the pack
+ * draws a giant once in two hundred stars), so a scaler that moved only the four class bands did
+ * nothing visible on an ordinary map (owner, 2026-08-19: "all appear the same size always"). The
+ * letter is the same designation the classifier derives, so "Star size by class" still means class;
+ * the tilt is gentle and sits inside the band ordering: compact 0.6 < M 0.86 ... O 1.3 < giant 1.45.
+ */
+export const LETTER_TILT_FULL: Record<string, number> = { O: 1.3, B: 1.22, A: 1.14, F: 1.06, G: 1, K: 0.94, M: 0.86 };
+export function letterTilt(letter: string | undefined, spread: number): number {
+	const s = Math.max(0, Math.min(1, Number.isFinite(spread) ? spread : 0));
+	const full = letter ? LETTER_TILT_FULL[letter.toUpperCase()] : undefined;
+	return full ? 1 + s * (full - 1) : 1;
+}
+
+/** A member's drawn size as a multiple of the base radius: its band at the scaler, tilted by its
+ *  letter when it is a dwarf. 1 for everything at spread 0. */
+export function glyphScale(m: { band: SizeBand; letter?: string; fixed?: boolean }, spread: number): number {
+	if (m.fixed) return 1;
+	return bandScale(m.band, spread) * (m.band === 'dwarf' ? letterTilt(m.letter, spread) : 1);
+}
+
+/**
  * Which band a star's CLASS KEY puts it in. `classes[0]` is the designation (B60): a remnant key is
  * `compact`; L/T/Y dwarfs are compact too (a tenth of a solar radius, and below the fusion floor);
  * luminosity class 0/Ia/Iab/Ib/I is `supergiant`; II/III `giant`; IV/V/VI and a bare letter `dwarf`.
@@ -51,10 +73,48 @@ export function sizeBandOfClass(classKey: string | undefined): SizeBand {
 	return 'dwarf';
 }
 
-/** The band for a body, from its first `star/...` class. */
-export function sizeBandOf(body: { classes?: string[] } | null | undefined): SizeBand {
-	const key = (body?.classes ?? []).find((c) => typeof c === 'string' && c.startsWith('star/'));
-	return sizeBandOfClass(key);
+/** The luminosity class AS WRITTEN (B60's `stellarType.luminosity`: 'Ia', 'III', 'V'...) to a band. */
+function bandOfLuminosity(lum: string | undefined): SizeBand | undefined {
+	if (!lum) return undefined;
+	if (/^(0|Ia|Iab|Ib|I)$/.test(lum)) return 'supergiant';
+	if (/^(II|III)$/.test(lum)) return 'giant';
+	if (/^(IV|V|VI)$/.test(lum)) return 'dwarf';
+	return undefined;
+}
+
+/**
+ * The band for a body. `stellarType.luminosity` first (the structured classification, where it is
+ * stated), then EVERY `star/...` class it carries — the first that states more than a bare letter
+ * wins, because a save may hold `['star/K', 'star/K-III']` as readily as the other way round and a
+ * giant must not read as a dwarf for the order its classes happen to be in. Remnants and L/T/Y are
+ * compact whatever else is there.
+ */
+export function sizeBandOf(body: { classes?: string[]; stellarType?: { spectral?: string; luminosity?: string } } | null | undefined): SizeBand {
+	const st = body?.stellarType;
+	if (st?.spectral && /^(WD|NS|BH|BH_active|magnetar|L|T|Y)$/.test(st.spectral)) return 'compact';
+	const fromType = bandOfLuminosity(st?.luminosity);
+	if (fromType) return fromType;
+	const keys = (body?.classes ?? []).filter((c): c is string => typeof c === 'string' && c.startsWith('star/'));
+	let bare: SizeBand | undefined;
+	for (const k of keys) {
+		const p = starClassParts(k);
+		const b = sizeBandOfClass(k);
+		if (b !== 'dwarf' || (p.band && /^(IV|V|VI)$/.test(p.band))) return b;   // states a band, or is a remnant/brown dwarf
+		bare = bare ?? b;
+	}
+	return bare ?? 'dwarf';
+}
+
+/** The spectral letter a body's designation states (O B A F G K M), for the dwarf-band tilt. */
+export function spectralLetterOfBody(body: { classes?: string[]; stellarType?: { spectral?: string } } | null | undefined): string | undefined {
+	const sp = body?.stellarType?.spectral;
+	if (sp && /^[OBAFGKM]$/.test(sp)) return sp;
+	for (const k of body?.classes ?? []) {
+		if (typeof k !== 'string' || !k.startsWith('star/')) continue;
+		const p = starClassParts(k);
+		if (p.letter && /^[OBAFGKM]$/.test(p.letter)) return p.letter;
+	}
+	return undefined;
 }
 
 // ── Cluster layout ───────────────────────────────────────────────────────────────────────────────
@@ -82,20 +142,25 @@ export interface GlyphSlot {
 	scale: number;
 }
 
+/** What the layout needs to know about one member: its band, its letter (dwarf tilt), and whether
+ *  its size is FIXED against the scaler (a black hole). */
+export interface GlyphMember { band: SizeBand; letter?: string; fixed?: boolean }
+
 /**
  * Where each member of a system sits and how big it draws, in units of the renderer's base glyph
  * radius (the 2D map's 5 viewBox units at zoom 1; the 3D map's pixel unit). The cluster offsets are
  * scaled by the LARGEST member's factor so a giant beside a dwarf does not swallow it as the scaler
  * rises; at spread 0 every factor is 1 and this is exactly the old layout.
  *
- * `fixed[i]` marks a member whose size NEVER moves with the scaler — a black hole. Its schematic
- * glyph (horizon, photon ring, the blaze) needs its pixels to read as a hole at all, so it keeps full
- * size while the white dwarf beside it shrinks into the compact band: at scaler 1 a supergiant, a
- * dwarf, Sirius B and a hole are four different sizes, and the hole is still obviously a hole.
+ * `fixed` marks a member whose size NEVER moves with the scaler — a black hole. Its schematic glyph
+ * (horizon, photon ring, the blaze) needs its pixels to read as a hole at all, so it keeps full size
+ * while the white dwarf beside it shrinks into the compact band: at scaler 1 a supergiant, a dwarf,
+ * Sirius B and a hole are four different sizes, and the hole is still obviously a hole.
  */
-export function clusterLayout(bands: readonly SizeBand[], spread: number, fixed?: readonly boolean[]): GlyphSlot[] {
-	const offs = starClusterOffsets(bands.length);
-	const scales = bands.map((b, i) => (fixed?.[i] ? 1 : bandScale(b, spread)));
+export function clusterLayout(members: readonly (GlyphMember | SizeBand)[], spread: number): GlyphSlot[] {
+	const ms = members.map((m) => (typeof m === 'string' ? { band: m } : m));
+	const offs = starClusterOffsets(ms.length);
+	const scales = ms.map((m) => glyphScale(m, spread));
 	const unit = scales.length ? Math.max(...scales) : 1;
 	return offs.map((o, i) => ({ dx: o.dx * unit, dy: o.dy * unit, scale: scales[i] ?? 1 }));
 }

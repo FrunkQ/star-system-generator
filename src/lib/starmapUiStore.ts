@@ -20,9 +20,11 @@ type GridType = SnapGridType;
 // star the same size (the map as it was), 1 = the four luminosity-class bands fully separated. A
 // LOCAL preference, like the snap grid: the player views carry their own in the preset
 // (`starmapStarScale`), per G5's split — never wire a player view to this store (A10/A3).
-type UiState = { gridType: GridType; travellerMode: boolean; starScale: number };
+// `starSize` is the BASE glyph size, a multiplier 0.5..2 on the unit every glyph is drawn in (1 = the
+// size the map shipped with) — the owner's second dial, 2026-08-19.
+type UiState = { gridType: GridType; travellerMode: boolean; starScale: number; starSize: number };
 
-const DEFAULTS: UiState = { gridType: 'off', travellerMode: false, starScale: 0 };
+const DEFAULTS: UiState = { gridType: 'off', travellerMode: false, starScale: 0, starSize: 1 };
 
 
 
@@ -43,10 +45,11 @@ function migrate(parsed: any): UiState {
   out.gridType = isSnapGridType(canonical) ? canonical : 'off';
   if (typeof out.travellerMode !== 'boolean') out.travellerMode = false;
   const starScale = typeof out.starScale === 'number' && Number.isFinite(out.starScale) ? Math.max(0, Math.min(1, out.starScale)) : 0;
+  const starSize = typeof out.starSize === 'number' && Number.isFinite(out.starSize) && out.starSize > 0 ? Math.max(0.5, Math.min(2, out.starSize)) : 1;
   // Only the fields this store still owns. A browser that stored the retired `showBackgroundImage`
   // would otherwise carry it forward for ever, and a dead key in a persisted store is how a future
   // reader concludes the setting still exists (G16).
-  return { gridType: out.gridType, travellerMode: out.travellerMode, starScale };
+  return { gridType: out.gridType, travellerMode: out.travellerMode, starScale, starSize };
 }
 
 const getInitialState = (): UiState => {

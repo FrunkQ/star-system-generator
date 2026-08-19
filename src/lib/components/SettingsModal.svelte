@@ -445,8 +445,16 @@
               <input type="checkbox" bind:checked={$starmapUiStore.travellerMode} /> Traveller mode
             </label>
           </div>
-          <!-- G26: the GM's OWN star-size scaler for this map (local, like the snap grid). The player
-               views carry theirs in each preset, under Player Views. -->
+          <!-- G26: the GM's OWN star-glyph dials for this map (local, like the snap grid). The player
+               views carry theirs in each preset, under Player Views. Size is LOG across the slider —
+               half to double, the centre exactly 1x — so one notch left shrinks by as much as one notch
+               right grows (owner, 2026-08-19). -->
+          <div class="form-group">
+            <label for="starSize" title="How big every star glyph draws — half to double the size the map shipped with. Your screen only; player views have their own under Player Views.">
+              Star size <span class="section-hint" style="display:inline">&times;{($starmapUiStore.starSize ?? 1).toFixed(2)}</span>
+            </label>
+            <input id="starSize" type="range" min="-1" max="1" step="0.05" value={Math.log2($starmapUiStore.starSize ?? 1)} on:input={(e) => ($starmapUiStore.starSize = Math.pow(2, +e.currentTarget.value))} />
+          </div>
           <div class="form-group">
             <label for="starScale" title="Spread the star glyphs by luminosity class: remnants and sub-dwarfs smallest, then dwarfs, giants, supergiants. 0% = all the same size; black holes keep their own glyph. Your screen only — player views have their own under Player Views.">
               Star size by class <span class="section-hint" style="display:inline">{$starmapUiStore.starScale <= 0 ? 'All equal' : `${Math.round($starmapUiStore.starScale * 100)}%`}</span>

@@ -52,6 +52,8 @@
   // 1 = the four luminosity-class bands fully separated. Rides the PRESET (starmapStarScale), so a
   // player window gets the GM's choice for this view — the GM's own 2D map has its own local dial.
   export let starScale = 0;
+  // The base glyph size, 0.5..2 (1 = as shipped). Preset field `starmapStarSize`.
+  export let starSize = 1;
   export let flat = false;         // 2D starmap: tilt pinned top-down — never becomes a 3D view
   export let lockRotation = false; // fix the heading (no spin by drag); independent of the tilt
   export let background: 'space' | 'green' | 'blue' | 'black' = 'space';
@@ -110,7 +112,7 @@
     id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0, z: s.position?.z ?? 0,
     // Everything a glyph draws is resolved by systemVisualStars from the star's classes and TAGS
     // (band, activity/flares, jets, shedding) — the scene reads it and decides nothing (G26).
-    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd, band: v.band, activity: v.activity, flares: v.flares, jets: v.jets, shedding: v.shedding })),
+    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd, band: v.band, letter: v.letter, activity: v.activity, flares: v.flares, jets: v.jets, shedding: v.shedding })),
     markers: activeHighlights.length
       ? rollUpMarkers(s.system?.nodes ?? [], activeHighlights, activeTagCategories, markerStyle)
       : []
@@ -157,6 +159,7 @@
     controller.setGridFalloff(gridFalloff);
     controller.setZExaggeration(zExaggeration); // display-only depth stretch
     controller.setStarScale(starScale);          // G26: glyph size bands, a screen quantity
+    controller.setStarSize(starSize);            // ...and the base size they are all stated in
     controller.setBackground(background);
     controller.setFraming(angleDeg);
     controller.setFlatOverhead(flat); // after setFraming: pins the tilt overhead
@@ -190,7 +193,7 @@
   onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; starScale; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; starScale; starSize; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
   // G16: re-place the plane on any anchor change. Named rather than closed over, per the note above.

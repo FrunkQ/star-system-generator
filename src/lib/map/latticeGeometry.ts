@@ -25,8 +25,18 @@ export interface LatticeOpts {
   /** Map-space position of the lattice origin — the GM's (0,0). */
   originX: number;
   originY: number;
-  /** Half-extent to fill, in map units, about (0,0). */
+  /** Half-extent to fill, in map units, about the patch CENTRE (`centreX`/`centreY`, default (0,0)). */
   half: number;
+  /**
+   * The centre of the filled extent. Default (0,0) — the whole field, as every starmap draws it. The
+   * system view's auto grid passes the point the camera is looking at, so its lines exist only in a
+   * patch about the view rather than in bands about the star (A55: zoomed in anywhere off-centre,
+   * an origin-centred lattice is two dense bands crossing at the star, each line the width of the
+   * plate). The lattice ORIGIN (`originX`/`originY`) is the grid's phase and is unchanged by this;
+   * `clipRadius` still clips to the disc about (0,0).
+   */
+  centreX?: number;
+  centreY?: number;
   /**
    * Longest segment to emit, in map units. Callers that FADE PER VERTEX must set this, because a fade
    * evaluated at the ends of a full-width line judges the whole line by its far ends — which is
@@ -66,29 +76,33 @@ function runSegments(fixed: number, from: number, to: number, horizontal: boolea
 export function squareLattice(o: LatticeOpts): LatticeEdge[] {
   const { cell, originX, originY, half } = o;
   if (!(cell > 0) || !(half > 0)) return [];
+  const cx = o.centreX ?? 0, cy = o.centreY ?? 0;
   const cap = o.maxLines ?? DEFAULT_MAX_LINES;
   const edges: LatticeEdge[] = [];
   const R = o.clipRadius;
   // A clipped line runs only as far as the disc allows at its own offset — the same chord the system
-  // view has always drawn (half = sqrt(R^2 - c^2)).
-  const chord = (c: number): number | null => {
-    if (!R) return half;
-    const h = Math.sqrt(Math.max(0, R * R - c * c));
-    return h > 0 ? Math.min(half, h) : null;
+  // view has always drawn (half = sqrt(R^2 - c^2)) — and never past the patch about the centre.
+  const run = (c: number, lo: number, hi: number): [number, number] | null => {
+    let a = lo, b = hi;
+    if (R) { const h = Math.sqrt(Math.max(0, R * R - c * c)); if (!(h > 0)) return null; a = Math.max(a, -h); b = Math.min(b, h); }
+    return b - a > 1e-9 ? [a, b] : null;
   };
-  const nx0 = Math.ceil((-half - originX) / cell), nx1 = Math.floor((half - originX) / cell);
-  const ny0 = Math.ceil((-half - originY) / cell), ny1 = Math.floor((half - originY) / cell);
-  for (let n = nx0; n <= Math.min(nx1, nx0 + cap); n++) {
+  const nx0 = Math.ceil((cx - half - originX) / cell), nx1 = Math.floor((cx + half - originX) / cell);
+  const ny0 = Math.ceil((cy - half - originY) / cell), ny1 = Math.floor((cy + half - originY) / cell);
+  // A cap trims the FAR edges of the patch, not one side: centre the kept range on the view.
+  const range = (n0: number, n1: number): [number, number] => { if (n1 - n0 + 1 <= cap) return [n0, n1]; const mid = Math.round((n0 + n1) / 2); return [mid - Math.floor(cap / 2), mid + Math.floor(cap / 2)]; };
+  const [xa, xb] = range(nx0, nx1), [ya, yb] = range(ny0, ny1);
+  for (let n = xa; n <= xb; n++) {
     const x = originX + n * cell;
-    const ext = chord(x);
-    if (ext === null) continue;
-    edges.push(...runSegments(x, -ext, ext, false, o.maxSegment));
+    const r = run(x, cy - half, cy + half);
+    if (!r) continue;
+    edges.push(...runSegments(x, r[0], r[1], false, o.maxSegment));
   }
-  for (let n = ny0; n <= Math.min(ny1, ny0 + cap); n++) {
+  for (let n = ya; n <= yb; n++) {
     const y = originY + n * cell;
-    const ext = chord(y);
-    if (ext === null) continue;
-    edges.push(...runSegments(y, -ext, ext, true, o.maxSegment));
+    const r = run(y, cx - half, cx + half);
+    if (!r) continue;
+    edges.push(...runSegments(y, r[0], r[1], true, o.maxSegment));
   }
   return edges;
 }
@@ -99,17 +113,19 @@ export function hexCentres(o: LatticeOpts): { col: number; row: number; x: numbe
   const size = cell / 2;
   if (!(size > 0) || !(half > 0)) return [];
   const hd = 1.5 * size, hh = Math.sqrt(3) * size;
+  const cx = o.centreX ?? 0, cy = o.centreY ?? 0;
   const cap = o.maxLines ?? DEFAULT_MAX_LINES;
   const out: { col: number; row: number; x: number; y: number }[] = [];
-  const colLo = Math.floor((-half - originX) / hd) - 1, colHi = Math.ceil((half - originX) / hd) + 1;
-  const rowLo = Math.floor((-half - originY) / hh) - 1, rowHi = Math.ceil((half - originY) / hh) + 1;
+  const colLo = Math.floor((cx - half - originX) / hd) - 1, colHi = Math.ceil((cx + half - originX) / hd) + 1;
+  const rowLo = Math.floor((cy - half - originY) / hh) - 1, rowHi = Math.ceil((cy + half - originY) / hh) + 1;
   for (let col = Math.max(colLo, colHi - cap); col <= colHi; col++) {
     const x = originX + col * hd;
     const yBase = originY + (Math.abs(col) % 2) * (hh / 2);
     for (let row = Math.max(rowLo, rowHi - cap); row <= rowHi; row++) {
       const y = yBase + row * hh;
-      if (o.clipRadius) { if (Math.hypot(x, y) > o.clipRadius + size) continue; }
-      else if (Math.abs(x) > half + size || Math.abs(y) > half + hh) continue;
+      // Inside the patch about the centre (with a hex of slack), and inside the disc when clipped.
+      if (Math.abs(x - cx) > half + size || Math.abs(y - cy) > half + hh) continue;
+      if (o.clipRadius && Math.hypot(x, y) > o.clipRadius + size) continue;
       out.push({ col, row, x, y });
     }
   }

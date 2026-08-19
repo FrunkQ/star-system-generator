@@ -7,7 +7,7 @@ import type { System, CelestialBody } from '$lib/types';
 import { getPlanetColor } from '$lib/rendering/colors';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { jetStrength, sheddingStrength } from '$lib/physics/stellarOutflows';
-import { sizeBandOf, type SizeBand } from './starGlyphLaw';
+import { sizeBandOf, spectralLetterOfBody, type SizeBand } from './starGlyphLaw';
 
 // The cluster layout moved to the glyph law (G26/C17) — re-exported so nothing that imported it here
 // has to move.
@@ -21,6 +21,8 @@ export interface VisualStar {
   edd?: number;                 // accretion level (Eddington fraction) — sizes a feeding hole's disc blaze
   /** Size band from the luminosity class (B60) — the GM scaler spreads these. */
   band: SizeBand;
+  /** Spectral letter (O..M) when the designation states one — the dwarf band's tilt at the scaler. */
+  letter?: string;
   /** Magnetic activity 0..1 from `stellar/activity` — corona size and the flare timer. */
   activity: number;
   /** Timed limb flares, from the same tag (active / flare-star). */
@@ -46,6 +48,7 @@ export function visualStarOf(s: CelestialBody): VisualStar {
   return {
     id: s.id, name: s.name, color: getPlanetColor(s), bh: blackHoleState(s), edd: (s as any).accretionEddington,
     band: sizeBandOf(s),
+    letter: spectralLetterOfBody(s),
     activity: activityStrength(s.tags),
     flares: flaresVisibly(s.tags),
     jets: jetStrength(s.tags),

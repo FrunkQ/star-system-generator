@@ -414,39 +414,37 @@ export interface StarLookOptions {
 	shedding?: 0 | 1 | 2;
 }
 
-// The jet texture: two opposed narrow beams along the sprite's vertical, brightest at the core and
-// fading to the tips, transparent through the middle so the photosphere shows between them. One
-// cached instance; the beam's length and brightness come from the sprite's scale and opacity.
+// The jet texture: two opposed beams along the sprite's vertical — a hard white CORE inside a soft
+// blue SHEATH, held bright for the inner half and fading to the tips, transparent through the middle
+// so the photosphere (or the hole's glyph) shows between them. One cached instance; the beam's length
+// and brightness come from the sprite's scale and opacity. The first version was a single soft
+// profile and read as a faint hairline (owner, 2026-08-19: "very subtle... you can make them
+// prettier"); a core-plus-sheath is how a synchrotron jet actually looks in a radio map.
 let jetTex: THREE.Texture | null = null;
 export function makeJetTexture(): THREE.Texture {
 	if (jetTex) return jetTex;
-	const W = 32, H = 256;
+	const W = 64, H = 256;
 	const c = document.createElement('canvas');
 	c.width = W; c.height = H;
 	const ctx = c.getContext('2d')!;
-	// Along the beam: nothing at the centre (the star sits there), brightest just off it, a soft fade
-	// to the tip. Drawn for the top half and mirrored.
-	const half = (flip: boolean) => {
-		ctx.save();
-		if (flip) { ctx.translate(0, H); ctx.scale(1, -1); }
-		const g = ctx.createLinearGradient(0, H / 2, 0, 0);
-		g.addColorStop(0, 'rgba(255,255,255,0)');
-		g.addColorStop(0.08, 'rgba(255,255,255,0.95)');
-		g.addColorStop(0.35, 'rgba(255,255,255,0.55)');
-		g.addColorStop(0.75, 'rgba(255,255,255,0.18)');
-		g.addColorStop(1, 'rgba(255,255,255,0)');
-		ctx.fillStyle = g;
-		ctx.fillRect(0, 0, W, H / 2);
-		ctx.restore();
-	};
-	half(false); half(true);
-	// Across the beam: a bright core line with soft edges — multiply the alpha by a horizontal profile.
-	const img = ctx.getImageData(0, 0, W, H);
+	const img = ctx.createImageData(W, H);
+	const smooth = (x: number) => { const t = Math.max(0, Math.min(1, x)); return t * t * (3 - 2 * t); };
 	for (let y = 0; y < H; y++) {
+		// Along the beam, from the centre (d = 0) to the tip (d = 1): a small gap for the star, a fast
+		// rise, full strength to the mid-point, then a smooth fade to nothing at the tip.
+		const d = Math.abs((y + 0.5) / H - 0.5) * 2;
+		const along = d < 0.03 ? 0 : d < 0.08 ? (d - 0.03) / 0.05 : d < 0.5 ? 1 : 1 - smooth((d - 0.5) / 0.5);
 		for (let x = 0; x < W; x++) {
-			const u = (x + 0.5) / W * 2 - 1;                 // -1..1 across
-			const prof = Math.max(0, 1 - Math.abs(u)) ** 1.6; // soft-edged core
-			img.data[(y * W + x) * 4 + 3] = Math.round(img.data[(y * W + x) * 4 + 3] * prof);
+			const u = (x + 0.5) / W * 2 - 1;                  // -1..1 across the beam
+			const core = Math.exp(-((u / 0.2) ** 2));         // the hard bright spine
+			const sheath = 0.7 * Math.exp(-((u / 0.7) ** 2));  // the soft wide glow about it
+			const a = Math.min(1, core + sheath) * along;
+			const t = core / (core + sheath + 1e-6);           // white spine, blue sheath
+			const i = (y * W + x) * 4;
+			img.data[i] = Math.round(140 + (255 - 140) * t);
+			img.data[i + 1] = Math.round(180 + (255 - 180) * t);
+			img.data[i + 2] = 255;
+			img.data[i + 3] = Math.round(255 * a);
 		}
 	}
 	ctx.putImageData(img, 0, 0);
@@ -499,14 +497,16 @@ export function buildStarLook(
 	// "this object jets" at map scale.
 	if (opts.jets) {
 		const strong = opts.jets >= 2;
+		// The texture carries its own white-core / blue-sheath colour; the material tint is a whisper
+		// of the star's colour so a red dwarf's jet and a blue giant's are not identical.
 		const mat = new THREE.SpriteMaterial({
-			map: makeJetTexture(), color: new THREE.Color(0xcfe4ff).lerp(new THREE.Color(colorHex), 0.2),
+			map: makeJetTexture(), color: new THREE.Color(0xffffff).lerp(new THREE.Color(colorHex), 0.15),
 			blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
-			opacity: strong ? 0.95 : 0.7
+			opacity: strong ? 1 : 0.85
 		});
 		const sprite = new THREE.Sprite(mat);
-		const len = radius * (strong ? 14 : 9);
-		sprite.scale.set(radius * (strong ? 1.6 : 1.2), len, 1);
+		const len = radius * (strong ? 20 : 14);
+		sprite.scale.set(radius * (strong ? 4.2 : 3.2), len, 1);
 		sprite.renderOrder = 2;
 		group.add(sprite);
 		look.jet = { sprite, mat, base: mat.opacity, seed: rnd() };

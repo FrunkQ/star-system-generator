@@ -1880,18 +1880,55 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // positions are the readable approximation of it. The polar rings are the overlay that stays exactly
   // right under compression, which is the honest reason to reach for `scaled` when precision matters.
   let gridLevelMats: { mat: THREE.LineBasicMaterial; coarse: boolean }[] = [];
-  let gridBuiltFor = { coarse: 0, span: 0 };
+  // What the auto grid was last built FOR: its decade, the patch's half-size and centre (AU), and the
+  // view half-extent at the time — `updateGridLevels` rebuilds when any of these has moved enough.
+  let gridBuiltFor = { coarse: 0, span: 0, cx: 0, cz: 0, visible: 0 };
 
-  /** Half the AU extent the camera can currently see — what picks the decade. */
+  // THE AUTO GRID IS A LOCAL PATCH AROUND WHAT THE CAMERA IS LOOKING AT (A55, owner 2026-08-19:
+  // "things totally collapse on zoom in"). It used to be laid out about the STAR — lines at +-k*step
+  // of the origin out to `span`, each running the full width of the plate — and its decade was picked
+  // from the FAR EDGE of the view. Zoomed in on anything off-centre that gave two dense bands crossing
+  // at the origin (every line of the level, edge to edge, packed into +-span) and a step that never
+  // refined with the zoom. Now: the decade comes from the half-extent the camera actually sees at its
+  // target, the lines exist only inside a patch of 2.5 views about the target, and a pan or a zoom
+  // that carries the view toward the patch's edge rebuilds it. The polar grids and a PINNED cell are
+  // not this path: the pinned cell keeps its whole-plate plate (it is a fixed ruler, by request) but
+  // takes the same patch so it cannot collapse either.
+  //
+  // How many coarse cells span the view: between AUTO_GRID_DIVISIONS*2 and twenty times that across a
+  // decade. Six divisions (12-120 cells) was the first number and it is what the owner saw as "keeps
+  // adding more grid": at 120 coarse cells the fine level is 1,200 — a wash. 2.5 gives 5-50 coarse
+  // cells, and the fine level arrives (gridLevelOpacity's window) at about 6 px a cell, 16 px by the
+  // handover — subdivisions you can read, never a haze.
+  const AUTO_GRID_DIVISIONS = 2.5;
+
+  /** Half the AU extent the camera can currently see AT ITS TARGET — what picks the decade. Measured
+   *  along the radial direction through the target, so it is the local AU-per-screen under whatever
+   *  compression is in force: at the origin this is exactly the old figure. */
   function visibleAu(): number {
     const dist = camera.position.distanceTo(controls.target);
     const halfScene = Math.max(1e-4, dist * Math.tan((camera.fov * Math.PI) / 360));
-    // The focus can sit well off the origin, so measure from the far edge of what is on screen.
-    const reach = halfScene + controls.target.length();
-    return Math.max(1e-6, expandRadius(Math.min(reach, GRID_RADIUS * 4), radialMap()));
+    const tAbs = Math.hypot(controls.target.x + sceneOrigin.x, controls.target.z + sceneOrigin.z);
+    const m = radialMap();
+    // The view's two edges along the radial through the target, in AU; half their separation. When
+    // the view straddles the origin the near edge is on the far side of the star, so it ADDS.
+    const outer = expandRadius(Math.min(tAbs + halfScene, GRID_RADIUS * 4), m);
+    const lo = tAbs - halfScene;
+    const other = lo >= 0 ? -expandRadius(lo, m) : expandRadius(-lo, m);
+    return Math.max(1e-6, (outer + other) / 2);
   }
 
-  /** Lines at whole multiples of `stepAu`, out to `spanAu`, clipped to the ground disc. */
+  /** The view target's AU coordinates, through the inverse of the SAME radial map the lattice's
+   *  vertices go through (scale the direction, keep the bearing), so the patch is centred where the
+   *  camera is actually looking. */
+  function gridCentreAu(): { x: number; z: number } {
+    const ax = controls.target.x + sceneOrigin.x, az = controls.target.z + sceneOrigin.z;
+    const r = Math.hypot(ax, az);
+    if (!(r > 1e-9)) return { x: 0, z: 0 };
+    const au = expandRadius(r, radialMap());
+    return { x: (ax / r) * au, z: (az / r) * au };
+  }
+
   /**
    * THE SYSTEM LATTICE — the SAME generator the starmap and the GM's snap grid use (`latticeFor`), so
    * square and every hex variant come from one place and a cell means the same thing on every view.
@@ -1903,8 +1940,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * reading of "1 AU hexes" that is any use at a table. It also means the cells visibly compress outward
    * whenever compression is on — that is the map being honest, not the grid being wrong, and at
    * compression 0 (linear, honest distances) the lattice is perfectly regular.
+   *
+   * `centre` (AU) is the PATCH the lattice fills, +-spanAu about the view's target (A55): an
+   * origin-centred lattice zoomed in anywhere off-centre is two dense bands crossing at the star.
+   * The lattice origin — its phase — stays at the star, so cells line up with the AU axes.
    */
-  function latticeEdgesAu(cellAu: number, spanAu: number): GridEdge[] {
+  function latticeEdgesAu(cellAu: number, spanAu: number, centre: { x: number; z: number }): GridEdge[] {
     if (!(cellAu > 0) || !(spanAu > 0)) return [];
     // Segmented in AU. Three separate reasons, any one of which is sufficient: a per-vertex fade judges
     // a full-width run by its far ends (A37), a curtain is built per edge, and a straight edge across a
@@ -1912,10 +1953,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // already one cell) and by the span so a huge system cannot make one run enormous.
     const seg = Math.max(1e-4, Math.min(cellAu, spanAu / 24));
     const au = latticeFor(gridMode, {
-      cell: cellAu, originX: 0, originY: 0, half: spanAu,
+      cell: cellAu, originX: 0, originY: 0, half: spanAu, centreX: centre.x, centreY: centre.z,
       // The ground grid is a DISC — it reads as a plate under the orrery. `compressRadius` maps rMax to
-      // exactly GRID_RADIUS, so the disc in AU is rMax and the plate meets the rim of the scene.
-      clipRadius: Math.min(spanAu, rMax),
+      // exactly GRID_RADIUS, so the disc in AU is rMax and the plate meets the rim of the scene. The
+      // disc, NOT min(span, rMax): the patch may sit at the rim, and a clip to the span about the
+      // origin would delete it wholesale.
+      clipRadius: rMax,
       maxSegment: seg, maxLines: 400
     });
     const out: GridEdge[] = [];
@@ -1944,20 +1987,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // cell tracks the zoom, and the whole point of pinning it is that it does not. `gridBuiltFor` is
     // parked on the pinned value so `updateGridLevels` sees no decade change and never rebuilds.
     if (gridScaleAu > 0) {
-      const span = Math.min(rMax * 1.2, Math.max(visibleAu() * 2.5, gridScaleAu * 2));
-      gridBuiltFor = { coarse: -gridScaleAu, span };
-      const edges = latticeEdgesAu(gridScaleAu, span);
+      const visible = visibleAu(), centre = gridCentreAu();
+      const span = Math.min(rMax * 1.2, Math.max(visible * 2.5, gridScaleAu * 2));
+      gridBuiltFor = { coarse: -gridScaleAu, span, cx: centre.x, cz: centre.z, visible };
+      const edges = latticeEdgesAu(gridScaleAu, span, centre);
       if (!edges.length) return;
       const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), gridScaleAu, { alpha: 1, opacity: GRID_LEVEL_PEAK });
       if (mat) gridLevelMats.push({ mat, coarse: true });
       return;
     }
-    const lv = gridLevels(visibleAu(), 6);
+    const visible = visibleAu(), centre = gridCentreAu();
+    const lv = gridLevels(visible, AUTO_GRID_DIVISIONS);
     if (!lv) return;
     // Cover a bit more than the view so a pan does not run off the grid, but never the whole system at
     // a fine step — that is how a decade grid spawns ten thousand lines.
-    const span = Math.min(rMax * 1.2, visibleAu() * 2.5);
-    gridBuiltFor = { coarse: lv.coarse, span };
+    const span = Math.min(rMax * 1.2, visible * 2.5);
+    gridBuiltFor = { coarse: lv.coarse, span, cx: centre.x, cz: centre.z, visible };
     for (const [step, coarse] of [[lv.coarse, true], [lv.fine, false]] as [number, boolean][]) {
       // ONE opacity law for both levels (niceInterval.gridLevelOpacity), continuous across the decade
       // handover — A55. It used to be two peaks (0.42 coarse, 0.30 "ghost" fine) and the same lines
@@ -1969,7 +2014,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // built, nothing faded in across the decade, and at the NEXT handover a ten-times-finer grid
       // appeared at full strength in one frame. The per-frame updater can only slide an opacity that
       // has a material to slide; a level it cannot see it cannot fade.
-      const edges = latticeEdgesAu(step, span);
+      const edges = latticeEdgesAu(step, span, centre);
       if (!edges.length) continue;
       // The LEVEL's strength stays on the material, because it moves every frame and rewriting a
       // vertex attribute per frame to say the same thing would be absurd. The vertex attribute carries
@@ -1987,12 +2032,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    */
   function updateGridLevels() {
     if (!isLattice(gridMode) || gridMode === 'off' || !gridLevelMats.length) return;
+    // THE PATCH FOLLOWS THE VIEW. A pan that carries the target a third of the way to the patch's
+    // edge, or a zoom-out that would show past it, rebuilds — cheap (a few hundred lines) and rare.
+    const centre = gridCentreAu(), visible = visibleAu();
+    const b = gridBuiltFor;
+    if (Math.abs(centre.x - b.cx) > b.span * 0.35 || Math.abs(centre.z - b.cz) > b.span * 0.35 || visible > b.visible * 1.8) { rebuildGrid(); return; }
     // A pinned cell has no ladder to slide along and no second level to cross into. Returning here is
     // what stops the per-frame updater from recomputing a decade the GM has explicitly overridden.
     if (gridScaleAu > 0) return;
-    const lv = gridLevels(visibleAu(), 6);
+    const lv = gridLevels(visible, AUTO_GRID_DIVISIONS);
     if (!lv) return;
-    if (lv.coarse !== gridBuiltFor.coarse) { rebuildGrid(); return; }
+    if (lv.coarse !== b.coarse) { rebuildGrid(); return; }
     for (const g of gridLevelMats) g.mat.opacity = gridLevelOpacity(g.coarse ? 'coarse' : 'fine', lv.t);
     // The curtains ride their own line's opacity, so a level fading out takes its depth with it.
     for (const g of gridSkirtMats) g.skirt.opacity = g.line.opacity;

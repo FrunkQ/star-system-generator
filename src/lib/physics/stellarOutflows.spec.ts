@@ -7,7 +7,7 @@ import { loadStarterPack } from '$lib/import/realsky/testPack';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
 import {
 	STELLAR_JETS_TAG, STELLAR_SHEDDING_TAG,
-	compactness, jetWellTerm, jetFieldTerm, jetIndex, jetBucket, accretionFraction,
+	compactness, jetWellTerm, jetFieldTerm, jetIndex, jetBucket, accretionFraction, ACTIVE_HOLE_FEED_FLOOR,
 	reimersMassLossMsunYr, sheddingBucket, starJetBucket, starSheddingBucket,
 	jetStrength, sheddingStrength
 } from './stellarOutflows';
@@ -70,6 +70,16 @@ describe('the jet index — well x power, no class branch', () => {
 		expect(accretionFraction({ classes: ['star/BH_active'] })).toBe(0.5);
 		expect(accretionFraction({ classes: ['star/BH'] })).toBe(0);
 		expect(accretionFraction({ classes: ['star/BH'], accretionEddington: 0.2 })).toBe(0.2);
+	});
+	it("an authored-ACTIVE hole is fed however small its stored fraction - it always jets (the owner's Kouchash)", () => {
+		expect(accretionFraction({ classes: ['star/BH_active'], accretionEddington: 0 })).toBe(ACTIVE_HOLE_FEED_FLOOR);
+		expect(accretionFraction({ classes: ['star/BH_active'], accretionEddington: 0.02 })).toBe(ACTIVE_HOLE_FEED_FLOOR);
+		expect(accretionFraction({ classes: ['star/BH_active'], accretionEddington: 0.6 })).toBe(0.6);
+		// Kouchash: 14 Msun, 41 km, 72,444 G, BH Active, a tiny fraction — jets, at least moderate.
+		const k = { classes: ['star/BH_active'], massKg: 2.77e31, radiusKm: 41, magneticField: { strengthGauss: 72444 }, accretionEddington: 0.02 };
+		expect(starJetBucket(k)).toBeDefined();
+		// ...and the SAME numbers as a quiescent hole: nothing.
+		expect(starJetBucket({ ...k, classes: ['star/BH'], accretionEddington: 0 })).toBeUndefined();
 	});
 });
 

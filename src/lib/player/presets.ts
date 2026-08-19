@@ -82,6 +82,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   starmapGridDepth: 0,
   starmapGridFalloff: 0.5,
   starmapStarScale: 0,
+  starmapStarSize: 1,
   gridFalloff: 0,
   gridDepth: 0,
   gridScaleAu: 0,      // automatic — the decade ladder, as it has always been

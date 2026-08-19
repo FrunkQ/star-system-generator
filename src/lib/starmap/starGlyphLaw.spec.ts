@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	bandScale, sizeBandOfClass, sizeBandOf, clusterLayout, clusterHalfExtent, starClusterOffsets,
-	BAND_FULL_SPREAD, SIZE_BANDS
+	BAND_FULL_SPREAD, SIZE_BANDS, letterTilt, glyphScale, spectralLetterOfBody, LETTER_TILT_FULL
 } from './starGlyphLaw';
 
 describe('the band from the class key (B60 designations)', () => {
@@ -27,10 +27,46 @@ describe('the band from the class key (B60 designations)', () => {
 		expect(sizeBandOfClass(undefined)).toBe('dwarf');
 		expect(sizeBandOfClass('star/unknown')).toBe('dwarf');
 	});
-	it('reads the first star/ class off a body', () => {
+	it('reads the body: stellarType first, then EVERY star/ class — the one that states a band wins, whatever the order', () => {
 		expect(sizeBandOf({ classes: ['star/M1.5Iab', 'star/M'] })).toBe('supergiant');
+		expect(sizeBandOf({ classes: ['star/K', 'star/K-III'] })).toBe('giant');       // letter first in the save
+		expect(sizeBandOf({ classes: ['star/G', 'star/G2V'] })).toBe('dwarf');          // the Sol fixture's order
+		expect(sizeBandOf({ classes: ['star/M'], stellarType: { spectral: 'M', luminosity: 'III' } })).toBe('giant');
+		expect(sizeBandOf({ classes: ['star/B'], stellarType: { spectral: 'B', luminosity: 'Iab' } })).toBe('supergiant');
+		expect(sizeBandOf({ classes: ['star/WD'], stellarType: { spectral: 'WD' } })).toBe('compact');
 		expect(sizeBandOf({ classes: [] })).toBe('dwarf');
 		expect(sizeBandOf(null)).toBe('dwarf');
+	});
+	it('and the spectral letter, for the dwarf tilt', () => {
+		expect(spectralLetterOfBody({ classes: ['star/G2V', 'star/G'] })).toBe('G');
+		expect(spectralLetterOfBody({ classes: ['star/M5.5V'] })).toBe('M');
+		expect(spectralLetterOfBody({ classes: ['star/WD'] })).toBeUndefined();
+		expect(spectralLetterOfBody({ classes: ['star/O'], stellarType: { spectral: 'O' } })).toBe('O');
+		expect(spectralLetterOfBody({ classes: ['star/T6'] })).toBeUndefined();
+	});
+});
+
+describe('the letter tilt within the dwarf band', () => {
+	it('is 1 for everyone at spread 0 and ordered O > B > A > F > G > K > M at 1', () => {
+		for (const L of 'OBAFGKM') expect(letterTilt(L, 0)).toBe(1);
+		const at1 = [...'OBAFGKM'].map((L) => letterTilt(L, 1));
+		for (let i = 1; i < at1.length; i++) expect(at1[i]).toBeLessThan(at1[i - 1]);
+		expect(letterTilt('G', 1)).toBe(1);
+		expect(letterTilt(undefined, 1)).toBe(1);
+		expect(letterTilt('WD', 1)).toBe(1);
+	});
+	it('applies ONLY to dwarfs, and never to a fixed member, and keeps the band ordering', () => {
+		expect(glyphScale({ band: 'dwarf', letter: 'M' }, 1)).toBe(LETTER_TILT_FULL.M);
+		expect(glyphScale({ band: 'dwarf', letter: 'O' }, 1)).toBe(LETTER_TILT_FULL.O);
+		expect(glyphScale({ band: 'giant', letter: 'M' }, 1)).toBe(BAND_FULL_SPREAD.giant);
+		expect(glyphScale({ band: 'compact', letter: 'M', fixed: true }, 1)).toBe(1);
+		// compact < M dwarf < G dwarf < O dwarf < giant < supergiant
+		const order = [glyphScale({ band: 'compact' }, 1), glyphScale({ band: 'dwarf', letter: 'M' }, 1), glyphScale({ band: 'dwarf', letter: 'G' }, 1), glyphScale({ band: 'dwarf', letter: 'O' }, 1), glyphScale({ band: 'giant' }, 1), glyphScale({ band: 'supergiant' }, 1)];
+		for (let i = 1; i < order.length; i++) expect(order[i]).toBeGreaterThan(order[i - 1]);
+	});
+	it('an all-V map (a generated one) now spreads at scaler 1: an M dwarf is visibly smaller than an A dwarf', () => {
+		const slots = clusterLayout([{ band: 'dwarf', letter: 'A' }, { band: 'dwarf', letter: 'M' }], 1);
+		expect(slots[0].scale / slots[1].scale).toBeGreaterThan(1.25);
 	});
 });
 
@@ -108,16 +144,16 @@ describe('screen terms versus world constants (C17)', () => {
 
 describe('a black hole keeps its glyph', () => {
 	it('never shrinks with the scaler while the white dwarf beside it does', () => {
-		const slots = clusterLayout(['compact', 'compact'], 1, [true, false]);
+		const slots = clusterLayout([{ band: 'compact', fixed: true }, { band: 'compact' }], 1);
 		expect(slots[0].scale).toBe(1);                       // the hole
 		expect(slots[1].scale).toBe(BAND_FULL_SPREAD.compact); // the dwarf
 	});
 	it('four DRAWN sizes at scaler 1: supergiant, dwarf, white dwarf, hole', () => {
 		// Layout factors: 2 / 1 / 0.6 / 1 — the hole's slot matches a dwarf's, but its glyph sprite is
-		// 3.4 layout units across against a dwarf's 1.0 disc, so what is drawn is four sizes.
-		const slots = clusterLayout(['supergiant', 'dwarf', 'compact', 'compact'], 1, [false, false, false, true]);
+		// 5.4 layout units across against a dwarf's 1.0 disc, so what is drawn is four sizes.
+		const slots = clusterLayout(['supergiant', 'dwarf', 'compact', { band: 'compact', fixed: true }], 1);
 		expect(slots.map((s) => s.scale)).toEqual([2, 1, 0.6, 1]);
-		const HOLE_GLYPH = 3.4, DISC = 1.0;
+		const HOLE_GLYPH = 5.4, DISC = 1.0;
 		const drawn = [slots[0].scale * DISC, slots[1].scale * DISC, slots[2].scale * DISC, slots[3].scale * HOLE_GLYPH];
 		expect(new Set(drawn).size).toBe(4);
 	});

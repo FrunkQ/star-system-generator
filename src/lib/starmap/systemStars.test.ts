@@ -36,9 +36,11 @@ describe('systemVisualStars', () => {
 
   // G26: everything a glyph DRAWS rides the record — the band from the class, the decorations from
   // the TAGS. Both maps read these fields and decide nothing themselves.
-  it('carries the size band from the luminosity class', () => {
+  it('carries the size band from the luminosity class, and the letter for the dwarf tilt', () => {
     const sys: any = { nodes: [star('g', 3e30, { classes: ['star/K-III'] }), star('d', 2e30, { classes: ['star/G2V'] }), star('w', 1e30, { classes: ['star/WD'] })] };
-    expect(systemVisualStars(sys).map((v) => v.band)).toEqual(['giant', 'dwarf', 'compact']);
+    const vs = systemVisualStars(sys);
+    expect(vs.map((v) => v.band)).toEqual(['giant', 'dwarf', 'compact']);
+    expect(vs.map((v) => v.letter)).toEqual(['K', 'G', undefined]);
   });
 
   it('reads activity, flares, jets and shedding OFF THE TAGS — no tag, no mark', () => {
