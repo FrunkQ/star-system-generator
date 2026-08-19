@@ -50,3 +50,23 @@ export function gridFadeAlpha(d: number, w: GridFadeWindow): number {
 	if (d <= w.from) return 1;
 	return Math.max(0, 1 - (d - w.from) / Math.max(1e-6, w.to - w.from));
 }
+
+// ── THE DEPTH SKIRT, shared for the same reason the fade window is ────────────────────────────────
+//
+// Each grid line can drop a short curtain that fades to nothing. Seen straight down it is edge-on and
+// invisible (so a 2D map is unaffected); tilt the view and the lattice gains depth. The starmap has
+// had this as "Grid depth" since WS7; the system map had the dial nowhere, and the owner asked for
+// the two to behave identically rather than to be re-derived side by side.
+//
+// These two numbers are the SHAPE of the curtain, not tuning — the dial itself is preset data
+// (`gridDepth` / `starmapGridDepth`). They live here so the two scenes cannot drift apart.
+
+/** Curtain drop at full dial, as a fraction of the grid's cell size. */
+export const SKIRT_DEPTH_RATIO = 0.36;
+/** Alpha along the curtain's TOP edge, relative to its line. It fades to 0 at the bottom. */
+export const SKIRT_TOP_ALPHA = 0.55;
+
+/** How far a curtain hangs below its line, for a given cell size and dial. Never exactly zero. */
+export function skirtDepth(cell: number, dial: number): number {
+	return Math.max(0.01, cell * SKIRT_DEPTH_RATIO * Math.max(0, Math.min(1, dial || 0)));
+}

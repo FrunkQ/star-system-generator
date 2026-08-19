@@ -854,6 +854,14 @@
                       {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                     </select>
                   </label>
+                  <!-- Identical to the Starmap step's, deliberately: same dial, same range, same
+                       shared curtain constants (map/gridFade), same 3D-only gate. It was missing here
+                       entirely, so the system map had a fade dial and no depth dial while the starmap
+                       had both. On a locked-overhead map a curtain is edge-on and invisible, which is
+                       why neither stage offers it in 2D. -->
+                  {#if draft.systemView === 'holo3d' && draft.grid !== 'off'}
+                    <label>Grid depth <span>{Math.round((draft.gridDepth ?? 0) * 100)}%</span><input type="range" min="0" max="1" step="0.05" value={draft.gridDepth ?? 0} on:input={(e) => (draft = { ...draft, gridDepth: Number((e.currentTarget as HTMLInputElement).value) })} /></label>
+                  {/if}
                   <!-- G4: the same falloff dial the starmap has, on the system view's ground grid. Its
                        OWN field, defaulted to 0 — the system grid has always been evenly lit and should
                        not change unless a GM asks. Deliberately not sharing `starmapGridFalloff`: the

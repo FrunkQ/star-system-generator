@@ -2,9 +2,16 @@
 
 All notable changes are listed here:
 
+## v2.1.841-beta - 19th Aug 2026
+
+- **FIXED: turning up Grid falloff on a 3D system map dimmed every line instead of fading the far ones.** The fade was written into the vertex alpha with the material's opacity already multiplied in, and the material was then set to 1 — right for one frame, because the coarse/fine crossfade reassigns that opacity every frame afterwards. The level landed twice and the grid rendered at its square: a 0.42 level came out at 0.18, and a fine level mid-crossfade went 0.15 to 0.02. It switched on the instant the dial left zero, because that is what gates the branch. The starmap was never affected: it has no two-level crossfade to collide with.
+- **The System step gains "Grid depth"**, the curtain dial the Starmap step has always had. Same range, same 3D-only gate, same shipped look — the two now read their depth from shared constants in map/gridFade rather than each carrying its own numbers, so they cannot drift the way the fade window did before it was unified.
+- Housekeeping: restored the blank line between the two previous entries.
+
 ## v2.1.840-beta - 18th Aug 2026
 
 - Inbox: B83 captured — the cloud-layering workstream. One deck model (base, top, optical depth, colour as seen), one stacking rule, carried onto the tag, read by all four consumers that currently each answer "what does this cloud stack look like" their own way. Six acceptance tests written in, so it is done when they pass and not before.
+
 ## v2.1.838-beta - 18th Aug 2026
 
 - **"Navigation lists" is out of the info block, and off the 2D/3D system view entirely.** It never did anything there: a 2D or 3D system view builds its side panel in panel mode, which stops before the parent-nav row and every drill-in list is added, so a list style was styling blocks that are never drawn. It is a Document feature, and it now appears only when the stage actually is a document.

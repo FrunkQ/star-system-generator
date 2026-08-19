@@ -82,6 +82,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   starmapGridDepth: 0,
   starmapGridFalloff: 0.5,
   gridFalloff: 0,
+  gridDepth: 0,
   orbitOpacity: 1,
   starmapMono: false,
   background: 'space',
@@ -309,6 +310,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     bodySize: p.bodySize,
     grid: p.grid,
     gridFalloff: p.gridFalloff ?? 0,
+    gridDepth: p.gridDepth ?? 0,
     // G5: travels with the preset, so a player window gets the GM's chosen strength for THIS view.
     orbitOpacity: p.orbitOpacity ?? 1,
     constellations: p.constellations ?? 'off', // G9

@@ -47,7 +47,7 @@ import { capMarkers, type HighlightMarker } from '$lib/tags/mapHighlights';
 import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_STEM, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName, pinAside, flagStaffColor, type PinTextMode, type FlagStaffColor } from '$lib/tags/tagPill';
 import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
 import { niceSeries, formatNice } from '$lib/map/niceInterval';
-import { gridFadeWindow } from '$lib/map/gridFade';
+import { gridFadeWindow, skirtDepth, SKIRT_TOP_ALPHA } from '$lib/map/gridFade';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -348,7 +348,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // ALWAYS, which reads as depth on a tilted 3D map and as fuzz on a flat one — and the 2D starmap
     // is this same renderer locked overhead, so it was paying for a depth cue it can never show.
     // Now it is a choice ("Grid depth" on the 3D starmap): line at full intensity, fading downward.
-    const depth = Math.max(0.01, cell * 0.36 * (o.skirt ?? 0)); // drop scales with the dial; 0.5 is the historical look
+    // Shared with the system map (map/gridFade), so the two "Grid depth" dials cannot drift apart.
+    const depth = skirtDepth(cell, o.skirt ?? 0);
     const y0 = 0.01;
     const fade = (x: number, z: number) => {
       const d = Math.hypot(x, z);
@@ -375,9 +376,9 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       } else if ((o.skirt ?? 0) > 0.001) {
         // Curtain: two triangles, full alpha along the top edge fading to zero at the bottom.
         sp.push(x1, y0, z1, x2, y0, z2, x2, y0 - depth, z2);
-        pushC(sc, a1 * 0.55); pushC(sc, a2 * 0.55); pushC(sc, 0);
+        pushC(sc, a1 * SKIRT_TOP_ALPHA); pushC(sc, a2 * SKIRT_TOP_ALPHA); pushC(sc, 0);
         sp.push(x1, y0, z1, x2, y0 - depth, z2, x1, y0 - depth, z1);
-        pushC(sc, a1 * 0.55); pushC(sc, 0); pushC(sc, 0);
+        pushC(sc, a1 * SKIRT_TOP_ALPHA); pushC(sc, 0); pushC(sc, 0);
       }
     }
     if (!lp.length) return;

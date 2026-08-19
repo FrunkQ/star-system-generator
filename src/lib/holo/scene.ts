@@ -36,7 +36,7 @@ import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRe
 import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
 import { gridLevels, niceSeries, formatNice } from '$lib/map/niceInterval';
-import { gridFadeWindow, gridFadeAlpha, GRID_FADE_OFF } from '$lib/map/gridFade';
+import { gridFadeWindow, gridFadeAlpha, GRID_FADE_OFF, skirtDepth, SKIRT_TOP_ALPHA } from '$lib/map/gridFade';
 import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
@@ -149,6 +149,7 @@ export interface HoloController {
   setBodySize(v: number): void; // 1 readable .. 0 true physical scale
   setGrid(mode: MapOverlay): void; // ground reference overlay (shared vocabulary, lib/map/mapOverlay.ts)
   setGridFalloff(v: number): void; // G4: 0 = even brightness, 1 = bright near the centre and gone by the edge
+  setGridDepth(v: number): void;   // 0 flat .. 1 a full depth curtain under each grid line (3D only)
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
   setLabelColor(hex: string | null): void; // in-scene label colour (null = default); matched to CRT phosphor
   setLabelSize(px: number): void; // in-scene label font size
@@ -488,6 +489,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // safe under the floating origin: rebasing moves the drawn coordinates, never the absolute ones,
   // so the fade stays pinned to the system rather than sliding with the camera focus.
   let gridFalloff = 0;
+  // The system map's "Grid depth" — the same curtain dial the starmap has. 0 = flat.
+  let gridDepth = 0;
+  // The cell the curtain is sized from. Set by buildMetricGrid per level, so a coarse line drops a
+  // deeper curtain than a fine one — which is what makes the two levels read as one lattice.
+  let gridCellForSkirt = 1;
+  // Curtain materials paired with the line material they hang from, so the coarse/fine crossfade in
+  // updateGridLevels moves both. A curtain outliving its faded-out line is the fault this prevents.
+  let gridSkirtMats: { line: THREE.LineBasicMaterial; skirt: THREE.MeshBasicMaterial }[] = [];
   // G5: how strongly orbit lines are drawn, 0..1, as a MULTIPLIER of each line's designed opacity.
   // 1 is today's look exactly. A 45-planet import buries its own map under 70 orbit lines, which is
   // what this exists for. `orbitLinesVisible` is the MOMENTARY companion (the A53 pattern): not part
@@ -1817,17 +1826,31 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         const a = gridFadeAlpha(d, win);
         const c = (mat as THREE.LineBasicMaterial).color;
         cols[4 * i] = c.r; cols[4 * i + 1] = c.g; cols[4 * i + 2] = c.b;
-        cols[4 * i + 3] = a * ((mat as THREE.LineBasicMaterial).opacity ?? 1);
+        // THE FADE ALONE. It used to bake the material's opacity in here and then set that opacity to
+        // 1 — which is correct exactly once and wrong on every frame after, because `updateGridLevels`
+        // re-assigns `mat.opacity = peak * a` continuously to run the coarse/fine crossfade. The level
+        // opacity therefore landed TWICE, once in the vertex alpha and once on the material, and the
+        // grid rendered at its square: 0.42 became 0.18, and a mid-crossfade fine level at 0.15 became
+        // 0.02. That is the owner's "turn falloff up at all and every line goes super dim", and it
+        // switched on the instant the dial crossed GRID_FADE_OFF because that is what gates this
+        // branch. Three.js multiplies vertex alpha BY material opacity, so writing only the fade here
+        // leaves the crossfade its own channel and the two compose once each.
+        cols[4 * i + 3] = a;
       }
       geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 4));
       (mat as THREE.LineBasicMaterial).vertexColors = true;
-      (mat as THREE.LineBasicMaterial).opacity = 1;
       mat.needsUpdate = true;
     }
     const obj = loop ? new THREE.LineLoop(geo, mat) : new THREE.LineSegments(geo, mat);
     gridGroup.add(obj);
     gridAbs.push({ obj, abs });
     rebaseStaticGeometry(obj, abs, sceneOrigin);
+    // DEPTH SKIRT — the same curtain the starmap has had as "Grid depth", from the same shared
+    // constants (map/gridFade), so the two dials cannot drift apart. LineSegments only: `pts` is
+    // consecutive PAIRS there, and a LineLoop's ring has no pair structure to hang a curtain from.
+    // It also rides `gridAbs`, because a skirt that does not rebase would walk away from its own grid
+    // the first time the floating origin moves.
+    if (!loop && gridDepth > 0.001 && pts.length >= 2) addGridSkirt(abs, mat, geo);
   }
 
   // Re-emit the grid into the current origin's frame (lines from their masters, labels by translation).
@@ -1899,8 +1922,54 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return pts;
   }
 
+  /**
+   * A curtain under each grid segment: two triangles, full alpha along the top edge fading to nothing
+   * at the bottom. Built from the LINE's own absolute positions and colours so it cannot disagree with
+   * the line it hangs from — including the edge fade, which it inherits vertex for vertex.
+   */
+  function addGridSkirt(abs: Float64Array, mat: THREE.Material, lineGeo: THREE.BufferGeometry) {
+    const drop = skirtDepth(gridCellForSkirt, gridDepth);
+    const lineCols = lineGeo.getAttribute('color') as THREE.BufferAttribute | undefined;
+    const c = (mat as THREE.LineBasicMaterial).color;
+    const n = abs.length / 3;
+    const sAbs = new Float64Array((n / 2) * 6 * 3);
+    const sCol = new Float32Array((n / 2) * 6 * 4);
+    let pi = 0, ci = 0;
+    const put = (x: number, y: number, z: number, a: number) => {
+      sAbs[pi++] = x; sAbs[pi++] = y; sAbs[pi++] = z;
+      sCol[ci++] = c.r; sCol[ci++] = c.g; sCol[ci++] = c.b; sCol[ci++] = a;
+    };
+    for (let i = 0; i + 1 < n; i += 2) {
+      const x1 = abs[3 * i], y1 = abs[3 * i + 1], z1 = abs[3 * i + 2];
+      const x2 = abs[3 * i + 3], y2 = abs[3 * i + 4], z2 = abs[3 * i + 5];
+      // Inherit the line's own fade so the curtain vanishes exactly where the line does.
+      const a1 = (lineCols ? lineCols.getW(i) : 1) * SKIRT_TOP_ALPHA;
+      const a2 = (lineCols ? lineCols.getW(i + 1) : 1) * SKIRT_TOP_ALPHA;
+      if (a1 <= 0.002 && a2 <= 0.002) continue;
+      put(x1, y1, z1, a1); put(x2, y2, z2, a2); put(x2, y2 - drop, z2, 0);
+      put(x1, y1, z1, a1); put(x2, y2 - drop, z2, 0); put(x1, y1 - drop, z1, 0);
+    }
+    if (!pi) return;
+    const used = sAbs.slice(0, pi);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pi), 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(sCol.slice(0, ci), 4));
+    // Its own material, sharing the LINE's colour and opacity object so the coarse/fine crossfade
+    // moves both together — the curtain must not survive a level its line has faded out of.
+    const smat = new THREE.MeshBasicMaterial({
+      color: (mat as THREE.LineBasicMaterial).color, vertexColors: true, transparent: true,
+      opacity: (mat as THREE.LineBasicMaterial).opacity, depthWrite: false, side: THREE.DoubleSide
+    });
+    const mesh = new THREE.Mesh(geo, smat);
+    gridGroup.add(mesh);
+    gridAbs.push({ obj: mesh, abs: used });
+    gridSkirtMats.push({ line: mat as THREE.LineBasicMaterial, skirt: smat });
+    rebaseStaticGeometry(mesh, used, sceneOrigin);
+  }
+
   function buildMetricGrid(base: THREE.Color) {
     gridLevelMats = [];
+    gridSkirtMats = [];
     const lv = gridLevels(visibleAu(), 6);
     if (!lv) return;
     // Cover a bit more than the view so a pan does not run off the grid, but never the whole system at
@@ -1913,6 +1982,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (a < 0.02) continue;
       const pts = metricLines(step, span);
       if (!pts.length) continue;
+      gridCellForSkirt = step; // this level's cell — the curtain scales with it
       const mat = new THREE.LineBasicMaterial({
         color: base.clone().multiplyScalar(0.4), transparent: true, opacity: peak * a, depthWrite: false
       });
@@ -1932,11 +2002,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (!lv) return;
     if (lv.coarse !== gridBuiltFor.coarse) { rebuildGrid(); return; }
     for (const g of gridLevelMats) g.mat.opacity = g.peak * (g.coarse ? 1 - lv.t : lv.t);
+    // The curtains ride their own line's opacity, so a level fading out takes its depth with it.
+    for (const g of gridSkirtMats) g.skirt.opacity = g.line.opacity;
   }
 
   function rebuildGrid() {
     clearGroup(gridGroup);
     gridAbs = [];
+    gridSkirtMats = [];
     gridLabels = [];
     gridGroup.visible = gridMode !== 'off';
     if (gridMode === 'off') return;
@@ -1981,6 +2054,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     addGridLines(spokes, spokeMat, false);
   }
 
+  function setGridDepth(v: number) {
+    const n = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
+    if (n === gridDepth) return;
+    gridDepth = n;
+    rebuildGrid();
+  }
   function setGridFalloff(v: number) {
     const n = Math.max(0, Math.min(1, v || 0));
     if (n === gridFalloff) return;
@@ -4631,7 +4710,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
 }
 
 // ---- helpers ----
