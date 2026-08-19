@@ -69,9 +69,7 @@
         }
       },
       "description": "The primary star, a hot, blue-white B-type star. It is the recipient of stellar material stripped from its companion, making it spin rapidly.",
-      "isNameUserDefined": true,
-      "calculatedGravity_ms2": 116,
-      "orbital_period_days": 2.867
+      "isNameUserDefined": true
     },
     {
       "id": "algol-b",
@@ -110,9 +108,7 @@
         }
       },
       "description": "A distended orange subgiant star. It has expanded and filled its Roche lobe, distorting into a teardrop shape as it leaks gas onto Algol A.",
-      "isNameUserDefined": true,
-      "calculatedGravity_ms2": 15.7,
-      "orbital_period_days": 2.867
+      "isNameUserDefined": true
     },
     {
       "id": "algol-c",
@@ -147,9 +143,7 @@
       "tags": [],
       "areas": [],
       "description": "A stable A-type star orbiting the chaotic inner pair every 1.86 years. It orbits in a plane nearly perpendicular to the inner binary.",
-      "isNameUserDefined": true,
-      "calculatedGravity_ms2": 162,
-      "orbital_period_days": 680.5
+      "isNameUserDefined": true
     },
     {
       "id": "algol-inner-barycenter-outer",

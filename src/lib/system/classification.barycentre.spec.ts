@@ -41,7 +41,14 @@ describe('barycentre systems classify without breaking', () => {
       for (const pl of planets) {
         expect(Array.isArray(pl.classes)).toBe(true);
         expect(pl.classes!.length).toBeGreaterThan(0);
-        expect(pl.classes!.every((c) => typeof c === 'string' && c.startsWith('planet/'))).toBe(true);
+        // NOT `planet/` only — B82. This asserted every planet/moon classifies as `planet/*`, and it
+        // passed on a FOSSIL: the example file carried baked classes from an older build, and the
+        // classifier only re-derives when `classes` is empty, so the stale value stood. With the
+        // file stripped of derived data the three tiny bodies here (12-153 km) classify as what they
+        // are - `asteroid/m-type`, `asteroid/s-type`. The APP has always shown that, because its load
+        // path fixes up before processing; only the file disagreed. What this test means is that
+        // every body comes out classified as SOMETHING, which is what it now says.
+        expect(pl.classes!.every((c) => typeof c === 'string' && /^(planet|asteroid)\//.test(c))).toBe(true);
       }
     });
   }

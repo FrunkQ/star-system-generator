@@ -45,13 +45,37 @@ const DERIVED_FIELDS = [
   'isSelfLuminous', 'selfLuminousTeffK', 'internalLuminositySolar',
   // A star's radiationOutput (its luminosity) is authored input and is KEPT for stars (see stripBody);
   // on a planet it's a derived brown-dwarf luminosity, so strip it there.
-  'radiationOutput'
+  'radiationOutput',
+  // B82, and every one of these was MEASURED rather than read: see `derivedFieldDrift.spec.ts`,
+  // which diffs a body's key set across `process()` and fails on any field not classified here or
+  // in NOT_STRIPPED below. The list had drifted eight releases behind the engine; this is the half
+  // that is purely derived, with nothing authored to protect.
+  'orbitalRadiation', 'irradiationDose', 'volatiles', 'surfaceSpectrum', 'vegetation',
+  'beltInnerEdgeRadii', 'auroraEmitters', 'flareActivity',
+  'resonanceNote', 'resonanceProtective', 'resonanceTidal', 'starTidallyLocked',
+  'orbitalStability', 'orbitalStabilityDetails'
 ];
+
+// FIELDS THE PROCESSOR WRITES THAT ARE DELIBERATELY *NOT* STRIPPED, each with the reason. The drift
+// guard reads this list, so adding a name here is a DECLARATION that survives review — which is the
+// whole point: B82 happened because there was no way to tell 'authored' from 'nobody has looked yet'.
+export const NOT_STRIPPED: Record<string, string> = {
+  hydrosphere: 'AUTHORED: the GM sets composition and coverage (BodyHydrosphereTab). Only the derived',
+  atmosphere: 'AUTHORED: composition and pressure are input. molarMassKg/scaleHeightKm are stripped below.',
+  orbit: 'AUTHORED: the elements are input. The derived `resonance` cache is stripped below.',
+  image: 'AUTHORED: the GM can set a URL (BodyBasicsTab). The classifier overwrites it on process - see B82.',
+  classes: 'HANDLED SEPARATELY below: cleared, except a star spectral class or a GM-pinned type.',
+  tags: 'HANDLED SEPARATELY below by namespace. On a CONSTRUCT the processor only writes an empty [].',
+  magneticField: 'CONDITIONAL below: authored for a star and for a GM manual field; derived otherwise.',
+  tidallyLocked: 'CONDITIONAL below: derived unless the GM pinned it with tidalLockManual.',
+  rotation_period_hours: 'AUTHORED: the engine rewrites it for a LOCKED body, but it is input for a spin-orbit resonance and stripping it made Mercury an eyeball world (B82).'
+};
 
 // Tag namespaces the processor owns (re-derived every run).
 const DERIVED_TAG_PREFIXES = [
   'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/', 'shape/', 'aurora/', 'thermal/',
-  'resonance/', 'fate/', 'volatiles/', 'surface/'  // re-derived every run (resonance/stability/volatile/surface-age passes)
+  'resonance/', 'fate/', 'volatiles/', 'surface/',  // re-derived every run (resonance/stability/volatile/surface-age passes)
+  'hazard/'  // B82: hazard/radiation, hazard/orbital-radiation and hazard/flaring are all written by the processor
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([
@@ -149,6 +173,33 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
   // Derived sub-structures.
   if (body.hydrosphere) delete (body.hydrosphere as any).layers;
   if (body.atmosphere) { delete (body.atmosphere as any).molarMassKg; delete (body.atmosphere as any).scaleHeightKm; }
+  if (body.orbit) delete (body.orbit as any).resonance;   // B82: derived by the resonance pass
+
+  // B82 — THE THREE THAT A FLAT LIST CANNOT EXPRESS, because each is derived for most bodies and
+  // AUTHORED for some. This is why the item could not be closed by adding eight names to the list.
+  //
+  // (1) A MAGNETIC FIELD is derived for a planet or moon, but it is authored twice over: a STAR's is
+  // never re-derived on load (measured: the processor writes `magneticField` for moons and planets
+  // only), so stripping it would zero every star exactly as stripping `temperatureK` once did; and a
+  // GM can set one by hand, which `magnetism.ts` reads through `field.manual` to tell an anomalous
+  // field from a dynamo. Both of those are input; the rest is a fossil.
+  if (!isStar && !(body as any).magneticField?.manual) delete (body as any).magneticField;
+
+  // (2) TIDAL LOCK is decided by the engine unless the GM pinned it (`tidalLockManual`, set by any
+  // hand-set rate or lock in BodyBasicsTab).
+  const lockPinned = !!(body as any).tidalLockManual;
+  const wasLocked = !!(body as any).tidallyLocked;
+  if (!lockPinned) delete (body as any).tidallyLocked;
+
+  // (3) ROTATION PERIOD IS NOT STRIPPED, AND THE MEASUREMENT IS WHY — B82 recommended stripping it
+  // on a locked body and that is WRONG. It is true that the engine rewrites it for a locked body
+  // (Luna's moved 659.0 h -> 538.1 h when Earth gained mass, which is what B82 saw). But it is
+  // AUTHORED input for a body in a SPIN-ORBIT RESONANCE, and the processor cannot tell the two
+  // apart without the value it would have just deleted. Stripping it cost Mercury its real 1407.6 h
+  // day: the engine read the missing period as a synchronous lock, gave it its 88-day year instead,
+  // and RECLASSIFIED it from planet/terrestrial to planet/hot-eyeball, moving its habitability from
+  // 32.9 to 40. Caught by `systemUndo.spec.ts`'s round-trip, which is the test that exists to prove
+  // the strip is lossless. It stays, and it is declared in NOT_STRIPPED.
   // Tags: keep only authored ones.
   //
   // survivesRederive() first, and it is a FIX rather than a tidy-up: this filter never checked the

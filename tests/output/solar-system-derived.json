@@ -1976,18 +1976,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 2.375063038914256,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -2858,18 +2852,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.01123988275231171,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -3304,18 +3292,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.0056257532828946554,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -4324,19 +4306,13 @@
           },
           {
             "class": "planet/crater",
-            "score": 0.99,
+            "score": 0.89,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 2.5580974236010183,
                 "band": "0 – 2.5",
                 "fit": 0.85
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
-                "fit": 1
               },
               {
                 "feature": "atm.pressure_bar",
@@ -4867,18 +4843,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 2.026118538014776,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -5327,19 +5297,13 @@
           },
           {
             "class": "planet/crater",
-            "score": 0.82,
+            "score": 0.65,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 2.7386251249966462,
                 "band": "0 – 2.5",
                 "fit": 0.36
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
-                "fit": 1
               },
               {
                 "feature": "atm.pressure_bar",
@@ -5764,18 +5728,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 2.434300555114677,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -7177,18 +7135,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.23913509365762983,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -7613,18 +7565,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.3939245263749884,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -8057,18 +8003,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.5103731826185224,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -8527,18 +8467,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.15892113879278857,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -8895,7 +8829,7 @@
         ],
         "runnerUp": {
           "class": "planet/crater",
-          "score": 1.04
+          "score": 0.96
         },
         "candidates": [
           {
@@ -8930,18 +8864,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.6340039310216693,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -9298,7 +9226,7 @@
         ],
         "runnerUp": {
           "class": "planet/crater",
-          "score": 1.04
+          "score": 0.96
         },
         "candidates": [
           {
@@ -9333,18 +9261,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.5719501946736291,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -10184,18 +10106,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.7587243292614866,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -10587,18 +10503,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.7252238044823573,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -10994,18 +10904,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.5453947336040949,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -11911,18 +11815,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 1.4528194995595896,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -12486,18 +12384,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 1.2098374365619018,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {
@@ -12914,18 +12806,12 @@
           },
           {
             "class": "planet/crater",
-            "score": 1.04,
+            "score": 0.96,
             "bands": [
               {
                 "feature": "escapeVelocity_kms",
                 "value": 0.5899430525741685,
                 "band": "0 – 2.5",
-                "fit": 1
-              },
-              {
-                "feature": "age_Gyr",
-                "value": 4.603,
-                "band": "3 – 14",
                 "fit": 1
               },
               {

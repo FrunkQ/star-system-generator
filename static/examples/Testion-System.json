@@ -26,7 +26,7 @@
         "url": "/images/star_types/F.webp"
       },
       "tags": [],
-      "description": "Testion \u2014 a luminous F-type star hosting one of (nearly) every planet type. A classification test-bed: load it, run physics, and every world classifies to a distinct type."
+      "description": "Testion — a luminous F-type star hosting one of (nearly) every planet type. A classification test-bed: load it, run physics, and every world classifies to a distinct type."
     },
     {
       "id": "t-1-sub-earth",
@@ -48,9 +48,6 @@
       },
       "massKg": 1.493e+24,
       "radiusKm": 4146.295694164703,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "CO2",
@@ -59,7 +56,8 @@
         "composition": {
           "CO2": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-2-terrestrial",
@@ -81,9 +79,6 @@
       },
       "massKg": 4.7776000000000004e+24,
       "radiusKm": 7017.713245093729,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "makeup": {
         "rock": 1
@@ -96,7 +91,8 @@
           "N2": 0.9,
           "Ar": 0.1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-3-iron",
@@ -118,9 +114,6 @@
       },
       "massKg": 8.958e+24,
       "radiusKm": 7267.788764709121,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "makeup": {
         "metal": 0.7,
@@ -133,7 +126,8 @@
         "composition": {
           "CO2": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-4-silicate",
@@ -155,14 +149,12 @@
       },
       "massKg": 7.1664e+24,
       "radiusKm": 7792.235971657743,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "makeup": {
         "rock": 0.85,
         "metal": 0.15
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-5-coreless",
@@ -184,9 +176,6 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 9700.845893812471,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "makeup": {
         "rock": 0.55,
@@ -199,7 +188,8 @@
         "composition": {
           "CO2": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-6-carbon",
@@ -221,9 +211,6 @@
       },
       "massKg": 8.958e+24,
       "radiusKm": 9348.733138399151,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "makeup": {
         "carbon": 0.6,
@@ -237,7 +224,8 @@
           "CO": 0.7,
           "CH4": 0.3
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-7-super-earth",
@@ -259,9 +247,6 @@
       },
       "massKg": 2.9860000000000004e+25,
       "radiusKm": 10312.306640927705,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -271,7 +256,8 @@
           "N2": 0.8,
           "CO2": 0.2
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-8-mega-earth",
@@ -293,9 +279,6 @@
       },
       "massKg": 1.0749600000000001e+26,
       "radiusKm": 13469.90929546474,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -305,7 +288,8 @@
           "N2": 0.9,
           "CO2": 0.1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-9-supermassive-terrestrial",
@@ -327,9 +311,6 @@
       },
       "massKg": 3.2846e+26,
       "radiusKm": 18695.22732739637,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -339,7 +320,8 @@
           "N2": 0.9,
           "CO2": 0.1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-10-lava",
@@ -361,9 +343,6 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 7244.245838885031,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "None",
@@ -372,7 +351,8 @@
         "composition": {
           "None": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-11-desert",
@@ -394,9 +374,6 @@
       },
       "massKg": 5.3748e+24,
       "radiusKm": 6994.242456917003,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -409,7 +386,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.02
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-12-barren",
@@ -431,10 +409,8 @@
       },
       "massKg": 2.9860000000000002e+23,
       "radiusKm": 2668.8029854347005,
-      "magneticField": {
-        "strengthGauss": 0
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-13-crater",
@@ -456,9 +432,6 @@
       },
       "massKg": 7.1664e+22,
       "radiusKm": 1911.3,
-      "magneticField": {
-        "strengthGauss": 0
-      },
       "tags": [],
       "atmosphere": {
         "name": "CO2",
@@ -467,7 +440,8 @@
         "composition": {
           "CO2": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-14-ice",
@@ -489,14 +463,12 @@
       },
       "massKg": 4.7776000000000004e+24,
       "radiusKm": 6817.096336462285,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.8
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-15-ocean",
@@ -518,9 +490,6 @@
       },
       "massKg": 6.569200000000001e+24,
       "radiusKm": 7478.090930958548,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -534,7 +503,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.95
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-16-hycean",
@@ -556,9 +526,6 @@
       },
       "massKg": 2.3888e+25,
       "radiusKm": 12742,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "H2",
@@ -571,7 +538,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.95
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-17-methane",
@@ -593,9 +561,6 @@
       },
       "massKg": 3.5832e+24,
       "radiusKm": 6110.033575991909,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -608,7 +573,8 @@
       "hydrosphere": {
         "composition": "methane",
         "coverage": 0.6
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-18-chlorine",
@@ -630,9 +596,6 @@
       },
       "massKg": 5.3748e+24,
       "radiusKm": 6994.242456917003,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "Cl2",
@@ -641,7 +604,8 @@
         "composition": {
           "Cl2": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-19-fluorine",
@@ -663,9 +627,6 @@
       },
       "massKg": 5.3748e+24,
       "radiusKm": 6994.242456917003,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "F2",
@@ -674,7 +635,8 @@
         "composition": {
           "F2": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-20-phosphorus",
@@ -696,9 +658,6 @@
       },
       "massKg": 5.3748e+24,
       "radiusKm": 6994.242456917003,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "PH3",
@@ -707,7 +666,8 @@
         "composition": {
           "PH3": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-21-ammonia-planet",
@@ -729,9 +689,6 @@
       },
       "massKg": 5.3748e+24,
       "radiusKm": 6994.242456917003,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "NH3",
@@ -740,7 +697,8 @@
         "composition": {
           "NH3": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-22-earth-analogue",
@@ -762,9 +720,6 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 6376.015626125337,
-      "magneticField": {
-        "strengthGauss": 0.5
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -779,7 +734,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.7
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-23-earth-like",
@@ -801,9 +757,6 @@
       },
       "massKg": 1.07496e+25,
       "radiusKm": 7756.0429930053415,
-      "magneticField": {
-        "strengthGauss": 0.5
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -818,7 +771,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.4
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-24-superhabitable",
@@ -840,9 +794,6 @@
       },
       "massKg": 1.7916e+25,
       "radiusKm": 9195.80579705259,
-      "magneticField": {
-        "strengthGauss": 0.6
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -857,7 +808,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.8
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-25-forest",
@@ -879,9 +831,6 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 6376.015626125337,
-      "magneticField": {
-        "strengthGauss": 0.5
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -899,7 +848,8 @@
       "biosphere": {
         "complexity": "complex",
         "coverage": 0.8
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-26-jungle",
@@ -921,9 +871,6 @@
       },
       "massKg": 7.1664e+24,
       "radiusKm": 6775.527642344321,
-      "magneticField": {
-        "strengthGauss": 0.5
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -941,7 +888,8 @@
       "biosphere": {
         "complexity": "complex",
         "coverage": 0.8
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-27-swamp",
@@ -963,9 +911,6 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 6376.015626125337,
-      "magneticField": {
-        "strengthGauss": 0.5
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -983,7 +928,8 @@
       "biosphere": {
         "complexity": "complex",
         "coverage": 0.8
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-28-eyeball",
@@ -1005,11 +951,7 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 7244.245838885031,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
-      "tidallyLocked": true,
       "atmosphere": {
         "name": "N2",
         "main": "N2",
@@ -1021,7 +963,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.3
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-29-hot-eyeball",
@@ -1043,11 +986,7 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 7244.245838885031,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
-      "tidallyLocked": true,
       "atmosphere": {
         "name": "None",
         "main": "None",
@@ -1055,7 +994,8 @@
         "composition": {
           "None": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-30-cold-eyeball",
@@ -1077,11 +1017,8 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 7244.245838885031,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
-      "tidallyLocked": true
+      "classes": []
     },
     {
       "id": "t-31-mini-neptune",
@@ -1103,9 +1040,6 @@
       },
       "massKg": 4.1804e+25,
       "radiusKm": 16564.600000000002,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "H2",
@@ -1115,7 +1049,8 @@
           "H2": 0.8,
           "He": 0.2
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-32-sub-neptune",
@@ -1137,9 +1072,6 @@
       },
       "massKg": 3.5832e+25,
       "radiusKm": 13379.1,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "N2",
@@ -1149,7 +1081,8 @@
           "N2": 0.6,
           "CO2": 0.4
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-33-ice-giant",
@@ -1171,9 +1104,6 @@
       },
       "massKg": 9.5552e+25,
       "radiusKm": 24209.8,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "H2",
@@ -1184,7 +1114,8 @@
           "He": 0.15,
           "CH4": 0.05
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-34-super-neptune",
@@ -1206,9 +1137,6 @@
       },
       "massKg": 3.5832000000000005e+26,
       "radiusKm": 41411.5,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "H2",
@@ -1218,7 +1146,8 @@
           "H2": 0.8,
           "He": 0.2
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-35-hot-neptune",
@@ -1240,9 +1169,6 @@
       },
       "massKg": 1.1944000000000002e+26,
       "radiusKm": 25484,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "H2",
@@ -1252,7 +1178,8 @@
           "H2": 0.8,
           "He": 0.2
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-36-ultra-hot-neptune",
@@ -1274,9 +1201,6 @@
       },
       "massKg": 1.0749600000000001e+26,
       "radiusKm": 25484,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "H2",
@@ -1286,7 +1210,8 @@
           "H2": 0.8,
           "He": 0.2
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-37-ammonia-clouds-gas-giant",
@@ -1308,10 +1233,8 @@
       },
       "massKg": 1.7916e+27,
       "radiusKm": 70081,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-38-water-clouds-gas-giant",
@@ -1333,10 +1256,8 @@
       },
       "massKg": 1.4930000000000002e+27,
       "radiusKm": 70081,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-39-cloudless-gas-giant",
@@ -1358,10 +1279,8 @@
       },
       "massKg": 1.1944e+27,
       "radiusKm": 70081,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-40-alkali-metal-clouds-gas-giant",
@@ -1383,10 +1302,8 @@
       },
       "massKg": 1.7916e+27,
       "radiusKm": 76452,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-41-silicate-clouds-gas-giant",
@@ -1408,10 +1325,8 @@
       },
       "massKg": 1.7916e+27,
       "radiusKm": 76452,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-42-gas-giant",
@@ -1433,10 +1348,8 @@
       },
       "massKg": 8.958e+26,
       "radiusKm": 70081,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-43-mini-jupiter",
@@ -1458,10 +1371,8 @@
       },
       "massKg": 5.972e+26,
       "radiusKm": 50968,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-44-super-jupiter",
@@ -1483,10 +1394,8 @@
       },
       "massKg": 8.958000000000001e+27,
       "radiusKm": 82823,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-ring",
@@ -1507,7 +1416,8 @@
           "Omega_deg": 0,
           "M0_rad": 2.811
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-45-subsurface-ocean",
@@ -1529,9 +1439,6 @@
       },
       "massKg": 1.1944000000000001e+23,
       "radiusKm": 2683.618214329636,
-      "magneticField": {
-        "strengthGauss": 0
-      },
       "tags": [],
       "makeup": {
         "rock": 0.5,
@@ -1540,7 +1447,8 @@
       "hydrosphere": {
         "composition": "water",
         "coverage": 0.4
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-46-sulfur",
@@ -1562,9 +1470,6 @@
       },
       "massKg": 8.958e+22,
       "radiusKm": 1783.88,
-      "magneticField": {
-        "strengthGauss": 0
-      },
       "tags": [],
       "atmosphere": {
         "name": "SO2",
@@ -1573,7 +1478,8 @@
         "composition": {
           "SO2": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-47-puffy",
@@ -1595,10 +1501,8 @@
       },
       "massKg": 3.5832000000000005e+26,
       "radiusKm": 63710,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-48-super-puff",
@@ -1620,10 +1524,8 @@
       },
       "massKg": 4.7776e+25,
       "radiusKm": 50968,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-49-helium",
@@ -1645,9 +1547,6 @@
       },
       "massKg": 3.5832000000000005e+26,
       "radiusKm": 31855,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "atmosphere": {
         "name": "He",
@@ -1656,7 +1555,8 @@
         "composition": {
           "He": 1
         }
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-50-chthonian",
@@ -1678,10 +1578,8 @@
       },
       "massKg": 1.1944000000000002e+26,
       "radiusKm": 16812.405296857298,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-51-dwarf-planet",
@@ -1703,10 +1601,8 @@
       },
       "massKg": 2.9860000000000003e+22,
       "radiusKm": 955.65,
-      "magneticField": {
-        "strengthGauss": 0
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-52-mesoplanet",
@@ -1728,10 +1624,8 @@
       },
       "massKg": 1.7916e+23,
       "radiusKm": 1911.3,
-      "magneticField": {
-        "strengthGauss": 0
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-53-planetesimal",
@@ -1753,10 +1647,8 @@
       },
       "massKg": 5.972e+21,
       "radiusKm": 637.1,
-      "magneticField": {
-        "strengthGauss": 0
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-54-sub-brown-dwarf",
@@ -1778,10 +1670,8 @@
       },
       "massKg": 2.0902e+28,
       "radiusKm": 70081,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-55-brown-dwarf",
@@ -1803,10 +1693,8 @@
       },
       "massKg": 3.5832000000000004e+28,
       "radiusKm": 76452,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-56-ultra-cool-dwarf",
@@ -1828,10 +1716,8 @@
       },
       "massKg": 5.3748000000000006e+28,
       "radiusKm": 82823,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
-      "tags": []
+      "tags": [],
+      "classes": []
     },
     {
       "id": "t-57-silicate",
@@ -1853,15 +1739,13 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 7332.774794872706,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "rotation_period_hours": 1.5,
       "makeup": {
         "rock": 0.85,
         "metal": 0.15
-      }
+      },
+      "classes": []
     },
     {
       "id": "t-58-silicate",
@@ -1883,15 +1767,13 @@
       },
       "massKg": 5.972e+24,
       "radiusKm": 7332.774794872706,
-      "magneticField": {
-        "strengthGauss": 0.3
-      },
       "tags": [],
       "rotation_period_hours": 4,
       "makeup": {
         "rock": 0.85,
         "metal": 0.15
-      }
+      },
+      "classes": []
     }
   ],
   "rulePackId": "starter-sf",

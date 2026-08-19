@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.851-beta - 18th Aug 2026
+
+* **Saved files stopped carrying physics that is thrown away the moment you load them.** Sixteen derived fields had crept back in over the last few months, so every save and every bundled example shipped figures nobody re-reads - and anyone opening one of those files to check something read a number from an older build and believed it. Files are a third to a half smaller: the bundled Sol Expanse went 84 KB to 49 KB, Alpha Centauri 68 to 33.
+* Nothing you see changes. Every world classifies exactly as before, and the physics is identical to the digit - what changed is what gets WRITTEN down.
+* **Undo now names what you did more precisely**, because it works out the step by looking at what actually changed and there is far less noise to look through.
+
 ## v2.1.850-beta - 19th Aug 2026
 
 - A playing clock no longer re-broadcasts your whole campaign. Leaving time running rebuilt and

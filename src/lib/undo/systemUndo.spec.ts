@@ -143,10 +143,11 @@ describe('systemUndo - naming the step', () => {
   it('names the action in the status the pill reads', () => {
     commitEdit(() => { bodyNamed('Earth').massKg! *= 1.5; });
     vi.advanceTimersByTime(300);              // the action closes, and THAT is when it is named
-    // "Edit to Earth" rather than "Mass of Earth": one mass drag also moves eight fields on Earth
-    // that the processor writes but `DERIVED_FIELDS` does not list, so they survive the strip and
-    // look authored. Reported as a finding; the label sharpens for free when that is fixed.
-    expect(status().undoLabel).toBe('Edit to Earth');
+    // SHARPENED BY B82, exactly as the note here predicted. This used to read "Edit to Earth",
+    // because one mass drag also moved eight derived fields that survived the strip and so looked
+    // authored. Those are stripped now, and the label says what the GM actually did. `tags` is
+    // still in it: a mass change legitimately moves AUTHORED-surviving tags on Earth.
+    expect(status().undoLabel).toBe('Mass and tags of Earth');
     expect(status().redoLabel).toBe('');
   });
 
@@ -155,7 +156,7 @@ describe('systemUndo - naming the step', () => {
     vi.advanceTimersByTime(300);
     undo();
     vi.advanceTimersByTime(300);
-    expect(status().redoLabel).toBe('Edit to Earth');
+    expect(status().redoLabel).toBe('Mass and tags of Earth');
     expect(status().undoLabel).toBe('');
   });
 
@@ -167,7 +168,7 @@ describe('systemUndo - naming the step', () => {
     }
     vi.advanceTimersByTime(300);
     expect(status().undoDepth).toBe(1);
-    expect(status().undoLabel).toBe('Edit to Earth');
+    expect(status().undoLabel).toBe('Mass and tags of Earth');
   });
 
   it('names a field edit with no physical knock-on EXACTLY', () => {

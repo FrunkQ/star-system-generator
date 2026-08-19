@@ -1663,6 +1663,23 @@ who READS X in the running app. If the answer is "an accessor that derives X whe
 "nobody, the load path deletes it first", then what you measured is not what the app sees and the
 conclusion is wrong — not approximately, but backwards.
 
+AMENDED BY B82 (v2.1.851): STEP (1) WAS UNSAFE IN THE OTHER DIRECTION TOO. `DERIVED_FIELDS` had
+drifted eight releases behind the engine, so "is it in the strip list?" answered NO for sixteen
+fields the processor writes — a reader checking the list would have concluded the stored value was
+authored and trusted it. Measured, not read: `orbitalRadiation`, `irradiationDose`, `volatiles`,
+`surfaceSpectrum`, `vegetation`, `beltInnerEdgeRadii`, `auroraEmitters`, `flareActivity`, the three
+`resonance*`, `starTidallyLocked`, `orbitalStability(+Details)`, `magneticField` and `tidallyLocked`,
+plus the whole `hazard/*` tag namespace. All now stripped or declared. **The list is no longer the
+authority — `derivedFieldDrift.spec.ts` is.** It diffs a body's key set across `process()`, both
+added keys AND overwritten ones, and fails on anything neither stripped nor declared in
+`NOT_STRIPPED` with a reason. So step (1) is now: read that test's two lists, not the strip list
+alone, and if a field is in neither the test is already red.
+AND THE CONVERSE BIT: three fields are derived for MOST bodies and authored for some, which no flat
+list can express — a star's `magneticField` (never re-derived, so stripping it zeroes every star),
+a GM's manual field or manual tidal lock, and `rotation_period_hours`, which the engine rewrites for
+a locked body but which is INPUT for a spin-orbit resonance. Stripping that last one cost Mercury
+its real 1407.6 h day and reclassified it `planet/terrestrial` -> `planet/hot-eyeball`. B82
+recommended stripping it; the measurement said no.
 THE TEST, in order: (1) does the load path STRIP this field (`DERIVED_FIELDS` in `importFixup.ts`)?
 (2) is there an ACCESSOR — `makeupFractions(body)`, not `body.makeup` — that derives it when absent?
 (3) only if both are no, is the stored value the answer.

@@ -69,9 +69,7 @@
         }
       },
       "description": "A classic Cepheid variable Supergiant. It is 37 times wider than the Sun and 1,260 times brighter. It pulses with a regular beat.",
-      "isNameUserDefined": true,
-      "calculatedGravity_ms2": 10.6,
-      "orbital_period_days": 10811
+      "isNameUserDefined": true
     },
     {
       "id": "polaris-ab",
@@ -110,9 +108,7 @@
         }
       },
       "description": "A main-sequence dwarf star trapped in a highly elliptical 30-year orbit around the Supergiant. At closest approach, it dives within 2 AU of the primary.",
-      "isNameUserDefined": true,
-      "calculatedGravity_ms2": 206,
-      "orbital_period_days": 10811
+      "isNameUserDefined": true
     },
     {
       "id": "polaris-b",
@@ -147,9 +143,7 @@
       "tags": [],
       "areas": [],
       "description": "A distant companion star observable with small telescopes. It orbits the inner pair so slowly that it takes thousands of years to complete one revolution.",
-      "isNameUserDefined": true,
-      "calculatedGravity_ms2": 200,
-      "orbital_period_days": 1500000
+      "isNameUserDefined": true
     },
     {
       "id": "polaris-inner-barycenter-outer",
