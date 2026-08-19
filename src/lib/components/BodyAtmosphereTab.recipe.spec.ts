@@ -69,27 +69,47 @@ describe('G7 — importing a recipe on the atmosphere tab', () => {
     expect(b.atmosphere?.main).toBe('H2'); // the dominant gas, not the first key
   });
 
-  it('SAYS the temperature it cannot set, and which way to move the world', async () => {
-    // The whole point of the split recipe: temperature is derived from star and orbit, so the import
-    // reports the condition instead of pretending to apply it. 210 K world, 165 K recipe.
-    const { container } = mount(body({ temperatureK: 210 } as Partial<CelestialBody>));
+  // ADVICE, NOT A GUARD. The owner's correction, and it is the design: importing a 700 K recipe onto a
+  // 112 K world is not a mistake — the giant simply shows the decks its temperature allows. He moved
+  // one in and it 'became super intense', so the useful thing to say is WHERE the colours are brightest.
+  const sol = { id: 'sol', name: 'Sol', kind: 'star', roleHint: 'star',
+    temperatureK: 5778, radiusKm: 695700 } as unknown as CelestialBody;
+  // RENDER-S17: producer shape. An orbit is {hostId, elements:Kepler} and a node carries parentId —
+  // with anything else the distance walk finds nothing, reads 0, and the advice loses its best half.
+  const giant = (au: number, eqK: number) => ({
+    id: 'g1', name: 'Sol XVII', kind: 'body', roleHint: 'planet', parentId: 'sol',
+    temperatureK: eqK, equilibriumTempK: eqK, magneticField: { strengthGauss: 0 }, tags: [],
+    orbit: { hostId: 'sol', t0: 0, hostMu: 1.327e20,
+      elements: { a_AU: au, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } }
+  } as unknown as CelestialBody);
+
+  const importInto = async (b: CelestialBody) => {
+    const system = { id: 's', name: 'Sol', nodes: [sol, b] } as unknown as System;
+    const { container } = render(BodyAtmosphereTab, { props: { body: b, rulePack: pack(), system } });
     const ta = await openPanel(container);
     await fireEvent.input(ta, { target: { value: RECIPE } });
     await fireEvent.click(importBtn(container));
-    const msg = container.querySelector('.recipe-msg')?.textContent ?? '';
-    expect(msg).toMatch(/165 K/);
-    expect(msg).toMatch(/210 K/);
-    expect(msg).toMatch(/further out/);
+    return container.querySelector('.recipe-msg') as HTMLElement;
+  };
+
+  it('RECOMMENDS A DISTANCE where the colours would be brightest', async () => {
+    const el = await importInto(giant(22.656, 40));
+    expect(el.textContent).toMatch(/brightest/i);
+    expect(el.textContent).toContain('165 K');   // the label the gallery card showed
+    expect(el.textContent).toContain('40 K');     // the world's own equilibrium, quoted back
+    // The actionable half: a distance, from a RATIO on the engine's own equilibrium temperature
+    // (T_eq follows the inverse square), never a second copy of the formula.
+    expect(el.textContent).toMatch(/roughly [0-9.]+ AU/);
+    // It must NOT read as a failure. The import worked; the world is simply somewhere else.
+    expect(el.classList.contains('warn')).toBe(false);
+    expect(el.textContent).toMatch(/still work where it is/i);
   });
 
-  it('says so when the world already matches, rather than warning about nothing', async () => {
-    const { container } = mount(body({ temperatureK: 167 } as Partial<CelestialBody>));
-    const ta = await openPanel(container);
-    await fireEvent.input(ta, { target: { value: RECIPE } });
-    await fireEvent.click(importBtn(container));
-    expect(container.querySelector('.recipe-msg')?.textContent ?? '').toMatch(/close enough/i);
+  it('says nothing to move when the world is already about right', async () => {
+    const el = await importInto(giant(1.2, 110));
+    expect(el.textContent).toMatch(/already about where/i);
+    expect(el.textContent).not.toMatch(/bring it to/i);
   });
-
   it('reports a bad paste instead of failing silently', async () => {
     const { container } = mount(body());
     const ta = await openPanel(container);

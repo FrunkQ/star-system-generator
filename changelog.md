@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.820-beta - 19th Aug 2026
+
+- Importing a gas-giant recipe now tells you WHERE those colours are brightest, and it is advice rather than a warning. Put a 700 K recipe on a cold world and it still works - you get the decks that world's temperature allows - so instead of objecting, it says which orbit would light it up: "these colours are brightest near 700 K; this world runs about 112 K where it is - bring it to roughly 0.6 AU and they come alive." Move it in and the sodium and potassium do exactly that.
+
 ## v2.1.817-beta - 19th Aug 2026
 
 * A57 follow-up - the prompt still fired on v2.1.816 and came back ~5 s after OK, on a FRESHLY minted id (owner's network log: one WebSocket per new id, 101, then rejected). ROOT CAUSE: `initPeerHost` is async and awaits the lazy PeerJS import BEFORE `this.peer` is assigned, so the same-tick callers on every load (the route's reactive enableRemote, then onMount's and SystemView's initSender) all saw "no peer" and each opened a socket for the SAME id - the broker refused the later ones as unavailable-id. A brand-new id collided with ITSELF on every load, which is why it was consistent rather than a timeout-bound ghost. Fix: one in-flight registration per id (`hostInFlight`); an id change also cancels the old id's retry ladder; a late collision for a superseded id never prompts. Recorded in the ring as `host-skip in-flight` / `stale-id-ignored`. Spec: a faithful fake broker (a pending socket holds the id) and two regression cases (three same-tick callers make ONE registration and never prompt; OK mid-ladder never re-prompts).

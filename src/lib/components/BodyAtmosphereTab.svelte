@@ -8,6 +8,8 @@
   import { formatGauss } from '$lib/physics/magnetism';
   import { starmapStore } from '$lib/starmapStore';
   import { parseGiantRecipe, recipeToPreset, uniquePresetName } from '$lib/catalogue/giantRecipe';
+  import { calculateDistanceToStar } from '$lib/physics/temperature';
+  import { isLuminousSource } from '$lib/physics/substellar';
 
   const dispatch = createEventDispatcher();
 
@@ -33,9 +35,15 @@
   let recipeText = '';
   let recipeError: string | null = null;
   let recipeNote: string | null = null;
+  // A mismatch is the one thing the import cannot fix for you, so it must not look like the
+  // confirmation. Reported live: a 700 K recipe went onto a 112 K world and the warning was there
+  // but read as a footnote — quiet grey text in the edit panel, while the GM was looking at the
+  // render. Correct message, invisible placement.
+  let recipeWarn = false;
+  let recipeMsgEl: HTMLElement | null = null;
 
   function importRecipe() {
-    recipeError = null; recipeNote = null;
+    recipeError = null; recipeNote = null; recipeWarn = false;
     const parsed = parseGiantRecipe(recipeText);
     if (!parsed.ok) { recipeError = parsed.error; return; }
     const recipe = parsed.recipe;
@@ -64,19 +72,54 @@
     selectedAtmosphereName = name;
     applyChanges();
 
-    const want = recipe.requires.temperatureK;
-    const have = body.temperatureK;
+    // WHERE THE COLOURS ARE BRIGHTEST — advice, never a guard. The import always succeeds; a giant
+    // simply shows the decks its temperature allows, which is the model working rather than failing.
+    // The owner moved a 700 K recipe from 22.7 AU in to 0.12 AU and it 'became super intense', which
+    // is the whole point: say where that happens instead of telling them what will not work.
+    //
+    // THE SUGGESTED DISTANCE IS A RATIO ON THE ENGINE'S OWN NUMBER, not a second formula. Equilibrium
+    // temperature follows the inverse square, so d_target = d_now x (T_now / T_target)^2 anchored on
+    // whatever `equilibriumTempK` the processor committed. Nothing here can drift from the physics
+    // because nothing here recomputes it. Surface temperature is deliberately NOT used: greenhouse and
+    // internal heat sit on top of it and do not scale with distance.
+    // TWO DIFFERENT NUMBERS, and conflating them showed the wrong one. `temperatureK` is what the
+    // gallery card LABELS the giant ('165 K - Jupiter-like'), so it is what a GM recognises and what
+    // this quotes. `equilibriumTempK` is what DISTANCE actually sets, so it is what the ratio uses.
+    // They are equal on the hot-Jupiter rows and far apart on the cool ones.
+    const want = recipe.requires.temperatureK || recipe.requires.equilibriumTempK;
+    const wantEq = recipe.requires.equilibriumTempK || recipe.requires.temperatureK;
+    const haveEq = (body as any).equilibriumTempK as number | undefined;
+    const haveSurface = body.temperatureK;
+    let suggestAU: number | null = null;
+    try {
+      const nodes = (system?.nodes ?? []) as any[];
+      const star = nodes.find((n) => isLuminousSource(n));
+      const dNow = star ? calculateDistanceToStar(body as any, star, nodes as any) : 0;
+      // Fall back to the orbit's own semi-major axis when the walk finds nothing (a body under a
+      // barycentre, a half-built system). Advice that silently loses its most useful half is worse
+      // than advice with a stated assumption — and for a planet orbiting its star these agree.
+      const dAU = dNow > 0 ? dNow : ((body as any).orbit?.elements?.a_AU ?? 0);
+      if (dAU > 0 && haveEq && haveEq > 0 && wantEq > 0) suggestAU = dAU * Math.pow(haveEq / wantEq, 2);
+    } catch { /* advice is optional; never let it break an import that worked */ }
+
+    const fmtAU = (au: number) => au >= 10 ? au.toFixed(0) : au >= 1 ? au.toFixed(1) : au.toFixed(3).replace(/0+$/, '');
+    const saved = `Saved as "${name}" and applied.`;
     if (!(want > 0)) {
-      recipeNote = `Imported as "${name}" and saved to this campaign's presets.`;
-    } else if (!(have > 0)) {
-      recipeNote = `Imported as "${name}". That colour needs about ${Math.round(want)} K — this world has no temperature yet.`;
-    } else if (Math.abs(have - want) <= Math.max(5, want * 0.05)) {
-      recipeNote = `Imported as "${name}". This world is at ${Math.round(have)} K and the recipe wants about ${Math.round(want)} K — close enough for the same cloud decks.`;
+      recipeNote = saved;
+    } else if (!(haveSurface && haveSurface > 0) && !haveEq) {
+      recipeNote = `${saved} These colours are strongest near ${Math.round(want)} K — give ${body.name} a star and an orbit to see where that falls.`;
+    } else if (haveEq && Math.abs(haveEq - wantEq) <= Math.max(5, wantEq * 0.08)) {
+      recipeNote = `${saved} ${body.name} is already about where these colours are brightest (near ${Math.round(want)} K).`;
+    } else if (suggestAU) {
+      recipeNote = `${saved} These colours are brightest near ${Math.round(want)} K. ${body.name} runs about ${Math.round(haveEq!)} K where it is — bring it to roughly ${fmtAU(suggestAU)} AU and they come alive. It will still work where it is; different decks condense, so you get a paler version.`;
     } else {
-      recipeNote = `Imported as "${name}". The chemistry is set, but that colour needs about ${Math.round(want)} K and this world sits at ${Math.round(have)} K — temperature follows the star and the orbit, so move it ${have > want ? 'further out' : 'closer in'} to match. Different decks will condense until then.`;
+      recipeNote = `${saved} These colours are brightest near ${Math.round(want)} K${haveEq ? `, and ${body.name} runs about ${Math.round(haveEq)} K where it is` : ''}.`;
     }
+    recipeWarn = false; // advice, not a warning — the import worked
     recipeText = '';
     showRecipe = false;
+    // Bring it to the eye rather than hoping. Cheap, and it is the only moment this matters.
+    setTimeout(() => recipeMsgEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
   }
 
   // Reactive Gas Physics Data
@@ -477,7 +520,7 @@
       </div>
     {/if}
     {#if recipeError}<p class="recipe-msg bad">{recipeError}</p>{/if}
-    {#if recipeNote}<p class="recipe-msg">{recipeNote}</p>{/if}
+    {#if recipeNote}<p class="recipe-msg" class:warn={recipeWarn} bind:this={recipeMsgEl}>{recipeNote}</p>{/if}
   </div>
 
   {#if body.atmosphere}
@@ -914,4 +957,11 @@
   .recipe-help { font-size: 0.75em; color: var(--text-faint, #8a8f9a); margin: 0 0 4px; line-height: 1.4; }
   .recipe-msg { font-size: 0.75em; color: var(--text-muted, #cfcfcf); margin: 6px 0 0; line-height: 1.45; }
   .recipe-msg.bad { color: #e08a7a; }
+  /* The mismatch case. Not an error — the import worked — but the GM must not walk away thinking
+     the world will look like the gallery, so it is a callout rather than a footnote. */
+  .recipe-msg.warn {
+    color: #f0c674; background: rgba(240, 198, 116, 0.08);
+    border: 1px solid rgba(240, 198, 116, 0.35); border-left-width: 3px;
+    border-radius: 4px; padding: 7px 9px; font-size: 0.78em;
+  }
 </style>
