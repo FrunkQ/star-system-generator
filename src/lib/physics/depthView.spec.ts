@@ -121,6 +121,28 @@ describe('going down into a giant', () => {
     expect(sum(p.at(0.01).light)).toBeGreaterThan(sum(p.at(0.9).light) * 50);
   });
 
+  it('reports how far below the cloud tops you are, in metres a balloonist could quote', () => {
+    const p = probeFor('Jupiter');
+    expect(p.at(0.01).belowCloudTopM).toBeLessThan(0);             // above the ammonia tops
+    expect(p.at(1).belowCloudTopM).toBeGreaterThan(10_000);        // tens of km under them
+    expect(p.at(100).belowCloudTopM).toBeGreaterThan(p.at(1).belowCloudTopM);
+  });
+
+  it('lets a HOT giant glow by its own heat, and keeps a cold one dark', () => {
+    // A close-in giant runs to incandescence a few bar down the dry adiabat. A scene lit by starlight
+    // alone painted a dark room where reality is a furnace — which is exactly the brown-dwarf lesson:
+    // a hot gas is a light source, whatever it is filed as. Jupiter at 159 K glows not at all.
+    const hot = { ...find(root, 'Jupiter'), temperatureK: 831, equilibriumTempK: 700,
+      atmosphere: { pressure_bar: 1, molarMassKg: 0.00226, composition: { H2: 0.86, He: 0.13, Na: 0.002, K: 0.002 } } };
+    const r = deriveSurfaceSpectrum(hot as any, { starTempK: 5778, luminositySolar: 1, distanceAU: 0.72 }, pack)!;
+    const ph = depthProbe(hot as any, r.curves.topOfAtmosphere, pack)!;
+    expect(ph.at(4).glowShare).toBeGreaterThan(0.9);
+    expect(ph.at(4).glowHex).toBeTruthy();
+    const pc = probeFor('Jupiter');
+    expect(pc.at(4).glowShare).toBe(0);
+    expect(pc.at(4).glowHex).toBeNull();
+  });
+
   it('says a pressure the way a GM would', () => {
     expect(pressureWords(1)).toBe('1.0 bar');
     expect(pressureWords(0.555)).toBe('555 mbar');

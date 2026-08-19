@@ -37,7 +37,9 @@ import { scaleHeightM } from './visibility';
 export const GIANT_DEPTH_LIMIT_BAR = 100;
 import { liquidDef } from './liquids';
 import { makeupFractions } from './makeup';
-import { GRID_NM, type Spectrum } from './spectrum';
+import { GRID_NM, blackbodySpectrum, type Spectrum } from './spectrum';
+import { bdGlowColour } from '$lib/rendering/apparentColor';
+import { SOLAR_TEFF_K } from './luminosity';
 
 export interface DepthLevel {
 	/** Pressure at this level, bar. */
@@ -62,6 +64,15 @@ export interface DepthLevel {
 	extinctionPerM: number;
 	/** How far you can see here, by the same contrast rule the surface visibility uses. */
 	seeM: number;
+	/** Metres BELOW the top of the highest cloud deck — negative means above it. Computed from the
+	 *  scale height, so it is the same hydrostatic air the temperature came from. */
+	belowCloudTopM: number;
+	/** 0..1, how much of the light here is the AIR'S OWN GLOW rather than starlight. Zero on a cold
+	 *  giant at any depth; rises past about 800 K and dominates by 1500 K, where the air is a furnace. */
+	glowShare: number;
+	/** The colour of that glow — the substellar ramp, because it is the same physics: a hot gas
+	 *  emitting by temperature. */
+	glowHex: string | null;
 }
 
 export interface DepthProbe {
@@ -149,7 +160,25 @@ export function depthProbe(
 		// curves away in a few hundred kilometres; that is the number a GM can actually use.
 		const horizon = Math.sqrt(2 * Math.max(1, (body.radiusKm ?? 6371) * 1000) * 100);  // 100 m aloft
 		const seeM = Math.min(horizon, extinctionPerM > 0 ? 3.912 / extinctionPerM : Infinity);
-		return { pBar, tempK, light, transmission, floor, ceiling, inCloud, floorHex, extinctionPerM, seeM };
+		// HOW FAR DOWN. Hydrostatic: z = H ln(P_top / P), with the top of the highest deck as zero, so
+		// the figure reads the way a balloonist would say it — so many kilometres below the cloud tops.
+		const topDeckBar = decks.length ? Math.min(...decks.map((d) => d.baseBar as number)) : GIANT_REFERENCE_BAR;
+		const belowCloudTopM = h > 0 ? h * Math.log(pBar / topDeckBar) : 0;
+		// THE AIR'S OWN GLOW. Below an opaque deck starlight is gone, and on a cold giant that is the
+		// end of it — but on a hot one the adiabat runs to incandescence within a few bar, and a dark
+		// room is the wrong picture of a furnace. The share is the local blackbody's visible output
+		// against the starlight that reached the top of the air: zero at Jupiter's 165 K, rising past
+		// ~800 K, dominant by ~1500 K. The colour is the substellar ramp, which is the same physics.
+		const glow = blackbodySpectrum(tempK, 1);
+		const visSum = (sp: Spectrum) => { let a = 0; for (let i = 0; i < GRID_NM.length; i++) if (GRID_NM[i] >= 380 && GRID_NM[i] <= 700) a += sp[i]; return a; };
+		const starVis = visSum(topLight), glowVis = visSum(glow);
+		// Scale the blackbody so a 5778 K surface would match the star's own top-of-air light; that
+		// makes the ratio meaningful without an absolute radiometric calibration.
+		const refVis = visSum(blackbodySpectrum(SOLAR_TEFF_K, 1));
+		const glowRel = refVis > 0 && starVis > 0 ? (glowVis / refVis) : 0;
+		const glowShare = tempK < 600 ? 0 : Math.max(0, Math.min(1, glowRel / (glowRel + transmission + 1e-12)));
+		const glowHex = glowShare > 0.001 ? bdGlowColour(tempK) : null;
+		return { pBar, tempK, light, transmission, floor, ceiling, inCloud, floorHex, extinctionPerM, seeM, belowCloudTopM, glowShare, glowHex };
 	};
 
 	return {

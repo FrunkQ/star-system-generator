@@ -165,11 +165,33 @@ import { makeupFractions } from '$lib/physics/makeup';
   const probe = $derived(isGiant && topLight ? depthProbe((body ?? demoBody) as any, topLight, pack) : null);
   // The slider position, as a LOG fraction between the top and bottom of the probe — pressure runs
   // over six decades and a linear slider would spend all of it in the top millibar.
-  let depthFrac = $state(0.35);
+  // The slider is a LOG of pressure, but not a uniform one. The air spans eight decades and the
+  // part worth looking at — the decks, the anchor, the first few bar under them — is a narrow band
+  // near 1 bar. A uniform log spent most of its travel in the top microbars where nothing changes,
+  // which is what made it feel like all the interesting things were jammed into the last centimetre.
+  // So the travel is split: the first third covers the top down to 10 mbar, the middle third 10 mbar
+  // to 10 bar, the last third 10 bar to the limit. DEFAULT IS THE 1 BAR ANCHOR, the reference level
+  // every stored figure belongs to, so the slider opens on the number the panel is already quoting.
+  const SPLITS = [1e-2, 10];          // bar, the decade edges between the three thirds
+  const fracToBar = (f: number, top: number, bottom: number): number => {
+    const a = Math.max(top, Math.min(bottom, SPLITS[0])), b = Math.max(top, Math.min(bottom, SPLITS[1]));
+    const seg = (x: number, lo: number, hi: number) => Math.exp(Math.log(lo) + (Math.log(hi) - Math.log(lo)) * x);
+    if (f <= 1 / 3) return seg(f * 3, top, a);
+    if (f <= 2 / 3) return seg((f - 1 / 3) * 3, a, b);
+    return seg((f - 2 / 3) * 3, b, bottom);
+  };
+  const barToFrac = (p: number, top: number, bottom: number): number => {
+    const a = Math.max(top, Math.min(bottom, SPLITS[0])), b = Math.max(top, Math.min(bottom, SPLITS[1]));
+    const inv = (x: number, lo: number, hi: number) => hi > lo ? (Math.log(x) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) : 0;
+    if (p <= a) return inv(p, top, a) / 3;
+    if (p <= b) return 1 / 3 + inv(p, a, b) / 3;
+    return 2 / 3 + inv(p, b, bottom) / 3;
+  };
+  let depthFrac = $state(-1);          // -1 = not yet placed; first probe sets it to the anchor
+  $effect(() => { if (probe && depthFrac < 0) depthFrac = barToFrac(1, probe.topBar, probe.bottomBar); });
   const depthBar = $derived.by(() => {
     if (!probe) return 1;
-    const lo = Math.log(probe.topBar), hi = Math.log(probe.bottomBar);
-    return Math.exp(lo + (hi - lo) * depthFrac);
+    return fracToBar(Math.max(0, depthFrac), probe.topBar, probe.bottomBar);
   });
   const depthLevel = $derived(probe ? probe.at(depthBar) : null);
   const cloudscape = $derived(depthLevel ? cloudscapeFor(depthLevel, undefined, trueLevel) : null);
@@ -405,7 +427,8 @@ import { makeupFractions } from '$lib/physics/makeup';
       <!-- DEPTH. A balloon floats where you tell it to. Log-scaled, because the air spans six
            decades of pressure and a linear slider would spend all of them in the top millibar. -->
       <label class="depth">
-        <span>Float at <b>{pressureWords(depthBar)}</b>{#if depthLevel}, {Math.round(depthLevel.tempK)}&nbsp;K{/if}
+        <span>Float at <b>{pressureWords(depthBar)}</b>{#if depthLevel}, {Math.round(depthLevel.tempK)}&nbsp;K,
+          <b>{depthLevel.belowCloudTopM >= 0 ? distanceWords(depthLevel.belowCloudTopM) + ' below' : distanceWords(-depthLevel.belowCloudTopM) + ' above'}</b> the cloud tops{/if}
           {#if cloudscape}&mdash; <em>{cloudscape.note}</em>{/if}</span>
         <input type="range" min="0" max="1" step="0.005" bind:value={depthFrac} />
         <span class="floor" title={probe.floorReason}>

@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.836-beta - 18th Aug 2026
+
+- FIXED: a hot gas giant's balloon view painted a dark room where reality is a furnace. The dry adiabat takes a close-in giant to incandescence a few bar down — 831 K at its 1 bar level, 1,600 K by 10 bar — and a scene lit by starlight alone had nothing to show once the decks blocked the star. That is the brown-dwarf lesson again: a hot gas is a light source, whatever it is filed as. The air's own glow is now painted at the local temperature, dull red through orange to yellow-white, and it is not dimmed by "midday brightness" because it is not daylight. Jupiter, at 159 K, still glows not at all.
+- The depth slider opens at the 1 bar reference level, the number every stored figure belongs to, rather than somewhere in the stratosphere.
+- The slider's travel is re-weighted. A uniform log of pressure spent most of its length in the top microbars where nothing changes and crammed the decks, the anchor and the first bars under them into the last centimetre. The middle third now runs 10 mbar to 10 bar, which is where everything worth seeing lives.
+- NEW: how far below the cloud tops you are, in metres or kilometres — from the scale height, the same hydrostatic air the temperature came from. Jupiter's 1 bar is 22 km under its ammonia tops; 35 bar is 109 km down; 9 mbar is 93 km above them.
+- On the colour looking identical from the top down to a few bar: it was, and correctly — on that world both decks sit above 1 bar, so everything from 1 to 100 bar is "under the sodium deck" and lit the same way. The jump you saw was the slider entering a deck. With the glow in, that band now warms visibly with depth instead of holding one shade.
+
 ## v2.1.834-beta - 19th Aug 2026
 
 - Fixed: the "gas-giant gallery" link from a body's Atmosphere tab landed at the top of the page on a first visit and only jumped to the right section if you refreshed. The section it points at is built from two files fetched after the page opens, so the browser resolved the link before the section existed; it now jumps once the gallery is actually there.

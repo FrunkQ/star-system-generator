@@ -57,17 +57,30 @@ export function cloudscapeFor(level: DepthLevel, fallbackFloor = '#c9b08a', true
 	const mat = hexToRgb(level.floorHex ?? fallbackFloor);
 	const lit = hexToRgb(litHex);
 	const floorLit = rgbToHex(mix(mat, lit, 0.25));
-	// At true level, dim in linear light on the same curve the ground scene uses. A small floor stays,
-	// because the deck scatters the little that remains and a balloon carries lamps — it is not a void.
+	// THE AIR'S OWN GLOW, where there is any. On a hot giant the adiabat runs to incandescence a few
+	// bar down, and a scene lit by starlight alone paints a dark room where reality is a furnace. The
+	// probe says how much of the light here is emission; that share is painted in the glow colour and
+	// is NOT dimmed by "midday brightness", because it is not daylight — it is the walls glowing.
+	const g = level.glowShare;
+	const glowRgb = level.glowHex ? hexToRgb(level.glowHex) : null;
+	// At true level, dim the STARLIT part in linear light on the same curve the ground scene uses. A
+	// small floor stays, because the deck scatters the little that remains and a balloon carries
+	// lamps — it is not a void.
 	const dimK = trueLevel ? Math.max(0.02, Math.pow(t, 0.6)) : 1;
-	const floorHex = dimHex(floorLit, dimK);
-	const skyHex = dimHex(rgbToHex(mix(lit, [255, 255, 255], 0.35)), trueLevel ? Math.max(0.03, Math.pow(t, 0.8)) : 1);
+	const starFloor = hexToRgb(dimHex(floorLit, dimK));
+	const starSky = hexToRgb(dimHex(rgbToHex(mix(lit, [255, 255, 255], 0.35)), trueLevel ? Math.max(0.03, Math.pow(t, 0.8)) : 1));
+	// Blend toward the glow by its share. Emission lights the floor and the air alike — there is no
+	// "above" to a furnace — so sky and floor converge on it.
+	const floorHex = glowRgb ? rgbToHex(mix(starFloor, glowRgb, g)) : rgbToHex(starFloor);
+	const skyHex = glowRgb ? rgbToHex(mix(starSky, mix(glowRgb, [0, 0, 0], 0.35), g)) : rgbToHex(starSky);
 	const midHex = dimHex(rgbToHex(mix(hexToRgb(floorHex), hexToRgb(skyHex), 0.45)), 0.7);
 	const immersion = level.inCloud ? 1 : 0;
 	const inside = level.floor?.species ?? 'cloud';
 	const above = level.ceiling?.species ?? 'upper';
 	const note = level.inCloud
 		? `Inside the ${inside} deck: a featureless grey room, visibility an arm's length.`
+		: g > 0.5
+			? `${Math.round(level.tempK)} K — the air itself glows ${level.tempK > 1400 ? 'yellow-white' : level.tempK > 1000 ? 'orange' : 'dull red'}. A furnace, lit from every side.`
 		: t < 0.01
 			? `Under the ${above} deck, starlight is gone — what you see is the deck's own faint glow and your own lamps.`
 			: t < 0.5
