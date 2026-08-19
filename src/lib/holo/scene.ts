@@ -34,10 +34,11 @@ import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
-import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
+import { isLattice, type MapOverlay } from '$lib/map/mapOverlay';
 import { gridLevels, gridLevelOpacity, GRID_LEVEL_PEAK, niceSeries, formatNice } from '$lib/map/niceInterval';
 import { gridFadeWindow, GRID_FADE_OFF } from '$lib/map/gridFade';
 import { buildLattice, ringEdges, spokeEdges, type GridEdge } from '$lib/map/gridGeometry';
+import { latticeFor } from '$lib/map/latticeGeometry';
 import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
@@ -1891,32 +1892,47 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   /** Lines at whole multiples of `stepAu`, out to `spanAu`, clipped to the ground disc. */
-  function metricLines(stepAu: number, spanAu: number): GridEdge[] {
+  /**
+   * THE SYSTEM LATTICE — the SAME generator the starmap and the GM's snap grid use (`latticeFor`), so
+   * square and every hex variant come from one place and a cell means the same thing on every view.
+   *
+   * The one thing that genuinely differs at system scale is that this map is NOT LINEAR: `compressRadius`
+   * blends a linear map with a log one, and at the shipped 0.8 the outer system is squashed hard. So the
+   * lattice is generated in AU and every vertex is then put through the SAME radial map the bodies get.
+   * A cell therefore spans its stated number of AU against the orrery drawn inside it, which is the only
+   * reading of "1 AU hexes" that is any use at a table. It also means the cells visibly compress outward
+   * whenever compression is on — that is the map being honest, not the grid being wrong, and at
+   * compression 0 (linear, honest distances) the lattice is perfectly regular.
+   */
+  function latticeEdgesAu(cellAu: number, spanAu: number): GridEdge[] {
+    if (!(cellAu > 0) || !(spanAu > 0)) return [];
+    // Segmented in AU. Three separate reasons, any one of which is sufficient: a per-vertex fade judges
+    // a full-width run by its far ends (A37), a curtain is built per edge, and a straight edge across a
+    // NONLINEAR map cuts the corner. Bounded by the cell so hexes are unaffected (their edges are
+    // already one cell) and by the span so a huge system cannot make one run enormous.
+    const seg = Math.max(1e-4, Math.min(cellAu, spanAu / 24));
+    const au = latticeFor(gridMode, {
+      cell: cellAu, originX: 0, originY: 0, half: spanAu,
+      // The ground grid is a DISC — it reads as a plate under the orrery. `compressRadius` maps rMax to
+      // exactly GRID_RADIUS, so the disc in AU is rMax and the plate meets the rim of the scene.
+      clipRadius: Math.min(spanAu, rMax),
+      maxSegment: seg, maxLines: 400
+    });
     const out: GridEdge[] = [];
-    if (!(stepAu > 0)) return out;
-    const R = GRID_RADIUS;
-    const offsets: number[] = [0];
-    for (let k = 1; k * stepAu <= spanAu && offsets.length < 400; k++) {
-      const o = compressScalar(k * stepAu);
-      if (o > R) break;
-      offsets.push(o, -o);
-    }
-    // A run at |offset| reaches sqrt(R^2 - offset^2) each way inside the disc, which is what keeps the
-    // plate a DISC rather than a square — the same boundary the old lattice got from `clipRadius`.
-    for (const o of offsets) {
-      const half = Math.sqrt(Math.max(0, R * R - o * o));
-      if (half <= 1e-4) continue;
-      // Segmented when the falloff dial is on OR a curtain is being drawn. A per-vertex fade evaluated
-      // at the ends of a full-width line judges the whole line by its far ends (inbox A37); a curtain
-      // is built per edge, so an unsegmented run would hang ONE enormous quad instead of a row of
-      // them. With both dials at 0 — this view's default — a single run per line is right, and that is
-      // 65,000 vertices down to a few hundred on the fine level.
-      const SEG = gridFalloff > GRID_FADE_OFF || gridDepth > 0.001 ? Math.max(0.25, R / 16) : Infinity;
-      for (let x = -half; x < half - 1e-9; x += SEG) {
-        const e = Math.min(half, x + SEG);
-        out.push([x, o, e, o]);   // along x
-        out.push([o, x, o, e]);   // along z
-      }
+    // The radial map applied per vertex: scale the direction, keep the bearing. Identical in form to
+    // `positionToScene`, which is what makes the grid agree with the bodies rather than merely sit near
+    // them. Written out here rather than borrowed because that helper also applies the rebase, and these
+    // are absolute-frame masters — `addGridEdges` rebases them itself.
+    const map = (x: number, y: number): [number, number] => {
+      const d = Math.hypot(x, y);
+      if (!(d > 0)) return [0, 0];
+      const k = compressScalar(d) / d;
+      return [x * k, y * k];
+    };
+    for (const [x1, y1, x2, y2] of au) {
+      const [ax, az] = map(x1, y1);
+      const [bx, bz] = map(x2, y2);
+      out.push([ax, az, bx, bz]);
     }
     return out;
   }
@@ -1930,7 +1946,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (gridScaleAu > 0) {
       const span = Math.min(rMax * 1.2, Math.max(visibleAu() * 2.5, gridScaleAu * 2));
       gridBuiltFor = { coarse: -gridScaleAu, span };
-      const edges = metricLines(gridScaleAu, span);
+      const edges = latticeEdgesAu(gridScaleAu, span);
       if (!edges.length) return;
       const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), gridScaleAu, { alpha: 1, opacity: GRID_LEVEL_PEAK });
       if (mat) gridLevelMats.push({ mat, coarse: true });
@@ -1953,7 +1969,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // built, nothing faded in across the decade, and at the NEXT handover a ten-times-finer grid
       // appeared at full strength in one frame. The per-frame updater can only slide an opacity that
       // has a material to slide; a level it cannot see it cannot fade.
-      const edges = metricLines(step, span);
+      const edges = latticeEdgesAu(step, span);
       if (!edges.length) continue;
       // The LEVEL's strength stays on the material, because it moves every frame and rewriting a
       // vertex attribute per frame to say the same thing would be absurd. The vertex attribute carries
@@ -2048,10 +2064,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildGrid();
   }
 
-  function setGrid(raw: MapOverlay) {
-    // Hexes address interstellar space, not the inside of a system — fold them to the square lattice
-    // so a preset authored for a starmap can't paint a jump grid over an orrery.
-    const mode = forSystemScale(raw);
+  function setGrid(mode: MapOverlay) {
     if (mode === gridMode) return;
     gridMode = mode;
     rebuildGrid();

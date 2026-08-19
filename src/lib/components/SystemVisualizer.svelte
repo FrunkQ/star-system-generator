@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { forSystemScale } from '$lib/map/mapOverlay';
   import { niceStepBelow, formatNice } from '$lib/map/niceInterval';
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
@@ -46,8 +45,8 @@
   // WS3 — the shared overlay vocabulary. The 2D system view had no grid of any kind; it now offers the
   // same set as every other spatial view (lattices in AU, or polar rings about the primary).
   export let overlay: import('$lib/map/mapOverlay').MapOverlay = 'off';
-  // Hexes are a starmap-scale idea (a hex = a jump); inside a system they fold to the square lattice.
-  $: effOverlay = forSystemScale(overlay);
+  // Every lattice this codebase draws is available at system scale; the cell is measured in AU.
+  $: effOverlay = overlay;
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   // Canvas backdrop — overridable so the projector can switch to a chroma-key green.

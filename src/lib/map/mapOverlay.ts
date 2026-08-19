@@ -61,14 +61,15 @@ export function isSnapGridType(v: unknown): v is SnapGridType {
   return (SNAP_GRID_SET as unknown[]).includes(v);
 }
 
-export const SYSTEM_OVERLAY_OPTIONS: MapOverlayOption[] =
-  MAP_OVERLAY_OPTIONS.filter((o) => !isHexFamily(o.value));
-
-// A stored system-scale overlay that predates the above (or a preset shared from a starmap) can still
-// say 'hex' — fold it to the nearest system-meaningful lattice rather than rendering a stray hex grid.
-export function forSystemScale(v: MapOverlay): MapOverlay {
-  return isHexFamily(v) ? 'square' : v;
-}
+// ONE overlay vocabulary, both stages. This used to strip the hex family on the grounds that a hex is
+// a jump and a jump is interstellar — true of what a hex MEANS on a starmap, and beside the point for
+// a GM who simply wants hexagonal cells over an orrery. The system view now renders the same lattices
+// from the same generator (`latticeFor`) at a cell measured in AU, so the only thing that ever made
+// hexes starmap-only was that nothing drew them here.
+//
+// The CCRR numbering stays a starmap idea and is still not drawn at system scale: sector/subsector
+// addressing is meaningless inside one system, which is a statement about the LABELS, not the shape.
+export const SYSTEM_OVERLAY_OPTIONS: MapOverlayOption[] = MAP_OVERLAY_OPTIONS;
 
 const ALL: MapOverlay[] = ['off', 'plain', 'scaled', 'hex', 'square', 'subsector-hex', 'traveller-hex'];
 

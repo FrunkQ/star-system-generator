@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.854-beta - 19th Aug 2026
+
+- **Hexes work at system scale, and there is now one lattice in the codebase.** The system view used to strip the hex family and fold it to squares, on the grounds that a hex is a jump and a jump is interstellar — true of what a hex MEANS on a starmap, and beside the point for a GM who wants hexagonal cells over an orrery. Square and every hex variant now come from `latticeFor`, the same generator the starmap and the GM's snap grid use. Traveller CCRR numbering stays starmap-only: sector addressing is meaningless inside one system, which is a statement about the labels, not the shape.
+- **Grid scale is measured in AU and applies to hexes too** — 0.25, 0.5, 1, 2, 5 or 10 AU cells, or Automatic. The lattice is generated in AU and every vertex is then put through the SAME radial compression the bodies get, so a cell spans its stated AU against the orrery drawn inside it rather than merely near it. Cells therefore compress outward whenever compression is on — that is the map being honest; at compression 0 (linear distances) the lattice is perfectly regular.
+
 ## v2.1.853-beta - 18th Aug 2026
 
 * A world's type picture is derived from its type, so saved files no longer carry a copy of it - another 7 KB off the bundled examples. A picture you have UPLOADED yourself is untouched, as it always was: the engine has never overwritten a custom image, and it still does not.

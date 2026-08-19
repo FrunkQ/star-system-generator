@@ -36,7 +36,7 @@
   import CollapsibleSection from './CollapsibleSection.svelte';
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { starsOf } from '$lib/catalogue/document/systemTopology';
-  import { MAP_OVERLAY_OPTIONS, SYSTEM_OVERLAY_OPTIONS, toLegacyMapGridType } from '$lib/map/mapOverlay';
+  import { MAP_OVERLAY_OPTIONS, SYSTEM_OVERLAY_OPTIONS, toLegacyMapGridType, isLattice } from '$lib/map/mapOverlay';
   import { SKY_MODE_OPTIONS, skyStarsFor, magnitudeLimitFor } from '$lib/map/skyStars';
   import DocPanel from './DocPanel.svelte';
 
@@ -862,14 +862,15 @@
                        Automatic runs the decade ladder, which subdivides by ten as the view tightens and
                        is right for browsing; a pinned cell is what a GM wants when the grid has to MEAN
                        something ("these are 1 AU squares") and must not resize under a table mid-scene.
-                       Only offered for the lattice overlays: the polar rings already carry their own AU
-                       labels, so a cell size would be answering a question that view does not ask. -->
-                  {#if draft.grid === 'square'}
+                       Only offered for the lattice overlays, square and hex alike: the polar rings already
+                       carry their own AU labels, so a cell size would answer a question that view does
+                       not ask. -->
+                  {#if isLattice(draft.grid)}
                     <label>Grid scale
                       <select value={draft.gridScaleAu ?? 0} on:change={(e) => (draft = { ...draft, gridScaleAu: Number((e.currentTarget as HTMLSelectElement).value) })}>
                         <option value={0}>Automatic (by zoom)</option>
-                        {#each [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100] as au}
-                          <option value={au}>{au} AU squares</option>
+                        {#each [0.25, 0.5, 1, 2, 5, 10] as au}
+                          <option value={au}>{au} AU {draft.grid === 'square' ? 'squares' : 'hexes'}</option>
                         {/each}
                       </select>
                     </label>

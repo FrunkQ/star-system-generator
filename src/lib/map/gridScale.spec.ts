@@ -49,11 +49,14 @@ describe('a pinned cell', () => {
 		}
 	});
 
-	it('offers cells off the 1/2/5 ladder, so every option is a round number to say out loud', () => {
-		const offered = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
-		for (const au of offered) {
-			const mantissa = au / Math.pow(10, Math.floor(Math.log10(au)));
-			expect([1, 2, 5]).toContain(Math.round(mantissa));
+	// The owner's list. 0.25 is deliberately NOT on the 1/2/5 ladder: the ladder exists to pick a round
+	// number automatically, and a GM choosing by hand wants a quarter-AU cell for a tight inner system
+	// more than they want ladder purity.
+	it('every offered cell halves or doubles cleanly against 1 AU', () => {
+		for (const au of [0.25, 0.5, 1, 2, 5, 10]) {
+			expect(au).toBeGreaterThan(0);
+			expect(Number.isFinite(au)).toBe(true);
+			expect(Number((au * 4).toFixed(6)) % 1).toBe(0);
 		}
 	});
 });
