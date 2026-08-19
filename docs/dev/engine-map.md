@@ -815,6 +815,51 @@ Corollary, and the reason the fix was a rewrite rather than a patch: the two gri
 their CONSTANTS (S24) and still looked different, because they emitted the geometry separately and
 one of them emitted it wrongly. Sharing the numbers under two emitters buys nothing.
 
+### RENDER-S27 A STARMAP GLYPH IS A SCREEN QUANTITY — its size AND its members' spread — never a world constant
+WHERE: `starmap/starGlyphLaw.ts` (`clusterLayout`, `clusterHalfExtent`, `bandScale`, pinned in
+`starGlyphLaw.spec.ts`), bound by `starmap/starmapScene.ts:updateStars` (per frame: group scale =
+GLYPH_PX * worldPerPx(camera-space DEPTH), offsets along the camera's right/up) and by
+`components/Starmap.svelte` (r and offsets times `labelK` = 1/zoom). Reported as C17; the same fault as
+C15 on the holo's vertex dots and F2/F3 before it.
+RULE: anything that is a MARK on a map — a star glyph, a multiple's cluster, a badge's clearance —
+is sized and spread in PIXELS and converted to world units per frame at the thing's own depth. Never
+`R = 0.22` scene units, never `r={5}` inside the `scale(zoom)` group. The conversion uses the point's
+camera-space z (`applyMatrix4(camera.matrixWorldInverse).z`), NOT its Euclidean distance: distance
+exceeds depth by 1/cos(off-axis angle), 15% in the corners at fov 45 and far more on a star the camera
+is not looking at — measured as a triple 2.4x its proper spread before the depth was the depth.
+WHY: the 3D starmap drew every star as a sprite 0.22 scene units across with members at `dx * 0.22`,
+so zooming in made each star light-years wide and spread Alpha Centauri's three stars as far apart as
+Sol is from them (owner screenshot, 2026-08-19) — and the whole-map view could never get dense,
+because the glyph was tuned for one framing. The GM 2D map had the identical fault in SVG. Two world
+constants, two surfaces, one law now: the 3D and 2D cluster spreads are 21.6 x 19.8 px and 12 x 11
+viewBox-px at EVERY zoom (verified at three camera depths and six SVG zooms).
+BLAST: the label clearance is a pixel figure too now (`placed.glyphPx`), so the per-frame
+world-radius-over-distance conversion in `updateLabels` is gone — do not put it back. The black
+hole's schematic glyph is the one member whose size the GM scaler never moves (`fixed` in
+`clusterLayout`): its horizon, ring and blaze need their pixels to read as a hole at all.
+
+### RENDER-S28 A STAR'S DECORATIONS ARE TAGS, AND THE LOOK IS BUILT ONCE
+WHERE: `holo/bodyFeatures.ts:buildStarLook` / `updateStarLook` (corona + flares + jet + shed shell),
+called by `holo/scene.ts` (radius = the photosphere's scene radius) and `starmap/starmapScene.ts`
+(unit radius, rescaled per frame — RENDER-S27). The tags: `physics/stellarOutflows.ts`
+(`stellar/jets`, `stellar/shedding`) and `physics/stellarActivity.ts` (`stellar/activity`), emitted
+in `SystemProcessor`'s star pass, read through `starmap/systemStars.ts:visualStarOf` by BOTH maps.
+RULE: a renderer draws a jet, a flare or a shell because the body CARRIES the tag, and for no other
+reason. It may not test a class, a field or a threshold of its own; the lever is the derivation (the
+feed, the field, L R / M) and the Tags panel lists what is drawn. One builder for the look, sized by
+an argument — the holo does not pass `jets`/`shedding` (its own star look was out of G26's scope), the
+starmap does; neither holds a second copy of the corona.
+WHY: the architecture rule (physics -> tags -> visuals) has no enforcement beyond discipline, and
+"which star gets a jet" is exactly the kind of decision that ends up in a renderer's `if (isNS)` and
+then differs between two maps. Deriving it from compactness + field + feed needs no class branch at
+all — a quiescent hole and a magnetic white dwarf fall below the gate on their own numbers.
+BLAST: `star/` is NOT a usable tag prefix — `isLegacyTag` strips it as a V1 class-stored-as-a-tag,
+which is why these live under `stellar/` (the brief sketched `star/jets`; that name would have been
+silently deleted on load). `stellar/` is in `importFixup.DERIVED_TAG_PREFIXES` (B82's rule) so a save
+does not fossilise them. The gallery (`holo/galleryScene.ts`) still holds its OWN corona at
+`R * (3.2 + 3a)` with its own breath — a deliberate tuning, recorded as a duplication finding in the
+G26 row, not unified here.
+
 ### RENDER-S26 A RING DRAWN AS A `LineLoop` CAN CARRY NOTHING PER-EDGE
 WHERE: `map/gridGeometry.ts:ringEdges`, bound by both scenes' polar grids.
 RULE: build a ring as EDGES unless you are certain nothing will ever hang off its segments. A

@@ -75,7 +75,8 @@ export const NOT_STRIPPED: Record<string, string> = {
 const DERIVED_TAG_PREFIXES = [
   'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/', 'shape/', 'aurora/', 'thermal/',
   'resonance/', 'fate/', 'volatiles/', 'surface/',  // re-derived every run (resonance/stability/volatile/surface-age passes)
-  'hazard/'  // B82: hazard/radiation, hazard/orbital-radiation and hazard/flaring are all written by the processor
+  'hazard/',  // B82: hazard/radiation, hazard/orbital-radiation and hazard/flaring are all written by the processor
+  'stellar/'  // G26: stellar/activity, stellar/jets and stellar/shedding — the star pass writes all three every run
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([

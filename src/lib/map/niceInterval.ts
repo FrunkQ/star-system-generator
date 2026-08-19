@@ -132,6 +132,22 @@ export function gridLevels(extent: number, targetDivisions = 6): GridLevels | nu
 }
 
 /**
+ * THE LEVEL OPACITY SCHEDULE (A55). One law for both levels, and it is CONTINUOUS ACROSS THE HANDOVER,
+ * which the first version was not: the fine level used to climb to a ghost peak of 0.30 and, the
+ * instant the decade turned over, the SAME LINES were rebuilt as the coarse level at 0.42 — a 40%
+ * brightness pop on every surviving line, in both zoom directions. "It should fade, not pop" is the
+ * whole requirement, so fine(t = 1) must equal coarse(t = 0) exactly.
+ *
+ * The fine level still reads as a ghost for most of the decade — it rises as t squared, so it is at
+ * the old 0.30 around t = 0.85 and only arrives at the coarse peak at the very moment it takes over.
+ */
+export const GRID_LEVEL_PEAK = 0.42;
+export function gridLevelOpacity(level: 'coarse' | 'fine', t: number): number {
+  const u = Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0));
+  return level === 'coarse' ? GRID_LEVEL_PEAK * (1 - u) : GRID_LEVEL_PEAK * u * u;
+}
+
+/**
  * Format a step or a ring distance for a label, at the precision the step itself justifies.
  * A step of 0.5 wants "0.5"; a step of 500 wants "500" and never "500.0".
  */

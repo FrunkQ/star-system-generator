@@ -35,7 +35,7 @@ import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader'
 import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
-import { gridLevels, niceSeries, formatNice } from '$lib/map/niceInterval';
+import { gridLevels, gridLevelOpacity, GRID_LEVEL_PEAK, niceSeries, formatNice } from '$lib/map/niceInterval';
 import { gridFadeWindow, GRID_FADE_OFF } from '$lib/map/gridFade';
 import { buildLattice, ringEdges, spokeEdges, type GridEdge } from '$lib/map/gridGeometry';
 import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
@@ -1878,7 +1878,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // exact image of a square grid under a radial map would be CURVED, and straight lines at compressed
   // positions are the readable approximation of it. The polar rings are the overlay that stays exactly
   // right under compression, which is the honest reason to reach for `scaled` when precision matters.
-  let gridLevelMats: { mat: THREE.LineBasicMaterial; coarse: boolean; peak: number }[] = [];
+  let gridLevelMats: { mat: THREE.LineBasicMaterial; coarse: boolean }[] = [];
   let gridBuiltFor = { coarse: 0, span: 0 };
 
   /** Half the AU extent the camera can currently see — what picks the decade. */
@@ -1932,8 +1932,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       gridBuiltFor = { coarse: -gridScaleAu, span };
       const edges = metricLines(gridScaleAu, span);
       if (!edges.length) return;
-      const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), gridScaleAu, { alpha: 1, opacity: 0.42 });
-      if (mat) gridLevelMats.push({ mat, coarse: true, peak: 0.42 });
+      const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), gridScaleAu, { alpha: 1, opacity: GRID_LEVEL_PEAK });
+      if (mat) gridLevelMats.push({ mat, coarse: true });
       return;
     }
     const lv = gridLevels(visibleAu(), 6);
@@ -1943,17 +1943,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const span = Math.min(rMax * 1.2, visibleAu() * 2.5);
     gridBuiltFor = { coarse: lv.coarse, span };
     for (const [step, coarse] of [[lv.coarse, true], [lv.fine, false]] as [number, boolean][]) {
-      const peak = coarse ? 0.42 : 0.30;         // the ghost level is fainter even at full fade-in
-      const a = coarse ? 1 - lv.t : lv.t;
-      if (a < 0.02) continue;
+      // ONE opacity law for both levels (niceInterval.gridLevelOpacity), continuous across the decade
+      // handover — A55. It used to be two peaks (0.42 coarse, 0.30 "ghost" fine) and the same lines
+      // jumped between them on every rebuild.
+      const opacity = gridLevelOpacity(coarse ? 'coarse' : 'fine', lv.t);
+      // BOTH LEVELS ARE ALWAYS BUILT, however faint one is right now (A55). The build used to skip a
+      // level under 2% — and a fresh decade ALWAYS starts with the fine level at 0, because t is ~0
+      // the moment the coarse step is chosen. So after every handover the fine level was never
+      // built, nothing faded in across the decade, and at the NEXT handover a ten-times-finer grid
+      // appeared at full strength in one frame. The per-frame updater can only slide an opacity that
+      // has a material to slide; a level it cannot see it cannot fade.
       const edges = metricLines(step, span);
       if (!edges.length) continue;
       // The LEVEL's strength stays on the material, because it moves every frame and rewriting a
       // vertex attribute per frame to say the same thing would be absurd. The vertex attribute carries
       // colour and fade, which are fixed until a rebuild. One channel each — RENDER-S25.
-      const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), step, { alpha: 1, opacity: peak * a });
+      const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), step, { alpha: 1, opacity });
       if (!mat) continue;
-      gridLevelMats.push({ mat, coarse, peak });
+      gridLevelMats.push({ mat, coarse });
     }
   }
 
@@ -1970,7 +1977,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const lv = gridLevels(visibleAu(), 6);
     if (!lv) return;
     if (lv.coarse !== gridBuiltFor.coarse) { rebuildGrid(); return; }
-    for (const g of gridLevelMats) g.mat.opacity = g.peak * (g.coarse ? 1 - lv.t : lv.t);
+    for (const g of gridLevelMats) g.mat.opacity = gridLevelOpacity(g.coarse ? 'coarse' : 'fine', lv.t);
     // The curtains ride their own line's opacity, so a level fading out takes its depth with it.
     for (const g of gridSkirtMats) g.skirt.opacity = g.line.opacity;
   }

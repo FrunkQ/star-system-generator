@@ -5,7 +5,9 @@
 // a depth, and a route that ignores it ends at a system's projection instead of at its star. A
 // fading polar grid (optional, plain or LY-labelled), HTML name labels, orbit/tilt camera, and the
 // same GPU filter chain as the system holo. Plain module so the wrapper lazy-loads three into its own
-// chunk. Deliberately independent of scene.ts (no orbits/rings/belts) — shares only the filter package.
+// chunk. Deliberately independent of scene.ts (no orbits/rings/belts) — shares the filter package and,
+// since G26, the STAR LOOK builder in holo/bodyFeatures (corona + flares + tag decorations), sized here
+// to a screen radius rather than copied.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';

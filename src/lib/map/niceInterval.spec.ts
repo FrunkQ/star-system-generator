@@ -3,8 +3,7 @@
 // every ring a whole multiple of its step — rather than about particular values.
 import { describe, it, expect } from 'vitest';
 import {
-  niceStepBelow, nextNiceStep, prevNiceStep, niceStep, niceSeries, gridLevels, formatNice
-} from './niceInterval';
+  niceStepBelow, nextNiceStep, prevNiceStep, niceStep, niceSeries, gridLevels, formatNice, gridLevelOpacity, GRID_LEVEL_PEAK } from './niceInterval';
 
 /** Is this a 1, 2 or 5 times a power of ten? The property every step here must have. */
 function isNice(v: number): boolean {
@@ -153,5 +152,73 @@ describe('labels', () => {
     for (const v of [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]) {
       expect(formatNice(v)).not.toContain('.');
     }
+  });
+});
+
+// A55 — THE OPACITY SCHEDULE, and the frame loop that drives it. `gridLevels` was right; what popped
+// was the OPACITY handed to the two levels: a 0.30 "ghost" peak for the fine level and 0.42 for the
+// coarse, so the SAME LINES jumped by 40% the instant the decade turned over and they were rebuilt
+// as the dominant level — and the build skipped a level under 2%, which a fresh decade's fine level
+// always is, so after every handover nothing faded in at all. Both are pinned here.
+describe('the level opacity is ONE law and it is continuous across the handover', () => {
+  it('fine(t = 1) equals coarse(t = 0) exactly — the surviving lines do not jump', () => {
+    expect(gridLevelOpacity('fine', 1)).toBeCloseTo(gridLevelOpacity('coarse', 0), 12);
+    expect(gridLevelOpacity('coarse', 0)).toBe(GRID_LEVEL_PEAK);
+    expect(gridLevelOpacity('fine', 0)).toBe(0);
+    expect(gridLevelOpacity('coarse', 1)).toBe(0);
+  });
+  it('the fine level is still a ghost for most of the decade (about the old 0.30 near t = 0.85)', () => {
+    expect(gridLevelOpacity('fine', 0.5)).toBeLessThan(GRID_LEVEL_PEAK * 0.3);
+    expect(gridLevelOpacity('fine', 0.85)).toBeCloseTo(0.30, 1);
+  });
+  it('monotone: the fine rises and the coarse falls across the decade, and the dial is clamped', () => {
+    let f = -1, c = 2;
+    for (let i = 0; i <= 100; i++) { const t = i / 100; const nf = gridLevelOpacity('fine', t), nc = gridLevelOpacity('coarse', t); expect(nf).toBeGreaterThanOrEqual(f); expect(nc).toBeLessThanOrEqual(c); f = nf; c = nc; }
+    expect(gridLevelOpacity('fine', 7)).toBe(GRID_LEVEL_PEAK);
+    expect(gridLevelOpacity('coarse', -3)).toBe(GRID_LEVEL_PEAK);
+  });
+
+  // THE FRAME LOOP: the per-frame sequence the scene runs — read the levels, rebuild on a decade
+  // change, else slide the opacities — walked across three decades of zoom. Every step asserts that
+  // the brightness of every grid STEP on screen (keyed by its spacing, which is what the eye sees)
+  // changed by no more than a frame's worth. That is the whole of "it should fade, not pop".
+  it("the frame loop: zooming through three decades never moves any step's opacity by more than a frame", () => {
+    type Built = { coarse: number; mats: { step: number; level: 'coarse' | 'fine'; opacity: number }[] };
+    let built: Built | null = null;
+    const rebuild = (lv: { coarse: number; fine: number; t: number }): Built => ({
+      coarse: lv.coarse,
+      // BOTH levels always, whatever their opacity right now — the fix.
+      mats: [{ step: lv.coarse, level: 'coarse', opacity: gridLevelOpacity('coarse', lv.t) }, { step: lv.fine, level: 'fine', opacity: gridLevelOpacity('fine', lv.t) }]
+    });
+    const frame = (extent: number) => {
+      const lv = gridLevels(extent, 6)!;
+      if (!built || lv.coarse !== built.coarse) { built = rebuild(lv); return; }
+      for (const m of built.mats) m.opacity = gridLevelOpacity(m.level, lv.t);
+    };
+    const seen = (b: Built) => { const o = new Map<number, number>(); for (const m of b.mats) o.set(m.step, Math.max(o.get(m.step) ?? 0, m.opacity)); return o; };
+    let prev: Map<number, number> | null = null;
+    let maxJump = 0, handovers = 0, lastCoarse = 0;
+    for (let i = 0; i <= 1500; i++) {
+      frame(100 * Math.pow(0.995, i));   // zooming IN, a fraction of a percent a frame, three decades
+      const now = seen(built!);
+      if (built!.coarse !== lastCoarse) { if (lastCoarse) handovers++; lastCoarse = built!.coarse; }
+      if (prev) for (const [step, op] of now) { const was = prev.get(step) ?? 0; maxJump = Math.max(maxJump, Math.abs(op - was)); }
+      prev = now;
+    }
+    expect(handovers).toBeGreaterThanOrEqual(2);
+    expect(maxJump).toBeLessThan(0.006);   // ~ a frame's slide at this zoom rate; the old schedule jumped 0.12
+    // ...and zooming OUT, the other way through the same decades.
+    built = null; prev = null; maxJump = 0;
+    for (let i = 0; i <= 1500; i++) {
+      frame(0.1 * Math.pow(1 / 0.995, i));
+      const now = seen(built!);
+      if (prev) for (const [step, op] of now) { const was = prev.get(step) ?? 0; maxJump = Math.max(maxJump, Math.abs(op - was)); }
+      prev = now;
+    }
+    expect(maxJump).toBeLessThan(0.006);
+  });
+  it('...and the OLD schedule is what popped (the regression this pins): 0.30 ghost to 0.42 dominant at the handover', () => {
+    const oldFine = (t: number) => 0.30 * t, oldCoarse = (t: number) => 0.42 * (1 - t);
+    expect(Math.abs(oldFine(1) - oldCoarse(0))).toBeCloseTo(0.12, 9);
   });
 });

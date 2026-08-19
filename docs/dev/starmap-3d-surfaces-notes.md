@@ -12,8 +12,10 @@ Written on retirement by the scene/grids session, v2.1.749-beta.
 ## 1. There are TWO scenes and they are deliberately not one
 
 `holo/scene.ts` draws ONE system (bodies, orbits, rings, belts, constructs). `starmap/starmapScene.ts`
-draws the GALAXY (systems as billboards, routes, markers). They share the filter package and
-`lib/map/*` and nothing else — `starmapScene`'s own header says "Deliberately independent of scene.ts".
+draws the GALAXY (systems as billboards, routes, markers). They share the filter package, `lib/map/*`
+and — since G26 — the star LOOK builder `holo/bodyFeatures.buildStarLook` (corona, flares, the tag
+decorations; sized by an argument), and nothing else — `starmapScene`'s own header says
+"Deliberately independent of scene.ts".
 
 **Do not "unify" them.** They differ in what a coordinate MEANS (§2, §3). What they should share is
 vocabulary and geometry helpers, and those already live in `lib/map/`.
@@ -200,9 +202,15 @@ uncommitted work (done once here, and restored from a backup taken seconds earli
 
 ## Known open, in these files
 
-- **The decade crossfade and a boosted sky have never been SEEN.** Both verified numerically only.
-  Someone should zoom the 3D system view through a decade and say whether it reads as one grid or a
-  shimmer, and push Star boost to 100% and say whether it is usable.
+- **The decade crossfade was BROKEN, found by arithmetic (A55, v2.1.852-beta): two peaks popped
+  the surviving lines 0.30 -> 0.42 at every handover, and the build skipped a level under 2% — which a
+  fresh decade's fine level always is — so nothing faded in and the next decade arrived in one frame.
+  One law now (`niceInterval.gridLevelOpacity`), both levels always built, a frame-loop test pins it.**
+  Still never SEEN: zoom the 3D system view through a decade and say whether it reads as one grid
+  fading, and push Star boost to 100% and say whether it is usable (numerically continuous; it
+  saturates at the top by design).
+- **The starmap's star glyphs are SCREEN quantities now (G26/C17, RENDER-S27)**: sized per frame at the
+  star's camera-space depth, members offset along the camera's right/up. Never a world constant again.
 - `Grid.svelte` draws subsector borders from its own zig-zag path maths, while the 3D starmap draws
   them as ribbons from `subsectorLattice`. Two geometries for one boundary — not yet compared.
 - The system view's `plain` polar is still six even decorative rings (unlabelled, so it claims

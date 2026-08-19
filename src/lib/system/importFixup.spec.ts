@@ -7,6 +7,7 @@ import { loadStarterPack } from '$lib/import/realsky/testPack';
 describe('isInterferingTag', () => {
   it('strips derived namespaces, managed flat tags, and legacy display names', () => {
     for (const k of ['geology/inactive', 'magnetic/dynamo', 'structure/icy-shell', 'habitability/none',
+      'stellar/activity', 'stellar/jets', 'stellar/shedding',   // G26: the star pass re-derives all three
       'inert', 'noble-gas', 'cloud-former', 'volcanic', 'Tidally Locked', 'Active Volcanism', 'Airless Rock']) {
       expect(isInterferingTag(k)).toBe(true);
     }
