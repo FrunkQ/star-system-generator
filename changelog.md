@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.859-beta - 19th Aug 2026
+
+- 3D starmap: stars further from the camera draw a little smaller (a gentle falloff referenced to what the camera is looking at, clamped 0.65..1.25x), so zooming in reads as approaching; never on the flat 2D map. "Star size by class" runs to 200% (geometric past 100%, so a remnant shrinks rather than vanishing) and still defaults to all equal.
+
 ## v2.1.858-beta - 19th Aug 2026
 
 - Docs only. Two import findings captured: the infill dials are offered on only one of three import paths (the Traveller code's own comment expects a panel that is not there), and a real-sky import can bring one wide companion in twice, as a star and as a planet, from two catalogues.

@@ -4,7 +4,8 @@
 import { describe, it, expect } from 'vitest';
 import {
 	bandScale, sizeBandOfClass, sizeBandOf, clusterLayout, clusterHalfExtent, starClusterOffsets,
-	BAND_FULL_SPREAD, SIZE_BANDS, letterTilt, glyphScale, spectralLetterOfBody, LETTER_TILT_FULL
+	BAND_FULL_SPREAD, SIZE_BANDS, letterTilt, glyphScale, spectralLetterOfBody, LETTER_TILT_FULL,
+	SPREAD_MAX, depthAttenuation, DEPTH_MIN, DEPTH_MAX
 } from './starGlyphLaw';
 
 describe('the band from the class key (B60 designations)', () => {
@@ -79,11 +80,15 @@ describe('the scaler', () => {
 		expect(at1).toEqual(SIZE_BANDS.map((b) => BAND_FULL_SPREAD[b]));
 		for (let i = 1; i < at1.length; i++) expect(at1[i]).toBeGreaterThan(at1[i - 1] * 1.2);
 	});
-	it('interpolates linearly and clamps the dial', () => {
-		expect(bandScale('supergiant', 0.5)).toBeCloseTo(1.5, 9);
-		expect(bandScale('compact', 2)).toBe(BAND_FULL_SPREAD.compact);
+	it('is GEOMETRIC in the dial, runs to 200%, and clamps', () => {
+		expect(SPREAD_MAX).toBe(2);
+		expect(bandScale('supergiant', 0.5)).toBeCloseTo(Math.sqrt(2), 9);
+		expect(bandScale('supergiant', 2)).toBeCloseTo(4, 9);        // the separation doubled (in log)
+		expect(bandScale('compact', 2)).toBeCloseTo(0.36, 9);        // never zero or negative
+		expect(bandScale('compact', 5)).toBeCloseTo(0.36, 9);        // clamped at SPREAD_MAX
 		expect(bandScale('giant', -1)).toBe(1);
 		expect(bandScale('giant', NaN)).toBe(1);
+		expect(letterTilt('M', 2)).toBeCloseTo(LETTER_TILT_FULL.M ** 2, 9);
 	});
 });
 
@@ -156,5 +161,22 @@ describe('a black hole keeps its glyph', () => {
 		const HOLE_GLYPH = 5.4, DISC = 1.0;
 		const drawn = [slots[0].scale * DISC, slots[1].scale * DISC, slots[2].scale * DISC, slots[3].scale * HOLE_GLYPH];
 		expect(new Set(drawn).size).toBe(4);
+	});
+});
+
+// 3D ONLY: a gentle size falloff with depth, referenced to the camera's target.
+describe('depth attenuation', () => {
+	it('is 1 at the target depth, gently smaller beyond it, gently larger nearer, and clamped', () => {
+		expect(depthAttenuation(10, 10)).toBe(1);
+		expect(depthAttenuation(30, 10)).toBeCloseTo(Math.pow(1 / 3, 0.3), 9);   // ~0.72
+		expect(depthAttenuation(30, 10)).toBeGreaterThan(DEPTH_MIN);
+		expect(depthAttenuation(1000, 10)).toBe(DEPTH_MIN);
+		// a third of the target depth would be ~1.43 unclamped — the clamp holds it at DEPTH_MAX
+		expect(depthAttenuation(3, 10)).toBe(DEPTH_MAX);
+		expect(depthAttenuation(0, 10)).toBe(1);
+		expect(depthAttenuation(10, 0)).toBe(1);
+	});
+	it('"does not need to be a big effect": a star twice as far is still over 80% of the size', () => {
+		expect(depthAttenuation(20, 10)).toBeGreaterThan(0.8);
 	});
 });

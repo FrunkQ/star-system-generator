@@ -44,7 +44,7 @@ function migrate(parsed: any): UiState {
   const canonical = normaliseOverlay(out.gridType);
   out.gridType = isSnapGridType(canonical) ? canonical : 'off';
   if (typeof out.travellerMode !== 'boolean') out.travellerMode = false;
-  const starScale = typeof out.starScale === 'number' && Number.isFinite(out.starScale) ? Math.max(0, Math.min(1, out.starScale)) : 0;
+  const starScale = typeof out.starScale === 'number' && Number.isFinite(out.starScale) ? Math.max(0, Math.min(2, out.starScale)) : 0;
   const starSize = typeof out.starSize === 'number' && Number.isFinite(out.starSize) && out.starSize > 0 ? Math.max(0.5, Math.min(2, out.starSize)) : 1;
   // Only the fields this store still owns. A browser that stored the retired `showBackgroundImage`
   // would otherwise carry it forward for ever, and a dead key in a persisted store is how a future

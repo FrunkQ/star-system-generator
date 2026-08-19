@@ -27,10 +27,19 @@ export const SIZE_BANDS: readonly SizeBand[] = ['compact', 'dwarf', 'giant', 'su
  */
 export const BAND_FULL_SPREAD: Record<SizeBand, number> = { compact: 0.6, dwarf: 1, giant: 1.45, supergiant: 2 };
 
-/** The band's size factor at a scaler position 0..1 — linear between 1 and the full-spread value. */
+/** The scaler's range. 1 = the bands fully separated as first shipped; 2 = that separation doubled
+ *  (owner, 2026-08-19: "let it go to 200%"). Default 0 = all the same size. */
+export const SPREAD_MAX = 2;
+
+/**
+ * The band's size factor at a scaler position 0..SPREAD_MAX — GEOMETRIC: full^s, so at 1 it is exactly
+ * the full-spread value, at 2 its square (a supergiant 4x, a remnant 0.36x) and at 0.5 its root. Log-
+ * linear in the dial, and it cannot cross zero the way a linear extrapolation past 1 would (0.6 at 1
+ * would have been 0.2 at 2 on the compact band, and negative soon after).
+ */
 export function bandScale(band: SizeBand, spread: number): number {
-	const s = Math.max(0, Math.min(1, Number.isFinite(spread) ? spread : 0));
-	return 1 + s * (BAND_FULL_SPREAD[band] - 1);
+	const s = Math.max(0, Math.min(SPREAD_MAX, Number.isFinite(spread) ? spread : 0));
+	return Math.pow(BAND_FULL_SPREAD[band], s);
 }
 
 /**
@@ -43,9 +52,31 @@ export function bandScale(band: SizeBand, spread: number): number {
  */
 export const LETTER_TILT_FULL: Record<string, number> = { O: 1.3, B: 1.22, A: 1.14, F: 1.06, G: 1, K: 0.94, M: 0.86 };
 export function letterTilt(letter: string | undefined, spread: number): number {
-	const s = Math.max(0, Math.min(1, Number.isFinite(spread) ? spread : 0));
+	const s = Math.max(0, Math.min(SPREAD_MAX, Number.isFinite(spread) ? spread : 0));
 	const full = letter ? LETTER_TILT_FULL[letter.toUpperCase()] : undefined;
-	return full ? 1 + s * (full - 1) : 1;
+	return full ? Math.pow(full, s) : 1;   // geometric, like bandScale
+}
+
+// ── Depth attenuation (3D only) ──────────────────────────────────────────────────────────────────
+
+/**
+ * A GENTLE size falloff with camera depth on the 3D starmap — owner, 2026-08-19: "the ones further
+ * away could be a bit smaller, makes zooming more intuitive... just to the scale on screen, does not
+ * need to be a big effect". The glyph stays a SCREEN quantity (RENDER-S27): this is a small factor on
+ * the pixel size, referenced to the camera's TARGET depth, so the star you are looking at is always
+ * full size, the ones beyond it a little smaller, the ones nearer a little larger — and zooming in
+ * towards a cluster shrinks everything behind it. Never on the flat 2D map, which is a plan view.
+ *
+ * (ref/depth)^DEPTH_EXPONENT, clamped: a star three times the target's depth draws at 0.72, one at a
+ * third of it at 1.2 — never below DEPTH_MIN or above DEPTH_MAX, so a far edge stays legible and a
+ * near star never balloons.
+ */
+export const DEPTH_EXPONENT = 0.3;
+export const DEPTH_MIN = 0.65;
+export const DEPTH_MAX = 1.25;
+export function depthAttenuation(depth: number, refDepth: number): number {
+	if (!(depth > 0) || !(refDepth > 0)) return 1;
+	return Math.max(DEPTH_MIN, Math.min(DEPTH_MAX, Math.pow(refDepth / depth, DEPTH_EXPONENT)));
 }
 
 /** A member's drawn size as a multiple of the base radius: its band at the scaler, tilted by its

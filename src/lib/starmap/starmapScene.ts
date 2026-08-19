@@ -16,7 +16,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { filterRegistry } from '$lib/holo/filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from '$lib/holo/filters/shaderMaterial';
 import type { FilterParamValues } from '$lib/holo/filters/schema';
-import { clusterLayout, clusterHalfExtent, type SizeBand, type GlyphSlot, type GlyphMember } from './starGlyphLaw';
+import { clusterLayout, clusterHalfExtent, depthAttenuation, SPREAD_MAX, type SizeBand, type GlyphSlot, type GlyphMember } from './starGlyphLaw';
 import { ACTIVE_HOLE_FEED_FLOOR } from '$lib/physics/stellarOutflows';
 // G26: the star LOOK is the holo's — corona, flares and the tag-driven decorations — from the ONE
 // shared builder, sized here to a screen radius. Not a copy of it.
@@ -99,7 +99,8 @@ export interface StarmapController {
   setGridFalloff(v: number): void; // 0 even .. 1 bright near the focus, gone by the edge
   setZExaggeration(v: number): void; // DISPLAY ONLY — stretches depth for clarity, never distances
   // G26: the GM size scaler. 0 = every star the same size (the old map), 1 = the four luminosity-
-  // class bands fully separated. Glyph SIZE and member SPREAD are screen quantities — see starGlyphLaw.
+  // class bands fully separated, 2 = that doubled. Glyph SIZE and member SPREAD are screen quantities
+  // — see starGlyphLaw.
   setStarScale(v: number): void;
   // The BASE glyph size, a multiplier 0.5..2 on the pixel unit every member and its spread are stated
   // in (1 = the size the map shipped with). Owner, 2026-08-19: "the stars themselves could be a little
@@ -756,6 +757,9 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   // Badge-only knobs, carried by the preset. Same three the system map takes, so the two agree.
   let markerOpts: { size: number; staff: FlagStaffColor; pinText: PinTextMode } = { size: 1, staff: 'silver', pinText: 'initial' };
   interface Placed { id: string; name: string; center: THREE.Vector3; glyphPx: number; label?: LabelSprite }
+  // Per-frame depth attenuation of each system's glyph (3D only; 1 on the flat map) — the labels
+  // clear `glyphPx * this`, so a far system's name does not float off its shrunken glyph.
+  const glyphAttn = new Map<string, number>();
   let placed: Placed[] = [];
   let labelsVisible = true;
   let labelColor = '#d6e2f2';
@@ -1128,7 +1132,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       // now (G26/C17), so the clearance is a pixel figure and needs no per-frame conversion — it used
       // to be a world radius divided by the distance, because the sprite grew as you zoomed.
       const hPx = Math.max(1e-6, labelSizePx * ls.heightRatio);
-      ls.sprite.center.set(0.5, -(0.35 * ls.nameFraction + p.glyphPx / hPx));
+      ls.sprite.center.set(0.5, -(0.35 * ls.nameFraction + (p.glyphPx * (glyphAttn.get(p.id) ?? 1)) / hPx));
     }
   }
   // C17 / G26 — THE FRAME STEP FOR STARS. A member's world position is its system's centre plus its
@@ -1149,11 +1153,17 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     const pxToScale = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
     camera.updateMatrixWorld();   // this frame's camera, not the last render's
     camera.matrixWorld.extractBasis(camRight, camUp, camFwd);
+    // Depth attenuation (starGlyphLaw.depthAttenuation), referenced to the TARGET's depth so the star
+    // you are looking at is always full size. 3D only — the flat map is a plan view and every star on
+    // it is at much the same depth anyway.
+    const refDepth = flatMode ? 0 : -viewP.copy(controls.target).applyMatrix4(camera.matrixWorldInverse).z;
     for (const ps of placedStars) {
       const depth = -viewP.copy(ps.center).applyMatrix4(camera.matrixWorldInverse).z;
       if (depth <= 1e-6) { ps.group.visible = false; continue; }   // behind the camera
       ps.group.visible = true;
-      const rW = glyphUnitPx() * pxToScale * depth;   // the layout radius R, in scene units at this depth
+      const attn = flatMode ? 1 : depthAttenuation(depth, refDepth);
+      glyphAttn.set(ps.sysId, attn);
+      const rW = glyphUnitPx() * attn * pxToScale * depth;   // the layout radius R, in scene units at this depth
       ps.group.position.copy(ps.center)
         .addScaledVector(camRight, ps.slot.dx * rW)
         .addScaledVector(camUp, -ps.slot.dy * rW);   // layout y runs DOWN the screen, as the 2D map's does
@@ -1177,7 +1187,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     for (const p of placed) { const h = halves.get(p.id); if (h != null) p.glyphPx = (h + GLYPH_CORONA_MARGIN) * glyphUnitPx(); }
   }
   function setStarScale(v: number) {
-    const n = Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
+    const n = Math.max(0, Math.min(SPREAD_MAX, Number.isFinite(v) ? v : 0));
     if (n === starScale) return;
     starScale = n;
     relayoutStars();

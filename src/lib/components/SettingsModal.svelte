@@ -459,7 +459,7 @@
             <label for="starScale" title="Spread the star glyphs by luminosity class: remnants and sub-dwarfs smallest, then dwarfs, giants, supergiants. 0% = all the same size; black holes keep their own glyph. Your screen only — player views have their own under Player Views.">
               Star size by class <span class="section-hint" style="display:inline">{$starmapUiStore.starScale <= 0 ? 'All equal' : `${Math.round($starmapUiStore.starScale * 100)}%`}</span>
             </label>
-            <input id="starScale" type="range" min="0" max="1" step="0.05" bind:value={$starmapUiStore.starScale} />
+            <input id="starScale" type="range" min="0" max="2" step="0.05" bind:value={$starmapUiStore.starScale} />
           </div>
 
         {:else if activeSection === 'tagging'}

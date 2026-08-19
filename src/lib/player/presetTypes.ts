@@ -188,8 +188,8 @@ export interface PlayerPreset {
   zExaggeration?: number;
   // G26: the star glyph SIZE SCALER on the 2D/3D starmaps. 0 = every star the same size (the map as
   // it was, and the default so nothing saved changes), 1 = the four luminosity-class bands — remnant/
-  // sub-dwarf, V, III/II, I — fully separated. Rides the preset, like the other starmap dials; the
-  // GM's own 2D map has its own local dial (starmapUiStore), per G5's split.
+  // sub-dwarf, V, III/II, I — fully separated, 2 = that doubled. Rides the preset, like the other
+  // starmap dials; the GM's own 2D map has its own local dial (starmapUiStore), per G5's split.
   starmapStarScale?: number;
   // The BASE glyph size on the 2D/3D starmaps, a multiplier 0.5..2 on the unit every star glyph is
   // drawn in (1 = as shipped, and the default so nothing saved changes). The owner's second dial.
