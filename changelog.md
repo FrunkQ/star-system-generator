@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.867-beta - 19th Aug 2026
+
+- Five more starter logos — Interspan, Kelido, Nexum, Terra and TSEC — from World Zero's [Corporate Portfolio](https://worldzero.itch.io/corporate-portfolio), used under CC BY 4.0 and credited in the About box alongside every other bundled image. They join the starter asset list, so they can be placed on a player view without uploading anything.
+
 ## v2.1.866-beta - 19th Aug 2026
 
 * VTT integration session retired - notes for the next person in `docs/dev/vtt-integration-notes.md` (the transport mirrors every send, BroadcastChannel is partitioned cross-site, the broker holds dropped ids and `initPeerHost` was re-entrant, the id is campaign data, the catalogue is the only viewer, filters: SSE wins, network code is one system across both apps, PWA/firewall facts that masquerade as bugs, the harness traps, how to test Owlbear/Foundry, and what is known open). E12 (flaky contract spec) recorded as fixed at the root; E13 (firewall bypass) now carries the exact rule.

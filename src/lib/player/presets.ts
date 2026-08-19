@@ -19,7 +19,14 @@ export const accentSolid = (accent: string | undefined): string => (isRainbow(ac
 // built-ins never need to ride the starmap file.
 export const BUILTIN_ASSETS: import('./presetTypes').PlayerAsset[] = [
   { id: 'builtin-sse-logo', name: 'SSE2 (starter logo)', dataUrl: '/images/logo/SSE.png' },
-  { id: 'builtin-wy-logo', name: 'Weyland-Yutani (starter logo)', dataUrl: '/images/logo/Weyland-Yutani.png' }
+  { id: 'builtin-wy-logo', name: 'Weyland-Yutani (starter logo)', dataUrl: '/images/logo/Weyland-Yutani.png' },
+  // World Zero's Corporate Portfolio, CC BY 4.0 — credited in the About box, which is where the
+  // attribution obligation is discharged for every bundled image.
+  { id: 'builtin-interspan-logo', name: 'Interspan (starter logo)', dataUrl: '/images/logo/interspan_stack@2x.png' },
+  { id: 'builtin-kelido-logo', name: 'Kelido (starter logo)', dataUrl: '/images/logo/kelido_stack@2x.png' },
+  { id: 'builtin-nexum-logo', name: 'Nexum (starter logo)', dataUrl: '/images/logo/nexum_stack@2x.png' },
+  { id: 'builtin-terra-logo', name: 'Terra (starter logo)', dataUrl: '/images/logo/terra_stack@2x.png' },
+  { id: 'builtin-tsec-logo', name: 'TSEC (starter logo)', dataUrl: '/images/logo/tsec_stack@2x.png' }
 ];
 
 // Curated zero-byte font stacks (no webfont files; native everywhere). `css` is a font-family list.
