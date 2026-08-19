@@ -2,6 +2,20 @@
 
 All notable changes are listed here:
 
+## v2.1.850-beta - 19th Aug 2026
+
+- A playing clock no longer re-broadcasts your whole campaign. Leaving time running rebuilt and
+  re-sent the entire redacted campaign several times a second - 989 MB across 517 sends in one
+  measured session, 33 seconds of it spent just turning the map into text, and eventually a dead
+  tab. The snapshot is no longer built at all while the clock runs (player views advance on their
+  own clock between updates, which is what already made them look alive), the clock itself no
+  longer rides the campaign message, and any large message now has a five-second floor with the
+  latest state always landing - so a busy session goes a little stale instead of falling over.
+- Follow-GM now brings players back to the starmap. Dropping out of a system to the map left every
+  following player still inside it, watching a system you were no longer looking at - picking a
+  different system flipped them correctly, so it was only ever the way back that was missing. The
+  map level is now broadcast in its own right, and a system you have merely selected follows too.
+  A Player View with its starmap turned off still stays put, as it is meant to.
 ## v2.1.849-beta - 19th Aug 2026
 
 - Engine map: RENDER-S25 rewritten and RENDER-S26 added. S25 had recorded the grid-dimming report against the opacity fault found first; that fault was real but lived only on the metric lattice, and the owner's grid was polar. It now records both faults, names the colour squaring as the reported one, and states the lesson that cost the first pass: a dial can be the trigger without being the cause, so compute what the control actually does at the reported setting before fixing anything in its code path. S26 records that a ring drawn as a LineLoop can carry nothing per-edge.

@@ -898,8 +898,20 @@ this area, and the question each one actually answers:
 - `renderer.info.memory` via the `perfProvider` registry — geometries / textures / programs beside the
   JS heap. **This is the leak detector for the rebuild path**: counts that climb with `.same` mean a
   rebuild is not releasing what it replaced.
-- `bc.<TYPE>.strMs` / `.bytes` / `.sent` / `.unchanged` — the payload cost. Note `sendIfChanged`
-  stringifies the whole payload on EVERY reactive tick to fingerprint it, sent or not.
+- `bc.<TYPE>.strMs` / `.bytes` / `.sent` / `.unchanged` / `.throttled` — the payload cost. Note
+  `sendIfChanged` stringifies the whole payload on EVERY reactive tick to fingerprint it, sent or
+  not — **and that stringify is not even the expensive half.** The CALLER has already built the
+  payload by then; for `SYNC_STARMAP` that is a deep clone plus a redaction pass over the whole
+  campaign, so a gate that only declines to SEND cannot save you (P3: a playing clock reached 517
+  sends, 989 MB, 33 s of stringify and a 3.8 GB heap before the tab died). **Three guards now, at
+  three layers, and you need to know which one you are looking at.** (1) `.throttled` counts sends
+  held back by the SIZE-AWARE floor — a type whose last payload exceeded 256 KB gets a 5 s minimum
+  interval instead of 500 ms, trailing-send so the latest state still lands. A rising `.throttled`
+  is the guard WORKING, not a fault. (2) The GM route strips `temporal` and the per-system `time`
+  block out of the player snapshot: the clock travels as `SYNC_TIME`, and a player propagates its
+  own view between snapshots. (3) `bc.SYNC_STARMAP.skippedWhilePlaying` counts ticks where the
+  snapshot was not BUILT at all because playback was running — that is the one that saves the
+  33 s, and if it is zero while a clock plays, the reactive gate has been bypassed.
   **SENDER-SIDE ONLY.** The receive-side half is `rx.<TYPE>` (below); you need both, and confusing
   one for the other is how "the GM sends more" and "this window rebuilds more per message" — two
   different bugs with one symptom — stay indistinguishable.

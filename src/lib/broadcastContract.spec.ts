@@ -288,3 +288,170 @@ describe('A57 — broker id collision: retry first, prompt once, no silent re-ho
     expect(FakePeer.taken.has('map-taken-z-004')).toBe(true);  // explicit enable lifted the block
   });
 });
+
+/**
+ * A59 - SYNC_GM_LEVEL: the message that can say "I have gone back to the map".
+ *
+ * SYNC_FOCUS carries a BODY id, so it can only ever point INTO a system; leaving one broadcast
+ * nothing at all, and a following player stayed where the GM last was. These pin the transport half:
+ * that the message crosses, that it is receiver-only like its siblings, and that both levels survive
+ * the wire. The player-side GATING (obeyed only while following, and never when the preset has locked
+ * its players into one system) lives in the catalogue route with the state it guards.
+ */
+describe('A59 - SYNC_GM_LEVEL reaches a player window', () => {
+  beforeEach(() => {
+    // REAL TIMERS FIRST. The A57 describe above runs the retry ladder under vi.useFakeTimers(), and
+    // its afterEach is scoped to that describe - so without this, `waitFor`'s setTimeout never fires
+    // here and every awaited delivery looks like a transport failure. (Cost: three tests that timed
+    // out at 5 s while the message was in fact arriving perfectly.)
+    vi.useRealTimers();
+    FakeChannel.byName.clear();
+    FakePeer.taken.clear();
+    (globalThis as any).window = globalThis;
+    (globalThis as any).BroadcastChannel = FakeChannel;
+    (globalThis as any).addEventListener ??= () => {};
+    (globalThis as any).performance ??= { now: () => Date.now() };
+  });
+
+  it('carries the starmap level - the case that did not exist before', async () => {
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    const seen: any[] = [];
+    (player as any).onGmLevelUpdate = (l: any) => seen.push(l);
+    host.sendMessage({ type: 'SYNC_GM_LEVEL', payload: { level: 'starmap' } } as any);
+    await waitFor(() => seen.length > 0);
+    expect(seen[0]).toEqual({ level: 'starmap' });
+  });
+
+  it('carries the system level WITH its id, so a selected-but-unfocused system is followable', async () => {
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    const seen: any[] = [];
+    (player as any).onGmLevelUpdate = (l: any) => seen.push(l);
+    host.sendMessage({ type: 'SYNC_GM_LEVEL', payload: { level: 'system', systemId: 'sol' } } as any);
+    await waitFor(() => seen.length > 0);
+    expect(seen[0]).toEqual({ level: 'system', systemId: 'sol' });
+  });
+
+  it('is RECEIVER-ONLY: a sender never acts on its own level message', async () => {
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    let hostSaw = 0;
+    (host as any).onGmLevelUpdate = () => hostSaw++;
+    const seen: any[] = [];
+    (player as any).onGmLevelUpdate = (l: any) => seen.push(l);
+    host.sendMessage({ type: 'SYNC_GM_LEVEL', payload: { level: 'starmap' } } as any);
+    await waitFor(() => seen.length > 0);
+    await settle();
+    expect(hostSaw).toBe(0);
+  });
+
+  it('a level CHANGE gets through the fingerprint gate, and a repeat does not', async () => {
+    const host = await makeService();
+    host.initSender('sid-a');
+    const bc = host as any;
+    const { perfCounters } = await import('./perfTrace');
+    for (const k of Object.keys(perfCounters)) delete perfCounters[k];
+    bc.lastSentByType.delete('SYNC_GM_LEVEL');
+    bc.lastSentAtByType.delete('SYNC_GM_LEVEL');
+    bc.sendIfChanged({ type: 'SYNC_GM_LEVEL', payload: { level: 'system', systemId: 'sol' } });
+    bc.sendIfChanged({ type: 'SYNC_GM_LEVEL', payload: { level: 'system', systemId: 'sol' } });
+    expect(perfCounters['bc.SYNC_GM_LEVEL.sent']).toBe(1);
+    expect(perfCounters['bc.SYNC_GM_LEVEL.unchanged']).toBe(1);
+    // The message is tiny, so it never earns the large-payload floor below.
+    expect(perfCounters['bc.SYNC_GM_LEVEL.throttled']).toBeUndefined();
+    for (const q of bc.pendingByType.values()) clearTimeout(q.timer);
+    bc.pendingByType.clear();
+  });
+});
+
+/**
+ * P3 - A PLAYING CLOCK MUST NOT RE-BROADCAST THE CAMPAIGN.
+ *
+ * The owner's diagnostic: bc.SYNC_STARMAP.sent 517, 989 MB across the wire, 33 s of stringify, heap
+ * to 3.8 GB and a dead tab. These pin the SIZE-AWARE THROTTLE that makes the crash impossible.
+ *
+ * The other two guards live where their state does, and are named here so nobody reads this file as
+ * the whole story: the clock no longer rides the campaign payload (starmapSnapshotForPlayers strips
+ * temporal and the per-system time block), and the snapshot is not even BUILT on every tick while
+ * playback runs (the GM route's reactive gate). That last one matters most, because sendIfChanged can
+ * only decline to SEND - by the time it is reached, the deep clone, the redaction and the stringify
+ * have all already happened.
+ */
+describe('P3 - the big-payload throttle: degrade, never crash', () => {
+  beforeEach(() => {
+    // REAL TIMERS FIRST. The A57 describe above runs the retry ladder under vi.useFakeTimers(), and
+    // its afterEach is scoped to that describe - so without this, `waitFor`'s setTimeout never fires
+    // here and every awaited delivery looks like a transport failure. (Cost: three tests that timed
+    // out at 5 s while the message was in fact arriving perfectly.)
+    vi.useRealTimers();
+    FakeChannel.byName.clear();
+    FakePeer.taken.clear();
+    (globalThis as any).window = globalThis;
+    (globalThis as any).BroadcastChannel = FakeChannel;
+    (globalThis as any).addEventListener ??= () => {};
+    (globalThis as any).performance ??= { now: () => Date.now() };
+  });
+
+  async function freshMeters() {
+    const host = await makeService();
+    host.initSender('sid-a');
+    const { perfCounters } = await import('./perfTrace');
+    for (const k of Object.keys(perfCounters)) delete perfCounters[k];
+    const bc = host as any;
+    bc.lastSentByType.clear();
+    bc.lastSentAtByType.clear();
+    bc.lastBytesByType.clear();
+    drain(bc);
+    return { bc, perfCounters };
+  }
+  function drain(bc: any) {
+    for (const q of bc.pendingByType.values()) clearTimeout(q.timer);
+    bc.pendingByType.clear();
+  }
+
+  it('a small payload keeps the 500 ms floor and is never counted as throttled', async () => {
+    const { bc, perfCounters } = await freshMeters();
+    bc.sendIfChanged({ type: 'SYNC_TIME', payload: { t: 1 } });
+    bc.sendIfChanged({ type: 'SYNC_TIME', payload: { t: 2 } });
+    expect(perfCounters['bc.SYNC_TIME.sent']).toBe(1);
+    expect(perfCounters['bc.SYNC_TIME.throttled']).toBeUndefined();
+    drain(bc);
+  });
+
+  it('once a payload has gone out BIG, the next change is throttled rather than sent', async () => {
+    const { bc, perfCounters } = await freshMeters();
+    const big = (n: number) => ({ blob: 'x'.repeat(400 * 1024), n });
+    // The FIRST send is never delayed - the floor is judged on what this type last actually sent.
+    bc.sendIfChanged({ type: 'SYNC_STARMAP', payload: big(1) });
+    expect(perfCounters['bc.SYNC_STARMAP.sent']).toBe(1);
+    expect(perfCounters['bc.SYNC_STARMAP.bytes']).toBeGreaterThan(256 * 1024);
+    // ...and now a genuinely DIFFERENT payload does not go out, because the last one was large.
+    bc.sendIfChanged({ type: 'SYNC_STARMAP', payload: big(2) });
+    expect(perfCounters['bc.SYNC_STARMAP.sent']).toBe(1);
+    expect(perfCounters['bc.SYNC_STARMAP.throttled']).toBe(1);
+    // DELAYED, NOT DROPPED: the trailing timer still holds the latest message.
+    expect(bc.pendingByType.has('SYNC_STARMAP')).toBe(true);
+    expect(bc.pendingByType.get('SYNC_STARMAP').msg.payload.n).toBe(2);
+    drain(bc);
+  });
+
+  it('the throttle keeps the LATEST state, so a burst collapses to one send rather than a queue', async () => {
+    const { bc, perfCounters } = await freshMeters();
+    const big = (n: number) => ({ blob: 'y'.repeat(400 * 1024), n });
+    bc.sendIfChanged({ type: 'SYNC_STARMAP', payload: big(0) });
+    for (let i = 1; i <= 20; i++) bc.sendIfChanged({ type: 'SYNC_STARMAP', payload: big(i) });
+    // Twenty ticks of a 400 KB payload used to be 8 MB on the wire. It is now one pending message.
+    expect(perfCounters['bc.SYNC_STARMAP.sent']).toBe(1);
+    expect(perfCounters['bc.SYNC_STARMAP.throttled']).toBe(20);
+    expect(bc.pendingByType.size).toBe(1);
+    expect(bc.pendingByType.get('SYNC_STARMAP').msg.payload.n).toBe(20); // the LATEST
+    drain(bc);
+  });
+});

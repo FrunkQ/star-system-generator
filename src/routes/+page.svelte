@@ -76,6 +76,7 @@
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import { unitKind, campaignUnit, normaliseCampaignUnit, applyUnitChange, type UnitChangeMode } from '$lib/map/distanceUnits';
   import { rescaleMapBackgroundForRuler } from '$lib/map/mapBackground';
+  import { perfCount } from '$lib/perfTrace';
   import { shouldOfferUpgrade, dismissUpgrade, type UpgradeOffer } from '$lib/map/upgradeOffer';
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
@@ -557,6 +558,19 @@
 
   $: currentSystemId = $page.state.systemId || null;
 
+  // A59 — TELL PLAYERS WHICH LEVEL THE GM IS ON. `SYNC_FOCUS` carries a BODY id, so it could only
+  // ever say "look at this thing inside a system"; leaving one set `systemStore` to null and
+  // broadcast nothing at all, which left a following player stranded in whatever system the GM had
+  // last opened. Driven off the SAME `currentSystemId` the app's own navigation runs on, so the
+  // message cannot disagree with where the GM actually is.
+  function gmLevelNow(): import('$lib/broadcast').GmLevel {
+    const id = $page.state.systemId || null;
+    return id ? { level: 'system', systemId: id } : { level: 'starmap' };
+  }
+  $: if (browser && $page.state) {
+    broadcastService.sendIfChanged({ type: 'SYNC_GM_LEVEL', payload: gmLevelNow() });
+  }
+
   // Robustly handle System -> Starmap transition (whether via Back button or UI)
   $: if (currentSystemId !== previousSystemId) {
       // console.log('System ID Change:', { from: previousSystemId, to: currentSystemId });
@@ -767,7 +781,15 @@
   function starmapSnapshotForPlayers(map: import('$lib/types').Starmap) {
     const ui = get(starmapUiStore);
     const type = toLegacyMapGridType(ui.travellerMode ? 'traveller-hex' : ui.gridType);
-    return { ...computePlayerStarmapSnapshot(map), mapGrid: { type, size: 50 } };
+    const snap: any = { ...computePlayerStarmapSnapshot(map), mapGrid: { type, size: 50 } };
+    // P3 — THE CLOCK DOES NOT RIDE THE CAMPAIGN. It travels as SYNC_TIME, which is a few dozen bytes,
+    // and a player evaluates its own clock against the published burns. Carrying it here made the
+    // heaviest message in the app change on every tick for no reader: `sendIfChanged` already ignored
+    // the two clock FIELDS when fingerprinting (VOLATILE_KEYS), but they were still serialised into
+    // every payload, and the per-system `time` block was a second copy the gate never knew about.
+    delete snap.temporal;
+    if (Array.isArray(snap.systems)) for (const s of snap.systems) delete s.time;
+    return snap;
   }
   // VTT integration discovery payload: what a host app (Mappadux StarMap, a Foundry/Owlbear shim)
   // needs to FIND, LABEL and CONNECT to this campaign. Identity + Player View names only.
@@ -862,6 +884,9 @@
       broadcastService.sendMessage({ type: 'SYNC_TAGSTYLES', payload: tagStyleSnapshot(get(tagCategories)) });
       const pid = get(runningPresetId);
       if (pid) broadcastService.sendMessage({ type: 'SYNC_PRESET', payload: { presetId: pid, overrides: get(liveOverrides) } });
+      // A59: and WHERE the GM is. A window that joins while the GM is on the map must not be left at
+      // whatever level it happened to open on, exactly as the overrides above must be re-stated.
+      broadcastService.sendMessage({ type: 'SYNC_GM_LEVEL', payload: gmLevelNow() });
     };
     // VTT integration (design 9.1/1B): discovery + remote-request answers. ANNOUNCE is identity
     // metadata only — never campaign content — so it is safe to answer any same-machine prober.
@@ -893,8 +918,32 @@
   // Re-broadcast the redacted starmap whenever it (or the GM's grid choice) changes, so guides stay
   // live. starmapStore ticks with every systemStore emission (several per second while idle) and the
   // snapshot runs to hundreds of KB, so this goes through the fingerprint gate — only real changes leave.
+  //
+  // P3 — AND THE GATE IS NOT ENOUGH, BECAUSE THE COST IS PAID BEFORE IT.
+  //
+  // `sendIfChanged` can only decline to SEND; by the time it is called the snapshot has already been
+  // built, and building one is a deep clone plus a redaction pass plus a stringify over the whole
+  // campaign. `systemStore.subscribe` below writes the live system back into its starmap node on every
+  // emission, so while a clock is playing this reactive block ran several times a second and paid that
+  // cost every time — the owner measured 33 s of stringify, 989 MB sent across 517 sends, and a 3.8 GB
+  // heap before the tab died.
+  //
+  // While playback is RUNNING the campaign does not need re-sending at all: a player's view advances on
+  // its OWN clock (SYNC_TIME plus the published drive burns), which is why the map looks alive between
+  // snapshots in the first place. So the rebuild is skipped while playing, with a slow heartbeat so a
+  // GM who edits something mid-playback still reaches players within a few seconds. Pausing, stopping
+  // or leaving a system all clear the flag and the next change goes out immediately.
+  let lastPlayingBroadcastMs = 0;
+  const PLAYING_BROADCAST_MIN_MS = 5000;
   $: if (browser && $starmapStore && $starmapUiStore) {
-    broadcastService.sendIfChanged({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers($starmapStore) });
+    const playing = !!$starmapStore.temporal?.playbackRunning;
+    const nowMs = Date.now();
+    if (!playing || nowMs - lastPlayingBroadcastMs >= PLAYING_BROADCAST_MIN_MS) {
+      if (playing) lastPlayingBroadcastMs = nowMs;
+      broadcastService.sendIfChanged({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers($starmapStore) });
+    } else {
+      perfCount('bc.SYNC_STARMAP.skippedWhilePlaying');
+    }
   }
   // Push branding (company name + logo) to player views whenever the GM edits it.
   $: if (browser && $brandingStore) {

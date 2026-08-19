@@ -426,6 +426,35 @@
     holoView?.setFocusLevel?.(id, level);
   }
 
+  // A59 — FOLLOW THE GM BACK OUT TO THE MAP.
+  //
+  // `followFocus` above can only ever move the player INTO a system, because a focus is a body id.
+  // Leaving one broadcast nothing at all, so a following player stayed in whatever system the GM had
+  // last opened, watching a system the GM was no longer looking at. This is the other direction.
+  //
+  // GATED THE SAME WAY THE BACK GESTURE IS (`onPopState` below): a preset whose starmap layer is
+  // DISABLED has deliberately locked its players into one system (WS5), and following the GM out of
+  // it would break that lock-down rather than honour the GM. So the level is obeyed only when the
+  // player has a starmap to be returned to.
+  function followGmLevel(l: import('$lib/broadcast').GmLevel) {
+    if (!followGMActive) return;
+    if (l.level === 'starmap') {
+      if (activePreset?.starmapEnabled === false) return; // locked into one system by design (WS5)
+      selectedSystemId = null;
+      selectedBody = null;
+      focusedBodyId = null;
+      return;
+    }
+    // 'system' carries the id, so a system the GM has SELECTED but not focused on any body is
+    // followed too — which a body-focus message could never express.
+    if (l.systemId && l.systemId !== selectedSystemId) {
+      coverDismissed = true;
+      selectedSystemId = l.systemId;
+      selectedBody = null;
+      focusedBodyId = null;
+    }
+  }
+
   function followFocus(id: string | null) {
     if (!followGMActive) return;
     if (!id) { focusedBodyId = null; selectedBody = null; return; } // GM cleared focus → unfocus (camera stays)
@@ -837,6 +866,7 @@
     );
     window.addEventListener('popstate', onPopState);
     broadcastService.onFocusLevelUpdate = (p) => followFocusLevel(p.id, p.level);
+    broadcastService.onGmLevelUpdate = (l) => followGmLevel(l); // A59
     broadcastService.onStarmapUpdate = (map) => {
       perfCount('sync.starmap'); // each one re-clones the campaign + rebuilds the scene — track it
       starmap = map;

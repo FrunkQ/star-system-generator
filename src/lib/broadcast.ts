@@ -59,6 +59,13 @@ export type BroadcastMessage =
   // pushed the GM's enforced skin, and SYNC_CRT_MODE / SYNC_GREENSCREEN toggled the projector's CRT
   // and chroma-key. All three are preset fields now.)
   | { type: 'SYNC_PRESET'; payload: PresetBroadcast | null }
+  // A59 — WHICH LEVEL THE GM IS LOOKING AT. `SYNC_FOCUS` carries a BODY id, so it can only ever say
+  // "look at this thing inside a system"; there was no message that meant "I have gone back to the
+  // map", and a following player was therefore stranded in whatever system the GM last opened. This
+  // is that message, and it is deliberately a LEVEL rather than a nullable focus: `systemId` lets a
+  // player follow the GM into a system that has been SELECTED but not focused on any body, which a
+  // null focus could not express either.
+  | { type: 'SYNC_GM_LEVEL'; payload: GmLevel }
   // G3 construct models: a player missing a model binary asks for it BY HASH and the GM answers
   // once - the binary never rides the snapshot (design §4: sendIfChanged re-sends whole payloads,
   // so inline models would multiply every resend). b64 rides the existing chunked path.
@@ -104,6 +111,12 @@ export interface PresetOverrides {
   mapHighlights?: { ref: string; style?: string }[];
   highlightsMuted?: boolean;
 }
+/** A59: where the GM is - the map, or inside one system. */
+export interface GmLevel {
+  level: 'starmap' | 'system';
+  systemId?: string; // set when level === 'system'
+}
+
 export interface PresetBroadcast {
   presetId: string;
   overrides: PresetOverrides;
@@ -502,6 +515,21 @@ class BroadcastService {
   // Backstop for volatile fields this list doesn't know about: at most one send per type per interval,
   // with a trailing send so the final state always lands.
   private static readonly SEND_MIN_INTERVAL_MS = 500;
+  // P3 — THE SIZE-AWARE BACKSTOP, so this degrades instead of crashing.
+  //
+  // The 500 ms floor above is the right interval for a payload of a few KB and completely the wrong
+  // one for a campaign snapshot. The owner's diagnostic: a playing clock produced 517 SYNC_STARMAP
+  // sends totalling 989 MB with 33 s of stringify, and the tab reached a 3.8 GB heap and died. Two
+  // per second of a 2 MB payload is 4 MB/s of JSON that every player window must also parse.
+  //
+  // So a payload OVER `LARGE_PAYLOAD_BYTES` earns a much longer floor. It is measured from what this
+  // type last actually sent, which is the honest predictor of what it is about to send again, and the
+  // trailing timer means the final state still lands — a throttled update is DELAYED, never dropped.
+  // `bc.<TYPE>.throttled` counts them, so the next person to look at the meters can see the guard
+  // working rather than having to infer it.
+  private static readonly LARGE_PAYLOAD_BYTES = 256 * 1024;
+  private static readonly LARGE_SEND_MIN_INTERVAL_MS = 5000;
+  private lastBytesByType = new Map<string, number>();
 
   /**
    * Gate for REACTIVE broadcast sites (Svelte `$:` statements that fire on every store tick): skip the
@@ -524,8 +552,15 @@ class BroadcastService {
     perfCount(`bc.${msg.type}.strMs`, Math.round(performance.now() - t0));
     if (this.lastSentByType.get(msg.type) === json) { perfCount(`bc.${msg.type}.unchanged`); return; }
     const now = Date.now();
-    const wait = BroadcastService.SEND_MIN_INTERVAL_MS - (now - (this.lastSentAtByType.get(msg.type) ?? 0));
+    // A big payload gets a big floor (see LARGE_PAYLOAD_BYTES). Judged on the last SENT size for this
+    // type, so the very first send of anything is never delayed.
+    const lastBytes = this.lastBytesByType.get(msg.type) ?? 0;
+    const floor = lastBytes >= BroadcastService.LARGE_PAYLOAD_BYTES
+      ? BroadcastService.LARGE_SEND_MIN_INTERVAL_MS
+      : BroadcastService.SEND_MIN_INTERVAL_MS;
+    const wait = floor - (now - (this.lastSentAtByType.get(msg.type) ?? 0));
     if (wait > 0) {
+      if (floor !== BroadcastService.SEND_MIN_INTERVAL_MS) perfCount(`bc.${msg.type}.throttled`);
       // Too soon — remember the LATEST message and send it when the interval is up.
       const pending = this.pendingByType.get(msg.type);
       if (pending) {
@@ -546,6 +581,7 @@ class BroadcastService {
     this.lastSentAtByType.set(msg.type, now);
     perfCount(`bc.${msg.type}.sent`);
     perfCount(`bc.${msg.type}.bytes`, json.length);
+    this.lastBytesByType.set(msg.type, json.length); // what the next call's floor is judged on
     this.sendMessage(msg);
   }
 
@@ -566,6 +602,7 @@ class BroadcastService {
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
   public onTagStylesUpdate: ((t: TagStyleSnapshot) => void) | null = null;
   public onPresetUpdate: ((p: PresetBroadcast | null) => void) | null = null;
+  public onGmLevelUpdate: ((l: GmLevel) => void) | null = null;
   public onFocusLevelUpdate: ((p: { id: string; level: number }) => void) | null = null;
   // G3 construct models (sender side answers, receiver side stores) - transport only, the model
   // store itself is the hosts' business.
@@ -659,6 +696,9 @@ class BroadcastService {
               break;
           case 'SYNC_PRESET':
               if (!this.isSender && this.onPresetUpdate) this.onPresetUpdate(msg.payload);
+              break;
+          case 'SYNC_GM_LEVEL':
+              if (!this.isSender && this.onGmLevelUpdate) this.onGmLevelUpdate(msg.payload);
               break;
           case 'REQUEST_STARMAP':
               if (this.isSender && this.onRequestStarmap) {

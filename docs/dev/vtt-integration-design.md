@@ -1060,6 +1060,28 @@ section 11 as the single list.
 
 ## 15. Network layer: ONE system across both apps (2026-08-17)
 
+**Two messages were added on 2026-08-19 and are listed in the table below; both are network-layer
+and therefore both belong in Mappadux too.**
+
+`SYNC_GM_LEVEL` exists because **`SYNC_FOCUS` carries a BODY id and so can only ever point INTO a
+system.** There was no message meaning *I have gone back to the map*, so a following player stayed
+in whichever system the GM last opened — the GM would drop back to the starmap and the player would
+not (A59, owner-reported). Selecting a different system still flipped correctly, which is exactly
+why it read as "just misses the starmap level". `level` is the payload rather than a nullable
+focus, and `systemId` rides with `'system'`, because a system the GM has SELECTED but not focused
+on any body is a third state that a nullable focus cannot express either.
+
+**It is obeyed only where the player has a starmap to be returned to.** A preset whose starmap
+layer is disabled has deliberately locked its players into one system (WS5); following the GM out
+of it would break that lock-down rather than honour the GM. Same condition the player's own back
+gesture already uses.
+
+The size-aware floor is the P3 crash guard: a playing clock re-broadcast the whole campaign every
+tick (517 sends, 989 MB, 33 s of stringify, a 3.8 GB heap and a dead tab). A throttled update is
+DELAYED, never dropped — the trailing timer keeps the latest state — so the failure mode is a
+few seconds of staleness rather than a crash. See RENDER-S22 for the two source-side guards that
+sit in front of it, and why a send-side gate alone could never have been enough.
+
 Owner's rule, same as filters and transitions: the network transport is one
 system that happens to live in two repositories. Every improvement lands in
 BOTH, kept as closely aligned as possible; the only permitted difference is
@@ -1068,6 +1090,8 @@ today — SSE v2.1.725-beta and Mappadux v2.18.1-beta:
 
 | Piece | SSE | Mappadux | Must stay identical |
 |---|---|---|---|
+| **`SYNC_GM_LEVEL { level: 'starmap' \| 'system', systemId? }`** (A59) — WHICH LEVEL the GM is on | `broadcast.ts` (sender: `routes/+page.svelte`, receiver: `routes/catalogue/+page.svelte`) | not yet built | CONCEPT, yes |
+| **Size-aware send floor** (P3): a type whose last payload exceeded 256 KB gets a 5 s minimum interval instead of 500 ms, trailing-send, counted as `bc.<TYPE>.throttled` | `broadcast.ts sendIfChanged` | not yet built | YES — same thresholds |
 | ICE config module (parse/encode `?ice=`, textarea format, prepend-to-defaults, `DEFAULT_ICE` mirror of peerjs 1.5) | `src/lib/iceConfig.ts` | `src/p2p/iceConfig.ts` | YES — byte-identical except `STORAGE_KEY` |
 | Its unit tests | `src/lib/iceConfig.spec.ts` | `test/unit/iceConfig.test.ts` | YES |
 | Peer construction takes `{config:{iceServers}}` when custom, else library defaults | `broadcast.ts` host+guest | `Host.ts`, `Guest.ts` | YES |
