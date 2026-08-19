@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.825-beta - 18th Aug 2026
+
+- NEW: a gas giant's Surface view is now the view from a balloon. It used to paint rock, sea and trees on a world with nothing to stand on; it now shows a soft cloud deck below, darker air above, and no hard horizon, because there is no edge to stand at. The distance markers become balloons, which is honest rather than a joke — an aerostat is the one thing a person could genuinely float at depth in such an atmosphere.
+- NEW: a depth slider. A balloon floats where you tell it to, so you can go down through the air and watch it warm, darken under each cloud deck, and change colour as the deck you are looking down onto changes. Everything it shows is a read of what the engine already derives: the adiabatic profile for the temperature, each deck's base pressure and optical depth for the light. Descending through Jupiter's ammonia deck the light goes to near nothing, which is correct — you are under a hundred optical depths of cloud — and the view says so rather than drawing a black box.
+- The slider stops at the 1 bar reference level and says why: the model describes nothing beneath it — no temperature law, no radiative transfer, and at a few hundred bar the air glows by its own heat, which is V4 work. Every number past that line would be an extrapolation. A balloon would not take a person there in any case.
+- The standalone viewer on the physics page gains a Jupiter-like sky, so the balloon view can be reached without loading a map.
+- Found on the way: a giant without a stored equilibrium temperature read the same 139 K at every depth, because the profile's skin temperature fell back to the 1 bar reading and the adiabat clamped to it. The demo body now carries both, as the real catalogue bodies already do.
+
 ## v2.1.824-beta - 19th Aug 2026
 
 - A copied gas-giant recipe now carries its own name - the gallery's description of what condenses in it, like "sodium overcast - potassium veil" - and the preset it creates is called that instead of being named after whichever planet you dropped it on. What you are saving is a gas mixture, so the dropdown now reads like a list of mixtures.

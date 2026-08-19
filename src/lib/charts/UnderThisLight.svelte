@@ -14,6 +14,9 @@
   import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
   import { deriveVisibility, distanceWords, LAMPS } from '$lib/physics/visibility';
   import { surfaceSceneFor, drawSky, drawMaterials, drawMarkers, drawEmissive, drawSpectrumEdges, dimHex, homeSky } from './surfaceScene';
+import { cloudscapeFor, drawCloudscape, drawBalloonsMaterial, drawBalloonVeils } from './cloudscape';
+import { depthProbe, pressureWords } from '$lib/physics/depthView';
+import { makeupFractions } from '$lib/physics/makeup';
   import { blackbodySpectrum, gridShare, spectrumToHex } from '$lib/physics/spectrum';
   import {
     lightOperator, relightImage, colourUnderOperator, confusability,
@@ -49,20 +52,35 @@
   let demoTempK = $state(3200);
   let demoSky = $state('thick');
 
-  const SKIES: Record<string, { label: string; atm: any }> = {
+  const SKIES: Record<string, { label: string; atm: any; giant?: boolean }> = {
     none:  { label: 'No atmosphere', atm: undefined },
     earth: { label: 'Earth-like air, 1 bar', atm: { pressure_bar: 1, molarMassKg: 0.02896, composition: { N2: 0.78, O2: 0.21, Ar: 0.009, CO2: 0.0004, H2O: 0.004 } } },
     thick: { label: 'Thick carbon dioxide, 10 bar', atm: { pressure_bar: 10, molarMassKg: 0.044, composition: { CO2: 0.95, N2: 0.05 } } },
     titan: { label: 'Methane haze, 1.5 bar', atm: { pressure_bar: 1.5, molarMassKg: 0.028, composition: { N2: 0.94, CH4: 0.056 } } },
     venus: { label: 'Venus-like, 92 bar', atm: { pressure_bar: 92, molarMassKg: 0.044, composition: { CO2: 0.965, N2: 0.035 } } },
-    sulphur: { label: 'Sulphurous, 5 bar', atm: { pressure_bar: 5, molarMassKg: 0.064, composition: { SO2: 0.6, CO2: 0.35, N2: 0.05 } } }
+    sulphur: { label: 'Sulphurous, 5 bar', atm: { pressure_bar: 5, molarMassKg: 0.064, composition: { SO2: 0.6, CO2: 0.35, N2: 0.05 } } },
+    // A GIANT. No ground at all — this is the case that opens the balloon view and its depth slider,
+    // and the demo had no way to reach it.
+    giant: { label: 'Gas giant, no surface (Jupiter-like)', atm: { pressure_bar: 1, molarMassKg: 0.00226, composition: { H2: 0.86, He: 0.13, CH4: 0.002, NH3: 0.0003, H2O: 0.0005 } }, giant: true }
   };
 
-  const demoBody = $derived({
-    id: 'under-light-demo', kind: 'body', name: 'demo', roleHint: 'planet',
-    makeup: { rock: 0.7, metal: 0.3 }, calculatedGravity_ms2: 9.81,
-    atmosphere: SKIES[demoSky].atm
-  } as unknown as CelestialBody);
+  const demoBody = $derived(SKIES[demoSky].giant
+    ? ({
+        id: 'under-light-demo', kind: 'body', name: 'demo', roleHint: 'planet',
+        // Jupiter's own numbers: makeupFractions derives "gas" from mass and radius, so they have to
+        // be real for the body to read as a giant.
+        // BOTH temperatures, because the profile needs both: the 1 bar reading anchors the adiabat
+        // and the equilibrium temperature sets the skin it cools to. Leave the second out and the
+        // skin defaults to the first, the adiabat clamps to it, and every depth reads 139 K.
+        massKg: 1.898e27, radiusKm: 69911, calculatedGravity_ms2: 24.8,
+        temperatureK: 165, equilibriumTempK: 110,
+        makeup: { gas: 1 }, atmosphere: SKIES[demoSky].atm
+      } as unknown as CelestialBody)
+    : ({
+        id: 'under-light-demo', kind: 'body', name: 'demo', roleHint: 'planet',
+        makeup: { rock: 0.7, metal: 0.3 }, calculatedGravity_ms2: 9.81,
+        atmosphere: SKIES[demoSky].atm
+      } as unknown as CelestialBody));
 
   // The world's light: its own controls when standalone, else handed in, else rebuilt from the
   // body's stored spectrum summary.
@@ -127,6 +145,34 @@
   // Earth's own extinction, so the near markers on the home side fade the way they really do.
   const HOME_EXTINCTION = 1.155e-5;
   let matCanvas: HTMLCanvasElement | null = null;
+
+  // ── A WORLD WITH NO GROUND ──────────────────────────────────────────────────────────────────────
+  // A gas giant has nothing to stand on, so its Surface view is the view from a BALLOON, and the
+  // depth you float at is yours to choose. The probe is built once per body; each slider move is
+  // arithmetic over it. It runs from the top of the air down to the model's reference level and no
+  // further — see `floorReason` for why, which the UI repeats rather than hides.
+  const isGiant = $derived(!!(body ?? (standalone ? demoBody : null)) && makeupFractions((body ?? demoBody) as any).gas > 0.5);
+  const topLight = $derived.by(() => {
+    const b = body ?? (standalone ? demoBody : null);
+    if (!b) return null;
+    const s0 = b.surfaceSpectrum;
+    const r = deriveSurfaceSpectrum(b, {
+      starTempK: s0?.starTempK ?? demoTempK, luminositySolar: 1, distanceAU: s0?.distanceAU ?? 1 }, pack);
+    if (!r) return null;
+    const k = s0 && r.summary.totalTopWm2 > 0 && s0.totalTopWm2 > 0 ? s0.totalTopWm2 / r.summary.totalTopWm2 : 1;
+    return r.curves.topOfAtmosphere.map((v) => v * k);
+  });
+  const probe = $derived(isGiant && topLight ? depthProbe((body ?? demoBody) as any, topLight, pack) : null);
+  // The slider position, as a LOG fraction between the top and bottom of the probe — pressure runs
+  // over six decades and a linear slider would spend all of it in the top millibar.
+  let depthFrac = $state(0.35);
+  const depthBar = $derived.by(() => {
+    if (!probe) return 1;
+    const lo = Math.log(probe.topBar), hi = Math.log(probe.bottomBar);
+    return Math.exp(lo + (hi - lo) * depthFrac);
+  });
+  const depthLevel = $derived(probe ? probe.at(depthBar) : null);
+  const cloudscape = $derived(depthLevel ? cloudscapeFor(depthLevel) : null);
 
   const level = $derived(op ? brightnessVs(op, daylightOp) : 1);
   const levelPct = $derived(
@@ -203,6 +249,31 @@
     // own sun on the "at home" side too.
     if (!world) return;
     const home = homeWorld ?? world;
+
+    if (probe && depthLevel && cloudscape) {
+      // THE BALLOON VIEW. Same three layers, different painter: the sky and the deck floor are light
+      // and go on directly; the balloons are material and are re-lit by the light AT THIS DEPTH — not
+      // the surface light, which for a giant is the 1 bar reference and may be far below you.
+      drawCloudscape(ctx, W, H, cloudscape, world.seed);
+      const mat = matCanvas ?? (matCanvas = document.createElement('canvas'));
+      mat.width = W; mat.height = H;
+      const mctx = mat.getContext('2d', { willReadFrequently: true })!;
+      mctx.clearRect(0, 0, W, H);
+      drawBalloonsMaterial(mctx, W, H, world.marks);
+      if (x0 < W) {
+        const img = mctx.getImageData(x0, 0, W - x0, H);
+        const opHere = lightOperator(depthLevel.light);
+        relightImage(img.data, opHere, adapt, trueLevel ? level * depthLevel.transmission : 1);
+        mctx.putImageData(img, x0, 0);
+      }
+      ctx.drawImage(mat, 0, 0);
+      // Haze between you and each balloon: Earth's air on the home side, this air on the other.
+      drawBalloonVeils(ctx, W, H, world.marks, HOME_EXTINCTION, homeSky().low, 0, x0);
+      drawBalloonVeils(ctx, W, H, world.marks, world.sight.extinctionPerM, cloudscape.midHex, x0, W);
+      drawSpectrumEdges(ctx, W, H, homeDaylightSpectrum(), depthLevel.light);
+      return;
+    }
+
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, x0, H); ctx.clip();
     drawSky(ctx, W, H, home, 1);
@@ -282,7 +353,7 @@
     });
   }
 
-  $effect(() => { split; adapt; trueLevel; level; activeScene; op; world; demoTempK; demoSky; draw(); });
+  $effect(() => { split; adapt; trueLevel; level; activeScene; op; world; depthLevel; demoTempK; demoSky; draw(); });
   onMount(draw);
 </script>
 
@@ -329,6 +400,18 @@
       Midday here is <b>{levelPct}</b> of an Earth noon &mdash; {brightnessWords(level)}.
     </p>
 
+    {#if probe && activeScene === 'landscape'}
+      <!-- DEPTH. A balloon floats where you tell it to. Log-scaled, because the air spans six
+           decades of pressure and a linear slider would spend all of them in the top millibar. -->
+      <label class="depth">
+        <span>Float at <b>{pressureWords(depthBar)}</b>{#if depthLevel}, {Math.round(depthLevel.tempK)}&nbsp;K{/if}
+          {#if cloudscape}&mdash; <em>{cloudscape.note}</em>{/if}</span>
+        <input type="range" min="0" max="1" step="0.005" bind:value={depthFrac} />
+        <span class="floor" title={probe.floorReason}>
+          stops at {pressureWords(probe.bottomBar)}: the model describes nothing deeper
+        </span>
+      </label>
+    {/if}
     <div class="stage" bind:this={stage} class:dragging
          onpointerdown={grab} onpointermove={move} onpointerup={drop} onpointercancel={drop}>
       <canvas bind:this={canvas} width={W} height={height}
@@ -438,6 +521,10 @@
     border: 1px solid var(--border, #2a2d36); border-radius: 4px;
   }
   .adapt { display: flex; align-items: center; gap: 6px; }
+  .depth { display: flex; flex-direction: column; gap: 2px; font-size: 0.8em; margin: 4px 0 6px; }
+  .depth input { width: 100%; }
+  .depth em { color: var(--text-muted, #cfcfcf); font-style: normal; }
+  .depth .floor { font-size: 0.86em; color: var(--text-faint, #8a8f9a); cursor: help; }
   canvas {
     width: 100%; height: auto; display: block; border-radius: 6px;
     border: 1px solid var(--border, #2a2d36); background: #000;

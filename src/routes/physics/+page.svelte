@@ -1046,6 +1046,25 @@
         its life in the pigments its morphologies settled on, terrain shaped by the tags it already carries,
         markers standing out to where its air gives up, and a spectrum band up each edge — home on the left,
         that world on the right.</p>
+
+      <h3>A world with no ground</h3>
+      <p>A gas giant has nothing to stand on, so its Surface view is <strong>the view from a balloon</strong> —
+        a soft cloud deck below, darker air above, no hard horizon, because there is no edge to stand at. The
+        distance markers become balloons, which is not a joke: an aerostat is the one thing a person could
+        genuinely float at depth in such an atmosphere. And the depth is yours to choose, on a slider.</p>
+      <p>Everything the slider shows is a read of what the engine already derives. The
+        <a href="#clouds">adiabatic profile</a> gives the temperature at any pressure; each cloud deck has a
+        base pressure and an optical depth; the light at your level is the starlight dimmed by every deck
+        above you — a grey extinction, since droplets scatter every colour alike. So as you descend through
+        Jupiter's ammonia deck at about 550&nbsp;mbar the light goes to near nothing, which is not a fault: you
+        are under a hundred optical depths of cloud, and what you see is the deck's own faint glow and your
+        own lamps. The balloons are re-lit by the light at <em>that</em> depth, not by the 1&nbsp;bar reference.</p>
+      <p><strong>Where it stops, and why.</strong> The profile is anchored at the 1&nbsp;bar reference level and
+        models nothing beneath it: no temperature law, no radiative transfer, and at a few hundred bar the
+        air glows by its own heat — a continuous version of the brown-dwarf self-luminosity, which is V4 work.
+        The slider runs from the top of the air to that level and no further, because every number past it
+        would be an extrapolation nobody has checked. A balloon would not take a person there anyway:
+        Jupiter's hundred-bar level is hot enough to cook, and the pressure alone is a submarine's.</p>
     </section>
 
     <section id="biosphere">
