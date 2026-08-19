@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.838-beta - 18th Aug 2026
+
+- **"Navigation lists" is out of the info block, and off the 2D/3D system view entirely.** It never did anything there: a 2D or 3D system view builds its side panel in panel mode, which stops before the parent-nav row and every drill-in list is added, so a list style was styling blocks that are never drawn. It is a Document feature, and it now appears only when the stage actually is a document.
+- The System step gains a **Document page** section, matching the one the Starmap step already had. The colouration, the per-slot colours, the navigator buttons and the navigation lists live there - they are the page's appearance. **Info block appearance** keeps what is genuinely the info block: the body picture, tags, live readings, panel width and text size.
+
 ## v2.1.837-beta - 18th Aug 2026
 
 - FIXED: the balloon view showed a violet cloud deck on a world the globe painted gold. Both were faithful to the data, and the data was wrong: the potassium condensate was authored `#ee82ee`, a lilac — its FLAME colour, the chemistry-class answer — and sodium `#ffd700`, its flame's gold. Condensed, both are silvery metals, and every other liquid in the set is authored as the condensate looks rather than as it burns. Recoloured as pale metallic greys. The globe and the balloon now agree: the same pale warm grey from both directions.

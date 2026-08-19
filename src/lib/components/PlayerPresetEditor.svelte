@@ -207,7 +207,8 @@
     'starmap-background': false, 'starmap-scale': false, 'starmap-camera': false,
     'starmap-labels': false, 'starmap-graphic': false,
     'system-stage': true, 'system-look': false, 'system-background': false, 'system-scale': false,
-    'system-camera': false, 'system-labels': false, 'system-info': false, 'system-graphic': false,
+    'system-camera': false, 'system-labels': false, 'system-document': false, 'system-info': false,
+    'system-graphic': false,
     transition: true,
     filter: true,
     // The per-slot palette inside the two document sections — one each, so tweaking the system's
@@ -946,9 +947,16 @@
             {/if}
             <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
             <div class="scene-sections" on:pointerdown={() => (infoPreview = true)} on:focusin={() => (infoPreview = true)}>
-              <CollapsibleSection label="Info block appearance" open={openSections['system-info']}
-                on:toggle={(e) => setSection('system-info', e.detail)}>
-                {#if draft.systemView === 'document'}
+              <!-- TWO SECTIONS, BECAUSE THERE ARE TWO THINGS (owner, 2026-08-17). "Info block appearance"
+                   was carrying the DOCUMENT page's controls as well as the info block's, and nothing on
+                   screen said which was which. The document ones only exist when the system stage IS a
+                   document — and several of them do nothing whatever on a 2D/3D panel, because
+                   `panel: true` in guideDocument returns before the parent-nav and every drill-in list is
+                   pushed. A list style or a navigator style there was styling blocks that are never
+                   emitted. Same shape as the Starmap step, which has had a "Document page" all along. -->
+              {#if draft.systemView === 'document'}
+                <CollapsibleSection label="Document page" open={openSections['system-document']}
+                  on:toggle={(e) => setSection('system-document', e.detail)}>
                   <!-- Colouration: a documentStyle SEEDS the colours, then tweak each slot. Layout is the
                        same across styles — only the palette (and fonts, set on General) changes. -->
                   {@render colouration('system')}
@@ -962,9 +970,21 @@
                   {#if draft.bodyStyle !== 'white' && draft.documentStyle !== 'greyscale'}
                     {@render colourSlots('system')}
                   {/if}
-                {/if}
-                <!-- "Body graphics" is the per-body PICTURE in the info block — now for EVERY view (D6:
-                     the 2D/3D panels render through the same engine). The 3D orrery itself stays spheres. -->
+                  <label>Navigator buttons
+                    <select bind:value={draft.navStyle}>
+                      <option value="chips">Buttons — side by side</option>
+                      <option value="boxed">Buttons — one per row</option>
+                      <option value="plain">Plain text</option>
+                    </select>
+                  </label>
+                  {@render navListStyle('system')}
+                </CollapsibleSection>
+              {/if}
+
+              <CollapsibleSection label="Info block appearance" open={openSections['system-info']}
+                on:toggle={(e) => setSection('system-info', e.detail)}>
+                <!-- "Body graphics" is the per-body PICTURE in the info block — for EVERY view (D6: the
+                     2D/3D panels render through the same engine). The 3D orrery itself stays spheres. -->
                 <label>Body graphics
                   <select bind:value={draft.bodyGfx}>
                     <option value="sphere">3D sphere</option>
@@ -975,7 +995,8 @@
                   </select>
                 </label>
                 {#if draft.systemView === 'document' && draft.bodyGfx === 'sphere'}
-                  <!-- The 3D body graphic is the real holo render, so it takes the same render styles. -->
+                  <!-- The 3D body graphic is the real holo render, so it takes the same render styles.
+                       Document only: elsewhere Render is the SCENE's, and lives in Look & feel. -->
                   <label>Render
                     <select bind:value={draft.render}>
                       <option value="filled">Filled</option>
@@ -1005,24 +1026,14 @@
                     <option value="list">Plain list</option>
                   </select>
                 </label>
-                {#if draft.systemView === 'document'}
-                  <label>Navigation
-                    <select bind:value={draft.navStyle}>
-                      <option value="chips">Buttons — side by side</option>
-                      <option value="boxed">Buttons — one per row</option>
-                      <option value="plain">Plain text</option>
-                    </select>
-                  </label>
-                {/if}
-                {@render navListStyle('system')}
                 <!-- A29: a star catalogue holds what a ship CAN carry; only an instrument knows what is in
                      the tanks now. Off = capacity alone, on = current-of-capacity. -->
                 <label class="chk"><input type="checkbox" bind:checked={draft.liveReadings} /> Live readings</label>
                 <p class="hint">Fuel, cargo and crew as they are now, not just capacity.</p>
                 <label class="chk"><input type="checkbox" bind:checked={draft.hideInfoPanel} /> Hide body info {draft.systemView === 'document' ? 'block' : 'panel'} (clean display)</label>
                 {#if !draft.hideInfoPanel}
-                  <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block is
-                       part of the page, so it has no width to set — only a text size. -->
+                  <!-- Panel WIDTH is a docked side-panel concept (holo / 2D map). The document's info block
+                       is part of the page, so it has no width to set — only a text size. -->
                   {#if draft.systemView === 'holo3d' || draft.systemView === 'diagram2d'}
                     <label>Info panel width (desktop) <span>{Math.round(draft.inspectorWidthPct * 100)}% of screen</span><input type="range" min="0.15" max="0.5" step="0.01" bind:value={draft.inspectorWidthPct} /></label>
                   {/if}
