@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.858-beta - 19th Aug 2026
+
+- Docs only. Two import findings captured: the infill dials are offered on only one of three import paths (the Traveller code's own comment expects a panel that is not there), and a real-sky import can bring one wide companion in twice, as a star and as a planet, from two catalogues.
+
 ## v2.1.857-beta - 19th Aug 2026
 
 - Starmap stars, the owner's first look (G26 follow-up). Jets are drawn as a bright spine in a soft blue sheath, longer, on the 3D starmap and the GM map; a hole authored as feeding always jets, however small its stored Eddington fraction. The black-hole glyph is sized on its horizon and photon ring, so a hole no longer reads smaller than a star. A second dial, "Star size" (GM map: Settings > Starmap; player maps: per preset), scales every glyph from half to double — the centre is the size the map shipped with. "Star size by class" now also tilts within the dwarf band by spectral letter (O biggest, M smallest), so the dial visibly moves on an ordinary all-class-V map; the four luminosity-class bands still set the big steps and holes stay fixed. The 3D starmap camera may go under the map plane, as the system view's can.
