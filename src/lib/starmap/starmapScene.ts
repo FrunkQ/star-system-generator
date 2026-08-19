@@ -47,7 +47,8 @@ import { capMarkers, type HighlightMarker } from '$lib/tags/mapHighlights';
 import { tagPillMetrics, drawTagPill, drawTagPin, drawTagFlag, tagPillWidth, tagPillText, markerStackStep, TAG_PILL_STEM, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG, type MarkerStyleName, pinAside, flagStaffColor, type PinTextMode, type FlagStaffColor } from '$lib/tags/tagPill';
 import { latticeFor, hexCentres, travellerHexLabel, subsectorLattice } from '$lib/map/latticeGeometry';
 import { niceSeries, formatNice } from '$lib/map/niceInterval';
-import { gridFadeWindow, skirtDepth, SKIRT_TOP_ALPHA } from '$lib/map/gridFade';
+import { gridFadeWindow } from '$lib/map/gridFade';
+import { buildLattice, ringEdges, spokeEdges, type GridEdge } from '$lib/map/gridGeometry';
 
 // An in-scene name label: a canvas-textured sprite in the 3D scene (not a DOM overlay) so the
 // post-process filter warps/tints it in lockstep with the system stars. Mirrors scene.ts.
@@ -287,11 +288,6 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { x?.map?.dispose?.(); x?.dispose?.(); }); });
     g.clear();
   }
-  function ringPts(r: number): THREE.Vector3[] {
-    const p: THREE.Vector3[] = [];
-    for (let i = 0; i <= 72; i++) { const a = (i / 72) * Math.PI * 2; p.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)); }
-    return p;
-  }
   function makeGridLabel(text: string): THREE.Sprite | null {
     const c = document.createElement('canvas'); const ctx = c.getContext('2d'); if (!ctx) return null;
     c.width = 128; c.height = 40; ctx.font = '600 24px ui-monospace, monospace';
@@ -340,56 +336,33 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   //    edge-on and invisible (identical to the 2D map); tilt the view and the grid gains subtle depth.
   // Alpha rides a vec4 colour attribute, so one draw call carries the whole gradient.
   function addLattice(
-    edges: [number, number, number, number][], col: THREE.Color, cell: number, fadeFrom: number, fadeTo: number,
+    edges: GridEdge[], col: THREE.Color, cell: number, fadeFrom: number, fadeTo: number,
     o: { alpha?: number; ribbon?: number; skirt?: number } = {}
   ) {
-    const A = o.alpha ?? 0.42;                       // line alpha at full strength
     // THE LATTICE IS FLAT unless the skirt is asked for. Each edge used to drop a short curtain
     // ALWAYS, which reads as depth on a tilted 3D map and as fuzz on a flat one — and the 2D starmap
     // is this same renderer locked overhead, so it was paying for a depth cue it can never show.
-    // Now it is a choice ("Grid depth" on the 3D starmap): line at full intensity, fading downward.
-    // Shared with the system map (map/gridFade), so the two "Grid depth" dials cannot drift apart.
-    const depth = skirtDepth(cell, o.skirt ?? 0);
-    const y0 = 0.01;
-    const fade = (x: number, z: number) => {
-      const d = Math.hypot(x, z);
-      if (d <= fadeFrom) return 1;
-      return Math.max(0, 1 - (d - fadeFrom) / Math.max(1e-6, fadeTo - fadeFrom));
-    };
-    const lp: number[] = [], lc: number[] = [];
-    const sp: number[] = [], sc: number[] = [];
-    const pushC = (arr: number[], a: number) => arr.push(col.r, col.g, col.b, a);
-    for (const [x1, z1, x2, z2] of edges) {
-      const a1 = A * fade(x1, z1), a2 = A * fade(x2, z2);
-      if (a1 <= 0.002 && a2 <= 0.002) continue;
-      lp.push(x1, y0, z1, x2, y0, z2);
-      pushC(lc, a1); pushC(lc, a2);
-      // A RIBBON gives real world-space thickness, which a line cannot: THREE's linewidth is ignored
-      // on almost every platform, so "thicker" has to be geometry. Used for subsector boundaries.
-      if (o.ribbon && o.ribbon > 0) {
-        const dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz) || 1;
-        const nx = (-dz / len) * (o.ribbon / 2), nz = (dx / len) * (o.ribbon / 2);
-        sp.push(x1 - nx, y0, z1 - nz, x2 - nx, y0, z2 - nz, x2 + nx, y0, z2 + nz);
-        pushC(sc, a1); pushC(sc, a2); pushC(sc, a2);
-        sp.push(x1 - nx, y0, z1 - nz, x2 + nx, y0, z2 + nz, x1 + nx, y0, z1 + nz);
-        pushC(sc, a1); pushC(sc, a2); pushC(sc, a1);
-      } else if ((o.skirt ?? 0) > 0.001) {
-        // Curtain: two triangles, full alpha along the top edge fading to zero at the bottom.
-        sp.push(x1, y0, z1, x2, y0, z2, x2, y0 - depth, z2);
-        pushC(sc, a1 * SKIRT_TOP_ALPHA); pushC(sc, a2 * SKIRT_TOP_ALPHA); pushC(sc, 0);
-        sp.push(x1, y0, z1, x2, y0 - depth, z2, x1, y0 - depth, z1);
-        pushC(sc, a1 * SKIRT_TOP_ALPHA); pushC(sc, 0); pushC(sc, 0);
-      }
-    }
-    if (!lp.length) return;
+    // Now it is a choice ("Grid depth").
+    //
+    // The EMISSION now lives in map/gridGeometry, shared with the system map, rather than just the
+    // constants: sharing the numbers and not the emitter is exactly how the system map came to square
+    // its own colour while these same lines stayed correct. This function keeps only the three-specific
+    // half — turning the arrays into objects.
+    const { linePos, lineCol, skirtPos, skirtCol } = buildLattice(edges, col, {
+      alpha: o.alpha, cell, skirt: o.skirt, ribbon: o.ribbon, y0: 0.01, fade: { from: fadeFrom, to: fadeTo }
+    });
+    if (!linePos.length) return;
     const lg = new THREE.BufferGeometry();
-    lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-    lg.setAttribute('color', new THREE.Float32BufferAttribute(lc, 4));
+    lg.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
+    lg.setAttribute('color', new THREE.Float32BufferAttribute(lineCol, 4));
+    // NO `color` on the material: it defaults to white, so the vertex attribute is the ONLY thing
+    // tinting these lines. Three multiplies the two (`diffuseColor *= vColor`), so a material that
+    // also carried the colour would square it — which is precisely the bug the system map had.
     gridGroup.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false })));
-    if (!sp.length) return;
+    if (!skirtPos.length) return;
     const sg = new THREE.BufferGeometry();
-    sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
-    sg.setAttribute('color', new THREE.Float32BufferAttribute(sc, 4));
+    sg.setAttribute('position', new THREE.Float32BufferAttribute(skirtPos, 3));
+    sg.setAttribute('color', new THREE.Float32BufferAttribute(skirtCol, 4));
     gridGroup.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide })));
   }
 
@@ -516,8 +489,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // which is why it could not take either — "every grid type the same treatment" is only true if
     // they share the code that gives the treatment.
     const pf = fadeWindow();
-    const ringEdges: [number, number, number, number][] = [];
-    const spokeEdges: [number, number, number, number][] = [];
+    const ringSegs: GridEdge[] = [];
+    const spokeSegs: GridEdge[] = [];
     // G10 — SCALED rings sit at ROUND distances, and they are real distances now.
     //
     // TWO FAULTS, and the second was the serious one. (a) The rings were sixths of the extent, so the
@@ -536,11 +509,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       ? niceSeries(trueExtent, 6).map((v) => ({ radius: (v / trueExtent) * GRID_RADIUS, value: v }))
       : Array.from({ length: 6 }, (_, i) => ({ radius: (GRID_RADIUS / 6) * (i + 1), value: 0 }));
     for (const ring of rings) {
-      const pts = ringPts(ring.radius);
-      for (let i = 0; i < pts.length; i++) {
-        const a0 = pts[i], b0 = pts[(i + 1) % pts.length];
-        ringEdges.push([a0.x, a0.z, b0.x, b0.z]);
-      }
+      ringSegs.push(...ringEdges(ring.radius, 72));
       if (scaled) {
         const label = makeGridLabel(`${formatNice(ring.value)}${unit ? ' ' + unit : ''}`);
         if (label) { label.position.set(ring.radius, 0.02, 0); gridGroup.add(label); }
@@ -548,16 +517,9 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     }
     // Spokes, segmented for the same reason the squares are: a fade evaluated per vertex judges a
     // full-length spoke by its far end and drops the whole thing (inbox A37).
-    const STEP = GRID_RADIUS / 24;
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 24) * Math.PI * 2, cx = Math.cos(a), cz = Math.sin(a);
-      for (let r = 0; r < GRID_RADIUS; r += STEP) {
-        const r2 = Math.min(GRID_RADIUS, r + STEP);
-        spokeEdges.push([cx * r, cz * r, cx * r2, cz * r2]);
-      }
-    }
-    addLattice(ringEdges, base.clone().multiplyScalar(0.45), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.55, skirt: gridSkirt });
-    addLattice(spokeEdges, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: 0 });
+    spokeSegs.push(...spokeEdges(24, GRID_RADIUS, 24));
+    addLattice(ringSegs, base.clone().multiplyScalar(0.45), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.55, skirt: gridSkirt });
+    addLattice(spokeSegs, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: 0 });
   }
   // Both halves of the tether go together: the ring exists to say where the stem lands, so a ring on
   // its own would be marking the foot of a line nobody can see.

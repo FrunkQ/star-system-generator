@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.847-beta - 19th Aug 2026
+
+- **FIXED: the 3D system map's grid was drawing its own colour SQUARED.** Three.js multiplies the material's colour by the vertex colour; the starmap's grid material carries no colour at all and lets the vertex attribute do it, while the system map set both to the same value — so 0.4 rendered as 0.16 and the whole grid dropped to a sixth of its intensity. It appeared the instant Grid falloff left zero because that is what switched the attribute on, which is why it read as a fade fault. It was not: at a 10% dial the fade window starts at 17.6 units on a grid of radius 12, so nothing was fading at all.
+- **FIXED: Grid depth reached only the spokes.** The system map drew its polar rings as closed loops, and a loop has no pair structure to hang a curtain from — hence a glow where the spokes meet and nothing on the rings. Rings are edges now, as they have always been on the starmap.
+- **The two grids now share the EMITTER, not just the constants** (`map/gridGeometry`): one function turns edges into lines and curtains, and the starmap's polar construction, numbers and materials are what both views use. Sharing the numbers but not the emitter is precisely how one view came to square its colour while the other stayed correct. The system map's graduated outer-ring dimming went with the copy — six rings at one strength, and the falloff dial is what dims them.
+
 ## v2.1.846-beta - 19th Aug 2026
 
 - Upload a map background without leaving Settings. The background picker now has its own

@@ -36,7 +36,8 @@ import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRe
 import type { FilterParamValues } from './filters/schema';
 import { isLattice, forSystemScale, type MapOverlay } from '$lib/map/mapOverlay';
 import { gridLevels, niceSeries, formatNice } from '$lib/map/niceInterval';
-import { gridFadeWindow, gridFadeAlpha, GRID_FADE_OFF, skirtDepth, SKIRT_TOP_ALPHA } from '$lib/map/gridFade';
+import { gridFadeWindow, GRID_FADE_OFF } from '$lib/map/gridFade';
+import { buildLattice, ringEdges, spokeEdges, type GridEdge } from '$lib/map/gridGeometry';
 import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
@@ -491,9 +492,6 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let gridFalloff = 0;
   // The system map's "Grid depth" — the same curtain dial the starmap has. 0 = flat.
   let gridDepth = 0;
-  // The cell the curtain is sized from. Set by buildMetricGrid per level, so a coarse line drops a
-  // deeper curtain than a fine one — which is what makes the two levels read as one lattice.
-  let gridCellForSkirt = 1;
   // Curtain materials paired with the line material they hang from, so the coarse/fine crossfade in
   // updateGridLevels moves both. A curtain outliving its faded-out line is the fault this prevents.
   let gridSkirtMats: { line: THREE.LineBasicMaterial; skirt: THREE.MeshBasicMaterial }[] = [];
@@ -1797,60 +1795,55 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return niceSeries(rMax * 1.02, 6, 6);
   }
 
-  function ringPoints(radius: number): THREE.Vector3[] {
-    const pts: THREE.Vector3[] = [];
-    for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius)); }
-    return pts;
-  }
-
-  // Add a grid line built in ABSOLUTE scene units, keeping the float64 master so a rebase can re-emit it.
-  function addGridLines(pts: THREE.Vector3[], mat: THREE.Material, loop: boolean) {
-    const abs = new Float64Array(pts.length * 3);
-    for (let i = 0; i < pts.length; i++) { abs[3 * i] = pts[i].x; abs[3 * i + 1] = pts[i].y; abs[3 * i + 2] = pts[i].z; }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(abs.length), 3));
-    // G4 falloff. Per-vertex alpha from the ABSOLUTE position — computed once, never rebased, so the
-    // fade stays anchored to the system while the floating origin moves the drawn coordinates.
-    if (gridFalloff > GRID_FADE_OFF) {
-      // ONE window for every map that draws a grid (map/gridFade). This used to be its own pair of
-      // constants and they were calibrated for a smaller extent than this scene actually fills:
-      // `compressRadius` maps the outermost body to EXACTLY GRID_RADIUS, so the content reaches the
-      // rim, and the old window had finished fading by 0.7 R - i.e. inside the content. Measured on
-      // a real system it put four of six rings and the rim at alpha ZERO, which is C14's "deletes
-      // the grid rather than highlighting it". The shared window is the starmap's, which the owner
-      // reports as correct on that view.
-      const win = gridFadeWindow(gridFalloff, GRID_RADIUS);
-      const cols = new Float32Array(pts.length * 4);
-      for (let i = 0; i < pts.length; i++) {
-        const d = Math.hypot(abs[3 * i], abs[3 * i + 2]);
-        const a = gridFadeAlpha(d, win);
-        const c = (mat as THREE.LineBasicMaterial).color;
-        cols[4 * i] = c.r; cols[4 * i + 1] = c.g; cols[4 * i + 2] = c.b;
-        // THE FADE ALONE. It used to bake the material's opacity in here and then set that opacity to
-        // 1 — which is correct exactly once and wrong on every frame after, because `updateGridLevels`
-        // re-assigns `mat.opacity = peak * a` continuously to run the coarse/fine crossfade. The level
-        // opacity therefore landed TWICE, once in the vertex alpha and once on the material, and the
-        // grid rendered at its square: 0.42 became 0.18, and a mid-crossfade fine level at 0.15 became
-        // 0.02. That is the owner's "turn falloff up at all and every line goes super dim", and it
-        // switched on the instant the dial crossed GRID_FADE_OFF because that is what gates this
-        // branch. Three.js multiplies vertex alpha BY material opacity, so writing only the fade here
-        // leaves the crossfade its own channel and the two compose once each.
-        cols[4 * i + 3] = a;
-      }
-      geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 4));
-      (mat as THREE.LineBasicMaterial).vertexColors = true;
-      mat.needsUpdate = true;
+  /**
+   * THE GRID'S ONE EMITTER, shared with the starmap (map/gridGeometry).
+   *
+   * Everything this view draws as a grid comes through here as EDGES on the ground plane, which is
+   * the starmap's shape and the reason its grid was right while this one was not:
+   *
+   *  - COLOUR lives in the vertex attribute and the material stays WHITE. Three multiplies the two,
+   *    so the old code — material `color: base * 0.4` AND the same value written into the vertex
+   *    colour — squared it, and the grid rendered at a sixth of its intensity the moment the falloff
+   *    dial left zero. See RENDER-S25.
+   *  - RINGS ARE EDGES, not `LineLoop`s. A loop has no pair structure, so it could carry no depth
+   *    curtain, so "Grid depth" reached the spokes and nothing else — a glow at the centre where the
+   *    spokes converge, which is exactly what the owner saw.
+   *  - `opacity` is left free for the two-level crossfade, which is this view's own concern and the
+   *    one thing the starmap has no use for. One channel each.
+   */
+  function addGridEdges(edges: GridEdge[], col: THREE.Color, cell: number, o: { alpha?: number; skirt?: boolean; opacity?: number } = {}) {
+    const { linePos, lineCol, skirtPos, skirtCol } = buildLattice(edges, col, {
+      alpha: o.alpha, cell, y0: 0.01,
+      skirt: o.skirt === false ? 0 : gridDepth,
+      fade: gridFalloff > GRID_FADE_OFF ? gridFadeWindow(gridFalloff, GRID_RADIUS) : undefined
+    });
+    if (!linePos.length) return null;
+    // The float64 master is what a rebase re-emits from: the fade is computed against ABSOLUTE
+    // positions once, and the floating origin then moves the drawn coordinates underneath it.
+    const abs = Float64Array.from(linePos);
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(abs.length), 3));
+    lg.setAttribute('color', new THREE.Float32BufferAttribute(lineCol, 4));
+    const lmat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, opacity: o.opacity ?? 1 });
+    const line = new THREE.LineSegments(lg, lmat);
+    gridGroup.add(line);
+    gridAbs.push({ obj: line, abs });
+    rebaseStaticGeometry(line, abs, sceneOrigin);
+    if (skirtPos.length) {
+      const sAbs = Float64Array.from(skirtPos);
+      const sg = new THREE.BufferGeometry();
+      sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sAbs.length), 3));
+      sg.setAttribute('color', new THREE.Float32BufferAttribute(skirtCol, 4));
+      const smat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: o.opacity ?? 1 });
+      const mesh = new THREE.Mesh(sg, smat);
+      gridGroup.add(mesh);
+      gridAbs.push({ obj: mesh, abs: sAbs });
+      // Paired so the crossfade moves both — a curtain outliving the line it hangs from is the fault
+      // this prevents.
+      gridSkirtMats.push({ line: lmat, skirt: smat });
+      rebaseStaticGeometry(mesh, sAbs, sceneOrigin);
     }
-    const obj = loop ? new THREE.LineLoop(geo, mat) : new THREE.LineSegments(geo, mat);
-    gridGroup.add(obj);
-    gridAbs.push({ obj, abs });
-    rebaseStaticGeometry(obj, abs, sceneOrigin);
-    // DEPTH SKIRT — the same curtain the starmap has had as "Grid depth", from the same shared
-    // constants (map/gridFade), so the two dials cannot drift apart. LineSegments only: `pts` is
-    // consecutive PAIRS there, and a LineLoop's ring has no pair structure to hang a curtain from.
-    // It also rides `gridAbs`, because a skirt that does not rebase would walk away from its own grid
-    // the first time the floating origin moves.
-    if (!loop && gridDepth > 0.001 && pts.length >= 2) addGridSkirt(abs, mat, geo);
+    return lmat;
   }
 
   // Re-emit the grid into the current origin's frame (lines from their masters, labels by translation).
@@ -1892,9 +1885,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   /** Lines at whole multiples of `stepAu`, out to `spanAu`, clipped to the ground disc. */
-  function metricLines(stepAu: number, spanAu: number): THREE.Vector3[] {
-    const pts: THREE.Vector3[] = [];
-    if (!(stepAu > 0)) return pts;
+  function metricLines(stepAu: number, spanAu: number): GridEdge[] {
+    const out: GridEdge[] = [];
+    if (!(stepAu > 0)) return out;
     const R = GRID_RADIUS;
     const offsets: number[] = [0];
     for (let k = 1; k * stepAu <= spanAu && offsets.length < 400; k++) {
@@ -1907,64 +1900,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const o of offsets) {
       const half = Math.sqrt(Math.max(0, R * R - o * o));
       if (half <= 1e-4) continue;
-      // Segmented ONLY when the falloff dial is on. A per-vertex fade evaluated at the ends of a
-      // full-width line judges the whole line by its far ends (inbox A37), so it needs pieces — but
-      // with the dial at 0, which is this view's default, `addGridLines` writes no colour attribute at
-      // all and the pieces buy nothing. One run per line then, which is 65,000 vertices down to a few
-      // hundred on the fine level.
-      const SEG = gridFalloff > GRID_FADE_OFF ? Math.max(0.25, R / 16) : Infinity;
-      for (let a = -half; a < half - 1e-9; a += SEG) {
-        const b = Math.min(half, a + SEG);
-        pts.push(new THREE.Vector3(a, 0.01, o), new THREE.Vector3(b, 0.01, o));   // along x
-        pts.push(new THREE.Vector3(o, 0.01, a), new THREE.Vector3(o, 0.01, b));   // along z
+      // Segmented when the falloff dial is on OR a curtain is being drawn. A per-vertex fade evaluated
+      // at the ends of a full-width line judges the whole line by its far ends (inbox A37); a curtain
+      // is built per edge, so an unsegmented run would hang ONE enormous quad instead of a row of
+      // them. With both dials at 0 — this view's default — a single run per line is right, and that is
+      // 65,000 vertices down to a few hundred on the fine level.
+      const SEG = gridFalloff > GRID_FADE_OFF || gridDepth > 0.001 ? Math.max(0.25, R / 16) : Infinity;
+      for (let x = -half; x < half - 1e-9; x += SEG) {
+        const e = Math.min(half, x + SEG);
+        out.push([x, o, e, o]);   // along x
+        out.push([o, x, o, e]);   // along z
       }
     }
-    return pts;
-  }
-
-  /**
-   * A curtain under each grid segment: two triangles, full alpha along the top edge fading to nothing
-   * at the bottom. Built from the LINE's own absolute positions and colours so it cannot disagree with
-   * the line it hangs from — including the edge fade, which it inherits vertex for vertex.
-   */
-  function addGridSkirt(abs: Float64Array, mat: THREE.Material, lineGeo: THREE.BufferGeometry) {
-    const drop = skirtDepth(gridCellForSkirt, gridDepth);
-    const lineCols = lineGeo.getAttribute('color') as THREE.BufferAttribute | undefined;
-    const c = (mat as THREE.LineBasicMaterial).color;
-    const n = abs.length / 3;
-    const sAbs = new Float64Array((n / 2) * 6 * 3);
-    const sCol = new Float32Array((n / 2) * 6 * 4);
-    let pi = 0, ci = 0;
-    const put = (x: number, y: number, z: number, a: number) => {
-      sAbs[pi++] = x; sAbs[pi++] = y; sAbs[pi++] = z;
-      sCol[ci++] = c.r; sCol[ci++] = c.g; sCol[ci++] = c.b; sCol[ci++] = a;
-    };
-    for (let i = 0; i + 1 < n; i += 2) {
-      const x1 = abs[3 * i], y1 = abs[3 * i + 1], z1 = abs[3 * i + 2];
-      const x2 = abs[3 * i + 3], y2 = abs[3 * i + 4], z2 = abs[3 * i + 5];
-      // Inherit the line's own fade so the curtain vanishes exactly where the line does.
-      const a1 = (lineCols ? lineCols.getW(i) : 1) * SKIRT_TOP_ALPHA;
-      const a2 = (lineCols ? lineCols.getW(i + 1) : 1) * SKIRT_TOP_ALPHA;
-      if (a1 <= 0.002 && a2 <= 0.002) continue;
-      put(x1, y1, z1, a1); put(x2, y2, z2, a2); put(x2, y2 - drop, z2, 0);
-      put(x1, y1, z1, a1); put(x2, y2 - drop, z2, 0); put(x1, y1 - drop, z1, 0);
-    }
-    if (!pi) return;
-    const used = sAbs.slice(0, pi);
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pi), 3));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(sCol.slice(0, ci), 4));
-    // Its own material, sharing the LINE's colour and opacity object so the coarse/fine crossfade
-    // moves both together — the curtain must not survive a level its line has faded out of.
-    const smat = new THREE.MeshBasicMaterial({
-      color: (mat as THREE.LineBasicMaterial).color, vertexColors: true, transparent: true,
-      opacity: (mat as THREE.LineBasicMaterial).opacity, depthWrite: false, side: THREE.DoubleSide
-    });
-    const mesh = new THREE.Mesh(geo, smat);
-    gridGroup.add(mesh);
-    gridAbs.push({ obj: mesh, abs: used });
-    gridSkirtMats.push({ line: mat as THREE.LineBasicMaterial, skirt: smat });
-    rebaseStaticGeometry(mesh, used, sceneOrigin);
+    return out;
   }
 
   function buildMetricGrid(base: THREE.Color) {
@@ -1980,13 +1928,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const peak = coarse ? 0.42 : 0.30;         // the ghost level is fainter even at full fade-in
       const a = coarse ? 1 - lv.t : lv.t;
       if (a < 0.02) continue;
-      const pts = metricLines(step, span);
-      if (!pts.length) continue;
-      gridCellForSkirt = step; // this level's cell — the curtain scales with it
-      const mat = new THREE.LineBasicMaterial({
-        color: base.clone().multiplyScalar(0.4), transparent: true, opacity: peak * a, depthWrite: false
-      });
-      addGridLines(pts, mat, false);
+      const edges = metricLines(step, span);
+      if (!edges.length) continue;
+      // The LEVEL's strength stays on the material, because it moves every frame and rewriting a
+      // vertex attribute per frame to say the same thing would be absurd. The vertex attribute carries
+      // colour and fade, which are fixed until a rebuild. One channel each — RENDER-S25.
+      const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), step, { alpha: 1, opacity: peak * a });
+      if (!mat) continue;
       gridLevelMats.push({ mat, coarse, peak });
     }
   }
@@ -2021,13 +1969,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       buildMetricGrid(base);
       return;
     }
+    // POLAR. Deliberately the starmap's construction, numbers and all (`renderPolarGrid` there): both
+    // views offer one control called "Grid depth" over one thing called a polar grid, and the owner's
+    // report was that the starmap's was right and this one's was not. Rings as EDGES is the load-
+    // bearing part — a `LineLoop` cannot carry a curtain, which is why the dial reached the spokes
+    // and nothing else. The graduated outer-ring dimming this view used to apply went with the copy;
+    // the starmap holds all six rings at one strength and lets the FALLOFF dial be what dims them.
+    const RING_TINT = 0.45, RING_ALPHA = 0.55;
+    const cell = GRID_RADIUS / 6;
+    const rings: GridEdge[] = [];
     if (gridMode === 'scaled') {
       // Concentric rings at round AU distances (mapped through the live compression), each labelled.
       for (const au of gridAuSteps()) {
         const radius = compressScalar(au);
         if (radius <= 0.02) continue;
-        const mat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.4), transparent: true, opacity: 0.55, depthWrite: false });
-        addGridLines(ringPoints(radius), mat, true);
+        rings.push(...ringEdges(radius, 72));
         const label = makeGridLabel(`${formatNice(au)} AU`);
         if (label) {
           gridLabels.push({ sprite: label, abs: [radius, 0.02, 0] });
@@ -2036,22 +1992,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         }
       }
     } else {
-      // Plain: six evenly-spaced polar rings (decorative, system-independent).
-      for (let ri = 1; ri <= 6; ri++) {
-        const radius = (GRID_RADIUS / 6) * ri;
-        const col = base.clone().multiplyScalar(0.45 * (1 - (ri - 1) / 8));
-        const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.6, depthWrite: false });
-        addGridLines(ringPoints(radius), mat, true);
-      }
+      // Plain: six evenly-spaced rings (decorative, system-independent).
+      for (let ri = 1; ri <= 6; ri++) rings.push(...ringEdges(cell * ri, 72));
     }
-    // Radial spokes (both modes).
-    const spokes: THREE.Vector3[] = [];
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 24) * Math.PI * 2;
-      spokes.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(Math.cos(a) * GRID_RADIUS, 0, Math.sin(a) * GRID_RADIUS));
-    }
-    const spokeMat = new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.22), transparent: true, opacity: 0.5, depthWrite: false });
-    addGridLines(spokes, spokeMat, false);
+    addGridEdges(rings, base.clone().multiplyScalar(RING_TINT), cell, { alpha: RING_ALPHA });
+    // Spokes get no curtain on either view: 24 curtains meeting at the origin is a solid cone, not a
+    // depth cue, and it is what the owner saw as "a glow at the CENTRE".
+    addGridEdges(spokeEdges(24, GRID_RADIUS, 24), base.clone().multiplyScalar(0.22), cell, { alpha: 0.5, skirt: false });
   }
 
   function setGridDepth(v: number) {
