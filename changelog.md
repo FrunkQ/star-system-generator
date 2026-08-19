@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.857-beta - 19th Aug 2026
+
+- Starmap stars, the owner's first look (G26 follow-up). Jets are drawn as a bright spine in a soft blue sheath, longer, on the 3D starmap and the GM map; a hole authored as feeding always jets, however small its stored Eddington fraction. The black-hole glyph is sized on its horizon and photon ring, so a hole no longer reads smaller than a star. A second dial, "Star size" (GM map: Settings > Starmap; player maps: per preset), scales every glyph from half to double — the centre is the size the map shipped with. "Star size by class" now also tilts within the dwarf band by spectral letter (O biggest, M smallest), so the dial visibly moves on an ordinary all-class-V map; the four luminosity-class bands still set the big steps and holes stay fixed. The 3D starmap camera may go under the map plane, as the system view's can.
+- The system view's auto-scaling grid (A55, second pass) is a LOCAL patch about what the camera is looking at, its decade chosen from the local zoom (5-50 cells across the view), and the finer decade fades in only over the last 40% of each zoom decade — it used to be laid out around the star with full-width lines and brought the next decade in almost at once, which collapsed into two dense bands when zoomed in off-centre. The shared lattice generator gained a patch centre; every starmap passes none and is unchanged.
+
 ## v2.1.856-beta - 19th Aug 2026
 
 - Docs only. Roster legend (model + context in the session name) recorded; the starmap-stars, broadcast-storm, follow-GM and save-fidelity landings marked; four sessions recommended for retirement with notes.

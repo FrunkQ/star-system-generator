@@ -201,3 +201,36 @@ describe('lattice geometry', () => {
     expect(travellerHexLabel(32, 40)).toBe('0101'); // wraps at the sector
   });
 });
+
+// A55 — THE PATCH CENTRE. The system view's auto grid fills +-half about the point the camera is looking
+// at, not about the origin; every starmap passes no centre and is byte-for-byte what it was.
+describe('the lattice patch centre', () => {
+  it('defaults to the origin: no centre is the same lattice as centre (0,0)', () => {
+    const a = squareLattice({ cell: 1, originX: 0, originY: 0, half: 5 });
+    const b = squareLattice({ cell: 1, originX: 0, originY: 0, half: 5, centreX: 0, centreY: 0 });
+    expect(b).toEqual(a);
+    expect(hexLattice({ cell: 2, originX: 0, originY: 0, half: 6 })).toEqual(hexLattice({ cell: 2, originX: 0, originY: 0, half: 6, centreX: 0, centreY: 0 }));
+  });
+  it('a square patch about (30, -2) holds lines only within +-half of it, on the same AU phase', () => {
+    const edges = squareLattice({ cell: 1, originX: 0, originY: 0, half: 4, centreX: 30, centreY: -2 });
+    expect(edges.length).toBeGreaterThan(0);
+    for (const [x1, y1, x2, y2] of edges) {
+      for (const x of [x1, x2]) { expect(x).toBeGreaterThanOrEqual(26 - 1e-9); expect(x).toBeLessThanOrEqual(34 + 1e-9); }
+      for (const y of [y1, y2]) { expect(y).toBeGreaterThanOrEqual(-6 - 1e-9); expect(y).toBeLessThanOrEqual(2 + 1e-9); }
+      // a vertical line sits on a whole cell of the ORIGIN's phase, not the centre's
+      if (Math.abs(x1 - x2) < 1e-9) expect(Math.abs(x1 - Math.round(x1))).toBeLessThan(1e-9);
+    }
+  });
+  it('the disc clip stays about the origin, so a patch at the rim is cut by the plate, not deleted', () => {
+    const edges = squareLattice({ cell: 1, originX: 0, originY: 0, half: 4, centreX: 30, centreY: 0, clipRadius: 32 });
+    expect(edges.length).toBeGreaterThan(0);
+    for (const [x1, y1, x2, y2] of edges) { expect(Math.hypot(x1, y1)).toBeLessThanOrEqual(32 + 1e-6); expect(Math.hypot(x2, y2)).toBeLessThanOrEqual(32 + 1e-6); }
+    // ...and a clip radius SMALLER than the patch's distance deletes it — which is why the scene clips to the plate, never to the span
+    expect(squareLattice({ cell: 1, originX: 0, originY: 0, half: 4, centreX: 30, centreY: 0, clipRadius: 8 })).toEqual([]);
+  });
+  it('a hex patch about a far centre holds only hexes near it', () => {
+    const cs = hexCentres({ cell: 2, originX: 0, originY: 0, half: 5, centreX: 40, centreY: 10 });
+    expect(cs.length).toBeGreaterThan(0);
+    for (const c of cs) { expect(Math.abs(c.x - 40)).toBeLessThan(5 + 1.001); expect(Math.abs(c.y - 10)).toBeLessThan(5 + 1.8); }
+  });
+});
