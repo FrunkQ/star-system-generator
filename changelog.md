@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.844-beta - 19th Aug 2026
+
+- Docs only. The starmap-stars brief for a fresh session (sharper glyphs, size bands on 2D and 3D, compact grouped systems at every zoom, tag-driven jets and flares); the Traveller faults re-checked after the import unification (the frozen Earth-like world is still pack data; the flat giants have probably gone with the importer's own giant code); follow-GM starmap level re-routed to the G16 session.
+
 ## v2.1.843-beta - 19th Aug 2026
 
 - What's new: "Your own map behind the stars" is no longer marked as coming - it shipped and the owner has seen it. Every line in the list is now a claim the build makes. Inbox: grouped systems drifting apart on the 3D starmap captured and folded into the star-renderer chunk.
