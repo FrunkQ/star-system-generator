@@ -30,17 +30,26 @@
 </label>
 {#if placement}
   <label class="chk"><input type="checkbox" checked={placement.stretch} on:change={(e) => patch({ stretch: (e.currentTarget as HTMLInputElement).checked })} /> Stretch to fill (any aspect ratio)</label>
+  <label class="chk"><input type="checkbox" checked={placement.invert === true} on:change={(e) => patch({ invert: (e.currentTarget as HTMLInputElement).checked })} /> Invert (for a light logo on a light backdrop, or the reverse)</label>
   {#if !placement.stretch}
     <label>Position
       <select value={placement.pin} on:change={(e) => patch({ pin: (e.currentTarget as HTMLSelectElement).value as PinPosition })}>
         {#each PIN_POSITIONS as p}<option value={p}>{p.replace('-', ' ')}</option>{/each}
       </select>
     </label>
-    <label>Size <span>{placement.sizePct}%</span>
+    <label>Size <span class="val">{placement.sizePct}%</span>
       <input type="range" min="5" max="100" step="1" value={placement.sizePct} on:input={(e) => patch({ sizePct: parseInt((e.currentTarget as HTMLInputElement).value) })} />
     </label>
   {/if}
-  <label>Opacity <span>{Math.round(placement.opacity * 100)}%</span>
-    <input type="range" min="0.05" max="1" step="0.05" value={placement.opacity} on:input={(e) => patch({ opacity: parseFloat((e.currentTarget as HTMLInputElement).value) })} />
+  <label>Opacity <span class="val">{Math.round(placement.opacity * 100)}%</span>
+    <input type="range" min="0.05" max="1" step="0.01" value={placement.opacity} on:input={(e) => patch({ opacity: parseFloat((e.currentTarget as HTMLInputElement).value) })} />
   </label>
 {/if}
+
+<style>
+  /* The readout is ANCHORED RIGHT, over the slider's far end, rather than sitting left under the
+     label text. `label` is a flex COLUMN here, so this is text-align rather than a margin. The
+     `tabular-nums` is the other half: proportional digits change width as the number counts, so a
+     readout that updates every frame of a drag visibly shimmers even when it does not move. */
+  .val { text-align: right; font-variant-numeric: tabular-nums; opacity: 0.75; }
+</style>

@@ -57,6 +57,10 @@ export interface GraphicPlacement {
   sizePct: number; // 1..100 — width as % of the surface (height follows aspect) unless `stretch`
   opacity: number; // 0..1
   stretch: boolean; // fill the whole surface, ignoring aspect ratio (pin/size ignored)
+  // Flip the artwork's luminance. Logos ship as white-on-transparent as often as black-on-transparent,
+  // and a player view's backdrop can be either — so half the library is invisible on any given stage
+  // without this. Optional and defaulting off, so nothing already placed changes.
+  invert?: boolean;
 }
 
 // The cover / hold screen. Must be able to recreate "DON'T PANIC" or "ACME — CONFIDENTIAL + logo".

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.868-beta - 19th Aug 2026
+
+- **A placed graphic can be inverted.** Logos ship white-on-transparent as often as the reverse, and a player view's backdrop can be either — so half the library was invisible on any given stage. A CSS filter, so it composites with whatever look filter the surface already carries.
+- Opacity moves in 1% steps instead of 5%, and every slider's value readout is anchored RIGHT, over the far end of its slider, with fixed-width digits so a number updating through a drag does not shimmer as it counts.
+- The Corporate Logos credit points at World Zero's page rather than the pack.
+
 ## v2.1.867-beta - 19th Aug 2026
 
 - Five more starter logos — Interspan, Kelido, Nexum, Terra and TSEC — from World Zero's [Corporate Portfolio](https://worldzero.itch.io/corporate-portfolio), used under CC BY 4.0 and credited in the About box alongside every other bundled image. They join the starter asset list, so they can be placed on a player view without uploading anything.

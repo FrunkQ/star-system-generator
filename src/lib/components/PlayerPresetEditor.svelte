@@ -1288,6 +1288,11 @@
      that has to live here is the gap between sibling sections inside a group wrapper. */
   .scene-sections { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
   label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--text-muted); }
+  /* Every slider's value readout, anchored RIGHT — over the far end of its slider rather than left
+     under the label text. `tabular-nums` keeps the digits a fixed width, so a number updating every
+     frame of a drag does not shimmer as it counts through 5% / 10% / 100%. Safe as a bare `label >
+     span` because every span directly inside a label in this editor IS a value readout. */
+  label > span { text-align: right; font-variant-numeric: tabular-nums; }
   label span { color: var(--text); font-size: 0.72rem; }
   label.inline, label.chk { flex-direction: row; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text); }
   input[type=text], select { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; font: inherit; }
