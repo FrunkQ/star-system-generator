@@ -6,6 +6,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import type { System } from '$lib/types';
   import type { HoloController } from '$lib/holo/scene';
+  import { gridLegend } from '$lib/map/gridLegend';
   import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
@@ -37,6 +38,15 @@
   export let highlights: MapHighlights | null = null;
   /** The GM's chosen look for this view; an individual highlight can still override it. */
   export let markerStyle: 'label' | 'pin' | 'flag' | undefined = undefined;
+
+  // THE GRID'S SCALE, in words. Reported by the scene rather than recomputed here: the cell is chosen
+  // down there (a pinned dial, or whichever decade level is currently winning) and a second opinion up
+  // here would be a second model, free to disagree the first time either moved.
+  let gridCellAu: number | null = null;
+  let gridCellKind: import('$lib/map/gridLegend').GridCellKind = null;
+  $: legend = showGridLegend ? gridLegend(gridCellAu, gridCellKind) : null;
+  // Off by default so no existing surface grows a caption it never asked for; the player views opt in.
+  export let showGridLegend: boolean = false;
   /** Badge-only knobs from the preset: size multiplier, flag staff colour, pin text mode. */
   export let markerSize: number | undefined = undefined;
   export let flagStaff: 'silver' | 'gold' | 'white' | 'black' | 'tag' | undefined = undefined;
@@ -87,6 +97,9 @@
     controller?.setGridFalloff(s.gridFalloff ?? 0);
     controller?.setGridDepth(s.gridDepth ?? 0);
     controller?.setGridScale(s.gridScaleAu ?? 0);
+    // Subscribe once the controller exists; it fires immediately with whatever the grid is already
+    // worth, so the caption is right on the first frame rather than after the first zoom.
+    controller?.setGridCellReporter((au, kind) => { gridCellAu = au; gridCellKind = kind; });
     controller?.setOrbitSpeed(orbitPaused ? 0 : s.orbitSpeed);
     // G5: the style carries the dial; `orbitLinesVisible` is the momentary override on top of it,
     // exactly as labelsVisible sits on top of the label settings.
@@ -182,6 +195,11 @@
 
 <div class="holo-root" bind:this={container}>
   <canvas bind:this={canvas}></canvas>
+  {#if legend}
+    <!-- A grid is only a measure if the reader is told what one cell is worth. `pointer-events: none`
+         because this sits over a canvas that owns drag, pinch and click-to-select. -->
+    <div class="grid-legend">{legend}</div>
+  {/if}
 </div>
 
 <style>
@@ -197,5 +215,20 @@
     width: 100%;
     height: 100%;
     touch-action: none; /* let OrbitControls own pinch/drag */
+  }
+  .grid-legend {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(6, 10, 18, 0.55);
+    color: rgba(190, 214, 240, 0.85);
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
   }
 </style>

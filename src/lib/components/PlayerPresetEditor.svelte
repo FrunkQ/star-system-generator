@@ -693,7 +693,7 @@
             <CollapsibleSection label="Background" open={openSections['starmap-background']}
               on:toggle={(e) => setSection('starmap-background', e.detail)}>
               <label>Overlay
-                <select bind:value={draft.grid}>
+                <select bind:value={draft.starmapGrid}>
                   {#each MAP_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
                 </select>
               </label>
@@ -701,12 +701,12 @@
                    BELOW it, which is what gives the lattice its dimensional look. 3D only — the 2D
                    starmap is this renderer locked overhead, where a curtain is edge-on and invisible.
                    A slider rather than a switch: how deep it hangs is the whole of the effect. -->
-              {#if draft.starmapView === 'holo3d' && draft.grid !== 'off'}
+              {#if draft.starmapView === 'holo3d' && draft.starmapGrid !== 'off'}
                 <label>Grid depth <span>{Math.round(gridDepthPct(draft.starmapGridDepth) * 100)}%</span><input type="range" min="0" max="1" step="0.05" value={gridDepthPct(draft.starmapGridDepth)} on:input={(e) => (draft.starmapGridDepth = +e.currentTarget.value)} /></label>
               {/if}
               <!-- G4: one dial for every overlay type, polar included — near cells bright, falling
                    away with distance so the grid reads as ground rather than fighting the map. -->
-              {#if draft.grid !== 'off'}
+              {#if draft.starmapGrid !== 'off'}
                 <label>Grid falloff <span>{Math.round((draft.starmapGridFalloff ?? 0.5) * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.starmapGridFalloff} /></label>
               {/if}
               <p class="hint">The starfield and the space/greenscreen backdrop are set once on the System step &mdash; one campaign, one backdrop, both stages.</p>
@@ -1165,7 +1165,7 @@
             {:else if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
               <!-- BOTH map views are the same engine (2D = it locked flat) and run the real shader
                    themselves — mirroring the live player view exactly, so this preview can't drift. -->
-              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} dropLines={draft.starmapDropLines !== false} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1} starScale={draft.starmapStarScale ?? 0} starSize={draft.starmapStarSize ?? 1}
+              <Starmap3DView starmap={$starmapStore} accentColor={accentCss} font={draft.font} grid={draft.starmapGrid ?? draft.grid} gridDepth={gridDepthPct(draft.starmapGridDepth)} gridFalloff={draft.starmapGridFalloff ?? 0.5} routeGlow={draft.starmapRouteGlow} dropLines={draft.starmapDropLines !== false} mono={draft.starmapMono} mapGrid={previewMapGrid} zExaggeration={draft.zExaggeration ?? 1} starScale={draft.starmapStarScale ?? 0} starSize={draft.starmapStarSize ?? 1}
                 mapBackground={draft.showMapBackground !== false}
                 flat={draft.starmapView === 'diagram2d'}
                 lockRotation={draft.starmapView === 'diagram2d' && draft.lockRotation !== false}
@@ -1197,7 +1197,7 @@
                      will read it, so the preview cannot show a different set of badges. (It really
                      does now — `highlights` was missing until v2.1.710, which made this comment a
                      description of an intention rather than of the code.) -->
-                <HoloView system={stageSystem} {currentTime} style={systemPreviewStyle} skyStars={previewSkyStars}
+                <HoloView system={stageSystem} {currentTime} showGridLegend={true} style={systemPreviewStyle} skyStars={previewSkyStars}
                   markerStyle={draft.markerStyle} markerSize={draft.markerSize} flagStaff={draft.flagStaff} pinText={draft.pinText} highlights={stageHighlights}
                   focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
                 {#if infoPreview && !draft.hideInfoPanel}

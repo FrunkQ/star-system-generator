@@ -251,6 +251,10 @@ export function normalizePreset(p: Partial<PlayerPreset> & { id: string; name: s
     ...p,
     bodyStyle: (p.bodyStyle as string) === 'tint' ? 'white' : (p.bodyStyle ?? base.bodyStyle),
     cover,
+    // The stage's own grid TYPE, falling back to the field both stages used to share. Same shape as
+    // the `starmapOverlay ?? overlay` line above, and for the same reason: a stage-specific choice that
+    // has to keep reading a preset authored before it existed.
+    starmapGrid: p.starmapGrid ?? p.grid ?? base.grid,
     starmapOverlay: fixGraphic((p as any).starmapOverlay ?? (p as any).overlay),
     systemOverlay: fixGraphic((p as any).systemOverlay ?? (p as any).overlay),
     filterParams: { ...(p.filterParams ?? {}) },

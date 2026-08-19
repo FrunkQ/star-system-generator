@@ -172,7 +172,14 @@ export interface PlayerPreset {
   // `points` was previously a side effect of picking a wireframe RENDER; it is its own choice now.
   beltStyle: 'rocks' | 'points' | 'band';
   background: 'space' | 'green' | 'blue' | 'black';
-  grid: import('$lib/map/mapOverlay').MapOverlay; // WS3: shared overlay vocabulary across every view
+  grid: import('$lib/map/mapOverlay').MapOverlay; // SYSTEM stage. WS3's shared overlay vocabulary
+  // STARMAP stage. The vocabulary is shared; the CHOICE is not. This was one field for both stages, so
+  // picking hexes for the starmap silently changed the system map and back again — recorded as M4,
+  // where it was found as a lossy EDITOR round-trip and fixed only that far. Every other twin here was
+  // already split (`gridDepth`/`starmapGridDepth`, `gridFalloff`/`starmapGridFalloff`); the type was
+  // the last one sharing. Optional and falling back to `grid` in `normalizePreset`, so a preset written
+  // before the split opens looking exactly as it did.
+  starmapGrid?: import('$lib/map/mapOverlay').MapOverlay;
   // G9: the campaign's OWN charted systems drawn as real stars in the 3D system view's sky. An enum,
   // not a boolean — 'true' is an honest sky, 'marked' annotates the same stars with diffraction
   // spikes and names. Optional and defaulting to 'off', so nothing already saved changes.

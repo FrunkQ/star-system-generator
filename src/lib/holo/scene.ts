@@ -34,7 +34,7 @@ import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
-import { isLattice, type MapOverlay } from '$lib/map/mapOverlay';
+import { isLattice, isHexFamily, type MapOverlay } from '$lib/map/mapOverlay';
 import { gridLevels, gridLevelOpacity, GRID_LEVEL_PEAK, niceSeries, formatNice } from '$lib/map/niceInterval';
 import { gridFadeWindow, GRID_FADE_OFF } from '$lib/map/gridFade';
 import { buildLattice, ringEdges, spokeEdges, type GridEdge } from '$lib/map/gridGeometry';
@@ -153,6 +153,7 @@ export interface HoloController {
   setGridFalloff(v: number): void; // G4: 0 = even brightness, 1 = bright near the centre and gone by the edge
   setGridDepth(v: number): void;   // 0 flat .. 1 a full depth curtain under each grid line (3D only)
   setGridScale(v: number): void;   // lattice cell in AU; 0 = automatic decade ladder
+  setGridCellReporter(fn: ((au: number | null, kind: 'square' | 'hex' | null) => void) | null): void;
   setOrbitSpeed(v: number): void; // auto view-orbit turntable speed 0..1 (0 = static)
   setLabelColor(hex: string | null): void; // in-scene label colour (null = default); matched to CRT phosphor
   setLabelSize(px: number): void; // in-scene label font size
@@ -498,6 +499,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // real distance, which is what lets a GM read "one square is 1 AU" off the map instead of watching
   // the cell resize under them as they zoom.
   let gridScaleAu = 0;
+  // What the grid is currently worth, reported outward so a view can print "1 square = 1 AU". Fired
+  // only on CHANGE: the value moves when the grid rebuilds or a crossfade hands over, which is rare,
+  // and a caption re-rendering every frame would be a needless reactive storm.
+  let onGridCell: ((au: number | null, kind: 'square' | 'hex' | null) => void) | null = null;
+  let reportedCell: number | null = null;
+  function reportGridCell(au: number | null) {
+    if (au === reportedCell) return;
+    reportedCell = au;
+    onGridCell?.(au, au === null ? null : isHexFamily(gridMode) ? 'hex' : 'square');
+  }
   // Curtain materials paired with the line material they hang from, so the coarse/fine crossfade in
   // updateGridLevels moves both. A curtain outliving its faded-out line is the fault this prevents.
   let gridSkirtMats: { line: THREE.LineBasicMaterial; skirt: THREE.MeshBasicMaterial }[] = [];
@@ -1994,6 +2005,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!edges.length) return;
       const mat = addGridEdges(edges, base.clone().multiplyScalar(0.4), gridScaleAu, { alpha: 1, opacity: GRID_LEVEL_PEAK });
       if (mat) gridLevelMats.push({ mat, coarse: true });
+      reportGridCell(gridScaleAu);
       return;
     }
     const visible = visibleAu(), centre = gridCentreAu();
@@ -2023,6 +2035,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!mat) continue;
       gridLevelMats.push({ mat, coarse });
     }
+    // The level a reader would actually count. Both are drawn through the handover, so "the cell" is
+    // whichever one is winning — it flips once, at the midpoint, which is also where the two are
+    // equally legible and the caption's exact wording matters least.
+    reportGridCell(lv.t < 0.5 ? lv.coarse : lv.fine);
   }
 
   /**
@@ -2046,9 +2062,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const g of gridLevelMats) g.mat.opacity = gridLevelOpacity(g.coarse ? 'coarse' : 'fine', lv.t);
     // The curtains ride their own line's opacity, so a level fading out takes its depth with it.
     for (const g of gridSkirtMats) g.skirt.opacity = g.line.opacity;
+    reportGridCell(lv.t < 0.5 ? lv.coarse : lv.fine);
   }
 
   function rebuildGrid() {
+    if (gridMode === 'off' || !isLattice(gridMode)) reportGridCell(null);
     clearGroup(gridGroup);
     gridAbs = [];
     gridSkirtMats = [];
@@ -2095,6 +2113,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     addGridEdges(spokeEdges(24, GRID_RADIUS, 24), base.clone().multiplyScalar(0.22), cell, { alpha: 0.5, skirt: false });
   }
 
+  function setGridCellReporter(fn: ((au: number | null, kind: 'square' | 'hex' | null) => void) | null) {
+    onGridCell = fn;
+    // Fire once on subscribe: the grid is usually already built by the time a view asks, and a caption
+    // that only updates on the NEXT change would start blank and stay blank on a map nobody zooms.
+    fn?.(reportedCell, reportedCell === null ? null : isHexFamily(gridMode) ? 'hex' : 'square');
+  }
   function setGridScale(v: number) {
     const n = Number.isFinite(v) && v > 0 ? v : 0;
     if (n === gridScaleAu) return;
@@ -4740,7 +4764,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
 }
 
 // ---- helpers ----

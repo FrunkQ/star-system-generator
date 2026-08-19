@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.861-beta - 19th Aug 2026
+
+- **FIXED: the two stages shared one grid TYPE, so choosing hexes for the starmap changed the system map too, and back again.** `starmapGrid` is now its own field beside `grid`, falling back to it so a preset written before the split opens exactly as it did. Every other twin was already split (gridDepth/starmapGridDepth, gridFalloff/starmapGridFalloff) — the type was the last one sharing.
+- **The player system view states its scale**: a caption reading "1 square = 1 AU" whenever a lattice is drawn, live from whatever cell the grid is actually using — the pinned dial, or whichever decade level is currently winning. A hex says "corner to corner", because that is what its cell measures and a hex is only 87% of it across the flats, which is how a Traveller player would read it.
+- Engine map: **M4 reopened and closed properly.** It was closed at v2.1.854 by making the two option sets identical, which fixed the lossy half and left the sharing — the entry's own prescription (two fields) had been argued away, and it was right. A shared field and an incompatible vocabulary are two faults that look like one, and fixing the vocabulary made the sharing more visible, not less.
+
 ## v2.1.859-beta - 19th Aug 2026
 
 - 3D starmap: stars further from the camera draw a little smaller (a gentle falloff referenced to what the camera is looking at, clamped 0.65..1.25x), so zooming in reads as approaching; never on the flat 2D map. "Star size by class" runs to 200% (geometric past 100%, so a remnant shrinks rather than vanishing) and still defaults to all equal.
