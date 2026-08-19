@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.826-beta - 19th Aug 2026
+
+- Docs only. Follow-GM has no message for the GM returning to the starmap level (it follows body ids only); captured with the one-message fix and routed to the VTT session.
+
 ## v2.1.825-beta - 18th Aug 2026
 
 - NEW: a gas giant's Surface view is now the view from a balloon. It used to paint rock, sea and trees on a world with nothing to stand on; it now shows a soft cloud deck below, darker air above, and no hard horizon, because there is no edge to stand at. The distance markers become balloons, which is honest rather than a joke — an aerostat is the one thing a person could genuinely float at depth in such an atmosphere.
