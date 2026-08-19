@@ -1466,6 +1466,34 @@ nobody honours, and CC-BY is an obligation, not a preference.
 BLAST: changing the asset paths (the collector matches on the `assets/` prefix). Adding an upload
 surface: fill the ImageRef/ModelRef provenance fields or every asset it creates reports blank.
 
+### DATA-M5 A map-fixed image lives INSIDE the world transform, and its anchor is campaign content
+WHERE: `src/lib/map/mapBackground.ts` (the only place the rectangle is worked out), `Starmap.svelte`
+(the `<image>` inside the `translate(pan) scale(zoom)` group), `starmapScene.ts` (`setMapBackground`,
+the quad in the map plane), `starmapDocument.ts` (the figure at the foot), `types.ts` (`MapBackground`).
+RULE: the GM's own picture behind the stars attaches one of TWO ways, and the difference is structural
+rather than cosmetic. **screen-fixed** is decoration and lives OUTSIDE the world transform - a CSS
+background on the `<svg>` element, which is why it holds still while the stars move. **map-fixed** is
+GEOREFERENCED and must be drawn INSIDE the same transform the systems use, first, behind the grid and
+the routes; registration is then automatic and free rather than something to maintain. Every surface
+asks `backgroundRectMap` for the rectangle in MAP COORDINATES and then applies only its own view
+transform - none of them re-derives it. The anchor (`widthUnits`, `offsetX/Y`, `rotationDeg`) is read
+in the CAMPAIGN'S OWN unit via `pixelsPerUnit`, never light years by assumption (A43), and a unit
+CONVERT must call `rescaleMapBackgroundForRuler` or the picture jumps while nothing on the map moved.
+WHY: it is [[A4]] running in reverse - A4 had to DIVIDE zoom out of label fonts because they sat inside
+the world transform, and this deliberately wants to be inside it. And in map-fixed mode a surface that
+computes the rectangle even slightly differently is not "a bit off": a player looking at borders in the
+wrong place is looking at a WRONG MAP, so parity is a correctness requirement, not a polish one. That
+is also why the anchor is CAMPAIGN content (`Starmap.mapBackground`) rather than per-preset chrome - it
+has to ride the save bundle, the player snapshot and the broadcast, and a second copy is a copy that
+can disagree with the GM's own map.
+BLAST: a new starmap surface must resolve through `resolveMapBackground` + `backgroundRectMap` rather
+than reading the fields; the 3D form is a flat QUAD IN THE MAP PLANE and never a sky sphere (owner
+decision - warping a sector map onto a sphere was refused, the sky stays procedural), rebuilt after
+every `setData` because that is where the fit transform is recomputed. The starmap DOCUMENT has no map
+coordinates at all, so both modes collapse there to one printed figure. The image rides `SYNC_STARMAP`,
+NOT `SYNC_PRESET` - `SYNC_PRESET` carries `{presetId, overrides}` only, and a 2 MB background measured
+2,097,819 bytes on the starmap message, gated by `sendIfChanged`'s fingerprint.
+
 ### DATA-M2 Imported model bytes are verified against their own key
 WHERE: `modelTransfer.importEmbeddedModels`; pinned by `modelTransfer.roundtrip.spec.ts`
 RULE: an embedded blob is re-hashed on import and DROPPED if it does not match the key it arrived

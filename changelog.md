@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v2.1.813-beta - 19th Aug 2026
+
+- Docs only. Your-own-map-behind-the-stars written up: one engine-map entry (a map-fixed image lives
+  inside the world transform and its anchor is campaign content), a new finding on the two
+  uploaded-image systems the feature had to straddle, and the guide debt recorded.
+
 ## v2.1.812-beta - 19th Aug 2026
 
 - Align the map background by eye. Placing a sector map by typing numbers into a dialog that covers
