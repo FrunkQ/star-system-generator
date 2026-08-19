@@ -2458,6 +2458,30 @@ agree. Do not delete that fold thinking it is redundant.
 
 ---
 
+### TRANSPORT-*  (broadcast.ts — same-machine channel + PeerJS)
+
+### TRANSPORT-1 A broker id collision is RETRIED before it is BELIEVED, prompts ONCE per id, and is never silently re-hosted
+WHERE: `src/lib/broadcast.ts` `initPeerHost` (retry ladder `HOST_RETRY_MS`, `blockedIds`,
+`promptedIds`, pagehide release), `initSender` (skips a blocked id), `enableRemote(explicit)`
+(the only thing that lifts a block); the GM route's `onHostIdUnavailable` (`+page.svelte`).
+RULE: on `unavailable-id` re-register the SAME id with a short back-off (1.5 s, 3 s, 5 s) before
+treating it as taken; a holder that survives the ladder gets ONE prompt, after which the id is
+blocked from AUTO re-hosting until it changes (the OK path mints a new one) or the GM re-enables
+sharing EXPLICITLY (Player Views launcher / `REQUEST_REMOTE`). Release the registration on
+`pagehide`. Do NOT auto-host from a dev/localhost origin. Every attempt/outcome is a `perfEvent
+('peer', …)` — `__ssePerf.events(60,'peer')` is the one action.
+WHY: A57 — the PeerJS broker HOLDS a just-dropped id for a timeout, so a reload of the same map
+collided with the tab's OWN previous registration and told the GM "another session is hosting";
+OK minted a new id and hosted it silently (looked like a no-op); Cancel left `hostRequested` set
+and `SystemView` calls `initSender` on every system entry, so the same id was re-attempted and the
+prompt came back on every click. Two users on beta saw it inside a day. The id scheme itself was
+never wrong (crypto-random, unique by construction) — the collision was always with oneself, or a
+dev preview holding a bundled map's id on the PUBLIC broker.
+BLAST: `initSender` is called from many places (route, `SystemView`, `PlayerViewModal`) — none may
+be allowed to re-host a collided id, or the loop returns. The prompt handler must never mint on
+Cancel. A future SECOND transport (self-hosted broker) keeps this state machine; only the broker
+address changes.
+
 ## OPEN MISALIGNMENTS
 
 **READ THIS BEFORE YOU DECIDE A SUBSYSTEM IS CLEAN.** These are places where one concept has two or

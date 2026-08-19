@@ -141,35 +141,91 @@ class BroadcastService {
     return mod.default ?? mod.Peer ?? mod;
   }
 
-  private async initPeerHost(sessionId: string) {
+  // A57 — the broker holds a just-dropped id for a timeout, so a reload of the same map used to
+  // collide with the tab's OWN previous registration and prompt the GM as if a second host existed.
+  // Three defences, in order: release the id on pagehide (so the hold rarely starts); on
+  // unavailable-id RETRY the same id with a short back-off before believing it is really taken;
+  // and prompt at most ONCE per id, after which the id is BLOCKED from silent re-hosting until it
+  // changes or the GM explicitly re-enables sharing. Every attempt/outcome lands in the always-on
+  // perf event ring — `__ssePerf.events(60,'peer')` is the one action when this fires again.
+  private static HOST_RETRY_MS = [1500, 3000, 5000];
+  private hostAttempt = new Map<string, number>();     // id -> retries used
+  private blockedIds = new Set<string>();               // collided; do not auto re-host
+  private promptedIds = new Set<string>();              // prompted the owner already
+  private hostRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private pagehideBound = false;
+
+  private async initPeerHost(sessionId: string, caller = 'initPeerHost') {
     if (typeof window === 'undefined') return;
+    if (this.blockedIds.has(sessionId)) {
+      perfEvent('peer', { phase: 'host-skip', id: sessionId, caller, outcome: 'blocked-after-collision' });
+      return;
+    }
+    if (this.peer) { perfEvent('peer', { phase: 'host-skip', id: sessionId, caller, outcome: 'already-hosting' }); return; }
+    if (!this.pagehideBound) {
+      // Release the broker registration the moment the page goes away, so a reload does not meet
+      // its own ghost. pagehide fires on reload, close and bfcache; destroy() closes the socket.
+      window.addEventListener('pagehide', () => {
+        perfEvent('peer', { phase: 'pagehide', id: this.sessionId, outcome: this.peer ? 'destroy' : 'no-peer' });
+        try { this.peer?.destroy(); } catch { /* unloading */ }
+        this.peer = null;
+      });
+      this.pagehideBound = true;
+    }
+    const attempt = this.hostAttempt.get(sessionId) ?? 0;
+    perfEvent('peer', { phase: 'host-attempt', id: sessionId, caller, attempt });
     try {
       const Peer = await this.loadPeer();
       // The host registers under the session id, so a guest dials that id directly.
       // BYO ICE (docs/dev/vtt-integration-design.md 11): custom STUN/TURN prepended to
       // the PeerJS defaults, so a turns:443 relay can carry a locked-down network.
       const cfg = peerConfigFor(this.iceServers ?? loadStoredIce());
-      this.peer = new Peer(sessionId, cfg ? { config: cfg } : undefined);
-      this.peer.on('connection', (conn: any) => {
+      const peer = new Peer(sessionId, cfg ? { config: cfg } : undefined);
+      this.peer = peer;
+      peer.on('open', (id: string) => {
+        this.hostAttempt.delete(sessionId);
+        perfEvent('peer', { phase: 'host-open', id, caller, attempt });
+      });
+      peer.on('connection', (conn: any) => {
         conn.on('open', () => { if (!this.peerConns.includes(conn)) this.peerConns.push(conn); });
         conn.on('data', (data: any) => this.handlePeerData(data));
         conn.on('close', () => { this.peerConns = this.peerConns.filter((c) => c !== conn); });
         conn.on('error', () => { /* per-connection; ignore */ });
       });
-      this.peer.on('error', (e: any) => {
-        if (e?.type === 'unavailable-id') {
-          // Another LIVE session already hosts this id — a stale tab on another PC, or a
-          // copied starmap file at another table. Surface it to the owner; never silently
-          // regenerate (that would break every stored player link on an innocent PC move).
-          try { this.peer?.destroy(); } catch { /* already gone */ }
-          this.peer = null;
-          this.peerConns = [];
-          this.onHostIdUnavailable?.();
+      peer.on('error', (e: any) => {
+        const errType = e?.type || String(e);
+        if (errType === 'unavailable-id') {
+          try { peer.destroy(); } catch { /* already gone */ }
+          if (this.peer === peer) { this.peer = null; this.peerConns = []; }
+          const used = this.hostAttempt.get(sessionId) ?? 0;
+          if (used < BroadcastService.HOST_RETRY_MS.length && this.sessionId === sessionId) {
+            // Probably our own just-dropped registration still held by the broker: try again.
+            const wait = BroadcastService.HOST_RETRY_MS[used];
+            this.hostAttempt.set(sessionId, used + 1);
+            perfEvent('peer', { phase: 'host-collide', id: sessionId, caller, errType, attempt: used, outcome: `retry-in-${wait}ms` });
+            if (this.hostRetryTimer) clearTimeout(this.hostRetryTimer);
+            this.hostRetryTimer = setTimeout(() => {
+              this.hostRetryTimer = null;
+              if (this.sessionId === sessionId && this.hostRequested && !this.peer) void this.initPeerHost(sessionId, 'retry');
+            }, wait);
+            return;
+          }
+          // Held through every retry: a genuinely persistent holder. Block silent re-hosting of this
+          // id and ask the owner ONCE. The block lifts when the id changes (OK) or the GM re-enables
+          // sharing explicitly (enableRemote from the launcher / REQUEST_REMOTE) — Cancel's promise.
+          this.hostAttempt.delete(sessionId);
+          this.blockedIds.add(sessionId);
+          const first = !this.promptedIds.has(sessionId);
+          this.promptedIds.add(sessionId);
+          perfEvent('peer', { phase: 'host-collide', id: sessionId, caller, errType, outcome: first ? 'prompt' : 'blocked-silent' });
+          if (first) this.onHostIdUnavailable?.();
           return;
         }
-        console.warn('[peer host]', e?.type || e);
+        perfEvent('peer', { phase: 'host-error', id: sessionId, caller, errType });
+        console.warn('[peer host]', errType);
       });
     } catch (e) {
+      perfEvent('peer', { phase: 'host-error', id: sessionId, caller, errType: 'init-failed' });
       console.warn('PeerJS host init failed (cross-device sharing unavailable)', e);
     }
   }
@@ -281,22 +337,36 @@ class BroadcastService {
     this.isSender = true;
     this.sessionId = sessionId;
     if (changed && this.peer) {
+      perfEvent('peer', { phase: 'rehost-id-changed', id: sessionId, caller: 'initSender' });
       try { this.peer.destroy(); } catch { /* already gone */ }
       this.peer = null;
       this.peerConns = [];
     }
-    if (this.hostRequested && !this.peer) this.initPeerHost(sessionId);
+    // A57: a collided id is NOT re-hosted from here (SystemView calls initSender on every system
+    // entry — that was the "Cancel brings it back on every click" loop). Only an id change or an
+    // explicit enableRemote() lifts the block.
+    if (this.hostRequested && !this.peer && !this.blockedIds.has(sessionId)) void this.initPeerHost(sessionId, 'initSender');
   }
 
   // Opt-in cross-device hosting: called when the GM opens the Companion launcher (sharing intent),
   // so we only announce an id to the public PeerJS broker when the GM actually wants remote players —
   // not on every session. Idempotent. The request is remembered so a session-id change re-hosts.
   private hostRequested = false;
-  public enableRemote() {
+  public enableRemote(explicit = false) {
     this.hostRequested = true;
-    if (this.peer || !this.sessionId || !this.isSender) return;
-    this.initPeerHost(this.sessionId);
+    if (!this.sessionId || !this.isSender) return;
+    // An EXPLICIT re-enable (launcher / REQUEST_REMOTE) is the GM saying "the other session is
+    // gone, try again": lift the collision block and allow one more prompt if it is still held.
+    if (explicit && this.blockedIds.has(this.sessionId)) {
+      this.blockedIds.delete(this.sessionId);
+      this.promptedIds.delete(this.sessionId);
+      this.hostAttempt.delete(this.sessionId);
+    }
+    if (this.peer) return;
+    void this.initPeerHost(this.sessionId, explicit ? 'enableRemote-explicit' : 'enableRemote-auto');
   }
+  /** True when the current id collided with a persistent holder and auto-hosting is suspended. */
+  public get hostBlocked(): boolean { return !!this.sessionId && this.blockedIds.has(this.sessionId); }
 
   // Fired when hosting failed because the id is ALREADY TAKEN by a live session elsewhere.
   // The GM route owns the user-facing choice (keep and retry later, or regenerate).
@@ -609,6 +679,7 @@ class BroadcastService {
   public close() {
       this.closed = true;
       if (this.redialTimer) { clearTimeout(this.redialTimer); this.redialTimer = null; }
+      if (this.hostRetryTimer) { clearTimeout(this.hostRetryTimer); this.hostRetryTimer = null; }
       if (this.channel) this.channel.close();
       try { this.peer?.destroy(); } catch { /* already gone */ }
       this.peer = null;

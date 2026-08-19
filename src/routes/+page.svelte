@@ -811,7 +811,16 @@
     // can no longer reach this tab over the same-machine channel (Chrome partitions BroadcastChannel
     // in third-party iframes), so PeerJS is its only route to discover us. Cheap (one broker
     // registration, no data until someone connects); the id-collision prompt covers a stale tab.
-    broadcastService.enableRemote();
+    // A57: NOT from a dev/localhost origin — every worker's preview with a bundled map open would
+    // otherwise register the same persistent id on the PUBLIC broker and beta would find it taken.
+    // Explicit enable (Player Views launcher / REQUEST_REMOTE) still works there, so cross-site
+    // testing from a dev tab is unaffected.
+    if (!isDevOrigin()) broadcastService.enableRemote();
+  }
+  function isDevOrigin(): boolean {
+    if (!browser) return false;
+    const h = window.location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h.endsWith('.local');
   }
   onMount(() => {
     if (!browser) return;
@@ -833,7 +842,13 @@
         'OK — mint a NEW session id for this starmap. Existing player links and QR codes stop working.\n' +
         'Cancel — keep the current id: close the other session, then enable remote sharing again.'
       );
-      if (regen) starmapStore.update((m) => (m ? { ...m, broadcastId: mintBroadcastId(m.name) } : m));
+      if (regen) {
+        starmapStore.update((m) => (m ? { ...m, broadcastId: mintBroadcastId(m.name) } : m));
+        // A57: OK used to look like a no-op — the new id hosted silently. Say what happened.
+        remoteNotice = 'New session id minted — existing player links and QR codes have stopped working. Share the new link from Player Views.';
+        if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+        remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 8000);
+      }
     };
     broadcastService.onRequestStarmap = (requestingId) => {
       if (requestingId && requestingId !== broadcastSessionId) return;
@@ -855,7 +870,7 @@
       if (a) broadcastService.sendMessage({ type: 'ANNOUNCE', payload: a });
     };
     broadcastService.onRequestRemote = () => {
-      broadcastService.enableRemote();
+      broadcastService.enableRemote(true); // explicit: lifts an A57 collision block
       // Never host on the public broker silently: a small transient notice on the GM screen.
       remoteNotice = `Remote sharing enabled for "${get(starmapStore)?.name ?? 'this starmap'}" — players can now connect from other devices.`;
       if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);

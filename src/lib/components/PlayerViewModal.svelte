@@ -132,7 +132,7 @@
     // Highlight/select whatever is currently live; else the first preset.
     selectedId = get(runningPresetId) ?? presets[0]?.id ?? null;
     if (browser) origin = window.location.origin;
-    broadcastService.enableRemote(); // sharing intent: allow cross-device players to connect
+    broadcastService.enableRemote(true); // sharing intent (explicit): allow cross-device players to connect; lifts an A57 collision block
   });
 
   const VIEW_LABELS: Record<ViewModule, string> = { list: 'Text list', document: 'Document', diagram2d: '2D map', holo3d: '3D holo' };

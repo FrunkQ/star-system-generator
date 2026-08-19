@@ -1142,6 +1142,27 @@ the deployed tab (explicit Player Views hosting worked, load-time did not).
 Shipped in v2.1.753. Lesson for the shared tree: after any `--autostash`, diff
 the working copy against origin before declaring a push complete.
 
+### 16b. Broker id self-collision — A57 (2026-08-19)
+
+The persistent id + auto-host-on-load (sections 9.1/1A and 16) met a broker fact the design
+had not priced in: the PeerJS broker HOLDS a just-dropped id for a timeout, so a reload of the
+same map inside that window collides with the tab's OWN previous registration and the
+"another session is hosting" prompt fires with nothing else running. Two users hit it inside a
+day. Fix (SSE v2.1.814-beta), all in `broadcast.ts` unless noted:
+- release the registration on `pagehide` (`peer.destroy()`) so the hold rarely starts;
+- on `unavailable-id`, RETRY the same id (1.5 s, 3 s, 5 s) before believing it is taken;
+- prompt ONCE per id; after that the id is blocked from AUTO re-hosting until it changes (OK)
+  or the GM re-enables sharing EXPLICITLY (`enableRemote(true)` from the Player Views launcher
+  or `REQUEST_REMOTE`) — which is what the Cancel text always promised;
+- OK shows a transient notice ("New session id minted — existing player links and QR codes have
+  stopped working");
+- no AUTO-host from a dev/localhost origin (`+page.svelte`); explicit enable still works, so
+  cross-site testing from a dev tab is unaffected; the wire and the stored id are unchanged
+  (a namespace would have changed both);
+- every host attempt/outcome is recorded via `perfEvent('peer', …)`; `__ssePerf.events(60,'peer')`
+  answers the next occurrence.
+Engine-map entry TRANSPORT-1. The id scheme (section 9.1) is unchanged.
+
 ## 17. Deployment requirement: embeds must pass the firewall (found 2026-08-18)
 
 The second beta test failed with `bridge → 403`. Cause: **beta.starsystemx.com is behind

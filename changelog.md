@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v2.1.814-beta - 19th Aug 2026
+
+* A57 - the "another session is already hosting this starmap's broadcast id" prompt, user-reported on beta. The PeerJS broker holds a just-dropped id for a timeout, so a quick reload of the same map collided with the tab's OWN previous registration and prompted as if a second GM existed; OK minted a new id silently and Cancel brought the prompt back on every system entry. Now: the registration is released on pagehide; a collision is RETRIED (1.5 s, 3 s, 5 s) before it is believed; a genuinely persistent holder prompts ONCE per id, after which that id is not silently re-hosted until it changes (OK) or sharing is re-enabled explicitly (Player Views); OK shows "New session id minted - existing player links and QR codes have stopped working"; a dev/localhost tab no longer AUTO-hosts on the public broker (explicit sharing still works). Every host attempt and outcome is recorded - `__ssePerf.events(60,'peer')`. The readable id scheme (map slug + two space words + digits) is unchanged. Also fixes E12: `broadcastContract.spec.ts` now awaits deliveries instead of counting ticks and is no longer flaky under the full suite; it gains a fake broker and four collision cases.
 ## v2.1.813-beta - 19th Aug 2026
 
 - Docs only. Your-own-map-behind-the-stars written up: one engine-map entry (a map-fixed image lives
