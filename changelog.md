@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.863-beta - 19th Aug 2026
+
+- **Scrubbing time while it is playing now seeks instead of stopping the clock (A60).** Jogging the shuttle used to pause playback outright - and it wrote that pause into the campaign, so it outlived the drag and even the tab. Now the transport keeps playing, the jog takes the clock wherever you push it, and letting go carries straight on from the new time. A paused transport still stays paused: the jog is not a play button.
+
 ## v2.1.862-beta - 19th Aug 2026
 
 - Docs only. The infill dials gap confirmed as two paths (SpaceEngine and Universe Sandbox already route through the modal that has them); a fix sketched for the real-sky importer bringing one wide companion in twice.

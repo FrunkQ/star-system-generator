@@ -197,11 +197,38 @@
     scrubCarrySeconds = 0;
   }
 
+  // SCRUBBING WHILE PLAYING SEEKS; IT DOES NOT STOP THE CLOCK (A60). The jog used to call
+  // `setPlaying(false)`, which not only stopped playback for good — nothing resumed it on release —
+  // but also PERSISTED `playbackRunning: false` into the campaign, so the pause outlived the drag
+  // and the tab. A GM jogging forward while time runs wants to arrive somewhere and keep running.
+  //
+  // So playback KEEPS ITS STATE and only yields its LOOP: `isPlaying` is untouched (no persist, and
+  // nothing for the `temporal.playbackRunning` reactive to fight over), while the playback rAF is
+  // suspended for the duration so the two loops cannot both advance the same clock.
+  let playbackYieldedToScrub = false;
+
+  function suspendPlaybackForScrub() {
+    if (!isPlaying || playbackRafId === null) return;
+    stopPlayback();
+    playbackYieldedToScrub = true;
+  }
+
+  function resumePlaybackAfterScrub() {
+    if (!playbackYieldedToScrub) return;
+    playbackYieldedToScrub = false;
+    // Resumes from wherever the jog left the clock - the point of the whole thing.
+    if (isPlaying) ensurePlaybackRunning();
+  }
+
   function handleScrubInput(event: Event) {
-    if (isPlaying) setPlaying(false);
     scrubControlValue = Number((event.target as HTMLInputElement).value);
     if (Math.abs(scrubControlValue) > 0.0001) {
+      suspendPlaybackForScrub();
       ensureScrubLoopRunning();
+    } else {
+      // Dragged back to the centre: the same thing as letting go, and the only signal we get if the
+      // pointer is released outside the control.
+      handleScrubRelease();
     }
   }
 
@@ -209,6 +236,7 @@
   function handleScrubRelease() {
     scrubControlValue = 0;
     stopScrubLoop();
+    resumePlaybackAfterScrub();
   }
 
   function tickPlayback(timestamp: number) {
