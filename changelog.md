@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.866-beta - 19th Aug 2026
+
+* VTT integration session retired - notes for the next person in `docs/dev/vtt-integration-notes.md` (the transport mirrors every send, BroadcastChannel is partitioned cross-site, the broker holds dropped ids and `initPeerHost` was re-entrant, the id is campaign data, the catalogue is the only viewer, filters: SSE wins, network code is one system across both apps, PWA/firewall facts that masquerade as bugs, the harness traps, how to test Owlbear/Foundry, and what is known open). E12 (flaky contract spec) recorded as fixed at the root; E13 (firewall bypass) now carries the exact rule.
+
 ## v2.1.865-beta - 19th Aug 2026
 
 - Removed the "Tap a world to read its file" prompt that showed on the player system view before the first selection. It was an absolutely-positioned overlay at the foot of the stage, so it held no layout open — and it landed on top of the grid's new scale caption, which shares that corner and says something a reader cannot work out unaided.
