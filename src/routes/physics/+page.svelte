@@ -1059,12 +1059,26 @@
         Jupiter's ammonia deck at about 550&nbsp;mbar the light goes to near nothing, which is not a fault: you
         are under a hundred optical depths of cloud, and what you see is the deck's own faint glow and your
         own lamps. The balloons are re-lit by the light at <em>that</em> depth, not by the 1&nbsp;bar reference.</p>
-      <p><strong>Where it stops, and why.</strong> The profile is anchored at the 1&nbsp;bar reference level and
-        models nothing beneath it: no temperature law, no radiative transfer, and at a few hundred bar the
-        air glows by its own heat — a continuous version of the brown-dwarf self-luminosity, which is V4 work.
-        The slider runs from the top of the air to that level and no further, because every number past it
-        would be an extrapolation nobody has checked. A balloon would not take a person there anyway:
-        Jupiter's hundred-bar level is hot enough to cook, and the pressure alone is a submarine's.</p>
+      <p><strong>How deep it goes, and why it stops at 100&nbsp;bar.</strong> The temperature law is the dry
+        adiabat continued down from the 1&nbsp;bar anchor — the same law the cloud model already applies above
+        it — and it can be checked against the one descent anyone has made: Galileo's probe into Jupiter. We
+        say 319&nbsp;K at 10&nbsp;bar; the probe read about 330. We say about 400&nbsp;K at 22&nbsp;bar; the probe read
+        about 425 and died there. A few percent, all the way down. So the slider runs to 100&nbsp;bar, where
+        Jupiter is near 640&nbsp;K — and the air's own thermal glow is still nothing a human eye would see, so a
+        balloon down there sees by its lamps and otherwise sees black. Past 100&nbsp;bar the things the law
+        leaves out — the wet adiabat, opacity growing with density beyond simple scattering, and eventually
+        the air's own emission — start to matter, and none of them has been checked, so it stops.</p>
+      <p>Two things happen as you descend that the picture shows. The <strong>air thickens</strong>, so the
+        same scattering that sets surface visibility scales with density and your sight closes — hundreds of
+        kilometres near the top, tens at the bottom, metres inside a deck — and the same haze veils your lamps.
+        And the <strong>water deck</strong> appears, a few bar down, on any giant that carries water: it lives
+        below the reference level, which is why a renderer looking down from space never sees it and why the
+        published cloud tags do not carry it. The bundled Jupiter carries no water at all in its composition,
+        so its deep view finds none; that is a catalogue fact, not a limit of the model.</p>
+      <p>The "midday brightness" switch means the same here as on the ground: unticked, you see the
+        <em>colour</em> of whatever light reaches you, however faint — under the ammonia deck it is a trillionth
+        of the light above and it is still ochre. Ticked, you see how dark it is, which under an opaque deck
+        is black, because it is.</p>
     </section>
 
     <section id="biosphere">

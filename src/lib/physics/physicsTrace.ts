@@ -387,7 +387,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       layers.push({
         id: 'clouds', title: 'Clouds & weather', link: '/physics#clouds',
         inputs: [
-          { label: 'Reference level', value: n(profile.pSurfBar, 3, ' bar') + ' at ' + n(profile.tSurfK, 0, ' K') },
+          { label: 'Reference level', value: n(profile.pAnchorBar, 3, ' bar') + ' at ' + n(profile.tSurfK, 0, ' K') },
           { label: 'Cooling with height', value: `${profile.kappa.toFixed(2)} (from the gases present)` },
           { label: 'Coldest sky', value: n(profile.tSkinK, 0, ' K') + ` — reached at ${profile.tropopauseBar >= 0.01 ? n(profile.tropopauseBar, 2, ' bar') : profile.tropopauseBar.toExponential(1) + ' bar'}` },
           { label: 'Condensable gases', value: condensableSummary(comp, pack) }

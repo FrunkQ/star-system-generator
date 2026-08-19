@@ -206,7 +206,15 @@ export function bucketCoverage(bucket: string): number {
 }
 
 // ── The evaluation ───────────────────────────────────────────────────────────────────────────────
-export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): CloudDeck[] {
+/**
+ * `profileOverride` lets a caller scan a profile it built itself — the balloon view hands in one that
+ * continues below a giant's 1 bar anchor, so the scan can find the water deck that lives down there.
+ * The PUBLISHED decks are always built from the default profile: a renderer looking down from space
+ * cannot see a deck under another deck, and the tags must stay what the processor emits.
+ */
+export function deriveCloudDecks(
+  body: CelestialBody, pack?: RulePack | null, profileOverride?: AtmosphereProfile | null
+): CloudDeck[] {
   const pBar = body.atmosphere?.pressure_bar ?? 0;
   if (pBar < MIN_ATM_BAR) return [];
   const surfT = body.temperatureK ?? body.equilibriumTempK ?? 0;
@@ -216,7 +224,7 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
   const evap = evaporationFraction(body, pack);
   if (evap) comp[evap.gas] = Math.max(comp[evap.gas] ?? 0, evap.frac);
 
-  const profile = atmosphereProfile(body, comp, pack);
+  const profile = profileOverride ?? atmosphereProfile(body, comp, pack);
   if (!profile) return [];
   // A body with a SURFACE cannot hold more of a substance in its air than the ground-level
   // temperature allows: the excess frosts out and stays there. So a well-mixed fraction is capped by
@@ -233,7 +241,7 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
     const def = liquidDef(species, pack);
     if (!def) continue;
     const frac = hasSurface
-      ? Math.min(fracRaw ?? 0, saturationPressureBar(def, surfT) / profile.pSurfBar)
+      ? Math.min(fracRaw ?? 0, saturationPressureBar(def, surfT) / profile.pAnchorBar)
       : (fracRaw ?? 0);
     if (frac < (cloud.minFraction ?? DEFAULT_MIN_FRACTION)) continue;
     // Does this species saturate anywhere in the column, and how much condensate does that put up
@@ -250,8 +258,12 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
     // straight back into the deck, so the cover never breaks. That is the whole reason Venus is
     // total overcast on a few parts per million of vapour, and it is no longer a special case: it
     // falls out of the same saturation test used to place the deck.
+    // At the ANCHOR — the pressure surfT was actually read at — never at the deepest level. On a
+    // profile continued below a giant's reference those differ by a hundredfold, and asking whether
+    // 165 K air is saturated at 100 bar says everything rains out, drains every deck, and loses the
+    // water deck the deep scan existed to find.
     const satSurf = saturationPressureBar(def, surfT);
-    const surfaceRatio = satSurf > 0 ? (frac * profile.pSurfBar) / satSurf : 1;
+    const surfaceRatio = satSurf > 0 ? (frac * profile.pAnchorBar) / satSurf : 1;
     const landsIntact = surfaceRatio >= 0.5;
     const precip: PrecipKind = !landsIntact ? 'virga' : surfT < def.meltK ? 'snow' : 'rain';
     const rainOut = Math.min(1, Math.sqrt(Math.max(0, Math.min(1, surfaceRatio))));

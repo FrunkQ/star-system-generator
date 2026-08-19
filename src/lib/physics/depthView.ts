@@ -20,6 +20,21 @@
 import type { CelestialBody, RulePack } from '$lib/types';
 import { deriveCloudDecks, effectiveComposition, type CloudDeck } from './cloudDecks';
 import { atmosphereProfile, GIANT_REFERENCE_BAR, MIN_ATM_BAR } from './atmosphereProfile';
+import { rayleighTau550 } from './surfaceSpectrum';
+import { scaleHeightM } from './visibility';
+
+/**
+ * HOW DEEP THE SLIDER GOES, in bar — and it is the honest limit, not a round number.
+ *
+ * Measured against the one descent anyone has made: Galileo's probe into Jupiter. Extrapolating the
+ * dry adiabat below the 1 bar anchor, we say 319 K at 10 bar (the probe read ~330 K) and ~400 K at
+ * 22 bar (the probe read ~425 K and died there). So the temperature law holds to a few percent all
+ * the way down, and by 100 bar at ~640 K the air's own thermal glow is still nothing a human eye
+ * would see. What the model does NOT carry below the anchor: the wet adiabat, opacity growing with
+ * density beyond Rayleigh, and any emission. Past 100 bar those start to matter and nothing here has
+ * been checked against them, so the slider stops.
+ */
+export const GIANT_DEPTH_LIMIT_BAR = 100;
 import { liquidDef } from './liquids';
 import { makeupFractions } from './makeup';
 import { GRID_NM, type Spectrum } from './spectrum';
@@ -42,6 +57,11 @@ export interface DepthLevel {
 	inCloud: boolean;
 	/** The authored colour of the deck you are in or under, as a material. */
 	floorHex: string | null;
+	/** Extinction per metre AT THIS DEPTH — Rayleigh scaled by density, plus the deck if you are in it.
+	 *  This is what shortens your view and veils your lamps as you go down. */
+	extinctionPerM: number;
+	/** How far you can see here, by the same contrast rule the surface visibility uses. */
+	seeM: number;
 }
 
 export interface DepthProbe {
@@ -65,15 +85,24 @@ export function depthProbe(
 	const isGiant = makeupFractions(body).gas > 0.5;
 	if (!isGiant) return null;
 	const comp = effectiveComposition({ ...(body.atmosphere?.composition ?? {}) }, pack);
-	const profile = atmosphereProfile(body, comp, pack);
+	// The DEEP profile: same anchor at 1 bar, continued down to the limit. This is what finds the
+	// water deck, which lives below the reference on every cold giant and which the published tags
+	// never see — they are built from the shallow profile and that is correct for a renderer looking
+	// DOWN from space, where a deck under another deck is invisible.
+	const profile = atmosphereProfile(body, comp, pack, { giantDepthBar: GIANT_DEPTH_LIMIT_BAR });
 	if (!profile) return null;
-	// Deepest first — the order a scan from the ground up would meet them.
-	const decks = deriveCloudDecks(body, pack)
+	// Deepest first — the order a scan from the ground up would meet them. Derived on the DEEP profile
+	// so the scan can reach a base below 1 bar; the shallow set the tags carry is a subset of this.
+	const decks = deriveCloudDecks(body, pack, profile)
 		.filter((d) => typeof d.baseBar === 'number' && d.baseBar > 0)
 		.sort((a, b) => (b.baseBar as number) - (a.baseBar as number));
 
 	const topBar = Math.max(MIN_ATM_BAR, profile.levels[profile.levels.length - 1]?.pBar ?? MIN_ATM_BAR);
-	const bottomBar = Math.min(profile.pSurfBar, GIANT_REFERENCE_BAR);
+	const bottomBar = profile.pSurfBar;
+	// Extinction per metre at the 1 bar level, the same Rayleigh the visibility model uses. Below it
+	// the air is denser in proportion to pressure and so is the scattering — which is exactly the
+	// owner's point that haze shortens how far you see and veils your own lamps as you go down.
+	const beta1 = (() => { const h = scaleHeightM(body); return h > 0 ? rayleighTau550(body, pack) / h : 0; })();
 
 	const at = (pBarRaw: number): DepthLevel => {
 		const pBar = Math.max(topBar, Math.min(bottomBar, pBarRaw));
@@ -109,15 +138,27 @@ export function depthProbe(
 		const light = topLight.map((v) => v * transmission);
 		const src = inCloud ? floor : (floor ?? ceiling);
 		const floorHex = src ? (liquidDef(src.species, pack)?.colorHex ?? null) : null;
-		return { pBar, tempK, light, transmission, floor, ceiling, inCloud, floorHex };
+		// Gas scattering grows with density — pressure over temperature. Inside a deck the droplets
+		// dominate and the view closes to metres: the deck's optical depth spread over a scale height
+		// of it, which is the same coarse stand-in the surface visibility uses for fog.
+		const h = scaleHeightM(body);
+		let extinctionPerM = beta1 * (pBar / GIANT_REFERENCE_BAR) * (profile.tSurfK / Math.max(1, tempK));
+		if (inCloud && floor && h > 0) extinctionPerM += (floor.opticalDepth ?? 0) / (h * 0.5);
+		// Capped at the horizon from a balloon's height, because at a microbar the air itself would let
+		// you see half a billion kilometres and that is true and unsayable. A planet the size of Jupiter
+		// curves away in a few hundred kilometres; that is the number a GM can actually use.
+		const horizon = Math.sqrt(2 * Math.max(1, (body.radiusKm ?? 6371) * 1000) * 100);  // 100 m aloft
+		const seeM = Math.min(horizon, extinctionPerM > 0 ? 3.912 / extinctionPerM : Infinity);
+		return { pBar, tempK, light, transmission, floor, ceiling, inCloud, floorHex, extinctionPerM, seeM };
 	};
 
 	return {
 		topBar, bottomBar, decks, at,
 		floorReason:
-			`The model is anchored at the ${GIANT_REFERENCE_BAR} bar reference level and describes nothing ` +
-			`beneath it: no temperature law, no radiative transfer, and at a few hundred bar the air glows ` +
-			`by its own heat. Every number past this line would be an extrapolation.`
+			`The temperature law is the dry adiabat from the ${GIANT_REFERENCE_BAR} bar anchor, and it matches ` +
+			`Galileo's descent into Jupiter to a few percent all the way down. Past ${GIANT_DEPTH_LIMIT_BAR} bar the ` +
+			`things it leaves out — the wet adiabat, opacity growing with density, the air's own glow — start ` +
+			`to matter, and none of them has been checked. So it stops here.`
 	};
 }
 

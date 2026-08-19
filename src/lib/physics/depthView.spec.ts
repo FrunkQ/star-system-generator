@@ -3,6 +3,8 @@ import { readFileSync } from 'fs';
 import { depthProbe, pressureWords } from './depthView';
 import { deriveSurfaceSpectrum } from './surfaceSpectrum';
 import { GIANT_REFERENCE_BAR } from './atmosphereProfile';
+import { GIANT_DEPTH_LIMIT_BAR } from './depthView';
+import { deriveCloudDecks } from './cloudDecks';
 import type { CelestialBody, RulePack } from '$lib/types';
 import fixture from '../../../tests/output/solar-system-derived.json';
 
@@ -31,12 +33,62 @@ describe('going down into a giant', () => {
     expect(probeFor('Jupiter')).toBeTruthy();
   });
 
-  it('stops at the reference level and says why, because nothing is modelled beneath it', () => {
+  it('goes to the depth limit and says why it stops there', () => {
     const p = probeFor('Jupiter');
-    expect(p.bottomBar).toBe(GIANT_REFERENCE_BAR);
-    expect(p.floorReason).toMatch(/extrapolation/);
+    expect(p.bottomBar).toBe(GIANT_DEPTH_LIMIT_BAR);
+    expect(p.floorReason).toMatch(/Galileo/);
     // Asking for deeper is clamped, not extrapolated.
-    expect(p.at(500).pBar).toBe(p.bottomBar);
+    expect(p.at(5000).pBar).toBe(p.bottomBar);
+  });
+
+  it('matches the one real descent — Galileo into Jupiter — to a few percent', () => {
+    // The probe read ~330 K at 10 bar and ~425 K at 22 bar, where it died. This is the check that
+    // the dry adiabat is honest this deep, and the reason the limit is 100 bar and not 1.
+    const p = probeFor('Jupiter');
+    expect(p.at(10).tempK).toBeGreaterThan(300);
+    expect(p.at(10).tempK).toBeLessThan(350);
+    expect(p.at(22).tempK).toBeGreaterThan(390);
+    expect(p.at(22).tempK).toBeLessThan(450);
+  });
+
+  it('keeps the stored temperature AT the reference level, whatever depth it continues to', () => {
+    // Continuing the profile below 1 bar must not move the reading at 1 bar, or descending would
+    // quietly rewrite what the processor published.
+    const p = probeFor('Jupiter');
+    const j = find(root, 'Jupiter');
+    expect(p.at(GIANT_REFERENCE_BAR).tempK).toBeCloseTo(j.temperatureK, 0);
+  });
+
+  it('does NOT change the decks the processor publishes', () => {
+    // The published set comes from the shallow profile and is what a renderer looking down from
+    // space can see. The deep scan is the balloon's business only.
+    const j = find(root, 'Jupiter');
+    const published = deriveCloudDecks(j, pack).map((d) => `${d.species}@${d.baseBar!.toFixed(2)}`);
+    expect(published).toEqual(['ammonium-hydrosulfide@0.75', 'ammonia@0.56']);
+  });
+
+  it('finds a water deck below the reference when there is water to condense', () => {
+    // The fixture's Jupiter carries no H2O at all (H2, He, CH4, NH3, H2S), so its deep scan
+    // correctly finds none — that is a catalogue fact, not a model limit. Give it Galileo's ~0.05%
+    // and the deck appears where Galileo met it, a few bar down.
+    const j = find(root, 'Jupiter');
+    const wet = { ...j, atmosphere: { ...j.atmosphere, composition: { ...j.atmosphere.composition, H2O: 0.0005 } } };
+    const s0 = j.surfaceSpectrum;
+    const r = deriveSurfaceSpectrum(wet as any, { starTempK: s0.starTempK, luminositySolar: 1, distanceAU: s0.distanceAU }, pack)!;
+    const p = depthProbe(wet as any, r.curves.topOfAtmosphere, pack)!;
+    const water = p.decks.find((d) => d.species === 'water');
+    expect(water, p.decks.map((d) => d.species).join(',')).toBeTruthy();
+    expect(water!.baseBar!).toBeGreaterThan(GIANT_REFERENCE_BAR);
+    expect(water!.baseBar!).toBeLessThan(20);
+  });
+
+  it('closes the view as the air thickens — haze veils your lamps and shortens your sight', () => {
+    const p = probeFor('Jupiter');
+    // High up the horizon binds — the air at a microbar would let you see for ever — so the figure
+    // is the same down to where the density finally overtakes it, then it falls fast.
+    expect(p.at(100).seeM).toBeLessThan(p.at(1).seeM / 2);
+    expect(p.at(100).extinctionPerM).toBeGreaterThan(p.at(1).extinctionPerM * 20);
+    expect(p.at(1).seeM).toBeLessThanOrEqual(p.at(0.05).seeM);
   });
 
   it('gets warmer as you descend — the adiabat the cloud model already uses', () => {

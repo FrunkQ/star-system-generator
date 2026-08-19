@@ -172,7 +172,7 @@ import { makeupFractions } from '$lib/physics/makeup';
     return Math.exp(lo + (hi - lo) * depthFrac);
   });
   const depthLevel = $derived(probe ? probe.at(depthBar) : null);
-  const cloudscape = $derived(depthLevel ? cloudscapeFor(depthLevel) : null);
+  const cloudscape = $derived(depthLevel ? cloudscapeFor(depthLevel, undefined, trueLevel) : null);
 
   const level = $derived(op ? brightnessVs(op, daylightOp) : 1);
   const levelPct = $derived(
@@ -269,7 +269,8 @@ import { makeupFractions } from '$lib/physics/makeup';
       ctx.drawImage(mat, 0, 0);
       // Haze between you and each balloon: Earth's air on the home side, this air on the other.
       drawBalloonVeils(ctx, W, H, world.marks, HOME_EXTINCTION, homeSky().low, 0, x0);
-      drawBalloonVeils(ctx, W, H, world.marks, world.sight.extinctionPerM, cloudscape.midHex, x0, W);
+      // Haze at THIS depth — denser air, or the deck itself if you are in it — not the 1 bar figure.
+      drawBalloonVeils(ctx, W, H, world.marks, depthLevel.extinctionPerM, cloudscape.midHex, x0, W);
       drawSpectrumEdges(ctx, W, H, homeDaylightSpectrum(), depthLevel.light);
       return;
     }
@@ -448,6 +449,10 @@ import { makeupFractions } from '$lib/physics/makeup';
          readout it is asking about; the physics page, having room, carries both. -->
     {#if sight && (activeScene === 'landscape' || !terse)}
       <div class="sight">
+        {#if depthLevel}
+          <!-- In a balloon the figure is local: denser air, or the deck you are in. -->
+          <span class="pair">At this depth you can see <b>{distanceWords(depthLevel.seeM)}</b></span>
+        {:else}
         <span class="pair">
           {#if sight.rangeM < sight.horizonM}
             You can see <b>{distanceWords(sight.rangeM)}</b> &mdash; the air, not the horizon
@@ -455,6 +460,7 @@ import { makeupFractions } from '$lib/physics/makeup';
             You can see <b>{distanceWords(sight.horizonM)}</b> &mdash; the horizon, the air is clear
           {/if}
         </span>
+        {/if}
         {#each LAMPS as l}
           <span class="pair">{l.label} <b>{distanceWords(sight.lampM[l.key])}</b></span>
         {/each}

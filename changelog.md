@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.830-beta - 18th Aug 2026
+
+- The balloon's depth slider now goes to 100 bar, and it is the honest limit rather than a round number. The temperature law is the dry adiabat continued down from the 1 bar anchor, and it can be checked against the one descent anyone has made: we say 319 K at 10 bar where Galileo's probe read about 330, and about 400 K at 22 bar where it read about 425 and died. A few percent all the way down. Past 100 bar the things the law leaves out — the wet adiabat, opacity growing with density, the air's own glow — start to matter and none has been checked, so it stops there and says so.
+- As you descend the air thickens and your sight closes: hundreds of kilometres near the top, tens of kilometres at the bottom, metres inside a deck — and the same haze veils your lamps. The visibility readout and the balloon veils both use the figure at your depth, not the 1 bar one.
+- The water deck appears. It lives a few bar below the reference on any giant that carries water, which is why a renderer looking down from space never sees it and the published cloud tags do not carry it. The bundled Jupiter has no water in its composition at all, so its deep view finds none — a catalogue fact, not a model limit; give it Galileo's half a part per thousand and the deck appears where Galileo met it.
+- "Midday brightness" means the same in the balloon as on the ground: unticked, you see the colour of whatever light reaches you, however faint — under the ammonia deck it is still ochre. Ticked, you see how dark it is, which under an opaque deck is black, because it is.
+- Found on the way: the cloud-deck scan asked "is the air saturated at the surface" using the deepest pressure in the profile rather than the pressure the stored temperature belongs to. Identical for every published profile, since those end at the anchor — but on a profile continued below it, it drained every deck. The anchor is now a named thing the scan reads, and the published decks are byte-identical.
+
 ## v2.1.828-beta - 19th Aug 2026
 
 - Docs only. The V3 plan marks your-own-map shipped and the broadcast-id collision closed; one welcome-list flag left, awaiting the owner's eye.

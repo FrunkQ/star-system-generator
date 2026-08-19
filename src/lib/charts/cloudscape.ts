@@ -47,17 +47,21 @@ export interface Cloudscape {
  * the light it has scattered and a balloon carries its own lamps. So the floor keeps a small self-
  * glow below 1% transmission, and the note says so rather than hiding it.
  */
-export function cloudscapeFor(level: DepthLevel, fallbackFloor = '#c9b08a'): Cloudscape {
+export function cloudscapeFor(level: DepthLevel, fallbackFloor = '#c9b08a', trueLevel = false): Cloudscape {
+	// COLOUR AND BRIGHTNESS ARE SEPARATE QUESTIONS, the same split the ground scene makes. `spectrumToHex`
+	// normalises, so `litHex` is the COLOUR of whatever light is here, however faint — which is what the
+	// unticked view shows: under the ammonia deck the light is a trillionth of what it was, and it is
+	// still ochre. Only "midday brightness" asks how DARK, and then the answer is black, because it is.
 	const litHex = spectrumToHex(level.light);
 	const t = Math.max(0, Math.min(1, level.transmission));
 	const mat = hexToRgb(level.floorHex ?? fallbackFloor);
 	const lit = hexToRgb(litHex);
 	const floorLit = rgbToHex(mix(mat, lit, 0.25));
-	// How dark: dim in linear light, with a floor so the scene never goes to pure black — the deck
-	// scatters the little that remains and is not a void.
-	const level01 = Math.max(0.03, Math.pow(t, 0.6));
-	const floorHex = dimHex(floorLit, level01);
-	const skyHex = dimHex(rgbToHex(mix(lit, [255, 255, 255], 0.35)), Math.max(0.05, Math.pow(t, 0.8)));
+	// At true level, dim in linear light on the same curve the ground scene uses. A small floor stays,
+	// because the deck scatters the little that remains and a balloon carries lamps — it is not a void.
+	const dimK = trueLevel ? Math.max(0.02, Math.pow(t, 0.6)) : 1;
+	const floorHex = dimHex(floorLit, dimK);
+	const skyHex = dimHex(rgbToHex(mix(lit, [255, 255, 255], 0.35)), trueLevel ? Math.max(0.03, Math.pow(t, 0.8)) : 1);
 	const midHex = dimHex(rgbToHex(mix(hexToRgb(floorHex), hexToRgb(skyHex), 0.45)), 0.7);
 	const immersion = level.inCloud ? 1 : 0;
 	const inside = level.floor?.species ?? 'cloud';
