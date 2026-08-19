@@ -63,7 +63,7 @@ export const NOT_STRIPPED: Record<string, string> = {
   hydrosphere: 'AUTHORED: the GM sets composition and coverage (BodyHydrosphereTab). Only the derived',
   atmosphere: 'AUTHORED: composition and pressure are input. molarMassKg/scaleHeightKm are stripped below.',
   orbit: 'AUTHORED: the elements are input. The derived `resonance` cache is stripped below.',
-  image: 'AUTHORED: the GM can set a URL (BodyBasicsTab). The classifier overwrites it on process - see B82.',
+  image: 'CONDITIONAL below: a GM upload sets image.custom and is authored; a type image is derived.',
   classes: 'HANDLED SEPARATELY below: cleared, except a star spectral class or a GM-pinned type.',
   tags: 'HANDLED SEPARATELY below by namespace. On a CONSTRUCT the processor only writes an empty [].',
   magneticField: 'CONDITIONAL below: authored for a star and for a GM manual field; derived otherwise.',
@@ -175,6 +175,11 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
   if (body.hydrosphere) delete (body.hydrosphere as any).layers;
   if (body.atmosphere) { delete (body.atmosphere as any).molarMassKg; delete (body.atmosphere as any).scaleHeightKm; }
   if (body.orbit) delete (body.orbit as any).resonance;   // B82: derived by the resonance pass
+  // A TYPE IMAGE IS DERIVED FROM THE CLASS, so it is a fossil in a save: the processor re-derives it
+  // from `pack.classifier.planetImages` on every run, which is what keeps the picture matching a world
+  // whose type has changed. A GM UPLOAD is not — it sets `image.custom`, and `SystemProcessor:1485`
+  // explicitly leaves that alone. Same shape as the magnetic field: derived for most, authored for some.
+  if (!isStar && !(body.image as any)?.custom) delete (body as any).image;
 
   // B82 — THE THREE THAT A FLAT LIST CANNOT EXPRESS, because each is derived for most bodies and
   // AUTHORED for some. This is why the item could not be closed by adding eight names to the list.

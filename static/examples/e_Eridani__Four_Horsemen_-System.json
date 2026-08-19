@@ -117,9 +117,6 @@
         }
       },
       "color": "#81ecec",
-      "image": {
-        "url": "/images/planet_types/web20ice20giant.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -164,9 +161,6 @@
       },
       "isNameUserDefined": true,
       "color": "#81ecec",
-      "image": {
-        "url": "/images/planet_types/web20ice20giant.jpg"
-      },
       "object_playerhidden": false
     },
     {
@@ -211,9 +205,6 @@
       },
       "isNameUserDefined": true,
       "color": "#81ecec",
-      "image": {
-        "url": "/images/planet_types/web20ammonia20clouds20gas20giant.jpg"
-      },
       "gmNotes": "Propane and Acetylene also present in atmosphere ",
       "object_playerhidden": false
     },
@@ -261,10 +252,7 @@
         }
       },
       "isNameUserDefined": true,
-      "color": "#81ecec",
-      "image": {
-        "url": "/images/planet_types/web20cloudless20gas20giant.jpg"
-      }
+      "color": "#81ecec"
     },
     {
       "id": "id-1770927609358-cxuv2x1w8",
@@ -344,10 +332,7 @@
         }
       },
       "isNameUserDefined": true,
-      "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20sub-earth.jpg"
-      }
+      "color": "#e67e22"
     },
     {
       "name": "Angels Crest",

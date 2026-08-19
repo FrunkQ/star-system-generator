@@ -135,6 +135,27 @@ describe('B82 — no derived field escapes the export strip', () => {
     expect(sun.magneticField?.strengthGauss).toBeGreaterThan(0);
   });
 
+  it('a GM-uploaded image survives, and a derived type image does not', () => {
+    // The processor re-derives the TYPE image from the class on every run — that is what keeps the
+    // picture matching a world whose type has changed — so a stored one is a fossil. A GM UPLOAD is
+    // not: it sets `image.custom`, and SystemProcessor:1485 explicitly skips re-deriving over it.
+    const sys = clone();
+    const mars = (sys.nodes as any[]).find((n: any) => n.name === 'Mars');
+    const earth = (sys.nodes as any[]).find((n: any) => n.name === 'Earth');
+    mars.image = { url: 'blob:gm-upload', custom: true };
+    const processed = new SystemProcessor().process(fixUpImportedSystem(sys, pack), pack);
+    const saved = stripSystemForExport(JSON.parse(JSON.stringify(processed)), pack);
+    const savedMars = (saved.nodes as any[]).find((n) => n.name === 'Mars');
+    const savedEarth = (saved.nodes as any[]).find((n) => n.name === 'Earth');
+    expect(savedMars.image).toEqual({ url: 'blob:gm-upload', custom: true });
+    expect(savedEarth.image).toBeUndefined();
+    // ...and the derived one comes straight back on the next load.
+    const reloaded = new SystemProcessor().process(fixUpImportedSystem(JSON.parse(JSON.stringify(saved)), pack), pack);
+    const reloadedEarth = (reloaded.nodes as any[]).find((n) => n.name === 'Earth');
+    const processedEarth = (processed.nodes as any[]).find((n) => n.name === 'Earth');
+    expect(reloadedEarth.image).toEqual(processedEarth.image);
+  });
+
   it('a GM-pinned field and a GM-pinned lock both survive a save', () => {
     // The manual flags are what separate an override from a fossil. Nothing in the bundled Sol sets
     // either, so this builds the case rather than hoping to find one.

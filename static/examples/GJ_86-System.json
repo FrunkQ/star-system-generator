@@ -160,10 +160,7 @@
           "M0_rad": 4.642575810304916
         }
       },
-      "color": "#e74c3c",
-      "image": {
-        "url": "/images/planet_types/web20gas20giant.jpg"
-      }
+      "color": "#e74c3c"
     }
   ],
   "rulePackId": "starter-sf-pack",

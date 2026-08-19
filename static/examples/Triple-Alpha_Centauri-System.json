@@ -175,9 +175,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 122.8,
       "description": "The innermost planet of Proxima. This tiny 'Sub-Earth' orbits in just 5 days, placing it too close for liquid water. It is a small, scorched, and likely airless rocky world, tidally locked and blasted by the star's frequent, powerful flares.",
-      "image": {
-        "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -216,9 +213,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 268.3,
       "description": "An Earth-sized world orbiting within Proxima's habitable zone. It is tidally locked, so one side is in endless day and the other in endless night. It may be a 'cold eyeball' planet, with a region of liquid water in a 'terminator' ring between the two extremes.",
-      "image": {
-        "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -257,9 +251,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 46272,
       "description": "A 'Mini-Neptune' or 'Super-Earth' orbiting far from its star, about 1.5 AU out. It takes over 5 years to complete one orbit. It is a frigid world, well beyond the system's frost line, and has likely retained a thick, primordial atmosphere of hydrogen and helium.",
-      "image": {
-        "url": "/images/planet_types/web20ice20giant.jpg"
-      },
       "isNameUserDefined": true,
       "color": "#81ecec"
     },
@@ -304,9 +295,6 @@
         }
       },
       "color": "#e74c3c",
-      "image": {
-        "url": "/images/planet_types/web20water20clouds20gas20giant.jpg"
-      },
       "isNameUserDefined": true,
       "description": "Phanes is the 2nd planet from Rigil, and the largest known. It hosts a plethora of moons, two of which are nearly the size of Earth. Despite it being a gas giant, it's actually a pale blue in color due to its proximity to Rigel Kentaurus, due to it being only 1.173 AU from its star. It is too hot for ammonia clouds to form. Instead, they are replaced by water ice, resulting in white or pale-blue bands. Although slightly less dense than water, it has a mass of 0.786 times Jupiter's Mass. Scientists are unsure how Pandora and Ptolemy formed around a gas giant with a mass like this; however, a Traumatic collision with another planet likely formed them. Or they are captured rocky planets."
     },
@@ -384,9 +372,6 @@
         }
       },
       "color": "#bdc3c7",
-      "image": {
-        "url": "/images/planet_types/web20carbon20planet.jpg"
-      },
       "isNameUserDefined": true,
       "description": "Galatea is a small, rocky world orbiting extremely close to Phanes. Due to its proximity, it is slightly egg-shaped. It has a dark coloration, and Drilling Missions indicate that it is made of Basalt, formed when lava cools extremely fast. It's likely that, in Galatea's past, a giant resurfacing event occurred when a large asteroid collided with the small moon, liquefying its surface. This event likely happened during the moon's formation, as hundreds of craters are present on its surface. Galatea also has a minor effect on Phane's rings. causing wave patterns in its wake."
     },
@@ -430,9 +415,6 @@
         }
       },
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "isNameUserDefined": true,
       "description": "Hestia is the 2nd moon of Phanes and the 4th largest; its surface is extremely similar to Io's, with hundreds of active volcanoes dotting the small moon. This volcanic activity is fueled by the immense gravity of its parent planet, which tugs on the moon. Its nearby sibling moons also tug on Hestia; this heats the interior to immense levels, creating a giant molten subsurface ocean of magma. This magma wells up and creates, you guessed it! Volcanos. Hestia is one of the most volcanically active bodies in the Alpha Centauri system.",
       "description_playerhidden": false
@@ -473,9 +455,6 @@
         }
       },
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20barren20planet.jpg"
-      },
       "isNameUserDefined": true,
       "description": "The 3rd-largest moon of Phanes, Appianus, is a large, sparsely cratered moon with a mass roughly 2 times that of our moon. its surface features wide flats of regolith rock there are noticibly, a handfull of cracks and ridges along its surface, meaning Appianus Underwent a phase of high geologic activity before going dorment, which cleared the surface of past crater's, and this shut down of geologic activity must have happened very reccently, as if it was even a few hundred million years ago, crater's would've had time to be made by impacts. a truly odd world, and these ridges and canyons offer a dazzling view for anyone brave enough to land here, as the surface radiation here is extremely high due to Phane's radiation belts."
     },
@@ -532,9 +511,6 @@
         }
       },
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20habitable20planet.jpg"
-      },
       "isNameUserDefined": true,
       "description": "The Main Jewel of Alpha Centauri, Pandora, is a Vibrant world, home to thousands of different species. a Highly Recommended Refuel and Tourist destination, though, do not anger the Natives, the R.D.A Learnt that lesson. Vast oceans cover Pandora, teaming with life. And the view of Phanes from here is truly beautiful, Tidally locked to Phanes, like its Sibling moons. A single Pandoran day is 41 hours. and in some times of the year, you can see both Alpha Centauri A And B in the sky, appearing as a Yellow and Smaller Orange star."
     },
@@ -579,9 +555,6 @@
         }
       },
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20earth20analog20planet.jpg"
-      },
       "isNameUserDefined": true,
       "description": "The Farthest moon of Phanes, Ptolemy, is a bit smaller than its twin, Pandora; however, they are very different. Ptolemy's only inhabitants on land are primitive plants. Ptolemy obviously hasn't had life for as long as Pandora has, even with the plants on land; oxygen levels are still low but have been increasing over time. However, the oceans are full of life, with multiple habitats, from the sun-soaked bays and reefs closer to land to the abyssal plains where little light reaches; a nice place to refuel before venturing off into the depths of space."
     },
@@ -628,9 +601,6 @@
       },
       "isNameUserDefined": true,
       "color": "#81ecec",
-      "image": {
-        "url": "/images/planet_types/web20ice20giant.jpg"
-      },
       "description": "Khione, also known as Oceanus, is the Last Planet of Rigil Kentaurus, a Warm Ice giant with a handful of small moons, many of which are barely large enough to be spherical. This small number of moons is unusual for a Planet as big as Oceanus. It's possible that, due to its distance from Rigil Kentaurus, Toluman's influence on Rigil's Outer protoplanetary disk starved Oceanus of remaining material to form large moons."
     },
     {
@@ -706,9 +676,6 @@
       },
       "isNameUserDefined": true,
       "color": "#bdc3c7",
-      "image": {
-        "url": "/images/planet_types/web20dwarf20planet.jpg"
-      },
       "description": "Oceanus is the 1st Moon from Khione, and by far the smallest. It's so small, in fact, that it's slightly lumpy in shape and not a perfect sphere. Although nearly entirely rocky, it is still not very dense."
     },
     {
@@ -749,9 +716,6 @@
       },
       "isNameUserDefined": true,
       "color": "#bdc3c7",
-      "image": {
-        "url": "/images/planet_types/web20dwarf20planet.jpg"
-      },
       "description": "Helline is the 2nd moon out from Khione, A small, densely cratered moon; it is the smallest of the 4. Its orbit is mostly influenced by its larger sibling moon, Thronike, which makes its orbit slightly wobbly. It is a relatively boring moon; its geological activity likely shut down billions of years ago."
     },
     {
@@ -797,9 +761,6 @@
       },
       "isNameUserDefined": true,
       "color": "#bdc3c7",
-      "image": {
-        "url": "/images/planet_types/web20silicate20planet.jpg"
-      },
       "description": "The second-largest and third-closest moon of Khione is a desolate, cratered world similar to its nearby sibling, Helline. Like Helline, it is likely to be geologically dead, though it has been so for a shorter period of time. Its orbit is heavily influenced by Otho, the largest and farthest moon of Khione, which causes it to wobble. Otho also has a significant impact on the other inner moons."
     },
     {
@@ -839,9 +800,6 @@
         "n_rad_per_s": 0.00002260257304527181
       },
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "isNameUserDefined": true,
       "description": "Otho is the largest moon of Khione and is known for its immense, barren landscape. This desolate moon features vast plains and rugged terrain,  a stark contrast to Khione's bright, pastel blue swirling clouds. Despite its lifeless appearance, Otho is generally the safest place to land in the Khione system, living outside of Khione’s vast radiation belts.\n"
     },
@@ -888,9 +846,6 @@
         }
       },
       "color": "#81ecec",
-      "image": {
-        "url": "/images/planet_types/web20hot20neptune.jpg"
-      },
       "isNameUserDefined": true,
       "description": "Perseus is the closest planet to Rigil Kentaurus and the smallest in the system. It is classified as a mini Neptune, with a mass six times that of Earth. Despite its Tranquil, Cerulean atmosphere, the reality is anything but peaceful. Daytime temperatures reach 492 °C. Even on the night side, temperatures are blazing. Wind speeds on Perseus surpass those of the fastest hurricanes on Earth. This planet is the closest thing to hell on Earth. Additionally, it has two minuscule moons orbiting close to Perseus."
     },
@@ -967,10 +922,7 @@
           "M0_rad": 0.6957518153543674
         }
       },
-      "isNameUserDefined": true,
-      "image": {
-        "url": "/images/planet_types/web20protoplanet.jpg"
-      }
+      "isNameUserDefined": true
     },
     {
       "id": "id-1772682847353-l8nurhdtt",
@@ -1014,9 +966,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "description": "A small, Desolate world closest to teleman, its proximity to its star brings its temperature up to 53 Degrees Celsius, nearly up to the highest temperature ever recorded on earth, and on the night side, its the complete opposite, temperatures plumet to a Frigid -166 to -39 degrees Celsius. not a very ideal place to be. "
     },
     {
@@ -1071,9 +1020,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20habitable20planet.jpg"
-      },
       "description": " Bathed in the warm light of its star, Persephone is an Earth-like planet smaller than Earth, hosting a Primitive ecosystem. There is no life on land, the air is unbreathable due to excess carbon dioxide, and the only visible organisms in the water are vast mats of cyanobacteria covering coastal rocks. And it'll likely stay like that for the next 400 million years without human intervention. However, with a mask, you may last long enough on land to see its two moons in the sky, Panoptes and Melinoe. However, Persephone may be on the verge of entering an oxygenation event due to the abundance of cyanobacteria, which would turn its oceans blood red as the iron dissolved in them would be oxidized. thus, paving the way for complex life on Persephone."
     },
     {
@@ -1113,9 +1059,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20silicate20planet.jpg"
-      },
       "description": "Panoptes is the closest and largest moon of Persephone, only a bit smaller than our moon; its gravity generates tides on Persephone, and its cratered surface is similar to our moons'. Panoptes probably formed when a planet slightly larger than Mars smashed into Persephone, and the debris coalesced into the grand moon that looms in its sky."
     },
     {
@@ -1154,9 +1097,6 @@
         }
       },
       "color": "#bdc3c7",
-      "image": {
-        "url": "/images/planet_types/web20protoplanet.jpg"
-      },
       "isNameUserDefined": true,
       "description": "Melinoë is a boring asteroid moon, not much to talk about, it was probably leftovers from the Persephone Impact."
     },
@@ -1311,10 +1251,7 @@
       },
       "isNameUserDefined": true,
       "description": "A Tribute to James Cameron, one of the inspirations for this system! btw, this orbit would probably be VERY unstable irl XD",
-      "color": "#bdc3c7",
-      "image": {
-        "url": "/images/planet_types/web20dwarf20planet.jpg"
-      }
+      "color": "#bdc3c7"
     },
     {
       "id": "alpha-centauri-barycenter-outer",

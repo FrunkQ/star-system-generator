@@ -57,9 +57,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 36.24,
       "description": "The innermost planet, TRAPPIST-1 b orbits so close to its star that its 'year' is only 1.5 Earth days. It is tidally locked and scorched by radiation, making it far too hot for liquid water. It is likely a barren, airless rock, similar to Mercury.",
-      "image": {
-        "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -98,9 +95,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 58.08,
       "description": "The second planet, 'c', is another tidally locked world, likely a 'hot eyeball' planet. Its dayside is perpetually baked by the star, creating a runaway greenhouse effect. It is thought to be a 'sister' to Venus: rocky, but with a crushing, toxic atmosphere.",
-      "image": {
-        "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -139,9 +133,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 97.2,
       "description": "The third planet and the first to be located within the star's 'habitable zone.' It's tidally locked, so one side is in endless day and the other in endless night. It's a 'cold eyeball' world, where liquid water might exist only in a narrow 'terminator' ring between the two extremes.",
-      "image": {
-        "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -180,9 +171,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 146.4,
       "description": "This planet is the 'sweet spot' of the TRAPPIST-1 system. It is almost exactly the size of Earth, rocky, and orbits squarely in the middle of the habitable zone. It receives a similar amount of light as Earth and is a prime candidate for hosting liquid water on its surface.",
-      "image": {
-        "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -221,9 +209,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 221.04,
       "description": "Another large, rocky planet in the habitable zone. It's slightly larger than Earth and on the colder side, receiving about as much light as Mars. It is likely a 'cold eyeball' world, or a global 'water-world' covered in a thick ocean under a CO2-rich atmosphere.",
-      "image": {
-        "url": "/images/planet_types/web20cold20eyeball20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -262,9 +247,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 296.4,
       "description": "The largest planet in the system, 'g' is a 'Super-Earth' or 'Mini-Neptune' located at the cold, outer edge of the habitable zone. It is likely a cold, icy world that has held onto a thick hydrogen/helium atmosphere, making it uninhabitable on the surface.",
-      "image": {
-        "url": "/images/planet_types/web20mini-neptune.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -303,9 +285,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 450.48,
       "description": "The outermost and coldest planet in the system, 'h' is a small, frozen ice-ball. It orbits well beyond the habitable zone, receiving very little energy from its faint star. It is most likely a 'Pluto-like' world with a thin nitrogen exosphere.",
-      "image": {
-        "url": "/images/planet_types/web20ice20planet.jpg"
-      },
       "isNameUserDefined": true
     }
   ],

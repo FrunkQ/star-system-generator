@@ -160,9 +160,6 @@
           "M0_rad": 1.4252958317381093
         }
       },
-      "image": {
-        "url": "/images/planet_types/web20ice20giant.jpg"
-      },
       "isNameUserDefined": true,
       "description": "A beautiful gas giant with broad, thick rings, Adonis would likely be a good source of both fuel and water, if it were not so distant from those that might need it."
     },
@@ -198,9 +195,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "description": "Janus is a tidally locked, rocky planet very close to the star Uggi A. The side that faces the star is extremely hot, while the side facing away is extremely cold. The atmosphere of the planet, if there ever was one, was blasted away millions of years ago by the intense stellar radiation."
     },
     {
@@ -245,9 +239,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e74c3c",
-      "image": {
-        "url": "/images/planet_types/web20hot20jupiter.jpg"
-      },
       "description": "The primary source of fuel for the Uggi system, Fuller is an immense hydrogen-rich gas giant."
     },
     {
@@ -305,9 +296,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20ocean20planet.jpg"
-      },
       "traveller": {
         "name": "Uggi",
         "uwp": "E58AAFC-C",
@@ -391,9 +379,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e74c3c",
-      "image": {
-        "url": "/images/planet_types/web20gas20giant.jpg"
-      },
       "description": "Roughly half the mass of Fuller, Gastalt is nonetheless a critical part of the Uggian economy. It serves as the primary source of fuel between Uggi and the Dust Belt, feeding fuel depots along its entire orbit. While mainly being a source of hydrogen, Gastalt could also provide oxygen from the ice that forms its broad ring."
     },
     {
@@ -475,9 +460,6 @@
         }
       },
       "isNameUserDefined": true,
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "description": "Diamedes is large for a moon, nearly the size of the Earth, though it is denser with a surface gravity of 1.52G. It is tidally locked to its planet, meaning that it completes a full revolution only once every 69.7 standard days. Its surface is mostly covered in water, which freezes throughout its long nights before again thawing under persistent sunlight.\n\nFor a few hours every orbit, the entire surface of Diamedes plunges into Gastalt's shadow for several hours, as the gas giant eclipses the sun. During that time, even the daylit side grows dark and temperatures drop several degrees, before warming again once the eclipse passes.\n\nWhile nominally outside the system's habitable zone, the side of Diamedes facing Uggi A is actually quite temperate - averaging a pleasant 22° Celcius (72° F). This is due to constant direct sunlight striking the same area on the moon's surface for a prolonged period, over a standard month, as its rotation is quite slow, with little in the way of wind to steal away the warmth.\n\nThe moon also boasts a roughly Earth-like atmosphere, requiring only occasional supplemental oxygen. As a result Diamedes boasts a handful of human settlements consisting of solar-powered airships that continuously tool along at roughly 20km/hr., circumnavigating the globe at the same speed as its rotation, thus remaining in perpetual daylight.\n\nThese hardy and adventurous souls take from any number of native species of birds that only touch land to nest, as well as the eggs the birds lay. They also periodically drag nets in the ocean to catch fish imported from other worlds, or native fish-equivalents. These goods, as well as clear, hard gizzard stones left by some of the moon's creatures, they sometimes trade to the crews of passing ships, in exchange for machinery, parts, and other necessities that they cannot easily provide for themselves.\n\nLegend has it that one of the original surveyors of the Uggi system made a typo and that this moon was meant to be named Diomedes, after a great hero of an ancient war. Some say the surveyor was distracted by the discovery of diamonds on some of the peaks jutting out of the moon's waters, which in turn has resulted in intermittent waves of prospectors coming over the centuries without any public acknowledgement of riches being found.\n\nRegardless, if it was a typo, no one has corrected it in the millennia since it was made.\n\n***\n\nTime to/from Jump Zone:\n\n1G: 12.5 hours\n2G: 8.8 hours\n3G: 7.2 hours\n4G: 6.3 hours\n5G: 5.6 hours\n6G: 5.1 hours\n7G: 4.7 hours\n8G: 4.4 hours\n9G: 4.2 hours\n10G: 4.0 hours\n\n*Passenger Transport*\nPassenger Modifiers (in addition to Core Rules): DM-2 (due to lack of starport and diffuse population)\nQuick Examples:\n- a single human female seeks basic passage to anywhere to begin a new life\n- a single human male seeks basic passage to Gastalt Gas & Go after being abandoned on Diamedes by \"friends\" as a prank\n- a pair of young human tourist adventurers are seeking standard passage to anywhere to start their next adventure\n\n*Freight Transport*\nFreight Modifiers (in addition to Core Rules): DM-2 (due to lack of starport and diffuse population)\nQuick Examples:\n- 5 tons of gems (gizzard stones) needs delivery to HyperLight Inc. Laser Forge in the next 30 days\n- 10 tons of luxury consumables (Diamedian giant glider eggs) needs refrigerated delivery to Uggi in the next 7 days\n- 1 ton of live animals (a pair of Diamedian eels) needs delivery to Uggi in the next 14 days\n\n*Speculative Trade*\nDM-2 (due to lack of starport and diffuse population)\nQuick Examples of Sellers:\n- offering 50 tons of common consumables (fish equivalents)\n- offering 1 ton of gems (gizzard stones)\n- offering 1 ton of live animals (Diamedian giant gliders)\n\nQuick Examples of Purchasers:\n- seeking 10 tons of common electronics (solar panels, portable computers, etc.)\n- seeking 5 tons of wood (any)\n- seeking 50 tons of textiles (any clothing and fabrics)",
       "color": "#e67e22"
     },
@@ -593,9 +575,6 @@
       },
       "isNameUserDefined": true,
       "color": "#81ecec",
-      "image": {
-        "url": "/images/planet_types/web20ice20giant.jpg"
-      },
       "description": "Bergamen is a relatively small gas giant, with broad rings that are so thin and faint as to be nearly invisible to the human eye. It has no settlements and little in the way of economic value, except as a source of hydrogen that is too distant from most places of interest to be economically interesting. Should the outer system ever be more heavily populated, interest in Bergamen would likely increase."
     },
     {
@@ -782,9 +761,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "description": "Hades is a large icy planet, about two and a half times the mass of Earth, with a thin atmosphere consisting mostly nitrogen and methane. It has no population and negligible economic value."
     },
     {
@@ -828,9 +804,6 @@
         }
       },
       "color": "#5d4037",
-      "image": {
-        "url": "/images/planet_types/web20brown20dwarf.jpg"
-      },
       "isNameUserDefined": true,
       "description": "This massive gas giant is nearly a brown dwarf.\n\nWhile it technically sits outside the M-drive friendly volume provided by Uggi A, its own mass is large enough to support M-drives out to an extent that reaches Uggi A's own ability to support them. As a result, it is possible (just barely) to travel from the inner system to Xygax without any disruption in M-drive capabilities. As a result of this interesting navigational topology, Xygax is home to an orbiting research outpost studying the manufacturing of more advanced anti-gravity technologies, which can only be conducted in nano-gravity environments outside of M-drive zones."
     },
@@ -871,9 +844,6 @@
         "isRetrogradeOrbit": false
       },
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "isNameUserDefined": true,
       "description": "Unlike most other bodies in the Uggi system, Barry shares its orbit between both Uggi A and Uggi B, orbiting the barycenter of the two stars. It is a frigid, rocky super-Earth too cold and too distant to be of interest economically.\n\nThose that wish to visit Barry would need to coast most of the way there, as it is far outside any M-drive zone, and at a relatively low velocity to allow enough time for M-drive braking once its own relatively tiny gravity well has been reached."
     },
@@ -914,9 +884,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "description": "The most distant world in the Uggi system, and less than half the size of Earth, Philonius would take months to reach even at its closest approach due to the lack of M-drive availability during most of the journey and the relatively small gravity well that could be used for M-drive braking once the planet was reached."
     },
     {
@@ -1033,9 +1000,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20hot20eyeball20planet.jpg"
-      },
       "description": "Fuller's only moon, Radzen would potentially be habitable were it not for the immense tidal forces caused by the gravitational tug of war between its enormous planet and the star that both orbit. These tidal forces cause immense heat within the core of the planet, leaving it geologically unstable and its surface blistering hot. It has no atmosphere to speak of.\n\nSome have pointed out that Radzen's geological instability results in periodic exposure or even outcroppings of rare and valuable minerals. However, none have yet attempted to overcome the inhospitality of the moon to act upon that opportunity."
     },
     {
@@ -1608,9 +1572,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "description": "Unlike its frigid parent, Cerebus Alpha is extremely hot with a churning, molten surface. This is caused by extreme tidal forces due to the large mass of the moon and its extremely close orbit to Hades, which constantly stretch and rend the moon's core, causing immense friction sufficient to keep the moon in a semi-molten state."
     },
     {
@@ -1651,9 +1612,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "description": "Cerebus Beta has wildly varying temperatures on its surface, caused in part by tidal forces from Hades and Cerebus Alpha and less so by its slow rotation, which allows warmth from the sun to accumulate. It has no atmosphere."
     },
     {
@@ -1693,9 +1651,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "description": "This small and distant satellite of Hades is frigid, lacking an atmosphere or any trappings of habitability."
     },
     {
@@ -1730,9 +1685,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20ice20planet.jpg"
-      },
       "description": "This small frozen moon is, at times, the most distant body from Uggi reachable by uninterrupted M-drive. It has no atmosphere and no settlements."
     },
     {
@@ -3687,9 +3639,6 @@
       },
       "isNameUserDefined": true,
       "color": "#e67e22",
-      "image": {
-        "url": "/images/planet_types/web20planetesimal.jpg"
-      },
       "description": "This planetoid is almost certainly a relatively new - in astronomical terms - addition to the Uggi system, as its orbit is not only highly eccentric, and with an unusual degree of inclination, but retrograde to the rest of the worlds, indicating it originated outside the initial matter disk from which the Uggi system evolved. It was likely an interstellar vagrant, captured by Uggi A within the last few hundred million years. Thankfully, it has yet to cause any major disruption to the system.\n\nIt is composed of water ice surrounding a rocky core. As a result of this, as well as its erratic orbit and thus unstable geology, it has yet to be settled or mined, though some wonder if its alien origins could mean it contains elements rare to the Uggi system, such as precious metals."
     },
     {

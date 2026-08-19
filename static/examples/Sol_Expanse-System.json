@@ -66,9 +66,6 @@
       "axial_tilt_deg": 0.034,
       "rotation_period_hours": 1407.6,
       "description": "The smallest planet and closest to the Sun. Mercury is a world of extremes, with scorching daytime temperatures (430°C) and frigid nights (-180°C). It has no real atmosphere, only a thin exosphere, and its cratered surface resembles Earth's Moon.",
-      "image": {
-        "url": "/images/planet_types/web20barren20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -109,9 +106,6 @@
       "axial_tilt_deg": 177.36,
       "rotation_period_hours": -5832.5,
       "description": "Earth's 'sister planet' in size, but a hellish world. Venus suffers from a runaway greenhouse effect, trapping heat under a thick, toxic atmosphere of CO2 and sulfuric acid clouds. Its surface pressure is 92 times that of Earth, and it's the hottest planet in the system.",
-      "image": {
-        "url": "/images/planet_types/web20terrestrial20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -168,9 +162,6 @@
       "axial_tilt_deg": 23.44,
       "rotation_period_hours": 23.934,
       "description": "The third planet from the Sun and the only known astronomical object to harbor life. It is an ocean world, with 71% of its surface covered in liquid water, protected by a strong magnetic field and a breathable nitrogen-oxygen atmosphere.",
-      "image": {
-        "url": "/images/planet_types/web20earth20analog20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -201,9 +192,6 @@
       "axial_tilt_deg": 6.68,
       "rotation_period_hours": 655.7,
       "description": "Earth's only natural satellite and the largest relative to its host planet in the Solar System. It is tidally locked, always showing the same face to Earth. Its cratered, airless surface is composed of dark volcanic 'maria' and bright, ancient highlands.",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -244,9 +232,6 @@
       "axial_tilt_deg": 25.19,
       "rotation_period_hours": 24.6,
       "description": "The fourth planet, known as the 'Red Planet' due to iron oxide (rust) on its surface. It's a cold desert world with a very thin CO2 atmosphere, polar ice caps, and the largest volcano (Olympus Mons) and canyon (Valles Marineris) in the Solar System.",
-      "image": {
-        "url": "/images/planet_types/web20desert20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -276,9 +261,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 7.66,
       "description": "The larger and innermost of Mars's two moons. It is a small, lumpy, and heavily cratered body, thought to be a captured asteroid. Phobos orbits so close to Mars that it will either crash into the planet or be torn apart into a ring in about 50 million years.",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -308,9 +290,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 30.35,
       "description": "The smaller and outer of Mars's two moons. Like its sibling Phobos, Deimos is a small, dark, and irregularly shaped body, likely a captured C-type asteroid. Its surface is smoother than Phobos's, as many of its craters are filled with fine dust (regolith).",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -380,9 +359,6 @@
       "axial_tilt_deg": 3.13,
       "rotation_period_hours": 9.925,
       "description": "The fifth planet and the largest in the Solar System. This gas giant is more than twice as massive as all other planets combined. It's known for its colorful cloud bands of ammonia ice and the Great Red Spot, a giant storm that has raged for centuries.",
-      "image": {
-        "url": "/images/planet_types/web20ammonia20clouds20gas20giant.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -449,9 +425,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 42.48,
       "description": "The innermost Galilean moon, Io is the most volcanically active body in the Solar System. It is caught in a tidal 'tug-of-war' between Jupiter and the other moons, which flexes its interior and powers hundreds of volcanoes that erupt sulfur and lava.",
-      "image": {
-        "url": "/images/planet_types/web20lava20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -489,9 +462,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 85.2,
       "description": "A smooth, ice-covered world with a young surface crisscrossed by cracks and streaks. It is a prime candidate for life, as evidence strongly suggests a deep, liquid saltwater ocean exists beneath its 15-25 km thick ice shell, kept warm by tidal heating.",
-      "image": {
-        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
-      },
       "isNameUserDefined": true,
       "hydrosphere": {
         "composition": "water",
@@ -525,9 +495,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 171.6,
       "description": "The largest moon in the Solar System, even larger than the planet Mercury. Ganymede is a differentiated icy world and is the only moon known to have its own magnetic field. Its surface has both dark, ancient, cratered regions and lighter, younger, grooved terrain.",
-      "image": {
-        "url": "/images/planet_types/web20ice20planet.jpg"
-      },
       "isNameUserDefined": true,
       "hydrosphere": {
         "composition": "water",
@@ -561,9 +528,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 400.5,
       "description": "The outermost Galilean moon, Callisto has the oldest and most heavily cratered surface in the Solar System, indicating a lack of geological activity. It is a geologically 'dead' world, composed of roughly equal parts rock and ice. It may also hide a subsurface ocean.",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "isNameUserDefined": true,
       "hydrosphere": {
         "composition": "water",
@@ -609,9 +573,6 @@
       "axial_tilt_deg": 26.73,
       "rotation_period_hours": 10.656,
       "description": "The sixth planet and the second-largest, Saturn is a gas giant famous for its spectacular ring system. It is the least dense planet—it would float in water. Its atmosphere is a pale yellow, striped with bands of ammonia ice clouds and powerful winds.",
-      "image": {
-        "url": "/images/planet_types/web20ringed20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -679,9 +640,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 382.6,
       "description": "Saturn's largest moon and the only moon with a thick, Earth-like atmosphere (though it's 95% nitrogen and toxic). Its surface is -179°C, cold enough for liquid methane and ethane to form rivers, lakes, and seas in a 'hydrological' cycle similar to Earth's water cycle.",
-      "image": {
-        "url": "/images/planet_types/web20methane20planet.jpg"
-      },
       "isNameUserDefined": true,
       "hydrosphere": {
         "composition": "methane",
@@ -726,9 +684,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 32.88,
       "description": "A small, bright white icy moon that is one of the most compelling places to search for life. It ejects massive plumes of water, ice, and organic molecules from 'tiger stripes' near its south pole, revealing a global subsurface ocean of liquid saltwater.",
-      "image": {
-        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
-      },
       "isNameUserDefined": true,
       "hydrosphere": {
         "composition": "water",
@@ -762,9 +717,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 22.56,
       "description": "The smallest and innermost of Saturn's major moons, Mimas is nicknamed the 'Death Star' moon. It is dominated by the Herschel crater, a massive impact basin 139 km wide—nearly a third of the moon's own diameter—that almost shattered the icy body.",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -794,9 +746,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 108.2,
       "description": "Saturn's second-largest moon, Rhea is a heavily cratered, airless body of ice and rock. Its surface is ancient, with one hemisphere being brighter and more cratered than the other. Its surface also features bright, 'wispy' streaks, which are exposed ice cliffs.",
-      "image": {
-        "url": "/images/planet_types/web20ice20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -826,9 +775,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 1903.6,
       "description": "Saturn's 'yin-yang' moon, Iapetus is famous for its dramatic two-tone coloration. Its leading hemisphere is as dark as coal, while its trailing hemisphere is as bright as fresh snow. It also possesses a massive, 20-km-high equatorial ridge.",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -869,9 +815,6 @@
       "axial_tilt_deg": 97.77,
       "rotation_period_hours": -17.24,
       "description": "The seventh planet, an ice giant tipped on its side. Uranus rotates at a 98-degree angle, likely from a past collision, causing extreme seasons where its poles face the Sun for 42 years at a time. Its blue-green color comes from methane in its H-He atmosphere.",
-      "image": {
-        "url": "/images/planet_types/web20ice20giant.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -929,9 +872,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 208.8,
       "description": "The largest of Uranus's moons. This icy, rocky world shows signs of past geological activity. Its surface is cut by a system of enormous canyons and fault valleys, some stretching for 1,000 miles, indicating its interior expanded and cracked the crust long ago.",
-      "image": {
-        "url": "/images/planet_types/web20ice20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -961,9 +901,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 323,
       "description": "The outermost and second-largest of the major Uranian moons. Oberon has the most ancient and heavily cratered surface of Uranus's moons, showing little sign of past geological activity. Its dark, reddish surface is covered in impact craters, some with bright rays of ice.",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -993,9 +930,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 60.48,
       "description": "The brightest and youngest-surfaced of Uranus's moons. Ariel shows clear signs of geologic activity, with vast, interconnected canyons and fault valleys. Smooth plains suggest that 'cryovolcanism' (ice volcanoes) may have once resurfaced parts of the moon.",
-      "image": {
-        "url": "/images/planet_types/web20ice20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -1036,9 +970,6 @@
       "axial_tilt_deg": 28.32,
       "rotation_period_hours": 16.11,
       "description": "The eighth and most distant planet, Neptune is a dark, cold ice giant whipped by supersonic winds. It has a vivid blue color from methane in its atmosphere. It was the first planet found through mathematical prediction rather than direct observation.",
-      "image": {
-        "url": "/images/planet_types/web20ice20giant.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -1106,9 +1037,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 140.8,
       "description": "Neptune's largest moon and likely a captured Kuiper Belt Object. It is one of the coldest worlds known (-235°C), yet it is geologically active, with geysers of nitrogen gas erupting from its icy surface. It orbits Neptune 'backwards' in a retrograde orbit.",
-      "image": {
-        "url": "/images/planet_types/web20ice20planet.jpg"
-      },
       "isNameUserDefined": true,
       "hydrosphere": {
         "composition": "water",
@@ -1181,9 +1109,6 @@
       "axial_tilt_deg": 119.5,
       "rotation_period_hours": -153.3,
       "description": "A dwarf planet in the Kuiper Belt, formerly classified as the ninth planet. It is a complex world of ice mountains and frozen nitrogen plains. Its highly eccentric orbit sometimes brings it closer to the Sun than Neptune. It has five known moons.",
-      "image": {
-        "url": "/images/planet_types/web20dwarf20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -1214,9 +1139,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 153.3,
       "description": "Pluto's largest moon, so large (half of Pluto's diameter) that the two are considered a binary dwarf planet system. They orbit a common barycenter located in the space between them. Charon is tidally locked to Pluto, so they both always show the same face to each other.",
-      "image": {
-        "url": "/images/planet_types/web20crater20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -2396,9 +2318,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 45.31,
       "description": "A mid-sized moon of almost pure water ice — one of the most reflective bodies in the solar system. Scarred by the enormous Odysseus crater and the vast Ithaca Chasma canyon. It holds Mimas in a 2:1 orbital resonance.",
-      "image": {
-        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
-      },
       "isNameUserDefined": true
     },
     {
@@ -2428,9 +2347,6 @@
       "axial_tilt_deg": 0,
       "rotation_period_hours": 65.69,
       "description": "An ice moon streaked with bright wispy chasms over a possible deep internal ocean. Its 2:1 orbital resonance with Enceladus is the engine that keeps pumping that smaller moon's eccentricity — and so its famous geysers.",
-      "image": {
-        "url": "/images/planet_types/web20subsurface20ocean20planet.jpg"
-      },
       "isNameUserDefined": true
     }
   ],
