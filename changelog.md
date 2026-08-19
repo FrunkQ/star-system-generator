@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.834-beta - 19th Aug 2026
+
+- Fixed: the "gas-giant gallery" link from a body's Atmosphere tab landed at the top of the page on a first visit and only jumped to the right section if you refreshed. The section it points at is built from two files fetched after the page opens, so the browser resolved the link before the section existed; it now jumps once the gallery is actually there.
+
 ## v2.1.833-beta - 19th Aug 2026
 
 - Fixed: in the Gas Physics editor the absorption bands were penned into a narrow column with the preview chart squeezed inside it, and the DERIVATION heading sat beside Molar Mass instead of spanning above it. Both now run the full width of the card, so the star preview has room to be a chart.

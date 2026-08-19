@@ -5,7 +5,7 @@
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import type { CelestialBody, RulePack, System } from '$lib/types';
   import { deriveApparentColorParts } from '$lib/rendering/apparentColor';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { decksFromTags, PRECIPITATION_TAG } from '$lib/physics/cloudDecks';
@@ -159,6 +159,14 @@
   let giantLab: { title: string; blurb?: string; bodies: CelestialBody[] }[] = [];
   let solError = '';
   // What the physics decided, shown beside each world so the tags are checkable at a glance.
+  // getElementById, not querySelector: a fragment is arbitrary user text and `#3-body` is a valid id
+  // but an invalid selector, which throws rather than missing.
+  function scrollToHash() {
+    if (typeof location === 'undefined' || !location.hash) return;
+    const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    el?.scrollIntoView({ block: 'start' });
+  }
+
   const weatherOf = (b: CelestialBody, pack: RulePack | null) => {
     const decks = decksFromTags(b.tags, pack).map((d) => `${d.species} ${d.bucket}`);
     const precip = (b.tags ?? []).filter((t) => t.key === PRECIPITATION_TAG).map((t) => t.value);
@@ -177,6 +185,13 @@
       // The worlds worth showing: everything with a real atmosphere or a familiar face, in orbit order.
       const wanted = ['Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Titan', 'Uranus', 'Neptune', 'Triton', 'Pluto', 'Moon', 'Io', 'Europa'];
       giantLab = buildGiantLab(solPack);
+      // A FRAGMENT LINK INTO ASYNC CONTENT NEEDS RE-APPLYING BY HAND. The browser resolves #giant-lab
+      // once, early, and by then this row does not exist — `giantLab` is empty until the rule pack and
+      // the Sol example have both been fetched. So a first visit lands at the top and a REFRESH works,
+      // because the two files are cached by then and arrive before the browser gives up. That
+      // difference is the whole tell, and it is why it reads as flaky rather than broken.
+      await tick();
+      scrollToHash();
       solBodies = wanted
         .map((n) => processed.nodes.find((x: any) => x.name === n))
         .filter(Boolean) as CelestialBody[];

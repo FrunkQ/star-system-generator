@@ -2237,6 +2237,24 @@ The component takes its `absorbed` series as a PROP and derives nothing — same
 states for itself — which is also what lets the pigment curve keep its flat baseline term while the
 gas curve, which has no such term, does not.
 
+### UI-C9 A fragment link into ASYNC content silently does nothing, and a refresh hides it
+WHERE: `routes/discgallery/+page.svelte` (`scrollToHash`, called after `buildGiantLab`); the link that
+needs it is the atmosphere tab's `/discgallery#giant-lab`.
+RULE: the browser resolves `#anchor` ONCE, early. If the element it names is rendered from data fetched
+in `onMount`, it does not exist yet and the scroll is simply dropped — no error, no console line. Any
+deep link into content that arrives asynchronously must re-apply the fragment itself after the data
+lands (`await tick()`, then `getElementById(...).scrollIntoView()`).
+WHY: reported live. `/discgallery#giant-lab` landed at the top of the page on a first visit and worked
+on a REFRESH — because by then the rule pack and the Sol example are cached and arrive before the
+browser gives up. **That asymmetry is the tell, and it is why it reads as flaky rather than broken:**
+the person who wrote the link tests it twice and it works the second time. Suspect load ordering
+whenever a thing fails once and then behaves.
+BLAST: every other in-app fragment link, and any new one into a page that fetches. Use
+`getElementById`, NOT `querySelector`: a fragment is arbitrary text, and `#3-body` is a legal id but an
+illegal selector, so `querySelector` THROWS where the id lookup merely misses. Note this is invisible
+to a green build and to jsdom — nothing computes scroll position there — so it is an eyes-only fault,
+like UI-C8's flex/grid mismatch found in the same hour.
+
 ### UI-C6 On a small screen an open dialog gets the screen; BOTH SIDES declare themselves
 WHERE: `src/lib/ui/foreground.ts` (`foreground` and `chrome` actions, pinned by `foreground.spec.ts`),
 joined by ONE rule at the foot of `styles/tokens.css`. Chrome markers: `AppShell.svelte` (strip, bar,
