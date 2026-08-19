@@ -22,7 +22,7 @@
   /** Disabled with a reason — the print/invert display forces the background off. */
   export let disabledReason = '';
 
-  const dispatch = createEventDispatcher<{ change: MapBackground }>();
+  const dispatch = createEventDispatcher<{ change: MapBackground; align: MapBackground }>();
 
   $: bg = normaliseMapBackground(background);
   $: unit = campaignUnit(starmap);
@@ -113,33 +113,49 @@
     </div>
 
     {#if bg.attach === 'map'}
+      <!-- PLACEMENT IS A VISUAL JUDGEMENT, so the primary control is not here. This dialog covers the
+           map, and lining a drawn coastline up with the stars it was drawn around cannot be done
+           blind. The button hands over to the align strip, which sits ON the map with live sliders.
+           The typed numbers stay available underneath for a GM transcribing a known scale. -->
       <div class="form-group">
-        <label for="mbg-width">Image width ({unit})</label>
-        <input id="mbg-width" type="number" min="0.01" step="any" disabled={!!disabledReason}
-          value={bg.widthUnits} on:change={(e) => patch({ widthUnits: numOf(e, bg.widthUnits) })} />
-        <p class="section-hint">How much of the map the picture spans. Height follows its own shape.</p>
+        <button type="button" class="mbg-align" disabled={!!disabledReason} on:click={() => dispatch('align', bg)}>
+          Align &amp; scale on the map&hellip;
+        </button>
+        <p class="section-hint">
+          Closes this dialog and gives you sliders over the live map; Done brings you back with the
+          placement bolted in.
+        </p>
       </div>
-      <div class="form-row">
+      <details class="mbg-numbers">
+        <summary>Type exact values</summary>
         <div class="form-group">
-          <label for="mbg-ox">Centre X ({unit})</label>
-          <input id="mbg-ox" type="number" step="any" disabled={!!disabledReason}
-            value={bg.offsetX} on:change={(e) => patch({ offsetX: numOf(e, bg.offsetX) })} />
+          <label for="mbg-width">Image width ({unit})</label>
+          <input id="mbg-width" type="number" min="0.01" step="any" disabled={!!disabledReason}
+            value={bg.widthUnits} on:change={(e) => patch({ widthUnits: numOf(e, bg.widthUnits) })} />
+          <p class="section-hint">How much of the map the picture spans. Height follows its own shape.</p>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="mbg-ox">Centre X ({unit})</label>
+            <input id="mbg-ox" type="number" step="any" disabled={!!disabledReason}
+              value={bg.offsetX} on:change={(e) => patch({ offsetX: numOf(e, bg.offsetX) })} />
+          </div>
+          <div class="form-group">
+            <label for="mbg-oy">Centre Y ({unit})</label>
+            <input id="mbg-oy" type="number" step="any" disabled={!!disabledReason}
+              value={bg.offsetY} on:change={(e) => patch({ offsetY: numOf(e, bg.offsetY) })} />
+          </div>
         </div>
         <div class="form-group">
-          <label for="mbg-oy">Centre Y ({unit})</label>
-          <input id="mbg-oy" type="number" step="any" disabled={!!disabledReason}
-            value={bg.offsetY} on:change={(e) => patch({ offsetY: numOf(e, bg.offsetY) })} />
+          <label for="mbg-rot">Rotation <span class="val">{Math.round(bg.rotationDeg)}&deg;</span></label>
+          <input id="mbg-rot" type="range" min="-180" max="180" step="1" disabled={!!disabledReason}
+            value={bg.rotationDeg} on:input={(e) => patch({ rotationDeg: numOf(e, bg.rotationDeg) })} />
+          <p class="section-hint">A scanned map is rarely square to the axes.</p>
         </div>
-      </div>
-      <div class="form-group">
-        <label for="mbg-rot">Rotation <span class="val">{Math.round(bg.rotationDeg)}&deg;</span></label>
-        <input id="mbg-rot" type="range" min="-180" max="180" step="1" disabled={!!disabledReason}
-          value={bg.rotationDeg} on:input={(e) => patch({ rotationDeg: numOf(e, bg.rotationDeg) })} />
-        <p class="section-hint">A scanned map is rarely square to the axes.</p>
-      </div>
-      <button type="button" class="mbg-refit" disabled={!!disabledReason} on:click={refit}>
-        Fit to charted systems
-      </button>
+        <button type="button" class="mbg-refit" disabled={!!disabledReason} on:click={refit}>
+          Fit to charted systems
+        </button>
+      </details>
     {:else}
       <div class="form-group">
         <label for="mbg-size">Size <span class="val">{bg.sizePct}%</span></label>
@@ -183,5 +199,17 @@
   }
   .mbg-refit:hover:not(:disabled) { background: var(--bg-control-hover); }
   .mbg-refit:disabled { cursor: not-allowed; opacity: 0.6; }
+  /* The primary action of the map-fixed mode, so it reads as one rather than as another field. */
+  .mbg-align {
+    width: 100%; padding: 7px 10px; border: 1px solid transparent; border-radius: 4px;
+    background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); font: inherit;
+    font-weight: 600; cursor: pointer;
+  }
+  .mbg-align:hover:not(:disabled) { filter: brightness(1.08); }
+  .mbg-align:disabled { cursor: not-allowed; opacity: 0.6; filter: none; }
+  /* Folded away: exact numbers are the exception, and five more fields on an open dialog is the
+     sprawl this control group was reorganised to avoid. */
+  .mbg-numbers { margin-bottom: 10px; }
+  .mbg-numbers summary { cursor: pointer; opacity: 0.8; font-size: 0.85em; margin-bottom: 6px; }
   .credit { font-style: italic; }
 </style>

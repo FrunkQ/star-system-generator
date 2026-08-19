@@ -270,6 +270,15 @@
     showModal = false;
   }
 
+  // G16: hand over to align mode. The DRAFT goes with the request rather than the saved value, so a
+  // GM who has just picked an image and switched to map-fixed aligns THAT, not what was there before.
+  // Same shape as the edittags / edittemporal hand-offs above: this dialog closes, the caller reopens
+  // it at the Map section when the other surface is finished with.
+  function startAlign(draft: MapBackground) {
+    dispatch('alignbackground', { mapBackground: draft });
+    showModal = false;
+  }
+
   function handleClose() {
     showModal = false;
     dispatch('close');   // genuine dismissal (Back / backdrop) — lets the app re-tag for config changes
@@ -413,7 +422,8 @@
                checkbox, which is now the first choice in its picker. -->
           <MapBackgroundControls {starmap} background={mapBackground} assets={backgroundAssets}
             disabledReason={invertDisplay ? 'The print (inverted) display hides the background image.' : ''}
-            on:change={(e) => (mapBackground = e.detail)} />
+            on:change={(e) => (mapBackground = e.detail)}
+            on:align={(e) => startAlign(e.detail)} />
           <div class="form-group">
             <label title="Print-friendly white background + dark labels (disables the background image)."><input type="checkbox" bind:checked={invertDisplay} /> Invert Starmap display (print)</label>
           </div>

@@ -45,6 +45,7 @@
   import TagFinder from '$lib/components/TagFinder.svelte';
   import RouteEditorModal from '$lib/components/RouteEditorModal.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
+  import MapBackgroundAlignBar from '$lib/components/MapBackgroundAlignBar.svelte';
   import TagCategoryEditor from '$lib/components/TagCategoryEditor.svelte';
   import { coiForStarmap, mergeStarmapCoIs, derivedStatusKey } from '$lib/constructs/coi';
   import LlmSettingsModal from '$lib/components/LlmSettingsModal.svelte';
@@ -149,6 +150,25 @@
   let settingsReturnSection: 'starmap' | 'time' | 'technology' | 'planets' | 'system' | null = null;
   function returnToSettings() {
     if (settingsReturnSection) showSettingsModal = true;
+  }
+
+  // G16 ALIGN MODE. Settings closes and hands the anchor here; every slider on the align strip writes
+  // STRAIGHT TO THE CAMPAIGN so the picture moves under the GM's hand on the live map. That is the
+  // whole point - placement is a visual judgement and a dialog covering the map cannot host it.
+  //
+  // The campaign is edited in place rather than through a draft, so the autosave and the player
+  // broadcast both follow along; Cancel is served by the strip handing back the anchor it opened with.
+  let aligningBackground = false;
+  function startBackgroundAlign(mapBackground: import('$lib/types').MapBackground) {
+    // The DRAFT from Settings is applied first: a GM who has just chosen an image and switched to
+    // map-fixed must align that choice, not whatever was saved before it.
+    starmapStore.update((s) => (s ? { ...s, mapBackground } : s));
+    settingsReturnSection = 'starmap';
+    aligningBackground = true;
+  }
+  function endBackgroundAlign() {
+    aligningBackground = false;
+    returnToSettings();
   }
   function applyStarmapOverrides(overrides: any) {
     starmapStore.update((s) => {
@@ -1983,6 +2003,15 @@
       on:generate={placeGeneratedSystem} on:close={() => { showGenerationWizard = false; pendingWizardPosition = null; }} />
   {/if}
 
+  <!-- G16: align mode. Settings is closed while this is up, so the GM can see the map they are
+       judging; Done hands them back to it at the Map section. -->
+  {#if aligningBackground && $starmapStore}
+    <MapBackgroundAlignBar starmap={$starmapStore}
+      on:change={(e) => starmapStore.update((s) => (s ? { ...s, mapBackground: e.detail } : s))}
+      on:done={endBackgroundAlign}
+      on:cancel={endBackgroundAlign} />
+  {/if}
+
   {#if showSettingsModal && $starmapStore}
     <SettingsModal
       bind:showModal={showSettingsModal}
@@ -1991,6 +2020,7 @@
       preUpgradeName={preUpgradeSnapshotName}
       on:restorepreupgrade={restorePreUpgradeStarmap}
       on:save={handleSaveSettings}
+      on:alignbackground={(e) => startBackgroundAlign(e.detail.mapBackground)}
       on:close={() => reprocessAllReasons()}
       on:edittemporal={() => { settingsReturnSection = 'time'; showTemporalModal = true; }}
       on:editfuel={() => { settingsReturnSection = 'technology'; showFuelModal = true; }}

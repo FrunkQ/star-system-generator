@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v2.1.812-beta - 19th Aug 2026
+
+- Align the map background by eye. Placing a sector map by typing numbers into a dialog that covers
+  the map was guesswork, so Settings now hands over: **Align & scale on the map** closes the dialog
+  and puts a slider strip over the live map - width, left/right, up/down, rotation and fade, all
+  moving the picture as you drag. Done bolts it in and gives Settings back; Cancel puts it back the
+  way it was; Fit to systems recovers a picture you have lost off the edge. The exact numbers are
+  still there under "Type exact values" for anyone transcribing a known scale.
+
 ## v2.1.811-beta - 19th Aug 2026
 
 - Your own map behind the stars. Put your own image behind the starmap - a sector map, empire
