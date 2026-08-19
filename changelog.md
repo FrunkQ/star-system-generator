@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.856-beta - 19th Aug 2026
+
+- Docs only. Roster legend (model + context in the session name) recorded; the starmap-stars, broadcast-storm, follow-GM and save-fidelity landings marked; four sessions recommended for retirement with notes.
+
 ## v2.1.855-beta - 19th Aug 2026
 
 - The AU cell reaches the other two surfaces that draw a system lattice. The GM's system view gains a **Cell** picker beside its Overlay one, and the 2D renderer honours a pinned cell instead of always sizing by zoom — a GM and their players looking at the same system should not disagree about what one cell is.
