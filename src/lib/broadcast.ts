@@ -154,6 +154,7 @@ class BroadcastService {
   private promptedIds = new Set<string>();              // prompted the owner already
   private hostRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private pagehideBound = false;
+  private hostInFlight: string | null = null;           // id whose registration is mid-await
 
   private async initPeerHost(sessionId: string, caller = 'initPeerHost') {
     if (typeof window === 'undefined') return;
@@ -162,6 +163,14 @@ class BroadcastService {
       return;
     }
     if (this.peer) { perfEvent('peer', { phase: 'host-skip', id: sessionId, caller, outcome: 'already-hosting' }); return; }
+    // THE ACTUAL A57 ROOT CAUSE (v2.1.817): initPeerHost is async — it awaits the lazy PeerJS import
+    // BEFORE this.peer is assigned, so two callers in the same tick (the route's reactive enableRemote
+    // + onMount/SystemView initSender) both see "no peer", both construct new Peer(sameId), and the
+    // broker rejects the SECOND as unavailable-id. A brand-new id "collided" with ITSELF on every load
+    // — which is why a freshly minted id prompted again 5 s later (ladder exhausting) and why it was
+    // "consistent" rather than a timeout-bound ghost. One in-flight registration at a time.
+    if (this.hostInFlight === sessionId) { perfEvent('peer', { phase: 'host-skip', id: sessionId, caller, outcome: 'in-flight' }); return; }
+    this.hostInFlight = sessionId;
     if (!this.pagehideBound) {
       // Release the broker registration the moment the page goes away, so a reload does not meet
       // its own ghost. pagehide fires on reload, close and bfcache; destroy() closes the socket.
@@ -182,10 +191,13 @@ class BroadcastService {
       const cfg = peerConfigFor(this.iceServers ?? loadStoredIce());
       const peer = new Peer(sessionId, cfg ? { config: cfg } : undefined);
       this.peer = peer;
+      this.hostInFlight = null;
       peer.on('open', (id: string) => {
         this.hostAttempt.delete(sessionId);
         perfEvent('peer', { phase: 'host-open', id, caller, attempt });
       });
+      peer.on('disconnected', () => perfEvent('peer', { phase: 'host-disconnected', id: sessionId }));
+      peer.on('close', () => perfEvent('peer', { phase: 'host-closed', id: sessionId }));
       peer.on('connection', (conn: any) => {
         conn.on('open', () => { if (!this.peerConns.includes(conn)) this.peerConns.push(conn); });
         conn.on('data', (data: any) => this.handlePeerData(data));
@@ -197,6 +209,11 @@ class BroadcastService {
         if (errType === 'unavailable-id') {
           try { peer.destroy(); } catch { /* already gone */ }
           if (this.peer === peer) { this.peer = null; this.peerConns = []; }
+          if (this.sessionId !== sessionId) {
+            // A late answer for an id we no longer use (OK minted a new one mid-ladder): never prompt.
+            perfEvent('peer', { phase: 'host-collide', id: sessionId, caller, errType, outcome: 'stale-id-ignored' });
+            return;
+          }
           const used = this.hostAttempt.get(sessionId) ?? 0;
           if (used < BroadcastService.HOST_RETRY_MS.length && this.sessionId === sessionId) {
             // Probably our own just-dropped registration still held by the broker: try again.
@@ -225,6 +242,7 @@ class BroadcastService {
         console.warn('[peer host]', errType);
       });
     } catch (e) {
+      this.hostInFlight = null;
       perfEvent('peer', { phase: 'host-error', id: sessionId, caller, errType: 'init-failed' });
       console.warn('PeerJS host init failed (cross-device sharing unavailable)', e);
     }
@@ -336,11 +354,17 @@ class BroadcastService {
     const changed = this.isSender && this.sessionId !== null && this.sessionId !== sessionId;
     this.isSender = true;
     this.sessionId = sessionId;
-    if (changed && this.peer) {
-      perfEvent('peer', { phase: 'rehost-id-changed', id: sessionId, caller: 'initSender' });
-      try { this.peer.destroy(); } catch { /* already gone */ }
-      this.peer = null;
-      this.peerConns = [];
+    if (changed) {
+      // A57 follow-up (v2.1.817): the OLD id's retry ladder must die with the old id — it kept
+      // ticking after OK minted a new one and could fire a second collision outcome 5 s later.
+      if (this.hostRetryTimer) { clearTimeout(this.hostRetryTimer); this.hostRetryTimer = null; }
+      this.hostAttempt.clear();
+      if (this.peer) {
+        perfEvent('peer', { phase: 'rehost-id-changed', id: sessionId, caller: 'initSender' });
+        try { this.peer.destroy(); } catch { /* already gone */ }
+        this.peer = null;
+        this.peerConns = [];
+      }
     }
     // A57: a collided id is NOT re-hosted from here (SystemView calls initSender on every system
     // entry — that was the "Cancel brings it back on every click" loop). Only an id change or an

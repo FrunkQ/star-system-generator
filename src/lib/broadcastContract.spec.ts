@@ -48,11 +48,15 @@ class FakePeer {
   private registered = false;              // did THIS peer win the id? (only then destroy() frees it)
   constructor(public id?: string, _opts?: unknown) {
     FakePeer.constructed.push({ id, peer: this });
-    // Broker answers asynchronously, like the real websocket handshake.
+    // Like the real broker: a SECOND socket for an id whose first socket is open OR still pending
+    // is refused. So claim the id synchronously on construction (pending counts), and answer
+    // asynchronously like the websocket handshake does.
+    const pendingHolder = id ? FakePeer.taken.has(id) : false;
+    if (id && !pendingHolder) { FakePeer.taken.add(id); this.registered = true; }
     setTimeout(() => {
       if (this.destroyed) return;
-      if (id && FakePeer.taken.has(id)) this.emit('error', { type: 'unavailable-id' });
-      else { if (id) { FakePeer.taken.add(id); this.registered = true; } this.emit('open', id ?? 'anon'); }
+      if (pendingHolder) this.emit('error', { type: 'unavailable-id' });
+      else this.emit('open', id ?? 'anon');
     }, 1);
   }
   on(ev: string, fn: Handler) { (this.handlers.get(ev) ?? this.handlers.set(ev, []).get(ev)!).push(fn); }
@@ -217,6 +221,46 @@ describe('A57 — broker id collision: retry first, prompt once, no silent re-ho
     host.enableRemote();
     await advance(300);
     expect(FakePeer.constructed.length).toBe(before);
+  });
+
+  it('ROOT CAUSE (v2.1.816 report): three same-tick callers must make ONE registration — a fresh id never collides with itself', async () => {
+    vi.useFakeTimers();
+    const host = await makeService();
+    const prompt = vi.fn();
+    host.onHostIdUnavailable = prompt;
+    // The real load sequence: the reactive block calls initSender + enableRemote, then onMount
+    // calls initSender again, then SystemView calls initSender on system entry — all before the
+    // async initPeerHost has assigned this.peer.
+    host.initSender('map-fresh-s-008');
+    host.enableRemote();
+    host.initSender('map-fresh-s-008');
+    host.initSender('map-fresh-s-008');
+    await advance(12000);
+    const regs = FakePeer.constructed.filter((c) => c.id === 'map-fresh-s-008');
+    expect(regs).toHaveLength(1);                         // exactly one Peer for the id
+    expect(FakePeer.taken.has('map-fresh-s-008')).toBe(true);
+    expect(prompt).not.toHaveBeenCalled();                // and therefore no self-collision prompt
+  });
+
+  it('OK pressed MID-LADDER (v2.1.816 report): the old id pending retry never prompts again', async () => {
+    vi.useFakeTimers();
+    const host = await makeService();
+    const prompt = vi.fn();
+    host.onHostIdUnavailable = prompt;
+    FakePeer.taken.add('map-old-q-006');              // persistent holder for the OLD id
+    host.initSender('map-old-q-006');
+    host.enableRemote();
+    await advance(12000);                              // ladder exhausts -> ONE prompt
+    expect(prompt).toHaveBeenCalledTimes(1);
+    // Owner clicks OK: the route mints a new id and calls initSender with it while the service
+    // may still hold retry state for the old id.
+    host.initSender('map-new-r-007');
+    await advance(300);
+    expect(FakePeer.taken.has('map-new-r-007')).toBe(true);   // new id hosted
+    // The thing the owner saw: ~5 s later the prompt came back. It must not.
+    await advance(15000);
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(FakePeer.taken.has('map-new-r-007')).toBe(true);   // still hosting the new id
   });
 
   it('OK (a NEW id) hosts cleanly; explicit enableRemote lifts the block for the old id', async () => {
