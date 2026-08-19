@@ -190,8 +190,8 @@
   // its question. Only the LAB row gets this; the authored giants below have no recipe to give.
   let copiedId: string | null = null;
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
-  async function copyRecipe(b: CelestialBody) {
-    const json = giantRecipeJson(b);
+  async function copyRecipe(b: CelestialBody, label?: string) {
+    const json = giantRecipeJson(b, label);
     if (!json) return;
     try {
       await navigator.clipboard.writeText(json);
@@ -539,7 +539,7 @@
             {:else}
               <span class="weather dim">clear</span>
             {/if}
-            <button class="recipe" on:click={() => copyRecipe(b)}
+            <button class="recipe" on:click={() => copyRecipe(b, w.decks.join(" · "))}
                     title="Copy the composition, pressure and temperatures that produced this colour — paste into a body's atmosphere block">
               {copiedId === b.id ? 'Copied' : 'Copy recipe'}
             </button>

@@ -23,6 +23,7 @@ const body = (over: Partial<CelestialBody> = {}) => ({
 } as unknown as CelestialBody);
 
 const RECIPE = JSON.stringify({
+  label: 'sodium overcast · potassium veil',
   atmosphere: { pressure_bar: 1, composition: { H2: 0.857128, He: 0.139532, CH4: 0.003 } },
   requires: { temperatureK: 165, equilibriumTempK: 110 }
 });
@@ -61,6 +62,9 @@ describe('G7 — importing a recipe on the atmosphere tab', () => {
     // silently delete every preset the GM had already edited.
     expect(entries.map((e) => e.value.name)).toContain('Earth-like');
     const minted = entries.find((e) => e.value.name !== 'Earth-like')!;
+    // NAMED AFTER THE MIX, not the planet: the dropdown lists gas mixtures, and 'Sol XVII recipe'
+    // says only where it went.
+    expect(minted.value.name).toBe('sodium overcast · potassium veil');
     expect(minted.value.composition).toEqual({ H2: 0.857128, He: 0.139532, CH4: 0.003 });
     expect(minted.value.pressure_range_bar).toEqual([1, 1]);
 

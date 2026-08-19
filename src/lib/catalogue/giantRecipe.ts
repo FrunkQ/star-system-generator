@@ -16,6 +16,14 @@
 import type { CelestialBody } from '$lib/types';
 
 export interface GiantRecipe {
+	/**
+	 * What to CALL this mix — the gallery's own description of what condenses in it, e.g.
+	 * 'sodium overcast · potassium veil'. A LABEL AND NOTHING ELSE: it is derived text, so no
+	 * derivation may ever read it back. It is here because the thing being saved is a GAS MIX, and a
+	 * mix is better named after what it does than after whichever planet it was dropped on.
+	 * Absent on recipes copied before this existed; the importer falls back to the body's name.
+	 */
+	label?: string;
 	/** What you SET. Authored fields; they survive a process pass. */
 	atmosphere: { pressure_bar: number; composition: Record<string, number> };
 	/** What must be TRUE. DERIVED per pass — nothing can set these; they follow from where the world is. */
@@ -34,10 +42,15 @@ export function giantRecipe(body: CelestialBody): GiantRecipe | null {
 	};
 }
 
-/** The recipe as pasteable JSON. */
-export function giantRecipeJson(body: CelestialBody): string | null {
+/**
+ * The recipe as pasteable JSON. `label` is supplied by the CALLER because it is derived from the
+ * cloud-deck tags, and the gallery has already computed it for its own caption — working it out again
+ * here would put a second evaluation of it in the module the body editor imports.
+ */
+export function giantRecipeJson(body: CelestialBody, label?: string): string | null {
 	const r = giantRecipe(body);
 	if (!r) return null;
+	if (label && label.trim()) r.label = label.trim();
 	const comp: Record<string, number> = {};
 	// 6 significant figures: H2/He are computed as (1 - trace) shares and would otherwise paste as
 	// 0.8569999999999999. Trace species run to 8e-5, so this must NOT be a fixed decimal count.
@@ -69,6 +82,7 @@ export function parseGiantRecipe(text: string): { ok: true; recipe: GiantRecipe 
 	return {
 		ok: true,
 		recipe: {
+			...(typeof r.label === 'string' && r.label.trim() ? { label: r.label.trim() } : {}),
 			atmosphere: { pressure_bar: typeof p === 'number' && p > 0 ? p : 1, composition: { ...comp } as Record<string, number> },
 			requires: {
 				temperatureK: Number(r.requires?.temperatureK) || 0,

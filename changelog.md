@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.824-beta - 19th Aug 2026
+
+- A copied gas-giant recipe now carries its own name - the gallery's description of what condenses in it, like "sodium overcast - potassium veil" - and the preset it creates is called that instead of being named after whichever planet you dropped it on. What you are saving is a gas mixture, so the dropdown now reads like a list of mixtures.
+
 ## v2.1.822-beta - 17th Aug 2026
 
 - FIXED: the Surface view rebuilt a world's light assuming every star is as bright as the Sun. Around Sol that is exactly right, which is why it went unnoticed — but around an M dwarf at a hundredth of a solar luminosity the "% of an Earth noon" figure came out a hundred times too high. The stored summary already records how much light arrived, and the derivation is linear in it, so rescaling to match is exact and needs nothing new stored.

@@ -53,7 +53,10 @@
     // drop every preset the GM had already edited.
     const current: any[] = (rulePack.distributions?.['atmosphere_composition']?.entries ?? []) as any[];
     const taken = current.map((e) => e?.value?.name).filter(Boolean) as string[];
-    const name = uniquePresetName(`${body.name} recipe`, taken);
+    // NAME IT AFTER THE MIX, not the planet it landed on: what is being saved is a gas mixture, and
+    // 'sodium overcast · potassium veil' says what it does where 'Sol XVII recipe' only says where it
+    // went. Older recipes carry no label, so the body's name stays as the fallback.
+    const name = uniquePresetName(recipe.label?.trim() || `${body.name} recipe`, taken);
     const entry = recipeToPreset(recipe, name);
     starmapStore.update((m) => m ? ({
       ...m,

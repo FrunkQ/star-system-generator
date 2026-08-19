@@ -111,3 +111,31 @@ describe('G7 — the recipe travels back IN', () => {
     expect(uniquePresetName('Jovian', ['Jovian', 'Jovian (2)'])).toBe('Jovian (3)');
   });
 });
+
+describe('G7 — the mix carries its own NAME', () => {
+  const sample = buildGiantLab(pack).flatMap((r) => r.bodies)[0];
+
+  it('carries the label when the gallery supplies one, and omits it otherwise', () => {
+    expect(JSON.parse(giantRecipeJson(sample)!).label).toBeUndefined();
+    const withLabel = JSON.parse(giantRecipeJson(sample, 'sodium overcast · potassium veil')!);
+    expect(withLabel.label).toBe('sodium overcast · potassium veil');
+  });
+
+  it('is a LABEL and never an input — it sits beside the recipe, not inside it', () => {
+    // It is derived text (the deck list). Keeping it out of `atmosphere` and `requires` is what stops
+    // any future derivation reading it back as though it were authored.
+    const r = JSON.parse(giantRecipeJson(sample, 'ammonia deck')!);
+    expect(Object.keys(r).sort()).toEqual(['atmosphere', 'label', 'requires']);
+    expect(r.atmosphere.label).toBeUndefined();
+  });
+
+  it('round trips through the parser', () => {
+    const out = parseGiantRecipe(giantRecipeJson(sample, 'sodium overcast · potassium veil')!);
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.recipe.label).toBe('sodium overcast · potassium veil');
+  });
+
+  it('ignores a blank label rather than naming a preset with whitespace', () => {
+    expect(JSON.parse(giantRecipeJson(sample, '   ')!).label).toBeUndefined();
+  });
+});
