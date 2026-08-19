@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.865-beta - 19th Aug 2026
+
+- Removed the "Tap a world to read its file" prompt that showed on the player system view before the first selection. It was an absolutely-positioned overlay at the foot of the stage, so it held no layout open — and it landed on top of the grid's new scale caption, which shares that corner and says something a reader cannot work out unaided.
+
 ## v2.1.864-beta - 19th Aug 2026
 
 - The grid legend adds the real distance in brackets once a cell is too small to picture in AU — "1 square = 0.01 AU (1,495,979 km)" — in km or miles per **Measurement units (in-system)**. It switches at `ORBIT_KM_BELOW_AU`, the 0.05 AU that `units.ts`, `bodyFacts` and `curate` had already agreed on, rather than adding a fifth threshold; that comfortably covers the 0.01 AU case. The AU figure stays, because the cell was chosen off a picker labelled in AU and dropping it would break the link to the control that set it.

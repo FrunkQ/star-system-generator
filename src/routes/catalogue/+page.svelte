@@ -1147,10 +1147,12 @@
           {/if}
         </div>
       {/if}
+      <!-- No "tap a world" prompt before the first selection. It was an absolutely-positioned overlay
+           at the foot of the stage, so it never held any layout open — and it landed on top of the
+           grid's scale caption, which occupies the same corner and says something a reader cannot work
+           out for themselves. -->
       {#if selectedBody && !activePreset?.hideInfoPanel}
         {@render inspectorAside()}
-      {:else if !selectedBody && !activePreset?.hideInfoPanel}
-        <div class="console-hint">Tap a world to read its file.</div>
       {/if}
     </div>
   {:else if systemDoc}
@@ -1329,16 +1331,6 @@
   }
   .tc-slider { width: 130px; accent-color: #6aa0ff; }
   .time-controls:not(.expanded) { padding: 0; background: none; border: none; }
-  .console-hint {
-    position: absolute;
-    bottom: 14px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 12px;
-    opacity: 0.45;
-    pointer-events: none;
-  }
   .inspector {
     position: absolute;
     bottom: 0;
