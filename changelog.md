@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.862-beta - 19th Aug 2026
+
+- Docs only. The infill dials gap confirmed as two paths (SpaceEngine and Universe Sandbox already route through the modal that has them); a fix sketched for the real-sky importer bringing one wide companion in twice.
+
 ## v2.1.861-beta - 19th Aug 2026
 
 - **FIXED: the two stages shared one grid TYPE, so choosing hexes for the starmap changed the system map too, and back again.** `starmapGrid` is now its own field beside `grid`, falling back to it so a preset written before the split opens exactly as it did. Every other twin was already split (gridDepth/starmapGridDepth, gridFalloff/starmapGridFalloff) — the type was the last one sharing.
