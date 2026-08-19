@@ -785,9 +785,36 @@ Roll died with "setOrient is not a function" and nothing else complained. The su
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
+### RENDER-S25 A LEVEL'S OPACITY BELONGS TO ONE CHANNEL — BAKE IT INTO VERTEX ALPHA AS WELL AND IT LANDS TWICE
+WHERE: `holo/scene.ts:addGridLines` (the colour attribute) against `updateGridLevels` (the coarse/
+fine crossfade). Reported by the owner as "turn falloff up at all and all the lines go super dim".
+RULE: three.js multiplies VERTEX ALPHA by MATERIAL OPACITY. Each contribution to a final alpha gets
+exactly one of those channels and no code may write both. A per-frame updater owns the material
+outright: anything a builder bakes in there is overwritten on the next frame anyway, and anything it
+copies into vertex alpha is composed a second time forever.
+WHY: the builder wrote `cols[..] = a * mat.opacity` and then set `mat.opacity = 1`, which is a
+consistent pair for exactly ONE frame. `updateGridLevels` then reassigns `mat.opacity = peak * t`
+every frame to crossfade the two grid levels, so the level opacity was in the vertex alpha AND back
+on the material: the grid rendered at its SQUARE. A 0.42 coarse level came out at 0.18; a fine level
+halfway through a crossfade went 0.15 to 0.02. Note what the symptom was NOT — the fade itself was
+correct, the near lines dimmed as hard as the far ones, and the whole grid went down together. That
+is the signature of a factor applied globally, not of a bad fade curve, and it is what pointed at
+the material rather than at `gridFade`.
+BLAST: the fault was INVISIBLE at rest, because the branch that writes the colour attribute at all
+is gated on `gridFalloff > GRID_FADE_OFF`. The dial's default is 0, so the grid was correct until a
+GM touched the control and then wrong at every setting — a control whose FIRST STEP is the bug, in
+the family of A32/F10 (a dial whose top of travel does nothing). Anything else that grows a
+per-frame material updater over geometry a builder has already coloured inherits this exactly:
+`gridSkirtMats` is the live example, and it deliberately carries NO opacity of its own — it copies
+its line's, once per frame, in the same updater.
+
 ### RENDER-S24 A shared LOOK needs a shared CONSTANT, or the copies diverge into a bug
 WHERE: `src/lib/map/gridFade.ts` (`gridFadeWindow` / `gridFadeAlpha`, pinned in `gridFade.spec.ts`),
 bound by `holo/scene.ts:addGridLines` and `starmap/starmapScene.ts:fadeWindow`. Reported as C14.
+The DEPTH curtain joined it later (`skirtDepth` / `SKIRT_DEPTH_RATIO` / `SKIRT_TOP_ALPHA`, pinned in
+`gridSkirt.spec.ts`, bound by `scene.ts:addGridSkirt` and `starmapScene.ts:addLattice`) — PRE-
+EMPTIVELY, while the starmap still had the only copy and the system map had no dial at all. That is
+the cheapest moment to bind two surfaces: there is nothing to reconcile yet and no bug to report.
 RULE: when two surfaces offer the SAME control, the numbers behind it live in one module and both
 bind it. A dial that reads identically in two preset editors and computes differently in two
 renderers is not a difference, it is a defect waiting to be reported.

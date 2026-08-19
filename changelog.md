@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.842-beta - 19th Aug 2026
+
+- Engine map: RENDER-S25 — a level's opacity belongs to ONE channel. Three.js multiplies vertex alpha by material opacity, so a builder that bakes a per-frame value into the vertex alpha composes it twice and the geometry renders at its square. Cross-referenced onto RENDER-S24/C14, which now also records that the depth curtain was bound to shared constants pre-emptively, while only one map had it.
+
 ## v2.1.841-beta - 19th Aug 2026
 
 - **FIXED: turning up Grid falloff on a 3D system map dimmed every line instead of fading the far ones.** The fade was written into the vertex alpha with the material's opacity already multiplied in, and the material was then set to 1 — right for one frame, because the coarse/fine crossfade reassigns that opacity every frame afterwards. The level landed twice and the grid rendered at its square: a 0.42 level came out at 0.18, and a fine level mid-crossfade went 0.15 to 0.02. It switched on the instant the dial left zero, because that is what gates the branch. The starmap was never affected: it has no two-level crossfade to collide with.
