@@ -738,7 +738,7 @@ human-habitability becomes the DEFAULT rather than the whole model.
 
 | # | chunk | items | session (owner's figures) | gate? |
 |---|---|---|---|---|
-| **1** | **Your own map** | [[G16]] — GM 2D + player 2D + 3D plane + document graphic; brief current | perf & memory (48%), after [[A56]] — or a fresh session from the brief | **YES — the last `coming` line** |
+| **1** | **Your own map** | [[G16]] **SHIPPED v2.1.811-813** (screen/map-fixed on GM 2D, player 2D + 3D as one plane renderer, document figure, align mode, bundle round-trip, dynamic About credit, [[A58]] filed). **Owner eyeball, then clear `pending: 'coming'` on `WelcomeModal.svelte:77` — the LAST pending line** | done — fresh session | **eyeball + flag** |
 | **2** | **Generation close-out** (owner's own) | [[G18]] moon build after the five answers; [[G24]] part 1 pick + PART 2 banded slider (one shared component, pack-data edges); [[B58]] Y-dwarf confirm; [[B80]] dead field; [[B81]] kill/danger zones off [[B57]]'s decision; the importer unification (`import-refresh-design.md`) | generation rebalance (50%) — a child when it tires | No, but it is the "Sharper generation" claim made true end to end |
 | **3** | **3D starmap render** | [[G26]](a) stars as stars — jets, flares, plumes, luminosity-class size bands, all derivable today; **plus [[A55]] eyeballs** (grid crossfade, boosted sky) | FRESH — inherit `docs/dev/starmap-3d-surfaces-notes.md`; Ship-model is retiring, Scene is retired | No |
 | **4** | **Holo tails** | [[G5]] orbit-line opacity + momentary hide (assigned); [[A51]](b) binary entry-shot eyeball; [[C14]]-[[C16]] eyeballs | Ship-model handoff 2 (80%) then RETIRE with notes | No |
@@ -790,6 +790,8 @@ human-habitability becomes the DEFAULT rather than the whole model.
 | — | NOT V3, on purpose | [[G26]] star tails (V3.1), radiation arc [[B20]]/[[B21]]/[[B32]] (V3.1), [[G20]] galaxy scale (V3.1), [[B54]]/[[B66]]/[[B76]]/[[B77]] apparentColor retirement (pre-V4), [[G30]] surface areas (pre-V4 groundwork, spec done), [[G17]]/[[G27]] ageing + look-back (V4), [[G11]]/[[B39]] Traveller final form (V4), [[D25]] fiction marking (owner decision, V4) | — |
 
 **RETIRED 2026-08-18: "SSE V2 performance and memory analysis"** — shipped [[P2]] meters, [[A43]], [[A52]], [[A56]] (794), [[G7]] (805), wrote `docs/dev/perf-and-chrome-notes.md` at 806. Two things it left named open: a player view cannot produce a diagnostic bundle; the night-side light colour's painted pixel is unverified. Also retired earlier today: "Ship-model handoff 2" ([[G5]] 798, then notes) and "Scene, grids and sky". **[[G16]] is a FRESH session (kicked off by the owner).** [[D1]] CLOSED on eyeball. 
+
+**2026-08-19 update:** [[G16]] SHIPPED (811-813); [[A57]] FIXED 817 (real root: re-entrant async `initPeerHost` registered one id twice in a tick — the recording found it; owner confirms stopped); [[G7]] round-trips (816); [[A59]] (follow-GM starmap level) routed to VTT. Welcome list: ONE `coming` flag left, G16's, awaiting the owner's eye. 
 
 **OWNER'S OWN WORK 2026-08-18: generation rebalancing and UNIFYING ALL THE IMPORTERS (the import-refresh design note, v2.1.787, `docs/dev/import-refresh-design.md`) — in the generation session; do not route generation or importer items elsewhere without asking.** 
 

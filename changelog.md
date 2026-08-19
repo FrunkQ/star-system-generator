@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.828-beta - 19th Aug 2026
+
+- Docs only. The V3 plan marks your-own-map shipped and the broadcast-id collision closed; one welcome-list flag left, awaiting the owner's eye.
+
 ## v2.1.827-beta - 19th Aug 2026
 
 - Docs only. The follow-GM starmap-level item renumbered to A59 (A58 was already taken).
