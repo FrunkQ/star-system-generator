@@ -523,8 +523,9 @@
        is nothing but a composition, a pressure and a temperature — every deck, every colour derived
        by the same code that runs in the app. Sweep one variable along a row and the row IS the
        model's answer. -->
-  {#each giantLab as row}
-    <h2>{row.title}</h2>
+  <!-- G7: the atmosphere tab's "gas-giant gallery" link targets #giant-lab, so the anchor must stay. -->
+  {#each giantLab as row, ri}
+    <h2 id={ri === 0 ? 'giant-lab' : undefined}>{row.title}</h2>
     {#if row.blurb}<p class="lead">{row.blurb}</p>{/if}
     <div class="gallery">
       {#each row.bodies as b}

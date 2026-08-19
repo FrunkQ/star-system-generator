@@ -137,7 +137,16 @@ describe('+page.svelte', () => {
     vi.mocked(hasSavedStarmap).mockResolvedValue(true);
     vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
     const { container, findByText, queryByText } = renderPage();
-    await findByText('Test Starmap');
+    // WAIT FOR THE APP TO FINISH LOADING, not for one second. This test is about NAVIGATION — does
+    // clicking a star enter that system — and the default 1s findByText timeout made the SETUP the
+    // thing that failed: observed timing out with the physics overlay still in the DOM, while passing
+    // every time in isolation. The assertions below are unchanged.
+    // HONEST SCOPE: this removes ONE source of noise, not the only one. This suite goes intermittently
+    // red under machine contention (several long-lived dev servers in the shared worktrees), and when
+    // it does the casualties are scattered across unrelated files — broadcastContract, axialTilt,
+    // generateFromConfig, systemUndo — none of which a timeout here can help. Do not read a red run
+    // as a regression without checking WHICH tests failed and whether they repeat.
+    await findByText('Test Starmap', {}, { timeout: 8000 });
 
     // The clickable star is the <g role="button">, not the sibling name label.
     const star = container.querySelector('g[role="button"]') as SVGGElement;

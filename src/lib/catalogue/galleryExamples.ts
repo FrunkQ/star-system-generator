@@ -422,49 +422,10 @@ function giantBody(
 	return body;
 }
 
-/**
- * THE RECIPE BEHIND A LAB GIANT: the INPUTS that produced its colour, as a block a GM can paste
- * straight into a body's atmosphere (G7).
- *
- * INPUTS ONLY, and that is the whole design. `apparentColorHex`, the deck tags and the palette are
- * DERIVED - handing them back would paste a frozen answer next to the question, and the moment the
- * pack's condensation constants moved, the pasted world would keep a colour the engine no longer
- * computes. The gallery's own claim is that colour comes from data; a recipe that carried the colour
- * would quietly disprove it. So the deck list is shown BESIDE the button (it already is, in the
- * caption) and never inside the copied text.
- *
- * Only the derived `buildGiantLab` row has one of these. The hand-authored `giants` row is literal
- * hex triples with no recipe behind them, and a copy control there would dress a colour up as a
- * derivation - see the G7 row.
- */
-export interface GiantRecipe {
-	temperatureK: number;
-	equilibriumTempK: number;
-	atmosphere: { pressure_bar: number; composition: Record<string, number> };
-}
-
-export function giantRecipe(body: CelestialBody): GiantRecipe | null {
-	const atm = (body as any).atmosphere;
-	const t = (body as any).temperatureK;
-	const eq = (body as any).equilibriumTempK;
-	if (!atm?.composition || !(t > 0)) return null;
-	return {
-		temperatureK: t,
-		equilibriumTempK: eq,
-		atmosphere: { pressure_bar: atm.pressure_bar, composition: { ...atm.composition } }
-	};
-}
-
-/** The recipe as pasteable JSON. Fractions are rounded only where it cannot change the chemistry. */
-export function giantRecipeJson(body: CelestialBody): string | null {
-	const r = giantRecipe(body);
-	if (!r) return null;
-	const comp: Record<string, number> = {};
-	// 6 significant figures: H2/He are computed as (1 - trace) shares and would otherwise paste as
-	// 0.8569999999999999. Trace species run to 8e-5, so this must not be a fixed decimal count.
-	for (const [k, v] of Object.entries(r.atmosphere.composition)) comp[k] = Number(v.toPrecision(6));
-	return JSON.stringify({ ...r, atmosphere: { ...r.atmosphere, composition: comp } }, null, 2);
-}
+// G7: the recipe reader lives in `./giantRecipe` so the body editor can import it without
+// dragging the gallery's processor/appearance dependencies in with it. Re-exported here
+// because the gallery is where a reader looks for it first.
+export { giantRecipe, giantRecipeJson, type GiantRecipe } from './giantRecipe';
 
 export function buildGiantLab(pack: RulePack | null): GalleryRow[] {
 	// A Jupiter's trace chemistry, held FIXED and simply cooled. Ammonium hydrosulphide condenses

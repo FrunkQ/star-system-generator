@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import type { CelestialBody, RulePack } from '$lib/types';
-import { buildGiantLab, giantRecipe, giantRecipeJson } from './galleryExamples';
+import { buildGiantLab } from './galleryExamples';
+import { giantRecipe, giantRecipeJson, parseGiantRecipe, recipeToPreset, uniquePresetName } from './giantRecipe';
 import { deriveCloudDecks, applyCloudDeckTags, deriveWeather } from '$lib/physics/cloudDecks';
 import { deriveApparentColorParts } from '$lib/rendering/apparentColor';
 
@@ -14,7 +15,7 @@ function fromRecipe(json: string, pack: RulePack): CelestialBody {
     id: 'pasted', roleHint: 'planet', name: 'Pasted',
     makeup: { gas: 0.95, ice: 0.04, rock: 0.01 },
     radiusKm: 60000, massKg: 1.5e27, rotationPeriodHours: 10,
-    temperatureK: r.temperatureK, equilibriumTempK: r.equilibriumTempK,
+    temperatureK: r.requires.temperatureK, equilibriumTempK: r.requires.equilibriumTempK,
     atmosphere: r.atmosphere, tags: [] as unknown[]
   } as unknown as CelestialBody;
   const decks = deriveCloudDecks(body, pack);
@@ -51,7 +52,10 @@ describe('G7 — the copied recipe REPRODUCES the giant', () => {
     expect(json).not.toContain('apparentColor');
     expect(json).not.toContain('structure/cloud-deck');
     expect(json).not.toContain('tags');
-    expect(Object.keys(JSON.parse(json)).sort()).toEqual(['atmosphere', 'equilibriumTempK', 'temperatureK']);
+    // Split in two on purpose: `atmosphere` is what you SET, `requires` is what must be TRUE.
+    // Temperature is DERIVED per pass and cannot be pasted, so promising it as a setting would be a lie.
+    expect(Object.keys(JSON.parse(json)).sort()).toEqual(['atmosphere', 'requires']);
+    expect(Object.keys(JSON.parse(json).requires).sort()).toEqual(['equilibriumTempK', 'temperatureK']);
   });
 
   it('pastes as clean numbers rather than float noise', () => {
@@ -62,5 +66,48 @@ describe('G7 — the copied recipe REPRODUCES the giant', () => {
 
   it('returns null for a body with no atmosphere, rather than half a recipe', () => {
     expect(giantRecipe({ id: 'x', name: 'x' } as unknown as CelestialBody)).toBeNull();
+  });
+});
+
+describe('G7 — the recipe travels back IN', () => {
+  const rows = buildGiantLab(pack);
+  const sample = rows.flatMap((r) => r.bodies)[0];
+
+  it('round trips: copied text parses back to the same recipe', () => {
+    const json = giantRecipeJson(sample)!;
+    const out = parseGiantRecipe(json);
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.recipe.atmosphere.composition).toEqual(JSON.parse(json).atmosphere.composition);
+    expect(out.recipe.requires.temperatureK).toBeCloseTo(JSON.parse(json).requires.temperatureK, 6);
+  });
+
+  it('gives a REASON when the paste is wrong, because a GM is the only one who sees it', () => {
+    expect(parseGiantRecipe('not json')).toMatchObject({ ok: false });
+    const r = parseGiantRecipe('{"hello":1}');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/composition/i);
+    const bad = parseGiantRecipe('{"atmosphere":{"composition":{"H2":"lots"}}}');
+    if (!bad.ok) expect(bad.error).toMatch(/H2/);
+  });
+
+  it('mints a preset whose pressure band is ZERO WIDTH, or the midpoint rule would change it', () => {
+    // The editor applies a preset by taking the MIDPOINT of pressure_range_bar. A recipe that stated
+    // a real range would come back as something the gallery never showed.
+    const rec = parseGiantRecipe(giantRecipeJson(sample)!);
+    expect(rec.ok).toBe(true);
+    if (!rec.ok) return;
+    const preset = recipeToPreset(rec.recipe, 'Test giant');
+    const band = preset.value.pressure_range_bar as number[];
+    expect(band[0]).toBe(band[1]);
+    expect((band[0] + band[1]) / 2).toBeCloseTo(rec.recipe.atmosphere.pressure_bar, 9);
+    // weight 0: a GM's named look must not start turning up on randomly generated worlds.
+    expect(preset.weight).toBe(0);
+  });
+
+  it('does not collide when the same recipe is imported twice', () => {
+    expect(uniquePresetName('Jovian', [])).toBe('Jovian');
+    expect(uniquePresetName('Jovian', ['Jovian'])).toBe('Jovian (2)');
+    expect(uniquePresetName('Jovian', ['Jovian', 'Jovian (2)'])).toBe('Jovian (3)');
   });
 });

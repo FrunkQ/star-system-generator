@@ -6,6 +6,8 @@
   import { checkGasRetention, isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
   import { evaluateTagTriggers as evalTrigger } from '$lib/utils';
   import { formatGauss } from '$lib/physics/magnetism';
+  import { starmapStore } from '$lib/starmapStore';
+  import { parseGiantRecipe, recipeToPreset, uniquePresetName } from '$lib/catalogue/giantRecipe';
 
   const dispatch = createEventDispatcher();
 
@@ -17,6 +19,65 @@
   let availableGases: string[] = [];
   let selectedAtmosphereName: string = '';
   let showAdvanced = false;
+
+  // G7 — IMPORT A GAS-GIANT RECIPE. Always mints a campaign preset and selects it (owner's call: it
+  // will be rare, and a durable named entry is worth more than a tidy dropdown).
+  //
+  // WHAT IT CANNOT DO, AND WHY IT SAYS SO: a recipe's `requires.temperatureK` is DERIVED on every
+  // pass from the star, the orbit, the albedo and the air — there is no override for it. So the
+  // import sets the composition and pressure, then REPORTS the temperature the colour needs against
+  // the one this world actually has. A giant is that colour BECAUSE it is that cold; silently
+  // dropping the condition would leave a GM staring at the wrong planet wondering what broke.
+  const RECIPE_PLACEHOLDER = "Paste the JSON from a gallery giant's Copy recipe button";
+  let showRecipe = false;
+  let recipeText = '';
+  let recipeError: string | null = null;
+  let recipeNote: string | null = null;
+
+  function importRecipe() {
+    recipeError = null; recipeNote = null;
+    const parsed = parseGiantRecipe(recipeText);
+    if (!parsed.ok) { recipeError = parsed.error; return; }
+    const recipe = parsed.recipe;
+
+    // The override REPLACES the whole entries list (see +page.svelte's effectiveRulePack), so mint
+    // from the EFFECTIVE list rather than from the pack's defaults — otherwise this would silently
+    // drop every preset the GM had already edited.
+    const current: any[] = (rulePack.distributions?.['atmosphere_composition']?.entries ?? []) as any[];
+    const taken = current.map((e) => e?.value?.name).filter(Boolean) as string[];
+    const name = uniquePresetName(`${body.name} recipe`, taken);
+    const entry = recipeToPreset(recipe, name);
+    starmapStore.update((m) => m ? ({
+      ...m,
+      rulePackOverrides: { ...(m.rulePackOverrides ?? {}), atmosphereCompositions: [...current, entry] }
+    }) : m);
+
+    // Apply to THIS body directly — the dropdown repopulates from the pack a tick later, and waiting
+    // for that would make the button look like it had done nothing.
+    const comp = { ...recipe.atmosphere.composition };
+    body.atmosphere = {
+      name,
+      composition: comp,
+      pressure_bar: recipe.atmosphere.pressure_bar,
+      main: Object.keys(comp).reduce((a, b) => (comp[a] > comp[b] ? a : b))
+    } as any;
+    selectedAtmosphereName = name;
+    applyChanges();
+
+    const want = recipe.requires.temperatureK;
+    const have = body.temperatureK;
+    if (!(want > 0)) {
+      recipeNote = `Imported as "${name}" and saved to this campaign's presets.`;
+    } else if (!(have > 0)) {
+      recipeNote = `Imported as "${name}". That colour needs about ${Math.round(want)} K — this world has no temperature yet.`;
+    } else if (Math.abs(have - want) <= Math.max(5, want * 0.05)) {
+      recipeNote = `Imported as "${name}". This world is at ${Math.round(have)} K and the recipe wants about ${Math.round(want)} K — close enough for the same cloud decks.`;
+    } else {
+      recipeNote = `Imported as "${name}". The chemistry is set, but that colour needs about ${Math.round(want)} K and this world sits at ${Math.round(have)} K — temperature follows the star and the orbit, so move it ${have > want ? 'further out' : 'closer in'} to match. Different decks will condense until then.`;
+    }
+    recipeText = '';
+    showRecipe = false;
+  }
 
   // Reactive Gas Physics Data
   $: gasPhysics = rulePack.gasPhysics || {};
@@ -400,6 +461,23 @@
       {/each}
       <option value="Custom Mix">Custom Mix</option>
     </select>
+    <div class="recipe-row">
+      <button type="button" class="recipe-btn" on:click={() => { showRecipe = !showRecipe; recipeError = null; }}>
+        {showRecipe ? "Cancel" : "Import recipe…"}
+      </button>
+      <a class="recipe-link" href="/discgallery#giant-lab" target="_blank" rel="noopener"
+         title="The gas-giant gallery — every giant there carries a Copy recipe button">gas-giant gallery</a>
+    </div>
+    {#if showRecipe}
+      <div class="recipe-panel">
+        <p class="recipe-help">Paste a recipe copied from the gas-giant gallery. It becomes a named preset on this
+          campaign and is applied here.</p>
+        <textarea bind:value={recipeText} rows="6" placeholder={RECIPE_PLACEHOLDER}></textarea>
+        <button type="button" class="recipe-btn primary" on:click={importRecipe}>Import</button>
+      </div>
+    {/if}
+    {#if recipeError}<p class="recipe-msg bad">{recipeError}</p>{/if}
+    {#if recipeNote}<p class="recipe-msg">{recipeNote}</p>{/if}
   </div>
 
   {#if body.atmosphere}
@@ -818,4 +896,22 @@
       color: var(--text);
   }
   .stat .value.hot { color: #ffaa88; }
+  /* G7 recipe import */
+  .recipe-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .recipe-btn {
+    font-size: 0.75em; padding: 3px 9px; border-radius: 4px; cursor: pointer;
+    background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36); color: var(--text-muted, #cfcfcf);
+  }
+  .recipe-btn:hover { border-color: var(--link, #6cb6ff); color: var(--text, #eee); }
+  .recipe-btn.primary { border-color: var(--link, #6cb6ff); color: var(--link, #6cb6ff); margin-top: 6px; }
+  .recipe-link { font-size: 0.75em; color: var(--link, #6cb6ff); }
+  .recipe-panel { margin-top: 8px; }
+  .recipe-panel textarea {
+    width: 100%; font-family: ui-monospace, monospace; font-size: 0.75em;
+    background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36);
+    color: var(--text, #eee); border-radius: 4px; padding: 6px;
+  }
+  .recipe-help { font-size: 0.75em; color: var(--text-faint, #8a8f9a); margin: 0 0 4px; line-height: 1.4; }
+  .recipe-msg { font-size: 0.75em; color: var(--text-muted, #cfcfcf); margin: 6px 0 0; line-height: 1.45; }
+  .recipe-msg.bad { color: #e08a7a; }
 </style>
