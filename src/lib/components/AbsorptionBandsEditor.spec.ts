@@ -53,8 +53,19 @@ describe('AbsorptionBandsEditor', () => {
     expect(container.querySelector('.note')?.textContent).toContain('only scatters');
   });
 
-  it('draws no chart unless BOTH preview series are supplied — it derives neither', () => {
-    const { container } = render(AbsorptionBandsEditor, { props: { bands: bands(), previewLight: [1, 2, 3] } });
+  it('STILL PREVIEWS a gas with no bands, showing the light arriving untouched', () => {
+    // 17 of the 33 shipped gases have no bands (N2, argon, the noble gases). Requiring an `absorbed`
+    // series made 'Preview against a star' a dead button on every one of them: it relabelled itself
+    // and drew nothing, which reads as broken rather than as the answer. A flat chart IS the answer.
+    const { container } = render(AbsorptionBandsEditor, {
+      props: { bands: [], previewLight: [1, 2, 3], absorbed: null, emptyPreviewNote: 'only scatters' }
+    });
+    expect(container.querySelector('svg')).not.toBeNull();
+    expect(container.textContent).toContain('only scatters');
+  });
+
+  it('draws nothing at all when there is no light to draw', () => {
+    const { container } = render(AbsorptionBandsEditor, { props: { bands: bands() } });
     expect(container.querySelector('svg')).toBeNull();
   });
 });

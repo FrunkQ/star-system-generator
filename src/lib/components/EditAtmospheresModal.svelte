@@ -42,6 +42,8 @@
   $: previewAbsorbed = (() => {
     if (!previewGas) return null;
     const bands = gases[previewGas]?.absorptionBands;
+    // Null = nothing to shade, and the chart then draws the starlight alone. That IS the answer for a
+    // gas that only scatters, so the preview must still appear rather than the button doing nothing.
     if (!bands?.length) return null;
     return GRID_NM.map((nm, i) => previewLight[i] * (1 - Math.exp(-bandAbsorbance(nm, bands))));
   })();
@@ -349,7 +351,7 @@
                                     Where this gas <strong>eats</strong> the incoming spectrum. These feed the surface-light
                                     chain directly &mdash; the ground spectrum, what a plant has to live on, and what the sky
                                     looks like from below. Blank means the gas takes only its Rayleigh share, which is the
-                                    honest answer for N&#8322;, O&#8322; and Ar.
+                                    honest answer for N&#8322;, argon and the noble gases. (O&#8322; is not one of them &mdash; it has the 762 nm A-band.)
                                 </p>
                                 <AbsorptionBandsEditor
                                     bind:bands={gas.absorptionBands}

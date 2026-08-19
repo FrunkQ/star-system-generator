@@ -64,6 +64,14 @@
     return previewLight.map((v, i) => v * abs[i]);
   })();
 
+  // The thumbs share one band, so each one clamps against the other rather than being allowed to
+  // cross — a max below its min is not a state the model has, and letting the UI produce it would
+  // push an impossible range into the pack.
+  function setLight(i: number, min: number, max: number) {
+    morphs[i].light = { min: Math.max(0, Math.min(1, min)), max: Math.max(0, Math.min(1, max)) };
+    morphs = [...morphs];
+  }
+
   function addPigment() {
     const key = prompt('A unique id for the new pigment (e.g. rhodopsin-b):');
     if (!key) return;
@@ -199,27 +207,38 @@
                      on:change={(e) => setTints(i, e.currentTarget.value)} />
               <small>one is picked per world, seeded on the body</small>
             </label>
-            <label>
+            <label class="wide">
               <span>Lights <b>{m.light.max <= 0 && m.light.min <= 0 ? 'none' : `${Math.round(m.light.min * 100)}–${Math.round(m.light.max * 100)}%`}</b></span>
-              <div class="pair">
-                <input type="number" min="0" max="1" step="0.05" bind:value={m.light.min} aria-label="Minimum light" />
-                <input type="number" min="0" max="1" step="0.05" bind:value={m.light.max} aria-label="Maximum light" />
+              <!-- A RANGE, SET WITH A RANGE. Two number boxes offered four decimal places for a
+                   quantity nobody tunes past 5%, and read as two unrelated fields rather than as the
+                   band they are. Two thumbs on one track say "somewhere between these" at a glance. -->
+              <div class="dual" style={`--lo:${m.light.min * 100}%; --hi:${m.light.max * 100}%`}>
+                <input type="range" min="0" max="1" step="0.05" value={m.light.min} aria-label="Dimmest"
+                       on:input={(e) => setLight(i, Math.min(+e.currentTarget.value, m.light.max), m.light.max)} />
+                <input type="range" min="0" max="1" step="0.05" value={m.light.max} aria-label="Brightest"
+                       on:input={(e) => setLight(i, m.light.min, Math.max(+e.currentTarget.value, m.light.min))} />
               </div>
-              <small>night-side emission; an empty range means no lights</small>
+              <small>how brightly the night side burns. Each world rolls once inside this band, so a wide
+                band makes some worlds blaze and others barely show. Both at zero = no lights at all.</small>
             </label>
             <label>
               <span>Light colour</span>
+              <!-- NO CHECKBOX. It read as "does this world glow?" and unticked therefore looked like
+                   "no lights" — but the lights are the Lights band above, and an unset colour has
+                   always meant the sodium amber a city reads as from orbit. So the swatch simply shows
+                   the colour in force, and a Reset appears only once it has been changed. -->
               <div class="pair light-colour">
-                <input type="checkbox" checked={!!m.lightHex} aria-label="Use a custom light colour"
-                       on:change={(e) => { morphs[i].lightHex = e.currentTarget.checked ? (morphs[i].lightHex ?? DEFAULT_LIGHT_HEX) : undefined; morphs = [...morphs]; }} />
+                <input type="color" value={m.lightHex ?? DEFAULT_LIGHT_HEX} aria-label="Light colour"
+                       on:input={(e) => { morphs[i].lightHex = e.currentTarget.value; morphs = [...morphs]; }} />
                 {#if m.lightHex}
-                  <input type="color" bind:value={m.lightHex} aria-label="Light colour" />
                   <code class="key">{m.lightHex}</code>
+                  <button class="mini" on:click|preventDefault={() => { morphs[i].lightHex = undefined; morphs = [...morphs]; }}>Reset</button>
                 {:else}
-                  <span class="muted-inline">city amber</span>
+                  <span class="muted-inline">city amber (default)</span>
                 {/if}
               </div>
-              <small>what the night side glows &mdash; bioluminescence, city lights, somebody&rsquo;s purple arc-light. The dimmer arterial tone is derived from it.</small>
+              <small>what the night side glows &mdash; bioluminescence, city lights, somebody&rsquo;s purple
+                arc-light. The dimmer arterial tone is derived from it.</small>
             </label>
           </div>
           {#if m.note}<p class="note">{m.note}</p>{/if}
@@ -434,4 +453,30 @@
   footer button { padding: 5px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85em; }
   .secondary { background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36); color: var(--text-muted, #cfcfcf); }
   .primary { background: var(--link, #6cb6ff); border: 1px solid var(--link, #6cb6ff); color: #06121f; font-weight: 600; }
+  /* Dual-thumb range: two real inputs stacked on one track. The inputs ignore pointer events so the
+     lower one is not shadowed by the upper one; only the thumbs take them back. */
+  .dual { position: relative; height: 22px; margin-top: 2px; }
+  .dual::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 2px;
+    background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36);
+  }
+  /* The chosen band, lit between the thumbs. */
+  .dual::after {
+    content: ''; position: absolute; top: 9px; height: 4px; border-radius: 2px;
+    left: var(--lo); right: calc(100% - var(--hi)); background: var(--link, #6cb6ff);
+  }
+  .dual input[type='range'] {
+    position: absolute; left: 0; top: 0; width: 100%; margin: 0; height: 22px;
+    -webkit-appearance: none; appearance: none; background: none; pointer-events: none;
+  }
+  .dual input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none; pointer-events: auto; cursor: pointer;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--link, #6cb6ff); border: 2px solid var(--bg-panel, #14161c);
+  }
+  .dual input[type='range']::-moz-range-thumb {
+    pointer-events: auto; cursor: pointer; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--link, #6cb6ff); border: 2px solid var(--bg-panel, #14161c);
+  }
+  .dual input[type='range']::-moz-range-track { background: none; }
 </style>

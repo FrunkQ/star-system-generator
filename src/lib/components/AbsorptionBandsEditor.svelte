@@ -31,6 +31,8 @@
   export let absorbedLabel = 'what this absorbs';
   export let surfaceLabel = 'light from the preview star';
   export let yLabel = 'W&#183;m&#8315;&#178;&#183;nm&#8315;&#185;';
+  /** Shown under the chart when there are no bands to draw — say what the FLAT line means. */
+  export let emptyPreviewNote = 'Nothing is taken out: with no bands, this passes the whole spectrum through and only scatters.';
   /** Called after any edit. A parent whose reactivity keys off a CONTAINER (`pigments`, `gases`)
    *  has to nudge that container itself; only it knows what it is. */
   export let onChange: () => void = () => {};
@@ -84,10 +86,15 @@
   {#if !bands.length}<p class="note">{emptyNote}</p>{/if}
 </div>
 
-{#if previewLight && absorbed}
+<!-- A GAS WITH NO BANDS STILL PREVIEWS, and that is the point rather than an edge case: the chart then
+     shows the starlight arriving with nothing taken out of it, which is exactly what N2 or argon does.
+     Requiring `absorbed` made 'Preview against a star' a dead button on 17 of the 33 shipped gases —
+     it changed its own label and drew nothing, which reads as broken rather than as an answer. -->
+{#if previewLight}
   <SpectrumChart surface={previewLight} {absorbed}
     {absorbedLabel} {surfaceLabel}
     topOfAtmosphere={null} {yLabel} />
+  {#if !absorbed}<p class="note">{emptyPreviewNote}</p>{/if}
 {/if}
 
 <style>

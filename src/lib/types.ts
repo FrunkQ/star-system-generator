@@ -888,8 +888,10 @@ export interface GasPhysics {
    *  hard, H2 about 0.2× — that ratio is why a thick CO2 sky is not simply a thicker blue one. */
   rayleigh?: number;
   /** Where this gas EATS the incoming spectrum, as Gaussian bands. Absent = it takes only its
-   *  Rayleigh share, which is the honest answer for N2, O2 and Ar. Authoring, not architecture —
-   *  the shape was always here, the numbers were not (inbox B54). */
+   *  Rayleigh share, which is the honest answer for N2, argon and the noble gases. NOT for O2:
+   *  the pack gives it the 762 nm A-band, so this comment named it wrongly for as long as it
+   *  existed — 16 of the 33 shipped gases carry bands. Authoring, not architecture: the shape was
+   *  always here, the numbers were not (inbox B54). */
   absorptionBands?: PigmentBand[];
   greenhouse: number;
   specificHeat: number;

@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v2.1.832-beta - 19th Aug 2026
+
+- The night-lights range in the Biospheres editor is a proper two-thumb slider now, instead of two boxes asking for four decimal places of a number nobody tunes past 5%. The band is lit between the thumbs, so "somewhere between dim and blazing" reads at a glance.
+- The light colour no longer hides behind a tickbox. The swatch always shows the colour in force - city amber unless you change it - because the tickbox read as "does this world glow at all?", which it never was: the Lights band above decides that. A Reset appears once you have changed it.
+- Clearer wording on both: what the lights band is FOR (each world rolls once inside it, so a wide band makes some blaze and others barely show), and why a technological world's cover slider goes where it does - it is the only kind that roofs the seas and the ice caps, so it can reach the whole planet.
+- Fixed: the absorption-band help wrongly listed oxygen among the gases that only scatter. It has the 762 nm A-band, and always did - 16 of the 33 shipped gases carry bands.
+- Fixed: "Preview against a star" did nothing at all on a gas with no bands - 17 of the 33. It now draws the starlight arriving untouched, which is the answer rather than a dead button.
+
 ## v2.1.830-beta - 18th Aug 2026
 
 - The balloon's depth slider now goes to 100 bar, and it is the honest limit rather than a round number. The temperature law is the dry adiabat continued down from the 1 bar anchor, and it can be checked against the one descent anyone has made: we say 319 K at 10 bar where Galileo's probe read about 330, and about 400 K at 22 bar where it read about 425 and died. A few percent all the way down. Past 100 bar the things the law leaves out — the wet adiabat, opacity growing with density, the air's own glow — start to matter and none has been checked, so it stops there and says so.
