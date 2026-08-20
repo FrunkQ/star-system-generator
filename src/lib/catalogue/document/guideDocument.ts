@@ -17,6 +17,7 @@ import {
 } from './systemTopology';
 import { rainbowHue, rainbowHueIndex } from './systemSchematic';
 import { constructIconShape } from '$lib/constructs/constructIcon';
+import { docSideBySide, docGraphicStripFrac } from './docLayout';
 
 export interface GuideDocOpts {
   units?: MeasurementUnits;
@@ -46,6 +47,12 @@ export interface GuideDocOpts {
   // it the row is omitted rather than guessed — a printed report and a live panel must agree, and they
   // only can if both are told what time it is.
   formatDate?: (ms: number) => string;   // how this campaign writes a date (its calendar is its own)
+  // THE PAGE'S OWN SIZE, so the body graphic can sit BESIDE the facts on a page with room and above
+  // them on one without. Both are needed and neither alone is enough — see docLayout: a phone held
+  // sideways is wider than many desktop windows and is the clearest case for stacking. Omitted means
+  // "assume no room", which keeps every caller that has not been taught about this on the old layout.
+  pageWidth?: number;
+  pageHeight?: number;
 }
 
 // Resolve a body's tags to display items (label + type colour + group), de-duplicated by label.
@@ -135,6 +142,14 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // if one loaded); 'disc'/'sphere'/'flat' reserve a gap the view overlays the real renderer into.
   // The 'sliver' photo frame is special: it becomes a LEFT column beside the facts (handled in 4).
   const sliver = opts.imagery === 'photo' && !!opts.image && opts.photoFrame === 'sliver';
+  // The body graphic beside the facts rather than above them, when the page has the room for it. Only
+  // for a real body's globe: a photo already has the sliver frame for this, a construct's MODEL wants
+  // its full-width band (a hull is long and thin, and a side column would make it a speck), and the
+  // panel form has no graphic at all.
+  const gfxIsGlobe = !!subject && subject.kind !== 'construct'
+    && (opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat');
+  const gfxBeside = gfxIsGlobe && !sliver
+    && docSideBySide(opts.pageWidth ?? 0, opts.pageHeight ?? 0);
   if (subject && subject.kind === 'construct' && ((subject as any).model?.hash || (subject as any).model?.url) && opts.imagery !== 'none') {
     // G3 (owner steer 2026-08-03): for a construct the MODEL leads - the chain is model > photo >
     // glyph > nothing, under every imagery mode except 'none' ("if a construct is told to be 3D,
@@ -154,8 +169,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   } else if (opts.imagery === 'photo' && opts.image && !sliver) {
     blocks.push({ kind: 'image', img: opts.image, aspect: opts.imageAspect || 1.6, frame: opts.photoFrame ?? 'letterbox', focus: opts.imageFocus });
     // A GM photo still wins for a MODEL-LESS construct; a model outranks it (branch above).
-  } else if ((opts.imagery === 'sphere' || opts.imagery === 'disc' || opts.imagery === 'flat')
-    && subject && subject.kind !== 'construct') {
+  } else if (gfxIsGlobe && !gfxBeside) {
     // A CONSTRUCT gets no body graphic. The body-graphics setting drew whatever was selected, so a
     // 110 m ship was illustrated with the same featureless sphere a rocky world gets — a picture that
     // is not merely plain but wrong about what the thing is (A28). It gets its OWN glyph below (A30).
@@ -177,6 +191,9 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
   // 4) Facts + description. For the sliver frame these flow in a RIGHT column beside the left photo
   // strip. The 'Tags' fact is pulled out and rendered as a styled tags block below (full width).
   if (sliver && opts.image) blocks.push({ kind: 'columnStart', img: opts.image, aspect: opts.imageAspect || 1.6, focus: opts.imageFocus });
+  // The globe as a RESERVED left column — the same '__bodygfx' id the full-width band uses, so a
+  // consumer overlays the live renderer identically and never has to know which layout it got.
+  else if (gfxBeside) blocks.push({ kind: 'columnStart', reserveId: '__bodygfx', aspect: 1, stripWFrac: docGraphicStripFrac(opts.pageWidth ?? 0) });
   if (subject) {
     // A construct's facts want its HOST to describe where it is ("Adrian: Low Orbit"); resolve it the
     // same way the parent-nav row above does, so the two cannot name different parents.
@@ -192,7 +209,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     blocks.push({ kind: 'spacer', h: 6 });
     blocks.push({ kind: 'text', text: selected.description, italic: true });
   }
-  if (sliver) blocks.push({ kind: 'columnEnd' });
+  if (sliver || gfxBeside) blocks.push({ kind: 'columnEnd' });
 
   // 4b) Tags — pills / plain list / grouped, per the preset.
   const tags = resolveTags(subject);

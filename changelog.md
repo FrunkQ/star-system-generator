@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.874-beta - 20th Aug 2026
+
+- **FIXED: the two 3D maps drew names in different colours.** The starmap took the preset's accent; the system map passed null and kept a fixed pale blue, so a themed campaign was themed on one stage and not the other. One rule now, on the style, resolved exactly as the starmap resolves it. The system map's old reasoning — keep labels neutral and let a CRT filter colour them — still holds in isolation and lost on consistency; a filter tints whatever it is given.
+- **The document view puts the body graphic BESIDE the facts on a page with room**, and above them on one without, as before. The test takes width AND height: a phone held sideways is wider than plenty of desktop windows and is the clearest case for stacking, so width alone would have split exactly the screen that must not be. Both layouts reserve the same rect id, so the live renderer is overlaid identically and nothing downstream needs to know which it got.
+
 ## v2.1.872-beta - 19th Aug 2026
 
 - FIXED: a real-sky import could bring the same wide companion in twice - once from SIMBAD as a star with class-typical figures, once from the exoplanet archive as a planet with a measured mass - leaving two vast crossing orbits round one body (BD+13 2618 / Ross 458 was the report). The two filings are now cross-identified by projected separation and merged into one node that keeps the measured mass and says what the other catalogue called it; and when the archive knows the system has more stars than the star catalogue resolved, the primary says so instead of importing silently thin.

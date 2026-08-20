@@ -199,3 +199,78 @@ describe('map-highlight chips under the name', () => {
     }))).toBeNull();
   });
 });
+
+// The body graphic sits BESIDE the facts on a page with room and ABOVE them on one without. The two
+// forms must be interchangeable to a consumer: both reserve the same '__bodygfx' id, so whatever
+// overlays the live renderer finds its rect without knowing which layout it got.
+describe('the body graphic beside the facts', () => {
+  const wide = { imagery: 'sphere' as const, pageWidth: 1300, pageHeight: 900 };
+  const narrow = { imagery: 'sphere' as const, pageWidth: 380, pageHeight: 800 };
+
+  it('stacks when the page is narrow — a full-width band, no column', () => {
+    const b = buildGuideDocument(system, 'earth', narrow);
+    expect(kinds(b)).toContain('bodyDisc');
+    expect(kinds(b)).not.toContain('columnStart');
+  });
+
+  it('splits when the page has room — a reserved column, no band', () => {
+    const b = buildGuideDocument(system, 'earth', wide);
+    expect(kinds(b)).toContain('columnStart');
+    expect(kinds(b)).not.toContain('bodyDisc');
+  });
+
+  it('reserves the SAME id either way, so a consumer never asks which layout it got', () => {
+    const stacked = buildGuideDocument(system, 'earth', narrow).find((b: any) => b.kind === 'bodyDisc');
+    const beside = buildGuideDocument(system, 'earth', wide).find((b: any) => b.kind === 'columnStart');
+    expect((stacked as any).id).toBe('__bodygfx');
+    expect((beside as any).reserveId).toBe('__bodygfx');
+  });
+
+  it('closes the column it opens, or every block after it flows in a phantom right column', () => {
+    const k = kinds(buildGuideDocument(system, 'earth', wide));
+    expect(k.filter((x) => x === 'columnStart')).toHaveLength(1);
+    expect(k.filter((x) => x === 'columnEnd')).toHaveLength(1);
+    expect(k.indexOf('columnEnd')).toBeGreaterThan(k.indexOf('columnStart'));
+  });
+
+  it('puts the facts INSIDE the column, which is the whole point of opening one', () => {
+    const k = kinds(buildGuideDocument(system, 'earth', wide));
+    const kv = k.indexOf('keyValue');
+    expect(kv).toBeGreaterThan(k.indexOf('columnStart'));
+    expect(kv).toBeLessThan(k.indexOf('columnEnd'));
+  });
+
+  it('stacks when the caller says nothing about its size — an untaught caller keeps the old layout', () => {
+    const k = kinds(buildGuideDocument(system, 'earth', { imagery: 'sphere' }));
+    expect(k).toContain('bodyDisc');
+    expect(k).not.toContain('columnStart');
+  });
+
+  it('leaves a CONSTRUCT alone: a hull is long and thin, and a side column makes it a speck', () => {
+    const k = kinds(buildGuideDocument(system, 'iss', wide));
+    expect(k).not.toContain('columnStart');
+  });
+
+  it('draws no graphic at all when imagery is off, room or not', () => {
+    const k = kinds(buildGuideDocument(system, 'earth', { ...wide, imagery: 'none' }));
+    expect(k).not.toContain('columnStart');
+    expect(k).not.toContain('bodyDisc');
+  });
+
+  // The info block DOES carry a body graphic — DocPanel looks up the same '__bodygfx' rect — so the
+  // question for it is the same one as for the page: has its host reported room? DocPanel reports
+  // none, so it stacks, which is what a narrow side aside wants.
+  it('stacks the info-block form, whose host reports no size', () => {
+    const k = kinds(buildGuideDocument(system, 'earth', { imagery: 'sphere', panel: true }));
+    expect(k).toContain('bodyDisc');
+    expect(k).not.toContain('columnStart');
+  });
+
+  it('closes its column BEFORE the info-block form returns early, or the panel leaks a column', () => {
+    const k = kinds(buildGuideDocument(system, 'earth', { ...wide, panel: true }));
+    if (k.includes('columnStart')) {
+      expect(k.filter((x) => x === 'columnEnd')).toHaveLength(1);
+      expect(k.indexOf('columnEnd')).toBeGreaterThan(k.indexOf('columnStart'));
+    }
+  });
+});

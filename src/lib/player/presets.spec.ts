@@ -5,7 +5,7 @@
 // test you have to edit in lockstep with the thing it guards is a test people delete. It pins the
 // choices that carry intent, plus the two structural properties that are easy to break by accident.
 import { describe, it, expect } from 'vitest';
-import { BUILTIN_PRESETS, DEFAULT_PRESET, normalizePreset } from './presets';
+import { BUILTIN_PRESETS, DEFAULT_PRESET, normalizePreset, holoStyleOf, systemStageStyle } from './presets';
 
 const byId = Object.fromEntries(BUILTIN_PRESETS.map((p) => [p.id, p]));
 
@@ -106,5 +106,36 @@ describe('the shipped six', () => {
     expect(DEFAULT_PRESET.builtIn).toBeUndefined();
     expect(DEFAULT_PRESET.cover.enabled).toBe(false);
     expect(DEFAULT_PRESET.filter).toBe('none');
+  });
+});
+
+// The two 3D maps drew body/system names in DIFFERENT colours: the starmap took the preset's accent
+// (`mono ? '#dfe6f0' : accentColor`), the system map passed null and kept a fixed pale blue. Both
+// choices were defensible alone — the system map's comment argued a neutral base is truest under a
+// CRT filter — and together they were a theme that only applied to half the app. One rule now, and
+// this pins it as ONE rule rather than two that happen to agree.
+describe('label colour is the same rule on both 3D maps', () => {
+  it('takes the preset accent', () => {
+    expect(holoStyleOf({ ...DEFAULT_PRESET, accentColor: '#ff8800' }).labelColor).toBe('#ff8800');
+  });
+
+  it('flattens the rainbow sentinel rather than handing a canvas a keyword', () => {
+    const c = holoStyleOf({ ...DEFAULT_PRESET, accentColor: 'rainbow' }).labelColor!;
+    expect(c).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
+  it('goes neutral in the monochrome body style, matching the starmap mono branch exactly', () => {
+    expect(holoStyleOf({ ...DEFAULT_PRESET, bodyStyle: 'white', accentColor: '#ff8800' }).labelColor).toBe('#dfe6f0');
+  });
+
+  it('survives the 2D flattening, which only overrides camera fields', () => {
+    const p = { ...DEFAULT_PRESET, systemView: 'diagram2d' as const, accentColor: '#22cc99' };
+    expect(systemStageStyle(p).labelColor).toBe('#22cc99');
+  });
+
+  it('never yields undefined for a real preset, or the scene falls back to its own default', () => {
+    for (const a of ['#123456', 'rainbow', '', undefined]) {
+      expect(holoStyleOf({ ...DEFAULT_PRESET, accentColor: a as string }).labelColor).toBeTruthy();
+    }
   });
 });

@@ -220,7 +220,11 @@
       : (system ? buildGuideDocument(system, selectedId, {
           units, tempUnit, colorful, imagery, rulePack, liveReadings, nowMs: nowMs ?? undefined, formatDate,
           highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
-          image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame
+          image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame,
+          // The COLUMN's width, not the surface's — margins are not measure the facts can use, and
+          // whether a split helps is a question about the text's measure. Height is the surface's,
+          // since vertical room is the other half of the test (docLayout).
+          pageWidth: vw - mx * 2, pageHeight: vh
         }) : []);
     // GENUINE header/footer: reserve a band for the tip banners (and the company/footer stamps) so the
     // body flows BETWEEN them instead of running underneath — and clip the body to that band so scrolled

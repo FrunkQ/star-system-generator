@@ -306,6 +306,11 @@ export function holoPresetToPlayer(hp: HoloStyle & { id?: string; name?: string 
 export function holoStyleOf(p: PlayerPreset): HoloStyle {
   return {
     filter: p.filter,
+    // Resolved EXACTLY as Starmap3DView resolves its own (`mono ? '#dfe6f0' : accentColor`), because
+    // the complaint was that the two disagreed — so the rule has to be one rule, not two that happen
+    // to agree today. `accentSolid` flattens 'rainbow' to a usable single colour, as everywhere else
+    // a sentinel meets a canvas.
+    labelColor: p.bodyStyle === 'white' ? '#dfe6f0' : accentSolid(p.accentColor),
     filterParams: p.filterParams ? { ...p.filterParams } : undefined,
     compression: p.compression,
     angleDeg: p.lockOverhead ? 0 : p.angleDeg,

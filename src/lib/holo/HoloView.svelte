@@ -111,9 +111,12 @@
     controller?.setOrbitLinesVisible(orbitLinesVisible);
     controller?.setLabelSize(s.labelSize ?? 11);
     controller?.setLabelFont(s.font ?? null);
-    // Labels are in-scene sprites now, so the shader tints them under CRT automatically — keep them a
-    // neutral light colour and let the filter do the colouring (true to "impacted by the filter").
-    controller?.setLabelColor(null);
+    // The preset's accent, the same colour and by the same rule the 3D starmap uses. This used to
+    // pass null on the reasoning that labels are in-scene sprites, so a CRT-style filter tints them
+    // anyway and a neutral base is truest to "impacted by the filter". That reasoning still holds in
+    // isolation and lost on consistency: the starmap never took it, so a themed map had accent names
+    // on one stage and pale blue on the other. A filter still tints whatever it is given.
+    controller?.setLabelColor(s.labelColor ?? null);
     controller?.setLabelsVisible(labelsVisible);
   }
 

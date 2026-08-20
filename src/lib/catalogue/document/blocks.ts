@@ -209,10 +209,16 @@ export interface RuleBlock extends DocBlockBase { kind: 'rule'; }               
 // image drawn as a tall strip down the LEFT (used by the photo 'sliver' frame — image left, text right).
 export interface ColumnStartBlock extends DocBlockBase {
   kind: 'columnStart';
-  img: CanvasImageSource;
+  // A PHOTO strip, drawn into the filtered canvas...
+  img?: CanvasImageSource;
   aspect: number;
   stripWFrac?: number; // left strip width as a fraction of the column (default 0.34)
   focus?: ImageFocus | null; // subject box to centre the strip crop on (null = picture-centred)
+  // ...OR a RESERVED strip, left transparent for the caller to overlay the live renderer into, exactly
+  // as `bodyDisc` does — the body graphic is a real globe, not a bitmap this canvas could draw. Same
+  // id vocabulary ('__bodygfx'), so a consumer finds the rect the same way whether the picture ended
+  // up above the facts or beside them, and neither needs to know which layout it got.
+  reserveId?: string;
 }
 export interface ColumnEndBlock extends DocBlockBase { kind: 'columnEnd'; }
 

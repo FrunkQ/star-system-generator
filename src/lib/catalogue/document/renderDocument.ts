@@ -88,7 +88,7 @@ export function renderDocument(
   // Two-column (sliver) state: while active, blocks render in the RIGHT column (indented) and an image
   // is drawn as a strip down the LEFT, sized to the right column's height when the column closes.
   let colIndent = 0;
-  let col: { img: CanvasImageSource; aspect: number; stripW: number; top: number; focus?: ImageFocus | null } | null = null;
+  let col: { img?: CanvasImageSource; reserveId?: string; aspect: number; stripW: number; top: number; focus?: ImageFocus | null } | null = null;
 
   // Only paint a block if any of it is inside the visible band; always advance + record its region.
   const visible = (top: number, h: number) => top + h > layout.y - 2 && top < maxY + 2;
@@ -101,7 +101,7 @@ export function renderDocument(
     switch (b.kind) {
       case 'columnStart': {
         const stripW = colW * (b.stripWFrac ?? 0.34);
-        col = { img: b.img, aspect: b.aspect, stripW, top: y, focus: b.focus };
+        col = { img: b.img, reserveId: b.reserveId, aspect: b.aspect, stripW, top: y, focus: b.focus };
         colIndent = stripW + px(12, s); // right column starts past the strip + a gap
         break; // don't advance y — the right column starts level with the strip top
       }
@@ -109,7 +109,17 @@ export function renderDocument(
         if (col) {
           const minH = colW * 0.5 / (col.aspect || 1);
           const stripH = Math.max(y - col.top, minH);
-          if (col.top + stripH > layout.y - 2 && col.top < maxY + 2) {
+          if (col.reserveId) {
+            // A RESERVED strip: no paint at all, just the rect, recorded exactly as `bodyDisc` records
+            // its band. The live renderer is overlaid here by the caller. It is SQUARED and centred in
+            // the strip rather than filling it, because a globe is round and a tall column would
+            // otherwise stretch the gap far below the picture that sits in it — leaving the facts
+            // beside a large empty space.
+            const side = Math.min(col.stripW, stripH);
+            const gx = colX + (col.stripW - side) / 2;
+            const gy = col.top + Math.min(stripH - side, side * 0.12); // near the top, not floating mid-column
+            regions.push({ id: col.reserveId, x0: gx, y0: gy, x1: gx + side, y1: gy + side });
+          } else if (col.img && col.top + stripH > layout.y - 2 && col.top < maxY + 2) {
             if (theme.mono) ctx.filter = 'grayscale(1) brightness(1.05)'; // lift the photo a little under mono
             drawImageBlock(ctx, col.img, 'sliver', colX, col.top, col.stripW, stripH, col.aspect, col.focus);
             ctx.filter = baseFilter; // back to the SURFACE filter, not to none

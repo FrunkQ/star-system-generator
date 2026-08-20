@@ -35,6 +35,10 @@ export interface HoloStyle {
   gridFalloff?: number; // G4: ground-grid distance fade, 0 (even, the default) .. 1 (bright centre, gone by the edge)
   gridDepth?: number;   // ground-grid depth curtain, 0 (flat, the default) .. 1 — the starmap's twin
   gridScaleAu?: number; // lattice cell in AU; 0/undefined = automatic decade ladder
+  // Body-name text colour. The starmap has always drawn its names in the preset's ACCENT; this view
+  // drew them in a fixed pale blue, so one highlighted map matched the theme and the other did not.
+  // Undefined keeps the scene's own default, which is what a caller with no preset (BodyGraphic) wants.
+  labelColor?: string;
   // G9: how the campaign's OWN charted systems are shown in this view's sky — 'off' (generic starfield
   // alone), 'true' (real direction/magnitude/colour), 'marked' (the same, with diffraction spikes and
   // names). The STAR LIST is data and arrives separately; only the choice is part of the look.
