@@ -85,6 +85,10 @@
       infillResult = infillOn ? infillSystem(fixed, rulePack, { knobs: infillKnobs, ageGyr: base.age_Gyr }) : null;
       let sys = systemProcessor.process(fixed, rulePack) as System;
       for (let i = 0; i < 6; i++) sys = systemProcessor.process(sys, rulePack) as System;
+      // Stamp the pack that actually processed this import, so a SAVED file carries it - the
+      // converters write '' and the load-side gate should be the backstop, not the source of
+      // truth (inbox D26; the owner: 'we are managing to export bad files').
+      if (!sys.rulePackId) { sys.rulePackId = (rulePack as any)?.id ?? ''; (sys as any).rulePackVersion = (sys as any).rulePackVersion || (rulePack as any)?.version || ''; }
       processedSystem = sys;
       review = source.buildReview(sys, { assumptions: (rawSystem as any).__assumptions ?? [], skipped: (rawSystem as any).__skipped ?? [] } as any);
     } catch (e) { fail(e); }
@@ -137,6 +141,10 @@
         if (Math.abs(now - prev) < 0.1) break;
         prev = now;
       }
+      // Stamp the pack that actually processed this import, so a SAVED file carries it - the
+      // converters write '' and the load-side gate should be the backstop, not the source of
+      // truth (inbox D26; the owner: 'we are managing to export bad files').
+      if (!sys.rulePackId) { sys.rulePackId = (rulePack as any)?.id ?? ''; (sys as any).rulePackVersion = (sys as any).rulePackVersion || (rulePack as any)?.version || ''; }
       processedSystem = sys;
       systemName = result.system.name;
       review = source.buildReview(sys, result);

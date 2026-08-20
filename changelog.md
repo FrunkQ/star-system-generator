@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.878-beta - 20th Aug 2026
+
+- Imports now stamp the rule pack that processed them, so a freshly saved import carries its pack id instead of a blank one - the load-side tolerance stays as the backstop. The same fix, with the load gates, went to production as v2.1.5.
+
 ## v2.1.877-beta - 18th Aug 2026
 
 - The biosphere/surface-light session (F68) retired. Its territory notes — the traps not visible from the code, the apparent-colour retirement's final state, and a Known-open checklist — are in docs/dev/biosphere-and-light-notes.md. The cloud-layering workstream B83 is the successor.
