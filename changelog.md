@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.875-beta - 20th Aug 2026
+
+- FIXED: the starmap file picker has refused every file - plain JSON and bundles alike - since the save-bundle rework a fortnight ago, always claiming a JSON format error. The reader was still delivering text to a handler that now expects bytes, so every file arrived empty. It reads bytes now, and the error message reports what actually failed instead of blaming the file.
+
 ## v2.1.874-beta - 20th Aug 2026
 
 - **FIXED: the two 3D maps drew names in different colours.** The starmap took the preset's accent; the system map passed null and kept a fixed pale blue, so a themed campaign was themed on one stage and not the other. One rule now, on the style, resolved exactly as the starmap resolves it. The system map's old reasoning — keep labels neutral and let a CRT filter colour them — still holds in isolation and lost on consistency; a filter tints whatever it is given.

@@ -1836,12 +1836,20 @@
         starmapStore.set(sanitized);
         showNewStarmapModal = false;
       } catch (e) {
-        alert('Error parsing JSON file. Please check the file format.');
+        // Say what actually failed - this catch wraps far more than JSON.parse, and for two weeks
+        // it blamed the file for a reader bug of ours.
+        const msg = e instanceof SyntaxError
+          ? 'That file is not valid JSON. If it is a bundle (.sse.zip), it may be corrupted.'
+          : `The file loaded but could not be opened: ${(e as Error)?.message ?? e}`;
+        alert(msg);
         console.error(e);
       }
     };
 
-    reader.readAsText(file);
+    // BYTES, not text: the onload above sniffs a zip magic number and feeds a Uint8Array. This
+    // line still said readAsText after the bundle rework (e39f468e), and new Uint8Array(<string>)
+    // coerces to an EMPTY array - so every file, JSON or bundle, failed as 'Error parsing JSON'.
+    reader.readAsArrayBuffer(file);
   }
 
 
