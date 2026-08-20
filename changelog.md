@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.5 - 20th Aug 2026
+
+- FIXED: a system file with a blank rule-pack id would not load ("Invalid system file. Missing system-specific properties") - and this app's own ubox and SpaceEngine imports write exactly such files, so a system imported, saved and reopened was refused. The pack id was never needed to load: the file is processed with the current pack regardless. It is now stamped on load where blank, stamped at import time so saved files carry it, the message says what is actually required, and a whole campaign is no longer refused for one embedded system with a blank or stale pack id.
+
 ## v2.1.4 - 29th Jul 2026
 
 **A skies-and-weather update.** Since v2.1.3 the clouds stopped being painted on. A world's air now gets a real temperature profile, every cloud layer is placed where its substance genuinely condenses, and what falls out of it is worked out rather than assigned. Stars grew a surface to match. The test of all this is an absence: Saturn has no methane clouds, and now neither does ours. (The unified player-view system is still in testing and is not part of this release; the Field Guide and the Projector remain the players' views.)

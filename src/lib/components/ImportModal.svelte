@@ -83,6 +83,9 @@
         if (Math.abs(now - prev) < 0.1) break;
         prev = now;
       }
+      // Stamp the pack that actually processed this import, so a SAVED file carries it - the
+      // converters write '' and a bad file was being minted at the source (inbox D26).
+      if (!sys.rulePackId) { sys.rulePackId = rulePack?.id ?? ''; (sys as any).rulePackVersion = (sys as any).rulePackVersion || (rulePack as any)?.version || ''; }
       processedSystem = sys;
       systemName = result.system.name;
       review = source.buildReview(sys, result);

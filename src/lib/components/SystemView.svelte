@@ -1304,6 +1304,17 @@
 
 
 
+  // ONE gate for both load paths (hotfix, ported from beta - inbox D26). `rulePackId` is NOT a
+  // load requirement: the loader processes with the app's CURRENT pack whatever the file says, and
+  // this app's own ubox/SpaceEngine imports write it blank - so demanding it refused real files
+  // with a message calling a present-but-empty field 'missing'. A blank id is stamped with the
+  // current pack on load, so the file records what actually processed it.
+  function isLoadableSystem(doc: any): boolean {
+    if (!doc || typeof doc !== 'object' || !doc.id || !doc.name || !Array.isArray(doc.nodes)) return false;
+    if (!doc.rulePackId) { doc.rulePackId = rulePack?.id ?? ''; doc.rulePackVersion = doc.rulePackVersion || rulePack?.version || ''; }
+    return true;
+  }
+
   async function handleLoadExample(event: CustomEvent<string>) {
     const fileName = event.detail;
     if (!fileName) return;
@@ -1314,7 +1325,7 @@
         throw new Error(`Failed to fetch ${fileName}`);
       }
       let newSystem = await response.json();
-      if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
+      if (isLoadableSystem(newSystem)) {
         // Keep the old ID to preserve starmap link
         const oldId = $systemStore?.id;
         if (oldId) {
@@ -1325,7 +1336,7 @@
         currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
       } else {
-        alert('Invalid system file. Missing system-specific properties.');
+        alert('Invalid system file: it needs an id, a name and a nodes array.');
       }
     } catch (err) {
       alert('Failed to parse JSON file.');
@@ -1389,7 +1400,7 @@
       try {
         const json = e.target?.result as string;
         let newSystem = JSON.parse(json);
-        if (newSystem.id && newSystem.name && Array.isArray(newSystem.nodes) && newSystem.rulePackId) {
+        if (isLoadableSystem(newSystem)) {
           // Keep the old ID to preserve starmap link
           const oldId = $systemStore?.id;
           if (oldId) {
@@ -1403,7 +1414,7 @@
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;
         } else {
-          alert('Invalid system file. Missing system-specific properties.');
+          alert('Invalid system file: it needs an id, a name and a nodes array.');
         }
       } catch (err) {
         alert('Failed to parse JSON file.');
