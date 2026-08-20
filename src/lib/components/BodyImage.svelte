@@ -17,6 +17,23 @@
   export let system: System | null = null;
   export let rulePack: RulePack | null = null;
 
+  import { pictureBoxH, pictureFit, PICTURE_MIN_H, PICTURE_MAX_H } from '$lib/pictureBoxStore';
+
+  // Grab-and-scale, same idiom as the inspector sidebar's separator: pointer capture on the grip,
+  // height follows the drag, the store persists it per viewer. 48px is an effective minimise.
+  function startPicResize(e: PointerEvent) {
+    const startY = e.clientY;
+    let h0 = 0; const un = pictureBoxH.subscribe((v) => (h0 = v)); un();
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      pictureBoxH.set(Math.min(PICTURE_MAX_H, Math.max(PICTURE_MIN_H, h0 + (ev.clientY - startY))));
+    };
+    const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+  }
+
   type View = 'photo' | 'disc' | 'sphere' | 'swatch' | 'horizon';
   let view: View = 'photo';
 
@@ -65,9 +82,17 @@
 </script>
 
 {#if body && (body.image || views.length)}
-  <div class="planet-image-container">
+  <div class="planet-image-container" style="height: {$pictureBoxH}px; --pic-fit: {$pictureFit === 'slice' ? 'cover' : 'contain'}">
     {#if view === 'photo' && body.image}
       <img src={body.image.url} alt="Artist's impression of {body.name}" class="planet-image" />
+      <button type="button" class="fit-toggle"
+              title={$pictureFit === 'slice' ? 'Showing the centred slice - click to fit the whole image, smaller' : 'Showing the whole image - click for the centred slice'}
+              aria-label="Toggle whole image / centred slice"
+              on:click={() => pictureFit.set($pictureFit === 'slice' ? 'whole' : 'slice')}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          {#if $pictureFit === 'slice'}<rect x="3" y="3.5" width="18" height="17" rx="1.5" stroke-dasharray="2.5 2.5"/><rect x="3" y="8.5" width="18" height="7" rx="1"/>{:else}<rect x="3" y="3.5" width="18" height="17" rx="1.5"/><rect x="7.5" y="7" width="9" height="10" rx="1"/>{/if}
+        </svg>
+      </button>
     {:else if view === 'swatch'}
       <!-- The old Colours view listed the swatches this world is MADE of, which turned out to answer a
            question nobody was asking. What a GM wants is the other direction: familiar colours, as they
@@ -109,24 +134,46 @@
         <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       </a>
     {/if}
+    <div class="pic-grip" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the picture"
+         title="Drag to resize - drag right up to minimise the picture" on:pointerdown={startPicResize}></div>
   </div>
 {/if}
 
 <style>
-  /* A FIXED 4:3 box, so the panel does not jump as you switch between a tall artist's impression,
+  /* A FIXED LETTERBOX, so the panel does not jump as you switch between a tall artist's impression,
      a square render and a wide chart. Overzooming the picture to fill it is the right trade: a
-     slightly cropped planet reads better than a panel that resizes under the cursor. */
+     cropped planet reads better than a panel that resizes under the cursor. 2:1 rather than the
+     old 4:3 (owner, 2026-08-21: smaller, more letterbox, truncated top/bottom) - object-fit: cover
+     does the vertical crop. */
   .planet-image-container {
     position: relative;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    /* height comes inline from pictureBoxStore (grab the grip below to resize; 48px = minimised) */
     border-radius: 5px;
     overflow: hidden;
+  }
+  .fit-toggle {
+    position: absolute; top: 6px; right: 6px; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 5px; border: 1px solid #ffffff33;
+    background: #0009; color: #dfe7f2; cursor: pointer;
+    opacity: 0; transition: opacity 120ms ease;
+  }
+  .planet-image-container:hover .fit-toggle, .fit-toggle:focus-visible { opacity: 1; }
+  .pic-grip {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 8px; z-index: 2;
+    cursor: ns-resize; touch-action: none;
+    background: linear-gradient(#0000, #0006);
+  }
+  .pic-grip::after {
+    content: ''; position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
+    width: 34px; height: 3px; border-radius: 2px; background: #ffffff42;
   }
   .planet-image {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: var(--pic-fit, cover);
+    background: #05070c; /* letterbox bars when the whole image shows smaller */
     border-radius: 5px;
     display: block;
   }

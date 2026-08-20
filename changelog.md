@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.880-beta - 21st Aug 2026
+
+- The info panel's picture is now yours to shape: grab the strip under it to drag it taller, shorter or minimised - the choice is remembered on this device - and a hover icon on the picture flips between the centred slice and the whole image letterboxed smaller. Player windows keep their own choice.
+
 ## 2.1.879-beta - 21st Aug 2026
 
 - Docs only. The surface-temperature session retires and leaves its notes: the traps in the day/night model, the ice-ageing and tidal-lock work, and how to read the derived-physics fixture as a review tool. It ends with what is still open, each in a form you can check in thirty seconds - including the one decision left for the owner, which is that the classifier is still reading the temperature a world RADIATES at where seventeen of its type tests want the temperature on its ground.
