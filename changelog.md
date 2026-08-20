@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.877-beta - 18th Aug 2026
+
+- The biosphere/surface-light session (F68) retired. Its territory notes — the traps not visible from the code, the apparent-colour retirement's final state, and a Known-open checklist — are in docs/dev/biosphere-and-light-notes.md. The cloud-layering workstream B83 is the successor.
+
 ## v2.1.875-beta - 20th Aug 2026
 
 - FIXED: the starmap file picker has refused every file - plain JSON and bundles alike - since the save-bundle rework a fortnight ago, always claiming a JSON format error. The reader was still delivering text to a handler that now expects bytes, so every file arrived empty. It reads bytes now, and the error message reports what actually failed instead of blaming the file.
