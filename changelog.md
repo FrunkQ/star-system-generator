@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.872-beta - 19th Aug 2026
+
+- FIXED: a real-sky import could bring the same wide companion in twice - once from SIMBAD as a star with class-typical figures, once from the exoplanet archive as a planet with a measured mass - leaving two vast crossing orbits round one body (BD+13 2618 / Ross 458 was the report). The two filings are now cross-identified by projected separation and merged into one node that keeps the measured mass and says what the other catalogue called it; and when the archive knows the system has more stars than the star catalogue resolved, the primary says so instead of importing silently thin.
+
 ## v2.1.871-beta - 19th Aug 2026
 
 - Fixed: the band-preview chart in Edit Atmospheres & Mixes printed its y-axis units as raw code ("W&#183;m&#8315;...") down the side of the plot instead of W·m⁻²·nm⁻¹.
