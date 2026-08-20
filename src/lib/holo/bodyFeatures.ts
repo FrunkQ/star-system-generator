@@ -431,18 +431,23 @@ export function makeJetTexture(): THREE.Texture {
 	const smooth = (x: number) => { const t = Math.max(0, Math.min(1, x)); return t * t * (3 - 2 * t); };
 	for (let y = 0; y < H; y++) {
 		// Along the beam, from the centre (d = 0) to the tip (d = 1): a small gap for the star, a fast
-		// rise, full strength to the mid-point, then a smooth fade to nothing at the tip.
+		// rise, full strength to 0.45, then a QUICK fade — gone by 0.85, so the beam ends about three
+		// quarters of the way up the sprite rather than reaching its very tip (owner, 2026-08-19).
 		const d = Math.abs((y + 0.5) / H - 0.5) * 2;
-		const along = d < 0.03 ? 0 : d < 0.08 ? (d - 0.03) / 0.05 : d < 0.5 ? 1 : 1 - smooth((d - 0.5) / 0.5);
+		const along = d < 0.03 ? 0 : d < 0.08 ? (d - 0.03) / 0.05 : d < 0.45 ? 1 : Math.max(0, 1 - smooth((d - 0.45) / 0.4));
+		// The beam NARROWS TO THE STAR and widens as it goes — the width of both profiles grows with
+		// distance, so it launches as a point and opens into the fading cone the owner described.
+		const coreW = 0.09 + 0.24 * d;
+		const sheathW = 0.28 + 0.6 * d;
 		for (let x = 0; x < W; x++) {
 			const u = (x + 0.5) / W * 2 - 1;                  // -1..1 across the beam
-			const core = Math.exp(-((u / 0.2) ** 2));         // the hard bright spine
-			const sheath = 0.7 * Math.exp(-((u / 0.7) ** 2));  // the soft wide glow about it
+			const core = Math.exp(-((u / coreW) ** 2));       // the hard cyan-white spine
+			const sheath = 0.7 * Math.exp(-((u / sheathW) ** 2)); // the soft cyan glow about it
 			const a = Math.min(1, core + sheath) * along;
-			const t = core / (core + sheath + 1e-6);           // white spine, blue sheath
+			const t = core / (core + sheath + 1e-6);           // cyan-white spine, cyan sheath
 			const i = (y * W + x) * 4;
-			img.data[i] = Math.round(140 + (255 - 140) * t);
-			img.data[i + 1] = Math.round(180 + (255 - 180) * t);
+			img.data[i] = Math.round(110 + (235 - 110) * t);
+			img.data[i + 1] = Math.round(210 + (253 - 210) * t);
 			img.data[i + 2] = 255;
 			img.data[i + 3] = Math.round(255 * a);
 		}
@@ -505,7 +510,7 @@ export function buildStarLook(
 			opacity: strong ? 1 : 0.85
 		});
 		const sprite = new THREE.Sprite(mat);
-		const len = radius * (strong ? 20 : 14);
+		const len = radius * (strong ? 15 : 10.5);   // 3/4 of the first pass — "just not so long"
 		sprite.scale.set(radius * (strong ? 4.2 : 3.2), len, 1);
 		sprite.renderOrder = 2;
 		group.add(sprite);

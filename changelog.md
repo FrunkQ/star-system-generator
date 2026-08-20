@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.869-beta - 19th Aug 2026
+
+- Jets, third pass from the owner's eye: on both maps the beam now launches narrow at the star, widens as it goes and fades out along the way — cyan-white core in a cyan sheath — at three-quarters the previous length with a quick fade (the 3D beam is gone by 85% of its sprite; the GM map's cones carry the same fade as a gradient). The GM map's brief diamond version (widest at the star, points at the tips) never shipped.
+
 ## v2.1.868-beta - 19th Aug 2026
 
 - **A placed graphic can be inverted.** Logos ship white-on-transparent as often as the reverse, and a player view's backdrop can be either — so half the library was invisible on any given stage. A CSS filter, so it composites with whatever look filter the surface already carries.

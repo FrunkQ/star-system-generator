@@ -1278,6 +1278,20 @@
       tabindex="0"
       style="touch-action: none; {bgScreenStyle}"
     >
+      <defs>
+        <!-- The jet fade, along the beam: bright at the star (the gradient's middle), dimming
+             outward, GONE well before the tip — the quick fade the owner asked for. bbox units, so
+             one definition serves every jet at every size. -->
+        <linearGradient id="sm-jet-fade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#7fd4ff" stop-opacity="0" />
+          <stop offset="0.14" stop-color="#8fdcff" stop-opacity="0.45" />
+          <stop offset="0.32" stop-color="#c8f2ff" stop-opacity="0.9" />
+          <stop offset="0.5" stop-color="#eafeff" stop-opacity="1" />
+          <stop offset="0.68" stop-color="#c8f2ff" stop-opacity="0.9" />
+          <stop offset="0.86" stop-color="#8fdcff" stop-opacity="0.45" />
+          <stop offset="1" stop-color="#7fd4ff" stop-opacity="0" />
+        </linearGradient>
+      </defs>
       <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
       <!-- G16 MAP-FIXED BACKGROUND. First child of the world transform, so it is BEHIND the grid,
            the routes and every system, and holds registration with them at any pan or zoom for
@@ -1506,11 +1520,16 @@
                   <circle class="star-shell" cx={sx} cy={sy} r={r * (s.shedding >= 2 ? 2.6 : 2)} style="stroke:{s.color}; stroke-width:{r * (s.shedding >= 2 ? 0.5 : 0.32)}px; opacity:{s.shedding >= 2 ? 0.42 : 0.28}" />
                 {/if}
                 {#if s.jets}
-                  <!-- A jet is a hard bright spine inside a soft blue sheath — two strokes, as the
-                       3D map's texture draws it; one thin line read as a hairline. -->
-                  {@const jl = r * (s.jets >= 2 ? 5.5 : 4)}
-                  <line class="star-jet-sheath" x1={sx} y1={sy - jl} x2={sx} y2={sy + jl} style="stroke-width:{r * (s.jets >= 2 ? 1.1 : 0.85)}px" />
-                  <line class="star-jet" x1={sx} y1={sy - jl} x2={sx} y2={sy + jl} style="stroke-width:{r * (s.jets >= 2 ? 0.36 : 0.28)}px" />
+                  <!-- A jet NARROWS TO THE STAR and widens as it goes, the cyan-white core inside a
+                       soft sheath, fading out along the beam (the gradient) and gone by the tip —
+                       the 3D map's look, at three-quarters the old length with a quick fade (owner,
+                       2026-08-19). Two cones per layer, drawn as one bowtie polygon each. -->
+                  {@const jl = r * (s.jets >= 2 ? 4 : 3)}
+                  {@const w0 = r * 0.14}
+                  {@const wt = r * (s.jets >= 2 ? 0.8 : 0.62)}
+                  {@const wc = r * (s.jets >= 2 ? 0.32 : 0.25)}
+                  <polygon class="star-jet-sheath" points="{sx - w0},{sy} {sx - wt},{sy - jl} {sx + wt},{sy - jl} {sx + w0},{sy} {sx + wt},{sy + jl} {sx - wt},{sy + jl}" />
+                  <polygon class="star-jet" points="{sx - w0 * 0.5},{sy} {sx - wc},{sy - jl * 0.95} {sx + wc},{sy - jl * 0.95} {sx + w0 * 0.5},{sy} {sx + wc},{sy + jl * 0.95} {sx - wc},{sy + jl * 0.95}" />
                 {/if}
                 <circle
                   cx={sx}
@@ -2141,8 +2160,9 @@
   /* G26: tag-driven glyph marks. Stroke colour and width are inline (the star's own colour, sized
      to its radius); these hold what does not change. */
   .star-shell { fill: none; pointer-events: none; }
-  .star-jet-sheath { stroke: #8cb8ff; stroke-linecap: round; opacity: 0.38; pointer-events: none; }
-  .star-jet { stroke: #eef5ff; stroke-linecap: round; opacity: 0.95; pointer-events: none; }
+  /* Both layers take the along-beam fade gradient; the sheath is simply fainter overall. */
+  .star-jet-sheath { fill: url(#sm-jet-fade); opacity: 0.3; pointer-events: none; }
+  .star-jet { fill: url(#sm-jet-fade); opacity: 0.95; pointer-events: none; }
   .star-flares line { stroke-linecap: round; opacity: 0.85; pointer-events: none; }
 
   .star-label {
