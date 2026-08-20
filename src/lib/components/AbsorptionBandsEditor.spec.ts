@@ -68,4 +68,16 @@ describe('AbsorptionBandsEditor', () => {
     const { container } = render(AbsorptionBandsEditor, { props: { bands: bands() } });
     expect(container.querySelector('svg')).toBeNull();
   });
+
+  it('labels the axis with CHARACTERS, never HTML entities', () => {
+    // An SVG <text> node is set as text and never parsed as HTML, so an entity string renders
+    // literally — the y-axis read 'W&#183;m&#8315;...' on screen. It worked in the original caller
+    // because there it was an attribute in Svelte markup, which IS parsed; lifting it into a JS
+    // default is what broke it. Guarding the whole component catches the next one too.
+    const { container } = render(AbsorptionBandsEditor, {
+      props: { bands: bands(), previewLight: [1, 2, 3], absorbed: [0.5, 1, 1.5] }
+    });
+    expect(container.textContent).not.toMatch(/&#\d+;/);
+    expect(container.textContent).toContain('W·m⁻²·nm⁻¹');
+  });
 });

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.871-beta - 19th Aug 2026
+
+- Fixed: the band-preview chart in Edit Atmospheres & Mixes printed its y-axis units as raw code ("W&#183;m&#8315;...") down the side of the plot instead of W·m⁻²·nm⁻¹.
+
 ## v2.1.870-beta - 19th Aug 2026
 
 - FIXED: a construct's panel showed TWO pictures and led with the wrong one - the planet picture block put a bare fallback sphere above the ship, and the ship's real picture (model, else uploaded image, else the icon) sat further down among the specs. The construct's own picture now leads, once.

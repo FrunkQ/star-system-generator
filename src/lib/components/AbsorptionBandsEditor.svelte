@@ -30,7 +30,12 @@
   export let absorbed: number[] | null = null;
   export let absorbedLabel = 'what this absorbs';
   export let surfaceLabel = 'light from the preview star';
-  export let yLabel = 'W&#183;m&#8315;&#178;&#183;nm&#8315;&#185;';
+  // REAL CHARACTERS, NOT HTML ENTITIES. This value is handed to SpectrumChart and ends up as an SVG
+  // <text> node, where a string is set as text and never parsed as HTML — so entities render as the
+  // literal 'W&#183;m&#8315;...' the y-axis was showing. They worked in the ORIGINAL caller because
+  // there it was an attribute in Svelte markup, which IS parsed; lifting it into a JS default is what
+  // broke it. Any entity that moves from markup into script has the same fault waiting.
+  export let yLabel = 'W·m⁻²·nm⁻¹';
   /** Shown under the chart when there are no bands to draw — say what the FLAT line means. */
   export let emptyPreviewNote = 'Nothing is taken out: with no bands, this passes the whole spectrum through and only scatters.';
   /** Called after any edit. A parent whose reactivity keys off a CONTAINER (`pigments`, `gases`)
