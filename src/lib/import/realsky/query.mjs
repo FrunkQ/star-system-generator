@@ -30,7 +30,9 @@ export const ARCHIVE_COLUMNS = [
   'st_spectype', 'st_teff', 'st_rad', 'st_mass', 'st_lum', 'st_age', 'st_rotp',
   'pl_orbper', 'pl_orbsmax', 'pl_orbeccen', 'pl_orbincl', 'pl_orblper',
   'pl_bmasse', 'pl_bmassprov', 'pl_rade', 'pl_dens', 'pl_eqt',
-  'discoverymethod', 'disc_year', 'cb_flag'
+  'discoverymethod', 'disc_year', 'cb_flag',
+  // D28(3): the system's own star count, so an import can SAY when the census resolved fewer.
+  'sy_snum'
 ];
 
 const num = (v, name) => {

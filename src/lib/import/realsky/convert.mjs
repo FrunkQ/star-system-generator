@@ -300,6 +300,38 @@ export function convertRegion(
       if (match) hostsHere.push({ hostname, hostRows, star: match });
     }
 
+    // D28: ONE OBJECT, TWO CATALOGUES. A wide directly-imaged companion appears in the archive as a
+    // PLANET (Ross 458 c: 6 Mjup, a 1,100 AU) and in SIMBAD as a STAR (BD+13 2618C, T8.5), and with
+    // no cross-identification both were emitted - two nodes, two vast crossing orbits, one body.
+    // The match is by PROJECTED SEPARATION (the census's own currency - never names across
+    // catalogues), with the letter convention (planet 'c' / star 'C' is one object) admitted only as
+    // a tie-loosener at a wider tolerance. The archive row wins the merge: it carries a MEASURED
+    // mass where the census star has a class-typical guess, and role follows mass (B73/B74 - a
+    // 6 Mjup companion is a planet-role body whatever SIMBAD files it as). The primary can never be
+    // claimed: the planet's own host is excluded, and so is the group root.
+    const WIDE_COMPANION_MIN_AU = 50;   // only ever a directly-imaged companion out here
+    const claimedByRow = new Map();     // census star -> archive row that is the same object
+    const rowClaims = new Map();        // archive row -> census star it absorbed
+    for (const h of hostsHere) {
+      for (const row of h.hostRows) {
+        if (!(row.pl_orbsmax > WIDE_COMPANION_MIN_AU) || rowClaims.has(row)) continue;
+        for (const s of group) {
+          if (s === group[0] || s === h.star || claimedByRow.has(s)) continue;
+          const sepAU = projectedSeparationAu(h.star, s);
+          if (!(sepAU > 0)) continue;
+          const frac = Math.abs(sepAU - row.pl_orbsmax) / Math.max(sepAU, row.pl_orbsmax);
+          const planetLetter = ((row.pl_name ?? '').trim().split(/\s+/).pop() ?? '').toLowerCase();
+          const starLetter = (s.id ?? '').trim().slice(-1).toLowerCase();
+          const letterAgrees = planetLetter.length === 1 && planetLetter === starLetter;
+          if (frac <= 0.35 || (letterAgrees && frac <= 0.6)) {
+            claimedByRow.set(s, row);
+            rowClaims.set(row, s);
+            break;
+          }
+        }
+      }
+    }
+
     const ownId = `sys-${slug}`;
     const bundledId = hostsHere.map((h) => BUNDLED_ARCHIVE_HOSTS[h.hostname]).find(Boolean);
     const presentAs = existing.has(ownId) ? ownId : (bundledId && existing.has(bundledId) ? bundledId : null);
@@ -326,6 +358,14 @@ export function convertRegion(
       //
       // `-star-b` cannot collide with a planet letter by construction, and the PRIMARY keeps
       // `<slug>-star` so the `parentId` and `hostId` links below are unchanged.
+      const claimingRow = claimedByRow.get(s);
+      if (claimingRow) {
+        skipped.push({
+          hostname: cleanStarName(s.id),
+          reason: `same object as ${claimingRow.pl_name} in the exoplanet archive - kept once, with the measured mass (SIMBAD type ${s.sp ?? 'unknown'})`
+        });
+        return;
+      }
       const starId = `${slug}-${isPrimary ? 'star' : `star-${String.fromCharCode(97 + i)}`}`;
       // A matched archive row carries MEASURED parameters and always beats the class estimate.
       const archiveHost = hostsHere.find((h) => h.star === s);
@@ -375,8 +415,18 @@ export function convertRegion(
       h.hostRows.sort((a, b) => (a.pl_orbsmax ?? 1e9) - (b.pl_orbsmax ?? 1e9));
       for (const row of h.hostRows) {
         const p = planetNodeFromRow(row, slug, hostNode, mutualIncMax);
-        if (p.skip) skipped.push({ hostname: h.hostname, reason: p.skip });
-        else nodes.push(p.node);
+        if (p.skip) { skipped.push({ hostname: h.hostname, reason: p.skip }); continue; }
+        const absorbed = rowClaims.get(row);
+        if (absorbed) {
+          // The archive's e for a wide imaged companion is usually a 0 placeholder, not a fit. A
+          // wide pair's honest eccentricity is the same thermal draw the star-side orbit uses
+          // (f(e) = 2e - see the companion-orbit comment above); a measured value still wins.
+          if (row.pl_orbeccen == null) {
+            p.node.orbit.elements.e = round(0.05 + Math.sqrt(hash01(p.node.id + '|e')) * 0.8, 3);
+          }
+          p.node.description = `${p.node.description ? p.node.description + ' ' : ''}Also catalogued by SIMBAD as ${cleanStarName(absorbed.id)} (spectral type ${absorbed.sp ?? 'unknown'}) - one object, kept once with the archive's measured mass.`;
+        }
+        nodes.push(p.node);
       }
     }
 
@@ -407,6 +457,17 @@ export function convertRegion(
     // and a system with no age at all would break them — but it is now MARKED, so a derivation that
     // must not rest on a borrowed figure can refuse. Measured: SIMBAD's census carries no age column
     // at all, and the archive has `st_age` for 114 of 180 rows inside 41 ly.
+    // D28(3): the archive says how many stars the system HAS (sy_snum); say so when we fall short,
+    // instead of importing silently thin. A companion merged into a planet still counts as found.
+    const sySnum = Math.max(0, ...hostsHere.flatMap((h) => h.hostRows.map((r) => r.sy_snum ?? 0)));
+    const foundStars = nodes.filter((n) => n.roleHint === 'star').length + rowClaims.size;
+    if (sySnum > foundStars) {
+      const primaryNode = nodes.find((n) => n.id === `${slug}-star`);
+      if (primaryNode) {
+        primaryNode.description = `${primaryNode.description ? primaryNode.description + ' ' : ''}The exoplanet archive lists ${sySnum} stars in this system; ${foundStars} ${foundStars === 1 ? 'is' : 'are'} here - the others are unresolved in, or missing from, the star catalogue's cone.`;
+      }
+    }
+
     const measuredAge = hostsHere[0]?.hostRows?.[0]?.st_age;
     const ageGyr = measuredAge ?? 4.6;
     systems.push({
