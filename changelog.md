@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## 2.1.879-beta - 21st Aug 2026
+
+- Docs only. The surface-temperature session retires and leaves its notes: the traps in the day/night model, the ice-ageing and tidal-lock work, and how to read the derived-physics fixture as a review tool. It ends with what is still open, each in a form you can check in thirty seconds - including the one decision left for the owner, which is that the classifier is still reading the temperature a world RADIATES at where seventeen of its type tests want the temperature on its ground.
+
+
 ## v2.1.878-beta - 20th Aug 2026
 
 - Imports now stamp the rule pack that processed them, so a freshly saved import carries its pack id instead of a blank one - the load-side tolerance stays as the backstop. The same fix, with the load gates, went to production as v2.1.5.
