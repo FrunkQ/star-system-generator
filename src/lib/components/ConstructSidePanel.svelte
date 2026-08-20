@@ -231,7 +231,7 @@
   </div>
 
   <div class="specs-section">
-      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} isEditingConstruct={true} {hideActions} />
+      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} isEditingConstruct={true} {hideActions} showPortrait={false} />
   </div>
 </div>
 

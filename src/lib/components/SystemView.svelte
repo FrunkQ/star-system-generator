@@ -11,6 +11,7 @@
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
   import BodyDetailsPane from './BodyDetailsPane.svelte';
   import BodyImage from './BodyImage.svelte';
+  import ConstructPortrait from './ConstructPortrait.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
   import BodyPicker from './BodyPicker.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
@@ -2367,7 +2368,14 @@
                  gained the derived views: the 2D and 3D renders, the colours and the horizon are all
                  answers a GM wants BEFORE the prose, not after the delta-v table. -->
             {#if focusedBody && !isPlanning}
-                <BodyImage body={focusedBody} {system} {rulePack} />
+                {#if focusedBody.kind === 'construct'}
+                    <!-- A construct's own chain (model > uploaded image > icon glyph) leads, not the
+                         planet picture block - BodyImage has no construct views, so it showed a bare
+                         fallback sphere above a SECOND picture in the specs below (owner, 2026-08-19). -->
+                    <ConstructPortrait construct={focusedBody} {rulePack} nowMs={currentTime} />
+                {:else}
+                    <BodyImage body={focusedBody} {system} {rulePack} />
+                {/if}
             {/if}
 
             {#if focusedBody && !isPlanning}

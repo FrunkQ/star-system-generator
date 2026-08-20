@@ -6,16 +6,21 @@
 // happens when something must actually change (format, triangle count, texture weight).
 // Orientation is never a reason to re-encode - it rides on ModelRef.orient and applies at view time.
 //
-// CAPS (owner decision 3): warn 500 KB, hard 2 MB, both POST-conversion. The hard cap protects
-// the player broadcast; the warn line is advisory and the GM may sail past it knowingly.
+// CAPS (owner decision 3 REVISED 2026-08-19): TIERED, all POST-conversion. Under 5 MB is silent;
+// 5-15 MB warns (network delay + a parse stutter); 15-25 MB is a SEVERE warning the GM must
+// explicitly confirm (local/high-end only - can crash low-end and mobile browsers); over 25 MB
+// is rejected outright. The old 2 MB cap guarded "the player broadcast", but models are LOCAL
+// most of the time and travel at most once when they travel at all (a remote player does not
+// receive binaries today - G14), so the binding constraint is browser memory, not the wire.
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { MeshoptSimplifier } from 'meshoptimizer';
 import type { ParsedModel } from './modelImport';
 
-export const MODEL_WARN_BYTES = 500_000;
-export const MODEL_HARD_BYTES = 2_000_000;
+export const MODEL_WARN_BYTES = 5_000_000;   // under this: silent
+export const MODEL_SEVERE_BYTES = 15_000_000; // over this: explicit confirmation required
+export const MODEL_HARD_BYTES = 25_000_000;  // over this: rejected
 /** Simplify down to this when a mesh is over SIMPLIFY_WHEN_TRIANGLES - the printing-STL case. */
 export const TARGET_TRIANGLES = 20_000;
 export const SIMPLIFY_WHEN_TRIANGLES = 30_000;
@@ -26,7 +31,8 @@ export interface ConvertResult {
   originalTriangles: number;  // what arrived, so the GM is told what happened
   simplified: boolean;
   passthrough: boolean;       // original GLB bytes stored untouched
-  overWarn: boolean;          // over the 500 KB advisory line
+  overWarn: boolean;          // over the 5 MB advisory line
+  overSevere: boolean;        // over the 15 MB line - the modal requires explicit confirmation
 }
 
 /** Convert a parsed upload into the bytes the store keeps. Throws (user-showable) over the hard cap. */
@@ -39,7 +45,8 @@ export async function convertParsedModel(parsed: ParsedModel, originalBytes: Arr
     && parsed.triangles <= SIMPLIFY_WHEN_TRIANGLES) {
     return {
       glb: originalBytes, triangles: parsed.triangles, originalTriangles,
-      simplified: false, passthrough: true, overWarn: originalBytes.byteLength > MODEL_WARN_BYTES
+      simplified: false, passthrough: true, overWarn: originalBytes.byteLength > MODEL_WARN_BYTES,
+      overSevere: originalBytes.byteLength > MODEL_SEVERE_BYTES
     };
   }
 
@@ -57,13 +64,13 @@ export async function convertParsedModel(parsed: ParsedModel, originalBytes: Arr
   if (glb.byteLength > MODEL_HARD_BYTES) glb = await exportGlb(object, 512);
   if (glb.byteLength > MODEL_HARD_BYTES) {
     throw new Error(
-      `Still ${(glb.byteLength / 1048576).toFixed(1)} MB after simplifying - the 2 MB limit protects the player broadcast. ` +
-      `Reduce the model (fewer parts, smaller textures) and try again.`
+      `Model exceeds the ${Math.round(MODEL_HARD_BYTES / 1048576)} MB maximum limit (still ${(glb.byteLength / 1048576).toFixed(1)} MB after simplifying) - the cap prevents browser memory exhaustion. ` +
+      `Optimise textures and geometry and try again.`
     );
   }
 
   const triangles = countObjectTriangles(object);
-  return { glb, triangles, originalTriangles, simplified, passthrough: false, overWarn: glb.byteLength > MODEL_WARN_BYTES };
+  return { glb, triangles, originalTriangles, simplified, passthrough: false, overWarn: glb.byteLength > MODEL_WARN_BYTES, overSevere: glb.byteLength > MODEL_SEVERE_BYTES };
 }
 
 /** Meshopt simplification, per mesh, distributing the budget by share of the total count.

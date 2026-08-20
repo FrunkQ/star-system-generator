@@ -7,7 +7,7 @@
   import * as THREE from 'three';
   import type { CelestialBody, ModelRef } from '$lib/types';
   import { parseModel, type ParsedModel } from '$lib/constructs/modelImport';
-  import { convertParsedModel, MODEL_WARN_BYTES, type ConvertResult } from '$lib/constructs/modelConvert';
+  import { convertParsedModel, MODEL_WARN_BYTES, MODEL_SEVERE_BYTES, type ConvertResult } from '$lib/constructs/modelConvert';
   import { putModel, getModel } from '$lib/constructs/modelStore';
   import { createModelViewer, type ModelViewer } from '$lib/constructs/modelViewer';
 
@@ -23,6 +23,9 @@
 
   let busy = false;              // parsing/converting
   let saving = false;
+  // The 15-25 MB tier saves only after the GM ticks the acknowledgement; a fresh upload re-arms it.
+  let severeAccepted = false;
+  $: if (!converted?.overSevere) severeAccepted = false;
   let error: string | null = null;
   let fileName = '';
   let uploadBytes = 0;
@@ -91,7 +94,8 @@
       converted = {
         glb: stored.bytes, triangles: construct.model?.triangles ?? parsedStored.triangles,
         originalTriangles: construct.model?.triangles ?? parsedStored.triangles,
-        simplified: false, passthrough: true, overWarn: stored.bytes.byteLength > MODEL_WARN_BYTES
+        simplified: false, passthrough: true, overWarn: stored.bytes.byteLength > MODEL_WARN_BYTES,
+        overSevere: stored.bytes.byteLength > MODEL_SEVERE_BYTES
       };
       fileName = construct.model?.name || 'stored model';
       uploadBytes = stored.bytes.byteLength;
@@ -377,8 +381,11 @@
             {#if !parsed.hadMaterials}
               <div class="note">No materials in the source &mdash; shown in the ship's icon colour with panel-line edges.</div>
             {/if}
-            {#if converted.overWarn}
-              <div class="warn">Over {Math.round(MODEL_WARN_BYTES / 1024)} KB &mdash; fine locally, but every player download carries it.</div>
+            {#if converted.overSevere}
+              <div class="warn severe">Heavy asset &mdash; {kb(converted.glb.byteLength)}. Recommended for local play or high-end desktop GPUs only: it can consume enough memory to crash lower-end devices and mobile browsers.</div>
+              <label class="warn-ack"><input type="checkbox" bind:checked={severeAccepted} /> I understand &mdash; use it anyway</label>
+            {:else if converted.overWarn}
+              <div class="warn">This model is large ({kb(converted.glb.byteLength)}). Expect a loading delay over the internet and a brief stutter while the browser parses the geometry.</div>
             {/if}
           </div>
         {/if}
@@ -440,7 +447,7 @@
 
     <div class="actions">
       <button type="button" on:click={() => dispatch('close')}>Cancel</button>
-      <button type="button" class="primary" on:click={save} disabled={!converted || busy || saving}>
+      <button type="button" class="primary" on:click={save} disabled={!converted || busy || saving || (converted.overSevere && !severeAccepted)}>
         {saving ? 'Saving…' : 'Use this model'}
       </button>
     </div>
@@ -503,6 +510,8 @@
   .stats { font-size: 0.85em; color: #9aa4b4; display: flex; flex-direction: column; gap: 3px; }
   .stats .note { color: #7fb2d9; }
   .warn { font-size: 0.85em; color: #e0b352; }
+  .warn.severe { color: #ff9a7a; border-color: #ff9a7a; }
+  .warn-ack { display: flex; gap: 6px; align-items: center; font-size: 0.85em; color: #ffb38a; margin-top: 4px; }
   .error { font-size: 0.85em; color: #e06a6a; }
   .form-group { display: flex; flex-direction: column; gap: 3px; }
   .form-group label { font-size: 0.85em; color: #9aa4b4; }

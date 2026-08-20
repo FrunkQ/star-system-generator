@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.870-beta - 19th Aug 2026
+
+- FIXED: a construct's panel showed TWO pictures and led with the wrong one - the planet picture block put a bare fallback sphere above the ship, and the ship's real picture (model, else uploaded image, else the icon) sat further down among the specs. The construct's own picture now leads, once.
+- 3D model uploads: the 2 MB cap becomes tiers. Under 5 MB is silent; 5-15 MB warns about network delay and a parse stutter; 15-25 MB needs an explicit tick - it can crash lower-end devices and mobile browsers; over 25 MB is rejected. Models are local most of the time and travel at most once, so the binding constraint is browser memory, not the wire.
+
 ## v2.1.869-beta - 19th Aug 2026
 
 - Jets, third pass from the owner's eye: on both maps the beam now launches narrow at the star, widens as it goes and fades out along the way — cyan-white core in a cyan sheath — at three-quarters the previous length with a quick fade (the 3D beam is gone by 85% of its sprite; the GM map's cones carry the same fade as a gradient). The GM map's brief diamond version (widest at the star, points at the tips) never shipped.

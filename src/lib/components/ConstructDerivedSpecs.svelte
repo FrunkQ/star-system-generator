@@ -23,6 +23,9 @@
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
+  // The GM system view now leads with the portrait itself, so it turns this copy off; every
+  // other mount (specs modal, side panel, planner, ship panel) keeps the picture it always had.
+  export let showPortrait = true;
   export let hostBody: CelestialBody | null;
   export let isEditingConstruct: boolean = false; 
   export let hideActions: boolean = false; // New prop
@@ -223,9 +226,12 @@
 
 {#if specs}
   <div class="derived-specs">
-    <!-- G3: the ship's picture, same chain as the player document (model > image > glyph) -
-         here simply so the GM can see at a glance what is loaded. -->
-    <ConstructPortrait {construct} {rulePack} nowMs={Number.isFinite(displayTimeMs) ? displayTimeMs : null} />
+    <!-- G3: the ship's picture, same chain as the player document (model > image > glyph). The GM
+         system view leads with its own copy and passes showPortrait={false} - two pictures of one
+         ship in one panel was the owner's 2026-08-19 report. -->
+    {#if showPortrait}
+      <ConstructPortrait {construct} {rulePack} nowMs={Number.isFinite(displayTimeMs) ? displayTimeMs : null} />
+    {/if}
     <div class="specs-grid">
       <div class="spec-item fixed" title="Current crew / Maximum crew">
         <span class="label">Crew</span>
