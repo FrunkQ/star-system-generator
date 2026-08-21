@@ -111,6 +111,20 @@ hex or Traveller hex), **Traveller mode**, an overall **Star size** dial, and **
 giants and supergiants. At zero they are all the same size. Black holes keep their own glyph
 whatever you choose. Each player view carries its own copy of that dial, on its Starmap step.
 
+### Stars that show what they are
+
+Three things a star does are drawn on the map rather than badged onto it, on the GM starmap, the
+player starmaps and the system view alike, and all three are derived from the star's own numbers:
+
+* **Flares** licking off the limb of an *active* or *flare-star* star. A quiet one has none.
+* **Jets** — a pair of collimated beams along the magnetic axis, from a fed black hole, a neutron
+  star or a magnetar.
+* **A shed shell** of wind around an evolved star: a halo on a giant, a shell on a supergiant.
+
+You cannot switch these on from the map. The way to remove one is to remove the tag on the star's
+Tags tab; the way to earn one is to change the numbers that derive it — feed the hole, or swell the
+star. The Tags Guide has the detail.
+
 ### Your own map behind the stars
 
 ![The map background controls](static/screenshots/gs-map-background.png)
@@ -153,7 +167,8 @@ Click a system to drop into the **system visualiser** — a real-time orbital vi
 
 ![The Sol system with its stellar zones drawn](static/screenshots/gs-system.jpg)
 
-* **Focus.** Click any planet, moon or construct to centre the camera and open its data.
+* **Focus.** Click any planet, moon or construct to centre the camera and open its data. Drag to pan,
+  scroll or pinch to zoom, here and on the 3D view as well.
 * **Time.** Play/pause, and drag the **shuttle** to jog forwards or backwards from one minute per
   second up to ten years per second. The shuttle is momentary: push it, let go, and it springs back
   to a stop. **Scrubbing while time is running does not stop the clock** — you seek to wherever you
@@ -299,6 +314,34 @@ Everything recomputes live: temperature, fluids, magnetosphere, geology, habitab
 update as you edit. Derived values you disagree with (albedo, radiogenic heating, magnetosphere) can
 be overridden, and those overrides drive the tags in turn.
 
+### Editing the rules everything is built from
+
+The physics reads a **rule pack**, and the parts of it that matter most to a setting are editable in
+the app. **Settings > Planets** opens **Atmospheres**, **Liquids** and **Biospheres**; **Settings >
+Tech** opens **Fuel & Drives** and **Sensors**; **Settings > Tagging** owns the tag categories and
+their rules.
+
+* **Atmospheres.** Each gas carries its **absorption bands** — three numbers apiece: a centre, a
+  width and a strength, in nanometres — describing *where in the spectrum that gas eats incoming
+  light*. That is what decides the light reaching the ground, what a plant would have to live on, and
+  the colour of the sky from below; a gas with no bands only scatters. **Rayleigh** is its scattering
+  strength relative to nitrogen (CO₂ scatters about 2.4 times as hard, hydrogen about a fifth), which
+  is why a thick CO₂ sky is not simply a thicker blue one. The card is deliberately split into
+  **Derivation — what the physics reads** and **Presentation — how it is drawn**, and **nothing under
+  Presentation feeds the physics**: the surface-light chain never reads a gas's colour. Under
+  *Atmospheres > Reactions* you can also define what combines with what — ammonia and hydrogen
+  sulphide into the compound that colours Jupiter's belts, or krypton and unobtanium into pink
+  bubblegum clouds, which the model will take you at your word about.
+* **Biospheres.** What each life morphology looks like, how much ground it covers by default, the
+  order it paints in, and the pigments a world's light can favour. Each morphology also has a **light
+  colour** — what the night side glows: bioluminescence, city amber, somebody's purple arc-light.
+  Left unset it is the sodium amber it has always been.
+* **Fuel & Drives.** An engine definition can carry an **exhaust colour**, which tints the drive plume
+  of any ship fitted with it, on the map and in the model preview.
+
+Nothing here is a database. Only the handful of entries worth caring about are defined, and the rest
+is yours to invent.
+
 ---
 
 ## 5. Classification
@@ -318,6 +361,11 @@ something you can check. The letter and number come from its temperature; the ro
 big it has grown for that temperature, which is what separates a dwarf from a giant of the same
 colour. The dropdown names each one in plain words with a famous example (`G V — Main-sequence dwarf
 (yellow) · the Sun`), and the panel says the same thing underneath in a sentence.
+
+**Picking a spectral type draws a star from that class's range** rather than handing back its exact
+middle, so two G dwarfs are not identical — and the draw is seeded from the star, so it never rerolls
+under you. L, T and Y dwarfs have real figures of their own in the rule pack rather than falling back
+to something Sun-like.
 
 Because it is derived, **the type follows what you edit**: drag the temperature and the star walks
 along the spectral sequence; make it hugely larger and it becomes a giant. If your numbers describe a
@@ -407,7 +455,11 @@ Populate your system with infrastructure.
   surfaces alike, travels inside your saves, and
   reaches remote players over the broadcast automatically. The import dialogue asks you to align the
   hull by its **main drive** — the orange arrow, engines aft — because the map flies a ship nose-first
-  and flips it for a braking burn.
+  and flips it for a braking burn. The model dialogue is big enough to fly around: drag to orbit,
+  wheel or pinch to zoom, and **click the hull to place a drive** where you want the plume to come
+  from. A ship's drawn size follows the same rule a planet's does, from a readable marker at one end
+  of the size dial to true 1:1 at the other, with the icon standing in when the hull falls below about
+  ten pixels; and a hull adopts the map's render style, including the occluding wireframe.
 
 ### Autopilot
 
@@ -490,6 +542,15 @@ and illustrated), **Datapad**, **Console**, **CRT Terminal**, **Holo Table** and
 background for OBS. Duplicate one and it is yours to edit; the editor runs in six steps — General,
 Cover, Starmap, System, Transitions and Visual filter.
 
+Some preset controls are worth knowing about before you go hunting for them. The **System** step
+carries the campaign's own night sky — the systems on your starmap standing in as real stars behind
+the 3D view — with a **Star boost** and a **Name size** for it. Push star boost high and the
+brightness is deliberately oversaturated: at that end it stops reading as apparent magnitude, which
+is the point of it. Both steps have a **Grid falloff**, which fades a grid toward its edge instead of
+cutting it off, and the System step has its own orbit-line dial and the highlighted-tag marker shape,
+size and text. The **Starmap** step has the star-size-by-class dial and its own label size. Under
+**Transitions**, *Terminal Clear* and its siblings dress a change of scene.
+
 Everything is redacted against your visibility settings, and it updates live as you play, so moving
 the clock or focusing a world moves it on their screens too. **Open player view** starts one;
 players join by scanning the **QR code** or opening the **link**. Presets are saved with the
@@ -530,6 +591,9 @@ and descriptions, which makes it a safe "sensor scan" handout.
   map background — saves as a **`.sse.zip` bundle** instead: readable JSON with the assets beside it
   as real files. You can open one with any zip tool and look inside, or hand-edit it. Both load; the
   app decides by the zip magic number rather than by the file name, so a renamed file still works.
+  **A save carries what you authored, not what the engine derived from it** — the derived figures are
+  recomputed when the file is loaded, which is why saves are a third to a half smaller than they were
+  and why a file can never carry stale physics.
 * **Player-Safe export.** Share a spoiler-free copy that hides GM notes and hidden objects.
 * **Credit your work.** Save your name, contact and a version number into a system file, under the
   main star's details, so you are credited when you share it.

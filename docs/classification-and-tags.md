@@ -200,6 +200,14 @@ Two consequences for anyone reading star classes:
   what made it. Their identity depends on the progenitor, which is why `classifyStar` takes a
   progenitor mass separately (**PHY-14**).
 
+### One pack lookup a remnant depends on
+
+A star's portrait resolves **exact key first, then the bare letter** — `star/BH` before `star/B`.
+That is one lookup where there used to be three, and it means a pack that drops a remnant's own key
+gets **no portrait for it rather than a wrong one**: `star/BH` will not borrow `star/B`. Every shipped
+remnant carries its own key, which is why nothing moved when the three lookups became one. If you are
+authoring a pack, add the remnant keys or expect a gap.
+
 ## What an IMPORTED number is worth
 
 A catalogue value arrives as data, not as a measurement, and two of them mislead in ways that have
@@ -369,3 +377,10 @@ Tags that merely **duplicated** a class were removed (`Ocean World`→`planet/oc
   handles barycentre hops; flight dynamics uses `barycenter.effectiveMassKg` for host mass.
 - Guarded by `classification.barycentre.spec.ts` (the multi‑star examples must process without
   throwing and classify every planet).
+- **A member's elements describe its orbit about the BARYCENTRE, in the system plane — not the pair's
+  orbit about the star**, and reading them as the latter is the mistake the source data itself made
+  (inbox D14). Pluto and Charon reported a mutual eclipse "every 6 d" on that reading; corrected, the
+  event is dated and rare.
+- **The eclipse epoch is not anchored** (`Omega_deg` is 0), so any write-up should say the mutual
+  seasons are **in the right rhythm rather than on the right dates**. The row's own tooltip carries
+  the same caveat, and it is the honest limit of holding the elements fixed with no nodal precession.

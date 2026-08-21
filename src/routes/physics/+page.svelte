@@ -700,6 +700,11 @@
         you could see into it. A gas giant has no surface and goes down for thousands of kilometres, getting hotter
         and stranger the whole way; none of that is simulated, because none of it is visible. A giant's quoted
         temperature and pressure are its readings at the 1 bar level, and that's where our sky starts.</p>
+      <p><strong>A gas saturated at the ground makes frost, not cloud, and that is why Pluto has no methane
+        deck.</strong> A deck needs a level where the air becomes saturated as it rises and cools. If the air is
+        already saturated at the surface, the condensate is lying on the ground rather than floating above it, and
+        the model reports the frost. Pluto's real haze is photochemical, which is the next thing this model does not
+        do.</p>
       <p>Some real things are therefore missing. <strong>Photochemical hazes</strong> — the pale veil over Uranus,
         the orange smog above Titan's methane — are made <em>up there</em> by sunlight breaking gases apart, rather
         than rising from below, so this model can't produce them. Titan's haze is drawn, but from a separate rule.
@@ -1355,10 +1360,19 @@
     <section id="habitability">
       <h2>Habitability score</h2>
       <p>A 0–100 weighted score, rebalanced toward current astrobiology thinking — a liquid <strong>solvent</strong>
-        is the master variable: solvent (20, +5 for water = 25), temperature vs that solvent's liquid range (25),
+        is the master variable: solvent (20, +5 for water = 25), temperature against that solvent's band (25),
         atmospheric pressure (18), radiation (17), and surface gravity (15, a weak constraint with a wide 0.5–1.5 g
         tolerance) — the instantaneous <em>surface</em> conditions. The solvent must be genuinely <em>liquid</em>
         (a frozen ice cap scores 0 — its life potential is the subsurface ocean below).</p>
+      <p><strong>Which temperature, and it matters more than it sounds.</strong> The score reads the
+        <em>mean surface</em> temperature — the average of the day and night sides worked out under
+        <a href="#temp-range">temperature range</a> — and never the radiating temperature. The two diverge by 56 K
+        on Luna and 130 K on Mercury, and a score keyed on the wrong one is scoring a world nobody could stand on.
+        <strong>Be clear about what the band is, too:</strong> it is not the solvent's full liquid range but a
+        narrower plateau inside it — 283–298 K for water, falling to zero 40 K either side, with methane and ammonia
+        anchored at single points (111 K and 218 K) with a 30 K falloff. So a 340 K ocean world scores poorly on
+        temperature although its water is unambiguously liquid. That plateau is a judgement about <em>comfortable</em>
+        rather than about <em>liquid</em>, and it is worth knowing which of the two you are reading.</p>
       <p>The solvent factor is weighted <strong>presence-first</strong>: a standing surface liquid is high-value the
         moment it exists, and — for a world with only <em>one</em> known example to calibrate against — the <em>amount</em>
         is a weak signal next to whether it stays liquid at all (which the temperature and pressure factors already
