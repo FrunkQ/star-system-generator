@@ -139,3 +139,36 @@ describe('label colour is the same rule on both 3D maps', () => {
     }
   });
 });
+
+// A performance switch, not a cosmetic one: what it saves is FILL RATE. Each atmospheric shell is
+// alpha-blended over the body it wraps, so a cloudy world repaints the same pixels several times, and
+// that is what a weak GPU is short of. Requested by a player on a low-end device.
+describe('atmospheres switch', () => {
+  it('is ON unless a preset says otherwise, so nothing changes for anyone who never asks', () => {
+    expect(DEFAULT_PRESET.atmospheres).toBe(true);
+    expect(holoStyleOf(DEFAULT_PRESET).atmospheres).toBe(true);
+  });
+
+  it('carries a deliberate OFF through to the style', () => {
+    expect(holoStyleOf({ ...DEFAULT_PRESET, atmospheres: false }).atmospheres).toBe(false);
+  });
+
+  // `!== false` rather than `?? true`: a preset written before the field existed has no opinion, and
+  // an absent opinion must read as ON, not as undefined arriving at a renderer.
+  it('reads an ABSENT field as on, not as undefined', () => {
+    const old: any = { ...DEFAULT_PRESET };
+    delete old.atmospheres;
+    expect(holoStyleOf(old).atmospheres).toBe(true);
+  });
+
+  it('does not swallow the auroras switch, which stays its own control', () => {
+    const s = holoStyleOf({ ...DEFAULT_PRESET, atmospheres: false, auroras: true });
+    expect(s.atmospheres).toBe(false);
+    expect(s.auroras).toBe(true);
+  });
+
+  it('survives the 2D flattening — a 2D map is this renderer locked overhead, so it pays the same cost', () => {
+    const p = { ...DEFAULT_PRESET, systemView: 'diagram2d' as const, atmospheres: false };
+    expect(systemStageStyle(p).atmospheres).toBe(false);
+  });
+});

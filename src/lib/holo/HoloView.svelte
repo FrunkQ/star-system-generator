@@ -94,6 +94,7 @@
     controller?.setFlatOverhead(s.lockOverhead ?? false); // 2D map: tilt pinned top-down
     controller?.setLockRotation(s.lockRotation ?? false); // fixed heading: follow by panning
     controller?.setAuroras(s.auroras ?? true);
+    controller?.setAtmospheres(s.atmospheres !== false);
     controller?.setBeltStyle(s.beltStyle ?? 'rocks');
     controller?.setBodySize(s.bodySize);
     controller?.setSkyStars(skyStars, s.constellations ?? 'off', { boost: s.constellationBoost ?? 0.35, labelPx: s.constellationLabelSize ?? 11 });

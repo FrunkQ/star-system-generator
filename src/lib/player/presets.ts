@@ -80,6 +80,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   unlit: false,
   lensing: true,
   auroras: true,
+  atmospheres: true,
   // OFF by default: the reference-work reading. A preset that is an INSTRUMENT turns it on
   // (Datapad, Console below). See A29.
   liveReadings: false,
@@ -324,6 +325,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     unlit: p.unlit,
     lensing: p.lensing !== false, // default on
     auroras: p.auroras,
+    atmospheres: p.atmospheres !== false,
     beltStyle: p.beltStyle,
     background: p.background,
     bodySize: p.bodySize,

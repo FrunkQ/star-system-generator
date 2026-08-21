@@ -165,6 +165,14 @@ export interface PlayerPreset {
   render: 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ'; // solid vs 80s wireframe
   unlit: boolean; // flat lighting (no day/night terminator) — the efficient "2D map" look for overhead
   lensing?: boolean; // stylised black-hole gravitational lensing (§A13); default on (no-op without a BH)
+  // PERFORMANCE. Atmospheric shells on a body: the cloud deck(s), the limb glow and a tholin haze.
+  // Requested by a player on a low-end device, and what it actually buys is FILL RATE. The geometry
+  // and textures here are trivial; the cost is that every one of these shells is alpha-blended over
+  // the body it wraps, so a cloudy world repaints the same pixels three or four times over and a weak
+  // GPU is short of exactly that. Default on: nothing changes for anyone who does not ask. Auroras
+  // keep their OWN switch — they were already separate, and one control that silently swallowed
+  // another's job would make the second one look broken.
+  atmospheres?: boolean;
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
   // A construct's CURRENT levels — fuel, cargo, crew aboard — as against its permanent capacity. A star
   // catalogue would hold what a ship CAN carry; only a live instrument knows what is in the tanks right

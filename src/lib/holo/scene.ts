@@ -144,7 +144,8 @@ export interface HoloController {
   setBodyStyle(mode: 'textured' | 'flat' | 'white' | 'tint'): void; // colour selection ('tint' = legacy white)
   setRender(mode: RenderStyle): void; // filled spheres vs 80s vector wireframe (see-through / back-occluded)
   setUnlit(on: boolean): void; // flat lighting (no terminator) for the efficient "2D map" look
-  setAuroras(on: boolean): void; // show/hide the emissive polar aurora shells
+  setAuroras(on: boolean): void;
+  setAtmospheres(on: boolean): void; // PERF: build cloud decks / limb glow / haze at all // show/hide the emissive polar aurora shells
   setFlatOverhead(on: boolean): void; // "2D map": tilt pinned top-down (+ pan enabled). Never a 3D view.
   setLockRotation(on: boolean): void; // fix the heading: no spin by drag, and follow a body by PANNING
   setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
@@ -776,6 +777,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   // Aurora toggle: no rebuild — updateAuroras just stops modulating (opacity 0) when off.
   function setAuroras(on: boolean) { aurorasOn = on; }
+  function setAtmospheres(on: boolean) {
+    if (on === atmospheresOn) return;
+    atmospheresOn = on;
+    rebuildContent('atmospheres');
+  }
 
 
   // Belts & rings: tumbling rocks vs the GM orrery's flat band. Rebuilds.
@@ -1260,6 +1266,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // COLOUR selection: true-colour / class / white
   let unlit = false; // flat lighting (MeshBasic, no terminator) — the efficient "2D map" look
   let aurorasOn = true; // GM toggle: show the emissive polar aurora shells (updateAuroras hides when off)
+  // PERFORMANCE: build the atmospheric shells at all — cloud deck(s), limb glow, tholin haze. What
+  // this buys is FILL RATE, not memory: the shells are small meshes with cheap textures, and their
+  // cost is that each is alpha-blended over the body it wraps, so a cloudy world repaints the same
+  // pixels three or four times and a weak GPU is short of precisely that.
+  //
+  // It REBUILDS rather than hiding, unlike `aurorasOn` next door. Not because hiding would fail to
+  // save the blending — `visible = false` would skip the pass just as well — but because only the
+  // cloud LAYERS are tracked (`cloudVisuals`); the limb glow and the haze are parented to their
+  // sphere and forgotten, so a hide path would mean a registry for all three, built solely to serve a
+  // switch that is set once from a preset and never scrubbed. Rebuilding is what `setRender` and
+  // `setUnlit` next door already do for the same reason.
+  let atmospheresOn = true;
   let beltStyle: BeltStyle = 'rocks'; // rocks vs the orrery's flat band
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
@@ -3979,13 +3997,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               sphere.add(buildSelfLumGlow(radius, appear.selfLumGlow.colorHex, glowTexture));
             }
             // Atmosphere limb-glow: a thin Fresnel halo hugging the silhouette, coloured by the air/haze.
-            if (appear.atmGlow) {
+            if (appear.atmGlow && atmospheresOn) {
               sphere.add(buildAtmoGlow(radius, appear.atmGlow.colorHex, appear.atmGlow.strength));
             }
             // Cloud deck: a separate translucent shell above the surface that DRIFTS on its own — a
             // patchy deck on Earth-likes, an opaque haze veil on Venus-likes. Parented to the sphere so
             // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
-            if (appear.clouds) {
+            if (appear.clouds && atmospheresOn) {
               let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
               // A world with a derived deck STACK gets one shell per deck (Jupiter's ammonia over
               // its ammonium-hydrosulphide); a giant, or anything with no stack, keeps the single
@@ -3997,7 +4015,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
               cloudVisuals.push(...cl.layers);
             }
             // Titan's smog is a HIGH haze — outside the cloud shells, not baked into the surface.
-            if (appear.tholin?.atmospheric) {
+            if (appear.tholin?.atmospheric && atmospheresOn) {
               sphere.add(buildTholinHaze(radius, appear.tholin.colorHex, appear.tholin.strength));
             }
           }
@@ -4773,7 +4791,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
 }
 
 // ---- helpers ----

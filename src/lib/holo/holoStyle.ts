@@ -28,6 +28,7 @@ export interface HoloStyle {
   lockOverhead?: boolean; // pin the camera flat top-down (the "2D map" view) — never becomes a 3D view
   lockRotation?: boolean; // fix the heading: no spin by drag, and follow a focused body by PANNING
   auroras?: boolean; // show the emissive polar aurora shells (default on)
+  atmospheres?: boolean; // build cloud decks, limb glow and haze at all (default on; off is a perf saving)
   beltStyle?: 'rocks' | 'band'; // belts/rings as tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS
   bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
@@ -79,5 +80,6 @@ export const DEFAULT_STYLE: HoloStyle = {
   labelSize: 11,
   render: 'filled',
   auroras: true,
+  atmospheres: true,
   beltStyle: 'rocks'
 };

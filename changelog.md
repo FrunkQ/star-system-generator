@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v2.1.884-beta - 20th Aug 2026
+
+- **New: Atmospheres & clouds can be switched off**, for players on low-end devices. It drops the cloud deck(s), the atmospheric limb glow and high haze from every body on the 3D system view and the 2D one (which is the same renderer locked overhead). What it buys is fill rate rather than memory: each shell is alpha-blended over the body it wraps, so a cloudy world repaints the same pixels several times. Auroras keep their own switch.
+- **The System step gains "Performance tweaks (for lower end devices)"**, gathering the new switch with black-hole lensing and belt detail. Those two were filed under Look & Feel and Scaling — by what they look like rather than what they are for — so a GM whose players are on weak hardware had to already know which cosmetic control happened to be expensive.
+
 ## v2.1.883-beta - 18th Aug 2026
 
 - The balloon's descent through a cloud deck is now a fade, not a jump cut. A deck's full optical depth used to land the instant the slider crossed its base — the light went from clear to gone in one step, which read as jarring. The share of the deck above you now ramps across its slab, and the grey-room immersion fades in with it. The base itself stays sharp on the way OUT, deliberately: a cloud top is diffuse but a cloud base is sudden, which is why aircraft drop out of one all at once.

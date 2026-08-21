@@ -208,6 +208,7 @@
     'starmap-labels': false, 'starmap-graphic': false,
     'system-stage': true, 'system-look': false, 'system-background': false, 'system-scale': false,
     'system-camera': false, 'system-labels': false, 'system-document': false, 'system-info': false,
+    'system-perf': false,
     'system-graphic': false,
     transition: true,
     filter: true,
@@ -841,9 +842,30 @@
                     </select>
                   </label>
                   <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
+                </CollapsibleSection>
+
+                <!-- PERFORMANCE, gathered. These three were scattered across Look & Feel and Scaling,
+                     each filed by what it LOOKS like rather than by what it is for, so a GM whose
+                     players are on weak hardware had to know which cosmetic control happened to be
+                     expensive. They are all one question — how much can this device afford? — and the
+                     heading says so, because a player asking for a switch is not going to find one
+                     called "Belt detail" under Scaling. -->
+                <CollapsibleSection label="Performance tweaks (for lower end devices)" open={openSections['system-perf']}
+                  on:toggle={(e) => setSection('system-perf', e.detail)}>
+                  <label class="chk" title="Cloud decks, the atmospheric limb glow and high haze. Each is a translucent shell blended over the body, so a cloudy world repaints the same pixels several times — the cost is fill rate, which is what a weak GPU has least of.">
+                    <input type="checkbox" checked={draft.atmospheres !== false} on:change={(e) => (draft = { ...draft, atmospheres: e.currentTarget.checked })} />
+                    Atmospheres &amp; clouds
+                  </label>
                   {#if draft.systemView === 'holo3d'}
-                    <label class="chk"><input type="checkbox" checked={draft.lensing !== false} on:change={(e) => draft.lensing = e.currentTarget.checked} /> Black-hole gravitational lensing</label>
+                    <label class="chk" title="Stylised light-bending around a black hole. No effect on a system without one."><input type="checkbox" checked={draft.lensing !== false} on:change={(e) => draft.lensing = e.currentTarget.checked} /> Black-hole gravitational lensing</label>
                   {/if}
+                  {#if draft.beltStyle !== 'band'}
+                    <!-- Only the rock field has a particle budget; a band is one flat shape. Its STYLE
+                         stays under Look & Feel, where a GM chooses how it should look; what it SPENDS
+                         is this question. -->
+                    <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
+                  {/if}
+                  <p class="hint">Turn these down if the player view stutters on a phone or an older tablet. None of them changes what the system IS &mdash; only how much work it takes to draw.</p>
                 </CollapsibleSection>
 
                 <CollapsibleSection label="Background" open={openSections['system-background']}
@@ -939,11 +961,6 @@
                   <label>Spread <span class:actual-on={draft.compression === 0}>{draft.compression === 0 ? 'actual distances' : Math.round(draft.compression * 100) + '%'}</span>
                     <div class="range-actual" title="Left end = actual (true) distances"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></div>
                   </label>
-                  {#if draft.beltStyle !== 'band'}
-                    <!-- Only the rock field has a particle budget; a band is one flat shape. Its STYLE is
-                         a look and lives above; how many rocks it spends is a scale, and lives here. -->
-                    <label>Belt detail <span>{Math.round(draft.beltDetail * 100)}%</span><input type="range" min="0" max="1" step="0.05" bind:value={draft.beltDetail} /></label>
-                  {/if}
                 </CollapsibleSection>
 
                 <CollapsibleSection label="Camera" open={openSections['system-camera']}
