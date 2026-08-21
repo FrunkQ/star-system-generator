@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.3 - 21st Aug 2026
+
+- Docs only. A placed drive's plume ignoring the model's rotation is diagnosed to its root (the stored nozzle points never pass through the orientation transform) and handed over with the fix shape - including the second bug possibly hiding behind it in the nose-detection.
+
 ## v3.0.0-rc.2 - 21st Aug 2026
 
 - What's new, tightened: the GM-view line is one sentence, and two features the list had missed are claimed - the unified importers (Traveller, Universe Sandbox, SpaceEngine on one generator with the fill-out dials) and the starmap's stars drawn as stars.
