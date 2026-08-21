@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.1 - 22nd Aug 2026
+
+- Board only. The release is recorded and the RC versioning convention is closed: patch bumps are back.
+
 ## v3.0.0 - 22nd Aug 2026
 
 - V3 RELEASE. Production moves from v2.1.5 to V3: player views and presets, the 3D holo system view, undo/redo, the units and skins overhaul, starmap stars as stars, the physics and classification passes, VTT integration, and the full documentation rewrite. The welcome screen sheds its beta voice: this project is community driven, some features ship a little raw on purpose, and reports decide what gets attention first. The rc.1-rc.23 entries below are the release candidate record.
