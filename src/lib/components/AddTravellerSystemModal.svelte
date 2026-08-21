@@ -1,8 +1,14 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { foreground } from '$lib/ui/foreground';
+  import GenerationDials, { DEFAULT_KNOBS } from './GenerationDials.svelte';
+  import { travellerAgeGuess } from '$lib/traveller/importer';
+  import type { GenerationKnobs } from '$lib/generation/generateFromConfig';
+  import type { RulePack } from '$lib/types';
+  import type { AgeGuess } from '$lib/physics/systemAge';
 
   export let showModal: boolean;
+  export let rulePack: RulePack;
   
   const dispatch = createEventDispatcher();
 
@@ -24,8 +30,31 @@
 
   let error = '';
 
+  // THE SHARED DIALS (inbox G33). Every UI that calls infillSystem mounts this panel; this path
+  // called it with the defaults and importer.ts's own comment already promised otherwise.
+  let infillKnobs: GenerationKnobs = { ...DEFAULT_KNOBS };
+  let infillAgeGyr: number | undefined = undefined;
+
   // Validation & Defaults
   $: isValid = name.trim().length > 0 && /^[A-HXYZ][0-9A-Z]{6}-[0-9A-Z]$/i.test(uwp.trim());
+
+  // Infill only ADDS when W asks for MORE worlds than Traveller itself authors, which is the Main
+  // World alone. MEASURED, not assumed: the importer gates on `totalWorldsCount > 0` and W parses to
+  // 0 when blank, so a blank or 0 W generates NOTHING — the field's own "Auto / generated from PBG"
+  // hint is a promise nothing keeps (captured separately). Showing the dials there would be a lie,
+  // which is the honesty half of G33's "show the panel whenever infill will ADD anything".
+  $: willInfill = Number(w) > 1;
+  // The age band comes from the PRIMARY star as typed, so the slider re-scales as the GM edits the
+  // star list — an M dwarf allows ten times the span an A star does.
+  $: ageGuess = rulePack ? travellerAgeGuess(stars.trim() || 'G2 V', rulePack) : undefined;
+  // Re-CLAMP, not just re-scale. Editing the star list narrows the band under a slider the GM may
+  // already have moved: typing "A2 V" over "G2 V" takes the ceiling from 12.3 Gyr to 2.47, and a
+  // value left at 6.16 would hand the generator an age past that star's whole main-sequence life.
+  // The panel clamps its own DISPLAY, so without this the bug would be invisible on screen.
+  $: if (ageGuess) {
+    if (infillAgeGyr === undefined) infillAgeGyr = ageGuess.ageGyr;
+    else infillAgeGyr = Math.min(ageGuess.bandGyr[1], Math.max(ageGuess.bandGyr[0], infillAgeGyr));
+  }
 
   function handleSubmit() {
       if (!isValid) {
@@ -52,7 +81,7 @@
           raw: `Manual UWP: ${uwp} ${name}`
       };
 
-      dispatch('generate', data);
+      dispatch('generate', { ...data, infillKnobs, infillAgeGyr });
       close();
   }
 
@@ -138,6 +167,18 @@
           </div>
       </div>
 
+      {#if willInfill}
+        <div class="infill-block">
+          <h3>Worlds we add around it</h3>
+          <p class="subtitle">
+            Traveller's UWP describes the Main World; the rest of the system is generated to reach W,
+            with PBG's belts and giants. These are the same dials as creating a system from a star, and
+            the Main World is never moved or changed by them.
+          </p>
+          <GenerationDials bind:knobs={infillKnobs} bind:ageGyr={infillAgeGyr} age={ageGuess} showPhysicsLink={false} />
+        </div>
+      {/if}
+
       {#if error}
           <p class="error">{error}</p>
       {/if}
@@ -151,6 +192,10 @@
 {/if}
 
 <style>
+  .infill-block { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.09); padding-top: 0.85rem; }
+  .infill-block h3 { margin: 0 0 0.2rem; font-size: 0.95rem; }
+  .infill-block .subtitle { margin: 0 0 0.6rem; }
+
   .modal-backdrop {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;

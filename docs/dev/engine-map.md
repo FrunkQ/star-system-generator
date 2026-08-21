@@ -2787,6 +2787,28 @@ factor until the primary's S-type bound (`S_TYPE_FRAC * sep`) clears the Main Wo
 what keeps it honest: all level ratios, and so the ~7x margin, survive untouched. If you add a third
 caller with planets on a star rather than on a barycentre, it needs the same step.
 
+### GEN-7 WHOEVER CALLS `infillSystem` FROM A UI MOUNTS `GenerationDials` AND PASSES ITS KNOBS
+WHERE: `components/GenerationDials.svelte` (the one panel) mounted by `GenerationWizard`,
+`ImportModal` (file / SpaceEngine / Universe Sandbox), `RealSkyImportModal` and
+`AddTravellerSystemModal`. Threaded via `realsky/fillout.ts FillOutOptions` and
+`TravellerImporter.generateTravellerSystem(data, pack, opts)`.
+RULE: a UI that runs infill without the panel is silently choosing the GM's flavour for them. Both
+new mounts thread `knobs`; the age is bound to the SYSTEM's age, not only to the generated bodies,
+or the system card disagrees with the slider that set it.
+WHY: the dials were on one path of three. The catalogue path called `infillSystem(system, pack,
+{ seed })` and the Traveller path passed nothing - while `importer.ts`'s own comment promised "the
+panel lets them adjust" of a panel that did not exist there (inbox G33).
+BLAST: THE TWO NEW MOUNTS ARE NOT COPIES OF THE FIRST, and the differences are deliberate. (a) The
+catalogue path shows NO age control: a region brings back every star within N light years and they
+are not the same age, so one slider would be wrong for most - each system keeps the guess from its
+own star. (b) The Traveller panel appears only when `W > 1`; MEASURED, the importer gates infill on
+`totalWorldsCount > 0` and W parses to 0 when blank, so a blank W generates nothing and the field's
+own "Auto / generated from PBG" hint is a promise nothing keeps. (c) The Traveller age band comes
+from `travellerAgeGuess`, which re-reads the star list on every keystroke - so it must also RE-CLAMP
+the chosen age, because narrowing the band under a slider the GM already moved (typing "A2 V" over
+"G2 V" drops the ceiling from 12.3 Gyr to 2.47) otherwise hands the generator an age past that
+star's whole life, and the panel clamps its DISPLAY so the fault would not show on screen.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s

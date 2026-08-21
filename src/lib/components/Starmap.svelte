@@ -974,12 +974,13 @@
   }
 
   function handleRealSkyAppend(event: CustomEvent<any>) {
-    const { systems, fillOut } = event.detail;
+    const { systems, fillOut, infillKnobs } = event.detail;
     // Same completion + processing every imported system gets on load:
     // pack-band star field/tilt, then the full physics pass (the Traveller
     // importer processes before dispatching for the same reason).
     completeImportedStars(systems, rulePack);
-    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), rulePack);
+    // G33: the dials the GM set in the modal, not the defaults.
+    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), rulePack, { knobs: infillKnobs });
     for (const entry of systems) {
       entry.system = systemProcessor.process(fixUpImportedSystem(entry.system, rulePack), rulePack);
     }
@@ -1187,11 +1188,12 @@
   }
 
   function handleAddTravellerSystem(event: CustomEvent<any>) {
-      const data = event.detail;
+      const { infillKnobs, infillAgeGyr, ...data } = event.detail;
       const importer = new TravellerImporter();
-      
-      // Generate System using the new public method
-      const system = importer.generateTravellerSystem(data, rulePack);
+
+      // G33: the dials the GM set in the modal reach the infill step, which is what
+      // importer.ts's own comment always promised.
+      const system = importer.generateTravellerSystem(data, rulePack, { knobs: infillKnobs, ageGyr: infillAgeGyr });
       
       const newSystemNode = {
           id: system.id,
@@ -1766,6 +1768,7 @@
   {#if showAddTravellerModal}
       <AddTravellerSystemModal 
           showModal={showAddTravellerModal} 
+          {rulePack}
           on:generate={handleAddTravellerSystem} 
           on:close={() => showAddTravellerModal = false} 
       />

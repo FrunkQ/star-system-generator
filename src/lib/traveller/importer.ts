@@ -1,11 +1,11 @@
 import { TravellerDecoder } from './decoder';
 import { infillSystem } from '$lib/generation/infill';
-import { guessSystemAge } from '$lib/physics/systemAge';
+import { guessSystemAge, type AgeGuess } from '$lib/physics/systemAge';
 import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
 import { SeededRNG } from './rng';
 import { bodyFactory } from '$lib/core/BodyFactory';
-import { _generateStar } from '$lib/generation/star';
-import { planStarHierarchy, buildStarHierarchy, S_TYPE_FRAC } from '$lib/generation/generateFromConfig';
+import { _generateStar, starStatTemplate } from '$lib/generation/star';
+import { planStarHierarchy, buildStarHierarchy, S_TYPE_FRAC, type GenerationKnobs } from '$lib/generation/generateFromConfig';
 import type { StarSeed } from '$lib/physics/stellar-evolution';
 import { _generatePlanetaryBody } from '$lib/generation/planet';
 import { SystemProcessor } from '$lib/core/SystemProcessor';
@@ -108,7 +108,12 @@ export class TravellerImporter {
         };
     }
 
-    public generateTravellerSystem(data: any, rulePack: RulePack): System {
+    /**
+     * `opts` carries what the GM set on the shared `GenerationDials` panel (inbox G33). Optional, so
+     * the batch importer and the specs keep the defaults they always had — but the comment below that
+     * once promised "the panel lets them adjust" is now true on this path as well.
+     */
+    public generateTravellerSystem(data: any, rulePack: RulePack, opts: { knobs?: GenerationKnobs; ageGyr?: number } = {}): System {
         const seed = `${data.uwp}-${data.name}`;
         this.rng = new SeededRNG(seed);
         const systemId = generateId();
@@ -138,28 +143,7 @@ export class TravellerImporter {
         const description = "";
 
         // 1. Stars Generation
-        // Robust Token Parser for Variable-Length Definitions
-        const rawStars = (data.stars || "G2 V").replace(/\s+/g, ' ').trim();
-        const tokens = rawStars.split(' ');
-        const starEntries: string[] = [];
-        
-        let i = 0;
-        const luminosityRegex = /^(I|II|III|IV|V|VI|VII|D|Ia|Ib)$/;
-
-        while (i < tokens.length) {
-            const token = tokens[i];
-            
-            // ONE classifier for every importer (physics/importedStarClass.ts). Traveller states its
-            // stars fully — "F7 V", "K2 III", "M1 Ib", "D", "BD", "NS" — and this parser always kept the
-            // luminosity class; what it lacked was the shared normalisation (a bare "G" defaults to
-            // MAIN SEQUENCE, never a guessed giant; Ia/Ib/II fold to the supergiant band, IV to the
-            // dwarf band; an unrecognised token is star/unknown, never pushed through as-is).
-            const nextToken = tokens[i+1];
-            const stated = (nextToken && luminosityRegex.test(nextToken)) ? `${token} ${nextToken}` : token;
-            const cls = resolveImportedStarClass({ stated }, rulePack);
-            starEntries.push(cls.classKey);
-            i += (stated === token) ? 1 : 2;
-        }
+        const starEntries = parseTravellerStarList(data.stars, rulePack);
 
         // --- STAR HIERARCHY: the GENERATOR'S planner, not a second one (inbox D27) ---
         //
@@ -387,7 +371,9 @@ export class TravellerImporter {
         //
         // The dials come from the profile where it says something (a high-population, high-tech world
         // suggests a settled, metal-rich system - but that is a taste call the GM makes in the infill
-        // step, so the defaults are used here and the panel lets them adjust). Age is the shared guess.
+        // step). THE PANEL NOW EXISTS ON THIS PATH: `opts.knobs` is what the GM set on the shared
+        // GenerationDials in AddTravellerSystemModal, and the defaults apply only when nothing is
+        // passed. Age is the shared guess unless the GM moved that slider too (inbox G33).
         const numBelts = parseInt(data.pbg[1] || '0');
         const numGasGiants = parseInt(data.pbg[2] || '0');
         const totalWorldsCount = parseInt(data.w || '0');
@@ -406,8 +392,11 @@ export class TravellerImporter {
             name: data.name,
             seed: seed,
             epochT0: 0,
-            age_Gyr: ageGuess.ageGyr,
-            ageEstimated: ageGuess.estimated,
+            // The GM's own choice wins over the guess, exactly as on the file-import path (G33):
+            // the dials panel's age slider is bound to the SYSTEM's age, not only to the age the
+            // generated worlds are born into, or the card would disagree with the slider that set it.
+            age_Gyr: opts.ageGyr ?? ageGuess.ageGyr,
+            ageEstimated: opts.ageGyr === undefined ? ageGuess.estimated : (opts.ageGyr === ageGuess.ageGyr && ageGuess.estimated),
             ageBandGyr: ageGuess.bandGyr,
             nodes: nodes,
             rulePackId: rulePack.id,
@@ -428,6 +417,7 @@ export class TravellerImporter {
                 targetPlanetCount: totalWorldsCount,
                 composition: { giants: numGasGiants, belts: numBelts },
                 seed: `traveller-${seed}`,
+                knobs: opts.knobs,
                 ageGyr: system.age_Gyr,
             });
             if (infill.underTarget) {
@@ -715,4 +705,48 @@ export class TravellerImporter {
             default: return "";
         }
     }
+}
+
+/**
+ * Traveller's star LIST ("F7 V M0 V M4 V") to class keys. Exported because the Add-System modal needs
+ * the primary's class to guess an age for its dials panel, and a second parser would be a second
+ * answer (inbox G33).
+ *
+ * ONE classifier for every importer (physics/importedStarClass.ts). Traveller states its stars fully
+ * — "F7 V", "K2 III", "M1 Ib", "D", "BD", "NS" — and this parser always kept the luminosity class;
+ * what it lacked was the shared normalisation (a bare "G" defaults to MAIN SEQUENCE, never a guessed
+ * giant; Ia/Ib/II fold to the supergiant band, IV to the dwarf band; an unrecognised token is
+ * star/unknown, never pushed through as-is).
+ */
+export function parseTravellerStarList(stars: string | undefined, rulePack: RulePack): string[] {
+    const rawStars = (stars || 'G2 V').replace(/\s+/g, ' ').trim();
+    const tokens = rawStars.split(' ');
+    const out: string[] = [];
+    const luminosityRegex = /^(I|II|III|IV|V|VI|VII|D|Ia|Ib)$/;
+    let i = 0;
+    while (i < tokens.length) {
+        const token = tokens[i];
+        const nextToken = tokens[i + 1];
+        const stated = (nextToken && luminosityRegex.test(nextToken)) ? `${token} ${nextToken}` : token;
+        out.push(resolveImportedStarClass({ stated }, rulePack).classKey);
+        i += (stated === token) ? 1 : 2;
+    }
+    return out;
+}
+
+/**
+ * The age band this system's PRIMARY star allows — what the dials panel needs to draw its age slider
+ * before the system exists (G33). Same guess the importer itself uses once the star is built, taken
+ * from the pack's stat template rather than a generated body so a form can call it on every keystroke.
+ */
+export function travellerAgeGuess(stars: string | undefined, rulePack: RulePack): AgeGuess {
+    const primary = parseTravellerStarList(stars, rulePack)[0];
+    const t = starStatTemplate(rulePack, primary);
+    if (!t) return guessSystemAge(null);
+    // Template values are RANGES ([lo, hi]) — take the midpoint; the age band only needs the star's
+    // scale, and a range endpoint would bias every guess the same way.
+    const mid = (v: unknown, fallback: number) =>
+        Array.isArray(v) ? ((v[0] as number) + (v[1] as number)) / 2 : (typeof v === 'number' ? v : fallback);
+    const massKg = mid(t.mass_solar, 1) * SOLAR_MASS_KG;
+    return guessSystemAge({ massKg, temperatureK: mid(t.temp_k, 5778), classes: [primary] });
 }

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.893-beta - 21st Aug 2026
+
+- The sliders that shape a filled-out system now appear wherever filling out happens. They were offered on file imports only; a starmap built from the real-sky catalogue, and a Traveller world typed in by hand, both quietly used the defaults. Both now show the same panel. The catalogue one has no age slider on purpose - a region brings back stars of every age, so each keeps its own - and the Traveller one appears once you ask for more worlds than the Main World, with an age range that follows the star you type.
+
 ## v2.1.892-beta - 21st Aug 2026
 
 - A Traveller system with more than one star now has a real hierarchy. The stars used to be laid out by the importer's own code: companions flung out to a thousand AU and beyond, on crossing, half-eccentric orbits tilted almost at right angles to the planets, taking thirty thousand years to go round - which is why they looked like they were just hanging there. They now go through the same planner the generator uses, nested and in the plane, and the whole structure is pushed out far enough that the Main World still has room around its own star.

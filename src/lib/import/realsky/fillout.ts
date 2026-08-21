@@ -31,13 +31,31 @@ import type { RulePack, System } from '$lib/types';
 // exports so the real-sky callers and their tests do not move; both are thin.
 export { GENERATED_TAG } from '$lib/generation/infill';
 import { infillSystem, type InfillResult } from '$lib/generation/infill';
+import type { GenerationKnobs } from '$lib/generation/generateFromConfig';
 
 export type FillOutResult = Pick<InfillResult, 'addedPlanets' | 'addedMoons' | 'droppedNearAnchors'>;
 
+// The GM's dials, and the age, come from the same `GenerationDials` panel the file importer and the
+// wizard mount (inbox G33: whoever calls infillSystem from a UI mounts the dials and passes its
+// knobs). Both optional — the specs and any non-UI caller keep the defaults they always had.
+export interface FillOutOptions {
+  knobs?: GenerationKnobs;
+  /**
+   * Age in Gyr for the GENERATED worlds. NOT applied per system on the catalogue path unless the GM
+   * moved the slider, because a real-sky region holds many stars of wildly different ages and one
+   * figure would be wrong for most of them — each system keeps its own guess by default.
+   */
+  ageGyr?: number;
+}
+
 // Fill out ONE imported single-star system in place. Returns what happened so the UI can report it.
 // Deterministic per catalogue slug, exactly as before.
-export function fillOutSystem(system: System, rulePack: RulePack): FillOutResult {
-  const r = infillSystem(system, rulePack, { seed: `realsky-fill-${system.seed}` });
+export function fillOutSystem(system: System, rulePack: RulePack, opts: FillOutOptions = {}): FillOutResult {
+  const r = infillSystem(system, rulePack, {
+    seed: `realsky-fill-${system.seed}`,
+    knobs: opts.knobs,
+    ageGyr: opts.ageGyr
+  });
   return { addedPlanets: r.addedPlanets, addedMoons: r.addedMoons, droppedNearAnchors: r.droppedNearAnchors };
 }
 
@@ -45,9 +63,10 @@ export function fillOutSystem(system: System, rulePack: RulePack): FillOutResult
 // in place; returns per-system results keyed by system id for the UI report.
 export function fillOutAll(
   entries: { id: string; system: System }[],
-  rulePack: RulePack
+  rulePack: RulePack,
+  opts: FillOutOptions = {}
 ): Record<string, FillOutResult> {
   const report: Record<string, FillOutResult> = {};
-  for (const entry of entries) report[entry.id] = fillOutSystem(entry.system, rulePack);
+  for (const entry of entries) report[entry.id] = fillOutSystem(entry.system, rulePack, opts);
   return report;
 }

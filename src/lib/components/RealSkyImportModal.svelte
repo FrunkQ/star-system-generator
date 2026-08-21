@@ -17,6 +17,8 @@
   import { parallaxMasToLy } from '$lib/import/realsky/positions.mjs';
   import { PIXELS_PER_LY, DEFAULT_MAP_CENTRE_PX } from '$lib/import/realsky/constants.mjs';
   import { CEILING, costBand, estimateCost, suggestRadius } from '$lib/import/realsky/costModel.mjs';
+  import GenerationDials, { DEFAULT_KNOBS } from './GenerationDials.svelte';
+  import type { GenerationKnobs } from '$lib/generation/generateFromConfig';
 
   const dispatch = createEventDispatcher();
 
@@ -37,6 +39,7 @@
   let centre: Centre = SOL;
   let radiusLy = 16.5;
   let fillOut = false;
+  let infillKnobs: GenerationKnobs = { ...DEFAULT_KNOBS };
 
   // D18 — the STAR catalogue is the source and the archive is joined onto it, so a star with no
   // confirmed planet arrives like any other. `rows` is still the archive; `starRows` is the census.
@@ -332,6 +335,7 @@
       collisions: preview.collisions,
       skipped: preview.skipped,
       fillOut,
+      infillKnobs,
       name: presetKey === 'custom' ? `Real sky: ${radiusLy} ly around ${centre.label}` : (p?.name ?? 'Real-sky import'),
       description: `Real-sky import: ${radiusLy} light years around ${centre.label}. Confirmed planets from the NASA Exoplanet Archive (${source?.startsWith('live') ? 'live query' : 'bundled snapshot'}); positions are true 3D positions.${fillOut ? ' Filled out with generated worlds (tagged origin/generated) around the confirmed anchors.' : ' Confirmed planets only — nothing invented.'}`
     });
@@ -345,7 +349,7 @@
       kind: 'cluster',
       mode,
       systems: [entry],
-      collisions: [], skipped: [], fillOut: false,
+      collisions: [], skipped: [], fillOut: false, infillKnobs,
       name: SGR_A_MAP_META.name,
       description: SGR_A_MAP_META.description,
       gate: entry.gate
@@ -502,6 +506,23 @@
           </span>
         </label>
 
+        {#if fillOut}
+          <!-- G33: whoever calls infillSystem from a UI mounts the dials. The SAME panel the file
+               importer and the wizard use, so a GM who has learned what disk mass does when creating
+               a system knows what it does when filling out a real one.
+               NO AGE CONTROL HERE, deliberately, and it is the one difference from the other two
+               mounts: a region import brings back every star within N light years, and they are not
+               the same age as each other. One slider would be wrong for most of them, so each system
+               keeps the age guessed from its own star. -->
+          <div class="fill-dials">
+            <p class="muted dials-note">
+              These apply to every system in the region. Confirmed planets are anchors either way — the
+              dials only shape what gets added around them.
+            </p>
+            <GenerationDials bind:knobs={infillKnobs} showPhysicsLink={false} />
+          </div>
+        {/if}
+
         <div class="actions">
           {#if systemsCount > CEILING}
             <button class="primary" disabled title="Shrink the region — this many systems would make the map unusable.">
@@ -593,6 +614,8 @@
   .fill-row { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0.7rem 0; font-size: 0.82rem; color: #b9c2cc; }
   .fill-row input { margin-top: 0.15rem; }
   .fill-row code { color: #ff9a66; }
+  .fill-dials { margin: 0 0 0.7rem 1.55rem; }
+  .fill-dials .dials-note { margin: 0 0 0.45rem; font-size: 0.78rem; }
   .cluster-demo p { margin: 0.35rem 0; }
   .cluster-demo .gate { color: #9fd0ff; font-size: 0.84rem; }
   .actions { display: flex; gap: 0.6rem; margin-top: 0.8rem; }
