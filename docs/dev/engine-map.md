@@ -1762,7 +1762,7 @@ concluded the giant test was dead for Jupiter; through the accessor it is true f
 concluding a field is unset, check whether anything reads it directly at all.
 BLAST: any audit of `classes` or `image`. (The second answer to "which classes are mutually
 exclusive" — a hand-maintained `baseArchetypes` Set in the legacy rules path listing ~17 of the
-rulepack's 64 `kind: 'base'` fingerprints — is GONE with that path, v2.1.889-beta / B67.)
+rulepack's 64 `kind: 'base'` fingerprints — is GONE with that path, v2.1.890-beta / B67.)
 
 ### DATA-R18 A BAND is a range to draw from; a DESIGNATION is what a star IS. Bodies hold designations
 WHERE: `physics/starDesignation` (`starClassKeyFor`, `isBandKey`, `bandKeyOf`); the pack's

@@ -192,7 +192,7 @@ refusals.**
   a measured 0.96) and Iapetus (0.53 against 0.20) are the two largest albedo errors left in the
   Solar System, and neither is age-driven: Mimas is E-ring plating, Iapetus is leading-hemisphere
   dust. Iapetus is an AREA case and the natural first customer for `surface-areas-design.md`.
-- **`system/classification.ts`** — SETTLED at v2.1.889-beta: the `classifier.rules[]` seam is
+- **`system/classification.ts`** — SETTLED at v2.1.890-beta: the `classifier.rules[]` seam is
   deleted, not merely unreachable, and there is no early return left to check because there is only
   one path. A pack without fingerprints now gets one base class by mass and its author gets a
   warning. See engine map CLASS-1 and inbox B67 / D12 for the measurement that decided it.

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.900-beta - 21st Aug 2026
+
+- Docs only. The V3 mop-up session closes: ten items shipped, five of which turned out to have the wrong cause recorded, and the board now says which was which. One item (the stretched player window) is shipped but unverified and stays open with the check it needs written down.
+
 ## v2.1.899-beta - 21st Aug 2026
 
 - Resizing a player window while the cover page is showing should no longer leave the starmap stretched when it appears. The view underneath is re-measured the moment the cover is tapped away, and a renderer can no longer be handed a zero-sized measurement and stretch a tiny image over the whole screen. Reported as intermittent, so this needs a look in real use before it is called closed.
