@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.8 - 21st Aug 2026
+
+- The two tag documents verified against the engine and four gaps filled. docs/tags-guide.md gains the rule condition for solid ground and the marker size, pin-text and flag-staff options. docs/classification-and-tags.md gains: who reads a fingerprint's formation, range and note keys (none of them the classifier); the fact that classifier.rules[] and minScore are dead and the format is fingerprints only; a section on the stellar zones, which no reader-facing surface described - all of them derived from luminosity, TWO frost lines rather than one, and a kill zone that is the mean of surface ultraviolet and coronal output; and a section on what an imported catalogue number is worth, since three quarters of the quoted densities are the mass in disguise.
+
 ## v3.0.0-rc.7 - 21st Aug 2026
 
 - README brought to V3: 'What's new in V2' replaced with what V3 is, the tagging section no longer teaches the retired Points of Interest and Constructs of Interest, the Accrete.js credit says where that generator went, and a new Integration section documents the /bridge discovery frame and embed mode for host apps - including the exact-origin allowlist and the third-party-iframe partitioning that will bite anyone building against it. The data note now names all three things that do leave the machine (SIMBAD star-name lookup, the Traveller subsector fetch, and one anonymous visit event per browser per day) rather than claiming nothing is sent anywhere.
