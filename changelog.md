@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.12 - 21st Aug 2026
+
+- What's new, trimmed on the owner's read: the surface-view line was a duplicate, the importer and starmap-stars lines go, undo is back to one word, and the GM-view line now leads with the new star types. The remote-play freeze on big maps is captured with its two-part fix (a receiving notice now, true chunked progress later).
+
 ## v3.0.0-rc.11 - 21st Aug 2026
 
 - Docs only. The observations inbox's Documentation-debt section is swept to ZERO for the first time since it was created, with a record of where every owed line landed and what was struck rather than written. Twenty of those lines had been appended under the wrong heading, which is why the list read shorter than it was. E6 is closed, five findings are captured (including a literal &rsquo; printed on the welcome screen), and the handover carries the four claims this pass put in front of a reader without being able to exercise them.

@@ -50,7 +50,6 @@
     // The sight-line clause is verified, not assumed: v2.1.667 derives visibility from the SAME
     // optical depth as the surface spectrum, and lands Earth on 343 km (the clean-air Rayleigh
     // limit) and Venus on 4 km. The owner called it "how far the players' torches reach".
-    { title: 'Stand on the surface', blurb: 'Every world has a Surface view: its own ground, sky and light as you would find them standing on it, coloured by what actually reaches the surface rather than by what left the star. A red dwarf&rsquo;s noon does not look like ours — and it answers how far your players can see, and how far a lamp carries, in metres rather than in adjectives.' },
     { title: 'Stars properly classified', blurb: 'Stars carry their real classification — spectral type and luminosity class — read from size and temperature rather than from how bright they look, so a supergiant is a supergiant rather than a dwarf that shares its colour. Antares arrives as the giant it is, every type is named in plain words with a famous example, and a star whose numbers break physics is kept and labelled rather than refused.' },
     { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
     { title: 'Your own stars in the sky', blurb: 'Your starmap becomes the night sky behind the 3D view — every system at its true direction, brightness and colour — so the constellations your players see are made of places they can fly to.' },
@@ -73,16 +72,14 @@
     // and rarity saturates above the midpoint. The wording of the line itself is the owner's call
     // once he has eyeballed a few generated systems.
     { title: 'Sharper generation', blurb: 'Procedural systems are retuned alongside the physics as it grows, so a generated system reflects what the engine currently knows rather than what it knew when the generator was written.' },
-    { title: 'Bring your worlds in', blurb: 'Traveller, Universe Sandbox and SpaceEngine imports, unified on one generator — the same dials fill out every system.' },
-    { title: 'Starmap stars are stars', blurb: 'Sharp and true to class — jets, flares, size by luminosity, and grouped systems that hold together at every zoom.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     // FLAG CLEARED 2026-08-19: G16 shipped v2.1.811-813 and the owner has seen it ("1 looks good for me").
     { title: 'Your own map behind the stars', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
     // FLAG CLEARED 2026-08-18: shipped v2.1.774-783 (G28) and the owner has seen it work — every step
     // is named ("Undo: Mass of Earth"), the campaign has its own history, the last twenty survive a
     // reload, and nothing rides an export or a share.
-    { title: 'Undo and redo', blurb: 'Hallelujah. Every step is named, the last twenty survive a reload, and none of it leaves the room in a shared map.' },
-    { title: 'A fresh face for the GM view', blurb: 'Skinnable panels, and click any unit to swap it — stars in Kelvin, planets in Celsius, yours to choose. Players follow.' },
+    { title: 'Undo and redo', blurb: 'Hallelujah.' },
+    { title: 'A fresh face for the GM view', blurb: 'New star types viewable. Skinnable colours, and click any unit to swap it.' },
     // 2026-08-18, owner: "VTT integration is Mappadux working. Looking for testers for OR and Foundry."
     // The line no longer carries a pending flag: the Mappadux half is a claim the build can make.
     { title: 'Virtual tabletop integration', blurb: 'Mappadux — free, and built alongside this — works today: your starmap and systems on the table, live. Owlbear Rodeo and Foundry are next, and we are looking for testers: if you run either, come and tell us what breaks and what you need.' },
