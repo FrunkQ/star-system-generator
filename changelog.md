@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v2.1.885-beta - 21st Aug 2026
+
+- A wet world no longer freezes because a branch closed. The vapour a sea puts into its own air is now DERIVED from the saturation pressure at its surface temperature and how much of the surface is sea, sharing one curve with the cloud decks, instead of switching on at exactly 273 K - a step that cost a world a hair below freezing its entire vapour greenhouse, which is what kept it below freezing. The reported Traveller "Earth-like" world reads +26.7 C where it read a snowball. Not water-specific: a methane sea warms its world with methane. Sol does not move by a kelvin.
 ## v2.1.884-beta - 20th Aug 2026
 
 - **New: Atmospheres & clouds can be switched off**, for players on low-end devices. It drops the cloud deck(s), the atmospheric limb glow and high haze from every body on the 3D system view and the 2D one (which is the same renderer locked overhead). What it buys is fill rate rather than memory: each shell is alpha-blended over the body it wraps, so a cloudy world repaints the same pixels several times. Auroras keep their own switch.

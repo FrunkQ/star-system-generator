@@ -7,6 +7,7 @@ import type { CelestialBody, Barycenter, RulePack } from '$lib/types';
 import { deriveCloudDecks, effectiveComposition } from './cloudDecks';
 import { KRAFT_BREAK_MSUN } from './stellarRotation';
 import { atmosphereProfile } from './atmosphereProfile';
+import { evaporatedVapourFraction } from './atmosphere';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
 import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
@@ -256,6 +257,21 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   }
 
   // 3. Temperature (equilibrium → mean → range)
+  // What the body's own sea is putting into its own air (D6). Shown whenever there is a sea at all,
+  // and flagged when it is the figure the greenhouse actually used rather than the authored one.
+  const seaVapour = (() => {
+    if (!ctx.pack || !body.atmosphere) return null;
+    const model = ctx.pack.climateModel?.greenhouse ?? {};
+    const v = evaporatedVapourFraction(body, body.atmosphere, Math.min(body.atmosphere.pressure_bar ?? 0, 200), {
+      cryoNoPenaltyAboveK: 0, cryoBaseK: 1, cryoExponent: 1, cryoMinFactor: 0,
+      responseScale: 0, responseK: 0, denseCo2BoostStartBar: 0, denseCo2BoostDenominator: 1, denseCo2BoostMax: 0,
+      vapourColumnMeanHumidity: model.vapourColumnMeanHumidity ?? 0.434,
+      vapourColumnMaxFraction: model.vapourColumnMaxFraction ?? 0.05
+    } as any, ctx.pack);
+    if (!v || v.fraction <= 0) return null;
+    const authored = body.atmosphere.composition?.[v.gas] ?? 0;
+    return { ...v, beatsAuthored: v.fraction > authored, solvent: body.hydrosphere?.composition ?? 'liquid' };
+  })();
   const tempOut: TraceField[] = [
     { label: 'Equilibrium temp', value: n(body.equilibriumTempK, 0, 'K') },
     { label: 'Greenhouse Δ', value: n(body.greenhouseTempK, 0, 'K') },
@@ -342,10 +358,15 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       ...(body.albedoBreakdown ? [{
         label: 'Albedo (derived)',
         value: `${body.albedoBreakdown.albedo} — ${body.albedoBreakdown.note}`
+      }] : []),
+      ...(seaVapour ? [{
+        label: `Sea vapour (derived, ${seaVapour.gas})`,
+        value: `${(seaVapour.fraction * 100).toPrecision(2)}% of the column${seaVapour.beatsAuthored ? '' : ' — the composition already lists more, so its figure stands'}`
       }] : [])
     ],
     outputs: tempOut,
     notes: [
+      ...(seaVapour && seaVapour.beatsAuthored ? [`The ${seaVapour.solvent} sea is evaporating into this world's own air and that vapour is part of the greenhouse above. The amount is NOT authored: it is the saturation pressure of ${seaVapour.solvent} at ${n(body.temperatureK, 0, 'K')} — the same curve that decides where the cloud decks sit — over the surface pressure, scaled by the ${pct(body.hydrosphere?.coverage ?? 0)} of the surface that is sea and by how much of saturation a whole air column holds (it dries with altitude). Earth's own 0.4% is what calibrates that last figure. Because saturation falls away smoothly — by sublimation once the sea freezes — a cooling world loses this warmth gradually instead of at a threshold.`] : []),
       ...(ctx.host && (ctx.host as any).isSelfLuminous ? [`Warmed and irradiated by BOTH ${ctx.star?.name ?? 'the star'} AND its self-luminous host ${ctx.host.name} (a brown dwarf, ${n((ctx.host as any).selfLuminousTeffK, 0, 'K')}). Flux and radiation SUM over every luminous source (Σ Lᵢ / 4πdᵢ²), so a close-in moon of a brown dwarf is far warmer and more irradiated than its distance from the system star alone would imply.`] : []),
       ...((body as any).isSelfLuminous && selfLumTeff ? [`Self-luminous: a brown dwarf (~${n((body.massKg ?? 0) / 1.898e27, 0)} M♃) that radiates its OWN heat from gravitational contraction and early deuterium burning. Its surface sits at ~${n(selfLumTeff, 0, 'K')} regardless of the distant star, it cools with age (L→T→Y, floor ~250 K), and it warms & irradiates its moons like a mini-star.`] : []),
       ...(bary ? [`Equilibrium temperature is set by the distance to ${ctx.star?.name ?? 'the star'} — the ${bary.name || 'barycentre'}'s ${n(heliocentricEl?.a_AU, 1, 'AU')} orbit — not the small orbit ${ctx.partner ? `around its partner ${ctx.partner.name}` : 'within the pair'}.`] : []),

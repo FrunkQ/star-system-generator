@@ -2707,6 +2707,31 @@ BREAKS IF: any of it is ever called from a load, an import, a rebuild or a repla
 input produces a different system every time and no test can pin it. DATA-G1 is the rule these sit
 outside of; the comment is the honest signal that someone already met the tension and moved on.
 
+### PHY-21 A SEA'S OWN VAPOUR IS DERIVED, AND ITS SATURATION CURVE IS SHARED WITH THE CLOUD MODEL
+WHERE: `physics/liquids.ts` `surfaceVapourSource` (the shared answer), `physics/atmosphere.ts`
+`evaporatedVapourFraction` (column mean, feeds the greenhouse), `physics/cloudDecks.ts`
+`evaporationFraction` (near-surface, feeds the decks). Constants:
+`climateModel.greenhouse.vapourColumnMeanHumidity` / `vapourColumnMaxFraction`.
+RULE: nothing may invent a second saturation curve, a second liquid-to-gas lookup, or a hardcoded
+H2O. The two consumers legitimately want DIFFERENT numbers — the cloud model wants the fraction at
+the ground, because that is what condenses at the lifting condensation level; the greenhouse wants
+the COLUMN MEAN, because that is what absorbs through the column, and it is several times smaller.
+So they keep their own humidity factors and share everything else. An authored composition value is
+a FLOOR on the derived one, never a ceiling and never an off-switch.
+WHY: the term used to be gated `surfaceTemp > 273 && < 373`, which put a ~10 K STEP into a loop that
+feeds itself — a world a hair below freezing lost its whole vapour greenhouse, and losing it is what
+kept it below freezing. Measured on the reported world (Traveller "Standard - Earth-like", 0.95 bar,
+70% hydrographics, Sun): the greenhouse collapsed 35.3 K -> 24.7 K across one 0.1 AU step and the
+world went +16.9 C -> -2.4 C and froze. A saturation curve goes to nothing smoothly, INCLUDING by
+sublimation from a frozen sea, so there is no branch to fall off. Do not put a liquid-only phase gate
+back on the greenhouse side: that is the same cliff wearing a different hat.
+BLAST: calibration is Earth and only Earth (288 K, 1 bar, 71% ocean -> the 0.4% its composition
+declares), and it is calibrated against THE PACK'S saturation curve, which reads about 24% low at
+288 K versus measurement because it log-interpolates three anchors. Change `liquids.json`'s water
+anchors and `vapourColumnMeanHumidity` must be re-derived or every wet world shifts. The bundled
+Earth is pinned only because its authored 0.00398 sits just ABOVE what the derivation returns at its
+own converged 287.4 K — a ~5% margin, not a wide one.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s
@@ -2720,6 +2745,9 @@ outside of; the comment is the honest signal that someone already met the tensio
   it feeds atmospheric escape, and it must not be promoted into a dose.
 - **PHY-13 BLAST**: eight hand-written belt exclusions with no shared predicate, plus three MORE
   `roleHint === 'belt'` tests that answer unrelated questions.
+- **ID COLLISION, not a concept duplication**: `PHY-17` is used TWICE — "A luminosity class is radius
+  at a temperature" and "Has ground is hasSolidSurface". Different claims, same id; whoever next
+  edits either should renumber the second.
 
 ### Checked and NOT a misalignment, so nobody re-checks it
 - `attachHullVolume` and the read-time path at `holo/scene.ts:3529` both write `v.shipLen`, but they

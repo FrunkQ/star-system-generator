@@ -915,6 +915,9 @@ export interface ClimateModelGreenhouseConfig {
   denseCo2BoostStartBar?: number;
   denseCo2BoostDenominator?: number;
   denseCo2BoostMax?: number;
+  // Derived water vapour over an ocean (see physics/atmosphere.ts waterVapourFraction).
+  vapourColumnMeanHumidity?: number;   // column mean as a fraction of saturation; Earth-calibrated
+  vapourColumnMaxFraction?: number;    // where "trace vapour on an atmosphere" stops being true
 }
 
 export interface ClimateModelInternalHeatConfig {

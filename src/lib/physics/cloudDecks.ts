@@ -8,7 +8,7 @@
 // condense, and what the condensate looks like, is rule-pack DATA: a gas's `cloud` block says it
 // condenses and into what; the liquid it condenses to carries colour, opacity and melt point.
 import type { CelestialBody, RulePack, Tag, GasCloud, LiquidDef } from '$lib/types';
-import { liquidDef, phaseAtP, saturationPressureBar } from './liquids';
+import { liquidDef, phaseAtP, saturationPressureBar, surfaceVapourSource } from './liquids';
 import { atmosphereProfile, MIN_ATM_BAR, type AtmosphereProfile } from './atmosphereProfile';
 import { makeupFractions, hasSolidSurface } from './makeup';
 import { stripForReprocess } from '../tags/tagLifecycle';
@@ -135,6 +135,10 @@ export function effectiveComposition(
 // the total pressure, discounted by a relative humidity that a bigger sea pushes closer to 1. Earth
 // lands on ~1% water vapour at ~75% RH, which is what Earth has. Titan's methane sea and its
 // atmospheric CH4 then DEDUPE to one deck (by species, larger coverage wins) below.
+// The saturation curve and the liquid-to-gas lookup are `surfaceVapourSource` in liquids.ts — ONE
+// answer, shared with the greenhouse's column-mean term (D6). Everything below it is this caller's
+// own policy and is deliberately NOT shared: the gates and the near-surface humidity law belong to
+// cloud formation, not to infrared absorption.
 function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas: string; frac: number } | null {
   const solvent = body.hydrosphere?.composition;
   const coverage = body.hydrosphere?.coverage ?? 0;
@@ -143,17 +147,16 @@ function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas
   const pBar = body.atmosphere?.pressure_bar ?? 0;
   if (pBar < MIN_ATM_BAR) return null;                          // no air to hold the vapour
   if (phaseAtP(solvent, surfT, pBar, pack) !== 'liquid') return null;  // frozen/boiled → not a sea
-  const def = liquidDef(solvent, pack);
-  if (!def) return null;
-  // Which GAS is this liquid's vapour? The gas whose cloud block condenses to it.
-  const gasDefs = pack?.gasPhysics ?? {};
-  const gas = Object.entries(gasDefs).find(([, d]) => d.cloud?.condensesTo === solvent)?.[0];
-  if (!gas) return null;
-  // Relative humidity: a world under a global ocean sits near saturation, a small sea leaves the
-  // air dry. Bounded well short of 1 — a saturated surface is fog, not weather.
+  const source = surfaceVapourSource(body, pack);
+  if (!source) return null;
+  // Relative humidity AT THE SURFACE: a world under a global ocean sits near saturation, a small sea
+  // leaves the air dry. Bounded well short of 1 — a saturated surface is fog, not weather. Note this
+  // is NOT the greenhouse's column mean and must not be unified with it: the air directly over any
+  // sea is humid (hence the 0.35 floor), while the globally averaged column scales with how much of
+  // the globe is sea at all.
   const humidity = 0.35 + 0.5 * Math.min(1, coverage);
-  const satFrac = saturationPressureBar(def, surfT) / pBar;
-  return { gas, frac: Math.max(0, Math.min(0.95, humidity * satFrac)) };
+  const satFrac = source.saturationBar / pBar;
+  return { gas: source.gas, frac: Math.max(0, Math.min(0.95, humidity * satFrac)) };
 }
 
 // ── Condensate colour ────────────────────────────────────────────────────────────────────────────

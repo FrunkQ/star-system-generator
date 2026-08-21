@@ -285,9 +285,21 @@
       <p><strong>Clouds are coupled to temperature in BOTH directions</strong>, but not by a single term that
         would double-count: their <em>cooling</em> (reflectivity) is the derived <a href="#temperature">albedo</a>
         above, while their <em>warming</em> is the greenhouse of the gas they condensed from (Venus's clouds are
-        its CO₂; Earth's water vapour is in its air at 0.4%). The one gap we fill explicitly: a liquid-water ocean
-        whose atmosphere <em>omits</em> water vapour gets an Earth-realistic implied vapour greenhouse — gated off
-        when H₂O is already listed, so calibrated worlds are untouched.</p>
+        its CO₂; Earth's water vapour is in its air at 0.4%).</p>
+      <p><strong>A sea puts its own vapour into its own air, and we derive that rather than take it on trust.</strong>
+        How much is not a free choice: it is the <em>saturation pressure</em> of that solvent at that surface
+        temperature — the same curve the cloud decks use — scaled by how much of the surface is sea and by the
+        fraction of saturation a whole air column carries (the troposphere dries with altitude, so the column
+        mean is well under the value at the ground). Calibrated on Earth and nothing else: 288&nbsp;K, 1&nbsp;bar
+        and 71% ocean give the 0.4% water vapour Earth actually has. The solvent is whatever the world's
+        hydrosphere is made of, so a methane sea warms its world with methane. If a composition already
+        <em>lists</em> the gas, that figure is a floor — an author can add vapour we would not have derived, but
+        cannot hold it below what the sea must be evaporating.</p>
+      <p>The point of deriving it is that saturation goes to nothing <em>smoothly</em>, including by sublimation
+        from a frozen sea. Before, this term switched on at exactly 273&nbsp;K, which put a ten-kelvin step in a
+        loop that feeds itself: a world a hair below freezing lost its whole vapour greenhouse, and that loss was
+        what kept it below freezing. Worlds fell into snowballs because a branch closed, not because the physics
+        said so.</p>
     </section>
 
     <section id="temp-range">

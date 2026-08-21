@@ -906,7 +906,9 @@
       "responseK": 0.03,
       "denseCo2BoostStartBar": 1,
       "denseCo2BoostDenominator": 40,
-      "denseCo2BoostMax": 1
+      "denseCo2BoostMax": 1,
+      "vapourColumnMeanHumidity": 0.434,
+      "vapourColumnMaxFraction": 0.05
     },
     "internalHeat": {
       "minHydrogenHeliumFraction": 0.6,

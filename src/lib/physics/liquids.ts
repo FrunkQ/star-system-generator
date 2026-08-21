@@ -98,6 +98,37 @@ export function saturationPressureBar(def: LiquidDef, tempK: number): number {
   return triple * Math.exp(-(latentHeatJPerMol(def) / R_GAS) * (1 / T - 1 / Math.max(1, def.meltK)));
 }
 
+// THE ONE ANSWER TO "what vapour does this body's own surface put into its own air" (inbox D6).
+// Two consumers ask it for different reasons and they used to answer it separately: the cloud model
+// wants the NEAR-SURFACE fraction, because that is what condenses at the lifting condensation level,
+// and the greenhouse wants the COLUMN MEAN, because that is what absorbs infrared through the whole
+// column. Those are genuinely different numbers — the troposphere dries with altitude — so they keep
+// their own humidity factors. What they must NOT have is their own saturation curve or their own
+// idea of which gas a sea evaporates into, and before this they did.
+//
+// Returns the SATURATION PRESSURE rather than a fraction, because the two callers divide by
+// different pressures (the greenhouse caps its effective pressure for giants). No phase gate, no
+// coverage floor and no clamp: those are policy, and each caller states its own. In particular a
+// FROZEN sea still sublimes — `saturationPressureBar` continues below the triple point — and a gate
+// on liquid-only would put back exactly the 273 K cliff D6 was.
+export function surfaceVapourSource(
+  body: { hydrosphere?: { composition?: string; coverage?: number }; temperatureK?: number; equilibriumTempK?: number },
+  pack?: RulePack | null
+): { gas: string; saturationBar: number; coverage: number; solvent: string } | null {
+  const solvent = body.hydrosphere?.composition;
+  if (!solvent || solvent === 'none') return null;
+  const coverage = Math.max(0, Math.min(1, body.hydrosphere?.coverage ?? 0));
+  const surfaceTempK = body.temperatureK ?? body.equilibriumTempK ?? 0;
+  if (surfaceTempK <= 0) return null;
+  const def = liquidDef(solvent, pack);
+  if (!def) return null;
+  // Which GAS is this liquid's vapour? The gas whose cloud block condenses to it. NEVER a hardcoded
+  // H2O: a methane sea evaporates methane, and assuming otherwise is the Earth-baseline trap.
+  const gas = Object.entries(pack?.gasPhysics ?? {}).find(([, d]) => d.cloud?.condensesTo === solvent)?.[0];
+  if (!gas) return null;
+  return { gas, saturationBar: saturationPressureBar(def, surfaceTempK), coverage, solvent };
+}
+
 // PRESSURE-AWARE phase (docs/dev/liquids-phase-tags.md §3). pressureBar undefined — or a def
 // without pressure anchors — falls back to the legacy 1-atm behaviour, so old call sites and
 // rulepack liquids without the new fields keep working unchanged.
