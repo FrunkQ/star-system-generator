@@ -243,6 +243,9 @@ export function formatUnitNum(unit: UnitId, displayValue: number, decimals?: num
     if (a >= 100) return fmtNum(displayValue, decimals ?? 1);
     return displayValue.toPrecision(4);
   }
+  // Tonnes stay plain for cargo-scale figures but a planet at the t stop is 5.97e+21, not a
+  // 22-digit locale number.
+  if (unit === 't' && Math.abs(displayValue) >= 1e7) return displayValue.toExponential(2);
   return fmtNum(displayValue, decimals ?? DEFAULT_DECIMALS[unit] ?? 0);
 }
 const DEFAULT_DECIMALS: Partial<Record<UnitId, number>> = {
@@ -255,6 +258,13 @@ export function formatSIInUnit(si: number, unit: UnitId, decimals?: number): str
   if (!Number.isFinite(si)) return '—';
   const concrete = resolveAutoUnit(unit, si);
   return `${formatUnitNum(concrete, unitFromSI(concrete, si), decimals)} ${unitIdLabel(concrete)}`;
+}
+
+// Pref-resolved string formatting for the surfaces that cannot host a component — tooltips,
+// document/report builders, curate. Interactive panels use <UnitValue> instead so the unit label
+// is the click target.
+export function formatPref(prefs: UnitPrefs | undefined, q: UnitQuantity, b: UnitBodyType, si: number, decimals?: number): string {
+  return formatSIInUnit(si, resolveUnitPref(prefs, q, b), decimals);
 }
 
 // ——— prefs: which stop each quantity × body type sits on ———
@@ -294,6 +304,17 @@ export function cycleUnit(q: UnitQuantity, current: UnitId): UnitId {
 }
 
 export const UNIT_BODY_TYPES: readonly UnitBodyType[] = ['star', 'planet', 'moon', 'construct'];
+
+// THE mapping from a node to its pref bucket — defined once, structural so this file stays free of
+// the types module. `roleHint` is required on every CelestialBody; belts, rings and barycentres
+// bucket with planets (they are system furniture read at planet scale), ships with constructs.
+export function unitBodyTypeFor(b: { kind?: string; roleHint?: string } | null | undefined): UnitBodyType {
+  if (!b) return 'planet';
+  if (b.kind === 'construct' || b.roleHint === 'construct' || b.roleHint === 'ship') return 'construct';
+  if (b.roleHint === 'star') return 'star';
+  if (b.roleHint === 'moon') return 'moon';
+  return 'planet';
+}
 
 // Load-time migration from the two legacy starmap-wide fields. PRESENCE of `unitPrefs` on the
 // starmap (even empty) marks a map as migrated — callers only invoke this when the record is

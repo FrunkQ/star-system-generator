@@ -8,7 +8,10 @@
   import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
   import { calculateSurfaceTemperature } from '$lib/physics/temperature';
   import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
-  import { systemStore, fmt } from '$lib/stores';
+  import { systemStore } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatPref, unitBodyTypeFor } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
   import { get } from 'svelte/store';
   import { onMount } from 'svelte';
   import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
@@ -88,12 +91,12 @@
   // energy balance and publishes them as components this panel already displays below. Deleted
   // rather than resynced: syncing preserves the fault. Same shape as the dead `retainsAtmosphere`
   // block in SystemProcessor, and the same fix.
-  let surfaceTempC: number | null = null;
-  let massDisplay: string | null = null;
+  let surfaceTempMeanK: number | null = null;
+  let massKgShown: number | null = null;
   let radiationLevel: string | null = null;
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
-  let orbitalDistanceDisplay: string | null = null;
+  let orbitalDistanceKm: number | null = null;
   let orbitalDistanceTooltip: string | null = null;
   let circumferenceKm: number | null = null;
   let tempTooltip: string = '';
@@ -124,15 +127,17 @@
     : ({ applies: false, reason: 'not a natural body' } as const);
   $: isBeltOrRing = body && body.kind === 'body' && (body.roleHint === 'belt' || body.roleHint === 'ring');
   $: isStar = body && body.kind === 'body' && body.roleHint === 'star';
+  // G34: which unit-pref bucket this subject reads (star / planet / moon / construct).
+  $: ubt = unitBodyTypeFor(body);
   
   // Perform all other display calculations when the body changes
   $: {
-    surfaceGravityG = null;    
+    surfaceGravityG = null;
     densityRelative = null;
-    surfaceTempC = null;
-    massDisplay = null;
+    surfaceTempMeanK = null;
+    massKgShown = null;
     radiationLevel = null;
-    orbitalDistanceDisplay = null;
+    orbitalDistanceKm = null;
     orbitalDistanceTooltip = null;
     circumferenceKm = null;
     tempTooltip = '';
@@ -259,8 +264,8 @@
             const aph = a * (1 + body.orbit.elements.e);
             const [nearWord, farWord] = parentBody?.roleHint === 'star'
                 ? ['Perihelion', 'Aphelion'] : ['Periapsis', 'Apoapsis'];
-            orbitalDistanceDisplay = $fmt.orbitAu(a);
-            orbitalDistanceTooltip = `${nearWord}: ${$fmt.orbitAu(peri)}\n${farWord}: ${$fmt.orbitAu(aph)}`;
+            orbitalDistanceKm = a * AU_KM;
+            orbitalDistanceTooltip = `${nearWord}: ${formatPref($unitPrefs, 'orbit', ubt, peri * AU_KM)}\n${farWord}: ${formatPref($unitPrefs, 'orbit', ubt, aph * AU_KM)}`;
 
             // Calculate Orbital Period
             if (parentBody) {
@@ -288,10 +293,7 @@
         }
 
         if (body.roleHint === 'star') {
-            const massInSuns = body.massKg / SOLAR_MASS_KG;
-            massDisplay = massInSuns < 1000000 
-                ? `${massInSuns.toLocaleString(undefined, {maximumFractionDigits: 3})} Solar Masses` 
-                : `${massInSuns.toExponential(2)} Solar Masses`;
+            massKgShown = body.massKg ?? null;
 
             const desc = getStellarRadiationDescription(body.radiationOutput || 0);
             radiationLevel = `${desc.text} (${body.radiationOutput?.toFixed(2)})`;
@@ -304,24 +306,17 @@
             }
 
         } else if (body.massKg) {
-            const massInEarths = body.massKg / EARTH_MASS_KG;
-            // Use toLocaleString for larger values, toExponential for very small for precision
-            if (massInEarths === 0) {
-                massDisplay = `0 Earth Masses`;
-            } else if (Math.abs(massInEarths) < 0.000001) { // Threshold for scientific notation
-                massDisplay = `${massInEarths.toExponential(3)} Earth Masses`;
-            } else {
-                massDisplay = `${massInEarths.toLocaleString(undefined, {maximumFractionDigits: 6})} Earth Masses`;
-            }
+            massKgShown = body.massKg;
         }
 
         if (body.temperatureK) {
             // The MEAN a reader wants is the average of the day and night sides, which the physics
             // publishes on the profile; `temperatureK` is the RADIATING temperature and they part
             // company exactly when the swing is large (inbox B63).
-            surfaceTempC = meanSurfaceTempK(body) - 273.15;
+            surfaceTempMeanK = meanSurfaceTempK(body);
 
-            tempTooltip = `Equilibrium: ${$fmt.tempK(body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K | Radiates at: ${$fmt.tempK(body.temperatureK || 0)} (power balance — above the average whenever day and night differ)`;
+            // The +N contributions are DIFFERENCES, so they stay in kelvin whatever the display unit.
+            tempTooltip = `Equilibrium: ${formatPref($unitPrefs, 'temperature', ubt, body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K | Radiates at: ${formatPref($unitPrefs, 'temperature', ubt, body.temperatureK || 0)} (power balance — above the average whenever day and night differ)`;
             // Break the same numbers out by SOURCE for the Internal Heat block. Kept beside the
             // tooltip that already lists them so the two can never disagree.
             const selfLumK = (body as any).selfLuminousTeffK || 0;
@@ -521,7 +516,7 @@
           <span class="value">{constructSpecs.maxVacuumG.toFixed(2)} g</span>        </div>
         <div class="detail-item">
           <span class="label">Total Vacuum Δv</span>
-          <span class="value">{$fmt.speedMs(constructSpecs.totalVacuumDeltaV_ms, 1)}</span>
+          <span class="value"><UnitValue quantity="speed" bodyType={ubt} value={constructSpecs.totalVacuumDeltaV_ms / 1000} /></span>
         </div>
         <div class="detail-item">
           <span class="label">Power Surplus</span>
@@ -547,11 +542,11 @@
     {#if isBeltOrRing}
         {#if body.radiusInnerKm && body.radiusOuterKm}
             <div class="detail-item">
-                <span class="label">Dimensions (AU)</span>
+                <span class="label">Dimensions</span>
                 <div style="display: flex; flex-direction: column; gap: 2px;">
-                    <span><strong>Inner:</strong> {(body.radiusInnerKm / AU_KM).toFixed(2)} AU</span>
-                    <span><strong>Outer:</strong> {(body.radiusOuterKm / AU_KM).toFixed(2)} AU</span>
-                    <span><strong>Width:</strong> {((body.radiusOuterKm - body.radiusInnerKm) / AU_KM).toFixed(3)} AU</span>
+                    <span><strong>Inner:</strong> <UnitValue quantity="orbit" bodyType={ubt} value={body.radiusInnerKm} decimals={2} /></span>
+                    <span><strong>Outer:</strong> <UnitValue quantity="orbit" bodyType={ubt} value={body.radiusOuterKm} decimals={2} /></span>
+                    <span><strong>Width:</strong> <UnitValue quantity="orbit" bodyType={ubt} value={body.radiusOuterKm - body.radiusInnerKm} /></span>
                 </div>
             </div>
         {/if}
@@ -565,10 +560,10 @@
     {/if}
 
     {#if !isBeltOrRing}
-        {#if massDisplay}
+        {#if massKgShown !== null}
                         <div class="detail-item">
                             <span class="label">Mass</span>
-                            <span class="value">{massDisplay}</span>
+                            <span class="value"><UnitValue quantity="mass" bodyType={ubt} value={massKgShown} /></span>
                         </div>
                     {/if}
                     
@@ -581,14 +576,14 @@
               
                     {#if body.kind === 'body' && body.radiusKm}              <div class="detail-item">
                   <span class="label">Radius</span>
-                  <span class="value">{$fmt.km(body.radiusKm)}</span>
+                  <span class="value"><UnitValue quantity="radius" bodyType={ubt} value={body.radiusKm} /></span>
               </div>
           {/if}
 
                 {#if circumferenceKm && !isStar}
                     <div class="detail-item">
                         <span class="label">Circumference</span>
-                        <span class="value">{$fmt.km(circumferenceKm)}</span>
+                        <span class="value"><UnitValue quantity="radius" bodyType={ubt} value={circumferenceKm} /></span>
                     </div>
                 {/if}
                 {#if surfaceGravityG !== null && !isStar}
@@ -623,10 +618,10 @@
           {/if}
     {/if}
 
-      {#if orbitalDistanceDisplay}
+      {#if orbitalDistanceKm !== null}
           <div class="detail-item" title={orbitalDistanceTooltip}>
               <span class="label">Orbit (from {orbitHostLabel})</span>
-              <span class="value">{orbitalDistanceDisplay}</span>
+              <span class="value"><UnitValue quantity="orbit" bodyType={ubt} value={orbitalDistanceKm} /></span>
           </div>
       {/if}
 
@@ -668,19 +663,19 @@
       {#if isStar && body.temperatureK}
           <div class="detail-item" title="{Math.round(body.temperatureK).toLocaleString()} K">
               <span class="label">Surface Temperature</span>
-              <span class="value">{Math.round(body.temperatureK).toLocaleString()} K</span>
+              <span class="value"><UnitValue quantity="temperature" bodyType={ubt} value={body.temperatureK} /></span>
           </div>
-      {:else if surfaceTempC !== null}
+      {:else if surfaceTempMeanK !== null}
           <div class="detail-item" title={tempTooltip}>
               <span class="label">Avg. Surface Temp.</span>
-              <span class="value">{$fmt.tempC(surfaceTempC)}</span>
+              <span class="value"><UnitValue quantity="temperature" bodyType={ubt} value={surfaceTempMeanK} /></span>
               {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
                   {@const p = body.temperatureProfile}
-                  <div class="temp-total">Total: {$fmt.tempK(p.totalMinK)} to {$fmt.tempK(p.totalMaxK)}</div>
+                  <div class="temp-total">Total: <UnitValue quantity="temperature" bodyType={ubt} value={p.totalMinK} /> to <UnitValue quantity="temperature" bodyType={ubt} value={p.totalMaxK} /></div>
                   {#each p.components as c}
                       <div class="temp-comp" class:volcanic={c.source === 'tidal-hotspot'}>
                           <span class="tc-label">{c.label}</span>
-                          <span class="tc-range">{$fmt.tempK(c.lowK)} to {$fmt.tempK(c.highK)}</span>
+                          <span class="tc-range"><UnitValue quantity="temperature" bodyType={ubt} value={c.lowK} /> to <UnitValue quantity="temperature" bodyType={ubt} value={c.highK} /></span>
                       </div>
                   {/each}
               {/if}
@@ -802,21 +797,21 @@
           <div class="detail-item orbital-zones">
               <span class="label">Orbital Zones</span>
               <div class="zone-details">
-                  <span><strong>Low Orbit:</strong> {$fmt.km(body.orbitalBoundaries.minLeoKm)} - {$fmt.km(body.orbitalBoundaries.leoMoeBoundaryKm)}</span>
+                  <span><strong>Low Orbit:</strong> <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.minLeoKm} /> - <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.leoMoeBoundaryKm} /></span>
 
                   {#if body.orbitalBoundaries.leoMoeBoundaryKm < body.orbitalBoundaries.meoHeoBoundaryKm}
-                    <span><strong>Mid Orbit:</strong> {$fmt.km(body.orbitalBoundaries.leoMoeBoundaryKm)} - {$fmt.km(body.orbitalBoundaries.meoHeoBoundaryKm)} {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
+                    <span><strong>Mid Orbit:</strong> <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.leoMoeBoundaryKm} /> - <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.meoHeoBoundaryKm} /> {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
                   {/if}
 
                   {#if body.orbitalBoundaries.geoStationaryKm && !body.orbitalBoundaries.isGeoFallback}
-                      <span><strong>Geostationary:</strong> {$fmt.km(body.orbitalBoundaries.geoStationaryKm)}</span>
+                      <span><strong>Geostationary:</strong> <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.geoStationaryKm} /></span>
                   {:else if !body.orbitalBoundaries.isGeoFallback && body.orbitalBoundaries.heoUpperBoundaryKm >= 1000}
                        <!-- Only show "Unstable" if it's not a micro-system (SOI >= 1000km) -->
                       <span><strong>Geostationary:</strong> Unstable</span>
                   {/if}
 
                   {#if body.orbitalBoundaries.meoHeoBoundaryKm < body.orbitalBoundaries.heoUpperBoundaryKm}
-                    <span><strong>High Orbit:</strong> {$fmt.km(body.orbitalBoundaries.meoHeoBoundaryKm)} - {$fmt.km(body.orbitalBoundaries.heoUpperBoundaryKm)}</span>
+                    <span><strong>High Orbit:</strong> <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.meoHeoBoundaryKm} /> - <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.heoUpperBoundaryKm} /></span>
                   {/if}
               </div>
           </div>
@@ -833,19 +828,19 @@
                       {#if !ascentApplicability.applies}
                           <div><span><strong>Surface to LO:</strong> N/A - {ascentApplicability.reason}</span></div>
                       {:else}
-                          <div><span><strong>Surface to LO:</strong> {$fmt.speedMs(body.loDeltaVBudget_ms, 1)}</span></div>
+                          <div><span><strong>Surface to LO:</strong> <UnitValue quantity="speed" bodyType={ubt} value={body.loDeltaVBudget_ms / 1000} /></span></div>
                       {/if}
                   {/if}
                   {#if body.propulsiveLandBudget_ms !== undefined}
                        {#if !ascentApplicability.applies}
                           <div><span><strong>LO to Surface (Propulsive):</strong> N/A - {ascentApplicability.reason}</span></div>
                       {:else}
-                          <div><span><strong>LO to Surface (Propulsive):</strong> {$fmt.speedMs(body.propulsiveLandBudget_ms, 1)}</span></div>
+                          <div><span><strong>LO to Surface (Propulsive):</strong> <UnitValue quantity="speed" bodyType={ubt} value={body.propulsiveLandBudget_ms / 1000} /></span></div>
                       {/if}
                   {/if}
                   {#if body.aerobrakeLandBudget_ms !== undefined}
                       {#if body.aerobrakeLandBudget_ms !== -1}
-                          <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> {$fmt.speedMs(body.aerobrakeLandBudget_ms, 1)}</span></div>
+                          <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> <UnitValue quantity="speed" bodyType={ubt} value={body.aerobrakeLandBudget_ms / 1000} /></span></div>
                       {:else}
                           <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> N/A (No Atmosphere)</span></div>
                       {/if}

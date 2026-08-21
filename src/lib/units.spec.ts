@@ -153,8 +153,9 @@ describe('unit ladders — every stop round-trips SI without drift', () => {
     expect(formatUnitNum('M-Sol', unitFromSI('M-Sol', SOLAR_MASS_KG))).toBe('1.000');
     // Jupiter in solar masses is small — significant figures, not a page of zeros
     expect(formatUnitNum('M-Sol', unitFromSI('M-Sol', JUPITER_MASS_KG))).toBe('9.54e-4');
-    // tonnes format like plain quantities
+    // tonnes format like plain quantities at cargo scale, exponential at planet scale
     expect(formatUnitNum('t', unitFromSI('t', 2.5e6))).toBe('2,500');
+    expect(formatUnitNum('t', unitFromSI('t', EARTH_MASS_KG))).toBe('5.97e+21');
   });
 
   it('long distances: AU, ly and pc stops agree with the astronomical constants', () => {
