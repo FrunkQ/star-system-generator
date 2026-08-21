@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.15 - 21st Aug 2026
+
+- Docs only. The session-discipline playbook is extracted into docs/process-templates/ - the playbook, the board template with the standing rules, and the session-start prompts - portable to every parallel project, so the core grows by interface rather than by accretion.
+
+## v3.0.0-rc.14 - 21st Aug 2026
+
+- Docs only. Coordinator 5 takes the board; the receiving-notice fix (A63 cheap half) is routed to the closeout session.
+
 ## v3.0.0-rc.13 - 21st Aug 2026
 
 - Docs only. The receiving-notice fix is approved and fully specified on its row (three wiring points located), with the owner's transition-themed progress design recorded for 3.1; the coordinator hands over at the owner's context call.
