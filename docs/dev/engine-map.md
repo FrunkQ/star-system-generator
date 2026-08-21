@@ -2359,6 +2359,27 @@ The component takes its `absorbed` series as a PROP and derives nothing — same
 states for itself — which is also what lets the pigment curve keep its flat baseline term while the
 gas curve, which has no such term, does not.
 
+### UI-C10 A SKIN MOVES CHROME TOKENS ONLY; COLOUR-AS-INFORMATION NEVER RIDES A SKIN
+WHERE: `styles/skins.css` (the skin definitions), `styles/skinStore.ts` (data-skin on <html>,
+localStorage, per viewer), `styles/tokens.css` (the CHROME/DOMAIN split it obeys, and the
+`--group-*` related-data edge tokens), `rendering/colors.ts` (canvas caches invalidate on skin
+change as well as palette change).
+RULE: a skin is a set of CHROME-token values plus a density layer, selected by `data-skin` on
+<html>. PER-VIEWER chrome, persisted locally - never campaign data (the asymmetry with unitPrefs,
+which players inherit, is deliberate). The DOMAIN section of tokens.css (body types, spectral
+classes, zones, hazard ramps, tiers) is colour that ENCODES MEANING and no skin may redefine it.
+The `--group-*` edge tokens colour RELATEDNESS between info cards (bulk/orbit/climate/air/life/
+hazard/infra) - decoration a skin may restyle, but one family = one colour on any given skin.
+A user's /palette overrides are inline :root styles and therefore beat any skin.
+WHY: G34 phase 4, owner direction 2026-08-21: modern (compact, light-blue, lighter grey) is the
+DEFAULT; classic (the shipped orange-on-black) is the tokens.css defaults themselves, so absence
+of overrides IS that skin and it stays pixel-familiar. The owner's hard rule in the same message:
+"when colour is used to indicate something (rather than decoration) it cant be swept".
+BLAST: a new skin = a new `:root[data-skin=...]` block in skins.css + a SKINS entry in
+skinStore.ts, nothing per-component. Density rules use `html[data-skin] body ...` to outrank
+scoped styles WITHOUT !important, and control shrink-rules sit behind (pointer: fine) so the
+coarse-pointer 44px floors (touch-overrides.css, UI-C6) stay honoured. Canvas/SVG reading tokens
+goes stale on skin change unless it hangs off the two subscriptions in colors.ts.
 ### UI-C9 A fragment link into ASYNC content silently does nothing, and a refresh hides it
 WHERE: `routes/discgallery/+page.svelte` (`scrollToHash`, called after `buildGiantLab`); the link that
 needs it is the atmosphere tab's `/discgallery#giant-lab`.

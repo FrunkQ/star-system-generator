@@ -77,6 +77,24 @@
   --font-ui: system-ui, 'Segoe UI', Arial, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
 
+  /* ---------- CHROME: related-data GROUP EDGES (G34 phase 4) ----------
+     Colour that shows which info cards belong to the same data FAMILY (bulk / orbit /
+     climate / air / life / hazard / infrastructure) — relatedness, not meaning about the
+     world, so a skin may restyle these. The DOMAIN palette below never moves with a skin.
+     Seeds: the hexes the technical panel had already reached for (#3b82f6 atmosphere,
+     #10b981 habitability, #a855f7 zones), completed into one deliberate set. */
+  --group-bulk: var(--accent);   /* what it IS: mass, radius, gravity, class */
+  --group-orbit: #e0b341;        /* where it goes: orbit, period, resonance, eclipses */
+  --group-climate: #d97757;      /* what it is like: temperature, internal heat, water */
+  --group-air: #3b82f6;          /* what it breathes: atmosphere and gases */
+  --group-life: #10b981;         /* who lives there: habitability, biosphere */
+  --group-hazard: #f43f5e;       /* what hurts: radiation, magnetics, belt hazard */
+  --group-infra: #a855f7;        /* getting about: orbital zones, delta-v, ship specs */
+
+  /* The info-card ground. Was a hardcoded #252525 in the technical panel; the classic
+     skin keeps that exact hex, other skins may lift it. */
+  --bg-card: #252525;
+
   /* ---------- CHROME: the TAG PILL ----------
      One shape wherever a tag appears — a panel chip and a map marker are the same object.
      CSS consumers use these; canvas and SVG consumers cannot read CSS and go through

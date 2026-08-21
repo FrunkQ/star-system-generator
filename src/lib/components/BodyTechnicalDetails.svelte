@@ -443,7 +443,7 @@
 
 {#if body}
 <div class="details-grid">
-    <div class="detail-item">
+    <div class="detail-item g-bulk">
         <span class="label">Kind</span>
         <span class="value">{body.kind}{#if body.kind === 'body'} ({body.roleHint}){/if}</span>
     </div>
@@ -482,43 +482,43 @@
     {/if}
     
     {#if body.kind === 'construct'}
-      <div class="detail-item">
+      <div class="detail-item g-bulk">
           <span class="label">Class</span>
           <span class="value">{body.class}</span>
       </div>
       {#if body.physical_parameters?.massKg}
-        <div class="detail-item">
+        <div class="detail-item g-bulk">
             <span class="label">Mass</span>
             <span class="value">{(body.physical_parameters.massKg / 1000).toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes</span>
         </div>
       {/if}
       {#if body.physical_parameters?.dimensionsM}
-        <div class="detail-item">
+        <div class="detail-item g-bulk">
             <span class="label">Dimensions</span>
             <span class="value">{body.physical_parameters.dimensionsM.join(' x ')} m</span>
         </div>
       {/if}
 
       {#if constructSpecs?.orbit_string}
-        <div class="detail-item">
+        <div class="detail-item g-orbit">
             <span class="label">Orbital Profile</span>
             <span class="value">{constructSpecs.orbit_string}</span>
         </div>
       {/if}
 
       {#if constructSpecs}
-        <div class="detail-item">
+        <div class="detail-item g-bulk">
           <span class="label">Total Mass</span>
           <span class="value">{constructSpecs.totalMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes</span>
         </div>
-        <div class="detail-item">
+        <div class="detail-item g-infra">
           <span class="label">Max Vacuum Accel.</span>
           <span class="value">{constructSpecs.maxVacuumG.toFixed(2)} g</span>        </div>
-        <div class="detail-item">
+        <div class="detail-item g-infra">
           <span class="label">Total Vacuum Δv</span>
           <span class="value"><UnitValue quantity="speed" bodyType={ubt} value={constructSpecs.totalVacuumDeltaV_ms / 1000} /></span>
         </div>
-        <div class="detail-item">
+        <div class="detail-item g-infra">
           <span class="label">Power Surplus</span>
           <span class="value">{constructSpecs.powerSurplus_MW.toLocaleString(undefined, {maximumFractionDigits: 1})} MW</span>
         </div>
@@ -526,7 +526,7 @@
     {/if}
 
     {#if body.kind === 'body'}
-        <div class="detail-item">
+        <div class="detail-item g-bulk">
             <span class="label">Classification</span>
             <span class="value">{body.classes.join(', ')}</span>
         </div>
@@ -541,7 +541,7 @@
 
     {#if isBeltOrRing}
         {#if body.radiusInnerKm && body.radiusOuterKm}
-            <div class="detail-item">
+            <div class="detail-item g-bulk">
                 <span class="label">Dimensions</span>
                 <div style="display: flex; flex-direction: column; gap: 2px;">
                     <span><strong>Inner:</strong> <UnitValue quantity="orbit" bodyType={ubt} value={body.radiusInnerKm} decimals={2} /></span>
@@ -552,7 +552,7 @@
         {/if}
         {#if body.massKg}
             {@const densityInfo = getBeltDensityDescription(body.massKg)}
-            <div class="detail-item">
+            <div class="detail-item g-hazard">
                 <span class="label">Density / Hazard</span>
                 <span class="value" style="color: {densityInfo.color}; font-weight: bold;">{densityInfo.text}</span>
             </div>
@@ -561,57 +561,57 @@
 
     {#if !isBeltOrRing}
         {#if massKgShown !== null}
-                        <div class="detail-item">
+                        <div class="detail-item g-bulk">
                             <span class="label">Mass</span>
                             <span class="value"><UnitValue quantity="mass" bodyType={ubt} value={massKgShown} /></span>
                         </div>
                     {/if}
                     
                     {#if luminosity !== null}
-                        <div class="detail-item">
+                        <div class="detail-item g-bulk">
                             <span class="label">Luminosity</span>
                             <span class="value">{luminosity.toExponential(2)} L☉</span>
                         </div>
                     {/if}
               
-                    {#if body.kind === 'body' && body.radiusKm}              <div class="detail-item">
+                    {#if body.kind === 'body' && body.radiusKm}              <div class="detail-item g-bulk">
                   <span class="label">Radius</span>
                   <span class="value"><UnitValue quantity="radius" bodyType={ubt} value={body.radiusKm} /></span>
               </div>
           {/if}
 
                 {#if circumferenceKm && !isStar}
-                    <div class="detail-item">
+                    <div class="detail-item g-bulk">
                         <span class="label">Circumference</span>
                         <span class="value"><UnitValue quantity="radius" bodyType={ubt} value={circumferenceKm} /></span>
                     </div>
                 {/if}
                 {#if surfaceGravityG !== null && !isStar}
-                    <div class="detail-item">
+                    <div class="detail-item g-bulk">
                         <span class="label">Surface Gravity</span>
                         <span class="value">{surfaceGravityG.toFixed(2)} g</span>                    </div>
                 {/if}
                 {#if densityRelative !== null && !isStar}
-                    <div class="detail-item">
+                    <div class="detail-item g-bulk">
                         <span class="label">Density (rel. to Earth)</span>
                         <span class="value">{densityRelative.toFixed(2)}</span>
                     </div>
                 {/if}
                 {#if bodyGasDominated && !isStar}
-                    <div class="detail-item" title="Insolation puffs a gas giant's envelope: higher inflation → larger radius, lower density. Derived from the equilibrium temperature unless the GM overrides it.">
+                    <div class="detail-item g-bulk" title="Insolation puffs a gas giant's envelope: higher inflation → larger radius, lower density. Derived from the equilibrium temperature unless the GM overrides it.">
                         <span class="label">Thermal inflation</span>
                         <span class="value">×{bodyInflation.toFixed(2)}{#if bodyInflation > 1.05} · puffy{/if}{#if cbody?.overrides?.gasThermalInflation !== undefined} <span class="ovr-badge">override</span>{/if}</span>
                     </div>
                 {/if}
           {#if body.kind === 'body' && body.axial_tilt_deg}
-              <div class="detail-item">
+              <div class="detail-item g-bulk">
                   <span class="label">Axial Tilt</span>
                   <span class="value">{body.axial_tilt_deg.toFixed(1)}°</span>
               </div>
           {/if}
 
           {#if body.kind === 'body' && body.rotation_period_hours}
-              <div class="detail-item">
+              <div class="detail-item g-bulk">
                   <span class="label">Day Length</span>
                   <span class="value">{body.rotation_period_hours.toFixed(1)} hours</span>
               </div>
@@ -619,54 +619,54 @@
     {/if}
 
       {#if orbitalDistanceKm !== null}
-          <div class="detail-item" title={orbitalDistanceTooltip}>
+          <div class="detail-item g-orbit" title={orbitalDistanceTooltip}>
               <span class="label">Orbit (from {orbitHostLabel})</span>
               <span class="value"><UnitValue quantity="orbit" bodyType={ubt} value={orbitalDistanceKm} /></span>
           </div>
       {/if}
 
       {#if body.kind === 'body' && (calculatedPeriodDays || body.orbital_period_days) && !isBeltOrRing}
-          <div class="detail-item">
+          <div class="detail-item g-orbit">
               <span class="label">Orbital Period</span>
               <span class="value">{(calculatedPeriodDays || body.orbital_period_days).toFixed(1)} days</span>
           </div>
       {/if}
 
       {#if body.kind === 'body' && body.orbit?.elements.e}
-          <div class="detail-item">
+          <div class="detail-item g-orbit">
               <span class="label">Orbital Eccentricity</span>
               <span class="value">{body.orbit.elements.e.toFixed(3)}</span>
           </div>
       {/if}
 
       {#if body.kind === 'body' && body.orbit && orbitalStabilityLabel}
-          <div class="detail-item" title={orbitalStabilityDetails || ''}>
+          <div class="detail-item g-orbit" title={orbitalStabilityDetails || ''}>
               <span class="label">Orbital Stability</span>
               <span class="value">{orbitalStabilityLabel}</span>
           </div>
       {/if}
 
       {#if body.kind === 'body' && (body as any).resonanceNote}
-          <div class="detail-item" title={(body as any).resonanceNote}>
+          <div class="detail-item g-orbit" title={(body as any).resonanceNote}>
               <span class="label">Resonance</span>
               <span class="value">{(body.orbit?.resonance ? `${body.orbit.resonance.numerator}:${body.orbit.resonance.denominator}` : (body.tags?.some((t) => t.key === 'resonance/laplace') ? 'Laplace chain' : 'Mean-motion'))}</span>
           </div>
       {/if}
 
       {#if eclipseText}
-          <div class="detail-item" title="When this world's star is next hidden from it, and by how much — seen from where the shadow falls. Elements are held fixed (no nodal precession), so this is when they next line up rather than an ephemeris.">
+          <div class="detail-item g-orbit" title="When this world's star is next hidden from it, and by how much — seen from where the shadow falls. Elements are held fixed (no nodal precession), so this is when they next line up rather than an ephemeris.">
               <span class="label">Next Eclipse</span>
               <span class="value">{eclipseText}</span>
           </div>
       {/if}
 
       {#if isStar && body.temperatureK}
-          <div class="detail-item" title="{Math.round(body.temperatureK).toLocaleString()} K">
+          <div class="detail-item g-climate" title="{Math.round(body.temperatureK).toLocaleString()} K">
               <span class="label">Surface Temperature</span>
               <span class="value"><UnitValue quantity="temperature" bodyType={ubt} value={body.temperatureK} /></span>
           </div>
       {:else if surfaceTempMeanK !== null}
-          <div class="detail-item" title={tempTooltip}>
+          <div class="detail-item g-climate" title={tempTooltip}>
               <span class="label">Avg. Surface Temp.</span>
               <span class="value"><UnitValue quantity="temperature" bodyType={ubt} value={surfaceTempMeanK} /></span>
               {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
@@ -688,7 +688,7 @@
            the geology and contributes essentially nothing to the surface temperature — two different
            stories that the old single tooltip flattened together. -->
       {#if internalHeatSources.length}
-          <div class="detail-item" title="Heat the body generates itself, as opposed to the starlight it receives. Each figure is how much it raises the surface temperature.">
+          <div class="detail-item g-climate" title="Heat the body generates itself, as opposed to the starlight it receives. Each figure is how much it raises the surface temperature.">
               <span class="label">Internal Heat</span>
               <span class="value">+{Math.round(internalHeatTotalK)} K</span>
               {#each internalHeatSources as src}
@@ -704,21 +704,21 @@
       {/if}
 
       {#if body.roleHint === 'star' && radiationLevel}
-          <div class="detail-item" title={radiationTooltip}>
+          <div class="detail-item g-hazard" title={radiationTooltip}>
               <span class="label">Radiation Level</span>
               <span class="value">{radiationLevel}</span>
           </div>
       {/if}
 
       {#if body.magneticField}
-          <div class="detail-item" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
+          <div class="detail-item g-hazard" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
               <span class="label">Magnetic Field</span>
               <span class="value">{formatGauss(body.magneticField.strengthGauss)} G</span>
           </div>
       {/if}
 
       {#if surfaceRadiationText && body.roleHint !== 'star'}
-          <div class="detail-item" title={surfaceRadiationTooltip}>
+          <div class="detail-item g-hazard" title={surfaceRadiationTooltip}>
               <span class="label">Radiation ({radiationPlace(body)})</span>
               <span class="value">{surfaceRadiationText} ({displayedSurfaceRadiation?.toFixed(2)})</span>
               {#if minSurfaceRadiation !== null && maxSurfaceRadiation !== null}
@@ -761,7 +761,7 @@
       {#if body.kind === 'body' && body.hydrosphere && body.hydrosphere.coverage > 0}
           {@const _hp = phaseAtP(body.hydrosphere.composition, (body.temperatureK ?? body.equilibriumTempK ?? 0), body.atmosphere?.pressure_bar, rulePack)}
           {@const _hphrase = _hp === 'liquid' ? '' : _hp === 'solid' ? ' (frozen)' : _hp === 'supercritical' ? ' (supercritical)' : ' (boiled off)'}
-          <div class="detail-item">
+          <div class="detail-item g-climate">
               <span class="label">Hydrosphere</span>
               <span class="value">{Math.round(body.hydrosphere.coverage * 100)}% {body.hydrosphere.composition}{_hphrase}</span>
           </div>
@@ -880,12 +880,19 @@
   .detail-item {
       display: flex;
       flex-direction: column;
-      background-color: #252525;
+      background-color: var(--bg-card, #252525);
       padding: 0.6em;
       border-radius: 4px;
       border-left: 3px solid var(--accent);
       cursor: default; /* So title attribute tooltips show up consistently */
   }
+  /* G34 phase 4: the left edge names the card's data FAMILY — related readings share a
+     colour (tokens.css --group-*), so the eye can gather them across the grid. */
+  .detail-item.g-bulk { border-left-color: var(--group-bulk); }
+  .detail-item.g-orbit { border-left-color: var(--group-orbit); }
+  .detail-item.g-climate { border-left-color: var(--group-climate); }
+  .detail-item.g-hazard { border-left-color: var(--group-hazard); }
+  .detail-item.g-infra { border-left-color: var(--group-infra); }
   .detail-item.overrides-callout {
       grid-column: 1 / -1;
       border-left-color: var(--accent, #ff5a1f);
@@ -905,7 +912,7 @@
   }
   .detail-item.traveller-data {
       grid-column: 1 / -1;
-      border-left-color: #ffa500;
+      border-left-color: var(--group-infra);
   }
   .traveller-sub {
       display: flex;
@@ -942,7 +949,7 @@
   }
   .detail-item.atmosphere {
     grid-column: 1 / -1;
-    border-left-color: #3b82f6;
+    border-left-color: var(--group-air);
   }
   .composition {
     margin-top: 0.5em;
@@ -976,7 +983,7 @@
 
   .detail-item.habitability, .detail-item.biosphere {
     grid-column: 1 / -1;
-    border-left-color: #10b981;
+    border-left-color: var(--group-life);
   }
   .habitability-tier {
     font-size: 0.9em;
@@ -993,7 +1000,7 @@
 
   .detail-item.orbital-zones {
     grid-column: 1 / -1;
-    border-left-color: #a855f7;
+    border-left-color: var(--group-infra);
   }
   .zone-details {
     display: flex;
@@ -1004,7 +1011,7 @@
 
   .tags-list {
     grid-column: 1 / -1;
-    border-left-color: #888;
+    border-left-color: var(--text-faint); /* neutral: tags are their own colour system */
   }
 
   .tags-container {

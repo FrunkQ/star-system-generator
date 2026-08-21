@@ -3,7 +3,9 @@
 	import { browser, dev } from '$app/environment';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import '$lib/styles/tokens.css';
+	import '$lib/styles/skins.css';
 	import '$lib/styles/paletteStore'; // applies any saved palette overrides to :root app-wide
+	import '$lib/styles/skinStore'; // applies the viewer's chosen skin (data-skin on <html>)
 	import '$lib/styles/touch-overrides.css';
 
 	let { children } = $props();

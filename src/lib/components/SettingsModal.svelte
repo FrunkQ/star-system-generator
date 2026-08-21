@@ -4,6 +4,7 @@
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { skin, SKINS } from '$lib/styles/skinStore';
   // A45: the one list, filtered to what the 2D snap grid can draw — never a hand-written copy.
   import { SNAP_GRID_OPTIONS } from '$lib/map/mapOverlay';
   import { unitKind, campaignUnit, unitChangeOutcomes, UNIT_SHORT, type UnitChangeMode } from '$lib/map/distanceUnits';
@@ -395,6 +396,20 @@
               <input id="systemEdgeAu" type="number" min="1" step="any" bind:value={systemEdgeAu} />
             </div>
           {/if}
+
+          <h3>Appearance</h3>
+          <!-- G34 phase 4: a skin is CHROME, per viewer, persisted on this device only — units are
+               campaign data (players inherit them), a skin is each viewer's own glasses. Applies
+               instantly; no Save needed. Colour-as-information (body types, zones, hazards) never
+               moves with a skin. Individual tokens can still be tuned at /palette. -->
+          <div class="form-group">
+            <label for="skinChoice" title="How THIS device draws the interface. Every viewer picks their own — it is not saved with the campaign. Applies immediately. Fine-tune single colours at /palette.">Interface skin (this device)</label>
+            <select id="skinChoice" bind:value={$skin}>
+              {#each SKINS as s}
+                <option value={s.id}>{s.name} — {s.blurb}</option>
+              {/each}
+            </select>
+          </div>
 
           <h3>Map display</h3>
           <!-- G16 "Background &amp; Overlay": ONE group, serving the GM 2D map, the player 2D map, the
