@@ -65,6 +65,40 @@ export function planckRadiance(nm: number, tempK: number): number {
 }
 
 /**
+ * The fraction of a blackbody's TOTAL power that comes out shortward of `nm` — the closed form, not
+ * a sum over the shared grid.
+ *
+ * It cannot be a grid sum: `GRID_MIN_NM` is 280, and the question this answers is precisely "how
+ * much is below 280?". It also must not be a numeric integral in a caller's loop — this sits on a
+ * UI path (stellar zones, redrawn as a GM drags a star's temperature) and a thousand-sample
+ * quadrature per star per frame is not free.
+ *
+ * The series is standard and exact in the limit: with x = hc/(lambda k T), the fraction of blackbody
+ * power emitted at wavelengths BELOW lambda is
+ *
+ *     F(x) = (15 / pi^4) * SUM_n  e^(-nx)/n * ( x^3 + 3x^2/n + 6x/n^2 + 6/n^3 )
+ *
+ * which converges geometrically — ten terms is far past double precision for any x above ~1, and x
+ * for a biological UV edge on any star is well above that.
+ *
+ * WHAT IT MEASURES, WHERE, IN WHAT UNITS (PHY-2): a dimensionless share of the emitter's own
+ * bolometric output, at the emitter's surface, 0..1. Multiply by a luminosity to get a luminosity.
+ */
+export function blackbodyFractionBelowNm(nm: number, tempK: number): number {
+  if (!(tempK > 0) || !(nm > 0)) return 0;
+  const x = (PLANCK_H * C_MS) / (nm * 1e-9 * BOLTZMANN_K * tempK);
+  if (x > 700) return 0;                       // colder than any practical emitter at this edge
+  if (x < 1e-6) return 1;                      // hotter than the edge by any margin that matters
+  let sum = 0;
+  for (let n = 1; n <= 20; n++) {
+    const nx = n * x;
+    if (nx > 700) break;
+    sum += (Math.exp(-nx) / n) * (x * x * x + (3 * x * x) / n + (6 * x) / (n * n) + 6 / (n * n * n));
+  }
+  return Math.min(1, (15 / Math.pow(Math.PI, 4)) * sum);
+}
+
+/**
  * A blackbody spectrum scaled so its integral OVER THE GRID equals `totalWm2`.
  *
  * Note honestly what that means: a real blackbody radiates outside 280–1400 nm too, and for a cool

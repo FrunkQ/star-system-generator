@@ -19,7 +19,7 @@ export function getValidClassifications(
         : (pack.generation_parameters?.frost_line_base_au || 2.7);
     const distFromStarAU = stellar.distanceAU;
     const rocheLimitAU = host.kind === 'body' ? calculateRocheLimit(host) : 0;
-    const killZoneAU = host.kind === 'body' ? calculateKillZone(host) : 0;
+    const killZoneAU = host.kind === 'body' ? calculateKillZone(host, pack) : 0;
     const habitableZone = host.kind === 'body' ? calculateGoldilocksZone(host) : { inner: 0, outer: 0 };
     const effectiveDistanceAU = equivalentFluxDistanceAU(orbit.elements.a_AU, orbit.elements.e);
 

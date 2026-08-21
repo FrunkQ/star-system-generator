@@ -2849,6 +2849,28 @@ native range input it has correct geometry and is invisible - the input's own ru
 over it, which measures fine in the DOM and shows nothing on screen. Found by eye, after the geometry
 checked out. Anything reusing this for a physics control inherits that.
 
+### PHY-23 THE KILL ZONE DERIVES, AND IT HAS TWO HAZARDS BECAUSE ONE LETTER COULD NEVER CARRY BOTH
+WHERE: `physics/zones.ts` `calculateKillZone`; `physics/spectrum.ts` `blackbodyFractionBelowNm`;
+`physics/ionisingOutput.ts` `ionisingOutputSolar`. Constants
+`generation_parameters.uv_damage_edge_nm` / `kill_zone_sol_au`.
+RULE: everything comes from `getLuminosity` (R^2 T^4) and the star's own temperature and
+`flareActivity`. Never `star.radiationOutput`, and never `bodyIonisingOutputSolar` here - that reads
+the stored luminosity and would take it back in through the side door. The hazard is the MEAN of two
+relative terms, photospheric UV and coronal ionising output, so Sol is exactly 1 by construction.
+WHY: it was `0.1 * sqrt(uvFactor * star.radiationOutput * L)`, and all three factors were wrong
+(inbox B81, owner decided DERIVE). The stored dial has drifted up to 60,000x (B57) and was
+multiplying the COMPUTED luminosity by the STORED one - the same quantity twice. The `uvFactor`
+switch tested `classes[0].split('/')[1]` against single letters, so "G2V" matched NOTHING and every
+properly classified star fell to 1.0; only a bare BAND key matched, and `star/M` and `star/M4V` came
+out 3.2x apart on spelling alone (DATA-R18). Its default handed brown dwarfs, white dwarfs and
+neutron stars a Sun-like UV factor.
+BLAST: TWO HAZARDS IS THE POINT, not a flourish. Photospheric UV alone makes every cool dwarf safe,
+which contradicts the whole M-dwarf habitability argument; coronal output alone makes every hot star
+safe, which is worse. Measured after: O5V 63 -> 301 AU, neutron star 0.018 -> 0.090, Sol 0.100 ->
+0.090, every cool dwarf about 0.56x. **No body stores a kill zone** - it is computed on demand for
+the UI and for `generation/placement.ts`, so the derived fixture does NOT move and an empty diff
+there is the correct result, not a sign the change did nothing.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s

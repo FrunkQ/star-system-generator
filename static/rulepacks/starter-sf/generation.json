@@ -71,6 +71,8 @@
     "star_axial_tilt_baseline_deg": 8,
     "j2_over_q_giant": 0.15,
     "j2_over_q_solid": 0.3,
+    "uv_damage_edge_nm": 280,
+    "kill_zone_sol_au": 0.1,
     "danger_zone_multiplier": 5,
     "atmosphere_retention_factor": 100,
     "radiation_ld50_sv": 5,

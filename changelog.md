@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.896-beta - 21st Aug 2026
+
+- The kill and danger zones now come from the star itself. They were the last zones still multiplied out of a stored brightness dial that has drifted badly, and the spectral-type correction beside it had never once fired - a star's zone depended on how its class happened to be spelled. They now derive from the star's own light and heat, in two parts: the ultraviolet its surface pours out, which is what makes hot stars lethal, and the flare radiation from its corona, which is what makes cool but active dwarfs lethal. Hot stars gain much wider danger zones, quiet cool dwarfs narrower ones, and the Sun barely moves.
+
 ## v2.1.895-beta - 21st Aug 2026
 
 - The system-generation dials now show you which side of the physics you are on. A green, amber and red strip under each slider marks where real systems sit, where few of them do, and where none measured do - and the wording is careful about the difference: red says "no measured system looks like this - still allowed, still physical", because nothing is ever ruled out at any setting. The edges live in the rule pack, so a GM running a deliberately fantastical setting can move the goalposts rather than fight them.

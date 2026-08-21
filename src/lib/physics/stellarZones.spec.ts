@@ -132,17 +132,77 @@ describe('stellar zones hold across the whole catalogue, not just around Sol', (
   });
 });
 
-describe('the kill zone still reads a STORED value', () => {
-  it('killZone and dangerZone move with radiationOutput, which is pack data that has drifted', () => {
-    // NOT a fix — a pin, so the coupling cannot be forgotten. Every condensation line derives
-    // luminosity from radius and temperature, but calculateKillZone multiplies in the stored
-    // `radiationOutput`, which [[B57]] records as having drifted by up to 60,000x from the derived
-    // value. So "the zones are all derived" is true of the temperature lines and NOT of this one.
-    const p = pack();
-    const base = mk(['', 1, 5778, 1, 'star/G']);
+describe('the kill zone DERIVES, like every other zone (B81)', () => {
+  const p = pack();
+  const sol = () => mk(['', 1, 5778, 1, 'star/G2V']);
+
+  it('is INDEPENDENT of the stored radiationOutput, which B57 records as drifted 60,000x', () => {
+    // This assertion is the reverse of the one it replaces. That pin recorded the coupling as a
+    // known fault ("measured 31.6x"); the owner decided DERIVE, so the coupling is gone and this
+    // pins its absence. Everything now comes from getLuminosity, which is R^2 T^4.
+    const base = sol();
     const loud = { ...base, radiationOutput: 1000 } as CelestialBody;
-    const z1 = calculateAllStellarZones(base, p), z2 = calculateAllStellarZones(loud, p);
-    expect(z2.killZone / z1.killZone).toBeGreaterThan(10);   // measured 31.6x
-    expect(z2.dangerZone).toBeGreaterThan(z1.dangerZone);
+    const quiet = { ...base, radiationOutput: 0.0001 } as CelestialBody;
+    const z1 = calculateAllStellarZones(base, p);
+    expect(calculateAllStellarZones(loud, p).killZone).toBeCloseTo(z1.killZone, 10);
+    expect(calculateAllStellarZones(quiet, p).killZone).toBeCloseTo(z1.killZone, 10);
+    expect(calculateAllStellarZones(loud, p).dangerZone).toBeCloseTo(z1.dangerZone, 10);
+  });
+
+  it('DOES move with the computed luminosity — a bigger, hotter star has a bigger kill zone', () => {
+    const dim = calculateAllStellarZones(mk(['', 0.5, 4000, 1, 'star/K5V']), p).killZone;
+    const sun = calculateAllStellarZones(sol(), p).killZone;
+    const hot = calculateAllStellarZones(mk(['', 5, 20000, 1, 'star/B2V']), p).killZone;
+    expect(dim).toBeLessThan(sun);
+    expect(sun).toBeLessThan(hot);
+  });
+
+  it('is not decided by how the class is SPELLED — the dead letter switch is gone', () => {
+    // The old uvFactor switch tested classes[0].split('/')[1] against 'O','B','A'... so a modern
+    // designation ("M4V") matched nothing and fell to 1.0, while a bare band key ("M") matched and
+    // got 0.1. Measured before the fix: the same star, 3.2x apart, on spelling alone.
+    const band = calculateAllStellarZones(mk(['', 0.2, 3050, 1, 'star/M']), p).killZone;
+    const full = calculateAllStellarZones(mk(['', 0.2, 3050, 1, 'star/M4V']), p).killZone;
+    expect(band).toBeCloseTo(full, 10);
+  });
+
+  it('gives a brown dwarf and a neutron star their OWN answer, not a Sun-like default', () => {
+    // The old default of 1.0 handed L, T and Y dwarfs, white dwarfs and neutron stars a solar UV
+    // factor — absurd in both directions at once.
+    const y = calculateAllStellarZones(mk(['', 0.02, 400, 1, 'star/Y1']), p).killZone;
+    const ns = calculateAllStellarZones(mk(['', 1.4, 600000, 1.7e-5, 'star/NS']), p).killZone;
+    const sun = calculateAllStellarZones(sol(), p).killZone;
+    expect(y).toBeLessThan(sun / 100);        // a Y dwarf emits no damaging UV worth the name
+    expect(ns).toBeGreaterThan(y);            // ...and a 600,000 K remnant is not Sun-like either
+  });
+
+  it('a cool ACTIVE dwarf is dangerous by the OTHER route — flares, not photospheric UV', () => {
+    // The famous argument about M-dwarf habitability, and the reason one letter could never carry
+    // this: the photosphere emits nothing, the corona emits plenty, and which one dominates depends
+    // on the star's own dynamo.
+    const quietM = mk(['', 0.2, 3050, 1, 'star/M4V']);
+    const activeM = { ...quietM, flareActivity: 1 } as CelestialBody;
+    expect(calculateAllStellarZones(activeM, p).killZone)
+      .toBeGreaterThan(calculateAllStellarZones(quietM, p).killZone * 10);
+  });
+
+  it('the band edges are PACK DATA — a pack can move the UV damage edge and the anchor', () => {
+    const wide = { ...p, generation_parameters: { ...p.generation_parameters, kill_zone_sol_au: 1.0 } } as any;
+    expect(calculateAllStellarZones(sol(), wide).killZone)
+      .toBeCloseTo(calculateAllStellarZones(sol(), p).killZone * 10, 6);
+  });
+
+  it('the danger zone is still the kill zone times the pack multiplier', () => {
+    const z = calculateAllStellarZones(sol(), p);
+    const mult = (p.generation_parameters as any)?.danger_zone_multiplier ?? 5;
+    expect(z.dangerZone).toBeCloseTo(z.killZone * mult, 10);
+  });
+
+  it('every class in the range gets a finite, non-negative kill zone', () => {
+    for (const s of STARS) {
+      const z = calculateAllStellarZones(mk(s), p).killZone;
+      expect(Number.isFinite(z), `${s[4]} gave ${z}`).toBe(true);
+      expect(z).toBeGreaterThanOrEqual(0);
+    }
   });
 });
