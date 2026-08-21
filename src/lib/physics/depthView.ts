@@ -35,6 +35,14 @@ import { scaleHeightM } from './visibility';
  * been checked against them, so the slider stops.
  */
 export const GIANT_DEPTH_LIMIT_BAR = 100;
+
+/**
+ * WHERE A DECK'S SLAB IS TAKEN TO START, as a fraction of its base pressure. A deck has a base (the
+ * saturation crossing) and NO modelled top, so its occupied slab is approximated as
+ * [DECK_TOP_AT x base, base] — the same range the "are you inside it" test always used. B83 owns
+ * replacing this with a real thickness.
+ */
+export const DECK_TOP_AT = 0.55;
 import { liquidDef } from './liquids';
 import { makeupFractions } from './makeup';
 import { GRID_NM, blackbodySpectrum, type Spectrum } from './spectrum';
@@ -57,6 +65,9 @@ export interface DepthLevel {
 	ceiling: CloudDeck | null;
 	/** Whether you are INSIDE a deck rather than between two. */
 	inCloud: boolean;
+	/** 0..1 — how deep into the deck's murk you are. Ramps over the top of the slab (a cloud top is
+	 *  diffuse), holds 1 to the base (a cloud base is sharp). 0 whenever `inCloud` is false. */
+	cloudImmersion: number;
 	/** The authored colour of the deck you are in or under, as a material. */
 	floorHex: string | null;
 	/** Extinction per metre AT THIS DEPTH — Rayleigh scaled by density, plus the deck if you are in it.
@@ -126,24 +137,39 @@ export function depthProbe(
 		let ceiling: CloudDeck | null = null;
 		let floor: CloudDeck | null = null;
 		let inCloud = false;
+		let cloudImmersion = 0;
 		for (const d of decks) {
 			const base = d.baseBar as number;
 			const tau = d.opticalDepth ?? 0;
+			const top = base * DECK_TOP_AT;
 			if (base < pBar) {
-				// Base is at lower pressure = higher up = above you.
+				// Base is at lower pressure = higher up = wholly above you: its full depth is in the way.
 				tauAbove += tau;
 				if (!ceiling || base > (ceiling.baseBar as number)) ceiling = d;
+			} else if (pBar > top) {
+				// INSIDE THE SLAB. The share of the deck above you grows from nothing at its top to
+				// everything at its base — which is what makes descending through a deck a fade rather
+				// than a step. The step used to land the whole tau the instant you crossed the base, and
+				// it read as a jump cut on the slider. Linear in pressure across the slab: cheap, exact
+				// at both ends, continuous with the branches either side.
+				tauAbove += tau * ((pBar - top) / (base - top));
+				if (!floor || base < (floor.baseBar as number)) floor = d;
 			} else {
-				// Base is at or below you. The deck extends UPWARD from its base, so if its base is just
-				// below and it is thick enough you are inside it.
+				// Wholly below you — not started yet.
 				if (!floor || base < (floor.baseBar as number)) floor = d;
 			}
 		}
-		// "Inside": within a scale-height-ish slab above the floor deck's base, for a deck thick enough
-		// to count. Coverage is the honest proxy for how far up it reaches — a wisp is not a slab.
+		// "Inside": within the same slab, for a deck thick enough to count — coverage is the honest
+		// proxy, a wisp is not a slab. IMMERSION ramps over the first third of the slab, because a
+		// cloud TOP is diffuse: you sink into murk, you do not cross a wall. The BASE stays sharp,
+		// deliberately — dropping out of a cloud base really is sudden, which is why aircraft do it.
 		if (floor && floor.coverage >= 0.3) {
 			const base = floor.baseBar as number;
-			inCloud = pBar > base * 0.55;
+			const top = base * DECK_TOP_AT;
+			if (pBar > top) {
+				inCloud = true;
+				cloudImmersion = Math.min(1, ((pBar - top) / (base - top)) / 0.33);
+			}
 		}
 		const transmission = Math.exp(-tauAbove);
 		const light = topLight.map((v) => v * transmission);
@@ -178,7 +204,7 @@ export function depthProbe(
 		const glowRel = refVis > 0 && starVis > 0 ? (glowVis / refVis) : 0;
 		const glowShare = tempK < 600 ? 0 : Math.max(0, Math.min(1, glowRel / (glowRel + transmission + 1e-12)));
 		const glowHex = glowShare > 0.001 ? bdGlowColour(tempK) : null;
-		return { pBar, tempK, light, transmission, floor, ceiling, inCloud, floorHex, extinctionPerM, seeM, belowCloudTopM, glowShare, glowHex };
+		return { pBar, tempK, light, transmission, floor, ceiling, inCloud, cloudImmersion, floorHex, extinctionPerM, seeM, belowCloudTopM, glowShare, glowHex };
 	};
 
 	return {

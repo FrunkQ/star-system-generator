@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.883-beta - 18th Aug 2026
+
+- The balloon's descent through a cloud deck is now a fade, not a jump cut. A deck's full optical depth used to land the instant the slider crossed its base — the light went from clear to gone in one step, which read as jarring. The share of the deck above you now ramps across its slab, and the grey-room immersion fades in with it. The base itself stays sharp on the way OUT, deliberately: a cloud top is diffuse but a cloud base is sudden, which is why aircraft drop out of one all at once.
+
 ## v2.1.881-beta - 21st Aug 2026
 
 - Docs only. The moon rebuild is unblocked (build on the design note's defaults and let play decide); the kill/danger zones will derive from the star's computed output; the too-cold-in-the-goldilocks-zone observation is captured with the measurement that decides whether it is a fault or honest physics; and the player-window stretch is pinned to resizing on the cover page.

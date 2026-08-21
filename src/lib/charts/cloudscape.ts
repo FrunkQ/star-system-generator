@@ -74,7 +74,10 @@ export function cloudscapeFor(level: DepthLevel, fallbackFloor = '#c9b08a', true
 	const floorHex = glowRgb ? rgbToHex(mix(starFloor, glowRgb, g)) : rgbToHex(starFloor);
 	const skyHex = glowRgb ? rgbToHex(mix(starSky, mix(glowRgb, [0, 0, 0], 0.35), g)) : rgbToHex(starSky);
 	const midHex = dimHex(rgbToHex(mix(hexToRgb(floorHex), hexToRgb(skyHex), 0.45)), 0.7);
-	const immersion = level.inCloud ? 1 : 0;
+	// Graded, not binary: the probe says how deep into the murk you are, so entering a deck is a fade
+	// into the grey room rather than a jump cut. (Leaving through the BASE is still sharp, and that is
+	// the physics, not a shortcut.)
+	const immersion = level.cloudImmersion ?? (level.inCloud ? 1 : 0);
 	const inside = level.floor?.species ?? 'cloud';
 	const above = level.ceiling?.species ?? 'upper';
 	const note = level.inCloud
@@ -125,10 +128,10 @@ export function drawCloudscape(ctx: CanvasRenderingContext2D, W: number, H: numb
 	}
 	ctx.globalAlpha = 1;
 
-	// Inside a deck: the whole frame is a grey room and the billows vanish into it.
+	// Inside a deck: the frame fades into a grey room BY how deep you are, and the billows with it.
 	if (c.immersion > 0) {
 		ctx.fillStyle = c.floorHex;
-		ctx.globalAlpha = 0.82;
+		ctx.globalAlpha = 0.82 * c.immersion;
 		ctx.fillRect(0, 0, W, H);
 		ctx.globalAlpha = 1;
 	}

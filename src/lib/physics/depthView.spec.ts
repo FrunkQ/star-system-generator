@@ -143,6 +143,40 @@ describe('going down into a giant', () => {
     expect(pc.at(4).glowHex).toBeNull();
   });
 
+  it('fades through a deck instead of jumping at its base', () => {
+    // The jarring cut the owner reported: the full tau used to land the instant the slider crossed a
+    // deck's base — transmission went from ~1 to e^-120 in one step. Now the share of the deck above
+    // you ramps across its slab, so the two sides of the base agree and the descent is a fade.
+    const p = probeFor('Jupiter');
+    const base = Math.max(...p.decks.map((d) => d.baseBar as number));   // the deepest deck's base
+    const justAbove = p.at(base * 0.999).transmission;
+    const justBelow = p.at(base * 1.001).transmission;
+    // Continuous at the base: the ratio is order one, where it used to be astronomical.
+    expect(justBelow / Math.max(justAbove, 1e-300)).toBeGreaterThan(0.5);
+    expect(justAbove / Math.max(justBelow, 1e-300)).toBeGreaterThan(0.5);
+    // And genuinely graded inside the slab: mid-slab sits strictly between the top and the base.
+    const top = base * 0.55;
+    const mid = p.at((top + base) / 2).transmission;
+    expect(mid).toBeLessThan(p.at(top * 0.99).transmission);
+    expect(mid).toBeGreaterThan(p.at(base).transmission);
+  });
+
+  it('ramps immersion over the deck top and keeps the base sharp', () => {
+    // A cloud TOP is diffuse — you sink into murk — while a cloud BASE is sharp, which is why
+    // dropping out of one is sudden. The grey-room wash follows that: fades in from the slab top,
+    // full well before the base.
+    const p = probeFor('Jupiter');
+    const decksWithCover = p.decks.filter((d) => d.coverage >= 0.3);
+    expect(decksWithCover.length).toBeGreaterThan(0);
+    const base = decksWithCover[decksWithCover.length - 1].baseBar as number;
+    const top = base * 0.55;
+    expect(p.at(top * 0.99).cloudImmersion).toBe(0);
+    const early = p.at(top + (base - top) * 0.1).cloudImmersion;
+    expect(early).toBeGreaterThan(0);
+    expect(early).toBeLessThan(1);
+    expect(p.at(top + (base - top) * 0.6).cloudImmersion).toBe(1);
+  });
+
   it('says a pressure the way a GM would', () => {
     expect(pressureWords(1)).toBe('1.0 bar');
     expect(pressureWords(0.555)).toBe('555 mbar');
