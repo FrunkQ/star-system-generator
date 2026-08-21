@@ -303,6 +303,14 @@ reference is in-app at `/physics`, and the tag model is in
 [`docs/tags-guide.md`](./docs/tags-guide.md) and
 [`docs/classification-and-tags.md`](./docs/classification-and-tags.md).
 
+## How this project is run
+
+SSE is developed by one person coordinating a dozen parallel AI coding sessions, and the
+scaffolding that keeps that sane is in the open: [docs/process-templates/](docs/process-templates/)
+holds the playbook, the shared-board template and the session-start prompts. It grew out of
+necessity as the codebase did - V2 got hairy in the rush, and this is what brought it back under
+control for V3. Every rule in it was paid for by a real incident. Take it, adapt it.
+
 ## Building
 
 ```sh
