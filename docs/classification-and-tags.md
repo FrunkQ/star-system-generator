@@ -86,6 +86,65 @@ set) is described by a **fingerprint**: the parameter bands that DEFINE it. See
 - `gas-giant` is the explicit fallback (`weight 0.9`) so specific giant types win when they fit;
   it only fills the temperature gaps between the cloud‑type giants.
 
+### The other three keys on a fingerprint, and who reads them
+
+`match` and `gate` are the classifier's. The rest of the record is read by other passes entirely,
+and a pack author needs to know which is which.
+
+- **`formation` is a ONE-WAY BIRTH WINDOW, and the classifier never reads it.** It says what a slot
+  may be *given* when a system is generated — a protoplanet is young, a chthonian core or a helium
+  remnant needs time to be stripped, a cratered world needs time to accumulate the record — and it
+  is read by `generation/generateBodyOfType.ts`, from `fp.formation`, never from `fp.match`. **A
+  body that exists classifies as what it is regardless of whether it could have formed yet:** a
+  hand-placed chthonian in a million-year-old system still classifies as a chthonian. Four types
+  declare one today (`protoplanet`, `crater`, `helium`, `chthonian`). Omit it and the type is
+  birthable at any age.
+- **`range` is EDITOR METADATA and the scorer never reads it either** (`system/typeRanges.ts`). It
+  gives `mass_Me` / `radius_Re` / `density` / `Teq_K` spans for slider extents, for which types the
+  "Add planet/moon here…" picker offers, and for filtering by the orbit's temperature. Because it is
+  separate from `match`, ranging can be retuned without recalibrating classification. **A base type
+  with no `range` is not offered in a picker** — that is how the specialist and derived classes stay
+  out of it — though it still classifies normally.
+- **`note` is prose for the panel.** Nothing derives from it.
+
+**`classifier.rules[]` and `classifier.minScore` ARE NO LONGER READ** (inbox B67, v2.1.889). There
+was a second, additive classification seam beside the fingerprint engine; every shipped pack already
+used fingerprints, so no bundled body changed class when it went. A pack that still ships `rules` is
+told so once, on the console. **A pack with no fingerprints at all falls back to one base class by
+mass** rather than to the old rule path. Describe the rule-pack classification format as fingerprints
+only.
+
+### The zones the generator places into — all derived from LUMINOSITY
+
+`physics/zones.ts` is the single source for these, and every one of them is a property of the
+**star's luminosity asked at a heliocentric distance** — never of a mass, and never of the immediate
+host, so a moon's zone question is answered by walking the parent chain up to the star. A `sqrt(M)`
+form is not a rough approximation of `sqrt(L)`: for main-sequence stars `L ∝ M³·⁵`, so the two curves
+are wrong in *opposite* directions at the two ends (engine map **GEN-4** carries the measurements —
+12.9× too far out for an M8 dwarf, 10× too close for a hot B star, and near enough right for Sol,
+which is why it survived).
+
+**There are TWO frost lines and they answer different questions**, both drawn on the system map when
+Zones is on:
+
+| line | at | means |
+|---|---|---|
+| **formation frost line** | ~170 K, at the star's luminosity when the system was *born* | what a body could have formed as. This is the one the placement chain starts inside, and the one beyond which giants become likely. |
+| **current frost line** | ~125 K, at the star's luminosity *now* | where ice is stable today. |
+
+Also derived rather than constant: the silicate and soot lines, the CO₂ and CO ice lines, the
+Goldilocks zone, and the **kill and danger zones** — the kill zone being the mean of two independent
+hazards relative to Sol, the star's **surface ultraviolet share** and its **coronal ionising
+output**, which is why an active M dwarf is dangerous and a quiet one of the same size is not
+(inbox B81). The danger zone is a pack multiple of the kill zone.
+
+**Where planets go between them** is a ratio chain rather than a table of AU: successive orbits are
+drawn as a *ratio*, floored by a few mutual Hill radii, starting inside the formation frost line and
+running out at twice the CO ice line. Nothing about the Sun's own orbits is carried to another star.
+The full account, with the numbers, is on `/physics#generation`; the pack blocks are
+`generation_parameters.orbital_spacing`, `planet_mass_band_me`, `type_rarity_weighting`,
+`type_metallicity_sensitivity` and `realism_bands`, all GM-editable.
+
 **Adding / tuning a type:** add a fingerprint with the bands that uniquely define it. Run
 `npx vitest run classification.audit` — it classifies each type's own prototype and FAILS if a
 specific type is shadowed by a catch‑all. Verify real systems with `physics-baseline` and
@@ -99,6 +158,15 @@ parentId, orbitsStar, makeup.metal, makeup.rock, makeup.carbon, makeup.ice, make
 atm.pressure_bar, atm.composition.<gas>, hydrosphere.coverage, hydrosphere.composition`. The
 `makeup.*` interior fractions are how iron / silicate / coreless / carbon types classify. Missing
 atmosphere / hydrosphere default to `None` / `0` so airless/dry bodies match (e.g. `barren`).
+
+**Two of those features are easy to read as something they are not:**
+
+- **`stellarIrradiation` means STARLIGHT, not total incident flux** (inbox B34, v2.1.685). It changed
+  meaning: a rule keyed on it that was seeing 26,279 on Io now sees 0.037, because Io's environment is
+  dominated by Jupiter's belt rather than by the Sun. If a pack rule wants the radiation environment,
+  it wants `radiation_flux`.
+- **`density` is a bulk figure the engine derives from the makeup**, so it is internally consistent —
+  but a density that came *in* from a catalogue is not the same kind of number. See below.
 
 ### GM‑only types (no fingerprint)
 `forest, jungle, swamp, ecumenopolis` need biome / industrialisation data the engine doesn't
@@ -131,6 +199,30 @@ Two consequences for anyone reading star classes:
 - **Remnants are not positions.** A white dwarf's place on the diagram says hot and dim; it cannot say
   what made it. Their identity depends on the progenitor, which is why `classifyStar` takes a
   progenitor mass separately (**PHY-14**).
+
+## What an IMPORTED number is worth
+
+A catalogue value arrives as data, not as a measurement, and two of them mislead in ways that have
+already changed a bundled body.
+
+- **For about three quarters of the catalogue the quoted density is CALCULATED from the mass**
+  rather than measured — 135 of the 182 rows in the committed cache reproduce the mass-radius
+  estimator to within 1% (**DATA-R7**). Such a density is the mass a second time and is not an
+  independent constraint on anything. `radiusIsBackFilled()` is the test.
+- **Past the giant mass threshold, NO density evidence can make a body rocky** (inbox D17). A
+  super-Jupiter is dense because hydrogen is squeezed by its own self-gravity. Epsilon Indi A b
+  classified as 62% rock / 33% metal on a 5.54 g/cc reading — a *genuinely measured* one — and is
+  85% gas; both bundled starmaps changed at v2.1.504, so any screenshot or worked example quoting
+  its makeup from before then is wrong. Below the threshold a measured dense reading **does** win,
+  and deliberately: HD 219134 b and c and 55 Cancri e are real dense small worlds, and discarding
+  that would be throwing away evidence in favour of the rule of thumb that exists only because the
+  usual density is circular.
+
+A star's **luminosity class is read where the file states it**, not inferred from the letter alone,
+which is why Antares imports as a red supergiant; where the file gives only a letter, the class is
+inferred from temperature and radius when both are present, and otherwise defaults to main sequence
+— never a guessed spectral type. Figures for a star with no measured parameters are **typical for its
+class rather than observed**, and every surface that shows them says so.
 
 ## Tags = orthogonal conditions/history (namespaced)
 

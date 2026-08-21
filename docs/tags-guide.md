@@ -105,8 +105,11 @@ mapped by you without ever appearing on their screens.
 ## Automated tagging rules
 
 Each category can carry rules that apply its tags for you. A rule is a condition over a body's
-physics — bulk composition, mass, temperature, pressure, liquid coverage, geology regime, other tags
-— plus a chance, built with a guided editor or written as raw JSON when the logic gets involved.
+physics — bulk composition, mass, temperature, pressure, liquid coverage, geology regime, the main
+atmospheric gas, whether there is **solid ground** to stand on, other tags — plus a chance, built
+with a guided editor or written as raw JSON when the logic gets involved. *Has solid ground* and
+*Is a giant* sit next to each other in that list and are **not** each other's opposite — one asks
+whether there is a surface at all, the other whether this is a giant — so pick the one you mean.
 
 These are a hook generator, not a first-principles resource model. They are chosen to be plausible
 (helium-3 in old airless regolith, diamonds on carbon-rich high-pressure worlds, refuelling at
@@ -148,6 +151,12 @@ tags**:
 - **Tag chips** — exactly as they look in the panels. The map and the panel agree completely.
 - **Map pins** — a pin carrying the tag's initials. The fewest pixels, best when a lot is highlighted.
 - **Flags** — the chip flown from a short staff. The most readable at a glance, and the tallest.
+
+A **Marker size** dial sits beside the shape — its own dial rather than a share of the label size,
+because names are sized for reading and markers for spotting, and on a busy map those pull in
+opposite directions. A pin can carry initials, the full name to its right, or nothing but the shape;
+a flag's staff can be silver, gold, white, black or the tag's own colour, and it has to contrast
+with the **background** rather than with the flag — black disappears against a space backdrop.
 
 The colour is never part of this choice: it always comes from the tag or its category, so a faction
 flies its own colour whichever shape you pick. Every shape carries its text, so a highlight still
