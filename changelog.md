@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.894-beta - 21st Aug 2026
+
+- G34 phase 1, not yet visible on any panel: the unit ladders (temperature K/C/F, mass t/M-Earth/M-Jup/M-Sol, distance km/mi/AU/ly/pc), per-quantity-by-body-type prefs stored on the starmap with a one-time migration from the two legacy unit settings, the UnitValue and UnitInput components whose unit label click-cycles, and specs for every ladder round-trip. The panel sweep that makes it visible is phase 2.
+
 ## v2.1.893-beta - 21st Aug 2026
 
 - The sliders that shape a filled-out system now appear wherever filling out happens. They were offered on file imports only; a starmap built from the real-sky catalogue, and a Traveller world typed in by hand, both quietly used the defaults. Both now show the same panel. The catalogue one has no age slider on purpose - a region brings back stars of every age, so each keeps its own - and the Traveller one appears once you ask for more worlds than the Main World, with an age range that follows the star you type.

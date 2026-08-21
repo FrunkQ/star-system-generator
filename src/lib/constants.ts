@@ -22,6 +22,9 @@ export const SOLAR_MASS_KG = 1.989e30;
 export const SOLAR_RADIUS_KM = 696340;
 export const EARTH_MASS_KG = 5.972e24;
 export const EARTH_RADIUS_KM = 6371;
+// Matches the bundled Sol data (Jupiter stores massKg 1.898e27), so Jupiter reads exactly 1.000
+// at the M-Jup ladder stop rather than 0.9996.
+export const JUPITER_MASS_KG = 1.898e27;
 // The icy hydrostatic-equilibrium ("round") limit, ~Mimas-sized. Below this a body lacks the self-
 // gravity to differentiate a shell-over-interior, sustain a subsurface ocean, or cryovolcano — a small
 // tidally-stressed lump (Phobos/Deimos) is shredded, not warmed to melt. Keeps Enceladus (~252 km).

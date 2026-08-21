@@ -29,6 +29,8 @@
   import { APP_VERSION } from '$lib/constants';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
   import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
+  import { syncUnitPrefsFromStarmap } from '$lib/unitPrefsStore';
+  import { migrateUnitPrefs } from '$lib/units';
   import { attachStarmapUndo } from '$lib/undo/starmapUndo';
   import { setUndoPersist } from '$lib/undo/campaignHistory';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
@@ -971,6 +973,9 @@
   // Keep the runtime display units in sync with the loaded starmap (source of truth).
   $: measurementUnit.set($starmapStore?.measurementUnits ?? 'metric');
   $: temperatureUnit.set($starmapStore?.temperatureUnit ?? 'C');
+  // G34: the per-quantity × body-type unit prefs ride the starmap the same way (reference-guarded
+  // inside — the starmap store fires far more often than a pref changes).
+  $: syncUnitPrefsFromStarmap($starmapStore);
 
   // Subscribe to systemStore and update starmapStore
   systemStore.subscribe(system => {
@@ -1033,8 +1038,14 @@
     const temporalNormalized = ensureTemporalState(sanitized);
     if (temporalNormalized !== sanitized) changed = true;
 
+    // G34: migrate the two legacy map-wide unit fields into per-quantity × body-type prefs, once —
+    // presence of `unitPrefs` (even empty) means migrated. The legacy fields stay until the
+    // Settings selector retires (G34 phase 5).
+    const unitPrefs = sanitized.unitPrefs ?? migrateUnitPrefs(sanitized);
+    if (!sanitized.unitPrefs) changed = true;
+
     if (!changed) return sanitized;
-    return { ...temporalNormalized, mapMode, invertDisplay, scale, distanceUnit: unifiedUnit, generationEngine: sanitized.generationEngine };
+    return { ...temporalNormalized, mapMode, invertDisplay, scale, distanceUnit: unifiedUnit, generationEngine: sanitized.generationEngine, unitPrefs };
   }
 
   // WS7: this MUST go through lib/map/systemDistance.ts like every other distance. It used to measure

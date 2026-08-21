@@ -5,7 +5,7 @@
 //
 // NOTE: the interstellar STARMAP unit (ly / pc / diagrammatic, `starmap.distanceUnit`) is a SEPARATE
 // concept and is not touched here — this is only in-system km/miles.
-import { AU_KM } from './constants';
+import { AU_KM, EARTH_MASS_KG, JUPITER_MASS_KG, SOLAR_MASS_KG, LY_M, PC_M } from './constants';
 
 export type MeasurementUnits = 'metric' | 'imperial';
 // Temperature is its OWN switch (independent of metric/imperial): °C, °F, or scientific Kelvin.
@@ -123,4 +123,199 @@ export function kmsToDisplayNum(kmps: number, units: MeasurementUnits): number {
 }
 export function displayNumToKms(v: number, units: MeasurementUnits): number {
   return units === 'imperial' ? v * KM_PER_MILE : v;
+}
+
+// ———————————————————————————————————————————————————————————————————————————————————————————————
+// G34: click-to-cycle unit ladders, remembered per quantity × body type.
+//
+// Storage stays SI everywhere (K, kg, km, km/s); a unit pref never touches a stored value — these
+// ladders RELABEL a display, they never convert stored data (A43's convert-vs-relabel lesson). The
+// interstellar STARMAP unit (`starmap.scale.unit`, DATA-R19, `map/distanceUnits.ts`) is a separate
+// concept and stays out of this vocabulary.
+//
+// ONE cycle order per ladder, defined here and nowhere else. A QUANTITY names a kind of reading
+// (a temperature, a mass, an orbital separation); it exposes the stops of its dimension's ladder
+// that make sense for it, in ladder order. The chosen stop is remembered per quantity × body type
+// in `unitPrefs` ON THE STARMAP — campaign data, so it rides save, bundle and the player snapshot
+// (players inherit the GM's units); a skin, by contrast, is per-viewer chrome.
+
+export type UnitBodyType = 'star' | 'planet' | 'moon' | 'construct';
+
+export type UnitId =
+  | 'K' | 'C' | 'F'                              // temperature (SI base: kelvin)
+  | 't' | 'M-Earth' | 'M-Jup' | 'M-Sol'          // mass (SI base: kg)
+  | 'km' | 'mi' | 'AU' | 'ly' | 'pc' | 'auto'    // distance (SI base: km); 'auto' = orbit magnitude rule
+  | 'km/s' | 'mi/s';                             // speed (SI base: km/s)
+
+export type UnitDimension = 'temperature' | 'mass' | 'distance' | 'speed';
+
+export interface UnitQuantitySpec {
+  dimension: UnitDimension;
+  stops: readonly UnitId[];
+}
+
+// The quantity vocabulary. The display sweep tags each field with one of these keys; adding a key
+// here is cheap, forking cycle behaviour in a component is the thing this table exists to prevent.
+//  - `radius`   body/feature sizes (planet radius, ring extents, construct dimensions)
+//  - `orbit`    orbital separations. Its default stop is 'auto' — km below ORBIT_KM_BELOW_AU, AU
+//               above — because the unit follows the DISTANCE, not the role (the Pluto-about-the-
+//               barycentre lesson pinned in units.spec.ts stays pinned through the ladder era).
+//  - `distance` free lengths that can span scales (sensor ranges, journey legs)
+export const UNIT_QUANTITIES = {
+  temperature: { dimension: 'temperature', stops: ['K', 'C', 'F'] },
+  mass: { dimension: 'mass', stops: ['t', 'M-Earth', 'M-Jup', 'M-Sol'] },
+  radius: { dimension: 'distance', stops: ['km', 'mi'] },
+  orbit: { dimension: 'distance', stops: ['auto', 'km', 'mi', 'AU'] },
+  distance: { dimension: 'distance', stops: ['km', 'mi', 'AU', 'ly', 'pc'] },
+  speed: { dimension: 'speed', stops: ['km/s', 'mi/s'] }
+} as const satisfies Record<string, UnitQuantitySpec>;
+
+export type UnitQuantity = keyof typeof UNIT_QUANTITIES;
+
+// SI-per-unit factors for the linear dimensions (temperature is affine and handled explicitly,
+// through the SAME formulae as the legacy helpers above — one source for each conversion).
+const KM_PER_LY = LY_M / 1000;
+const KM_PER_PC = PC_M / 1000;
+const MASS_KG_PER: Record<string, number> = {
+  't': 1000,
+  'M-Earth': EARTH_MASS_KG,
+  'M-Jup': JUPITER_MASS_KG,
+  'M-Sol': SOLAR_MASS_KG
+};
+const DIST_KM_PER: Record<string, number> = {
+  km: 1,
+  mi: KM_PER_MILE,
+  AU: AU_KM,
+  ly: KM_PER_LY,
+  pc: KM_PER_PC
+};
+const SPEED_KMS_PER: Record<string, number> = {
+  'km/s': 1,
+  'mi/s': KM_PER_MILE
+};
+
+// 'auto' (the orbit ladder's default stop) resolves to a concrete unit by magnitude before any
+// conversion or label. Same threshold as formatOrbitRadiusAu; metric flavour.
+export function resolveAutoUnit(unit: UnitId, siKm: number): UnitId {
+  if (unit !== 'auto') return unit;
+  return Math.abs(siKm) < ORBIT_KM_BELOW_AU * AU_KM ? 'km' : 'AU';
+}
+
+// Display value in `unit` → SI (K / kg / km / km·s⁻¹). Temperature pivots through the legacy
+// °C round-trip helpers so the formula exists once.
+export function unitToSI(unit: UnitId, v: number): number {
+  if (unit === 'K' || unit === 'C' || unit === 'F') return displayTempToC(v, unit) + 273.15;
+  if (unit in MASS_KG_PER) return v * MASS_KG_PER[unit];
+  if (unit in DIST_KM_PER) return v * DIST_KM_PER[unit];
+  if (unit in SPEED_KMS_PER) return v * SPEED_KMS_PER[unit];
+  throw new Error(`unitToSI: '${unit}' is not a concrete unit (resolve 'auto' first)`);
+}
+
+// SI → the value expressed in `unit`.
+export function unitFromSI(unit: UnitId, si: number): number {
+  if (unit === 'K' || unit === 'C' || unit === 'F') return cToDisplayTemp(si - 273.15, unit);
+  if (unit in MASS_KG_PER) return si / MASS_KG_PER[unit];
+  if (unit in DIST_KM_PER) return si / DIST_KM_PER[unit];
+  if (unit in SPEED_KMS_PER) return si / SPEED_KMS_PER[unit];
+  throw new Error(`unitFromSI: '${unit}' is not a concrete unit (resolve 'auto' first)`);
+}
+
+// The label rendered on the click target. Temperature reuses tempUnitLabel; masses use the
+// symbols the panels already speak (M⊕ / M♃ / M☉).
+export function unitIdLabel(unit: UnitId): string {
+  switch (unit) {
+    case 'K': case 'C': case 'F': return tempUnitLabel(unit);
+    case 'M-Earth': return 'M⊕';
+    case 'M-Jup': return 'M♃';
+    case 'M-Sol': return 'M☉';
+    default: return unit; // t, km, mi, AU, ly, pc, km/s, mi/s read as themselves
+  }
+}
+
+// Number formatting per unit stop, WITHOUT the label. Relative masses use significant figures
+// (Jupiter must read "1.000" at M-Jup, "317.8" at M⊕, "9.54e-4" at M☉ — fixed decimals cannot
+// serve all three); everything else keeps the existing per-unit conventions.
+export function formatUnitNum(unit: UnitId, displayValue: number, decimals?: number): string {
+  if (!Number.isFinite(displayValue)) return '—';
+  if (unit === 'M-Earth' || unit === 'M-Jup' || unit === 'M-Sol') {
+    const a = Math.abs(displayValue);
+    if (a !== 0 && (a >= 1e4 || a < 1e-3)) return displayValue.toExponential(2);
+    if (a >= 100) return fmtNum(displayValue, decimals ?? 1);
+    return displayValue.toPrecision(4);
+  }
+  return fmtNum(displayValue, decimals ?? DEFAULT_DECIMALS[unit] ?? 0);
+}
+const DEFAULT_DECIMALS: Partial<Record<UnitId, number>> = {
+  AU: 3, ly: 2, pc: 2, 'km/s': 1, 'mi/s': 1
+};
+
+// SI value → "<number> <label>" in one call, resolving 'auto'. The formatting counterpart of
+// unitFromSI; <UnitValue> renders number and label separately so only the label is a button.
+export function formatSIInUnit(si: number, unit: UnitId, decimals?: number): string {
+  if (!Number.isFinite(si)) return '—';
+  const concrete = resolveAutoUnit(unit, si);
+  return `${formatUnitNum(concrete, unitFromSI(concrete, si), decimals)} ${unitIdLabel(concrete)}`;
+}
+
+// ——— prefs: which stop each quantity × body type sits on ———
+
+// Sparse: an absent key means the default below. Values are validated on read, so an unknown or
+// out-of-ladder id (older save, future ladder change) falls back to the default instead of lying.
+export type UnitPrefs = Record<string, string>;
+
+export function unitPrefKey(q: UnitQuantity, b: UnitBodyType): string {
+  return `${q}:${b}`;
+}
+
+// The owner's defaults: stars read kelvin, worlds read celsius; masses read the unit the panels
+// already used (M☉ stars, M⊕ worlds, tonnes constructs); orbits follow the magnitude rule.
+export function defaultUnitFor(q: UnitQuantity, b: UnitBodyType): UnitId {
+  switch (q) {
+    case 'temperature': return b === 'star' ? 'K' : 'C';
+    case 'mass': return b === 'star' ? 'M-Sol' : b === 'construct' ? 't' : 'M-Earth';
+    case 'radius': return 'km';
+    case 'orbit': return 'auto';
+    case 'distance': return 'km';
+    case 'speed': return 'km/s';
+  }
+}
+
+export function resolveUnitPref(prefs: UnitPrefs | undefined, q: UnitQuantity, b: UnitBodyType): UnitId {
+  const stored = prefs?.[unitPrefKey(q, b)];
+  const stops: readonly string[] = UNIT_QUANTITIES[q].stops;
+  return stored !== undefined && stops.includes(stored) ? (stored as UnitId) : defaultUnitFor(q, b);
+}
+
+// The next stop for this quantity, in ladder order, wrapping. THE one cycle order.
+export function cycleUnit(q: UnitQuantity, current: UnitId): UnitId {
+  const stops = UNIT_QUANTITIES[q].stops;
+  const i = stops.indexOf(current);
+  return stops[(i + 1) % stops.length];
+}
+
+export const UNIT_BODY_TYPES: readonly UnitBodyType[] = ['star', 'planet', 'moon', 'construct'];
+
+// Load-time migration from the two legacy starmap-wide fields. PRESENCE of `unitPrefs` on the
+// starmap (even empty) marks a map as migrated — callers only invoke this when the record is
+// absent. The legacy fields governed every body type at once, so an explicit non-default legacy
+// choice carries into every body type it governed; an unset or default legacy value contributes
+// nothing, which is how existing maps pick up the new stars-K default. Two conscious losses, both
+// noted on the G34 row: a map explicitly saved with °C now shows stars in K (the owner's default
+// wins), and an imperial map's sub-threshold PLANET orbit (a barycentre member) shows km via
+// 'auto' rather than miles — moon and construct orbits, which are always short, do migrate to mi.
+export function migrateUnitPrefs(legacy: { measurementUnits?: MeasurementUnits; temperatureUnit?: TemperatureUnit }): UnitPrefs {
+  const prefs: UnitPrefs = {};
+  if (legacy.temperatureUnit === 'F' || legacy.temperatureUnit === 'K') {
+    for (const b of UNIT_BODY_TYPES) prefs[unitPrefKey('temperature', b)] = legacy.temperatureUnit;
+  }
+  if (legacy.measurementUnits === 'imperial') {
+    for (const b of UNIT_BODY_TYPES) {
+      prefs[unitPrefKey('radius', b)] = 'mi';
+      prefs[unitPrefKey('distance', b)] = 'mi';
+      prefs[unitPrefKey('speed', b)] = 'mi/s';
+    }
+    prefs[unitPrefKey('orbit', 'moon')] = 'mi';
+    prefs[unitPrefKey('orbit', 'construct')] = 'mi';
+  }
+  return prefs;
 }

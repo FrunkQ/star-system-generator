@@ -2593,6 +2593,29 @@ hand are a latent third copy: 16 files read `.distanceUnit`, 6 read `scale.unit`
 implemented the precedence were migrated - the rest are safe ONLY because the load-time fold makes them
 agree. Do not delete that fold thinking it is redundant.
 
+### DATA-R20 UNIT PREFS RELABEL PER QUANTITY x BODY TYPE; STORED VALUES NEVER LEAVE SI
+WHERE: `units.ts` (the ladders, `UNIT_QUANTITIES`, defaults, `migrateUnitPrefs`), `unitPrefsStore.ts`
+(`cycleUnitPref` - the ONE writer), `types.ts:Starmap.unitPrefs`, `routes/+page.svelte:
+withStarmapDefaults` (load-time migration). Consumed by `components/UnitValue.svelte` /
+`UnitInput.svelte`; specs in `units.spec.ts`.
+RULE: `unitPrefs` is a SPARSE record `${quantity}:${bodyType}` -> ladder stop, ON THE STARMAP -
+campaign data, so it rides save, bundle and the player snapshot, and players inherit the GM's units
+non-interactively (`unitPrefsLocked`). Values are validated on READ against the quantity's stops and
+fall back to the defaults in units.ts (stars K, worlds C; masses M-Sol/M-Earth/t; orbits 'auto' =
+the km-below-`ORBIT_KM_BELOW_AU` magnitude rule). A pref RELABELS a display; storage stays SI
+(K, kg, km, km/s) - display converts on the way out, edit fields convert back exactly ONCE, on
+commit, never mid-typing. PRESENCE of the record (even empty) is the migration mark for the two
+legacy fields (`measurementUnits`/`temperatureUnit`), which coexist until the Settings selector
+retires (G34 phase 5): swept panels read prefs, unswept panels still read the legacy stores.
+WHY: G34. Built against the A43 scar (DATA-R19): convert-vs-relabel must be explicit, and a unit
+choice that touched stored numbers would silently corrupt every campaign it loaded. The migration
+takes two conscious losses, recorded on the G34 row: an explicitly-`C` map now shows stars in K,
+and an imperial map's sub-threshold PLANET orbit reads km via 'auto' rather than miles.
+BLAST: the interstellar MAP unit (DATA-R19, `map/distanceUnits.ts`) is a different concept - never
+fold these ladders into it. A new quantity key goes in `UNIT_QUANTITIES`, never as cycle logic in a
+component. Anything that builds a snapshot or bundle must keep carrying `unitPrefs` - it rides the
+starmap object today, so a field WHITELIST anywhere on that path would sever the inheritance.
+
 
 ---
 

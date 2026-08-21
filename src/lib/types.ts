@@ -1211,6 +1211,12 @@ export interface Starmap {
   ignoreZForDistances?: boolean;
   measurementUnits?: 'metric' | 'imperial';    // IN-SYSTEM distance/speed display: km/km·s (default) vs miles/mph
   temperatureUnit?: 'C' | 'F' | 'K';            // temperature display: °C (default) / °F / Kelvin — its own switch
+  // G34: per-quantity × body-type display-unit choices (`${quantity}:${bodyType}` → unit id; the
+  // vocabulary and defaults live in units.ts). Sparse — absent keys mean the defaults. CAMPAIGN
+  // DATA: rides save, bundle and the player snapshot so players inherit the GM's units. Presence
+  // of the record (even empty) marks the two legacy fields above as migrated; they are display
+  // prefs superseded by this and retire with the Settings selector (G34 phase 5).
+  unitPrefs?: Record<string, string>;
   systemEdgeAu?: number;                        // "leaves the system" boundary in AU; unset = the star's Hill limit
 
   // Unified player-view presets + their uploaded graphics are campaign data — saved with the map.

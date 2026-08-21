@@ -3,9 +3,13 @@ import {
   formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatSpeedAuto, MILE_PER_KM,
   kmToDisplayNum, displayNumToKm, kmsToDisplayNum, displayNumToKms,
   formatTempC, formatTempK, cToDisplayTemp, displayTempToC,
-  formatOrbitRadiusAu, ORBIT_KM_BELOW_AU
+  formatOrbitRadiusAu, ORBIT_KM_BELOW_AU,
+  UNIT_QUANTITIES, UNIT_BODY_TYPES, unitToSI, unitFromSI, unitIdLabel, formatUnitNum,
+  formatSIInUnit, resolveAutoUnit, cycleUnit, defaultUnitFor, resolveUnitPref, unitPrefKey,
+  migrateUnitPrefs,
+  type UnitId, type UnitQuantity
 } from './units';
-import { AU_KM } from './constants';
+import { AU_KM, EARTH_MASS_KG, JUPITER_MASS_KG, SOLAR_MASS_KG, LY_M, PC_M } from './constants';
 
 describe('units — metric vs imperial display (SI stays internal)', () => {
   it('distance in km stays km for metric, converts to miles for imperial', () => {
@@ -112,5 +116,133 @@ describe('orbital radius — the unit follows the distance, not the role', () =>
   it('is defensive about rubbish', () => {
     expect(formatOrbitRadiusAu(NaN, 'metric')).toBe('—');
     expect(formatOrbitRadiusAu(Infinity, 'metric')).toBe('—');
+  });
+});
+
+// ——————————————————————————————————————————————————————————————————————————————————————————————
+// G34 — the click-to-cycle ladders. Storage stays SI (K, kg, km, km/s); every stop must round-trip
+// through unitToSI/unitFromSI without drift, because the edit half of the sweep rides exactly that.
+
+describe('unit ladders — every stop round-trips SI without drift', () => {
+  it('every concrete stop of every quantity round-trips', () => {
+    for (const [q, spec] of Object.entries(UNIT_QUANTITIES)) {
+      for (const stop of spec.stops) {
+        if (stop === 'auto') continue; // resolved before conversion, tested separately
+        for (const si of [0.001, 1, 273.15, 5972, 1.898e27]) {
+          const rt = unitToSI(stop as UnitId, unitFromSI(stop as UnitId, si));
+          expect(rt, `${q} @ ${stop}`).toBeCloseTo(si, si > 1e20 ? -14 : 6);
+        }
+      }
+    }
+  });
+
+  it('temperature: typing 100 into a field showing °F stores 310.9 K', () => {
+    expect(unitToSI('F', 100)).toBeCloseTo(310.928, 3);
+    // flip the field to K and back — no drift
+    expect(unitFromSI('F', unitToSI('F', 100))).toBeCloseTo(100, 9);
+    expect(unitFromSI('K', unitToSI('K', 310.93))).toBeCloseTo(310.93, 9);
+    // ladder conversions agree with the legacy °C helpers (one formula, two doors)
+    expect(unitFromSI('C', 300)).toBeCloseTo(cToDisplayTemp(300 - 273.15, 'C'), 12);
+    expect(unitToSI('C', displayTempToC(80.33, 'F'))).toBeCloseTo(unitToSI('F', 80.33), 9);
+  });
+
+  it('mass: Jupiter reads exactly 1.000 at the M-Jup stop, 317.8 at M-Earth', () => {
+    expect(formatUnitNum('M-Jup', unitFromSI('M-Jup', 1.898e27))).toBe('1.000');
+    expect(formatUnitNum('M-Earth', unitFromSI('M-Earth', 1.898e27))).toBe('317.8');
+    expect(formatUnitNum('M-Earth', unitFromSI('M-Earth', EARTH_MASS_KG))).toBe('1.000');
+    expect(formatUnitNum('M-Sol', unitFromSI('M-Sol', SOLAR_MASS_KG))).toBe('1.000');
+    // Jupiter in solar masses is small — significant figures, not a page of zeros
+    expect(formatUnitNum('M-Sol', unitFromSI('M-Sol', JUPITER_MASS_KG))).toBe('9.54e-4');
+    // tonnes format like plain quantities
+    expect(formatUnitNum('t', unitFromSI('t', 2.5e6))).toBe('2,500');
+  });
+
+  it('long distances: AU, ly and pc stops agree with the astronomical constants', () => {
+    expect(unitFromSI('AU', AU_KM)).toBeCloseTo(1, 12);
+    expect(unitFromSI('ly', LY_M / 1000)).toBeCloseTo(1, 12);
+    expect(unitFromSI('pc', PC_M / 1000)).toBeCloseTo(1, 12);
+    // 1 pc = 3.2616 ly, through the ladder
+    expect(unitToSI('pc', 1) / unitToSI('ly', 1)).toBeCloseTo(3.2616, 3);
+    expect(formatSIInUnit(AU_KM, 'AU')).toBe('1.000 AU');
+    expect(formatSIInUnit(4.13 * (LY_M / 1000), 'ly')).toBe('4.13 ly');
+  });
+
+  it("the orbit ladder's auto stop follows the magnitude rule (Pluto stays in km)", () => {
+    const plutoKm = 1.405886379192334e-5 * AU_KM; // Pluto about the Pluto–Charon barycentre
+    expect(resolveAutoUnit('auto', plutoKm)).toBe('km');
+    expect(resolveAutoUnit('auto', AU_KM)).toBe('AU');
+    expect(resolveAutoUnit('auto', ORBIT_KM_BELOW_AU * AU_KM)).toBe('AU'); // same threshold, same side
+    expect(resolveAutoUnit('km', AU_KM)).toBe('km'); // concrete stops pass through
+    expect(formatSIInUnit(plutoKm, 'auto')).toBe('2,103 km'); // never "0.000 AU"
+  });
+
+  it('labels: masses use the symbols the panels already speak; non-finite is dashed', () => {
+    expect(unitIdLabel('M-Earth')).toBe('M⊕');
+    expect(unitIdLabel('M-Jup')).toBe('M♃');
+    expect(unitIdLabel('M-Sol')).toBe('M☉');
+    expect(unitIdLabel('C')).toBe('°C');
+    expect(unitIdLabel('K')).toBe('K');
+    expect(formatSIInUnit(NaN, 'km')).toBe('—');
+    expect(formatUnitNum('AU', Infinity)).toBe('—');
+  });
+});
+
+describe('unit prefs — one cycle order, remembered per quantity × body type', () => {
+  it('cycles every quantity through its stops in ladder order and wraps', () => {
+    for (const [q, spec] of Object.entries(UNIT_QUANTITIES)) {
+      let u = spec.stops[0] as UnitId;
+      const seen = [u];
+      for (let i = 1; i < spec.stops.length; i++) { u = cycleUnit(q as UnitQuantity, u); seen.push(u); }
+      expect(seen, q).toEqual([...spec.stops]);
+      expect(cycleUnit(q as UnitQuantity, u), `${q} wraps`).toBe(spec.stops[0]);
+    }
+  });
+
+  it("owner's defaults: stars in kelvin, worlds in celsius; masses as the panels showed them", () => {
+    expect(defaultUnitFor('temperature', 'star')).toBe('K');
+    expect(defaultUnitFor('temperature', 'planet')).toBe('C');
+    expect(defaultUnitFor('temperature', 'moon')).toBe('C');
+    expect(defaultUnitFor('mass', 'star')).toBe('M-Sol');
+    expect(defaultUnitFor('mass', 'planet')).toBe('M-Earth');
+    expect(defaultUnitFor('mass', 'construct')).toBe('t');
+    expect(defaultUnitFor('orbit', 'planet')).toBe('auto');
+  });
+
+  it('a stored pref wins; an absent or out-of-ladder pref falls back to the default', () => {
+    expect(resolveUnitPref({ 'temperature:planet': 'F' }, 'temperature', 'planet')).toBe('F');
+    expect(resolveUnitPref({}, 'temperature', 'planet')).toBe('C');
+    expect(resolveUnitPref(undefined, 'temperature', 'star')).toBe('K');
+    // 'ly' is a distance-ladder stop but NOT on the radius quantity — never lie with it
+    expect(resolveUnitPref({ 'radius:planet': 'ly' }, 'radius', 'planet')).toBe('km');
+    expect(resolveUnitPref({ 'mass:planet': 'stone' }, 'mass', 'planet')).toBe('M-Earth');
+  });
+});
+
+describe('unit prefs migration — the two legacy map-wide fields, once', () => {
+  it('a default or unset legacy map contributes nothing (the sparse record IS the migration mark)', () => {
+    expect(migrateUnitPrefs({})).toEqual({});
+    expect(migrateUnitPrefs({ measurementUnits: 'metric', temperatureUnit: 'C' })).toEqual({});
+    // …so stars pick up the new K default even on a map explicitly saved with °C
+    expect(resolveUnitPref(migrateUnitPrefs({ temperatureUnit: 'C' }), 'temperature', 'star')).toBe('K');
+  });
+
+  it('an explicit °F/K choice governed every body type, and carries to every body type', () => {
+    const prefs = migrateUnitPrefs({ temperatureUnit: 'F' });
+    for (const b of UNIT_BODY_TYPES) expect(prefs[unitPrefKey('temperature', b)]).toBe('F');
+    expect(Object.keys(prefs)).toHaveLength(4);
+  });
+
+  it('imperial carries to radii, free distances and speeds everywhere, but orbits only where they are short', () => {
+    const prefs = migrateUnitPrefs({ measurementUnits: 'imperial' });
+    for (const b of UNIT_BODY_TYPES) {
+      expect(prefs[unitPrefKey('radius', b)]).toBe('mi');
+      expect(prefs[unitPrefKey('distance', b)]).toBe('mi');
+      expect(prefs[unitPrefKey('speed', b)]).toBe('mi/s');
+    }
+    expect(prefs[unitPrefKey('orbit', 'moon')]).toBe('mi');
+    expect(prefs[unitPrefKey('orbit', 'construct')]).toBe('mi');
+    // planet/star orbits keep the magnitude rule — AU above the threshold, exactly as imperial showed them
+    expect(resolveUnitPref(prefs, 'orbit', 'planet')).toBe('auto');
+    expect(resolveUnitPref(prefs, 'orbit', 'star')).toBe('auto');
   });
 });
