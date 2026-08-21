@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.11 - 21st Aug 2026
+
+- Docs only. The observations inbox's Documentation-debt section is swept to ZERO for the first time since it was created, with a record of where every owed line landed and what was struck rather than written. Twenty of those lines had been appended under the wrong heading, which is why the list read shorter than it was. E6 is closed, five findings are captured (including a literal &rsquo; printed on the welcome screen), and the handover carries the four claims this pass put in front of a reader without being able to exercise them.
+
 ## v3.0.0-rc.10 - 21st Aug 2026
 
 - The tail of the documentation debt, which was mostly items owed to a surface nobody had picked up. GettingStarted gains: the three things a star DRAWS rather than badges and how to remove one; that picking a spectral type draws from that class's range rather than its middle; a subsection on the rule-pack editors that no user document has ever covered, including what an absorption band is and the one thing the split Gas Physics card exists to say (nothing under Presentation feeds the physics); the player-view preset controls that were owed a line, star boost included, with the honest note that a high boost stops reading as apparent magnitude; the model dialogue and click-to-place drives; and what a save actually contains. The physics page's habitability section now says WHICH temperature it scores - the mean surface one, which differs from the radiating figure by 130 K on Mercury - and admits that the water band is a comfort plateau rather than water's liquid range. Its cloud section gains the frost-not-cloud rule that is why Pluto has no methane deck.
