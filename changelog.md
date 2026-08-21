@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.891-beta - 21st Aug 2026
+
+- Docs only. Units-everywhere plus interface skins is promoted into V3 and its brief is written: click a unit to cycle it, remembered per body type, players inherit; skins ride the same sweep as shared components and tokens.
+
 ## v2.1.890-beta - 21st Aug 2026
 
 - One classifier, not two. A second, older classification engine sat behind the live one, reachable only by a rule pack that shipped no fingerprints - and it still held the version of the rules from before two corrections landed, so it would have put eyeball worlds on gas giants and called any small hot world a stripped giant's core. Measured against the live engine on 167 bundled worlds it was worse on every one of them. It is gone; a pack with no fingerprints now gets one honest class from the body's mass, and its author is told why.
