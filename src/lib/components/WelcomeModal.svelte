@@ -73,6 +73,8 @@
     // and rarity saturates above the midpoint. The wording of the line itself is the owner's call
     // once he has eyeballed a few generated systems.
     { title: 'Sharper generation', blurb: 'Procedural systems are retuned alongside the physics as it grows, so a generated system reflects what the engine currently knows rather than what it knew when the generator was written.' },
+    { title: 'Bring your worlds in', blurb: 'Traveller, Universe Sandbox and SpaceEngine imports, unified on one generator — the same dials fill out every system.' },
+    { title: 'Starmap stars are stars', blurb: 'Sharp and true to class — jets, flares, size by luminosity, and grouped systems that hold together at every zoom.' },
     { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
     // FLAG CLEARED 2026-08-19: G16 shipped v2.1.811-813 and the owner has seen it ("1 looks good for me").
     { title: 'Your own map behind the stars', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
@@ -80,7 +82,7 @@
     // is named ("Undo: Mass of Earth"), the campaign has its own history, the last twenty survive a
     // reload, and nothing rides an export or a share.
     { title: 'Undo and redo', blurb: 'Hallelujah. Every step is named, the last twenty survive a reload, and none of it leaves the room in a shared map.' },
-    { title: 'A fresh face for the GM view', blurb: 'The interface is now skinnable - keep the classic look or switch to compact - and every figure’s unit is clickable: set stars to Kelvin, planets to Celsius, distances to miles, and the choice holds everywhere, per body type. Player windows follow the GM’s units.' },
+    { title: 'A fresh face for the GM view', blurb: 'Skinnable panels, and click any unit to swap it — stars in Kelvin, planets in Celsius, yours to choose. Players follow.' },
     // 2026-08-18, owner: "VTT integration is Mappadux working. Looking for testers for OR and Foundry."
     // The line no longer carries a pending flag: the Mappadux half is a claim the build can make.
     { title: 'Virtual tabletop integration', blurb: 'Mappadux — free, and built alongside this — works today: your starmap and systems on the table, live. Owlbear Rodeo and Foundry are next, and we are looking for testers: if you run either, come and tell us what breaks and what you need.' },

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.2 - 21st Aug 2026
+
+- What's new, tightened: the GM-view line is one sentence, and two features the list had missed are claimed - the unified importers (Traveller, Universe Sandbox, SpaceEngine on one generator with the fill-out dials) and the starmap's stars drawn as stars.
+
 ## v3.0.0-rc.1 - 21st Aug 2026
 
 **Release candidate 1 for V3.** The 2.1.x beta line ends here; RC pushes bump the rc number. This build carries everything the welcome list claims, with the GM interface overhaul landing last: skinnable panels (classic or compact), clickable units on every figure remembered per body type and inherited by player windows, a what's-new line saying so, and the settings panels given breathing room against a slimmer scrollbar.
