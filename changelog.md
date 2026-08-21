@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.21 - 21st Aug 2026
+
+- The holding screen a joining player sees is now the interstitial itself, with the GM's own words on it. While a large map is on its way it reads "Incoming Transmission…" - the wording is rule-pack data, so a GM can put it in character - with a spinner and a plain line underneath saying what is coming ("27 systems, ~5.0 MB"). It only appears when there is genuinely something to wait for: if the map arrives quickly, or from cache, there is no holding screen and no second transition at all, exactly as before. Measured on a local join, the map lands one millisecond after the announcement, which is why nothing showed - there was nothing to wait for.
+
 ## v3.0.0-rc.20 - 21st Aug 2026
 
 - Board only. The A63 row is marked fixed for its cheap half (the shipped build is rc.18 — the commit subjects ran one behind the changelog, and the row and debt line said rc.17; both corrected), a dangling spec fragment that split the table cell is removed, and the row stays open for the V3.1 chunked-progress half.

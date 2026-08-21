@@ -106,18 +106,38 @@
   // channel is ordered, so this always lands first. It is a HOLDING state, not progress — the parse
   // that follows blocks the main thread in one go, so nothing can animate through it. What it kills
   // is the reload temptation, which is the reported harm.
+  //
+  // IT WAITS BEFORE SHOWING, AND THAT IS THE WHOLE DIFFERENCE BETWEEN USEFUL AND INVISIBLE.
+  // Measured on a local session: announce at t=0, payload applied at t=9 ms. Shown immediately, the
+  // pill was created and destroyed inside a single task and never got a frame to paint — the owner
+  // reported "not seeing it at all", and that was correct behaviour badly expressed. It is not the
+  // transition covering it; there is simply nothing to wait for when the map is 45 KB and local.
+  //
+  // So: start a grace timer instead. If the payload beats the timer, the pill NEVER appears — which
+  // is the owner's own "if it is not loading and just opening from cache we can skip this". If the
+  // timer wins, we are in a genuine wait, the pill paints while the transport is still in flight and
+  // the main thread is idle, and that painted frame is what stays on screen through the parse freeze
+  // that follows. No size threshold is needed to decide any of this: the clock already knows.
+  const RECEIVING_GRACE_MS = 400;
   let receiving: { systems: number; approxBytes?: number } | null = null;
+  let receivingPending: { systems: number; approxBytes?: number } | null = null;
+  let receivingGrace: ReturnType<typeof setTimeout> | null = null;
   let receivingTimer: ReturnType<typeof setTimeout> | null = null;
   function clearReceiving() {
+    if (receivingGrace) { clearTimeout(receivingGrace); receivingGrace = null; }
     if (receivingTimer) { clearTimeout(receivingTimer); receivingTimer = null; }
+    receivingPending = null;
     receiving = null;
   }
-  // "27 systems, ~5 MB" reads better than either alone, and the size is often absent (the first
-  // joiner announces before the GM has ever sent one, so there is nothing measured to quote).
-  $: receivingLabel = receiving
-    ? `Receiving the starmap — ${receiving.systems} ${receiving.systems === 1 ? 'system' : 'systems'}`
+  // THE HEADLINE IS THE PACK'S, the detail is ours. The GM writes the in-world line ("Incoming
+  // Transmission…"); underneath it we say plainly what is actually coming, because a player who has
+  // waited ten seconds deserves a reason and "27 systems, ~5 MB" is one. Size is often absent — the
+  // first joiner announces before the GM has ever sent a starmap, so there is nothing measured to
+  // quote — and the line reads fine without it.
+  $: incomingMessage = rulePack?.playerStrings?.incoming ?? 'Incoming Transmission…';
+  $: receivingDetail = receiving
+    ? `${receiving.systems} ${receiving.systems === 1 ? 'system' : 'systems'}`
       + (receiving.approxBytes ? `, ~${formatApproxBytes(receiving.approxBytes)}` : '')
-      + '…'
     : '';
   function formatApproxBytes(n: number): string {
     return n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -567,7 +587,20 @@
   let entryEngine: import('$lib/transitions/TransitionEngine').TransitionEngine | null = null;
   let renderedStageKey: string | null = null;
   let pendingEntrySnap: HTMLCanvasElement | null = null;
-  $: stageKey = (!starmap || presetHold || !activePreset) ? ''
+  // A63: the LOADING screen is a stage of its own, so the transition machinery already here plays
+  // OUT of it into the map without needing to know anything new — '' -> 'loading' -> 'map:…'. When
+  // the payload beats the grace timer there is no 'loading' stage at all and the player gets the
+  // single '' -> 'map:…' transition they always got, which is the "if it is just opening from cache
+  // we can skip this" rule expressed as state rather than as a special case.
+  //
+  // NOTE WHAT IS NOT PROMISED: on a COLD join there is no transition INTO the loading screen, because
+  // the preset that names the transition arrives with the starmap — you cannot play a themed
+  // transition before you know the theme. A player already connected (a GM re-broadcast, a preset
+  // switch) gets both. Closing that gap means putting the preset id in the announce, and it is
+  // written up with the V3.1 work in docs/dev/loading-screen-design.md.
+  $: stageKey = presetHold ? ''
+    : (receiving && !starmap) ? 'loading'
+    : (!starmap || !activePreset) ? ''
     : (selectedSystemId ? 'sys:' + activePreset.systemView : 'map:' + activePreset.starmapView);
   $: entryWanted = !!activePreset?.transition && activePreset.transition !== 'none';
 
@@ -913,12 +946,17 @@
     broadcastService.onGmLevelUpdate = (l) => followGmLevel(l); // A59
     broadcastService.onIncoming = (info) => {
       if (info?.what !== 'starmap') return;
-      if (receivingTimer) clearTimeout(receivingTimer);
-      receiving = { systems: info.systems ?? 0, approxBytes: info.approxBytes };
-      // A LOST PAYLOAD MUST NOT PIN THE PILL. The announce is a separate message from the thing it
-      // announces, so a dropped or failed SYNC_STARMAP would otherwise leave this up forever — which
-      // is a worse lie than showing nothing, because it says "still working" when nothing is.
-      receivingTimer = setTimeout(() => { receiving = null; receivingTimer = null; }, 30_000);
+      clearReceiving();
+      receivingPending = { systems: info.systems ?? 0, approxBytes: info.approxBytes };
+      receivingGrace = setTimeout(() => {
+        receivingGrace = null;
+        receiving = receivingPending;
+        receivingPending = null;
+        // A LOST PAYLOAD MUST NOT PIN THE PILL. The announce is a separate message from the thing it
+        // announces, so a dropped or failed SYNC_STARMAP would otherwise leave this up forever —
+        // a worse lie than showing nothing, because it says "still working" when nothing is.
+        receivingTimer = setTimeout(() => { receiving = null; receivingTimer = null; }, 30_000);
+      }, RECEIVING_GRACE_MS);
     };
     broadcastService.onStarmapUpdate = (map) => {
       perfCount('sync.starmap'); // each one re-clones the campaign + rebuilds the scene — track it
@@ -1065,16 +1103,6 @@
       <button class="pm-close" aria-label="Dismiss" on:click={() => (missingNoticeDismissedFor = activePresetId)}>×</button>
     </div>
   {/if}
-  <!-- A63: the holding pill. Sits with the other connection chrome and OVER the cover, because the
-       cover is exactly when a joining player is waiting and has nothing else to look at. Indeterminate
-       by design — see the note on `receiving`: the parse blocks the main thread, so there is no
-       honest progress to show. -->
-  {#if receiving}
-    <div class="receiving-pill" role="status" aria-live="polite">
-      <span class="rp-spin" aria-hidden="true"></span>
-      <span>{receivingLabel}</span>
-    </div>
-  {/if}
   {#if presetHold}
     <!-- GM closed the live view: the quote interstitial holds the screen until they open one again. -->
     <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
@@ -1110,15 +1138,31 @@
   </header>
 
   {#if !starmap}
-    <!-- Waiting / offline: the quote interstitial (connected, nothing broadcast yet). -->
+    <!-- Waiting / offline / RECEIVING: one screen, three things to say. A63 makes the third of them
+         the loading state — the interstitial IS the loading screen, which is why there is no separate
+         component and no corner pill. The message sits in `statusText`, which the interstitial renders
+         low, under the quote. -->
     <QuoteInterstitial joinUrl={browser ? window.location.href : ''} brandName={branding.name}
-      statusText={linkBlocked
-        ? 'SENSOR LINK BLOCKED — this network will not carry a direct or relayed connection to the host (UDP blocked, no relay). Ask the GM for a link with a relay, or try another network.'
-        : 'Reaching the host — this will fill in automatically once the GM is broadcasting.'}
-      sessionId={sessionId ?? ''}>
-      <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId })}>
-        Retry
-      </button>
+      statusText={receiving
+        ? incomingMessage
+        : linkBlocked
+          ? 'SENSOR LINK BLOCKED — this network will not carry a direct or relayed connection to the host (UDP blocked, no relay). Ask the GM for a link with a relay, or try another network.'
+          : 'Reaching the host — this will fill in automatically once the GM is broadcasting.'}
+      sessionId={receiving ? '' : (sessionId ?? '')}>
+      {#if receiving}
+        <!-- A SPINNER, NOT A BAR, and the distinction is honest rather than cosmetic: nothing here
+             knows how far along the transfer is. PeerJS chunks internally and exposes no progress,
+             and the parse that follows blocks the main thread in one go. A bar needs the payload sent
+             in numbered pieces, which is the V3.1 job — see docs/dev/loading-screen-design.md. -->
+        <p class="rcv" aria-live="polite">
+          <span class="rcv-spin" aria-hidden="true"></span>
+          <span class="rcv-detail">{receivingDetail}</span>
+        </p>
+      {:else}
+        <button on:click={() => broadcastService.sendMessage({ type: 'REQUEST_STARMAP', payload: sessionId })}>
+          Retry
+        </button>
+      {/if}
     </QuoteInterstitial>
   {:else if !selectedSystemId && activePreset && activePreset.starmapEnabled}
     <!-- Starmap level, PRESET-DRIVEN: the chosen module (text list / 2D / 3D), tap a system to enter. -->
@@ -1285,27 +1329,19 @@
   /* A47 broken-link notice. Above the entry-transition overlay (450) and the preset cover (60) — it has
      to be readable whatever stage is showing, and it is deliberately NOT themed by the preset: this is
      the app talking, not the fiction. */
-  /* A63. Above the cover (60) and the entry transition (450), below the broken-link notice (500) —
-     that one is the app talking and must win. */
-  .receiving-pill {
-    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 470;
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 12px; border-radius: 999px;
-    background: rgba(8, 12, 20, 0.86); color: #cfe0f5;
-    border: 1px solid rgba(120, 160, 210, 0.35);
-    font: 400 0.78rem/1.2 system-ui, sans-serif;
-    pointer-events: none; max-width: calc(100% - 24px);
+  /* A63. Lives in the interstitial's foot, under the pack's message — "down low", where a holding
+     line belongs and where this screen already puts its status. */
+  .rcv { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; }
+  .rcv-spin {
+    width: 12px; height: 12px; flex: 0 0 auto; border-radius: 50%;
+    border: 2px solid rgba(200, 215, 235, 0.25); border-top-color: rgba(200, 215, 235, 0.85);
+    animation: rcv-spin 0.85s linear infinite;
   }
-  .rp-spin {
-    width: 11px; height: 11px; flex: 0 0 auto; border-radius: 50%;
-    border: 2px solid rgba(140, 180, 230, 0.3); border-top-color: #8ab4e8;
-    animation: rp-spin 0.8s linear infinite;
-  }
-  @keyframes rp-spin { to { transform: rotate(360deg); } }
-  /* The spinner is the one thing here that MUST keep moving to mean anything, but it stops dead the
-     moment the payload starts parsing — that is honest, and it is why the pill says "receiving"
-     rather than showing a percentage it could not keep. */
-  @media (prefers-reduced-motion: reduce) { .rp-spin { animation: none; } }
+  @keyframes rcv-spin { to { transform: rotate(360deg); } }
+  /* The spinner stops dead the moment the payload starts parsing, because that blocks the main
+     thread. That is honest and it is why the message beside it does the talking. */
+  @media (prefers-reduced-motion: reduce) { .rcv-spin { animation: none; } }
+  .rcv-detail { opacity: 0.75; font-size: 0.92em; }
 
   .preset-missing {
     position: absolute; top: 0; left: 0; right: 0; z-index: 500;

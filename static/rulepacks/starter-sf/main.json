@@ -2,7 +2,11 @@
     "id": "starter-sf-pack",
     "version": "0.1.5",
     "name": "Starter Sci-Fi Pack (Budassi + Basics)",
-    "imports": [
+    "playerStrings": {
+    "_note": "Player-facing chrome the GM can re-word in character. A63: `incoming` is the holding message a player sees while a large starmap is on its way — it is in-world flavour, not a system message, which is why it lives here and not in the code.",
+    "incoming": "Incoming Transmission…"
+  },
+  "imports": [
         "./generation.json",
         "./stars.json",
         "./planets.json",

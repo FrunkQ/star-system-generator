@@ -934,6 +934,11 @@ export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
   gasPhysics?: Record<string, GasPhysics>;
+  /**
+   * Player-facing chrome the GM can re-word in character (A63). Flavour, never a system message —
+   * a pack that omits it falls back to the same wording in code.
+   */
+  playerStrings?: { incoming?: string };
   climateModel?: ClimateModelConfig;
   gasMolarMassesKg?: Record<string, number>; // Legacy support (optional)
   gasShielding?: Record<string, number>; // Legacy support (optional)
