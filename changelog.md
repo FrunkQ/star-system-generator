@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.19 - 21st Aug 2026
+
+- Tests only, no behaviour change. Two flaky or stale assertions fixed: one of mine from the new-planet placement work that counted a majority over too few samples, and one on the model turntable that still named a structure a later fix had deliberately moved.
+
 ## v3.0.0-rc.18 - 21st Aug 2026
 
 - A player joining a game with a big map is no longer left staring at a frozen screen wondering whether to reload. The GM's window now says what is coming a moment before it sends it, so the player sees "Receiving the starmap - 27 systems, ~5.0 MB..." while it crosses. It is a holding message rather than a progress bar, and deliberately so: the map arrives as one piece and unpacking it stops everything for a moment, so a bar would only freeze too. A real progress bar needs the map sent in pieces, which is a later job.

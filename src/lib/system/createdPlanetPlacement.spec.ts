@@ -117,10 +117,25 @@ describe('the type is honoured where the pack says what it wants', () => {
     for (const teq of t) expect(teq).toBeLessThan(260);
   });
 
-  it('a GAS GIANT still prefers beyond the ice line, as it always did', () => {
+  it('a GAS GIANT is placed beyond the ice line unless it was MIGRATED there', () => {
+    // THIS ASSERTION WAS STATISTICAL AND IT FLAKED — 1 run in 6, because it took a majority over
+    // eight samples. Measured over 150 draws to find out why: 85% land beyond the line, and the 22
+    // that do not are EXACTLY the 22 tagged `origin/generated`'s neighbour, `origin/migrated`. Zero
+    // counterexamples. So the placement rule is exact and the apparent noise was a real, deliberate
+    // downstream behaviour — hot-Jupiter migration (`planet_migration_chance`) — being counted as a
+    // failure. Assert the exact rule instead, and it cannot flake.
+    //
+    // The other confounder the same measurement turned up, and the reason this reads roleHint: about
+    // one request in five for a `planet/gas-giant` comes back as a BELT, because the generator
+    // re-types what it built. That is not this item's business, but a test that assumed otherwise
+    // would fail for a reason nothing to do with placement.
     const z = calculateAllStellarZones(STAR, P);
-    const a = Array.from({ length: 8 }, (_, i) => created(200 + i, 'planet/gas-giant'))
-      .map((p) => p.orbit?.elements?.a_AU ?? 0);
-    expect(a.filter((x) => x > z.co2IceLine).length).toBeGreaterThan(a.length / 2);
+    for (let i = 0; i < 12; i++) {
+      const b = created(200 + i, 'planet/gas-giant');
+      if (b.roleHint !== 'planet') continue;                              // re-typed to a belt
+      if ((b.tags ?? []).some((t) => t.key === 'origin/migrated')) continue; // moved in on purpose
+      expect(b.orbit?.elements?.a_AU ?? 0, `sample ${i} landed inside the ice line unmigrated`)
+        .toBeGreaterThan(z.co2IceLine);
+    }
   });
 });
